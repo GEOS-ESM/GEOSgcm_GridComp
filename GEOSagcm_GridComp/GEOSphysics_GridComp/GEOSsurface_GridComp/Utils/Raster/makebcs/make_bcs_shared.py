@@ -56,6 +56,7 @@ sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/rm -f sedfile
 endif
 cd ../../../
+
 """
 
   if grid_type == "Lat-Lon" :
@@ -80,9 +81,9 @@ def get_script_mv(gridname):
    if 'EASE' in gridname:
      grid_type = 'EASE'
    elif 'CF' in gridname:
-     grid_type = 'CUBE'
+     grid_type = 'Cubed-Sphere'
    else:
-     grid_type = 'LatLon'
+     grid_type = 'Lat-Lon'
 
    mv_template = """
 
