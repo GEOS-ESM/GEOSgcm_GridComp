@@ -159,9 +159,9 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.00,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= -1.e6, RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -186,7 +186,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
       else        
          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
@@ -502,7 +502,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           TMP2D =  AREA
        endwhere
     else if (GF_MIN_AREA < 0) then
-       TMP2D = ABS(GF_MIN_AREA)
+       where (AREA > ABS(GF_MIN_AREA)) 
+          TMP2D = AREA*CNV_FRC + ABS(GF_MIN_AREA)*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
     else
        TMP2D = AREA
     endif
