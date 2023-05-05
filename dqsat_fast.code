@@ -1,0 +1,82 @@
+
+!  $Id$
+
+
+      real    :: TT, DQ, DD, QQ
+      integer :: IT, I, J
+
+
+
+#ifdef LIKE_NCAR
+#ifdef SCALAR
+      if    (TL<TMIN) then
+         TT = TMIN
+      elseif(TL>TMAX) then
+         TT = TMAX
+      else
+         TT = TL
+      end if
+
+      TT = TT - (TMIN-1)
+      IT = int(TT)
+
+      DQ =  ESTBLX(IT+1) - ESTBLX(IT)
+      QQ = (TT-IT)*DQ + ESTBLX(IT)
+      DD =  (PL - ERFAC*QQ)
+      IF(DD<.01) DD = .01
+      DD = 1./DD
+      IF(present(QSAT)) Qsat = QQ * DD
+      DQSAT = DQ * PL * (DD*DD)
+#elif RANK_==1
+      do I=1, size(TL)
+         if    (TL(I)<TMIN) then
+            TT = TMIN
+         elseif(TL(I)>TMAX) then
+            TT = TMAX
+         else
+            TT = TL(I)
+         end if
+
+         TT = TT - (TMIN-1)
+         IT = int(TT)
+
+         DQ =  ESTBLX(IT+1) - ESTBLX(IT)
+         QQ = (TT-IT)*DQ + ESTBLX(IT)
+         DD =  (PL(I) - ERFAC*QQ)
+         IF(DD<.01) DD = .01
+         DD = 1./DD
+         IF(present(QSAT)) Qsat(I) = QQ * DD
+         DQSAT(I) = DQ * PL(I) * (DD*DD)
+      end do
+#elif RANK_==2
+      do J=1, size(TL,2)
+      do I=1, size(TL,1)
+         if    (TL(I,J)<TMIN) then
+            TT = TMIN
+         elseif(TL(I,J)>TMAX) then
+            TT = TMAX
+         else
+            TT = TL(I,J)
+         end if
+
+         TT = TT - (TMIN-1)
+         IT = int(TT)
+
+         DQ =  ESTBLX(IT+1) - ESTBLX(IT)
+         QQ = (TT-IT)*DQ + ESTBLX(IT)
+         DD =  (PL(I,J) - ERFAC*QQ)
+         IF(DD<.01) DD = .01
+         DD = 1./DD
+         IF(present(QSAT)) Qsat(I,J) = QQ * DD
+         DQSAT(I,J) = DQ * PL(I,J) * (DD*DD)
+      end do
+      end do
+#endif
+
+#else
+
+      DQSAT = GEOS_DQSAT(TL,PL,QSAT=QSAT)
+
+#endif
+
+      return

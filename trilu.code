@@ -1,0 +1,15 @@
+    real, dimension (DIMS :), intent(IN   ) ::  C
+    real, dimension (DIMS :), intent(INOUT) ::  A, B
+
+    integer :: LM, L
+
+    LM = size(A,size(shape(A)))
+
+    B(DIMS 1) = 1. /  B(DIMS 1)
+
+    do L = 2,LM
+       A(DIMS L) = A(DIMS L) * B(DIMS L-1)
+       B(DIMS L) = 1. / ( B(DIMS L) - C(DIMS L-1) * A(DIMS L) )
+    enddo
+
+    return

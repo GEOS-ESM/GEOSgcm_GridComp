@@ -1,0 +1,238 @@
+
+!  $Id$
+
+
+      real    :: URAMP, TT, WW, DD, QQ, TI, QXW
+      integer :: IT, I, J, K, L
+      logical :: PP
+
+      if(FIRST) then
+         FIRST = .false.
+         call ESINIT(ESTBLE, ESTBLW, ESTBLX)
+      end if
+
+      if(present(RAMP)) then
+         URAMP = -RAMP
+      else
+         URAMP = TMIX
+      end if
+
+      PP = .false.
+
+      if(present(PASCALS)) then
+         PP = PASCALS
+      end if
+
+#ifdef SCALAR
+
+      TI = MAX(MIN(TL,TMAX),TMIN)
+         
+      TT = TI - TMIN
+      IT = int(TT)
+      TT = TT-IT
+
+      TI = TI - ZEROC
+
+      if(URAMP==TMIX) then
+         QQ  =  TT*(ESTBLX(IT+2) - ESTBLX(IT+1)) + ESTBLX(IT+1)
+      else
+         QQ  =  TT*(ESTBLE(IT+2) - ESTBLE(IT+1)) + ESTBLE(IT+1)
+
+         if(URAMP < 0.0) then
+            if(TI>=URAMP .and. TI<=0.) then
+               QXW = TT*(ESTBLW(IT+2) - ESTBLW(IT+1)) + ESTBLW(IT+1)
+               WW  = (URAMP - TI)/URAMP
+               QQ  = WW*(QXW-QQ) + QQ
+            end if
+         end if
+      end if
+
+      if(PP) then
+         QQ  = QQ  * 100.0
+      end if
+
+      DD = (PL - ERFAC*QQ)
+
+      if(DD <= 0.) then
+         QSAT = MAX_MIXING_RATIO
+      else
+         QSAT = MIN(QQ / DD, MAX_MIXING_RATIO)
+      end if
+
+
+#elif   RANK_==1
+
+      do I=1,SIZE(T,1)
+
+         TI = MAX(MIN(TL(I),TMAX),TMIN)
+         
+         TT = TI - TMIN
+         IT = int(TT)
+         TT = TT-IT
+
+         TI = TI - ZEROC
+
+         if(URAMP==TMIX) then
+            QQ  =  TT*(ESTBLX(IT+2) - ESTBLX(IT+1)) + ESTBLX(IT+1)
+         else
+            QQ  =  TT*(ESTBLE(IT+2) - ESTBLE(IT+1)) + ESTBLE(IT+1)
+
+            if(URAMP < 0.0) then
+               if(TI>=URAMP .and. TI<=0.) then
+                  QXW = TT*(ESTBLW(IT+2) - ESTBLW(IT+1)) + ESTBLW(IT+1)
+                  WW  = (URAMP - TI)/URAMP
+                  QQ  = WW*(QXW-QQ) + QQ
+               end if
+            end if
+         end if
+
+         if(PP) then
+            QQ  = QQ  * 100.0
+         end if
+
+         DD = (PL(I) - ERFAC*QQ)
+
+         if(DD <= 0.) then
+            QSAT(I) = MAX_MIXING_RATIO
+         else
+            QSAT(I) = MIN(QQ / DD, MAX_MIXING_RATIO)
+         end if
+
+      end do
+
+
+#elif   RANK_==2
+
+      do J=1,SIZE(T,2)
+         do I=1,SIZE(T,1)
+
+         TI = MAX(MIN(TL(I,J),TMAX),TMIN)
+         
+         TT = TI - TMIN
+         IT = int(TT)
+         TT = TT-IT
+
+         TI = TI - ZEROC
+
+         if(URAMP==TMIX) then
+            QQ  =  TT*(ESTBLX(IT+2) - ESTBLX(IT+1)) + ESTBLX(IT+1)
+         else
+            QQ  =  TT*(ESTBLE(IT+2) - ESTBLE(IT+1)) + ESTBLE(IT+1)
+
+            if(URAMP < 0.0) then
+               if(TI>=URAMP .and. TI<=0.) then
+                  QXW = TT*(ESTBLW(IT+2) - ESTBLW(IT+1)) + ESTBLW(IT+1)
+                  WW  = (URAMP - TI)/URAMP
+                  QQ  = WW*(QXW-QQ) + QQ
+               end if
+            end if
+         end if
+
+         if(PP) then
+            QQ  = QQ  * 100.0
+         end if
+
+         DD = (PL(I,J) - ERFAC*QQ)
+
+         if(DD <= 0.) then
+            QSAT(I,J) = MAX_MIXING_RATIO
+         else
+            QSAT(I,J) = MIN(QQ / DD, MAX_MIXING_RATIO)
+         end if
+
+         end do
+      end do
+
+#elif RANK_==3
+
+      do K=1,SIZE(T,3)
+      do J=1,SIZE(T,2)
+         do I=1,SIZE(T,1)
+
+         TI = MAX(MIN(TL(I,J,K),TMAX),TMIN)
+         
+         TT = TI - TMIN
+         IT = int(TT)
+         TT = TT-IT
+
+         TI = TI - ZEROC
+
+         if(URAMP==TMIX) then
+            QQ  =  TT*(ESTBLX(IT+2) - ESTBLX(IT+1)) + ESTBLX(IT+1)
+         else
+            QQ  =  TT*(ESTBLE(IT+2) - ESTBLE(IT+1)) + ESTBLE(IT+1)
+
+            if(URAMP < 0.0) then
+               if(TI>=URAMP .and. TI<=0.) then
+                  QXW = TT*(ESTBLW(IT+2) - ESTBLW(IT+1)) + ESTBLW(IT+1)
+                  WW  = (URAMP - TI)/URAMP
+                  QQ  = WW*(QXW-QQ) + QQ
+               end if
+            end if
+         end if
+
+         if(PP) then
+            QQ  = QQ  * 100.0
+         end if
+
+         DD = (PL(I,J,K) - ERFAC*QQ)
+
+         if(DD <= 0.) then
+            QSAT(I,J,K) = MAX_MIXING_RATIO
+         else
+            QSAT(I,J,K) = MIN(QQ / DD, MAX_MIXING_RATIO)
+         end if
+
+         end do
+      end do
+      end do
+
+#elif RANK_==4
+
+      do L=1,SIZE(T,4)
+      do K=1,SIZE(T,3)
+      do J=1,SIZE(T,2)
+         do I=1,SIZE(T,1)
+
+         TI = MAX(MIN(TL(I,J,K,L),TMAX),TMIN)
+         
+         TT = TI - TMIN
+         IT = int(TT)
+         TT = TT-IT
+
+         TI = TI - ZEROC
+
+         if(URAMP==TMIX) then
+            QQ  =  TT*(ESTBLX(IT+2) - ESTBLX(IT+1)) + ESTBLX(IT+1)
+         else
+            QQ  =  TT*(ESTBLE(IT+2) - ESTBLE(IT+1)) + ESTBLE(IT+1)
+
+            if(URAMP < 0.0) then
+               if(TI>=URAMP .and. TI<=0.) then
+                  QXW = TT*(ESTBLW(IT+2) - ESTBLW(IT+1)) + ESTBLW(IT+1)
+                  WW  = (URAMP - TI)/URAMP
+                  QQ  = WW*(QXW-QQ) + QQ
+               end if
+            end if
+         end if
+
+         if(PP) then
+            QQ  = QQ  * 100.0
+         end if
+
+         DD = (PL(I,J,K,L) - ERFAC*QQ)
+
+         if(DD <= 0.) then
+            QSAT(I,J,K,L) = MAX_MIXING_RATIO
+         else
+            QSAT(I,J,K,L) = MIN(QQ / DD, MAX_MIXING_RATIO)
+         end if
+
+         end do
+      end do
+      end do
+      end do
+
+#endif
+
+      RETURN
