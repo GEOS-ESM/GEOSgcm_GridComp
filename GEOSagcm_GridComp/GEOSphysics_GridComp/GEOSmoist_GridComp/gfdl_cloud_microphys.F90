@@ -632,7 +632,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     
     implicit none
     
-    logical, intent (in) :: phys_hydrostatic, hydrostatic
+    logical, intent (in) :: hydrostatic
     
     integer, intent (in) :: j, is, ie, js, je, ks, ke
     integer, intent (in) :: ntimes, ktop, kbot
