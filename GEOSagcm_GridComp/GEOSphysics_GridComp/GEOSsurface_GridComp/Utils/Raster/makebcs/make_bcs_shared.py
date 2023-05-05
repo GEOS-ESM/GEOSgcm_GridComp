@@ -72,18 +72,11 @@ sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
 cd ../../../
+
 """
   return script
 
-def get_script_mv(gridname):
-
-   grid_type = ''
-   if 'EASE' in gridname:
-     grid_type = 'EASE'
-   elif 'CF' in gridname:
-     grid_type = 'Cubed-Sphere'
-   else:
-     grid_type = 'Lat-Lon'
+def get_script_mv(grid_type):
 
    mv_template = """
 
