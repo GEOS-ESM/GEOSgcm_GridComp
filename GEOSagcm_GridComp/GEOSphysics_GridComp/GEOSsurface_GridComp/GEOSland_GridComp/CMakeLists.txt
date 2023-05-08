@@ -6,6 +6,7 @@ set (alldirs
   GEOScatchCN_GridComp
   GEOSlana_GridComp
   GEOSroute_GridComp
+  GEOSigni_GridComp
   )
 
 esma_add_library (${this}
