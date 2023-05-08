@@ -266,6 +266,7 @@ contains
    character(len=ESMF_MAXSTR)    :: other_fields
    character(len=ESMF_MAXSTR)          :: NAME
    type(ESMF_Field) :: tmp_field
+   type (ESMF_FieldBundle)       :: TRI
    type (ESMF_TIME) :: CurrentTime
    character(len=20), target :: ctime 
    type (MAPL_MetaComp),  pointer  :: MPL
@@ -276,7 +277,9 @@ contains
    character(len=ESMF_MAXSTR) :: parcels_file
    character(len=:), allocatable :: fieldname
    character(len=20) :: diffusions(4)
-   type (ESMF_FieldBundle)             :: TRI
+   character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
+   character (len=ESMF_MAXSTR), allocatable  :: fieldnames(:)
+   integer :: nitems
 
    Iam = "getInitVars"
 
@@ -305,8 +308,8 @@ contains
    endif
 
    call MAPL_GetResource(MPL, other_fields, "GIGATRAJ_EXTRA_FIELDS:", default='NONE', _RC)
-   if (other_fields /= 'NONE') then
 
+   if (other_fields /= 'NONE') then
       call MAPL_GetResource(MPL, parcels_file, "GIGATRAJ_PARCELS_FILE:", default='parcels.nc4', _RC)
       if (MAPL_AM_I_ROOT()) then
         call formatter%open(trim(parcels_file), pFIO_WRITE, _RC)
@@ -316,8 +319,7 @@ contains
       call getExtraFieldNames(other_fields,GigaTrajInternalPtr%ExtraFieldNames)
 
       do i = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
-        
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bc') /=0 ) then
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bc') /=0) then
            call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
            call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
            call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
@@ -325,19 +327,13 @@ contains
               call MAPL_AllocateCoupling(tmp_field, _RC)
            endif
            call ESMF_StateAddReplace(import, [tmp_field], _RC)
-
-           if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'phobic') /=0 .or.  &
-               index(GigaTrajInternalPtr%ExtraFieldNames(i), 'philic') /=0 ) then
-              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))
-              call create_extra_var(fieldname)
-              cycle
-           endif
            do k = 1, size(ptr3d, 3)
               fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
               call create_extra_var(fieldname)
            enddo
            cycle
          endif
+
          if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.oc') /=0) then
            call MAPL_ExportStateGet([import], 'CA.oc', leaf_export, _RC)
            call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
@@ -346,18 +342,49 @@ contains
               call MAPL_AllocateCoupling(tmp_field, _RC)
            endif
            call ESMF_StateAddReplace(import, [tmp_field], _RC)
-           if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'phobic') /=0 .or.  &
-               index(GigaTrajInternalPtr%ExtraFieldNames(i), 'philic') /=0 ) then
-              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))
-              call create_extra_var(fieldname)
-              cycle
-           endif
            do k = 1, size(ptr3d, 3)
               fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
               call create_extra_var(fieldname)
            enddo
            cycle
          endif
+
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'TRI') /=0) then
+           call ESMF_StateGet(import, 'PHYSICS_Exports/TURBULENCE_Exports/TRI', TRI, _RC)
+           !call ESMF_FieldBundleGet(TRI, fieldCount=nitems, _RC)
+           !allocate(itemNameList(nitems))
+           !call ESMF_FieldBundleGet(TRI,fieldnamelist=itemNameList,rc=status)
+           allocate(fieldnames(4))
+           fieldnames(1) = "CA.bc::CA.bcphilicIT"
+           fieldnames(2) = "CA.bc::CA.bcphobicIT"
+           fieldnames(3) = "CA.oc::CA.ocphilicIT"
+           fieldnames(4) = "CA.oc::CA.ocphobicIT"
+           do k = 1, 4
+             !call ESMF_FieldBundleGet(TRI, trim(itemNameList(k)), field=tmp_field, _RC)
+             !call ESMF_FieldBundleGet(TRI, trim(fieldnames(k)), field=tmp_field, _RC)
+             fieldname = trim(fieldnames(k))
+             call ESMF_FieldBundleGet(TRI, fieldname, field=tmp_field, _RC)
+
+             !call MAPL_AllocateCoupling(tmp_field, _RC)
+
+             call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d, rc=status)
+             !if (MAPL_AM_I_Root()) then
+             if ( status /=0 )then
+               print*, 'status, associated(ptr3d)', status, associated(ptr3d)
+               print*, "not created: ", fieldname 
+               print*, "Add to historty.rc to triger the allocation" 
+               _FAIL(" Not allocated diffusion tendency")
+             !else
+             !   print*, "createded: ", itemNameList(k)
+             !   print*, "assocated: ", associated(ptr3d), itemNameList(k)    
+             endif
+             !endif
+             call create_extra_var(fieldname(8:))
+           enddo
+           deallocate(fieldnames)
+           cycle
+         endif
+         call create_extra_var(trim(GigaTrajInternalPtr%ExtraFieldNames(i)))
       enddo
    endif
 
@@ -1030,7 +1057,7 @@ contains
     type(ESMF_TimeInterval) :: tint
     type(MAPL_MetaComp),pointer  :: MPL
     character(len=ESMF_MAXSTR)   :: parcels_file, other_fields
-    character(len=ESMF_MAXSTR), allocatable   :: names(:)
+    character(len=ESMF_MAXSTR), allocatable   :: varnames(:)
     character(len=:), allocatable:: var_name, var_
     
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
@@ -1098,20 +1125,20 @@ contains
             var_name = trim(GigaTrajInternalPtr%ExtraFieldNames(k))
          end select
          
-         if ( index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcDP') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocDP') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcWT') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocWT') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcSD') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocSD') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'bcSV') /= 0 .or.   &
-              index(GigaTrajInternalPtr%ExtraFieldNames(k), 'ocSV') /= 0 ) then
+         if ( index(var_name, 'bcDP') /= 0 .or.   &
+              index(var_name, 'ocDP') /= 0 .or.   &
+              index(var_name, 'bcWT') /= 0 .or.   &
+              index(var_name, 'ocWT') /= 0 .or.   &
+              index(var_name, 'bcSD') /= 0 .or.   &
+              index(var_name, 'ocSD') /= 0 .or.   &
+              index(var_name, 'bcSV') /= 0 .or.   &
+              index(var_name, 'ocSV') /= 0 ) then
 
-            call MAPL_GetPointer(state, field,  GigaTrajInternalPtr%ExtraFieldNames(k) , _RC)
+            call MAPL_GetPointer(state, field, var_name, _RC)
             count3 = size(field,3)
             allocate(values_2d(GigaTrajInternalPtr%parcels%num_parcels, count3))
-            call get_metsrc_data2d (GC, state, ctime, GigaTrajInternalPtr%ExtraFieldNames(k), values_2d, RC )
-            do i = 1, size(values_2d,2)
+            call get_metsrc_data2d (GC, state, ctime, var_name, values_2d, RC )
+            do i = 1, count3
                call gather_onefield(total_num, values0, comm, values_2d(:,i), GigaTrajInternalPtr%parcels%num_parcels)
 
                if (my_rank == 0) then
@@ -1125,9 +1152,31 @@ contains
                endif
             enddo
             deallocate(values_2d)
+         else if ( index(var_name, 'TRI') /= 0) then
+            allocate(values(GigaTrajInternalPtr%parcels%num_parcels))
+            allocate(varnames(4))
+            varnames(1) = "CA.bc::CA.bcphilicIT"
+            varnames(2) = "CA.bc::CA.bcphobicIT"
+            varnames(3) = "CA.oc::CA.ocphilicIT"
+            varnames(4) = "CA.oc::CA.ocphobicIT"
+            do i = 1, 4
+              var_ = varnames(i)(8:)
+              call get_metsrc_data (GC, state, ctime, varnames(i), values, _RC)
+              call gather_onefield(total_num, values0, comm, values, GigaTrajInternalPtr%parcels%num_parcels)
+
+              if (my_rank == 0) then
+                values0 = values0(ids0(:)+1)
+                if ( meta%has_variable(var_)) then
+                  call formatter%put_var( var_,   values0,   start=[1, last_time+1], _RC)
+                else
+                  print*, "Please provide "//var_ // " in the file "//trim(parcels_file)
+                endif
+              endif
+            enddo
+            deallocate(values, varnames)
          else
             allocate(values(GigaTrajInternalPtr%parcels%num_parcels))
-            call get_metsrc_data (GC, state, ctime, trim(GigaTrajInternalPtr%ExtraFieldNames(k)), values, RC )
+            call get_metsrc_data (GC, state, ctime, var_name, values, _RC )
             call gather_onefield(total_num, values0, comm, values, GigaTrajInternalPtr%parcels%num_parcels)
 
             if (my_rank == 0) then
@@ -1320,7 +1369,9 @@ contains
 
     type(GigaTrajInternal), pointer :: GigaInternalPtr
     type (GigatrajInternalWrap)     :: wrap
-    real, dimension(:,:,:), pointer     :: field
+    type (ESMF_FieldBundle)         :: TRI
+    type (ESMF_Field)               :: field
+    real, dimension(:,:,:), pointer     :: ptr3d
     real, dimension(:,:,:), allocatable :: field_latlon
     real, dimension(:,:,:), allocatable, target  :: haloField
     integer :: counts(3), dims(3), d1,d2,km, count3
@@ -1328,8 +1379,15 @@ contains
 
     Iam = "get_metsrc_data"
 
-    call MAPL_GetPointer(state, field, fieldname, _RC)
-    count3 = size(field,3)
+    if (index(fieldname,'philicIT') /=0 .or. index(fieldname,'phobicIT') /=0) then
+       call ESMF_StateGet(state, 'PHYSICS_Exports/TURBULENCE_Exports/TRI', TRI, _RC)
+       call ESMF_FieldBundleGet(TRI, fieldname, field=field, _RC)
+       call ESMF_FieldGet(field,farrayPtr=ptr3d, _RC)
+    else
+       call MAPL_GetPointer(state, ptr3d, fieldname, _RC)
+    endif
+
+    count3 = size(ptr3d,3)
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaInternalPtr => wrap%ptr
@@ -1338,7 +1396,7 @@ contains
     allocate(field_latlon(counts(1),counts(2),count3))
     allocate(haloField(counts(1)+2, counts(2)+2,count3), source = 0.0)
 
-    call GigaInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
+    call GigaInternalPtr%cube2latlon%regrid(ptr3d, Field_latlon, _RC)
 
     call esmf_halo(GigaInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
 
