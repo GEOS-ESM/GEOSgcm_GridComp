@@ -2,7 +2,6 @@ module radcoup_loop
 
     use Process_Library_standalone
     use GEOS_UtilsMod
-    ! use openacc
 
     implicit none
 
