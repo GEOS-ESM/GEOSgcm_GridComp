@@ -7,7 +7,7 @@
 !
 !
 ! !MODULE:  Bundle_IncrementMod --- Computes tracer increments and puts them into a bundle
-! 
+!
 ! !INTERFACE:
 !
 
@@ -37,8 +37,8 @@ MODULE  MBundle_IncrementMod
 
    IMPLICIT NONE
    PRIVATE
- 
-! !PUBLIC MEMBER FUNCTIONS: 
+
+! !PUBLIC MEMBER FUNCTIONS:
    PUBLIC Initialize_IncMBundle_init
    PUBLIC Initialize_IncMBundle_run
    PUBLIC Compute_IncMBundle
@@ -49,7 +49,7 @@ MODULE  MBundle_IncrementMod
    end type MAPPING
 
    type (Mapping), allocatable :: map(:)
-   
+
    character(len=ESMF_MAXSTR)                :: fieldname
    character(len=ESMF_MAXSTR)                :: org_bundle       ! Original bundle name
    character(len=ESMF_MAXSTR)                :: inc_bundle       ! Increment bundle name
@@ -61,15 +61,15 @@ MODULE  MBundle_IncrementMod
 !-------------------------------------------------------------------------
 !BOP
 !
-!  !ROUTINE:  Initialize_IncMBundle_init - Initialize increment bundle with fields from a 
+!  !ROUTINE:  Initialize_IncMBundle_init - Initialize increment bundle with fields from a
 !             "parent" bundle. This must be called in the Initialize method of a gridded component.
 
    SUBROUTINE Initialize_IncMBundle_init(GC, state1, state2, RC)
-   
+
      IMPLICIT NONE
-  
+
      ! ARGUMENTS
-     type(ESMF_GridComp),        intent(in)        :: GC          ! Gridded component 
+     type(ESMF_GridComp),        intent(in)        :: GC          ! Gridded component
      type(ESMF_State),           intent(in)        :: state1      ! Original bundle state
      type(ESMF_State),           intent(in)        :: state2      ! Increment bundle state
      integer, optional,          intent(  out)     :: RC          ! Error code
@@ -92,7 +92,8 @@ MODULE  MBundle_IncrementMod
      character(len=ESMF_MAXSTR)    :: splitNames(nmax)
      type(ESMF_Field)                          :: field, TempField
      character(len=:), allocatable :: s
-     
+     type(ESMF_Info) :: infoh
+
      Iam = "Initialize_IncMBundle_init"
 
 ! ============================================================================
@@ -120,16 +121,16 @@ MODULE  MBundle_IncrementMod
            call ESMF_ConfigGetAttribute(cf, RULES(i), _RC)
         enddo
 
-! Fill the increments bundle with fields from "parent" bundle 
+! Fill the increments bundle with fields from "parent" bundle
 !------------------------------------------------------------------
         call ESMF_StateGet(state1, org_bundle, BUNDLE,   rc=STATUS)
         VERIFY_(STATUS)
 
         call ESMF_StateGet(state2, inc_bundle, BUNDLEi, rc=STATUS)
         VERIFY_(STATUS)
-  
+
         allocate(map(NQ), _STAT)
-        
+
         do i = 1, NQ
 
            call ESMF_FieldBundleGet (BUNDLE, NAMES(i), field=field, rc=status)
@@ -144,16 +145,16 @@ MODULE  MBundle_IncrementMod
            !KLUGDE: the only reason we call split to reduce rank 3 to rank 2
            ! we are using only 1 of the split fields,
            ! but at least we get the attributes correctly set
-           call MAPL_FieldSplit(field, fields, _RC) 
+           call MAPL_FieldSplit(field, fields, _RC)
 
            TempField = MAPL_FieldCreate (fields(1), name=(trim(fieldname)//suffix) ,DoCopy=.true., _RC)
 
            call ESMF_FieldGet(tempFIELD, dimCount=fieldRank, _RC)
            _ASSERT(fieldRank == 2, "Expecting rank 2 field")
 
-           
-           call ESMF_AttributeSet(tempField,name="DIMS",value=MAPL_DimsHorzOnly,_RC)
-           call ESMF_AttributeSet(tempField,name="VLOCATION",value=MAPL_VLocationNone,_RC)
+           call ESMF_InfoGetFromHost(tempField, infoh, _RC)
+           call ESMF_InfoSet(infoh,key="DIMS",value=MAPL_DimsHorzOnly,_RC)
+           call ESMF_InfoSet(infoh,key="VLOCATION",value=MAPL_VLocationNone,_RC)
            call MAPL_FieldBundleAdd (BUNDLEi, TempField, rc=status)
            VERIFY_(STATUS)
 
@@ -184,7 +185,7 @@ MODULE  MBundle_IncrementMod
               s = rules(i)
               ! 2 in the next expession refrects that we 1 fewer separator
               ! than items, and the original name is not the rules' list
-              n=count([(s(k:k),k=1,len_trim(s))] == ',') + 2 
+              n=count([(s(k:k),k=1,len_trim(s))] == ',') + 2
 
               ! populate a mapping
               map(i)%n=n
@@ -209,22 +210,23 @@ MODULE  MBundle_IncrementMod
         do i = 1, NQ
            call ESMF_FieldBundleGet (BUNDLEi, fieldIndex=i, field=field, _RC )
            call ESMF_FieldGet (field, name=fieldname, _RC)
-        
+
+           call ESMF_InfoGetFromHost(field, infoh, _RC)
            if (fieldname==('AOADAYS'//suffix)) then
-              call ESMF_AttributeSET (field, name='UNITS', value='days s-1', _RC)
+              call ESMF_InfoSet(infoh, key='UNITS', value='days s-1', _RC)
            else
-              call ESMF_AttributeGET (field, name='UNITS', value=valueOld, _RC)
+              call ESMF_InfoGet(infoh, key='UNITS', value=valueOld, _RC)
               ! Remove kg-1
               kg = index(valueOld,'kg-1')
               if (kg == 0) then ! did not find kg-1, use oldvalue
-                 call ESMF_AttributeSET (field, name='UNITS', value=trim(valueOld)//' s-1', _RC)
+                 call ESMF_InfoSet(infoh, key='UNITS', value=trim(valueOld)//' s-1', _RC)
               else
-                 call ESMF_AttributeSET (field, name='UNITS', value=valueOld(1:kg-1)//'m-2 s-1', _RC)
+                 call ESMF_InfoSet(infoh, key='UNITS', value=valueOld(1:kg-1)//'m-2 s-1', _RC)
               end if
            end if
 
            ppos = len(trim(fieldname))
-           call ESMF_AttributeSET (field, name='LONG_NAME', value=('tendency_of_'//fieldname(1:ppos-2)//trim(longname)), _RC)
+           call ESMF_InfoSet(infoh, key='LONG_NAME', value=('tendency_of_'//fieldname(1:ppos-2)//trim(longname)), _RC)
         end do
 
      end if ! NQ > 0
@@ -245,7 +247,7 @@ MODULE  MBundle_IncrementMod
       do i=2,n
          write(splitNameArray(i),'(A,I3.3)') trim(name), i
       end do
-      
+
       _RETURN(ESMF_SUCCESS)
     end subroutine GenerateSplitName
 
@@ -257,8 +259,8 @@ MODULE  MBundle_IncrementMod
 !-------------------------------------------------------------------------
 !BOP
 !
-!  !ROUTINE:  Initialize_IncMBundle_run - Re-initialize increment bundle with data from the 
-!  !          "parent" bundle within the Run method. The "parent" bundle is the non-increment 
+!  !ROUTINE:  Initialize_IncMBundle_run - Re-initialize increment bundle with data from the
+!  !          "parent" bundle within the Run method. The "parent" bundle is the non-increment
 !              bundle (e.g. TR, MTR, TRADV)
 
    SUBROUTINE Initialize_IncMBundle_run(state1, state2, dm, RC)
@@ -279,7 +281,7 @@ MODULE  MBundle_IncrementMod
      real, dimension(:,:,:), pointer                    :: org_ptr
      real, dimension(:,:), pointer                      :: inc_ptr
      integer :: k
-     
+
      Iam = "Initialize_IncMBundle_run"
 
 ! ============================================================================
@@ -287,7 +289,7 @@ MODULE  MBundle_IncrementMod
 ! Begin...
      org_bundle = 'MTR'
      inc_bundle = 'MTRI'
-     
+
 
 !  !Initialize increment bundle in Run method before the child is called
 !  !--------------------------------------------------------------------
@@ -383,14 +385,14 @@ MODULE  MBundle_IncrementMod
                org_ptr, _RC)
           tmp = tmp + sum(org_ptr*dm,3) ! vertical integration, mass weighted
        end do
-         
+
        !Compute increment and update pointer
        inc_ptr = (tmp-inc_ptr)/DT
 
     end do
     deallocate(tmp)
     deallocate(NAMES)
- 
+
     _RETURN(ESMF_SUCCESS)
   END SUBROUTINE Compute_IncMBundle
 
