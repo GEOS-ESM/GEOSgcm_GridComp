@@ -1176,7 +1176,11 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! -----------------------------------------------------------------------
     
     ! Use In-Cloud condensates
-    qadum = max(qa,qcmin)
+    if (.not. do_qa) then
+      qadum = max(qa,qcmin)
+    else
+      qadum = 1.0
+    endif
     ql = ql/qadum
     qi = qi/qadum
 
@@ -1199,7 +1203,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    if (do_qa) qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1233,7 +1236,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    if (do_qa) qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qcmin) )
                 endif
             endif
         enddo
@@ -1347,11 +1349,6 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
             if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
                 sink = dt * denfac (k) * cracw * exp (0.95 * log (qr (k) * den (k)))
                 sink = sink / (1. + sink) * ql (k)
-
-                ! new total condensate / old condensate 
-                if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-sink,0.0  ) / &
-                                                          max(qi(k)+ql(k)     ,qcmin) ) )
-
                 ql (k) = ql (k) - sink
                 qr (k) = qr (k) + sink
             endif
@@ -2066,9 +2063,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         else
             evap = 0.0
         endif
-        ! new total condensate / old condensate 
-        if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
-                                                  max(qi(k)+ql(k)     ,qcmin) ) )
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
@@ -2162,9 +2156,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 sink = 0.
               endif
             endif
-            ! new total condensate / old condensate
-            if (do_qa) qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
-                                                      max(qi(k)+ql(k)     ,qcmin) ) )
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
