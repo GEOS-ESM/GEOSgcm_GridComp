@@ -248,7 +248,7 @@ pblh=max(pblh,pblhmin)
 wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
-  IF ( (wthv > 0.0 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
+  IF ( (wthv > 0.0 .and. TKE3(IH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl
 

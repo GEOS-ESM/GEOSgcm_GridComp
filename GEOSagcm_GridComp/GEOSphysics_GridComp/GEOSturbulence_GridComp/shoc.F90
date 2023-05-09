@@ -780,13 +780,17 @@ contains
 
          brunt_dry = max( bruntmin, brunt_dry )
 
-         brunt_smooth(:,:,1) = brunt2(:,:,1)
+         brunt_smooth = brunt2
          brunt_smooth(:,:,nzm) = brunt2(:,:,nzm-1)
-         do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
-            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
+         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))
+         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
+         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
+         brunt_smooth(:,:,1:3) = max( bruntmin, brunt_smooth(:,:,1:3) )
+!         do kk = nzm-2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
+!            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk-1)+0.333*brunt2(:,:,kk)+0.334*brunt2(:,:,kk+1)
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
-         end do
+!         end do
          
 
 
