@@ -73,6 +73,7 @@ module CN_initMod
   use FireMethodType                     , only : fire_method_type
   use SoilBiogeochemNLeachingMod         , only : readSoilBiogeochemNLeachingParams      => readParams
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
+  use SoilBiogeochemCompetitionMod       , only : SoilBiogeochemCompetitionInit
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
  
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
@@ -337,6 +338,7 @@ module CN_initMod
    ! initialize types that depend on parameters
 
    call CNPhenologyInit                (bounds)
+   call SoilBiogeochemCompetitionInit  (bounds)
 
   ! call FireMethodInit(bounds,paramfile)
 
