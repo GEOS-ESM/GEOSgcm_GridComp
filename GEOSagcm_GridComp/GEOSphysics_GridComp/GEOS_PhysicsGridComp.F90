@@ -566,6 +566,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MCHEMTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
          LONG_NAME  = 'upward_net_turbulence_heat_flux',           &
          UNITS      = 'W m-2',                                     &
          SHORT_NAME = 'FTB',                                       &
