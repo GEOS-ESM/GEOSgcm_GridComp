@@ -178,6 +178,11 @@ contains
     allocate(this%qflx_irrig_drip_patch(begp:endp))
     allocate(this%qflx_irrig_sprinkler_patch(begp:endp))
 
+    allocate(this%qflx_liqevap_from_top_layer_col(begc:endc))
+    allocate(this%qflx_liqdew_to_top_layer_col(begc:endc))
+    allocate(this%qflx_soliddew_to_top_layer_col(begc:endc))
+    allocate(this%qflx_ice_runoff_xs_col(begc:endc))
+    allocate(this%qflx_glcice_dyn_water_flux_col(begc:endc))
 
     this%qflx_through_liq_patch(begp:endp) = spval
     this%qflx_through_snow_patch(begp:endp) = spval
@@ -222,6 +227,40 @@ contains
     this%qflx_gw_con_irrig_col(begc:endc) = spval
     this%qflx_irrig_drip_patch(begp:endp) = spval
     this%qflx_irrig_sprinkler_patch(begp:endp) = spval
+
+    ! assign cold start values for variables where it is needed
+
+    this%qflx_snocanfall_patch(bounds%begp:bounds%endp)       = 0.0_r8
+    this%qflx_liqcanfall_patch(bounds%begp:bounds%endp)       = 0.0_r8
+    this%qflx_snow_unload_patch(bounds%begp:bounds%endp)      = 0.0_r8
+
+    this%qflx_liqevap_from_top_layer_patch(bounds%begp:bounds%endp) = 0.0_r8
+    this%qflx_liqdew_to_top_layer_patch(bounds%begp:bounds%endp)    = 0.0_r8
+    this%qflx_soliddew_to_top_layer_patch (bounds%begp:bounds%endp) = 0.0_r8
+
+    this%qflx_sfc_irrig_col (bounds%begc:bounds%endc)         = 0.0_r8
+    this%qflx_gw_uncon_irrig_col (bounds%begc:bounds%endc)    = 0.0_r8
+    this%qflx_gw_uncon_irrig_lyr_col(bounds%begc:bounds%endc,:) = 0.0_r8
+    this%qflx_gw_con_irrig_col (bounds%begc:bounds%endc)      = 0.0_r8
+    this%qflx_irrig_drip_patch (bounds%begp:bounds%endp)      = 0.0_r8
+    this%qflx_irrig_sprinkler_patch (bounds%begp:bounds%endp) = 0.0_r8
+
+    this%qflx_liqevap_from_top_layer_col(bounds%begc:bounds%endc) = 0.0_r8
+    this%qflx_liqdew_to_top_layer_col(bounds%begc:bounds%endc)    = 0.0_r8
+    this%qflx_soliddew_to_top_layer_col (bounds%begc:bounds%endc) = 0.0_r8
+    this%qflx_snow_drain_col(bounds%begc:bounds%endc)  = 0._r8
+    this%qflx_ice_runoff_xs_col(bounds%begc:bounds%endc) = 0._r8
+    this%qflx_glcice_dyn_water_flux_col(bounds%begc:bounds%endc) = 0._r8
+    this%qflx_tran_veg_patch(bounds%begp:bounds%endp) = 0._r8
+    this%qflx_evap_veg_patch(bounds%begp:bounds%endp) = 0._r8
+
+    do c = bounds%begc, bounds%endc
+       l = col%landunit(c)
+       if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
+          this%qflx_drain_col(c) = 0._r8
+          this%qflx_surf_col(c)  = 0._r8
+       end if
+    end do
 
   end subroutine Init
 
