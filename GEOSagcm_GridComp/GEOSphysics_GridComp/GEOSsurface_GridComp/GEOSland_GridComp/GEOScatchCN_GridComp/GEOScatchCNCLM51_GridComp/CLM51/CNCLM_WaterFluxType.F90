@@ -119,7 +119,10 @@ contains
   ! Initialize CTSM type for water flux variables that just apply to bulk water and are needed for calling CTSM routines                 
   ! jk Oct 2021: type is allocated and initialized to NaN; values are assigned from Catchment states before calls to CLM subroutines are made
   ! this type is only used to be able to pass Catchment states and fluxes to CLM subroutines in the format they expect         
-  !                                                                                                                       
+  !
+
+  ! !USES:
+    use landunit_varcon, only : istsoil, istcrop                                                                                                                       
   ! !ARGUMENTS:                                                                                                           
     implicit none
     !INPUT/OUTPUT
