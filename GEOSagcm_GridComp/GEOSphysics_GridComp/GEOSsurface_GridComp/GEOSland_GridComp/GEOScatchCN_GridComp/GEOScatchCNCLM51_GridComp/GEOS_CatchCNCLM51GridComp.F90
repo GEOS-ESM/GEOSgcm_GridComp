@@ -3921,6 +3921,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real    :: bare
     logical, save :: first = .true.
     integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
+    real :: ndt
 
   ! Offline mode
 
@@ -4229,6 +4230,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
      fveg(:,:,nz) = fvg(:,:)
      wtzone(:,nz) = CN_zone_weight(nz)
    end do
+
+! call to set CN time step before any other CN routines are called (jkolassa May 2023)
+! ------------------------------------------------------------------------------------------
+  dtcn = min(dtcn,14400.)
+  ndt = get_step_size( nint(dtcn) )
 
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
@@ -5166,7 +5172,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: lnfm
     character(len=ESMF_MAXSTR)      :: LNFMFile
 
-    integer :: ntile, nv, dpy, ierr, iok, ndt
+    integer :: ntile, nv, dpy, ierr, iok
     integer, save :: year_prev = -9999
     
     integer, save :: n1d                ! number of land model steps in a 1-day period
@@ -6867,8 +6873,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! ------------------------------------------------------------------------------------------
     dtcn = min(dtcn,14400.)
     if(mod(dtcn,dt) /= 0) stop 'dtcn'
-    
-    ndt = get_step_size( nint(dtcn) ) ! gkw: get_step_size must be called here to set CN model time step
     
     ! sum over interval for CN
     ! ------------------------
