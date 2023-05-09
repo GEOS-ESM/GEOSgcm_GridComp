@@ -278,6 +278,7 @@ contains
     end if
 
     call create_cnfire_method(this%cnfire_method)
+    call this%cnfire_method%FireInit(bounds)
 
     call ncid%open(trim(paramfile),pFIO_READ, RC=status)
     call this%cnfire_method%CNFireReadParams( ncid )
