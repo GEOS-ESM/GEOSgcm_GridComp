@@ -189,6 +189,7 @@ contains
     allocate(this%qflx_soliddew_to_top_layer_col(begc:endc))
     allocate(this%qflx_ice_runoff_xs_col(begc:endc))
     allocate(this%qflx_glcice_dyn_water_flux_col(begc:endc))
+    allocate(this%qflx_gw_uncon_irrig_lyr_col(begc:endc))
 
     this%qflx_through_liq_patch(begp:endp) = spval
     this%qflx_through_snow_patch(begp:endp) = spval
