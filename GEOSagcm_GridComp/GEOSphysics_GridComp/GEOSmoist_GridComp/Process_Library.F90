@@ -92,7 +92,8 @@ module GEOSmoist_Process_Library
 
   public :: AeroProps
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2, RADCOUPLE, FIX_UP_CLOUDS
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
+  public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
   public :: FILLQ2ZERO, FILLQ2ZERO1
   public :: MELTFRZ
@@ -533,19 +534,19 @@ module GEOSmoist_Process_Library
     MSEp  = 0.
     Qp    = 0.
 
-    ! Mixed-layer calculation. Parcel properties averaged over lowest 50 hPa
+    ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
        BYNCY = MAPL_UNDEF
        tmp1 = 0.
        Lev0 = LM
        do L = LM,1,-1
-         where (PS-PLO(:,:,L).lt.50.) 
+         where (PS-PLO(:,:,L).lt.90.) 
             MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L) 
             Qp   = Qp   + Q(:,:,L)*DZ(:,:,L)
             tmp1 = tmp1 + DZ(:,:,L)
             Lev0 = L
          end where
-         if (all(PS-PLO(:,:,L).gt.50.)) exit
+         if (all(PS-PLO(:,:,L).gt.90.)) exit
        end do
        where (tmp1.gt.0.)   ! average
           MSEp = MSEp / tmp1
@@ -564,7 +565,7 @@ module GEOSmoist_Process_Library
        end where
     end if
 
-    ! Most unstable calculation. Parcel in lowest 300 hPa with largest CAPE
+    ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
        MUCAPE = 0.
        MUCIN  = 0.
@@ -574,7 +575,7 @@ module GEOSmoist_Process_Library
        do I = 1,IM
           do J = 1,JM
              do L = LM,1,-1
-                if (PS(I,J)-PLO(I,J,L).gt.300.) exit
+                if (PS(I,J)-PLO(I,J,L).gt.255.) exit
                 MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
                 Qp(I,J)   = Q(I,J,L)
                 call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
@@ -702,8 +703,9 @@ module GEOSmoist_Process_Library
     LFC = ZLO(KLFC)
     LNB = ZLO(KLNB)
 
-    CIN = -1.*SUM( min(0.,BYNCY(KLFC:)*DZ(KLFC:)) )        ! define CIN as positive
-    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+    CIN = SUM( min(0.,BYNCY(KLFC:)*DZ(KLFC:)) )        ! define CIN as negative
+!    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+    CAPE = SUM( max(0.,BYNCY(:)*DZ(:)) )
 
   end subroutine RETURN_CAPE_CIN
 
@@ -1881,8 +1883,6 @@ module GEOSmoist_Process_Library
 
       character*(10) :: Iam='Process_Library:hystpdf'
 
-      QT = QLLS + QILS + QV  !Total LS water after microphysics
-
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
 
@@ -1895,6 +1895,8 @@ module GEOSmoist_Process_Library
 
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
       QVn = ( QV - QSx*CLCN )*tmpARR
+
+      QT = QCn + QVn  !Total LS water after microphysics
 
       nmax = 20
       do n=1,nmax
@@ -2074,6 +2076,21 @@ module GEOSmoist_Process_Library
       QLLS   = QLLS + dQLLS
       QV     = QV -         (dQICN+dQILS+dQLCN+dQLLS)
       TE     = TE + alhlbcp*(dQICN+dQILS+dQLCN+dQLLS) + alhfbcp*(dQICN+dQILS)
+
+      ! We need to take care of situations where QS moves past QA
+      ! during QSAT iteration. This should be only when QA/AF is small
+      ! to begin with. Effect is to make QAo negative. So, we 
+      ! "evaporate" offending QA's
+      !
+      ! We get rid of anvil fraction also, although strictly
+      ! speaking, PDF-wise, we should not do this.
+      if ( QAo <= 0. ) then
+         QV   = QV + QICN + QLCN
+         TE   = TE - alhsbcp*QICN - alhlbcp*QLCN
+         QICN = 0.
+         QLCN = 0.
+         CLCN = 0.
+      end if
 
    end subroutine hystpdf
 
@@ -3186,6 +3203,78 @@ subroutine update_cld( &
           END WHERE
 
     end subroutine FIX_NEGATIVE_PRECIP
+
+   subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
+      real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
+     ! local storage for cnv fraction of condensate/cloud
+      real :: FCN(size(CF,1),size(CF,2),size(CF,3))
+      real :: DQC(size(CF,1),size(CF,2),size(CF,3))
+
+     ! Fix cloud quants if too small
+      WHERE (QL+QI < 1.E-8)
+         QV = QV + QL + QI
+         TE = TE - alhlbcp*QL - alhsbcp*QI
+         CF  = 0.
+         QL  = 0.
+         QI  = 0.
+      END WHERE
+      WHERE (CF < 1.E-5)
+         QV = QV + QL + QI
+         TE = TE - alhlbcp*QL - alhsbcp*QI
+         CF  = 0. 
+         QL  = 0.
+         QI  = 0. 
+      END WHERE 
+
+     ! Redistribute liquid CN/LS portions based on prior fractions
+      ! FCN Needs to be calculated first
+      FCN = 0.0
+      WHERE (QLCN+QLLS > 0.0)
+         FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
+      END WHERE
+      ! put all new condensate into LS
+      DQC = QL - (QLCN+QLLS)
+      WHERE (DQC > 0.0)
+        QLLS = QLLS+DQC
+        DQC = 0.0
+      END WHERE
+      ! any loss of condensate uses the FCN ratio
+      QLCN = QLCN + DQC*(    FCN)
+      QLLS = QLLS + DQC*(1.0-FCN)
+
+     ! Redistribute ice CN/LS portions based on prior fractions
+      ! FCN Needs to be calculated first
+      FCN = 0.0
+      WHERE (QICN+QILS > 0.0)
+         FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
+      END WHERE
+      ! put all new condensate into LS
+      DQC = QI - (QICN+QILS)
+      WHERE (DQC > 0.0)
+        QILS = QILS+DQC
+        DQC = 0.0 
+      END WHERE
+      ! any loss of condensate uses the FCN ratio
+      QICN = QICN + DQC*(    FCN)
+      QILS = QILS + DQC*(1.0-FCN)
+
+     ! Redistribute cloud-fraction CN/LS portions based on prior fractions
+      ! FCN Needs to be calculated first
+      FCN = 0.0
+      WHERE (CLCN+CLLS > 0.0)
+         FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
+      END WHERE
+      ! put all new condensate into LS
+      DQC = CF - (CLCN+CLLS)
+      WHERE (DQC > 0.0)
+        CLLS = CLLS+DQC
+        DQC = 0.0 
+      END WHERE
+      ! any loss of condensate uses the FCN ratio 
+      CLCN = CLCN + DQC*(    FCN)
+      CLLS = CLLS + DQC*(1.0-FCN)
+
+   end subroutine REDISTRIBUTE_CLOUDS
          
  subroutine cs_interpolator(is, ie, js, je, km, qin, zout, wz, qout, qmin)
  integer,  intent(in):: is, ie, js, je, km

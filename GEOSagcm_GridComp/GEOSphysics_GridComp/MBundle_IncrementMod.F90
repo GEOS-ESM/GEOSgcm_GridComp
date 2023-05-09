@@ -100,7 +100,7 @@ MODULE  MBundle_IncrementMod
 
 ! Begin...
      org_bundle = 'MTR'
-     inc_bundle = 'MTRI'
+     inc_bundle = 'MCHEMTRI'
      suffix = 'IM'
      longname = '_due_to_moist_processes'
 
@@ -205,6 +205,8 @@ MODULE  MBundle_IncrementMod
 
         deallocate (NAMES, RULES, _STAT)
 
+
+
 ! Set Species Attributes
 !----------------------------------
         do i = 1, NQ
@@ -288,8 +290,8 @@ MODULE  MBundle_IncrementMod
 
 ! Begin...
      org_bundle = 'MTR'
-     inc_bundle = 'MTRI'
-
+     inc_bundle = 'MCHEMTRI'
+     
 
 !  !Initialize increment bundle in Run method before the child is called
 !  !--------------------------------------------------------------------
@@ -357,7 +359,7 @@ MODULE  MBundle_IncrementMod
 ! ============================================================================
 ! Begin...
     org_bundle = 'MTR'
-    inc_bundle = 'MTRI'
+    inc_bundle = 'MCHEMTRI'
 
     call ESMF_StateGet (state2, inc_bundle, BUNDLEi, _RC)
     call ESMF_FieldBundleGet (BUNDLEi, fieldCount=NQ, _RC)
