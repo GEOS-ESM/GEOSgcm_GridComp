@@ -310,8 +310,6 @@
           temperature_inst%t_veg_patch(p) = tc(nc,nz)
           temperature_inst%t_a10_patch(p) = t10(nc)
           temperature_inst%thm_patch(p)   = tm(nc)
-        
-          soilstate_inst%rootfr_patch(p,1) = 0.
 
           ! map Photosynthesis inputs to CLM space
           esat_tv_clm    (p) = esat_tv(nc,nz)
