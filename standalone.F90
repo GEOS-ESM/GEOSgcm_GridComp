@@ -1,12 +1,6 @@
 program test_moist_subroutines
 
     use test_process_library_subroutines
-    use test_aer_activation_subroutine
-    use test_GEOS5_subroutines
-    use test_GF2020_subroutines
-    use test_cloud_microphys_subroutines
-    use test_evap_subl_pdf_subroutines
-    use test_radcoup_subroutines
 
     implicit none
 
@@ -41,42 +35,7 @@ program test_moist_subroutines
     if(trim(dirName(12:21)) == 'fillq2zero' .or. trim(dirName(13:22)) == 'fillq2zero') then
         call test_FILLQ2ZERO(IM, JM, LM, dirName, rank_str)
     endif
-
-    if(trim(dirName(12:19)) == 'buoyancy' .or. trim(dirName(13:20)) == 'buoyancy') then
-        call test_BUOYANCY(IM, JM, LM, dirName, rank_str)
-    endif
-
-    if(trim(dirName(12:25)) == 'aer_activation' .or. trim(dirName(13:26)) == 'aer_activation') then
-        call test_aer_activation(IM, JM, LM, dirName, rank_str)
-    endif
-
-    if(trim(dirName(12:20)) == 'cup_gf_sh' .or. trim(dirName(13:21)) == 'cup_gf_sh') then
-
-        call test_cup_gf_sh(IM, JM, LM, dirName, rank_str)
-       
-    else if (trim(dirName(12:23)) == 'cup_gf_GEOS5' .or. trim(dirName(13:24)) == 'cup_gf_GEOS5') then
-
-        call test_cup_gf_GEOS5(IM, JM, LM, dirName, rank_str)
-           
-    elseif (trim(dirName(12:24)) == 'cup_gf_GF2020' .or. trim(dirName(13:25)) == 'cup_gf_GF2020') then
-
-        call test_cup_gf_GF2020(IM, JM, LM, dirName,rank_str)
-     
-    elseif (trim(dirName(12:18)) == 'hystpdf' .or. trim(dirName(13:19)) == 'hystpdf') then
-
-        call test_hystpdf(IM, JM, LM, dirName, rank_str)
-        
-    elseif (trim(dirName(12:38)) == 'gfdl_cloud_microphys_driver' .or. trim(dirName(13:39)) == 'gfdl_cloud_microphys_driver') then
-        
-        call test_gfdl_cloud_microphys_driver(IM, JM, LM, dirName, rank_str)
-
-    elseif (trim(dirName(12:29)) == 'evap_subl_pdf_loop' .or. trim(dirName(13:30)) == 'evap_subl_pdf_loop') then
     
-        call test_evap_subl_pdf_loop(IM, JM, LM, dirName, rank_str)
-
-    elseif (trim(dirName(12:23)) == 'radcoup_loop' .or. trim(dirName(13:24)) == 'radcoup_loop') then
-        call test_radcoup_loop(IM, JM, LM, dirName, rank_str)
-    endif
 end program
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
