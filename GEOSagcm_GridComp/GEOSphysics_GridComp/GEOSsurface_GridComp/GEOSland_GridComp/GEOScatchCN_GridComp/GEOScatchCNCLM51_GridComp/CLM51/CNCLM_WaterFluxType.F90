@@ -128,6 +128,7 @@ contains
     integer :: begp, endp
     integer :: begc, endc
     integer :: begg, endg
+    integer :: c, l 
     !--------------------
     
     begp = bounds%begp ; endp = bounds%endp
