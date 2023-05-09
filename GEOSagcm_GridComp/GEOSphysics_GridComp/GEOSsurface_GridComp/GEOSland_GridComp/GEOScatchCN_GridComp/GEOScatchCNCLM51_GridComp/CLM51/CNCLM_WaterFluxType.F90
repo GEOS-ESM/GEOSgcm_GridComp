@@ -4,6 +4,8 @@ module WaterFluxType
   use nanMod           , only : nan
   use clm_varpar       , only : nlevsno
   use clm_varcon       , only : spval
+  use LandunitType     , only : lun
+  use ColumnType       , only : col
   use netcdf
   use MAPL_ExceptionHandling
   use decompMod        , only : bounds_type
