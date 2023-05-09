@@ -340,28 +340,23 @@ contains
 !   Add export states for turbulence increments
 !-------------------------------------------------
     call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
-
     if (NQ > 0) then
       call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), rc=STATUS)
       VERIFY_(STATUS)
-
       allocate (NAMES(NQ), stat=STATUS)
       VERIFY_(STATUS)
-
       do i = 1, NQ
         call ESMF_ConfigNextLine(cf, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_ConfigGetAttribute(cf, NAMES(i), rc=STATUS)
         VERIFY_(STATUS)
       enddo
-
       do i = 1, NQ
         if (NAMES(i) == 'AOADAYS') then
           TendUnits = 'days s-1'
         else
           TendUnits = 'UNITS'
         end if
-
         call MAPL_AddExportSpec(GC,                                           &
           SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
           LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
@@ -375,7 +370,6 @@ contains
     end if !NQ > 0
 
 !-----------------------------------------------------------
-
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
          LONG_NAME  = 'pressure_weighted_tendency_of_air_temperature_due_to_physics', &
@@ -565,6 +559,14 @@ contains
 
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'MTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MCHEMTRI',                                      &
          LONG_NAME  = 'moist_quantities',                          &
          UNITS      = 'UNITS s-1',                                 &
          DATATYPE   = MAPL_BundleItem,                             &
@@ -2011,7 +2013,7 @@ contains
    type (ESMF_FieldBundle)             :: BUNDLE
    character(len=ESMF_MAXSTR),pointer  :: GCNames(:)
    character(len=ESMF_MAXSTR)          :: DUMMY
-   integer                             :: I, L, K, N
+   integer                             :: I, J, L, K, N
    integer                             :: IM, JM, LM, NQ
    integer                             :: ISPPT,ISKEB
    logical                             :: DO_SPPT,DO_SKEB
@@ -2700,6 +2702,7 @@ contains
     if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
     if(associated(DVDT   )) DVDT    = VIM + VIT + VIG
     if(associated(DWDT   )) DWDT    = WIM
+
 !-stochastic-physics
     IF( DO_SPPT ) THEN
        allocate(TMP(IM,JM,LM),stat=STATUS)
@@ -2758,6 +2761,7 @@ contains
             if( MAPL_am_I_root() ) print*, "GEOS_PhysicsGridComp: missing T-tend pointer, aborting ..."
             VERIFY_(STATUS)
        endif
+
        TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
            + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
            + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
