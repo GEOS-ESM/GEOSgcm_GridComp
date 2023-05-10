@@ -489,6 +489,7 @@ contains
          VFALLSN_AN_dev,VFALLSN_LS_dev,VFALLSN_CN_dev,VFALLSN_SC_dev, &
          VFALLRN_AN_dev,VFALLRN_LS_dev,VFALLRN_CN_dev,VFALLRN_SC_dev,  &
          PDF_A_dev, PDFITERS_dev, & 
+         DQVDTMAC_dev, DQLDTMAC_dev, DQIDTMAC_dev, DQADTMAC_dev, &
 #ifdef PDFDIAG
          PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, & 
          PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
@@ -658,6 +659,10 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
 
+      real, intent(  out), dimension(IRUN,  LM) :: DQVDTMAC_dev
+      real, intent(  out), dimension(IRUN,  LM) :: DQLDTMAC_dev
+      real, intent(  out), dimension(IRUN,  LM) :: DQIDTMAC_dev
+      real, intent(  out), dimension(IRUN,  LM) :: DQADTMAC_dev
 
 !!$      real, intent(  out), dimension(IRUN,  LM) :: LIQANMOVE_dev  ! LIQANMOVE
 !!$      real, intent(  out), dimension(IRUN,  LM) :: ICEANMOVE_dev  ! ICEANMOVE
@@ -724,8 +729,6 @@ contains
       logical :: use_autoconv_timescale
 
       real :: NI, NL, TROPICAL, EXTRATROPICAL
-
-      real :: LSPDFLIQNEW, LSPDFICENEW, LSPDFFRACNEW
 
 ! These are in constant memory in CUDA and are set in the GridComp
 #ifndef _CUDA
@@ -928,6 +931,11 @@ contains
               end if
             end if
 
+            DQVDTMAC_dev(I,K) = Q_dev(I,K)
+            DQLDTMAC_dev(I,K) = QLW_LS_dev(I,K) + QLW_AN_dev(I,K)
+            DQIDTMAC_dev(I,K) = QIW_LS_dev(I,K) + QIW_AN_dev(I,K)
+            DQADTMAC_dev(I,K) = CLDFRC_dev(I,K) + ANVFRC_dev(I,K)
+
             !!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! Total Condensate Source
             !!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1016,10 +1024,6 @@ contains
             ! impose a minimum amount of variability
             ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
    
-            LSPDFLIQNEW = QLW_LS_dev(I,K)
-            LSPDFICENEW = QIW_LS_dev(I,K)
-            LSPDFFRACNEW= CLDFRC_dev(I,K)
-
             IF(HYSTPDFOPT==1) THEN
             call hystpdf_new(      &
                   DT             , &
@@ -1124,10 +1128,6 @@ contains
                   USE_BERGERON)
             endif
 
-            LSPDFLIQNEW = QLW_LS_dev(I,K) - LSPDFLIQNEW
-            LSPDFICENEW = QIW_LS_dev(I,K) - LSPDFICENEW
-            LSPDFFRACNEW= CLDFRC_dev(I,K) - LSPDFFRACNEW
-
             RHX_dev(I,K)   = Q_dev(I,K)/QSAT( TEMP, PP_dev(I,K) )
             CFPDF_dev(I,K) = CLDFRC_dev(I,K)
             PDFL_dev(I,K)  = ( QLW_LS_dev(I,K) + QLW_AN_dev(I,K) - PDFL_dev(I,K) ) / DT 
@@ -1208,6 +1208,11 @@ contains
             EVAPC_dev(I,K) = ( EVAPC_dev(I,K) - (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) ) / DT
             SUBLC_dev(I,K) = ( SUBLC_dev(I,K) - (QIW_LS_dev(I,K)+QIW_AN_dev(I,K)) ) / DT
 
+            DQVDTMAC_dev(I,K) = ((Q_dev(I,K)                       ) - DQVDTMAC_dev(I,K)) / DT
+            DQLDTMAC_dev(I,K) = ((QLW_LS_dev(I,K) + QLW_AN_dev(I,K)) - DQLDTMAC_dev(I,K)) / DT
+            DQIDTMAC_dev(I,K) = ((QIW_LS_dev(I,K) + QIW_AN_dev(I,K)) - DQIDTMAC_dev(I,K)) / DT
+            DQADTMAC_dev(I,K) = ((CLDFRC_dev(I,K) + ANVFRC_dev(I,K)) - DQADTMAC_dev(I,K)) / DT
+        
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             !!       A U T O C O N V E R S I  O  N
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1629,7 +1634,6 @@ contains
             QIW_LS_dev(I,K) = QIW_LS_dev(I,K) * QTMP2 * QTMP3
             QIW_AN_dev(I,K) = QIW_AN_dev(I,K) * QTMP2 * QTMP3
 
-         
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             TH_dev(I,K)  =  TEMP / EXNP_dev(I,K) 

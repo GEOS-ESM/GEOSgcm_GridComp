@@ -318,6 +318,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: TMP2D
     type(ESMF_State)                    :: AERO
     ! Exports
+    real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
     real, pointer, dimension(:,:,:) ::  DUDT_micro,  DVDT_micro,  DTDT_micro
     real, pointer, dimension(:,:,:) :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
@@ -474,6 +475,10 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     end do
 
     ! Export Tendencies
+    call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_macro, 'DQLDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_macro, 'DQADT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQVDT_micro, 'DQVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_micro, 'DQIDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDT_micro, 'DQLDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -686,6 +691,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                VFALLSN_AN  , VFALLSN_LS  ,VFALLSN_CN  ,VFALLSN_SC  ,  &
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
               PDF_A, PDFITERS, &
+              DQVDT_macro, DQLDT_macro, DQIDT_macro, DQADT_macro, &
               WTHV2, WQL, &
               NACTL,    &
               NACTI,    &
@@ -730,10 +736,10 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             CLDREFFL = 14.0e-6
          end where
 
-         DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST
-         DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST
-         DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST
-         DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST
+         DQVDT_micro = ( Q          - DQVDT_micro) / DT_MOIST - DQVDT_macro
+         DQLDT_micro = ((QLLS+QLCN) - DQLDT_micro) / DT_MOIST - DQLDT_macro
+         DQIDT_micro = ((QILS+QICN) - DQIDT_micro) / DT_MOIST - DQIDT_macro
+         DQADT_micro = ((CLLS+CLCN) - DQADT_micro) / DT_MOIST - DQADT_macro
           DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
           DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST

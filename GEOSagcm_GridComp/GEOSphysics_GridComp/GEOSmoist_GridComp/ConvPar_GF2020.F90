@@ -2313,8 +2313,8 @@ loop1:  do n=1,maxiens
                ierrc(i)='scale_dep renders convection insignificant'
              endif
              if(ierr(i) /= 0) cycle
-            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.)) ! Arakawa 2011 sigma
-             sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/ 500.)) ! Modified from Arakawa 2011 sigma
+             sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.)) ! Arakawa 2011 sigma
+            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/ 500.)) ! Modified from Arakawa 2011 sigma
              if (stochastic_sig(i) /= 1.0) then
                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
              endif
