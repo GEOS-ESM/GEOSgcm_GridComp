@@ -1079,102 +1079,13 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     m1_rain (:) = 0.
     
     call check_column (ktop, kbot, qr, no_fall)
-    
-    if (no_fall) then
-        vtr (:) = vf_min
-        r1 = 0.
-    else
-        
-        ! -----------------------------------------------------------------------
-        ! fall speed of rain
-        ! -----------------------------------------------------------------------
-        
-        if (const_vr) then
-            vtr (:) = vr_fac ! ifs_2016: 4.0
-        else
-            do k = ktop, kbot
-                qden = qr (k) * den (k)
-                if (qr (k) < thr) then
-                    vtr (k) = vr_min
-                else
-                    vtr (k) = vr_fac * vconr * sqrt (min (10., sfcrho / den (k))) * &
-                        exp (0.2 * log (qden / normr))
-                    vtr (k) = min (vr_max, max (vr_min, vtr (k)))
-                endif
-            enddo
-        endif
-        
-        ze (kbot + 1) = zs
-        do k = kbot, ktop, - 1
-            ze (k) = ze (k + 1) - dz (k) ! dz < 0
-        enddo
-        
-        ! -----------------------------------------------------------------------
-        ! evaporation and accretion of rain for the first 1 / 2 time step
-        ! -----------------------------------------------------------------------
-        
-        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = revap
- 
-        if (do_sedi_w) then
-            do k = ktop, kbot
-                dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-            enddo
-        endif
-        
-        ! -----------------------------------------------------------------------
-        ! mass flux induced by falling rain
-        ! -----------------------------------------------------------------------
-        
-        if (use_ppm) then
-            zt (ktop) = ze (ktop)
-            do k = ktop + 1, kbot
-                zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-            enddo
-            zt (kbot + 1) = zs - dt * vtr (kbot)
-            
-            do k = ktop, kbot
-                if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-            enddo
-            call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-        else
-            call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-        endif
-        
-        ! -----------------------------------------------------------------------
-        ! vertical velocity transportation during sedimentation
-        ! -----------------------------------------------------------------------
-        
-        if (do_sedi_w) then
-            w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-            do k = ktop + 1, kbot
-                w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-                     / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-            enddo
-        endif
-        
-        ! -----------------------------------------------------------------------
-        ! heat transportation during sedimentation
-        ! -----------------------------------------------------------------------
-        
-        if (do_sedi_heat) &
-            call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
-        
-        ! -----------------------------------------------------------------------
-        ! evaporation and accretion of rain for the remaing 1 / 2 time step
-        ! -----------------------------------------------------------------------
-        
-        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = evap1 + revap
-        
-    endif
-    
+   
     ! -----------------------------------------------------------------------
     ! auto - conversion
     ! assuming linear subgrid vertical distribution of cloud water
     ! following lin et al. 1994, mwr
     ! -----------------------------------------------------------------------
-    
+
     ! Use In-Cloud condensates
     if (.not. do_qa) then
       qadum = max(qa,qcmin)
@@ -1244,6 +1155,92 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! Revert In-Cloud condensate
     ql = ql*qadum
     qi = qi*qadum
+ 
+        ! -----------------------------------------------------------------------
+        ! fall speed of rain
+        ! -----------------------------------------------------------------------
+        
+        if (no_fall) then
+            vtr (:) = vf_min
+        elseif (const_vr) then
+            vtr (:) = vr_fac ! ifs_2016: 4.0
+        else
+            do k = ktop, kbot
+                qden = qr (k) * den (k)
+                if (qr (k) < thr) then
+                    vtr (k) = vr_min
+                else
+                    vtr (k) = vr_fac * vconr * sqrt (min (10., sfcrho / den (k))) * &
+                        exp (0.2 * log (qden / normr))
+                    vtr (k) = min (vr_max, max (vr_min, vtr (k)))
+                endif
+            enddo
+        endif
+        
+        ze (kbot + 1) = zs
+        do k = kbot, ktop, - 1
+            ze (k) = ze (k + 1) - dz (k) ! dz < 0
+        enddo
+        
+        ! -----------------------------------------------------------------------
+        ! evaporation and accretion of rain for the first 1 / 2 time step
+        ! -----------------------------------------------------------------------
+        
+        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+        evap1 = revap
+ 
+        if (do_sedi_w) then
+            do k = ktop, kbot
+                dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+            enddo
+        endif
+        
+        ! -----------------------------------------------------------------------
+        ! mass flux induced by falling rain
+        ! -----------------------------------------------------------------------
+        
+        if (no_fall) then
+            r1 = 0.0
+        elseif (use_ppm) then
+            zt (ktop) = ze (ktop)
+            do k = ktop + 1, kbot
+                zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
+            enddo
+            zt (kbot + 1) = zs - dt * vtr (kbot)
+            
+            do k = ktop, kbot
+                if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+            enddo
+            call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+        else
+            call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+        endif
+        
+        ! -----------------------------------------------------------------------
+        ! vertical velocity transportation during sedimentation
+        ! -----------------------------------------------------------------------
+        
+        if (do_sedi_w) then
+            w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+            do k = ktop + 1, kbot
+                w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
+                     / (dm (k) + m1_rain (k - 1) - m1_rain (k))
+            enddo
+        endif
+        
+        ! -----------------------------------------------------------------------
+        ! heat transportation during sedimentation
+        ! -----------------------------------------------------------------------
+        
+        if (do_sedi_heat) &
+            call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+        
+        ! -----------------------------------------------------------------------
+        ! evaporation and accretion of rain for the remaing 1 / 2 time step
+        ! -----------------------------------------------------------------------
+
+        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+        evap1 = evap1 + revap
 
 end subroutine warm_rain
 
@@ -1285,11 +1282,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
-            ! area and timescale efficiency on revap
-                                   AREA_LS_PRC_K = 0.0
-            if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-            fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-           !fac_revp = 1. - exp (- dt / tau_revp)
+           !! area and timescale efficiency on revap
+           !                       AREA_LS_PRC_K = 0.0
+           !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+           !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+            fac_revp = 1. - exp (- dt / tau_revp)
             
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient
