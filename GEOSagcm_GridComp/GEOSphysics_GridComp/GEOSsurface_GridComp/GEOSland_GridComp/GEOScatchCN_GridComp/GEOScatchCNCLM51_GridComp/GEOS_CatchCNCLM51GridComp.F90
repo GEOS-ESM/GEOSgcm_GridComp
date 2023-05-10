@@ -62,7 +62,7 @@ module GEOS_CatchCNCLM51GridCompMod
  
   USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
-  use clm_time_manager, only: get_days_per_year, get_step_size
+  use clm_time_manager, only: get_days_per_year, get_step_size, get_nstep
   use pftconMod,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
        catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
@@ -3922,6 +3922,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical, save :: first = .true.
     integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
     real :: ndt
+    integer :: nstep_cn
 
   ! Offline mode
 
@@ -4235,6 +4236,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ------------------------------------------------------------------------------------------
   dtcn = min(dtcn,14400.)
   ndt = get_step_size( nint(dtcn) )
+
+! update CN time step number
+! --------------------------
+  nstep_cn = get_nstep(istep_cn) 
 
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
