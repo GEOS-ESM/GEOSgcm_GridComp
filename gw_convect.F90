@@ -5,7 +5,6 @@ module gw_convect
 ! gw_drag in May 2013.
 !
 
-  use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp, midpoint_interp_s
   use gw_common, only: GWBand, qbo_hdepth_scaling, gw_drag_prof 
 
 
@@ -173,7 +172,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 ! pp. 324-337.
 !
 !-----------------------------------------------------------------------
-  !!!use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
   !!!use gw_common, only: GWBand, qbo_hdepth_scaling
 
 !------------------------------Arguments--------------------------------
