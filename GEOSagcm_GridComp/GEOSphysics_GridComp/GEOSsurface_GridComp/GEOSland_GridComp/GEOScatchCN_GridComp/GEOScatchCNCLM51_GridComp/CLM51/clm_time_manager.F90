@@ -4,7 +4,8 @@ module clm_time_manager
 #include "shr_assert.h"
 
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R8
-   use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec
+   use update_model_para4cn, only: curr_year,curr_month,curr_day,curr_dofyr,curr_hour,curr_min,curr_sec, &
+                                   prev_year,prev_month,prev_day,prev_dofyr,prev_hour,prev_min,prev_sec
    use clm_varctl  , only: iulog
    use MAPL_ExceptionHandling
    use ESMF
@@ -21,6 +22,7 @@ module clm_time_manager
       get_nstep,                &! return CN timestep number
 
       get_curr_date,            &! return date components at end of current timestep
+      get_prev_date,            &! return date components at beginning of current timestep
 !      get_curr_ESMF_Time,       &! get current time in terms of the ESMF_Time
 !      get_start_date,           &! return components of the start date
 !      get_driver_start_ymd,     &! return year/month/day (as integer in YYYYMMDD format) of driver start date
@@ -128,6 +130,26 @@ end function get_rad_step_size
   tod = 3600*curr_hour + 60*curr_min + curr_sec
 
   end subroutine get_curr_date
+!=========================================================================================
+
+  subroutine get_prev_date(yr, mon, day, tod)
+
+    ! Return date components valid at beginning of current timestep.
+
+  implicit none
+  integer, intent(out) ::&
+      yr,    &! year
+      mon,   &! month
+      day,   &! day of month
+      tod     ! time of day (seconds past 0Z)
+  !---------------------------------------------
+
+  yr  = prev_year
+  mon = prev_month
+  day = prev_day
+  tod = 3600*prev_hour + 60*prev_min + prev_sec
+
+  end subroutine get_prev_date
 !=========================================================================================
 
 function get_curr_calday(offset)
