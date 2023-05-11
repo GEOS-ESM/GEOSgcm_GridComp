@@ -62,7 +62,7 @@ module GEOS_CatchCNCLM51GridCompMod
  
   USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
-  use clm_time_manager, only: get_days_per_year, get_step_size, get_nstep
+  use clm_time_manager, only: get_days_per_year, get_step_size, get_nstep, is_first_step
   use pftconMod,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,    &
        catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
@@ -5218,6 +5218,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real   , allocatable, dimension (:,:,:)      :: parzone
     character(len=ESMF_MAXSTR) :: Co2_CycleFile
 
+    integer :: cn_count = 0 
+    logical :: first_cn
+
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
 
         ! Begin
@@ -6907,6 +6910,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     if(mod(AGCM_S_ofday,nint(dtcn)) == 0) then
        
+       cn_count = cn_count + 1
+
+       ! check whether CN is on its first 1.5 hours; since CN_Driver is called once right at the beginning, we set this variable to true when CN_Driver is called for the second time
+       if (cn_count .le. 2) then
+           first_cn = is_first_step(.true.)
+       else
+           first_cn = is_first_step(.false.)
+       end if
+       print *, 'first_cn: ', first_cn
+
        ! fzeng: pass current date_time to the CN routines.
        call upd_curr_date_time( AGCM_YY, AGCM_MM, AGCM_DD, dofyr, &
             AGCM_HH, AGCM_MI, AGCM_S )

@@ -207,7 +207,6 @@ contains
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  logical, save :: first = .true.
- logical :: first_cn
  integer  :: n, p, nc, nz, np, nv
 
  !-------------------------------
@@ -356,7 +355,6 @@ contains
          soilbiogeochem_nitrogenflux_inst, atm2lnd_inst )
   else
     first = .false.
-    first_cn = is_first_step(first) ! this call is neede to globally set is_first_step to false; first_cn is not used
   end if
 
       grc%prev_dayl = grc%dayl ! set previous day length for following time steps (dayl itself is computed in GridComp)
