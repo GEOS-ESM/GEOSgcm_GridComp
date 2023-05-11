@@ -306,7 +306,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
    !        tendency
    !-----------------------------------------------------------------------
 
-   use gw_diffusion, only: gw_ediff, gw_diff_tend
    use linear_1d_operators, only: TriDiagDecomp
 
    !------------------------------Arguments--------------------------------
@@ -791,37 +790,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 ! until we have better physical ideas. (JTB 3/26/20).
 ! Also avoids having to pass tracers into GW code
 !=====================================
-#if 0
-  ! Calculate effective diffusivity and LU decomposition for the
-  ! vertical diffusion solver.
-  call gw_ediff (ncol, pver, band%ngwv, kbot_tend, ktop, tend_level, &
-       gwut, ubm, nm, rhoi, dt, prndl, gravit, p, c, &
-       egwdffi, decomp, ro_adjust=ro_adjust)
-
-  ! Calculate tendency on each constituent.
-  do m = 1, size(q,3)
-
-     call gw_diff_tend(ncol, pver, kbot_tend, ktop, q(:,:,m), &
-          dt, decomp, qtgw(:,:,m))
-
-  enddo
-
-  ! Calculate tendency from diffusing dry static energy (dttdf).
-  call gw_diff_tend(ncol, pver, kbot_tend, ktop, dse, dt, decomp, dttdf)
-
-  ! Evaluate second temperature tendency term: Conversion of kinetic
-  ! energy into thermal.
-  do l = -band%ngwv, band%ngwv
-     do k = ktop, kbot_tend
-        dttke(:,k) = dttke(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
-     end do
-  end do
-
-  ttgw = dttke + dttdf
-
-  ! Deallocate decomp.
-  call decomp%finalize()
-#else
 
    ! Evaluate second temperature tendency term: Conversion of kinetic
    ! energy into thermal.
@@ -846,7 +814,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
    enddo
 !$acc end parallel
    
-#endif
 !$acc end data
 !$acc end data
 
