@@ -5,7 +5,7 @@ module gw_oro
 ! gw_drag in May 2013.
 !
 
-  use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp, midpoint_interp_s
+  use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp_s
   use gw_common, only: GWBand, rair, gw_drag_prof 
 
 implicit none

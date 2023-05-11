@@ -36,6 +36,7 @@ interface midpoint_interp_s
    module procedure midpoint_interp_r4_s
    module procedure midpoint_interp_r8_s
 end interface midpoint_interp_s
+public :: midpoint_interp_s
 
 contains
 
