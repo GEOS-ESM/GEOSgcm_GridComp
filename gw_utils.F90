@@ -6,33 +6,53 @@ module gw_utils
 
 implicit none
 private
-save
 
 ! Real kind for gravity wave parameterization.
-integer, public, parameter :: r8 = selected_real_kind(12)
+integer,public,parameter :: GW_R4 = SELECTED_REAL_KIND(6,37)
+integer,public,parameter :: GW_R8 = SELECTED_REAL_KIND(15,307)
+integer,public,parameter :: GW_PRC = GW_R4
 
 ! Public interface
+
+interface get_unit_vector
+   module procedure get_unit_vector_r4
+   module procedure get_unit_vector_r8
+end interface get_unit_vector
 public :: get_unit_vector
+
+interface dot_2d
+   module procedure dot_2d_r4
+   module procedure dot_2d_r8
+end interface dot_2d
 public :: dot_2d
+
+interface midpoint_interp
+   module procedure midpoint_interp_r4
+   module procedure midpoint_interp_r8
+end interface midpoint_interp
 public :: midpoint_interp
-public :: midpoint_interp_s
+
+interface midpoint_interp_s
+   module procedure midpoint_interp_r4_s
+   module procedure midpoint_interp_r8_s
+end interface midpoint_interp_s
 
 contains
 
 ! Take two components of a vector, and find the unit vector components and
 ! total magnitude.
-subroutine get_unit_vector(u, v, u_n, v_n, mag)
+subroutine get_unit_vector_r4(u, v, u_n, v_n, mag)
 !$acc routine gang
-  real(r8), intent(in) :: u(:)
-  real(r8), intent(in) :: v(:)
-  real(r8), intent(out) :: u_n(:)
-  real(r8), intent(out) :: v_n(:)
-  real(r8), intent(out) :: mag(:)
+  real(GW_R4), intent(in) :: u(:)
+  real(GW_R4), intent(in) :: v(:)
+  real(GW_R4), intent(out) :: u_n(:)
+  real(GW_R4), intent(out) :: v_n(:)
+  real(GW_R4), intent(out) :: mag(:)
 
   integer :: i
 
 !   mag = sqrt(u*u + v*v)
-!$acc loop gang vector
+  !$acc loop gang vector
   do i = 1, size(u)
       mag(i) = sqrt(u(i)*u(i) + v(i)*v(i))
   enddo
@@ -40,65 +60,133 @@ subroutine get_unit_vector(u, v, u_n, v_n, mag)
   ! Has to be a loop/if instead of a where, because floating point
   ! exceptions can trigger even on a masked divide-by-zero operation
   ! (especially on Intel).
-!$acc loop gang vector
+  !$acc loop gang vector
   do i = 1, size(mag)
-     if (mag(i) > 0._r8) then
+     if (mag(i) > 0._GW_R4) then
         u_n(i) = u(i)/mag(i)
         v_n(i) = v(i)/mag(i)
      else
-        u_n(i) = 0._r8
-        v_n(i) = 0._r8
+        u_n(i) = 0._GW_R4
+        v_n(i) = 0._GW_R4
      end if
   end do
 
-end subroutine get_unit_vector
+end subroutine get_unit_vector_r4
+
+subroutine get_unit_vector_r8(u, v, u_n, v_n, mag)
+!$acc routine gang
+  real(GW_R8), intent(in) :: u(:)
+  real(GW_R8), intent(in) :: v(:)
+  real(GW_R8), intent(out) :: u_n(:)
+  real(GW_R8), intent(out) :: v_n(:)
+  real(GW_R8), intent(out) :: mag(:)
+
+  integer :: i
+
+!   mag = sqrt(u*u + v*v)
+  !$acc loop gang vector
+  do i = 1, size(u)
+      mag(i) = sqrt(u(i)*u(i) + v(i)*v(i))
+  enddo
+
+  ! Has to be a loop/if instead of a where, because floating point
+  ! exceptions can trigger even on a masked divide-by-zero operation
+  ! (especially on Intel).
+  !$acc loop gang vector
+  do i = 1, size(mag)
+     if (mag(i) > 0._GW_R8) then
+        u_n(i) = u(i)/mag(i)
+        v_n(i) = v(i)/mag(i)
+     else
+        u_n(i) = 0._GW_R8
+        v_n(i) = 0._GW_R8
+     end if
+  end do
+
+end subroutine get_unit_vector_r8
 
 ! Vectorized version of a 2D dot product (since the intrinsic dot_product
 ! is more suitable for arrays of contiguous vectors).
-function dot_2d(u1, v1, u2, v2)
+function dot_2d_r4(u1, v1, u2, v2) result(dot_2d)
 !$acc routine seq
-  real(r8), intent(in) :: u1(:), v1(:)
-  real(r8), intent(in) :: u2(:), v2(:)
+  real(GW_R4), intent(in) :: u1(:), v1(:)
+  real(GW_R4), intent(in) :: u2(:), v2(:)
 
-  real(r8) :: dot_2d(size(u1))
+  real(GW_R4) :: dot_2d(size(u1))
 
   dot_2d = u1*u2 + v1*v2
 
-end function dot_2d
+end function dot_2d_r4
+
+function dot_2d_r8(u1, v1, u2, v2) result(dot_2d)
+!$acc routine seq
+  real(GW_R8), intent(in) :: u1(:), v1(:)
+  real(GW_R8), intent(in) :: u2(:), v2(:)
+
+  real(GW_R8) :: dot_2d(size(u1))
+
+  dot_2d = u1*u2 + v1*v2
+
+end function dot_2d_r8
 
 ! Pure function that interpolates the values of the input array along
 ! dimension 2. This is obviously not a very generic routine, unlike, say,
 ! CAM's lininterp. But it's used often enough that it seems worth providing
 ! here.
-pure function midpoint_interp(arr) result(interp)
-!$acc routine seq
-  real(r8), intent(in) :: arr(:,:)
-  real(r8) :: interp(size(arr,1),size(arr,2)-1)
+pure function midpoint_interp_r4(arr) result(interp)
+  real(GW_R4), intent(in) :: arr(:,:)
+  real(GW_R4) :: interp(size(arr,1),size(arr,2)-1)
 
   integer :: i
 
-!!$acc loop vector
   do i = 1, size(interp,2)
-     interp(:,i) = 0.5_r8 * (arr(:,i)+arr(:,i+1))
+     interp(:,i) = 0.5_GW_R4 * (arr(:,i)+arr(:,i+1))
   end do
-!!$acc end loop
 
-end function midpoint_interp
+end function midpoint_interp_r4
 
-subroutine midpoint_interp_s(arr, interp)
-!$acc routine gang
-   real(r8), intent(in)  :: arr(:,:)
-   real(r8), intent(out) :: interp(:,:)
+pure function midpoint_interp_r8(arr) result(interp)
+  real(GW_R8), intent(in) :: arr(:,:)
+  real(GW_R8) :: interp(size(arr,1),size(arr,2)-1)
 
+  integer :: i
+
+  do i = 1, size(interp,2)
+     interp(:,i) = 0.5_GW_R8 * (arr(:,i)+arr(:,i+1))
+  end do
+
+end function midpoint_interp_r8
+
+subroutine midpoint_interp_r4_s(arr, interp)
+   !$acc routine gang
+   real(GW_R4), intent(in)  :: arr(:,:)
+   real(GW_R4), intent(out) :: interp(:,:)
+   
    integer :: i , j
-!$acc loop gang vector collapse(2)
-   do i = 1, size(interp,2)
-      do j = 1, size(interp,1)
-        interp(j,i) = 0.5_r8 * (arr(j,i)+arr(j,i+1))
+   !$acc loop gang vector collapse(2)
+      do i = 1, size(interp,2)
+         do j = 1, size(interp,1)
+           interp(j,i) = 0.5_GW_R4 * (arr(j,i)+arr(j,i+1))
+         enddo
       enddo
-   enddo
+   
+end subroutine midpoint_interp_r4_s
 
-end subroutine
+subroutine midpoint_interp_r8_s(arr, interp)
+   !$acc routine gang
+   real(GW_R8), intent(in)  :: arr(:,:)
+   real(GW_R8), intent(out) :: interp(:,:)
+   
+   integer :: i , j
+   !$acc loop gang vector collapse(2)
+      do i = 1, size(interp,2)
+         do j = 1, size(interp,1)
+           interp(j,i) = 0.5_GW_R8 * (arr(j,i)+arr(j,i+1))
+         enddo
+      enddo
+   
+end subroutine midpoint_interp_r8_s
+
 end module gw_utils
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
