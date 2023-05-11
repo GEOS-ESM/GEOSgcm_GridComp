@@ -246,10 +246,18 @@ end function is_end_curr_day
 
 !=========================================================================================
 
-function is_first_step( )
-  
+logical function is_first_step(first)
+
   ! Return value
-  logical :: is_first_step
+  logical, optional, intent(in) :: first  ! set to this time step
+
+  logical, save :: is_first_default = .true.
+
+ if ( present(first) ) then
+   is_first_default = first
+ end if
+
+ is_first_step = is_first_default
 
 end function is_first_step
 

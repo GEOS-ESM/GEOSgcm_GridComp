@@ -75,6 +75,7 @@ module CN_initMod
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
   use SoilBiogeochemCompetitionMod       , only : SoilBiogeochemCompetitionInit
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
+  use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
  
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
@@ -339,6 +340,11 @@ module CN_initMod
 
    call CNPhenologyInit                (bounds)
    call SoilBiogeochemCompetitionInit  (bounds)
+
+   ! Initialize precision control for soil biogeochemistry (use soilbiogeochem_carbonstate three times, since we   do not currently use isotopes)
+    call SoilBiogeochemPrecisionControlInit( soilbiogeochem_carbonstate_inst, soilbiogeochem_carbonstate_inst, &         
+                                             soilbiogeochem_carbonstate_inst, soilbiogeochem_nitrogenstate_inst)
+
 
   ! call FireMethodInit(bounds,paramfile)
 
