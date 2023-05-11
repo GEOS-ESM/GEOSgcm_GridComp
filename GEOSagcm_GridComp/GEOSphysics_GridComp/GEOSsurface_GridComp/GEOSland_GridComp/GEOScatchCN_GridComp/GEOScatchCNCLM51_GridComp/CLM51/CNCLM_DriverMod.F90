@@ -403,21 +403,21 @@ contains
      cwdcg(nc) = 0.
      xsmr(nc) = 0.
 
-     neeg(nc) = cnveg_carbonflux_inst%nee_grc(nc)
+     neeg(nc) = bgc_vegetation_inst%cnveg_carbonflux_inst%nee_grc(nc)
 
      do nz = 1,num_zon    ! CN zone loop
         n = n + 1
 
-        colc(nc,nz) = cnveg_carbonstate_inst%totc_col(n)
-        srg(nc) = srg(nc) + cnveg_carbonflux_inst%sr_col(n)*CN_zone_weight(nz)         
-        burn(nc) = burn(nc) + cnveg_state_inst%farea_burned_col(n)*CN_zone_weight(nz)
-        closs(nc) = closs(nc) + cnveg_carbonflux_inst%fire_closs_col(n)*CN_zone_weight(nz)
+        colc(nc,nz) = bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col(n)
+        srg(nc) = srg(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%sr_col(n)*CN_zone_weight(nz)         
+        burn(nc) = burn(nc) + bgc_vegetation_inst%cnveg_state_inst%farea_burned_col(n)*CN_zone_weight(nz)
+        closs(nc) = closs(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%fire_closs_col(n)*CN_zone_weight(nz)
         som_closs(nc) = som_closs(nc) + soilbiogeochem_carbonflux_inst%somc_fire_col(n)*CN_zone_weight(nz)
-        nfire(nc) = nfire(nc) + cnveg_state_inst%nfire_col(n)*CN_zone_weight(nz)
+        nfire(nc) = nfire(nc) + bgc_vegetation_inst%cnveg_state_inst%nfire_col(n)*CN_zone_weight(nz)
         denitg(nc) = denitg(nc) + soilbiogeochem_nitrogenflux_inst%denit_col(n)*CN_zone_weight(nz)
         sminn_leachedg(nc) = sminn_leachedg(nc) + soilbiogeochem_nitrogenflux_inst%sminn_leached_col(n)*CN_zone_weight(nz)
         sminng(nc) = sminng(nc) + soilbiogeochem_nitrogenstate_inst%sminn_col(n)*CN_zone_weight(nz)
-        col_fire_nlossg(nc) = col_fire_nlossg(nc) + cnveg_nitrogenflux_inst%fire_nloss_col(n)*CN_zone_weight(nz)
+        col_fire_nlossg(nc) = col_fire_nlossg(nc) + bgc_vegetation_inst%cnveg_nitrogenflux_inst%fire_nloss_col(n)*CN_zone_weight(nz)
         gross_nming(nc) = gross_nming(nc) + soilbiogeochem_nitrogenflux_inst%gross_nmin_col(n)*CN_zone_weight(nz)
         net_nming(nc) = net_nming(nc) + soilbiogeochem_nitrogenflux_inst%net_nmin_col(n)*CN_zone_weight(nz)
         nfix_to_sminng(nc) = nfix_to_sminng(nc) + soilbiogeochem_nitrogenflux_inst%nfix_to_sminn_col(n)*CN_zone_weight(nz)
@@ -428,7 +428,7 @@ contains
         ndep_to_sminng(nc) = ndep_to_sminng(nc) + soilbiogeochem_nitrogenflux_inst%ndep_to_sminn_col(n)*CN_zone_weight(nz)
         totlitng(nc) = totlitng(nc) + soilbiogeochem_nitrogenstate_inst%totlitn_col(n)*CN_zone_weight(nz)
         totsomng(nc) = totsomng(nc) + soilbiogeochem_nitrogenstate_inst%totsomn_col(n)*CN_zone_weight(nz)
-        fuelcg(nc) = fuelcg(nc) + cnveg_carbonstate_inst%fuelc_col(n)*CN_zone_weight(nz)
+        fuelcg(nc) = fuelcg(nc) + bgc_vegetation_inst%cnveg_carbonstate_inst%fuelc_col(n)*CN_zone_weight(nz)
         totlitcg(nc) = totlitcg(nc) + soilbiogeochem_carbonstate_inst%totlitc_col(n)*CN_zone_weight(nz)
         cwdcg(nc) = cwdcg(nc) + soilbiogeochem_carbonstate_inst%cwdc_col(n)*CN_zone_weight(nz)
 
@@ -442,32 +442,32 @@ contains
                   ztai(nc,nv,nz) = canopystate_inst%tlai_patch(p)
 
                   pwtgcell = fveg(nc,nv,nz)*CN_zone_weight(nz) ! PFT weight in catchment tile
-                  nppg(nc) = nppg(nc) + cnveg_carbonflux_inst%npp_patch(p)*pwtgcell
-                  gppg(nc) = gppg(nc) + cnveg_carbonflux_inst%gpp_patch(p)*pwtgcell
-                  root(nc) = root(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
-                                       + cnveg_carbonstate_inst%frootc_storage_patch(p) &
-                                       + cnveg_carbonstate_inst%frootc_xfer_patch(p) &
+                  nppg(nc) = nppg(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%npp_patch(p)*pwtgcell
+                  gppg(nc) = gppg(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%gpp_patch(p)*pwtgcell
+                  root(nc) = root(nc) + (bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch(p) &
+                                       + bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_storage_patch(p) &
+                                       + bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_xfer_patch(p) &
                                         )*pwtgcell
-                  vegc(nc) = vegc(nc) + cnveg_carbonstate_inst%totvegc_patch(p)*pwtgcell
-                  ndeployg(nc) = ndeployg(nc) + cnveg_nitrogenflux_inst%ndeploy_patch(p)*pwtgcell
-                  leafng(nc) = leafng(nc) + cnveg_nitrogenstate_inst%leafn_patch(p)*pwtgcell
-                  leafcg(nc) = leafcg(nc) + cnveg_carbonstate_inst%leafc_patch(p)*pwtgcell
-                  sminn_to_npoolg(nc) = sminn_to_npoolg(nc) + cnveg_nitrogenflux_inst%sminn_to_npool_patch(p)*pwtgcell
-                  totvegng(nc) = totvegng(nc) + cnveg_nitrogenstate_inst%totvegn_patch(p)*pwtgcell
-                  retransng(nc) = retransng(nc) + cnveg_nitrogenstate_inst%retransn_patch(p)*pwtgcell
-                  retransn_to_npoolg(nc) = retransn_to_npoolg(nc) + cnveg_nitrogenflux_inst%retransn_to_npool_patch(p)*pwtgcell
-                  rootcg(nc) = rootcg(nc) + (cnveg_carbonstate_inst%frootc_patch(p) &
-                                          + cnveg_carbonstate_inst%frootc_storage_patch(p) &
-                                          + cnveg_carbonstate_inst%frootc_xfer_patch(p) &
-                                          + cnveg_carbonstate_inst%livecrootc_patch(p) &
-                                          + cnveg_carbonstate_inst%livecrootc_storage_patch(p) &
-                                          + cnveg_carbonstate_inst%livecrootc_xfer_patch(p) &
-                                          + cnveg_carbonstate_inst%deadcrootc_patch(p) &
-                                          + cnveg_carbonstate_inst%deadcrootc_storage_patch(p) &
-                                          + cnveg_carbonstate_inst%deadcrootc_xfer_patch(p) &
+                  vegc(nc) = vegc(nc) + bgc_vegetation_inst%cnveg_carbonstate_inst%totvegc_patch(p)*pwtgcell
+                  ndeployg(nc) = ndeployg(nc) + bgc_vegetation_inst%cnveg_nitrogenflux_inst%ndeploy_patch(p)*pwtgcell
+                  leafng(nc) = leafng(nc) + bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_patch(p)*pwtgcell
+                  leafcg(nc) = leafcg(nc) + bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_patch(p)*pwtgcell
+                  sminn_to_npoolg(nc) = sminn_to_npoolg(nc) + bgc_vegetation_inst%cnveg_nitrogenflux_inst%sminn_to_npool_patch(p)*pwtgcell
+                  totvegng(nc) = totvegng(nc) + bgc_vegetation_inst%cnveg_nitrogenstate_inst%totvegn_patch(p)*pwtgcell
+                  retransng(nc) = retransng(nc) + bgc_vegetation_inst%cnveg_nitrogenstate_inst%retransn_patch(p)*pwtgcell
+                  retransn_to_npoolg(nc) = retransn_to_npoolg(nc) + bgc_vegetation_inst%cnveg_nitrogenflux_inst%retransn_to_npool_patch(p)*pwtgcell
+                  rootcg(nc) = rootcg(nc) + (bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_storage_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_xfer_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_storage_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_xfer_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_storage_patch(p) &
+                                          + bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_xfer_patch(p) &
                                           )*pwtgcell
             
-                  xsmr(nc) = xsmr(nc) + cnveg_carbonstate_inst%xsmrpool_patch(p)*pwtgcell
+                  xsmr(nc) = xsmr(nc) + bgc_vegetation_inst%cnveg_carbonstate_inst%xsmrpool_patch(p)*pwtgcell
                 end if
              end do ! nv
         end do !np
