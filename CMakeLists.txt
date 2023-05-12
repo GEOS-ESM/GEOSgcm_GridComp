@@ -7,8 +7,11 @@ set (alldirs
   GEOSogcm_GridComp
   )
 
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOSagcm_GridComp/GEOS_AgcmSimpleGridComp.F90)
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
+  esma_add_subdirectories (GEOSagcm_GridComp)
+
+elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
 
  ecbuild_declare_project()
   esma_add_library(${this}
