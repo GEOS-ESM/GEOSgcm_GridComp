@@ -1091,6 +1091,7 @@ contains
  ! initialize variables from restart file or set to cold start value
 
  this%dwt_conv_cflux_dribbled_grc(begg:endg) = spval
+ this%dwt_conv_cflux_grc(begg:endg) = spval
 
 
  n = 0
@@ -1122,8 +1123,6 @@ contains
                   this%prev_leafc_to_litter_patch  (np) = cnpft(nc,nz,nv, 42)
                   this%tempsum_npp_patch           (np) = cnpft(nc,nz,nv, 45)
                   this%xsmrpool_recover_patch      (np) = cnpft(nc,nz,nv, 47)
-                  this%dwt_wood_productc_gain_patch(np) = 0.   ! following CNCLM45 setting
-                  this%dwt_crop_productc_gain_patch(np) = 0.   ! following CNCLM45 setting
                   
 
                   ! "new" variables: introduced in CNCLM50
@@ -1137,12 +1136,16 @@ contains
                      _ASSERT(.FALSE.,'missing CNCLM50_cold_start setting')
                   end if 
 
-                  this%excess_cflux_patch(np)          = 0._r8
-                  this%leafc_to_litter_fun_patch(np)   = 0._r8
-                  this%plant_calloc_patch(np)          = 0._r8
-
                  end if
             end do !nv
+
+            this%excess_cflux_patch(np)          = 0._r8
+            this%leafc_to_litter_fun_patch(np)   = 0._r8
+            this%plant_calloc_patch(np)          = 0._r8
+            this%dwt_wood_productc_gain_patch(np) = 0._r8   ! following CNCLM45 setting
+            this%dwt_crop_productc_gain_patch(np) = 0._r8   ! following CNCLM45 setting
+
+
        end do ! p
      end do ! nz
   end do ! nc     

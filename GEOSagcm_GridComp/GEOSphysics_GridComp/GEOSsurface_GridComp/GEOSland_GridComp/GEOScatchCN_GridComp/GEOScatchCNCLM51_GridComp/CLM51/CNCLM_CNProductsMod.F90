@@ -10,6 +10,7 @@ module CNProductsMod
   use clm_varpar       , only : num_zon, var_col, cn_zone_weight, numpft
   use clm_time_manager , only : get_step_size_real
   use PatchType        , only : patch
+  use clm_varcon       , only : spval
 
   ! !PUBLIC TYPES:
   implicit none
@@ -127,6 +128,9 @@ contains
     allocate(this%tot_woodprod_loss_grc(begg:endg)) ; this%tot_woodprod_loss_grc(:) = nan
     allocate(this%product_loss_grc(begg:endg)) ; this%product_loss_grc(:) = nan
 
+    this%dwt_cropprod1_gain_grc(begg:endg) = spval
+    this%dwt_prod10_gain_grc(begg:endg) = spval
+    this%dwt_prod100_gain_grc(begg:endg) = spval
 
     ! initialize variables from restart file or set to cold start value
 
