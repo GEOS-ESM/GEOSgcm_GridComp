@@ -130,6 +130,7 @@ contains
 
     ! initialize variables from restart file or set to cold start value
 
+    np = 0
     do nc = 1,nch        ! catchment tile loop
     
        this%prod100_grc(nc) = 0._r8
