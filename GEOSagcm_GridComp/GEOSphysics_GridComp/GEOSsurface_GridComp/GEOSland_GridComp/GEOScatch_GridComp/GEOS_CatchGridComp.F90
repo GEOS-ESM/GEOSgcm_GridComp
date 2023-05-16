@@ -110,15 +110,16 @@ real,   parameter :: EMSSNO        =    0.99999
 
 ! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
 
-! pchakrab: save the logical variable OFFLINE
+! pchakrab: save the resource variable CATCHMENT_OFFLINE
 ! Internal state and its wrapper
 type T_OFFLINE_MODE
    private
-   ! change logical to integer
-   ! 0 --- false (DEFAULT for GCM)
-   ! 1 --- true  (DEFAULT gor GEOSldas)
-   ! 2 new options for internal WW,CH,CM,CQ,FR 
-   integer :: CATCH_OFFLINE
+   !    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+   !    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+   !    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+   !                               restart; select when using GEOSldas to create restarts for the GCM.
+   ! see also GEOSldas repo: src/Applications/LDAS_App/GEOSldas_LDAS.rc
+   integer :: CATCH_OFFLINE                    
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
@@ -136,6 +137,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
+integer :: CATCH_SPINUP
 integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
 integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
@@ -194,7 +196,7 @@ subroutine SetServices ( GC, RC )
 ! pchakrab: Read CATCHMENT_OFFLINE from resource file and save
 ! it in the private internal state of the GridComp. It is a little
 ! unusual to read resource file in SetServices, but we need to know
-! at this stage where we are running Catch in the offline mode or not
+! at this stage whether we are running Catch in the offline mode or not
 
     allocate(internal, stat=status)
     VERIFY_(status)
@@ -207,6 +209,12 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
 
+    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
+    !    0: DEFAULT 
+    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
+    call MAPL_GetResource ( MAPL, CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -2833,7 +2841,6 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_UserCompSetInternalState ( GC, 'CATCH_STATE',wrap2,status )
     VERIFY_(STATUS)
 
-
 !#for_ldas_coupling 
 !
 ! LDAS increments
@@ -4086,9 +4093,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(OFFLINE_WRAP)          :: wrap
         integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
-        ! un-adelterated TC's and QC's
+        ! un-adulterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
+
+        ! CATCHMENT_SPINUP
+        integer                     :: CurrMonth, CurrDay, CurrHour, CurrMin, CurrSec
 
 !#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
@@ -4586,9 +4596,78 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
+        debugzth = .false.
+
+        ! --------------------------------------------------------------------------
+        ! Get the current time. 
+        ! --------------------------------------------------------------------------
+
+        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
+        VERIFY_(STATUS)
+        if (MAPL_AM_I_Root(VM).and.debugzth) then
+         print *,' start time of clock '
+         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+        endif
+
+        ! --------------------------------------------------------------------------
+        ! Offline land spin-up.
+        ! --------------------------------------------------------------------------
+        
+        if (CATCH_SPINUP /= 0) then
+           
+           ! remove snow every Aug 1, 0z (Northern Hemisphere) or Feb 1, 0z (Southern Hemisphere)
+           !
+           ! assumes that CURRENT_TIME actually hits 0z on first of month (which seems safe enough)
+
+           call ESMF_TimeGet(CURRENT_TIME, mm=CurrMonth, dd=CurrDay, h=CurrHour, m=CurrMin, s=CurrSec, rc=STATUS) 
+           VERIFY_(STATUS)
+           
+           if (CurrDay==1 .and. CurrHour==0 .and. CurrMin==0 .and. CurrSec==0) then
+              
+              if      (CurrMonth==8) then
+                 
+                 where ( LATS >= 0. ) 
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                                  
+              else if (CurrMonth==2) then
+                 
+                 where ( LATS <  0. ) 
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                 
+              end if              
+              
+           end if  ! 0z on first of month
+              
+        end if     ! if (CATCH_SPINUP /= 0)
+        
+        ! --------------------------------------------------------------------------
+
         LAI0  = LAI
  
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
+
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
@@ -4625,25 +4704,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN (2,:) = SNDZN2
         SNDZN (3,:) = SNDZN3
 
-        debugzth = .false.
-
-        ! --------------------------------------------------------------------------
-        ! Get the current time. 
-        ! --------------------------------------------------------------------------
-
-        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-        VERIFY_(STATUS)
-        if (MAPL_AM_I_Root(VM).and.debugzth) then
-         print *,' start time of clock '
-         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
-        endif
-
         ! ----------------------------------------------------------------------------------
         ! Update the interpolation limits for MODIS albedo corrections
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
 
-        if (ldas_ens_id  == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSMEBLE = 1 ( by default)
+        if (ldas_ens_id  == ldas_first_ens_id) then  ! always .true. if NUM_LDAS_ENSEMBLE = 1 (by default)
            call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
            VERIFY_(STATUS)
            call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
