@@ -7,7 +7,7 @@ module CNProductsMod
   use MAPL_ExceptionHandling
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
-  use clm_varpar       , only : num_zon, var_col, cn_zone_weight
+  use clm_varpar       , only : num_zon, var_col, cn_zone_weight, numpft
   use clm_time_manager , only : get_step_size_real
   use PatchType        , only : patch
 
@@ -95,7 +95,7 @@ contains
     ! LOCAL
     integer :: begp, endp
     integer :: begg, endg
-    integer :: nc, nz
+    integer :: nc, nz, p, np
     !---------------------------------
 
     begp = bounds%begp ; endp = bounds%endp
@@ -132,8 +132,10 @@ contains
 
     do nc = 1,nch        ! catchment tile loop
     
-       this%prod100_grc(nc) = 0
-       this%prod10_grc(nc)  = 0
+       this%prod100_grc(nc) = 0._r8
+       this%prod10_grc(nc)  = 0._r8
+       this%cropprod1_grc(nc) = 0._r8
+       this%tot_woodprod_grc(nc) = 0._r8
 
        do nz = 1,num_zon    ! CN zone loop
 
@@ -147,6 +149,12 @@ contains
              _ASSERT(.FALSE.,'unknown species')
           end if 
 
+          do p = 0,numpft  ! PFT index loop
+             np = np + 1
+             this%hrv_deadstem_to_prod10_patch(np) = 0._r8
+             this%hrv_deadstem_to_prod100_patch(np) = 0._r8
+             this%grain_to_cropprod1_patch(np) = 0._r8
+          end do ! p
        end do ! nz
     end do ! nc
   end subroutine Init
