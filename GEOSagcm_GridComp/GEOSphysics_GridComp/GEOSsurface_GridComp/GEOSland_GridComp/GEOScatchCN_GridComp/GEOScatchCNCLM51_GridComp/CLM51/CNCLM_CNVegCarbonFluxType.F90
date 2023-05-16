@@ -517,7 +517,7 @@ contains
     integer  :: begp, endp
     integer  :: begc, endc
     integer  :: begg, endg
-    integer  :: np, nc, nz, p, nv, n
+    integer  :: np, nc, nz, p, nv, n, nl
     logical  :: cold_start = .false.
     logical           :: allows_non_annual_delta
     character(len=:), allocatable :: carbon_type_suffix
@@ -1089,6 +1089,10 @@ contains
 
 
  ! initialize variables from restart file or set to cold start value
+
+ this%dwt_conv_cflux_dribbled_grc(begg:endg) = spval
+
+
  n = 0
  np = 0
     do nc = 1,nch        ! catchment tile loop
@@ -1096,6 +1100,16 @@ contains
           n = n + 1
 
           this%annsum_npp_col (n) = cncol(nc,nz, 33)
+
+
+          do nl = 1, nlevdecomp_full
+             this%dwt_frootc_to_litr_met_c_col(n,nl) = 0._r8
+             this%dwt_frootc_to_litr_cel_c_col(n,nl) = 0._r8
+             this%dwt_frootc_to_litr_lig_c_col(n,nl) = 0._r8
+             this%dwt_livecrootc_to_cwdc_col(n,nl)   = 0._r8
+             this%dwt_deadcrootc_to_cwdc_col(n,nl)   = 0._r8
+          end do
+
 
           do p = 0,numpft  ! PFT index loop
              np = np + 1
@@ -1122,6 +1136,10 @@ contains
                   else
                      _ASSERT(.FALSE.,'missing CNCLM50_cold_start setting')
                   end if 
+
+                  this%excess_cflux_patch(np)          = 0._r8
+                  this%leafc_to_litter_fun_patch(np)   = 0._r8
+                  this%plant_calloc_patch(np)          = 0._r8
 
                  end if
             end do !nv
