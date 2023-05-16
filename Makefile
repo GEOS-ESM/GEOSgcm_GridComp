@@ -5,7 +5,7 @@ FC = nvfortran
 OPT = -O3 -Mfunc32 -Kieee -acc=gpu -gpu=flushz -Minfo=acc #NVIDIA compiler options
 #OPT = -O0 -fPIC -fopenacc -foffload="-lgfortran -lgomp -lm" -foffload=nvptx-none #Gfortran compiler options
 # OPT = -O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons # Ifort compiler options
-OBJ = MAPL_Constants.o cesm_const_mod.F90 coords_1d.o linear_1d_operators.o interpolate_data.o vdiff_lu_solver.o gw_utils.o gw_common.o gw_convect.o gw_oro.o gw_drag.o standalone.o
+OBJ = MAPL_Constants.o coords_1d.o linear_1d_operators.o interpolate_data.o vdiff_lu_solver.o gw_utils.o gw_common.o gw_convect.o gw_oro.o gw_drag.o standalone.o
 INC = -I/usr/include
 LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdff
 
