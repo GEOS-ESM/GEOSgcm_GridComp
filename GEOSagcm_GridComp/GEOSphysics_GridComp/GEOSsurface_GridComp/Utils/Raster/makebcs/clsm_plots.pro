@@ -612,8 +612,6 @@ make_movies, ncat, vec2grid, 'LAI'
 make_movies, ncat, vec2grid, 'GREEN'
 make_movies, ncat, vec2grid, 'VISDF'
 make_movies, ncat, vec2grid, 'NIRDF'
-make_movies, ncat, vec2grid, 'MODIS-VIS'
-make_movies, ncat, vec2grid, 'MODIS-NIR'
 
 END
 
@@ -995,8 +993,6 @@ if (vname eq 'LAI')   then filename = '../lai.dat'
 if (vname eq 'GREEN') then filename = '../green.dat' 
 if (vname eq 'VISDF') then filename = '../AlbMap.WS.8-day.tile.0.3_0.7.dat'
 if (vname eq 'NIRDF') then filename = '../AlbMap.WS.8-day.tile.0.7_5.0.dat'
-if (vname eq 'MODIS-VIS') then filename = '../MODISVISmean.dat'
-if (vname eq 'MODIS-NIR') then filename = '../MODISNIRmean.dat'
 
 im = n_elements(vec2grid[*,0].NT)
 jm = n_elements(vec2grid[0,*].NT)
