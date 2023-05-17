@@ -58,6 +58,7 @@ module CN_initMod
   use initSubgridMod
   use CN2CLMType
   use WaterType         , only : water_type
+  use CNBalanceCheckMod
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
@@ -297,6 +298,8 @@ module CN_initMod
     call energyflux_inst%Init           (bounds)  
 
     call frictionvel_inst%Init          (bounds)
+
+    call cn_balance_inst%Init           (bounds)
 
     ! calls to original CTSM initialization routines
 
