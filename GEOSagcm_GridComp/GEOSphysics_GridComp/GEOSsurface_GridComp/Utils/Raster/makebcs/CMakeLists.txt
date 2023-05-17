@@ -47,3 +47,5 @@ ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkEASETilesParam.x SOURCES mkEASETilesParam.F90 LIBS MAPL ${this})
 
 install(PROGRAMS make_bcs clsm_plots.pro create_README.csh  DESTINATION bin)
+file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
+install(PROGRAMS  ${MAKE_BCS_PYTHON} DESTINATION bin)
