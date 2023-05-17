@@ -13,8 +13,8 @@ module GEOS_AgcmSimpleGridCompMod
 !
 ! !DESCRIPTION: This gridded component (GC) combines the the GC that
 !   implements the Finite-Volume (FV) dynamics, with a simple physics
-!   component that implements the Held-Suarez benchmark forcing for 
-!   testing dry dynamical cores. 
+!   component that implements the Held-Suarez benchmark forcing for
+!   testing dry dynamical cores.
 !
 ! !USES:
 
@@ -35,7 +35,7 @@ module GEOS_AgcmSimpleGridCompMod
 
   public SetServices
 
- 
+
 !EOP
 
 contains
@@ -49,7 +49,7 @@ contains
 !   SetServices merely creates the children through MAPL and connects
 !   their Import-Export states. FV has some Imports that are
 !   not used in the Held-Suarez benchmark. Since these have proper defaults
-!   in FV, they can simply be terminated here. 
+!   in FV, they can simply be terminated here.
 
 
 ! !INTERFACE:
@@ -111,7 +111,7 @@ contains
          default    = 1.0e-6,                                      &
 !         RESTART    = MAPL_RestartRequired,                        &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                        &
@@ -120,7 +120,7 @@ contains
          UNITS      = 'kg kg-1',                                         &
          FRIENDLYTO = 'DYNAMICS',                             &
          DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )  
+         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                       &
@@ -129,15 +129,15 @@ contains
          UNITS      = 'kg kg-1',                                        &
          FRIENDLYTO = 'DYNAMICS',                            &
          DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )
+    VERIFY_(STATUS)
     call MAPL_AddInternalSpec(GC,                                     &
          SHORT_NAME = 'QILS',                                         &
          LONG_NAME  = 'mass_fraction_of_large_scale_cloud_ice_water', &
          UNITS      = 'kg kg-1',                                      &
          FRIENDLYTO = 'DYNAMICS',                          &
          DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )  
+         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                    &
@@ -146,7 +146,7 @@ contains
          UNITS      = 'kg kg-1',                                     &
          FRIENDLYTO = 'DYNAMICS',                         &
          DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
+         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
@@ -155,8 +155,8 @@ contains
          UNITS      = '1',                                         &
          FRIENDLYTO = 'DYNAMICS',                                  &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLCN',                                      &
@@ -164,11 +164,11 @@ contains
          UNITS      = '1',                                         &
          FRIENDLYTO = 'DYNAMICS',                                  &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         LONG_NAME  = 'mass_fraction_of_rain',                     &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = 'DYNAMICS',                       &
          default    = 0.0,                                         &
@@ -195,7 +195,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
-                                                                          
+
 
 ! Register children with MAPL and go down their SS hierarchy
 ! ----------------------------------------------------------
@@ -245,8 +245,9 @@ contains
 
     call MAPL_GenericSetServices( GC, RC=STATUS )
     VERIFY_(STATUS)
-   
+
     RETURN_(ESMF_SUCCESS)
+
   end subroutine SetServices
 !EOC
 
@@ -254,7 +255,7 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -264,16 +265,19 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm 
+    character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
 ! local vars
-   type (MAPL_MetaComp),      pointer  :: MAPL
-   type (ESMF_State),         pointer  :: GIM(:)
-   type (ESMF_Field)                   :: FIELD
-   type (ESMF_FieldBundle)             :: BUNDLE
-   type (ESMF_Config)                  :: cf
+    type (MAPL_MetaComp),      pointer  :: MAPL
+    type (ESMF_State),         pointer  :: GIM(:)
+    type (ESMF_Field)                   :: FIELD
+    type (ESMF_FieldBundle)             :: BUNDLE
+    type (ESMF_Config)                  :: cf
+    type (ESMF_Alarm)                   :: replay_shutoff_alarm
+    type(ESMF_TimeInterval)             :: shutoff
+    integer                             :: rplshut
 
     Iam = "Initialize"
     call ESMF_GridCompGet ( GC, name=COMP_NAME, config=cf, RC=STATUS )
@@ -311,38 +315,52 @@ contains
     call MAPL_GridCompGetFriendlies(GC, "DYNAMICS", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
 
+    ! Initialize alarms
+    call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=-3600, rc=status)
+    VERIFY_(status)
+    call ESMF_TimeIntervalSet(shutoff, S=abs(rplshut), rc=status)
+    VERIFY_(status)
+    replay_shutoff_alarm = ESMF_AlarmCreate( &
+         name="ReplayShutOff", &
+         clock=clock, &
+         ringInterval=shutoff, &
+         sticky=.true., &
+         rc=status)
+    VERIFY_(status)
+
     RETURN_(ESMF_SUCCESS)
+
   end subroutine Initialize
 
   subroutine Run( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code
 
- 
+
 !EOP
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)        :: IAm 
+    character(len=ESMF_MAXSTR)        :: IAm
     integer                           :: STATUS
     character(len=ESMF_MAXSTR)        :: COMP_NAME
-    
+
 ! Local derived type aliases
 
     type (MAPL_MetaComp    ), pointer :: MAPL
     type (ESMF_GridComp),      pointer  :: GCS(:)
     type (ESMF_State),         pointer  :: GIM(:)
     type (ESMF_State),         pointer  :: GEX(:)
-    
+
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -384,6 +402,8 @@ contains
     call MAPL_TimerOff(MAPL,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
+
   end subroutine Run
+
 end module GEOS_AgcmSimpleGridCompMod
 
