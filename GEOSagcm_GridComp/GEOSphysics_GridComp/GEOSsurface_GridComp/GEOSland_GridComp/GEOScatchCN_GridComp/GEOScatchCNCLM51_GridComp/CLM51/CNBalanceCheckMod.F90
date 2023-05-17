@@ -49,6 +49,7 @@ module CNBalanceCheckMod
      procedure , public  :: CBalanceCheck
      procedure , public  :: NBalanceCheck
   end type cn_balance_type
+  type(cn_balance_type), public, target, save :: cn_balance_inst
   !
 
   character(len=*), parameter, private :: sourcefile = &
