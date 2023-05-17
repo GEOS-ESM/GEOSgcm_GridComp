@@ -284,6 +284,8 @@ contains
   call active_layer_inst%alt_calc(filter(1)%num_soilc, filter(1)%soilc, &
        temperature_inst)
 
+  call bgc_vegetation_inst%InitEachTimeStep(bounds, filter(1)%num_soilc, filter(1)%soilc)
+
   call bgc_vegetation_inst%InitGridcellBalance(bounds, &
        filter(1)%num_allc, filter(1)%allc, &
        filter(1)%num_soilc, filter(1)%soilc, &
@@ -301,8 +303,6 @@ contains
        c13_soilbiogeochem_carbonstate_inst, &
        c14_soilbiogeochem_carbonstate_inst, &
        soilbiogeochem_nitrogenstate_inst)
-
-  call bgc_vegetation_inst%InitEachTimeStep(bounds, filter(1)%num_soilc, filter(1)%soilc)
 
   ! Ecosystem Dynamics calculations
   ! jkolassa: This call contains most of the CLM ecosystem dynamics
