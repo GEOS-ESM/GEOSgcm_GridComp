@@ -1,6 +1,5 @@
 !  $Id$
 #include "MAPL_Generic.h"
-
 !=============================================================================
 !BOP
 
@@ -717,6 +716,15 @@ contains
 ! Connections between the children
 !---------------------------------
 
+#ifdef BUILD_MIT_OCEAN
+  call MAPL_AddConnectivity ( GC,   &
+       SHORT_NAME  = (/'ICESTATES'/), &
+       DST_ID = OCEAN,               &
+       SRC_ID = SEAICE,             &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+#endif
+
   if(DO_DATASEAONLY==0) then
 !   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
        ! Radiation to Ocean
@@ -1301,11 +1309,11 @@ contains
        if (trim(OCEAN_NAME) == "MOM") then
          call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
          VERIFY_(STATUS)
-       endif
-       if (DO_OBIO/=0) then
-         call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
-         VERIFY_(STATUS)
-       end if
+         if (DO_OBIO/=0) then
+            call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
+            VERIFY_(STATUS)
+         end if
+      endif
     end if
 
 !   The section below attempts to make an intellegent guess of the default
