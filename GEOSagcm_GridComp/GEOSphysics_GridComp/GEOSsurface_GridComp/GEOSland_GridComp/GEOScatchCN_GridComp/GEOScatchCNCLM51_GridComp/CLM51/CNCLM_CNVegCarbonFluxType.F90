@@ -1090,8 +1090,8 @@ contains
 
  ! initialize variables from restart file or set to cold start value
 
- this%dwt_conv_cflux_dribbled_grc(begg:endg) = spval
- this%dwt_conv_cflux_grc(begg:endg) = spval
+ this%dwt_conv_cflux_dribbled_grc(begg:endg) = 0._r8
+ this%dwt_conv_cflux_grc(begg:endg) = 0._r8
 
 
  n = 0
@@ -1130,8 +1130,8 @@ contains
                       this%annsum_litfall_patch(np)    = cnpft(nc,nz,nv, 82)
                       this%tempsum_litfall_patch(np)   = cnpft(nc,nz,nv, 83)  
                   elseif (cold_start) then
-                      this%annsum_litfall_patch(np)    = spval      
-                      this%tempsum_litfall_patch(np)   = spval 
+                      this%annsum_litfall_patch(np)    = 0._r8      
+                      this%tempsum_litfall_patch(np)   = 0._r8 
                   else
                      _ASSERT(.FALSE.,'missing CNCLM50_cold_start setting')
                   end if 

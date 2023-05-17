@@ -302,6 +302,8 @@ contains
        c14_soilbiogeochem_carbonstate_inst, &
        soilbiogeochem_nitrogenstate_inst)
 
+  call bgc_vegetation_inst%InitEachTimeStep(bounds, filter(1)%num_soilc, filter(1)%soilc)
+
   ! Ecosystem Dynamics calculations
   ! jkolassa: This call contains most of the CLM ecosystem dynamics
   ! calculations, including soil biogeochemistry, carbon/nitrogen state and 
