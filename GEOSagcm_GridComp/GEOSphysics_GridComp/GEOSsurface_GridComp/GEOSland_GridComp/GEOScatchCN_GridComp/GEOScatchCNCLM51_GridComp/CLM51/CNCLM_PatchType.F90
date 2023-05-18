@@ -131,6 +131,7 @@ module PatchType
           do p = 0,numpft  ! PFT index loop
              np = np + 1
              do nv = 1,num_veg ! defined veg loop
+                this%active(np) = .true.
                 this%itype(np) = ityp(nc,nv,nz)
                 this%wtcol(np) = fveg(nc,nv,nz)
                 this%column(np) = n 
