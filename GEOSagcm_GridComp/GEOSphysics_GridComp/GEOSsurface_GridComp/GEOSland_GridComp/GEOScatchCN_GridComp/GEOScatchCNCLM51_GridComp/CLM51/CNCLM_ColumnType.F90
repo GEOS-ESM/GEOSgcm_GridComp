@@ -162,6 +162,7 @@ module ColumnType
     do nc = 1,nch        ! catchment tile loop
        do nz = 1,num_zon    ! CN zone loop
           n = n + 1
+          this%active(n)   = .true.
           this%gridcell(n) = nc
           this%wtgcell(n)  = CN_zone_weight(nz)
           this%landunit(n) = nc

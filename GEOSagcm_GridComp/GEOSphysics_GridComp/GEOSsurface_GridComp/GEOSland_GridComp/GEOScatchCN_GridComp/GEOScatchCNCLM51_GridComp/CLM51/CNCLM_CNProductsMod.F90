@@ -128,9 +128,11 @@ contains
     allocate(this%tot_woodprod_loss_grc(begg:endg)) ; this%tot_woodprod_loss_grc(:) = nan
     allocate(this%product_loss_grc(begg:endg)) ; this%product_loss_grc(:) = nan
 
-    this%dwt_cropprod1_gain_grc(begg:endg) = spval
-    this%dwt_prod10_gain_grc(begg:endg) = spval
-    this%dwt_prod100_gain_grc(begg:endg) = spval
+    this%dwt_cropprod1_gain_grc(begg:endg) = 0._r8
+    this%dwt_prod10_gain_grc(begg:endg) = 0._r8
+    this%dwt_prod100_gain_grc(begg:endg) = 0._r8
+    this%grain_to_cropprod1_grc(begg:endg) = 0._r8
+    this%grain_to_cropprod1_patch(begp:endp) = 0._r8
 
     ! initialize variables from restart file or set to cold start value
 
