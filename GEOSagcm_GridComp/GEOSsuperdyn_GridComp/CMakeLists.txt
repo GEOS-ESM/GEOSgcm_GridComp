@@ -9,6 +9,12 @@ set (alldirs
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SuperdynGridComp.F90)
 
+  if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOSdatmodyn_GridComp)
+
+    set (rename_GEOSdatmodyn_GridComp GEOS_DatmodynGridComp)
+
+  endif ()
+
   esma_add_library (${this}
     SRCS GEOS_SuperdynGridComp.F90
     SUBCOMPONENTS ${alldirs}
