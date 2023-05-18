@@ -46,6 +46,7 @@ module GEOS_MoistGridCompMod
   logical :: LUPDATE_PRECIP_TYPE
   logical :: LHYDROSTATIC
   logical :: USE_AERO_BUFFER
+  logical :: USE_MAMNET
   real    :: CCN_OCN
   real    :: CCN_LND
 
@@ -507,6 +508,42 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    !new imports required for Aer-Cloud Interactions
+
+    call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'TAUGWX',                                    &
+         LONG_NAME  = 'surface_eastward_gravity_wave_stress',      &
+         UNITS      = 'N m-2',                                     &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)   
+
+    call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'TAUGWY',                                    &
+         LONG_NAME  = 'surface_northward_gravity_wave_stress',     &
+         UNITS      = 'N m-2',                                     &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)   
+
+
+    call MAPL_AddImportSpec(GC,                             &
+         LONG_NAME          = 'eastward_surface_stress_on_air',    &
+         UNITS              = 'N m-2',                             &
+         SHORT_NAME         = 'TAUX',                              &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                             &
+         LONG_NAME          = 'northward_surface_stress_on_air',   &
+         UNITS              = 'N m-2',                             &
+         SHORT_NAME         = 'TAUY',                              &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'TAUOROX',                                   &
          LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
@@ -523,6 +560,23 @@ contains
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
+	call MAPL_AddImportSpec(GC,                                     &
+         SHORT_NAME = 'RI',                                         &
+         LONG_NAME  = 'Richardson_number_from_Louis',               &
+         UNITS      = '1',                                          &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationEdge,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddImportSpec(GC,                              &
+         SHORT_NAME = 'KM',                                         &
+         LONG_NAME  = 'momentum_diffusivity',                         &
+         UNITS      = 'm+2 s-1',                                    &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationEdge,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'OMEGA',                                     &
@@ -4690,6 +4744,71 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    
+       !-------MAMnet------------------------------------------
+ 
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_ACC',                                          & 
+             LONG_NAME ='Accumulation mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+        call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_AIT',                                          & 
+             LONG_NAME ='Aitken mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_CDU',                                          & 
+             LONG_NAME ='Coarse dust mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_CSS',                                          & 
+             LONG_NAME ='Coarse sea salt mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_FDU',                                          & 
+             LONG_NAME ='Fine dust mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_FSS',                                          & 
+             LONG_NAME ='Fine sea salt mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+
+         call MAPL_AddExportSpec(GC,                                          &
+             SHORT_NAME='MAMNET_NUM_A_PCM',                                          & 
+             LONG_NAME ='Primary carbon mode number concentration',        &
+             UNITS     ='Kg-1',                                                 &
+             DIMS      = MAPL_DimsHorzVert,                                  &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+         VERIFY_(STATUS)
+   
+    
+    
+    
+    
+    
+    
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DQDT_GF',                                    &
          LONG_NAME  = 'tendency_of_spec_humidity_due_GF',        &
@@ -5026,10 +5145,11 @@ contains
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_MAMNET , 'USE_MAMNET:' , DEFAULT=.FALSE. , RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
       call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
-      call aer_cloud_init()
-      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+       !call aer_cloud_init()
+       !call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     endif
 
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
@@ -5037,6 +5157,7 @@ contains
     !           in so they have to be defined
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
+   
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5122,7 +5243,6 @@ contains
     real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
-    real, pointer, dimension(:,:,:  ) :: NWFA
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
@@ -5246,7 +5366,6 @@ contains
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
 
        ! These may be used by children
-       call MAPL_GetPointer(EXPORT, NWFA,    'NWFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CNV_FRC, 'CNV_FRC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, BYNCY,   'BYNCY'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, CAPE,    'CAPE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5280,7 +5399,7 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
-         allocate ( AeroProps(IM,JM,LM) )
+!         allocate ( AeroProps(IM,JM,LM) )
          ! get veritical velocity
          if (LHYDROSTATIC) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
@@ -5290,7 +5409,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroProps, AERO, NACTL, NACTI, CCN_LND*1.e6, CCN_OCN*1.e6, USE_MAMNET)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3

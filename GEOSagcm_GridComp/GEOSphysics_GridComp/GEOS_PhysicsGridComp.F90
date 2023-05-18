@@ -1291,7 +1291,7 @@ contains
                          'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
                          'HL2          ', 'HL3          ', 'W2           ',     &
                          'W3           ', 'HLQT         ', 'WQT          ',     &
-                         'WHL          ', 'QT2          ', 'QT3          '/),    &
+                         'WHL          ', 'QT2          ', 'QT3          ', 'KM', 'RI'/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
@@ -1313,8 +1313,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'T2M ', 'Q2M ', 'TA  ', 'QA  ', 'SH  ',   &
-                         'EVAP'                                    &
+         SHORT_NAME  = (/'USTAR', 'TSTAR', 'QSTAR', 'T2M  ',       &
+                         'Q2M  ', 'TA   ', 'QA   ', 'SH   ',       &
+                         'EVAP '                                   &
                        /),                                         &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
@@ -1339,6 +1340,21 @@ contains
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
+
+    !Gravity wave drag parameters for subgrid scale V
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'TAUGWX'/),                                 &
+         DST_ID      =  MOIST,                                     &
+         SRC_ID      =  GWD,                                      &
+                                                        RC=STATUS  )
+   VERIFY_(STATUS)
+
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'TAUGWY'/),                                 &
+         DST_ID      =  MOIST,                                     &
+         SRC_ID      =  GWD,                                      &
+                                                        RC=STATUS  )
+   VERIFY_(STATUS)
 
    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROX'/),                                 &

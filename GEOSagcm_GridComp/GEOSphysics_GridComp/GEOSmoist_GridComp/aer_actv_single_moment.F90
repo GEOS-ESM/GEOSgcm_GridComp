@@ -4,7 +4,7 @@ MODULE Aer_Actv_Single_Moment
 
       USE ESMF
       USE MAPL
-      USE aer_cloud, only: AerProps
+      USE aer_cloud, only: AerProps, MAMnet_param
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
       PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
@@ -38,10 +38,13 @@ MODULE Aer_Actv_Single_Moment
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
                                        sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
-                                       AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
+                                       AeroProps, aero_aci, NACTL, NACTI,  NN_LAND, NN_OCEAN, USE_MAMNET)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
-      TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
+      !TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
+      
+      TYPE(AerProps), allocatable, dimension (:,:,:, :),intent(inout)  :: AeroProps 
+      
       type(ESMF_State)            ,intent(inout) :: aero_aci
       real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
       real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
@@ -53,7 +56,7 @@ MODULE Aer_Actv_Single_Moment
       logical                     ,intent(in ) :: USE_AERO_BUFFER
       
  
-      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
+      real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI
       
       real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
       real(AER_PR), dimension (IM,JM,LM) :: zws
@@ -62,10 +65,11 @@ MODULE Aer_Actv_Single_Moment
       integer, dimension (IM,JM) :: kpbli
 
       real, dimension(:,:,:,:,:), allocatable :: buffer
+      real, pointer, dimension(:,:,:,:) :: mamnet_in
 
       character(len=ESMF_MAXSTR)      :: aci_field_name
       real, pointer, dimension(:,:)   :: aci_ptr_2d
-      real, pointer, dimension(:,:,:) :: aci_ptr_3d
+      real, pointer, dimension(:,:,:) :: aci_ptr_3d, PTR3D
       real, pointer, dimension(:,:,:) :: aci_num
       real, pointer, dimension(:,:,:) :: aci_dgn
       real, pointer, dimension(:,:,:) :: aci_sigma
@@ -84,23 +88,74 @@ MODULE Aer_Actv_Single_Moment
 
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
+      logical :: USE_MAMNET
 
-      do k = 1, LM
-          do j = 1, JM
-              do i = 1, IM
-                  AeroProps(i,j,k)%num = 0.0
-              end do
-          end do
-      end do
+      
 
       kpbli = MAX(MIN(NINT(kpbl),LM-1),1)
       
+      
+      if (USE_MAMNET) then 
+     
+      	!print *, '=====yes I am running mamnet======'
+        
+        call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+
+        allocate(aero_aci_modes(n_modes), __STAT__) !not the actual number of modes
+               
+        call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)  
+
+
+        allocate(mamnet_in(im,jm,lm,n_modes+2), __STAT__)
+        !n_modes are not actually the final "modes", rather the number of species mapped from gocart
+        do n = 1, n_modes
+        	call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
+            call ESMF_AttributeGet(aero_aci, name='gocart_mass_map', value=aci_field_name, __RC__)
+            call MAPL_GetPointer(aero_aci, aci_ptr_3d, trim(aci_field_name), __RC__) 
+
+            where (aci_ptr_3d .gt. 0.0)
+                mamnet_in(:,:,:,n) = log10(aci_ptr_3d*1.0e9)
+            elsewhere
+                mamnet_in(:,:,:,n) =  -20.0
+            end where    
+        end do
+
+        mamnet_in(:, :, :, n_modes+1) =  T
+        mamnet_in(:, :, :, n_modes+2) =  PLO/T/MAPL_RGAS
+
+        n_modes =  7 !actual number of modes
+        allocate ( AeroProps(IM,JM,LM, n_modes) ) 
+        call MAMnet_param(AeroProps, mamnet_in, IM*JM, LM, n_modes) 
+         
+               
+
+        deallocate(mamnet_in, __STAT__)
+
+   	ELSE !MAMNET
+                      
       if (USE_AEROSOL_NN) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
-
+          
           if (n_modes > 0) then
-
+          
+              allocate ( AeroProps(IM,JM,LM, n_modes) ) 
+	          
+              ! These lines are nececsary for zero-diff to the previous AeroProps version when USE_AEROSOL_NN =.TRUE. 
+              ! But they are not really neccesary and consume 5% of the moist time. We should remove them. Donifan
+              !========================================================
+              
+              AeroProps%num = 0.0
+              AeroProps%dpg = 1.0e-9  !dry Geometric size, m
+      		  AeroProps%sig = 2.0 !logarithm (base e) of the dry geometric disp
+	  		  AeroProps%den = 2200.0 !dry density , Kg m-3
+  	          AeroProps%kap = 0.2 !Hygroscopicity parameter 
+ 	          AeroProps%fdust = 0.0! mass fraction of dust 
+	          AeroProps%fsoot = 0.0 ! mass fraction of soot
+	          AeroProps%forg  = 0.0 ! mass fraction of organics
+              !=====================================================
+              
+              
               allocate( sig0(n_modes), __STAT__)
               allocate(   rg(n_modes), __STAT__)
               allocate(   ni(n_modes), __STAT__)
@@ -165,66 +220,16 @@ MODULE Aer_Actv_Single_Moment
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
 
-                 if (USE_AERO_BUFFER) then
-                    buffer(:,:,:,n,1) = aci_num
-                    buffer(:,:,:,n,2) = aci_dgn
-                    buffer(:,:,:,n,3) = aci_sigma
-                    buffer(:,:,:,n,4) = aci_hygroscopicity
-                    buffer(:,:,:,n,5) = aci_density
-                    buffer(:,:,:,n,6) = aci_f_dust
-                    buffer(:,:,:,n,7) = aci_f_soot
-                    buffer(:,:,:,n,8) = aci_f_organic
-                 else
-                    AeroProps(:,:,:)%num(n)   = aci_num
-                    AeroProps(:,:,:)%dpg(n)   = aci_dgn
-                    AeroProps(:,:,:)%sig(n)   = aci_sigma
-                    AeroProps(:,:,:)%kap(n)   = aci_hygroscopicity
-                    AeroProps(:,:,:)%den(n)   = aci_density
-                    AeroProps(:,:,:)%fdust(n) = aci_f_dust
-                    AeroProps(:,:,:)%fsoot(n) = aci_f_soot
-                    AeroProps(:,:,:)%forg(n)  = aci_f_organic
-                    AeroProps(:,:,:)%nmods    = n_modes                 ! no need of a 3D field: aero provider specific
-                 end if
-
+                AeroProps(:,:,:, n)%num   = aci_num
+                AeroProps(:,:,:, n)%dpg   = aci_dgn
+                AeroProps(:,:,:, n)%sig   = aci_sigma
+                AeroProps(:,:,:, n)%kap   = aci_hygroscopicity
+                AeroProps(:,:,:, n)%den   = aci_density
+                AeroProps(:,:,:, n)%fdust = aci_f_dust
+                AeroProps(:,:,:, n)%fsoot = aci_f_soot
+                AeroProps(:,:,:, n)%forg  = aci_f_organic
+                
               end do ACTIVATION_PROPERTIES
-
-              if (USE_AERO_BUFFER) then
-                 do k = 1, LM
-                    do j = 1, JM
-                       do i = 1, IM
-                          do n = 1, n_modes
-                             AeroProps(i,j,k)%num(n)   = buffer(i,j,k,n,1)
-                             AeroProps(i,j,k)%dpg(n)   = buffer(i,j,k,n,2)
-                             AeroProps(i,j,k)%sig(n)   = buffer(i,j,k,n,3)
-                             AeroProps(i,j,k)%kap(n)   = buffer(i,j,k,n,4)
-                             AeroProps(i,j,k)%den(n)   = buffer(i,j,k,n,5)
-                             AeroProps(i,j,k)%fdust(n) = buffer(i,j,k,n,6)
-                             AeroProps(i,j,k)%fsoot(n) = buffer(i,j,k,n,7)
-                             AeroProps(i,j,k)%forg(n)  = buffer(i,j,k,n,8)
-                          end do
-                          AeroProps(i,j,k)%nmods       = n_modes                 ! no need of a 3D field: aero provider specific
-                       end do
-                    end do
-                 end do
-
-                 deallocate(buffer, __STAT__)
-              end if
-              
-             
-              do k = 1, LM
-               do j = 1, JM
-                do i = 1, IM
-                nfaux =  0.0
-                 do n = 1, n_modes
-                   if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
-                            nfaux =  nfaux + AeroProps(i,j,k)%num(n)
-                   end if                           
-                 end do !modes
-                 NWFA(I, J, K)  =  nfaux
-                end do
-               end do 
-              end do 
-             
 
               deallocate(aero_aci_modes, __STAT__)
 
@@ -260,10 +265,10 @@ MODULE Aer_Actv_Single_Moment
             IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
                 (wupdraft > 0.1 .and. wupdraft < 100.) ) then
 
-                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
-                rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
-                sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
-                bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
+                ni   (1:n_modes)    =   max(AeroProps(i,j,k, 1:n_modes)%num*air_den,  zero_par)  ! unit: [m-3]
+                rg   (1:n_modes)    =   max(AeroProps(i,j,k, 1:n_modes)%dpg*0.5*1.e6, zero_par)  ! unit: [um]
+                sig0 (1:n_modes)    =       AeroProps(i,j,k, 1:n_modes)%sig                      ! unit: [um]
+                bibar(1:n_modes)    =   max(AeroProps(i,j,k, 1:n_modes)%kap,          zero_par)                 
 
                 call GetActFrac(           n_modes    &
                                ,      ni(1:n_modes)   &
@@ -279,7 +284,7 @@ MODULE Aer_Actv_Single_Moment
                 numbinit = 0.
                 NACTL(i,j,k) = 0.
                 DO n=1,n_modes
-                   numbinit = numbinit + AeroProps(i,j,k)%num(n)*air_den
+                   numbinit = numbinit + AeroProps(i,j,k, n)%num*air_den
                    NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
                 ENDDO
                 NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
@@ -290,8 +295,8 @@ MODULE Aer_Actv_Single_Moment
             IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
                 numbinit = 0.
                 DO n=1,n_modes
-                   if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
-                   numbinit = numbinit + AeroProps(i,j,k)%num(n)
+                   if (AeroProps(i,j,k, n)%dpg .ge. 0.5e-6) & ! diameters > 0.5 microns
+                   numbinit = numbinit + AeroProps(i,j,k, n)%num
                 ENDDO
                 numbinit = numbinit * air_den ! #/m3
                 ! Number of activated IN following deMott (2010) [#/m3]
@@ -321,6 +326,10 @@ MODULE Aer_Actv_Single_Moment
         end do
 
       end if
+      
+      END IF !USE MAMNET
+
+
 
       END SUBROUTINE Aer_Activation
       

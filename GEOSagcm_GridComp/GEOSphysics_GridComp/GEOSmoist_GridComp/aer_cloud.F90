@@ -2,6 +2,8 @@
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
  use m_fpe, only: isnan
+ use mod_network , only: network_type
+ use mod_kinds, only: ik, rk
 
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
@@ -12,34 +14,38 @@
 
       implicit none
       private
+      save
       
       public :: aerosol_activate
-      public :: AerConversion	
       public :: AerProps
-      public :: getINsubset
-      public :: init_Aer
+      public :: copy_Aer
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
+      public :: Wneuralnet
+      public :: MAMnet_param
     
        integer, parameter ::  &
         nsmx_par = 20, npgauss=10 !maximum number of 	
        !nsmx_par !maximum number of modes allowed
     
     
-    type :: AerProps            
-	sequence 
-          real, dimension(nsmx_par)  :: num !Num conc m-3
-          real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
-    	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
-	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
-  	  real, dimension(nsmx_par)  :: kap !Hygroscopicity parameter 
- 	  real, dimension(nsmx_par)  :: fdust! mass fraction of dust 
-	  real, dimension(nsmx_par)  :: fsoot ! mass fraction of soot
-	  real, dimension(nsmx_par)  :: forg ! mass fraction of organics
-	  integer   :: nmods  ! total number of modes (nmods<nmodmax)
-      end type AerProps     
-   
+     
+      
+      
+    type :: AerProps  !modal properties          
+	  sequence 
+      real   :: num = 0.0!Num conc m-3
+      real   :: dpg = 1.0e-9  !dry Geometric size, m
+      real   :: sig = 2.0 !logarithm (base e) of the dry geometric disp
+	  real   :: den = 2200.0 !dry density , Kg m-3
+  	  real   :: kap = 0.2 !Hygroscopicity parameter 
+ 	  real   :: fdust = 0.0! mass fraction of dust 
+	  real   :: fsoot = 0.0 ! mass fraction of soot
+	  real   :: forg  = 0.0 ! mass fraction of organics
+    end type AerProps   
+      
+    
       interface assignment (=)
          module procedure copy_aer
       end interface 
@@ -84,7 +90,7 @@
 !
       real*8  ::   pi_par, zero_par, great_par, sq2pi_par, sq2_par
       
-      real*8  ::  ntot      
+      real*8  ::  ntot, smax_diag(10) ! a place holder      
 
 
       logical :: use_av_v, crit2_par
@@ -96,6 +102,9 @@
                     frac_dust(5), frac_bc, frac_org, aseasalt, nseasalt_ice, &
                     INSSfactor
 
+! Neural Network parameterizations 
+      type (network_type) :: Wnet
+      type (network_type) :: MAMnet
       
 !==================================================================
 
@@ -193,43 +202,29 @@
  
       CONTAINS
  
-      subroutine aer_cloud_init()
+      subroutine aer_cloud_init(use_wnet, use_mamnet, smaxdiags)
   
-        real*8 :: daux, sigaux, ahet_bc
-        integer ::ix
-
-       call AerConversion_base
-
+       real*8 :: daux, sigaux, ahet_bc
+       logical, intent(in):: use_wnet
+       logical, intent(in):: use_mamnet       
+       integer ::ix       
+       real, dimension(:), intent(in) :: smaxdiags
+       
+       
+       smax_diag  =  0.0       
+       smax_diag(1:size(smaxdiags)) =  smaxdiags
+       
+     
        !heterogeneous freezing!!!!!!!!!!!!
         acorr_dust=2.7e7! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
-	!acorr_dust=4.5e7! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
+	   !acorr_dust=4.5e7! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
         acorr_bc=8.0e7 !m2/m3 correction to the area due to non sphericity and aggregation Assumes 50 g/m2 (Popovicheva 1996)
 
-
-
-       !Calculate fractions above 0.1 microns (only for Gocart)
-       do ix =  1, 5          
-	 daux = AerPr_base_polluted%dpg(ix) 
-	 sigaux =  AerPr_base_polluted%sig(ix) 		 
-         frac_dust(ix)=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))
-			       
-	
-			
-       end do
-       
-       !black carbon
-	 daux = AerPr_base_polluted%dpg(12) 
-	 sigaux =  AerPr_base_polluted%sig(12) 		 
-         frac_bc=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))		       
-	 ahet_bc= daux*daux*daux*0.52*acorr_bc* &
-	                exp(4.5*sigaux*sigaux) !Assume spheres by no
-			       	  
-  	 daux = AerPr_base_polluted%dpg(13) 
-	 sigaux =  AerPr_base_polluted%sig(13) 		 
-         frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))		       
+       if (use_wnet)  call Wnet % load('./Wnet_weights.rc') 
+      
+       if (use_mamnet)  then 
+      	call MAMnet % load('./MAMnet_weights.rc')
+       end if	
 
       end subroutine aer_cloud_init
   
@@ -273,37 +268,37 @@
 
   
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-					   npre_in, dpre_in, ccn_diagr8, Ndropr8, qc, &
+					   npre_in, dpre_in, ccn_diagr8, &
 					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
 					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
                        so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
                        fd_dust, fd_soot, &
-					   pfrz_inc_r8,  rhi_cell, frachet_dust, frachet_bc, frachet_org, frachet_ss, &
-                       Immersion_param)
+					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+                       Immersion_param, nmodes)
 
 
 
   
-      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
+      type(AerProps),  intent(in), dimension(nmodes) :: Aer_Props !Aerosol Properties
 	
-       logical        ::   use_average_v
+      logical        ::   use_average_v
        
-      real(r8), intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-					   npre_in, dpre_in, Ndropr8, qc, fd_soot, fd_dust,  rhi_cell, &
+      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+					   npre_in, dpre_in, fd_soot, fd_dust,  &
                        frachet_dust, frachet_bc, frachet_org, frachet_ss
                        
-      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+      integer,  intent(in) :: CCN_param, IN_param, Immersion_param, nmodes !IN param is now only for cirrus					   
             
       real(r8), dimension(:), intent(inout) :: ccn_diagr8 
       
-      real(r8), intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+      real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
-					   ndust_immr8, ndust_depr8,  nlimr8, pfrz_inc_r8
+					   ndust_immr8, ndust_depr8,  nlimr8
                         
-      real(r8), intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
-      type(AerProps) :: Aeraux       
+      type(AerProps) :: Aeraux != AerProps(0.0,1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0)      
        
       !local 
       integer  ::  k, n,  I, J, naux, index      
@@ -314,10 +309,13 @@
         
        real*8          :: nhet, nice, smaxice, nlim, air_den, &
                         frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
+
+       
+                         
    
 !=============inputs================
       tparc=tparc_in      
-      pparc=pparc_in      
+      pparc=pparc_in*100.0      
       sigwparc=sigwparc_in      
       miuv_ice = wparc_ls
       air_den=pparc*28.8d-3/rgas_par/tparc !Kg/m3
@@ -352,24 +350,22 @@
       ndust_depr8 = zero_par
       ndust_imm = zero_par
       ndust_dep = zero_par
-      pfrz_inc_r8 = zero_par
       
       nact=zero_par
       smax=zero_par                    
       sc_icer8= sc_ice
-       
+             
       !*******************
          is_gocart = .false. 
       !*******************
       
       
-      if (sum(Aer_Props%num) .le. 1.0e2) then  !Just get out if too few aerosol 
+      if (sum(Aer_Props(:)%num) .le. 1.0e2) then  !Just get out if too few aerosol 
        return 
-     end if 				   
+      end if 				   
 					   
     !get input into local variables
     
-      nmodes =  max(Aer_Props%nmods, 1)
       nmd_par=nmodes
 	    
       allocate (dpg_par(nmodes)) ! geometric mean diameter
@@ -385,6 +381,7 @@
 
       
      
+
       dpg_par  = zero_par
       vhf_par  = zero_par
       ams_par  = zero_par
@@ -397,19 +394,19 @@
       sigw = zero_par
       
        ! Mean droplet volume 
-      if (Ndropr8 .gt. 0.0) then 
-         Vdrop=  qc/Ndropr8
-     elseif (qc  .gt. 0.0) then 
-        Vdrop = 0.52*(10e-6**3.0)
-     end if
+!     if (Ndropr8 .gt. 0.0) then 
+!         Vdrop=  qc/Ndropr8
+!     elseif (qc  .gt. 0.0) then 
+!        Vdrop = 0.52*(10e-6**3.0)
+!     end if
      
-    call init_Aer(Aeraux)      
+      
          
-      tp_par(1:nmodes)       =     DBLE(Aer_Props%num(1:nmodes))*air_den !make it per m-3
-      dpg_par(1:nmodes)     =    DBLE(Aer_Props%dpg(1:nmodes))
-      sig_par(1:nmodes)      =    DBLE(Aer_Props%sig(1:nmodes))
-      kappa_par(1:nmodes) =   DBLE(Aer_Props%kap(1:nmodes))
-      dens_par(1:nmodes)   =   DBLE(Aer_Props%den(1:nmodes))
+      tp_par(1:nmodes)     =   DBLE(Aer_Props(1:nmodes)%num)*air_den !make it per m-3
+      dpg_par(1:nmodes)    =   DBLE(Aer_Props(1:nmodes)%dpg)
+      sig_par(1:nmodes)    =   DBLE(Aer_Props(1:nmodes)%sig)
+      kappa_par(1:nmodes)  =   DBLE(Aer_Props(1:nmodes)%kap)
+      dens_par(1:nmodes)   =   DBLE(Aer_Props(1:nmodes)%den)
       
       
       kappa_par=  max(kappa_par, 0.001)
@@ -450,7 +447,7 @@
 
 !============== Calculate cloud droplet number concentration===================
    
-  if  (tparc .gt. 235.0) then  ! lower T for liquid water activation 
+  if  (tparc .gt. 240.0) then  ! lower T for liquid water activation doniff2022 
       if (antot .gt. 1.0) then !only if aerosol is present
        ! Get CCN spectra   		    	
         call ccnspec (tparc,pparc,nmodes)	            
@@ -473,11 +470,12 @@
 
          
 	  				   
-         do k =1, 3!  size (ccn_diagr8)	
-	     	call ccn_at_super (ccn_diagr8(k), ccn_at_s)
+         do k =1, size (ccn_diagr8)
+	     	call ccn_at_super (smax_diag(k), ccn_at_s)
             ccn_diagr8 (k) = ccn_at_s!m-3
 	 	 end do
-	
+
+            
       end if 
   end if 
   
@@ -509,10 +507,8 @@
     end if 
  end do     
  
-
-   
- 
-  do k = 1, nmodes
+  
+ do k = 1, nmodes
    if (kappa_par(k) .gt.  0.8) then  ! sea salt concentration
     nseasalt_ice = nseasalt_ice + tp_par(k)
     aseasalt =  aseasalt +  pi_ice*dpg_par(k)*dpg_par(k)*exp(2.0*sig_par(k)*sig_par(k))*tp_par(k)               
@@ -521,59 +517,107 @@
 
   seasalt_conc =   nseasalt_ice          
   so4_conc =   np_ice - nseasalt_ice    
-  
- 
 
     ddry_ice = ddry_ice/max(naux , 1) 
     frac = 1.0
     np_ice =frac*np_ice 
 
-!get dust from input structure
+!--------------get dust from input structure
      
- call getINsubset(1, Aer_Props, Aeraux) 
-  nbindust_ice = max(Aeraux%nmods, 1)  
+  
+  nbindust_ice = 0
+  
+  do k = 1, nmodes
+     if (Aer_Props(k)%fdust .gt. 0.25) nbindust_ice = nbindust_ice + 1
+  end do     
+  nbindust_ice = max(nbindust_ice, 1)  
 
   allocate(ndust_ice(nbindust_ice))
   allocate(sigdust_ice(nbindust_ice))
   allocate(ddust_ice(nbindust_ice))
   allocate(areadust_ice(nbindust_ice))
 
-     ddust_ice=DBLE(Aeraux%dpg(1:nbindust_ice))     
-     ndust_ice=DBLE(Aeraux%num(1:nbindust_ice))*air_den*hetfracice_dust
-     sigdust_ice=DBLE(Aeraux%sig(1:nbindust_ice))
 
-     dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
-  
-         DO index =1,nbindust_ice                
-        	    ! areadust_ice(index)= ddust_ice(index)*ddust_ice(index)*pi_ice*exp(2.0*sigdust_ice(index)*sigdust_ice(index))
-              !   Assume spheres by now
-  		       areadust_ice(index) = ddust_ice(index)*ddust_ice(index)*ddust_ice(index)*0.52*acorr_dust* &
-	                	exp(4.5*sigdust_ice(index)*sigdust_ice(index)) !Assume spheres by now	       			
-		END DO 
+   index =  1
+   do k = 1, nmodes      
+      if (Aer_Props(k).fdust .gt. 0.25) then           
+         ddust_ice(index)= Aer_props(k)%dpg     
+         ndust_ice(index)= Aer_props(k)%num*air_den
+         sigdust_ice(index)=Aer_props(k)%sig
+         index =  index + 1 
+      end if 
+   end do
+         
+    DO index =1,nbindust_ice                
+        ! areadust_ice(index)= ddust_ice(index)*ddust_ice(index)*pi_ice*exp(2.0*sigdust_ice(index)*sigdust_ice(index))
+      !   Assume spheres by now
+  	   areadust_ice(index) = ddust_ice(index)*ddust_ice(index)*ddust_ice(index)*0.52*acorr_dust* &
+	            exp(4.5*sigdust_ice(index)*sigdust_ice(index)) !Assume spheres by now	       			
+	END DO 
            
-  
-!Black carbon. Only a single mode considered. Use average size and sigma
-
- call getINsubset(2, Aer_Props, Aeraux) 
-     naux =  max(Aeraux%nmods, 1) 
-     dbc_ice=DBLE(sum(Aeraux%dpg(1:naux)))/naux          
-     nbc_ice=DBLE(sum(Aeraux%num(1:naux)))*air_den*hetfracice_bc     
-     sigbc_ice=DBLE(sum(Aeraux%sig(1:naux)))/naux
-    ! areabc_ice =  dbc_ice*dbc_ice*pi_ice*exp(2.0*sigbc_ice*sigbc_ice)  
-    
-      areabc_ice =  dbc_ice*dbc_ice*dbc_ice*0.52*acorr_bc*exp(4.5*sigbc_ice*sigbc_ice)  
+    dust_conc = sum(ndust_ice)
+    ndust_ice = ndust_ice*hetfracice_dust
   
   
-     bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
- !Soluble organics 
+  
+!------------Black carbon. Only a single mode considered. Use average size and sigma
+   naux =  0
+   dbc_ice = 0.0
+   nbc_ice =  0.0
+   sigbc_ice =  0.0
    
-   call getINsubset(3, Aer_Props, Aeraux) 
-     naux =  max(Aeraux%nmods, 1) 
-     dorg_ice=DBLE(sum(Aeraux%dpg(1:naux)))/naux     
-     norg_ice=DBLE(sum(Aeraux%num(1:naux)))*air_den*hetfracice_org
-     sigorg_ice=DBLE(sum(Aeraux%sig(1:naux)))/naux
+   do k = 1, nmodes      
+      if (Aer_Props(k).fsoot .gt. 0.25) then       
+         naux =  naux + 1 
+         dbc_ice=Aer_props(k)%dpg  + dbc_ice          
+         nbc_ice=Aer_props(k)%num*air_den     
+         sigbc_ice=Aer_props(k)%sig + sigbc_ice
+       end if 
+    end do 
+    
+    bc_conc = nbc_ice
+    nbc_ice =  nbc_ice*hetfracice_bc
+         
+    if (naux .gt. 0) then 
+       dbc_ice= dbc_ice /naux          
+       nbc_ice=nbc_ice/naux     
+       sigbc_ice= sigbc_ice/naux
+    end if 
+    
+    ! areabc_ice =  dbc_ice*dbc_ice*pi_ice*exp(2.0*sigbc_ice*sigbc_ice)      
+     areabc_ice =  dbc_ice*dbc_ice*dbc_ice*0.52*acorr_bc*exp(4.5*sigbc_ice*sigbc_ice)  
+      
+        
+ !----------------------Soluble organics 
+      
+   naux =  0
+   dorg_ice = 0.0
+   norg_ice =  0.0
+   sigorg_ice =  0.0
+   
+   do k = 1, nmodes      
+      if (Aer_Props(k).forg .gt. 0.25) then       
+         naux =  naux + 1 
+         dorg_ice=Aer_props(k)%dpg  + dorg_ice          
+         norg_ice=Aer_props(k)%num*air_den     
+         sigorg_ice=Aer_props(k)%sig + sigorg_ice
+       end if 
+    end do 
+    
+    org_conc = norg_ice
+    norg_ice =  norg_ice*hetfracice_org
+         
+    if (naux .gt. 0) then 
+       dorg_ice= dorg_ice /naux          
+       norg_ice=norg_ice/naux     
+       sigorg_ice= sigorg_ice/naux
+    end if 
+    
+    ! areaorg_ice =  dorg_ice*dorg_ice*pi_ice*exp(2.0*sigorg_ice*sigorg_ice)      
+      !areaorg_ice =  dorg_ice*dorg_ice*dorg_ice*0.52*acorr_org*exp(4.5*sigorg_ice*sigorg_ice)  
 
-         org_conc  =  sum(Aeraux%num(1:naux))*air_den
+
+
      
   nhet     = zero_par
   nice     = zero_par
@@ -690,7 +734,6 @@
     deallocate (amfs_par)
     deallocate (deni_par)
     deallocate (sg_par)
-    
     deallocate (kappa_par)
 
       
@@ -702,324 +745,282 @@
 
 
 
-
 !=======================================================================
-!
-! *** SUBROUTINE AerConversion_base
-! *** This subrotine sets basic properties of the aerosol size distributions when using GOCART aerosol 
-!****Mass-number conversion based on Barahona at al. GMD, 2014.  
-!=======================================================================
-
-!Output:  
-      !  AerPr: AerProps structure containing aerosol properties. Used everywhere else in moist
-      ! SULFATE, ORG, BCARBON, DUST, SEASALT : Diagnostic Number concentrations (1 m-3)
-      ! Kappa: Weighted hygroscopicity parameter
-!
-      SUBROUTINE AerConversion_base ()
-					     
-      integer, parameter:: NMDM  = 20
-      real, dimension(:) :: TPI(NMDM), DPGI(NMDM),  SIGI(NMDM),  &
-                                        DENSI(NMDM),  KAPPAS(NMDM),   FDUST(NMDM), &
-					FSOOT(NMDM), FORG(NMDM), &
-					 TPI_aux(NMDM), DPGI_aux(NMDM),  SIGI_aux(NMDM)
-										
-       real:: aux
-       integer:: nmod, K
-       
-   !Defaults
+! Neural Network parameterization of aerosol size distributio  (Breen et al. 2023)
+! Two neural nets work in series:
+! mass_net (Gocart-mapped total mass, T, P [samples, 7] to MAM mass species [samples, 24])    
+! number_net (MAM species [samples, 24] to MAM modal number conc. [samples, 7])   
+! mass (microg/kg) and number (#/Kg) concentrations  are log10 transformed
+! Output is an Aerprops structure for 7 modes 
    
-   TPI = 0.0
-   DPGI=1.0e-9
-   SIGI = 2.0
-   DENSI = 2200.0
-   KAPPAS = 0.01
-   FDUST =0.0
-   FSOOT = 0.0
-   FORG = 0.0   
-   nmod = 13
+subroutine MAMnet_param(aerpr3D, inp, NS, LM, nmods)
+
+    integer, parameter :: nfeat =  7
+    type(AerProps),  dimension(NS, LM, nmods), intent(inout) :: aerpr3D !Aerosol Properties
+    real, dimension(NS, LM, nfeat), intent(inout) :: inp !gocart-like aerosol mass (1-5), T(6), AirDen(7)
+    integer, intent(in) :: LM, NS, nmods
+   
+   ! auxilliary parameters
+    ! ---------------------
+    real, parameter :: dens_SO4 = 1700.0
+    real, parameter :: dens_ORG = 1600.0
+    real, parameter :: dens_SS  = 2200.0
+    real, parameter :: dens_DU  = 1700.0
+    real, parameter :: dens_BC  = 1600.0
+
+    real, parameter :: k_SO4   = 0.65
+    real, parameter :: k_ORG   = 0.20
+    real, parameter :: k_SS    = 1.28
+    real, parameter :: k_DU    = 0.05
+    real, parameter :: k_BC    = 0.01
     
-! Gocart aerosol size distributions for dust 
+    real, parameter :: sig_acc   = 1.8
+    real, parameter :: sig_ait   = 1.6
+    real, parameter :: sig_cdu   = 1.8
+    real, parameter :: sig_css   = 2.0
+    real, parameter :: sig_fdu   = 1.8
+    real, parameter :: sig_fss   = 2.0
+    real, parameter :: sig_pcm   = 1.6
+    
+    real, parameter, dimension(7) :: sig_factor =  (/1.044, 1.111, 1.044, 0.976, 1.044, 0.976, 1.111/)
+      !factor ((6/pi)**1/3) exp(-ln^2(sigma)/2)
 
-!!!!!!!!!!!!!!======================================     
-!!!!!!!!!   Dust 
-!!!!!!!!!!!!!!======================================    
-
-   ! Common to all modes
-      SIGI(1:5) = log(1.8)
-      DENSI(1:5) =1700.0
-      KAPPAS(1:5)=0.0001
-      FDUST(1:5)=1.0 
+    real, parameter, dimension(7) :: means_mamnet =  (/-1.95, -2.32, -3.01, -4.12, -4.72, 243.8, 0.39/)
+    real, parameter, dimension(7) :: sigmas_mamnet =  (/3.11, 3.46, 3.34, 3.24, 5.61, 27.35, 0.44/)
+                            
+    real, parameter :: min_modmass   = 1.e-18
+    
+    integer ::  i, mode, k
+    
+    real,  dimension(LM*nfeat) :: mamnet_in 
+    real, pointer,  dimension(:) :: mamnet_out
+    real, dimension(LM, 31) :: mamnet_out_2D
+    real, dimension(24) :: mam_mass
+    real, dimension(7) :: mam_num
+    type(AerProps) :: aerpr != AerProps(0.0, 1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0)
+    
+    
+    real ::    modal_mass, modal_dens, modal_number, sigma
+    
+    !mam_species = (/'SU_A_ACC', 'SOA_A_ACC', 'SS_A_ACC', 'POM_A_ACC', 'BC_A_ACC', 'AMM_A_ACC', &
+    !               'SU_A_AIT', 'SOA_A_AIT', 'SS_A_AIT', 'AMM_A_AIT', &
+   !                'SU_A_CDU', 'DU_A_CDU', 'AMM_A_CDU', &
+   !                'SU_A_CSS', 'SS_A_CSS', 'AMM_A_CSS', &
+   !                'SU_A_FDU', 'DU_A_FDU', 'AMM_A_FDU', &
+   !                'SU_A_FSS', 'SS_A_FSS', 'AMM_A_FSS', &
+    !               'POM_A_PCM', 'BC_A_PCM'/)
+                 
+  !convert mass to log10(microg/Kg)
+ 	
+   
+   
+   !standardize mamnet input 
+   FORALL (i=1:7) inp(:, :, i) =  (inp(:, :, i) - means_mamnet(i))/sigmas_mamnet(i)        
+   
+   !******call mam_net 
+   Do i  = 1, NS
+   
+   	 mamnet_in = reshape(inp(i, :, :), (/LM*nfeat/))  
+     mamnet_out = MAMnet%output(mamnet_in)
+     mamnet_out_2D =  reshape(mamnet_out, (/LM, 31/))
       
-  !MOdal diam slightly different from Barahona et al since GOCART defines mass instead of number dist for dust.
-  !! Dust 1: 0.1 - 1      
-      DPGI (1) = 1.46e-6  ! Modal diameter (m)  
- !! Dust 2: 1 - 1.8
-       DPGI (2) = 2.80e-6  ! Modal diameter (m)   
- !! Dust 3: 1.8-3!
-      DPGI (3) = 4.80e-6   ! Modal diameter (m)
-!! Dust 4: 3-6
-      DPGI (4) = 9.0e-6   ! Modal diameter (m) mass based
-!!  Dust 5: 6-10
-      DPGI (5) = 16.0e-6   ! Modal diameter (m)
-      
-      DO K =1 , 5
-         TPI(K) =6.0/(DENSI(K)*pi_par*exp(4.5*SIGI(K)*SIGI(K))*DPGI(K)*DPGI(K)*DPGI(K)) 	!size for dust is mass based
-      END DO       
+     DO k  =  1, LM 
         
-!!!!!!!!!!!!!!======================================     
-!!!!!!!!!   Sea Salt (Using 3 modes based on Barahona et al. GMD. 2014. 
-!!!!!!!!!!!!!!======================================    
+        mam_mass =  mamnet_out_2D(k, 1:24)
+        mam_num = mamnet_out_2D(k, 25:31)
 
- ! Common to all modes
-     
-      DENSI(6:8) =2200.0
-      KAPPAS(6:8)=1.28                
-      
-       
-           !  TPI  (6) = 230e6! num fraction 
-	   !   DPGI (6) = .02e-6 ! Modal diameter (m)
-	   !   SIGI (6) = log(1.47)       ! Geometric dispersion (sigma_g)
-	   ! Accumulation
-	   !   TPI  (7) = 176.7e6  ! Total concentration (# m-3)
-	   !   DPGI (7) = 0.092e-6    ! Modal diameter (m)
-	   !   SIGI (7) = log(1.47)       ! Geometric dispersion (sigma_g)     
-	   !Coarse
-	   !   TPI  (8) = 3.1e6   ! Total concentration (# m-3)
-	   !   DPGI (8) = 0.58e-6    ! Modal diameter (m)
-	   !   SIGI (8) = log(2.49)       ! Geometric dispersion (sigma_g)
-    
-    
-              TPI  (6) = 100e6! num fraction (reduced 091015)
-	      DPGI (6) = .02e-6 ! Modal diameter (m)
-	      SIGI (6) = log(1.6)       ! Geometric dispersion (sigma_g)
-	   ! Accumulation
-	      TPI  (7) = 60.0e6  ! Total concentration (# m-3)
-	      DPGI (7) = 0.071e-6    ! Modal diameter (m)
-	      SIGI (7) = log(2.0)       ! Geometric dispersion (sigma_g)     
-	   !Coarse
-	      TPI  (8) = 3.1e6   ! Total concentration (# m-3)
-	      DPGI (8) = 0.62e-6    ! Modal diameter (m)
-	      SIGI (8) = log(2.7)       ! Geometric dispersion (sigma_g)
-	   
-      aux = 0.
-      DO K =6 , 8
-        aux =(TPI(K)*DENSI(K)*pi_par*exp(4.5*SIGI(K)*SIGI(K))*DPGI(K)*DPGI(K)*DPGI(K))/6.0  +  aux 
-      END DO
-      base_mass_ss = aux              	
-	
-  !!!!!!!!!!!!!!====================================== 
-  !========== Organics and Sulfate are assumed internally-mixed. 
-  ! Size distributions from Lance et al. (2004)
- !!!!!!!!!!!!!!======================================  
-      
-      !polluted sulfate plus org
-	
-         
-         KAPPAS(9:11) = 0.65
-        DENSI(9:11) = 1650.0     
-      
-! Different size distributions for polluted and clean environments
-     
-   
-	       !fine 
-	        
-	      TPI  (9) = 1.06e11! num fraction 
-	      DPGI (9) = .014e-6 ! Modal diameter (m)
-	      SIGI (9) = log(1.8d0)       ! Geometric dispersion (sigma_g)
-	   ! Accumulation
-	      TPI  (10) = 3.2e10   ! Total concentration (# m-3)
-	      DPGI (10) = 0.054e-6    ! Modal diameter (m)
-	      SIGI (10) = log(2.16)       ! Geometric dispersion (sigma_g)     
-	   !Coarse
-	      TPI  (11) = 5.4e6   ! Total concentration (# m-3)
-	      DPGI (11) = 0.86e-6    ! Modal diameter (m)
-	      SIGI (11) = log(2.21)       ! Geometric dispersion (sigma_g)
-      
-        aux = 0.
-      DO K =9, 11
-        aux =(TPI(K)*DENSI(K)*pi_par*exp(4.5*SIGI(K)*SIGI(K))*DPGI(K)*DPGI(K)*DPGI(K))/6.0  +  aux 
-      END DO              
-       base_mass_so4_polluted = aux
-       
- !clean continental polluted plus org      	   
-	      !Fine
-	
-	      TPI_aux  (9) = 1.0e9  ! Total concentration (# m-3)
-	      DPGI_aux (9) = .016e-6 ! Modal diameter (m)
-	      SIGI_aux (9) = log(1.6d0)       ! Geometric dispersion (sigma_g)      
-	      !Accumulation
-	      TPI_aux  (10) = 8.0e8   ! Total concentration (# m-3)
-	      DPGI_aux (10) = 0.067e-6    ! Modal diameter (m)
-	      SIGI_aux (10) = log(2.1)       ! Geometric dispersion (sigma_g) 
-	      !Coarse
-	      TPI_aux  (11) = 2.0e6   ! Total concentration (# m-3)
-	      DPGI_aux (11) = 0.93e-6    ! Modal diameter (m)
-	      SIGI_aux (11) = log(2.2)       ! Geometric dispersion (sigma_g)
+        !back to Kg/kg
+        mam_mass = min(max(mam_mass, -20.), 3.0) !log10(microg/Kg)
+        mam_mass  =  (10.**mam_mass)*1.e-9 !back to Kg/Kg 
 
-      
-           aux = 0.
-           DO K =9, 11
-              aux =(TPI_aux(K)*DENSI(K)*pi_par*exp(4.5*SIGI_aux(K)*SIGI_aux(K))*DPGI_aux(K)*DPGI_aux(K)*DPGI_aux(K))/6.0  +  aux 
-           END DO              
-             base_mass_so4_clean = aux
-	
-	 
-    !========================== 
-    !========BC (hydrophilic)===
+        !back to #/kg
+        mam_num =  min(max(mam_num, -6.), 8.) 
+        mam_num = (10.**mam_num)*1e6
     
-      DPGI (12) = 0.0118*2.e-6 ! Modal diameter (m)
-      SIGI (12) =log(2.00)       ! log of Geometric dispersion (sigma_g)
-      DENSI(12) = 1600.0     ! Density of Soluble fraction (kg m-3)
-      KAPPAS(12) = 0.0001
-      FSOOT(12)=1.0
-      TPI(12) =  6.0/(DENSI(12)*pi_par*exp(4.5*SIGI(12)*SIGI(12))*DPGI(12)*DPGI(12)*DPGI(12)) 
-      
-   
- !================================================       
- !==========OC (hydrophilic) Separate organics are still needed for ice nucleation
- ! 
-      
-      DPGI (13) = 0.0212*2.e-6 ! Modal diameter (m)
-      SIGI (13) = log(2.20)       ! Geometric dispersion (sigma_g)
-      DENSI(13) = 900.0     ! Density of Soluble fraction (kg m-3)   
-      KAPPAS(13) = 0.0001 !Assume this number so organics don't get activated twice
-      FORG(13)=1.0      
-      TPI(13) =  6.0/(DENSI(13)*pi_par*exp(4.5*SIGI(13)*SIGI(13))*DPGI(13)*DPGI(13)*DPGI(13)) 
-    
-        call init_Aer(AerPr_base_polluted)
-        call init_Aer(AerPr_base_clean)
-    
+    !========================================
+    !****Fill up the AerProps structure
+    !========================================
 
-	 !Fill up derived type to be used in CCN and IN param
-	AerPr_base_polluted%num(1:nmod)  =  TPI(1:nmod)
-	AerPr_base_polluted%dpg(1:nmod)  =  DPGI(1:nmod)
-	AerPr_base_polluted%sig(1:nmod) =   SIGI(1:nmod)
-	AerPr_base_polluted%kap(1:nmod) =  KAPPAS(1:nmod)
-	AerPr_base_polluted%den(1:nmod) =  DENSI(1:nmod)
-	AerPr_base_polluted%fdust(1:nmod) = FDUST(1:nmod)
-	AerPr_base_polluted%fsoot(1:nmod) = FSOOT(1:nmod)
-	AerPr_base_polluted%forg(1:nmod)=  FORG(1:nmod)
-	AerPr_base_polluted%nmods=  nmod
-
-	AerPr_base_clean =  AerPr_base_polluted
-	AerPr_base_clean%num(9:11)  =  TPI_aux(9:11)
-	AerPr_base_clean%dpg(9:11)  =  DPGI_aux(9:11)
-	AerPr_base_clean%sig(9:11) =   SIGI_aux(9:11)
-
-      RETURN
-!
- END SUBROUTINE AerConversion_base
  
- 
+        !========== mode 1: accumulation, species 1 to 6
+        !'SU_A_ACC', 'SOA_A_ACC', 'SS_A_ACC', 'POM_A_ACC', 'BC_A_ACC', 'AMM_A_ACC'
+
+        
+  
+        mode=1
+        call init_Aer(aerpr)   
+        modal_mass =  sum(mam_mass(1:6))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(1)*dens_SO4 + mam_mass(2)*dens_ORG + mam_mass(3)*dens_SS  &
+       							        + mam_mass(4)*dens_ORG + mam_mass(5)*dens_BC +  mam_mass(6)*dens_SO4)/modal_mass                                 
+            sigma = sig_acc 
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(1)*k_SO4 + mam_mass(2)*k_ORG + mam_mass(3)*k_SS  &
+      					         + mam_mass(4)*k_ORG + mam_mass(5)*k_BC + mam_mass(6)*k_SO4)/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+            aerpr%dpg = min(max(5.0e-9, aerpr%dpg), 5.e-5)
+
+
+            aerpr%forg =  (mam_mass(2) + mam_mass(4))/modal_mass
+            aerpr%fsoot =  mam_mass(5) /modal_mass
+            aerpr%fdust =  0.0
+        end if
+
+         aerpr3D(i, k, mode)  =  aerpr 
+
+
+        !=========== mode 2: aitken, species 7 to 10
+        ! 'SU_A_AIT', 'SOA_A_AIT', 'SS_A_AIT', 'AMM_A_AIT',
+
+        mode=2   
+        call init_Aer(aerpr)
+        modal_mass =  sum(mam_mass(7:10))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(7)*dens_SO4 + mam_mass(8)*dens_ORG + mam_mass(9)*dens_SS + mam_mass(10)*dens_SO4)/modal_mass                                 
+            sigma = sig_ait
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(7)*k_SO4 + mam_mass(8)*k_ORG + mam_mass(9)*k_SS + mam_mass(10)*k_SO4 )/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+            aerpr%forg =  mam_mass(8)/modal_mass
+	    end if 
+        aerpr3D(i, k, mode)  =  aerpr
+
+       !=========== mode 3: coarse dust, species 11 to 13
+       !'SU_A_CDU', 'DU_A_CDU', 'AMM_A_CDU'
+        mode=3
+        call init_Aer(aerpr)   
+        modal_mass =  sum(mam_mass(11:13))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(11)*dens_SO4 + mam_mass(12)*dens_DU + mam_mass(13)*dens_SO4)/modal_mass                                
+            sigma = sig_cdu
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(11)*k_SO4 + mam_mass(12)*k_DU + mam_mass(13)*k_SO4 )/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode) 
+            aerpr%fdust =  mam_mass(12)/modal_mass 
+        end if  
+        aerpr3D(i, k, mode)  =  aerpr
+
+        !========= mode 4: coarse sea salt, species 14 to 16
+        !'SU_A_CSS', 'SS_A_CSS', 'AMM_A_CSS',,
+
+        mode=4
+        call init_Aer(aerpr)   
+        modal_mass =  sum(mam_mass(14:16))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(14)*dens_SO4 + mam_mass(15)*dens_SS + mam_mass(16)*dens_SO4)/modal_mass                                
+            sigma = sig_css
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(14)*k_SO4 + mam_mass(15)*k_SS + mam_mass(16)*k_SO4 )/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg=   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+   	    end if    
+        aerpr3D(i, k, mode)  =  aerpr
+
+        !======= mode 5: fine dust, species 17 to 19
+        !'SU_A_FDU', 'DU_A_FDU', 'AMM_A_FDU',
+        mode=5  
+        call init_Aer(aerpr)
+        modal_mass =  sum(mam_mass(17:19))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(17)*dens_SO4 + mam_mass(18)*dens_DU + mam_mass(19)*dens_SO4)/modal_mass                                
+            sigma = sig_fdu
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(17)*k_SO4 + mam_mass(18)*k_DU + mam_mass(19)*k_SO4 )/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+            aerpr%fdust =  mam_mass(18)/modal_mass 
+   	    end if
+        aerpr3D(i, k, mode)  =  aerpr
+
+        !!============ mode 6: fine sea salt, species 20 to 22
+        !'SU_A_FSS', 'SS_A_FSS', 'AMM_A_FSS',
+   	    mode=6
+        call init_Aer(aerpr)        
+        modal_mass =  sum(mam_mass(20:22))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(20)*dens_SO4 + mam_mass(21)*dens_SS + mam_mass(22)*dens_SO4)/modal_mass                                
+            sigma = sig_fss
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(20)*k_SO4 + mam_mass(21)*k_SS + mam_mass(22)*k_SO4 )/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+        end if
+        aerpr3D(i, k, mode)  =  aerpr
+
+        !========== mode 7: primary organic matter, species 23 to 24
+        !'POM_A_PCM', 'BC_A_PCM'
+
+        mode=7   
+        call init_Aer(aerpr)
+        modal_mass =  sum(mam_mass(23:24))
+        if (modal_mass .gt. min_modmass) then
+            modal_number = mam_num(mode)
+            modal_dens = (mam_mass(23)*dens_ORG + mam_mass(24)*dens_BC)/modal_mass                                
+            sigma = sig_pcm
+            aerpr%num = modal_number
+            aerpr%sig =  sigma
+            aerpr%den = modal_dens
+            aerpr%kap =  (mam_mass(23)*k_ORG + mam_mass(24)*k_BC)/modal_mass                         
+            if (modal_number .gt. 0.0) aerpr%dpg =   ((modal_mass/modal_dens/modal_number)**(1./3.))*sig_factor(mode)
+            aerpr%forg =  mam_mass(23)/modal_mass 
+            aerpr%fsoot =  mam_mass(24)/modal_mass 
+        end if
+        aerpr3D(i, k, mode)  =  aerpr
+
+
+    end do !LM
+ end do  !NS
+    
+end subroutine MAMnet_param 
+
+
+
+
 !=======================================================================
-!
-! *** SUBROUTINE AerConversion
-! *** This subrotine sets the properties of the aerosol distributions
-!****Mass-number conversion based on Barahona at al. GMD, 2014.  
-!=======================================================================
-!Input. 
-      !aer_mass: Array with aerosol mass mixing ratios from GOCART (Kg m-3)
-!Output:  
-      ! AerPr: AerProps structure containing aerosol properties. Used everywhere else in moist
-      ! SULFATE, ORG, BCARBON, DUST, SEASALT : Diagnostic Number concentrations (Kg-1)
-      ! Kappa: Weighted hygroscopicity parameter (diagnostic)
-!
-      SUBROUTINE AerConversion (aer_mass,  AerPr, kappa,  &
-                              SULFATE, ORG, BCARBON, DUST, SEASALT)
+!============================runs the Wnet Neural Network==========
 
+subroutine Wneuralnet(sigmaWnet, buff, NS, LM)
 
-      type(AerProps),  intent (inout), dimension(:,:,:) :: AerPr             
+integer, parameter :: nfeat =  10 
+real, dimension (NS, LM, nfeat), intent(inout) ::  buff
+real,  dimension (NS, LM), intent(out) :: sigmaWnet 
+real, parameter, dimension(10) :: means = (/243.9, 0.6, 6.3, 0.013, 0.0002, 5.04, 21.8, 0.002, 9.75e-7, 7.87e-6/) !hardcoded from G5NR
+real, parameter, dimension(10) :: stds = (/30.3, 0.42, 16.1, 7.9, 0.05, 20.6, 20.8, 0.0036, 7.09e-6, 2.7e-5/)
+real :: wnet_in(nfeat*LM)
+integer :: ix, NS, LM 
+     	
+  	!standardize   
+  	FORALL (ix=1:nfeat) buff(:,:, ix) =  (buff(:, :, ix) - means(ix))/stds(ix)     
+    
+ !    sigmaWnet = Wnet % output(wnet_in)
+    
+    do ix =  1, NS  
+     wnet_in =  reshape(buff(ix, :, :), (/nfeat*LM/))      
+     sigmaWnet(ix, :) = Wnet % output(wnet_in)!                   
+    end do    
 
-       
-      real, dimension(:,:,:,:), intent(in)     ::   aer_mass 
-      real, intent (out), dimension(:,:,:) :: kappa, DUST, SULFATE, BCARBON, ORG, SEASALT					     					
-      real:: aux, densSO4, densORG,  k_SO4,  k_ORG, k_SS, tot_mass, dens, kappa_aux
-      
-      integer :: i,j,k,l
-      integer :: im, jm, lm
-      type(AerProps) :: AeroAux
-      real, dimension(size(aer_mass,4)) :: aer_mass_tmp
-       
-      im = size(aer_mass,1)
-      jm = size(aer_mass,2)
-      lm = size(aer_mass,3)
-
-      call init_Aer(AeroAux)
-      
-       do k = 1, lm
-         do j = 1, jm
-            do i = 1, im
-	       aer_mass_tmp(:) = max(aer_mass(i,j,k,:), 0.0)
-	    
-        	!Do sulfate-organics first (asumed internally mix) 
-        	tot_mass= aer_mass_tmp(11) +  aer_mass_tmp (15)! Hydrophillic Organics + sulfate
-        	densSO4 = 1700.0
-        	densORG = 1600.0
-        	k_SO4   = 0.65
-        	k_ORG   = 0.2
-		kappa_aux = 0.65
-
-	    !Mass-weighted properties for sulfate-organics
-                 dens =  1700.0
-	         kappa_aux = 0.65
-		 AeroAux   =AerPr_base_clean
-		  
-	      if (tot_mass .gt. 2.0e-12) then 
-		      dens  = (aer_mass_tmp(11)*densSO4 + aer_mass_tmp(15)*densORG)/tot_mass  
-		      kappa_aux = (aer_mass_tmp(11)*k_SO4 + aer_mass_tmp(15)*k_ORG)/tot_mass
-	      end if
-
-	      if (tot_mass .gt. 5.0e-7) then !5e-7 then !polluted continental  
-		      AeroAux   = AerPr_base_polluted
-		      !AeroAux%num(9:11)  =  AeroAux%num(9:11)*tot_mass/base_mass_so4_polluted
-              AeroAux%num(9:11)  =  AeroAux%num(9:11)*aer_mass_tmp(11)/base_mass_so4_polluted
-		  else		     
-		      AeroAux%num(9:11)  =  AeroAux%num(9:11)*aer_mass_tmp(11)/base_mass_so4_clean !only count sulfate since it is likely internally mixed with hydrophilic organics
-		end if  
-			
-        	  AeroAux%kap(9:11) =  max(kappa_aux, 0.001)
-		  AeroAux%den(9:11) =  min(max(dens, 1600.0), 1700.0)
-        	  SULFATE(i, j, k)=SUM(AeroAux%num(9:11))
-        	  kappa_aux=kappa_aux*tot_mass
-          
-   !Do other species     
-   
-	    !Dust     
-	      AeroAux%num(1:5)  =  AeroAux%num(1:5) *aer_mass_tmp(1:5)
-	       kappa_aux=kappa_aux +   AeroAux%kap(1)*sum(aer_mass_tmp(1:5))
-	      DUST(i, j, k)=  sum(AeroAux%num(1:5))
-      
-	    !sea_salt
-	      tot_mass =sum(aer_mass_tmp(6:10))
-          
-	      AeroAux%num(6:8)  =  AeroAux%num(6:8)*tot_mass/base_mass_ss	     
-	      kappa_aux=kappa_aux +   AeroAux%kap(6)*tot_mass      
-	      SEASALT(i, j, k) =  sum(AeroAux%num(6:8))
-      
-   
-	      !Black carbon     
-	      AeroAux%num(12)  =  AeroAux%num(12) *aer_mass_tmp(13)
-	      kappa_aux=kappa_aux +   AeroAux%kap(12)*aer_mass_tmp(13)
-	      BCARBON(i, j, k) =   AeroAux%num(12)
-
-	      !Organics     
-	      AeroAux%num(13)  =  AeroAux%num(13) *aer_mass_tmp(15) !we counted organics already for kappa
-	      ORG(i, j, k) =  AeroAux%num(13)
-	      tot_mass = sum(aer_mass_tmp)
-
-	      if (tot_mass .gt. 0.0) then 
-		kappa(i, j, k) = kappa_aux/tot_mass
-	      end if    
-	      
-	       AerPr(i,j,k)  =  AeroAux
-	    
-	       end do
-         end do
-      end do
-
-      RETURN
-!
- END SUBROUTINE AerConversion
+  where (sigmaWnet /= sigmaWnet) 
+     sigmaWnet =  0. 
+  end where
+  
+  sigmaWnet = min(max(sigmaWnet, 0.0), 10.0)
+                 
+end subroutine  Wneuralnet
 
 !=======================================================================
 !=======================================================================
@@ -1098,57 +1099,8 @@ subroutine vertical_vel_variance(omeg, lc_turb, tm_gw, pm_gw, rad_cool, uwind_gw
     end if 
           
 
-               
-	      
-
-
 end subroutine vertical_vel_variance
 !=======================================================================
-!=======================================================================
-!=======================================================================
-
-!=======================================================================
-!Extracts aerosol props with INactive = typ
-subroutine getINsubset(typ, aerin, aerout)
-
-! typ: type of aerosol needed: 1 dust, 2 soot, 3 organics
-! nbins: number of modes with num>0
-
-   type(AerProps),  intent (in) :: aerin 
-   type(AerProps),  intent (inout) :: aerout 
-   integer, intent(in) :: typ
-   
-   integer:: nmd, k, bin
-   
-   call init_Aer(aerout)
-   nmd = aerin%nmods    
-   bin = 0
-   
-      do k=1, nmd    
-      
-       if (typ .eq. 1)  then !dust  
-            if (aerin%fdust(k) .gt. 0.9) then 	   
-  	       bin=bin+1  
-	       call copy_mode(aerout,aerin, k,bin)
-	    end if  
-       elseif   (typ .eq. 2)  then  !soot
-             if (aerin%fsoot(k) .gt. 0.9) then 	   
-  	       bin=bin+1  
-	       call copy_mode(aerout,aerin, k,bin)
-	    end if  
-       elseif   (typ .eq. 3)  then  !organics
-             if (aerin%forg(k) .gt. 0.9) then 	   
-  	       bin=bin+1  
-	       call copy_mode(aerout,aerin, k,bin)
-	    end if  
-       end if 
-       
-       end do
-
-      aerout%nmods = max(bin, 1)
-
-
-end subroutine getINsubset
  
 !========================subroutines to handle aer strucuture=====================================
 
@@ -1166,40 +1118,22 @@ end subroutine getINsubset
       a%fdust = b%fdust
       a%fsoot = b%fsoot
       a%forg= b%forg
-      a%nmods =  b%nmods
       	 	  
    end subroutine copy_Aer 
-      
-   subroutine copy_mode(a_out,a_in, mode_in, mode_out)
-      type (AerProps), intent(out) :: a_out
-      type (AerProps), intent(in) :: a_in
-      integer, intent (in) :: mode_in, mode_out
-      
-      a_out%num(mode_out)= a_in%num(mode_in)
-      a_out%sig(mode_out) = a_in%sig(mode_in)
-      a_out%dpg(mode_out) = a_in%dpg(mode_in)
-      a_out%kap(mode_out) = a_in%kap(mode_in)
-      a_out%den(mode_out) = a_in%den(mode_in)
-      a_out%fdust(mode_out) = a_in%fdust(mode_in)
-      a_out%fsoot(mode_out) = a_in%fsoot(mode_in)
-      a_out%forg(mode_out) = a_in%forg(mode_in)
-           
-   end subroutine copy_mode
    
    
     subroutine init_Aer(aerout)
 
     type (AerProps), intent(inout) :: aerout
    
-           aerout%num = 0.0
+       aerout%num = 0.0
 	   aerout%dpg =  1.0e-9
 	   aerout%sig =  2.0
 	   aerout%kap =  0.2
 	   aerout%den = 2200.0
 	   aerout%fdust  =  0.0
-           aerout%fsoot  =  0.0
+       aerout%fsoot  =  0.0
 	   aerout%forg   =  0.0
-	   aerout%nmods = 1
 	   
    end subroutine init_Aer
    

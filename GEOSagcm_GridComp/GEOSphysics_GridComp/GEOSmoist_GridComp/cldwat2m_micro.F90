@@ -63,8 +63,8 @@ module cldwat2m_micro
    real(r8), parameter :: rhoh2o      = MAPL_RHOWTR
    real(r8), parameter :: latvap      = MAPL_ALHL
    real(r8), parameter :: latice      = MAPL_ALHF !!!!!big BUGGGG 03/06/14 
-   real(r8), parameter :: epsilon     = MAPL_VIREPS
-   
+   !real(r8), parameter :: epsilon     = MAPL_VIREPS BUG 04/01/23
+   real(r8), parameter :: epsilon     = MAPL_EPSILON
   
    
 

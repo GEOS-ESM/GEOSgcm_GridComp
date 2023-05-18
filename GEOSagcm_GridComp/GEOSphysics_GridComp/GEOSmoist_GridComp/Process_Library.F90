@@ -78,7 +78,7 @@ module GEOSmoist_Process_Library
   real    :: CNV_FRACTION_EXP
 
  ! Storage of aerosol properties for activation
-  type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
+  type(AerProps), allocatable, dimension (:,:,:, :) :: AeroProps != AerProps(0.0, 1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0)
 
   ! Tracer Bundle things for convection
   type CNV_Tracer_Type

@@ -147,7 +147,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
 
-    integer                         :: IM,JM,LM
+    integer                         :: IM,JM,LM, NMODES
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
 
@@ -180,6 +180,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
 #ifdef NODISABLE
 
+      NMODES =  size(AeroProps, 4)  
       IRAS       = nint(LONS*100)
       JRAS       = nint(LATS*100)
       RASPARAMS%CLDMICRO = 0.0
@@ -253,6 +254,7 @@ subroutine RAS_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            IDIM                 , &
            IRUN                 , &
            K0                   , &
+           NMODES               , &
            ICMIN                , &
            DT_MOIST             , &  !!where? see below.
            MAPL_CP              , &

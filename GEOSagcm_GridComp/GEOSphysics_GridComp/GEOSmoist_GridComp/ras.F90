@@ -32,7 +32,7 @@ MODULE RAS
 
 CONTAINS
 
-   SUBROUTINE RASE(IDIM, IRUN, K0, ICMIN, DT ,                      &
+   SUBROUTINE RASE(IDIM, IRUN, K0, NMODES, ICMIN, DT ,                      &
          CPO,ALHLO,ALHL1,TICE,GRAVO,                      &
          SEEDRAS,IRAS,JRAS,SIGE,                          &
          KCBL,WGT0,WGT1,ZCBL,MXDIAM,TPERT,QPERT,          &
@@ -168,7 +168,7 @@ CONTAINS
 
       !  ARGUMENTS
 
-      INTEGER,                     INTENT(IN   ) ::  IDIM, IRUN, K0, ICMIN
+      INTEGER,                     INTENT(IN   ) ::  IDIM, IRUN, K0, ICMIN, NMODES
       REAL, DIMENSION (IDIM,K0  ), INTENT(INOUT) ::  THO, QHO, UHO, VHO, QLO, QIO, CLAN
       REAL, DIMENSION (IDIM,K0+1), INTENT(IN   ) ::  PLE, PKE,PHIE
       REAL, DIMENSION (IDIM,K0  ), INTENT(IN   ) ::  QSS, DQS,PLO,PKO,PHIO
@@ -309,17 +309,17 @@ CONTAINS
       ! ************************AER_CLOUD *********************************************
 
 
-      TYPE(AerProps),    DIMENSION(IDIM, K0),    INTENT(IN)    :: AEROPROPS !DONIF
+      TYPE(AerProps),    DIMENSION(IDIM, K0, NMODES),    INTENT(IN)    :: AEROPROPS !=  AerProps(0.0, 1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0) !DONIF
       REAL, DIMENSION (IDIM,K0), INTENT( OUT) ::  CNV_NDROP, CNV_FICE, CNV_NICE
       REAL, DIMENSION (IDIM,K0), INTENT( OUT) ::  RAS_TAU,  RAS_ALPHA
       REAL,  DIMENSION(K0) :: CNVNDROP, CNVNICE, CNVFICE !DONIF
 
-      TYPE(AerProps), DIMENSION(K0) ::  AERO   !AEROSOL VERTICAl ARRAY FOR ALL SPECIES    
+      TYPE(AerProps), DIMENSION(K0, NMODES) ::  AERO != AerProps(0.0, 1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0)   !AEROSOL VERTICAl ARRAY FOR ALL SPECIES    
       REAL ::  T_ICE_ALL, T_ICE_MAX, ASEASALT, f_seasalt 
       INTEGER, PARAMETER :: NDUSTMAX = 10
 
       INTEGER :: INDEX        
-      TYPE(AerProps) :: AERAUX, AER_BASE
+      TYPE(AerProps), dimension(NMODES) :: AER_BASE != AerProps(0.0, 1.0e-9, 2.0, 0.2, 2200.0, 0.0, 0.0, 0.0)
 
       CNV_FICE  =0.0
       CNV_NDROP =0.0
@@ -450,7 +450,7 @@ CONTAINS
 
          if (CLDMICRO > 0.0) then !===================AER_CLOUD
 
-            AERO =  AEROPROPS(I, :)
+            AERO(:, :) =  AEROPROPS(I, :, :)
             CNVFICE  =0.0
             CNVNDROP =0.0
             CNVNICE  =0.0
@@ -721,8 +721,6 @@ CONTAINS
 
          f_seasalt = 0.0
          aseasalt = 0.0
-
-         call init_Aer(AER_BASE)
 
          !AER_CLOUD=============================
 
@@ -1031,34 +1029,18 @@ CONTAINS
                   NDUST= 0.0
                   RATE=0.0
                   FPRECIP=0.0
-
-                  AER_BASE%nmods = 0
-                  AER_BASE%num   = 0.0
-                  do INDEX = 1, AERO(L)%nmods
-                      if (AERO(L)%num(INDEX) > 0.1) then
-                          AER_BASE%nmods = AER_BASE%nmods + 1
-                          naux = AER_BASE%nmods
-
-                          AER_BASE%num(naux)   = AERO(L)%num(INDEX)
-                          AER_BASE%dpg(naux)   = max(AERO(L)%dpg(INDEX), 1.0e-9)
-                          AER_BASE%sig(naux)   = AERO(L)%sig(INDEX)
-                          AER_BASE%den(naux)   = AERO(L)%den(INDEX)
-                          AER_BASE%kap(naux)   = AERO(L)%kap(INDEX)
-                          AER_BASE%fdust(naux) = AERO(L)%fdust(INDEX)
-                          AER_BASE%fsoot(naux) = AERO(L)%fsoot(INDEX)
-                          AER_BASE%forg(naux)  = AERO(L)%forg(INDEX)
-                      end if
-                  end do
+                  
+                  AER_BASE =  AERO(L, :) ! aerosol at cloud base
 
                   !initial conditions     
-                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L,  .true., DDUST_AMB, DSOOT_AMB, ECRIT) !cloud droplet number and INsource at cloud base 
+                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L,  .true., DDUST_AMB, DSOOT_AMB, ECRIT, NMODES) !cloud droplet number and INsource at cloud base 
                   NDUST=NDUST_AMB
                   NSOOT=NSOOT_AMB
                   DDUST=DDUST_AMB
                   DSOOT=DSOOT_AMB                                     
 
                else 
-                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L, .false., DDUST_AMB, DSOOT_AMB, ECRIT) !cloud droplet number above cloud base  
+                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L, .false., DDUST_AMB, DSOOT_AMB, ECRIT, NMODES) !cloud droplet number above cloud base  
 
                end if
 
@@ -1091,7 +1073,7 @@ CONTAINS
 
                   else 
 
-                     ! Cloud is not completely glaciated do the whole thing
+                     ! Cloud is not completely glaciated 
                      ! ALL these subroutines return tendencies
 
 
@@ -1944,27 +1926,23 @@ CONTAINS
 
 !!!!!!!!!!!!!!======================================     
 !!!!!!!!!   Subroutine ARGact: finds the activated droplet number from Abdul_Razzak and Ghan 2000.
-      ! Tailored for GOCART AEROSOL and works with AERO input 
       !Written by Donifan Barahona
       !!donifan.o.barahona@nasa.gov
 !!!!!!!!!!!!!!====================================
 
-      SUBROUTINE ARGact (TEMP, WX, NCPL_ACT, NCPL_AMB,  CDUST, CSOOT, LEV, ISBASE, DDUSTAMB, DSOOTAMB, ENT_PARAM)
+      SUBROUTINE ARGact (TEMP, WX, NCPL_ACT, NCPL_AMB,  CDUST, CSOOT, LEV, ISBASE, DDUSTAMB, DSOOTAMB, ENT_PARAM, NMODES)
          !
          Integer, intent(in)     ::  LEV    
          LOGICAL,  intent(in)     ::   ISBASE
 
          REAL, intent(inout)     ::   TEMP, WX, ENT_PARAM
          REAL, intent(out)     ::   NCPL_ACT, NCPL_AMB, CSOOT, DSOOTAMB
-         REAL, DIMENSION(NDUSTMAX), INTENT(OUT) :: CDUST, DDUSTAMB
+         REAL, DIMENSION(NMODES), INTENT(OUT) :: CDUST, DDUSTAMB
          integer                 :: INDEX, NMODES, naux       
-
-         type(AerProps)  :: AER, auxaer      
-
 
          real     ::      kappa, alfa, beta, Akoh, G, T, smax, fi, gi, nui, &
                        citai, ui, aux1, PACT,  Ntot, auxx, aux, auxconc, W, alph, aseasalt_aux, f_seasalt1
-         real, dimension (30) ::  SMI, TPI, SIGI 
+         real, dimension (NMODES) ::  SMI, TPI, SIGI 
 
 
          SMI=0.0      
@@ -1980,42 +1958,16 @@ CONTAINS
 
          PACT=0.0 !activation probability of entrained aerosol 
 
-         AER%nmods = 0
-         AER%num   = 0.0
-
-         do INDEX = 1, AERO(LEV)%nmods
-             if (AERO(LEV)%num(INDEX) > 0.1) then
-                 AER%nmods = AER%nmods + 1
-                 naux = AER%nmods
-
-                 AER%num(naux)   = AERO(LEV)%num(INDEX)
-                 AER%dpg(naux)   = max(AERO(LEV)%dpg(INDEX), 1.0e-9)
-                 AER%sig(naux)   = AERO(LEV)%sig(INDEX)
-                 AER%den(naux)   = AERO(LEV)%den(INDEX)
-                 AER%kap(naux)   = AERO(LEV)%kap(INDEX)
-                 AER%fdust(naux) = AERO(LEV)%fdust(INDEX)
-                 AER%fsoot(naux) = AERO(LEV)%fsoot(INDEX)
-                 AER%forg(naux)  = AERO(LEV)%forg(INDEX)
-             end if
-         end do
-
-         if (AER%nmods == 0) then
-             call init_Aer(AER)
-         end if
 
 !!!!!!!!!!activate aerosol transported from cloud base 
-             NMODES =  AER_BASE%nmods
-             TPI(1:nmodes) = AER_BASE%num(1:nmodes)
-             SIGI(1:nmodes) = AER_BASE%sig(1:nmodes)                          
+
+            TPI = AER_BASE%num
+            SIGI = AER_BASE%sig                          
 
              
-             Ntot= 0.0
-              do index = 1, nmodes 
-	              if (AER_BASE%kap(index) .gt. 0.1) Ntot =  Ntot + TPI(index)  
-              end do
-         
-
-         if ((Ntot .lt. 1.0e4) .or. (TEMP .lt. 245.0) .or. (W .lt. 0.01)) then !no activation if aerosol < 1e-4 1/cm3            
+           Ntot= sum(AER_BASE%num, MASK= AER_BASE%kap .gt. 0.1)
+     
+          if ((Ntot .lt. 1.0e4) .or. (TEMP .lt. 245.0) .or. (W .lt. 0.01)) then !no activation if aerosol < 1e-4 1/cm3            
             NCPL_ACT  = 0.0
          else
 
@@ -2036,9 +1988,9 @@ CONTAINS
             
             DO INDEX = 1, NMODES            
                 
-               kappa=  max(AER_BASE%kap(INDEX), 0.001)
+               kappa=  max(AER_BASE(index)%kap, 0.001)
              
-                  SMI (INDEX) = ((0.667*Akoh/AER_BASE%dpg(INDEX))**1.5)/SQRT(2.0*kappa)   ! Critical supersat for mode I   
+                  SMI (INDEX) = ((0.667*Akoh/AER_BASE(index)%dpg)**1.5)/SQRT(2.0*kappa)   ! Critical supersat for mode I   
                   SMI=MAX(SMI, 1.0e-5)   
                    
               if ((TPI(INDEX) .gt. 1e4) .and.  (kappa .gt. 0.1)) then                       
@@ -2058,11 +2010,11 @@ CONTAINS
                auxx=0.0
 
                    DO INDEX = 1, NMODES
-                        if ((TPI(INDEX) .gt. 1e4) .and. (AER_BASE%kap(index) .gt. 0.1)) then
+                        if ((TPI(INDEX) .gt. 1e4) .and. (AER_BASE(index)%kap .gt. 0.1)) then
                            ui=sqrt(2.0)*log(SMI(INDEX)/smax)/3.0
                            aux1=0.5*TPI(INDEX)*(1.0-ERFAPP(ui))
                            auxx=auxx+aux1
-                           AER_BASE%num(index) = max(TPI(INDEX) -aux1, 0.0) !remove already activated aerosol
+                           AER_BASE(index)%num = max(TPI(INDEX) -aux1, 0.0) !remove already activated aerosol
                         end if                    
                    END DO
                   NCPL_ACT=auxx             
@@ -2075,29 +2027,42 @@ CONTAINS
        end if
 
          !now filllup dust and soot number
-         NMODES =  AER%nmods
 
-         call getINsubset(1, AER,  auxaer)
-         CDUST(1:auxaer%nmods)= auxaer%num(1:auxaer%nmods)
-         DDUSTAMB(1:auxaer%nmods)= auxaer%dpg(1:auxaer%nmods)
-         call getINsubset(2, AER,  auxaer)
-         naux = max(auxaer%nmods, 1)
-         CSOOT= sum(auxaer%num) 
-         DSOOTAMB= sum(auxaer%dpg)/naux
+         DDUSTAMB =  5.0e-9
+
+         where  (AERO(LEV, :)%fdust .gt. 0.25)         
+            CDUST(:)= AERO(LEV, :)%num
+            DDUSTAMB(:)= AERO(LEV, :)%dpg
+         end where   
+      
+           
+         
+         CSOOT= sum(AERO(LEV, :)%num, MASK=AERO(LEV, :)%fsoot .gt. 0.25)
+          
+         naux   =  0 
+         do index=1, nmodes          
+         	if (AERO(LEV,index)%fsoot .gt. 0.25) naux =  naux+1   
+         end do      
+         
+         DSOOTAMB= sum(AERO(LEV, :)%dpg, MASK=AERO(LEV, :)%fsoot .gt. 0.25)/max(naux, 1)
 
 
          PACT=1.0 ! fraction of entrained aerosol that is activated
          auxconc =0.0
-         aseasalt_aux  = 0.0
+         aseasalt  = 0.0
 
          do index = 1, nmodes 
-	       if (AER%kap(index) .gt. 0.8)  auxconc = AER%num(index) + auxconc
-           if (AER_BASE%kap(index) .gt. 0.8)    aseasalt_aux  = aseasalt_aux  + AER_BASE%num(index)*AER_BASE%dpg(index)*AER_BASE%dpg(index)*1.61*MAPL_PI !assumes a fixed sigma = 2.0
-
+	       if (AERO(LEV, index)%kap .gt. 0.8) then 
+              aseasalt  = AER_BASE(index)%num*AER_BASE(index)%dpg*AER_BASE(index)%dpg*1.61*MAPL_PI &
+                           + aseasalt !assumes a fixed sigma = 2.0 
+            end if
          end do
-       aseasalt = max(aseasalt, aseasalt_aux)
+          
+          !Activate  entrained aerosol with kappa>0.6 
+          NCPL_AMB= sum(AERO(LEV, :)%num, MASK=AERO(LEV, :)%kap .gt. 0.6)
+          
      
-	  NCPL_AMB=auxconc !Activate  entrained aerosol with kappa>0.8   
+	       NCPL_AMB=auxconc   
 
 
 
