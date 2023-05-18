@@ -424,6 +424,7 @@ contains
      allocate( this%      cdcr1(ntiles) )
      allocate( this%      cdcr2(ntiles) )
      allocate( this%      poros(ntiles) )
+     allocate( this%      ity(ntiles) )
 
      allocate( this%         tc(ntiles,4) )
      allocate( this%         qc(ntiles,4) )
