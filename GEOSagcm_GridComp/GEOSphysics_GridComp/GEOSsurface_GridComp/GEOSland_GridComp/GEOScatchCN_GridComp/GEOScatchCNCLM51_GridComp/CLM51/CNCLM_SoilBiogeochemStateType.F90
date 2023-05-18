@@ -7,7 +7,7 @@ module SoilBiogeochemStateType
   use clm_varpar       , only : ndecomp_cascade_transitions, ndecomp_pools, nlevcan, &
                                 nlevsno, nlevgrnd, nlevlak
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
-                                VAR_COL, VAR_PFT, num_zon
+                                VAR_COL, VAR_PFT, num_zon, num_veg, numpft
   use clm_varctl       , only : use_cn
   use clm_varcon       , only : spval
   use decompMod        , only : bounds_type
@@ -50,21 +50,24 @@ module SoilBiogeochemStateType
 contains
 
 !---------------------------------------
- subroutine Init(this, bounds, nch, cncol, rc)
+ subroutine Init(this, bounds, nch, cncol, cnpft, ityp, fveg, rc)
 
     !
     ! !ARGUMENTS:
     !INPUT/OUTPUT
     type(bounds_type),                     intent(in) :: bounds
     integer,                               intent(in) :: nch ! number of tiles
+    integer, dimension(nch,NUM_VEG,NUM_ZON),intent(in) :: ityp ! PFT index
+    real, dimension(nch,NUM_VEG,NUM_ZON),   intent(in) :: fveg    ! PFT fraction
     real, dimension(nch,NUM_ZON,VAR_COL),  intent(in) :: cncol ! gkw: column CN restart
+    real, dimension(nch,NUM_ZON,NUM_VEG,VAR_PFT), intent(in) :: cnpft ! gkw: PFT CN restart
     class(soilbiogeochem_state_type)                  :: this
     integer, optional,                     intent(out) :: rc
     !
     ! !LOCAL VARIABLES:
     integer :: begp, endp
     integer :: begc,endc
-    integer :: n, nc, nz, np
+    integer :: n, nc, nz, np, nv, np
     !-----------------------------------
 
     begp = bounds%begp; endp= bounds%endp
@@ -102,6 +105,15 @@ contains
           do np = 1,nlevdecomp_full
              this%fpi_vr_col(n,np) = cncol(nc,nz, 35)
           end do
+
+          this%plant_ndemand_col(n) = 0._r8
+          do p = 0,numpft  ! PFT index loop
+             do nv = 1,num_veg ! defined veg loop
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                   this%plant_ndemand_col(n) = this%plant_ndemand_col(n) + cnpft(nc,nz,nv, 75)
+                end if
+             end do ! nv
+          end do ! p
       end do !nz
    end do ! nc
 

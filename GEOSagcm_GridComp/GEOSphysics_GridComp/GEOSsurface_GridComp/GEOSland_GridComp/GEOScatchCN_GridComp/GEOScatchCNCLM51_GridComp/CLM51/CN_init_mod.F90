@@ -277,7 +277,7 @@ module CN_initMod
 
     call soilbiogeochem_nitrogenstate_inst%Init(bounds, nch, cncol)
 
-    call soilbiogeochem_state_inst%Init (bounds, nch, cncol)
+    call soilbiogeochem_state_inst%Init (bounds, nch, cncol, cnpft, ityp, fveg)
 
     call soilbiogeochem_carbonflux_inst%Init (bounds)
 
