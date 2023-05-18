@@ -967,6 +967,7 @@ contains
     allocate(this%cost_nretrans_patch          (begp:endp)) ;    this%cost_nretrans_patch        (:) = nan
     allocate(this%nuptake_npp_fraction_patch   (begp:endp)) ;    this%nuptake_npp_fraction_patch            (:) = nan
 
+ this%plant_ndemand_patch(begp:endp) = spval
 
  ! initialize variables from restart file or set to cold start value
  n = 0
