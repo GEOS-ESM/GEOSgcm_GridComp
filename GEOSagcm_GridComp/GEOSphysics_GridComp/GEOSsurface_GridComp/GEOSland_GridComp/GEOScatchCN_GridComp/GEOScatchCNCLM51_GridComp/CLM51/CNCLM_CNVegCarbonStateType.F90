@@ -450,7 +450,7 @@ contains
     allocate(this%totvegc_col              (begc:endc)) ; this%totvegc_col              (:) = nan                            
                                                                                                                              
     allocate(this%totc_p2c_col             (begc:endc)) ; this%totc_p2c_col             (:) = nan                            
-    allocate(this%totc_col                 (begc:endc)) ; this%totc_col                 (:) = nan                            
+    allocate(this%totc_col                 (begc:endc)) ; this%totc_col                 (:) = spval
     allocate(this%totecosysc_col           (begc:endc)) ; this%totecosysc_col           (:) = nan                            
     allocate(this%totc_grc                 (begg:endg)) ; this%totc_grc                 (:) = nan                            
   

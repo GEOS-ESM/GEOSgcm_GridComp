@@ -309,7 +309,7 @@ contains
     allocate(this%seedn_grc                              (begg:endg)) ; this%seedn_grc                           (:) = nan
     allocate(this%totvegn_col                            (begc:endc)) ; this%totvegn_col                         (:) = nan
     allocate(this%totn_p2c_col                           (begc:endc)) ; this%totn_p2c_col                        (:) = nan
-    allocate(this%totn_col                               (begc:endc)) ; this%totn_col                            (:) = nan
+    allocate(this%totn_col                               (begc:endc)) ; this%totn_col                            (:) = spval
     allocate(this%totecosysn_col                         (begc:endc)) ; this%totecosysn_col                      (:) = nan
     allocate(this%totn_grc                               (begg:endg)) ; this%totn_grc                            (:) = nan
 

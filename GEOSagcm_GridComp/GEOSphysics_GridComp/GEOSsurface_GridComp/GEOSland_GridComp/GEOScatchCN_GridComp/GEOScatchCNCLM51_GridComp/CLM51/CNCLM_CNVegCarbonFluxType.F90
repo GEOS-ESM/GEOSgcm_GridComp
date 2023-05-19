@@ -1052,7 +1052,7 @@ contains
     allocate(this%gpp_col                 (begc:endc)) ; this%gpp_col                 (:) = nan
     allocate(this%npp_col                 (begc:endc)) ; this%npp_col                 (:) = nan
     allocate(this%fire_closs_p2c_col      (begc:endc)) ; this%fire_closs_p2c_col      (:) = nan
-    allocate(this%fire_closs_col          (begc:endc)) ; this%fire_closs_col          (:) = nan
+    allocate(this%fire_closs_col          (begc:endc)) ; this%fire_closs_col          (:) = spval
     allocate(this%wood_harvestc_col       (begc:endc)) ; this%wood_harvestc_col       (:) = nan
     allocate(this%hrv_xsmrpool_to_atm_col (begc:endc)) ; this%hrv_xsmrpool_to_atm_col (:) = 0.0_r8
     allocate(this%tempsum_npp_patch       (begp:endp)) ; this%tempsum_npp_patch       (:) = nan
@@ -1063,7 +1063,7 @@ contains
     allocate(this%lag_npp_col             (begc:endc)) ; this%lag_npp_col             (:) = spval
 
 
-    allocate(this%nep_col                 (begc:endc)) ; this%nep_col                 (:) = nan
+    allocate(this%nep_col                 (begc:endc)) ; this%nep_col                 (:) = spval
     allocate(this%nbp_grc                 (begg:endg)) ; this%nbp_grc                 (:) = nan
     allocate(this%nee_grc                 (begg:endg)) ; this%nee_grc                 (:) = nan
     allocate(this%landuseflux_grc         (begg:endg)) ; this%landuseflux_grc         (:) = nan

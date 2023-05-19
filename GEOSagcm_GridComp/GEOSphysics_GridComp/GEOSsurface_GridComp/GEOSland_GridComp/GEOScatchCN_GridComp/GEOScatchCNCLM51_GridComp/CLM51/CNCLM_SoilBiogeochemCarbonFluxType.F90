@@ -103,7 +103,7 @@ contains
      allocate(this%o_scalar_col      (begc:endc,1:nlevdecomp_full)); this%o_scalar_col      (:,:) =spval
      allocate(this%phr_vr_col        (begc:endc,1:nlevdecomp_full)); this%phr_vr_col        (:,:) =nan
      allocate(this%fphr_col          (begc:endc,1:nlevgrnd))       ; this%fphr_col          (:,:) =nan
-     allocate(this%som_c_leached_col (begc:endc))                  ; this%som_c_leached_col (:)   =nan
+     allocate(this%som_c_leached_col (begc:endc))                  ; this%som_c_leached_col (:)   =spval
      allocate(this%somc_fire_col     (begc:endc))                  ; this%somc_fire_col     (:)   =nan
      allocate(this%hr_vr_col         (begc:endc,1:nlevdecomp_full)); this%hr_vr_col         (:,:) =nan
 
