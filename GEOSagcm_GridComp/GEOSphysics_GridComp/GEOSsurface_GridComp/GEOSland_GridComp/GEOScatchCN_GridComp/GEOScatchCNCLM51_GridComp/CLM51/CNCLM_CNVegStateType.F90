@@ -165,7 +165,7 @@ contains
     allocate(this%tempavg_t2m_patch   (begp:endp))                   ; this%tempavg_t2m_patch   (:)   = nan
     allocate(this%annsum_counter_col  (begc:endc))                   ; this%annsum_counter_col  (:)   = nan
     allocate(this%annavg_t2m_col      (begc:endc))                   ; this%annavg_t2m_col      (:)   = nan
-    allocate(this%annavg_t2m_patch    (begp:endp))                   ; this%annavg_t2m_patch    (:)   = nan
+    allocate(this%annavg_t2m_patch    (begp:endp))                   ; this%annavg_t2m_patch    (:)   = spval
 
     allocate(this%nfire_col           (begc:endc))                   ; this%nfire_col           (:)   = spval
     allocate(this%fsr_col             (begc:endc))                   ; this%fsr_col             (:)   = nan

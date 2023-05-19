@@ -76,9 +76,9 @@ module Wateratm2lndBulkType
     allocate(this%volrmch_grc                   (begg:endg))        ; this%volrmch_grc (:)   = ival
     allocate(this%forc_rh_grc                   (begg:endg))        ; this%forc_rh_grc (:)   = ival
     allocate(this%prec365_col                   (begc:endc))        ; this%prec365_col (:)   = nan
-    allocate(this%prec60_patch                  (begp:endp))        ; this%prec60_patch(:)   = nan
-    allocate(this%prec10_patch                  (begp:endp))        ; this%prec10_patch(:)   = nan
-    allocate(this%rh30_patch                    (begp:endp))        ; this%rh30_patch  (:)   = nan
+    allocate(this%prec60_patch                  (begp:endp))        ; this%prec60_patch(:)   = spval
+    allocate(this%prec10_patch                  (begp:endp))        ; this%prec10_patch(:)   = spval
+    allocate(this%rh30_patch                    (begp:endp))        ; this%rh30_patch  (:)   = spval
     if (use_fates) then
        allocate(this%prec24_patch               (begp:endp))        ; this%prec24_patch(:)   = nan
        allocate(this%rh24_patch                 (begp:endp))        ; this%rh24_patch  (:)   = nan

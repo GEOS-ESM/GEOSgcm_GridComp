@@ -302,8 +302,8 @@ contains
     allocate(this%ntrunc_patch                           (begp:endp)) ; this%ntrunc_patch                        (:) = nan
     allocate(this%dispvegn_patch                         (begp:endp)) ; this%dispvegn_patch                      (:) = nan
     allocate(this%storvegn_patch                         (begp:endp)) ; this%storvegn_patch                      (:) = nan
-    allocate(this%totvegn_patch                          (begp:endp)) ; this%totvegn_patch                       (:) = nan
-    allocate(this%totn_patch                             (begp:endp)) ; this%totn_patch                          (:) = nan
+    allocate(this%totvegn_patch                          (begp:endp)) ; this%totvegn_patch                       (:) = spval
+    allocate(this%totn_patch                             (begp:endp)) ; this%totn_patch                          (:) = spval
 
     allocate(this%cropseedn_deficit_patch                (begp:endp)) ; this%cropseedn_deficit_patch             (:) = nan
     allocate(this%seedn_grc                              (begg:endg)) ; this%seedn_grc                           (:) = nan

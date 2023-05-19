@@ -1011,7 +1011,7 @@ contains
     allocate(this%litterc_loss_col                  (begc:endc))                  ; this%litterc_loss_col          (:)  =nan
 
     allocate(this%grainc_to_cropprodc_patch(begp:endp))
-    this%grainc_to_cropprodc_patch(:) = nan
+    this%grainc_to_cropprodc_patch(:) = spval
 
     allocate(this%grainc_to_cropprodc_col(begc:endc))
     this%grainc_to_cropprodc_col(:) = nan
@@ -1028,11 +1028,11 @@ contains
     allocate(this%m_decomp_cpools_to_fire_col(begc:endc,1:ndecomp_pools))
     this%m_decomp_cpools_to_fire_col(:,:)= nan
 
-    allocate(this%rr_patch                (begp:endp)) ; this%rr_patch                (:) = nan
+    allocate(this%rr_patch                (begp:endp)) ; this%rr_patch                (:) = spval
     allocate(this%mr_patch                (begp:endp)) ; this%mr_patch                (:) = nan
     allocate(this%gr_patch                (begp:endp)) ; this%gr_patch                (:) = nan
-    allocate(this%ar_patch                (begp:endp)) ; this%ar_patch                (:) = nan
-    allocate(this%npp_patch               (begp:endp)) ; this%npp_patch               (:) = nan
+    allocate(this%ar_patch                (begp:endp)) ; this%ar_patch                (:) = spval
+    allocate(this%npp_patch               (begp:endp)) ; this%npp_patch               (:) = spval
     allocate(this%agnpp_patch             (begp:endp)) ; this%agnpp_patch             (:) = nan
     allocate(this%bgnpp_patch             (begp:endp)) ; this%bgnpp_patch             (:) = nan
     allocate(this%litfall_patch           (begp:endp)) ; this%litfall_patch           (:) = nan
@@ -1040,8 +1040,8 @@ contains
     allocate(this%slash_harvestc_patch    (begp:endp)) ; this%slash_harvestc_patch    (:) = nan
     allocate(this%cinputs_patch           (begp:endp)) ; this%cinputs_patch           (:) = nan
     allocate(this%coutputs_patch          (begp:endp)) ; this%coutputs_patch          (:) = nan
-    allocate(this%gpp_patch               (begp:endp)) ; this%gpp_patch               (:) = nan
-    allocate(this%fire_closs_patch        (begp:endp)) ; this%fire_closs_patch        (:) = nan
+    allocate(this%gpp_patch               (begp:endp)) ; this%gpp_patch               (:) = spval
+    allocate(this%fire_closs_patch        (begp:endp)) ; this%fire_closs_patch        (:) = spval
     allocate(this%sr_col                  (begc:endc)) ; this%sr_col                  (:) = nan
     allocate(this%er_col                  (begc:endc)) ; this%er_col                  (:) = nan
     allocate(this%litfire_col             (begc:endc)) ; this%litfire_col             (:) = nan
@@ -1056,7 +1056,7 @@ contains
     allocate(this%wood_harvestc_col       (begc:endc)) ; this%wood_harvestc_col       (:) = nan
     allocate(this%hrv_xsmrpool_to_atm_col (begc:endc)) ; this%hrv_xsmrpool_to_atm_col (:) = 0.0_r8
     allocate(this%tempsum_npp_patch       (begp:endp)) ; this%tempsum_npp_patch       (:) = nan
-    allocate(this%annsum_npp_patch        (begp:endp)) ; this%annsum_npp_patch        (:) = nan
+    allocate(this%annsum_npp_patch        (begp:endp)) ; this%annsum_npp_patch        (:) = spval
     allocate(this%tempsum_litfall_patch   (begp:endp)) ; this%tempsum_litfall_patch   (:) = nan
     allocate(this%annsum_litfall_patch    (begp:endp)) ; this%annsum_litfall_patch    (:) = nan
     allocate(this%annsum_npp_col          (begc:endc)) ; this%annsum_npp_col          (:) = nan

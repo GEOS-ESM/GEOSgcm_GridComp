@@ -6,6 +6,7 @@ module CNVegCarbonStateType
   use clm_varctl       , only : iulog, use_cndv, use_crop, use_matrixcn
   use clm_varpar       , only : numpft, num_zon, num_veg, &
                                 var_col, var_pft, CN_zone_weight
+  use clm_varcon       , only : spval
   use nanMod           , only : nan
   use decompMod        , only : bounds_type
   use pftconMod        , only : noveg, npcropmin, pftcon
@@ -252,7 +253,7 @@ contains
     begg = bounds%begg  ; endg = bounds%endg
     begc = bounds%begc  ; endc = bounds%endc
 
-    allocate(this%leafc_patch                            (begp:endp)) ; this%leafc_patch                        (:) = nan    
+    allocate(this%leafc_patch                            (begp:endp)) ; this%leafc_patch                        (:) = spval    
     allocate(this%leafc_storage_patch                    (begp:endp)) ; this%leafc_storage_patch                (:) = nan    
     allocate(this%leafc_xfer_patch                       (begp:endp)) ; this%leafc_xfer_patch                   (:) = nan    
     if(use_matrixcn)then                                                                                                     
@@ -278,7 +279,7 @@ contains
        allocate(this%matrix_cap_livestemc_storage_patch  (begp:endp)) ; this%matrix_cap_livestemc_storage_patch (:) = nan    
        allocate(this%matrix_cap_livestemc_xfer_patch     (begp:endp)) ; this%matrix_cap_livestemc_xfer_patch    (:) = nan    
     end if                                                                                                                   
-    allocate(this%deadstemc_patch                        (begp:endp)) ; this%deadstemc_patch                    (:) = nan    
+    allocate(this%deadstemc_patch                        (begp:endp)) ; this%deadstemc_patch                    (:) = spval
     allocate(this%deadstemc_storage_patch                (begp:endp)) ; this%deadstemc_storage_patch            (:) = nan    
     allocate(this%deadstemc_xfer_patch                   (begp:endp)) ; this%deadstemc_xfer_patch               (:) = nan    
     if(use_matrixcn)then                                                                                                     
@@ -311,7 +312,7 @@ contains
     allocate(this%dispvegc_patch                         (begp:endp)) ; this%dispvegc_patch                     (:) = nan    
     allocate(this%storvegc_patch                         (begp:endp)) ; this%storvegc_patch                     (:) = nan    
     allocate(this%leafcmax_patch                         (begp:endp)) ; this%leafcmax_patch                     (:) = nan    
-    allocate(this%totc_patch                             (begp:endp))  ; this%totc_patch                        (:) = nan    
+    allocate(this%totc_patch                             (begp:endp))  ; this%totc_patch                        (:) = spval
     allocate(this%grainc_patch                           (begp:endp)) ; this%grainc_patch                       (:) = nan    
     allocate(this%grainc_storage_patch                   (begp:endp)) ; this%grainc_storage_patch               (:) = nan    
     allocate(this%grainc_xfer_patch                      (begp:endp)) ; this%grainc_xfer_patch                  (:) = nan  
@@ -445,7 +446,7 @@ contains
     allocate(this%fuelc_col                (begc:endc)) ; this%fuelc_col                (:) = nan 
     allocate(this%fuelc_crop_col           (begc:endc)) ; this%fuelc_crop_col           (:) = nan                            
                                                                                                                              
-    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = nan                            
+    allocate(this%totvegc_patch            (begp:endp)) ; this%totvegc_patch            (:) = spval                            
     allocate(this%totvegc_col              (begc:endc)) ; this%totvegc_col              (:) = nan                            
                                                                                                                              
     allocate(this%totc_p2c_col             (begc:endc)) ; this%totc_p2c_col             (:) = nan                            
