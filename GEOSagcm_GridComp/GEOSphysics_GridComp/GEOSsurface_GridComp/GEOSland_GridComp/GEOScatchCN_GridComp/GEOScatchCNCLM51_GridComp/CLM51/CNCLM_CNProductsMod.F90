@@ -113,10 +113,10 @@ contains
 
     allocate(this%dwt_cropprod1_gain_grc(begg:endg)) ; this%dwt_cropprod1_gain_grc(:) = nan
 
-    allocate(this%hrv_deadstem_to_prod10_patch(begp:endp)) ; this%hrv_deadstem_to_prod10_patch(:) = nan
+    allocate(this%hrv_deadstem_to_prod10_patch(begp:endp)) ; this%hrv_deadstem_to_prod10_patch(:) = spval
     allocate(this%hrv_deadstem_to_prod10_grc(begg:endg)) ; this%hrv_deadstem_to_prod10_grc(:) = nan
 
-    allocate(this%hrv_deadstem_to_prod100_patch(begp:endp)) ; this%hrv_deadstem_to_prod100_patch(:) = nan
+    allocate(this%hrv_deadstem_to_prod100_patch(begp:endp)) ; this%hrv_deadstem_to_prod100_patch(:) = spval
     allocate(this%hrv_deadstem_to_prod100_grc(begg:endg)) ; this%hrv_deadstem_to_prod100_grc(:) = nan
 
     allocate(this%grain_to_cropprod1_patch(begp:endp)) ; this%grain_to_cropprod1_patch(:) = nan
@@ -132,7 +132,7 @@ contains
     this%dwt_prod10_gain_grc(begg:endg) = 0._r8
     this%dwt_prod100_gain_grc(begg:endg) = 0._r8
     this%grain_to_cropprod1_grc(begg:endg) = 0._r8
-    this%grain_to_cropprod1_patch(begp:endp) = 0._r8
+  
 
     ! initialize variables from restart file or set to cold start value
 
