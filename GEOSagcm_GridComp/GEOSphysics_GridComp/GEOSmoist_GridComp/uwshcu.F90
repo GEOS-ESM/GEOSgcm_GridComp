@@ -74,7 +74,7 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         t0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
+         t0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,       & 
          cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
@@ -112,25 +112,25 @@ contains
       real,   intent(in)    :: t0_inv(idim,k0)          !  Environmental temperature [ K ]
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
-      real, intent(in)    :: kpbl_inv(idim)           !  Height of PBL [ m ]
-      real, intent(in)    :: shfx(idim)               ! Surface sensible heat
-      real, intent(in)    :: evap(idim)               ! Surface evaporation
-      real, intent(in)    :: cnvtr(idim)              ! convective tracer
-      real, intent(in)    :: frland(idim)             ! land fraction
-      real, intent(inout) :: cush(idim)               !  Convective scale height [m]
+      real, intent(in)    :: kpbl_inv(idim)             !  Height of PBL [ m ]
+      real, intent(in)    :: shfx(idim)                 ! Surface sensible heat
+      real, intent(in)    :: evap(idim)                 ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim)                ! convective tracer
+      real, intent(in)    :: frland(idim)               ! land fraction
+      real, intent(inout) :: cush(idim)                 !  Convective scale height [m]
 
-      real, intent(out)   :: umf_inv(idim,k0+1)       !  Updraft mass flux at interfaces [kg/m2/s]
-      real, intent(out)   :: dcm_inv(idim,k0)       !  Detrained cloudy air mass
-      real, intent(out)   :: qvten_inv(idim,k0)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
+      real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
+      real, intent(out)   :: dcm_inv(idim,k0)           !  Detrained cloudy air mass
+      real, intent(out)   :: qvten_inv(idim,k0)         !  Tendency of water vapor specific humidity [ kg/kg/s ]
       real, intent(out)   :: qlten_inv(idim,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
       real, intent(out)   :: qiten_inv(idim,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
-      real, intent(out)   ::  tten_inv(idim,k0)       !  Tendency of temperature [ K/s ]
-      real, intent(out)   :: uten_inv(idim,k0)        !  Tendency of zonal wind [ m/s2 ]
-      real, intent(out)   :: vten_inv(idim,k0)        !  Tendency of meridional wind [ m/s2 ]
-!      real, intent(out)   :: trten_inv(idim,k0,ncnst) !  Tendency of tracers [ #/s, kg/kg/s ]
-      real, intent(out)   :: qrten_inv(idim,k0)       !  Tendency of rain water specific humidity [ kg/kg/s ]
-      real, intent(out)   :: qsten_inv(idim,k0)       !  Tendency of snow specific humidity [ kg/kg/s ]
-      real, intent(out)   :: cufrc_inv(idim,k0)       !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+      real, intent(out)   ::  tten_inv(idim,k0)         !  Tendency of temperature [ K/s ]
+      real, intent(out)   :: uten_inv(idim,k0)          !  Tendency of zonal wind [ m/s2 ]
+      real, intent(out)   :: vten_inv(idim,k0)          !  Tendency of meridional wind [ m/s2 ]
+!      real, intent(out)   :: trten_inv(idim,k0,ncnst)  !  Tendency of tracers [ #/s, kg/kg/s ]
+      real, intent(out)   :: qrten_inv(idim,k0)         !  Tendency of rain water specific humidity [ kg/kg/s ]
+      real, intent(out)   :: qsten_inv(idim,k0)         !  Tendency of snow specific humidity [ kg/kg/s ]
+      real, intent(out)   :: cufrc_inv(idim,k0)         !  Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
       real, intent(out)   :: fer_inv(idim,k0)
       real, intent(out)   :: fdr_inv(idim,k0)
       real, intent(out)   :: qldet_inv(idim,k0)
@@ -753,7 +753,7 @@ contains
     real  uu_emf_out(idim,0:k0)                !  Penetratively entrained u [ m/s ]
     real  vu_emf_out(idim,0:k0)                !  Penetratively entrained v [ m/s ]
     real  uemf_out(idim,0:k0)                  !  Net upward mass flux
-                                               ! including penetrative entrainment (umf+emf) [ kg/m2/s ]
+                                               !   including penetrative entrainment (umf+emf) [ kg/m2/s ]
     real  dwten_out(idim,k0)
     real  diten_out(idim,k0)
     real  tru_out(idim,0:k0,ncnst)             !  Updraft tracers [ #, kg/kg ]   
@@ -2684,7 +2684,7 @@ contains
             emf(k) = 0.
    
             dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
-!            dcm(k) = min(1.,max(0.,xsat-xc))
+!           dcm(k) = min(1.,max(0.,xsat-xc))
 
           ! --------------------------------------------------------- !
           ! Compute cumulus updraft properties at the top interface.  !
@@ -4342,8 +4342,6 @@ contains
 
      umf_out(i,0:k0)             = umf(0:k0)
      umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
-
-!     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
      dcm_out(i,:k0)              = dcm(:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv
      qvten_out(i,:k0)            = qvten(:k0)
@@ -4361,7 +4359,7 @@ contains
      qlsub_out(i,:k0)            = qlten_sink(:k0)
      qisub_out(i,:k0)            = qiten_sink(:k0)
      ndrop_out(i,:k0)            = qlten_det(:k0)/(4188.787*rdrop**3)
-!     ndrop_out(i,:k0)            = qlten_det(:k0)/(4.19e-12) !(1.15e-11) ! /drop mass
+!    ndrop_out(i,:k0)            = qlten_det(:k0)/(4.19e-12) !(1.15e-11) ! /drop mass
      nice_out(i,:k0)             = qiten_det(:k0)/(3.0e-10) ! /crystal mass
      qtflx_out(i,0:k0)           = qtflx(0:k0)
      slflx_out(i,0:k0)           = slflx(0:k0)

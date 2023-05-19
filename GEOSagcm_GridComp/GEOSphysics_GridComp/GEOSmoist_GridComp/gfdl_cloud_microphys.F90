@@ -49,7 +49,7 @@ module gfdl2_cloud_microphys_mod
     use fms_mod,             only: write_version_number, open_namelist_file, &
                                    check_nml_error, close_file, file_exist,  &
                                    fms_init
-    use GEOSmoist_Process_Library, only: ice_fraction
+    use GEOSmoist_Process_Library, only: sigma, ice_fraction
 
     implicit none
     
@@ -626,7 +626,7 @@ end subroutine gfdl_cloud_microphys_driver
 subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land, &
-        cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl,                 &
+        cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl, &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
         w_var, vt_r, vt_s, vt_g, vt_i, qn2)
     
@@ -671,7 +671,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     real, dimension (ktop:kbot) :: t0, den, den0, tz, p1, denfac
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: u0, v0, u1, v1, w1
-    
+   
+    real :: onemsig 
     real :: cpaut, rh_adj, rh_rain
     real :: r1, s1, i1, g1, rdt, ccn0
     real :: dts
@@ -769,9 +770,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
-       !! slow autoconversion in stable regimes
-       !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-        
+        ! slow autoconversion in stable regimes
+        cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
+      
+        ! 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr 
+        onemsig = 1.0 - sigma(sqrt(area1(i))) 
+ 
         ! ccn needs units #/m^3 
         if (prog_ccn) then
             do k = ktop, kbot
@@ -848,7 +852,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-                qgz, qaz, eis(i), den, denfac, ccn, c_praut, vtrz,   &
+                qgz, qaz, eis(i), onemsig, den, denfac, ccn, c_praut, vtrz,   &
                 r1, evap1, m1_rain, w1, h_var1d)
 
             rain (i) = rain (i) + r1
@@ -1027,7 +1031,7 @@ end subroutine sedi_heat
 ! -----------------------------------------------------------------------
 
 subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
-        eis, &
+        eis, onemsig, &
         den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
     
     implicit none
@@ -1041,6 +1045,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, intent (in), dimension (ktop:kbot) :: dp, dz, den
     real, intent (in), dimension (ktop:kbot) :: denfac, ccn, c_praut
 
+    real, intent (in) :: onemsig
     real, intent (in) :: eis !< estimated inversion strength
     
     real, intent (inout), dimension (ktop:kbot) :: tz, vtr
@@ -1105,6 +1110,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
+            if (qadum(k) > onemsig) then
             qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr) then
                 qc = qc0 / den (k)
@@ -1115,6 +1121,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
+            endif
             endif
         enddo
         
@@ -1127,6 +1134,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
         
         do k = ktop, kbot
+            if (qadum(k) > onemsig) then
             qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
@@ -1148,6 +1156,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
+            endif
             endif
         enddo
     endif

@@ -107,7 +107,8 @@ module GEOSmoist_Process_Library
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-  
+  public :: sigma 
+ 
  
   contains
 
@@ -201,6 +202,11 @@ module GEOSmoist_Process_Library
     deallocate(QNAMES)
 
   end subroutine CNV_Tracers_Init
+
+  real function sigma (dx)
+      real, intent(in) :: dx
+      sigma = 1.0-0.9839*exp(-0.09835*(dx/1000.)) ! Arakawa 2011 sigma
+  end function sigma
 
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
@@ -3403,5 +3409,7 @@ subroutine update_cld( &
   enddo
 
  end subroutine cs_prof
+
+
 
 end module GEOSmoist_Process_Library

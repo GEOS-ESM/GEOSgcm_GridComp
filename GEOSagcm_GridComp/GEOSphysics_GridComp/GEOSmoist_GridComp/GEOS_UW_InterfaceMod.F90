@@ -387,9 +387,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         QILS = QILS + (QISUB_SC+QIENT_SC)*UW_DT
       !  Precipitation
       !--------------------------------------------------------------
-        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = DQRDT_SC    ! [kg/kg/s]
-        call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, PTR3D, 'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = DQSDT_SC    ! [kg/kg/s]
       ! Other exports
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_QT', RC=STATUS); VERIFY_(STATUS)
