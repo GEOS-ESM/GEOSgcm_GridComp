@@ -67,7 +67,7 @@ contains
     ! !LOCAL VARIABLES:
     integer :: begp, endp
     integer :: begc,endc
-    integer :: n, nc, nz, np, nv, np
+    integer :: n, nc, nz, np, nv, p
     !-----------------------------------
 
     begp = bounds%begp; endp= bounds%endp
