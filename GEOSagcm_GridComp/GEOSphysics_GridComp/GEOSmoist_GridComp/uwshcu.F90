@@ -30,7 +30,6 @@ module uwshcu
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
      real     :: detrhgt            ! Mixing rate increases above this height
-     real     :: rkfre              ! Vertical velocity fraction of tke
      real     :: rmaxfrac           ! Maximum core updraft fraction
      real     :: mumin1             ! 
      real     :: rbuoy              ! Non-hydro pressure effect on updraft
@@ -74,7 +73,7 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         t0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,       & 
+         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland,& 
          cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
@@ -112,6 +111,7 @@ contains
       real,   intent(in)    :: t0_inv(idim,k0)          !  Environmental temperature [ K ]
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
+      real, intent(in)    :: rkfre(idim)                !  Resolution dependent Vertical velocity variance as fraction of tke. 
       real, intent(in)    :: kpbl_inv(idim)             !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)                 ! Surface sensible heat
       real, intent(in)    :: evap(idim)                 ! Surface evaporation
@@ -297,7 +297,7 @@ contains
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, tke, cush, umf,   &
+           qv0, ql0, qi0, th0, tr0, kpbl, tke, rkfre, cush, umf, &
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
@@ -394,7 +394,7 @@ contains
    subroutine compute_uwshcu(idim, k0, dt,ncnst, pifc0_in,zifc0_in,& ! IN
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
-         tr0_inout, kpbl_in, tke_in, cush_inout,                   & ! OUT
+         tr0_inout, kpbl_in, tke_in, rkfre, cush_inout,            & ! OUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
@@ -453,6 +453,7 @@ contains
       real, intent(in)    :: qi0_in( idim,k0 )        ! Environmental ice specific humidity
       real, intent(in)    :: th0_in( idim,k0 )        ! Environmental potential temperature [K]
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
+      real, intent(in)    :: rkfre(idim)              !  Resolution dependent Vertical velocity variance as fraction of tke. 
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! Convective tracer
@@ -940,7 +941,6 @@ contains
     real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
     real :: mixscale     !  Specify vertical structure of mixing rate
     real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
-    real :: rkfre        !  Vertical velocity variance as fraction of  tke. 
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
                          !  obtaind by inverting 'rmaxfrac = 0.5*erfc(mumin1)'.
@@ -990,7 +990,6 @@ contains
     rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
     mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
-    rkfre     = shlwparams%rkfre    !  Vertical velocity variance as fraction of  tke. 
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
     rbuoy     = shlwparams%rbuoy    !  For nonhydrostatic pressure effects on updraft [no unit]
@@ -1741,7 +1740,7 @@ contains
        if( iter .eq. 1 ) then 
            cin_i       = cin
            cinlcl_i    = cinlcl
-           ke          = rbuoy / ( rkfre * tkeavg + epsvarw ) 
+           ke          = rbuoy / ( rkfre(i) * tkeavg + epsvarw ) 
            kinv_o      = kinv     
            klcl_o      = klcl     
            klfc_o      = klfc    
@@ -2155,7 +2154,7 @@ contains
          else
             wcrit = sqrt( 2. * cinlcl * rbuoy )   
          endif
-         sigmaw = sqrt( rkfre * tkeavg + epsvarw )
+         sigmaw = sqrt( rkfre(i) * tkeavg + epsvarw )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2194,7 +2193,7 @@ contains
        ! 'ufrclcl' are smaller than ufrcmax with no instability.             !
        ! ------------------------------------------------------------------- !
 
-         cbmf = 1.0*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
+         cbmf = rkfre(i)*(rho0inv*sigmaw/2.5066)*exp(-mu**2)                       
          winv = sigmaw*(2./2.5066)*exp(-mu**2)/erfc(mu)
          ufrcinv = cbmf/winv/rho0inv
 

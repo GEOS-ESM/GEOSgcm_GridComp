@@ -2432,6 +2432,14 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &    
+         SHORT_NAME='RKFRE',                                      &
+         LONG_NAME ='fraction_of_tke_associated_with_vertical_velocity',  &          
+         UNITS     =''  ,                                         & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS) 
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='STOCH_CNV',                                     &
          LONG_NAME ='stochastic_factor_for_convection',               &

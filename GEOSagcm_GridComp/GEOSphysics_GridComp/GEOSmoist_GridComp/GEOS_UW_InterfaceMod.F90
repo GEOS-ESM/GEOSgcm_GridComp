@@ -145,7 +145,6 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
     call MAPL_GetResource(MAPL, SHLWPARAMS%DETRHGT,          'DETRHGT:'         ,DEFAULT=1800.0, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRC_FAC,        'QTSRC_FAC:'       ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%QTSRCHGT,         'QTSRCHGT:'        ,DEFAULT=40.0,   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
 
 end subroutine UW_Initialize
 
@@ -175,6 +174,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: CNPCPRATE
     real, pointer, dimension(:,:)   :: CNV_FRC, SRF_TYPE
     ! Exports
+    real, pointer, dimension(:,:)   :: RKFRE
     real, pointer, dimension(:,:,:) :: CUFRC_SC
     real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC
     real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
@@ -308,7 +308,19 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-  
+    call MAPL_GetPointer(EXPORT, RKFRE,   'RKFRE'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    if (JASON_UW) then
+      RKFRE = 1.0
+    else
+      ! resolution dependent throttle on UW via TKE and scaling of cloud-base mass flux
+      call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
+      do J=1,JM
+        do I=1,IM
+           RKFRE(i,j) = sigma(SQRT(PTR2D(i,j)))  
+        enddo
+      enddo 
+    endif
+
     ! combine condensates for input (not updated within UW) 
     call MAPL_GetPointer(EXPORT, QLTOT, 'QLTOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -319,7 +331,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !----------------------------------------------------------------
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
-            U, V, Q, QLTOT, QITOT, T, TKE, KPBL_SC,       &
+            U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
             SH, EVAP, CNPCPRATE, FRLAND,                  &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
