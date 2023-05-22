@@ -9,7 +9,7 @@ program ncar_gwd_standalone
 
     implicit none
 
-    integer               :: IM, JM, LM, fileID, status, PGWV, RC
+    integer               :: IM, JM, LM, fileID, status, PGWV, RC, nrdg
     integer               :: NCAR_BKG_PGWV, NCAR_ORO_PGWV, NCAR_NRDG
     real                  :: DT, bgstressmax, effgwbkg, effgworo
     real                  :: t_start, t_end
@@ -19,19 +19,21 @@ program ncar_gwd_standalone
     real                  :: NCAR_SC_BERES_SRC_LEVEL
     real                  :: NCAR_ET_TAUBGND, NCAR_BKG_TNDMAX
     real                  :: NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH
-    real                  :: NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX
+    real                  :: NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX, NCAR_EFFGWORO
     character*100         :: Errstring, dirName, rank
     logical               :: NCAR_TAU_TOP_ZERO, NCAR_DC_BERES, NCAR_SC_BERES
 
     type(BeresSourceDesc) :: beres_dc_desc, beres_sc_desc
     type(GWBand)          :: beres_band, oro_band, rdg_band
 
-    real, dimension(:,:,:), allocatable :: PLE, T, U, V, HT_dpc
-    real, dimension(:,:,:), allocatable :: PMID, PDEL, RPDEL, PILN, ZM
+    real, dimension(:,:,:), allocatable :: PLE, T, Q, U, V, HT_dpc, ZI
+    real, dimension(:,:,:), allocatable :: PMID, PDEL, RPDEL, PILN, ZM, PMLN
     real, dimension(:,:,:), allocatable :: DUDT_GWD, DVDT_GWD, DTDT_GWD, DUDT_ORG, DVDT_ORG, DTDT_ORG
     real, dimension(:,:,:), allocatable :: TAUXO_3D, TAUYO_3D, TAUXB_3D, TAUYB_3D, FEO_3D, FEB_3D, FEPO_3D, FEPB_3D
     real, dimension(:,:,:), allocatable :: DUBKGSRC, DVBKGSRC, DTBKGSRC
+    real, dimension(:,:,:), allocatable :: ANGLL, HWDTH, KWVRDG, CLNGT, EFFRDG
     real, dimension(:,:),   allocatable :: LATS, SGH, TAUXO_TMP, TAUYO_TMP, TAUXB_TMP, TAUYB_TMP
+    real, dimension(:,:),   allocatable :: GBXAR_TMP, GBXAR
     real, dimension(:),     allocatable :: PREF, alpha
 
     real, dimension(:,:,:), allocatable :: DUDT_GWD_ref, DVDT_GWD_ref, DTDT_GWD_ref, DUDT_ORG_ref, DVDT_ORG_ref, DTDT_ORG_ref
@@ -40,8 +42,19 @@ program ncar_gwd_standalone
     real, dimension(:,:,:), allocatable :: DUBKGSRC_ref, DVBKGSRC_ref, DTBKGSRC_ref
     real, dimension(:,:),   allocatable :: TAUXO_TMP_ref, TAUYO_TMP_ref, TAUXB_TMP_ref, TAUYB_TMP_ref
     real, dimension(:),     allocatable :: alpha_ref
+
+
+    real, dimension(:,:,:), allocatable :: PDEL_ref, PILN_ref, RPDEL_ref, PMID_ref, PMLN_ref, ZI_ref, ZM_ref
+    real, dimension(:,:,:), allocatable :: ANGLL_ref, KWVRDG_ref, EFFRDG_ref
+    real, dimension(:,:),   allocatable :: GBXAR_TMP_ref
     dirName = './new_c180_data/ncar_gwd'
-    rank = '3'
+    
+    if(command_argument_count().ne.1) then
+        print*, 'Missing arguments : <executable> <rank>'
+        call exit(1)
+    else
+        call get_command_argument(1, rank)
+    endif
     
     if (dirName == './data-c12-6-6-72') then
     ! C12 Array Sizes
@@ -290,19 +303,28 @@ program ncar_gwd_standalone
     ! print*,'sum(alpha_ref) = ', sum(alpha_ref)
 
 !     ! Input arrays
-!     allocate(PLE   (IM, JM, LM+1))
-!     allocate(T     (IM, JM, LM))
+    allocate(PLE   (IM, JM, LM+1))
+    allocate(T     (IM, JM, LM))
+    allocate(Q     (IM, JM, LM))
 !     allocate(U     (IM, JM, LM))
 !     allocate(V     (IM, JM, LM))
 !     allocate(HT_dpc(IM, JM, LM))
 !     allocate(SGH   (IM, JM))
 !     allocate(PREF  (        LM+1))
-!     allocate(PMID  (IM, JM, LM))
-!     allocate(PDEL  (IM, JM, LM))
-!     allocate(RPDEL (IM, JM, LM))
-!     allocate(PILN  (IM, JM, LM+1))
-!     allocate(ZM    (IM, JM, LM))
-
+    allocate(PMID  (IM, JM, LM))
+    allocate(PMID_ref  (IM, JM, LM))
+    allocate(PDEL  (IM, JM, LM))
+    allocate(PDEL_ref  (IM, JM, LM))
+    allocate(RPDEL (IM, JM, LM))
+    allocate(RPDEL_ref (IM, JM, LM))
+    allocate(PILN  (IM, JM, LM+1))
+    allocate(PILN_ref  (IM, JM, LM+1))
+    allocate(PMLN  (IM, JM, LM))
+    allocate(PMLN_ref  (IM, JM, LM))
+    allocate(ZI( IM, JM, LM+1))
+    allocate(ZI_ref( IM, JM, LM+1))
+    allocate(ZM    (IM, JM, LM))
+    allocate(ZM_ref    (IM, JM, LM))
 !     ! Output arrays
 !     allocate(DUDT_GWD (IM, JM, LM))
 !     allocate(DVDT_GWD (IM, JM, LM))
@@ -349,17 +371,21 @@ program ncar_gwd_standalone
 !     allocate(DVBKGSRC_ref (IM, JM, LM))
 !     allocate(DTBKGSRC_ref (IM, JM, LM))
 
-!     open(newunit=fileID, file=trim(dirName) // "/ple.in", status='old', form="unformatted", action="read")
-!     read(fileID) PLE
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/PLE_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) PLE
+    close(fileID)
 
 !     !write(*,*) 'sum(PLE) = ', sum(PLE)
 
-!     open(newunit=fileID, file=trim(dirName) // "/T.in", status='old', form="unformatted", action="read")
-!     read(fileID) T
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/T_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) T
+    close(fileID)
 
 !     !write(*,*) 'sum(T) = ', sum(T)
+
+    open(newunit=fileID, file=trim(dirName) // "/Q_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) Q
+    close(fileID)
 
 !     open(newunit=fileID, file=trim(dirName) // "/U.in", status='old', form="unformatted", action="read")
 !     read(fileID) U
@@ -391,29 +417,33 @@ program ncar_gwd_standalone
 
 !     !write(*,*) 'sum(PREF) = ', sum(PREF)
 
-!     open(newunit=fileID, file=trim(dirName) // "/pmid.in", status='old', form="unformatted", action="read")
-!     read(fileID) PMID
-!     close(fileID)
+    ! open(newunit=fileID, file=trim(dirName) // "/PMID_" // trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) PMID
+    ! close(fileID)
 
 !     !write(*,*) 'sum(PMID) = ', sum(PMID)
 
-!     open(newunit=fileID, file=trim(dirName) // "/pdel.in", status='old', form="unformatted", action="read")
-!     read(fileID) PDEL
-!     close(fileID)
+    ! open(newunit=fileID, file=trim(dirName) // "/PDEL_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) PDEL
+    ! close(fileID)
 
 !     !write(*,*) 'sum(PDEL) = ', sum(PDEL)
 
-!     open(newunit=fileID, file=trim(dirName) // "/rpdel.in", status='old', form="unformatted", action="read")
-!     read(fileID) RPDEL
-!     close(fileID)
+    ! open(newunit=fileID, file=trim(dirName) // "/PRDEL_" // trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) RPDEL
+    ! close(fileID)
 
 !     !write(*,*) 'sum(RPDEL) = ', sum(RPDEL)
 
-!     open(newunit=fileID, file=trim(dirName) // "/piln.in", status='old', form="unformatted", action="read")
-!     read(fileID) PILN
-!     close(fileID)
+    ! open(newunit=fileID, file=trim(dirName) // "/PILN_" // trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) PILN
+    ! close(fileID)
 
 !     !write(*,*) 'sum(PILN) = ', sum(PILN)
+
+    ! open(newunit=fileID, file=trim(dirName) // "/PMLN_" // trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) PMLN
+    ! close(fileID)
 
 !     open(newunit=fileID, file=trim(dirName) // "/zm.in", status='old', form="unformatted", action="read")
 !     read(fileID) ZM
@@ -421,11 +451,105 @@ program ncar_gwd_standalone
 
 !     !write(*,*) 'sum(ZM) = ', sum(ZM)
 
-!     open(newunit=fileID, file=trim(dirName) // "/lats.in", status='old', form="unformatted", action="read")
-!     read(fileID) LATS
-!     close(fileID)
+    ! open(newunit=fileID, file=trim(dirName) // "/LATS_v2_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    ! read(fileID) LATS
+    ! close(fileID)
 
 !     !write(*,*) 'sum(LATS) = ', sum(LATS)
+
+    CALL PREGEO(IM*JM,   LM,   &
+        PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
+
+    ! Compute ZM
+    !-------------
+
+    call GEOPOTENTIAL( IM*JM, LM,                  &
+        PILN,  PMLN,  PLE,   PMID, PDEL, RPDEL,   &
+        T,     Q,     ZI,    ZM                   )
+
+    ! open(newunit=fileID, file=trim(dirName) // "/ZI_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) ZI_ref
+    ! close(fileID)
+
+    ! open(newunit=fileID, file=trim(dirName) // "/ZM_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) ZM_ref
+    ! close(fileID)
+
+    ! print*,'sum(ZI_ref-ZI) = ', sum(ZI_ref-ZI)
+    ! print*,'sum(ZM_ref-ZM) = ', sum(ZM_ref-ZM)
+
+    allocate(GBXAR_TMP(IM, JM))
+    allocate(GBXAR_TMP_ref(IM, JM))
+    allocate(GBXAR    (IM, JM))
+    allocate(ANGLL    (IM, JM, 16))
+    allocate(ANGLL_ref(IM, JM, 16))
+    allocate(HWDTH    (IM, JM, 16))
+    allocate(CLNGT    (IM, JM, 16))
+    allocate(KWVRDG(IM, JM, 16))
+    allocate(KWVRDG_ref(IM, JM, 16))
+    allocate(EFFRDG(IM, JM, 16))
+    allocate(EFFRDG_ref(IM, JM, 16))
+
+    open(newunit=fileID, file=trim(dirName) // "/GBXAR_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) GBXAR
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/ANGLL_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) ANGLL
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/HWDTH_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) HWDTH
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/CLNGT_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) CLNGT
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/KWVRDG_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) KWVRDG
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/EFFRDG_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) EFFRDG
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/NCAR_EFFGWORO_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) NCAR_EFFGWORO
+    close(fileID)
+
+
+    GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
+    WHERE (ANGLL < -180)
+        ANGLL = 0.0
+    END WHERE
+
+    do nrdg = 1, NCAR_NRDG
+        KWVRDG(:,:,nrdg) = 0.001/(HWDTH(:,:,nrdg)+0.001)
+        EFFRDG(:,:,nrdg) = NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
+    enddo
+
+    ! open(newunit=fileID, file=trim(dirName) // "/ANGLL_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) ANGLL_ref
+    ! close(fileID)
+
+    ! open(newunit=fileID, file=trim(dirName) // "/KWVRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) KWVRDG_ref
+    ! close(fileID)
+
+    ! open(newunit=fileID, file=trim(dirName) // "/EFFRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) EFFRDG_ref
+    ! close(fileID)
+
+    ! open(newunit=fileID, file=trim(dirName) // "/GBXAR_TMP_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    ! read(fileID) GBXAR_TMP_ref
+    ! close(fileID)
+
+    ! print*,'sum(ANGLL_ref-ANGLL) = ', sum(ANGLL_ref-ANGLL)
+    ! print*,'sum(KWVRDG_ref-KWVRDG) = ', sum(KWVRDG_ref-KWVRDG)
+    ! print*,'sum(EFFRDG_ref-EFFRDG) = ', sum(EFFRDG_ref-EFFRDG)
+    ! print*,'sum(GBXAR_TMP_ref-GBXAR_TMP) = ', sum(GBXAR_TMP_ref-GBXAR_TMP)
+    ! print*,'NCAR_NRDG = ', NCAR_NRDG
 
 ! !$acc  data copyin(oro_band, beres_band, beres_desc) &
 ! !!$acc       copyin(beres_band%cref, beres_band%ngwv, beres_band%dc) &
@@ -596,6 +720,153 @@ program ncar_gwd_standalone
 
 !     write(*,*) 'Execution time of gw_intr_ncar = ', t_end - t_start
     
+    contains
+
+
+  subroutine pregeo(pcols,pver,&
+    ple,lats,pmid,pdel,rpdel,piln,pmln)
+
+    implicit none
+
+!------------------------------Arguments--------------------------------
+!
+! Input arguments
+!
+
+    integer, intent(in) :: pcols    ! Number of longitudes
+    integer, intent(in) :: pver     ! Number of vertical layers
+
+    real,    intent(in) :: ple (pcols,pver+1)    ! Interface pressures
+    real,    intent(in) :: lats(pcols)           ! latitude in radian
+
+! Output arguments
+
+    real,    intent(out) :: pmid  (pcols,pver)   ! Midpoint pressures
+    real,    intent(out) :: pdel  (pcols,pver)   ! layer thickness
+    real,    intent(out) :: rpdel (pcols,pver)   ! inverse of layer thickness
+    real,    intent(out) :: piln  (pcols,pver+1) ! Log interface pressures
+    real,    intent(out) :: pmln  (pcols,pver)   ! Log midpoint pressures
+
+!
+!---------------------------Local variables-----------------------------
+!
+    integer :: i,k
+
+    real    :: hvsd  ! Efficiency factor
+
+    real, parameter :: PI_GWD  = 4.0*atan(1.0)  ! This is *not* MAPL_PI
+
+!
+!-----------------------------------------------------------------------
+!
+
+! Form pressure factors
+!----------------------
+
+    I_LOOP: DO I = 1, PCOLS
+
+       DO K = 1, PVER
+           PMID(I,K) = 0.5*(  PLE(I,K  ) + PLE(I,K+1) )
+           PDEL(I,K) =        PLE(I,K+1) - PLE(I,K  )
+          RPDEL(I,K) = 1.0 / PDEL(I,K)
+           PILN(I,K) = log(   PLE(I,K) )
+           PMLN(I,K) = log(  PMID(I,K) ) !
+       END DO
+       PILN(I,PVER+1)  = log( PLE(I,PVER+1)  )
+    END DO I_LOOP
+
+  end subroutine pregeo
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+  subroutine geopotential(pcols  , pver   ,                   &
+    piln   , pmln   , pint  , pmid   , pdel   , rpdel  , &
+    t      , q      , zi     , zm     )
+
+!-----------------------------------------------------------------------
+!
+! Purpose:
+! Compute the geopotential height (above the surface) at the midpoints and
+! interfaces using the input temperatures and pressures.
+! Author: B.Boville, Feb 2001 from earlier code by Boville and S.J. Lin
+!
+!-----------------------------------------------------------------------
+
+implicit none
+
+!------------------------------Arguments--------------------------------
+!
+! Input arguments
+!
+integer, intent(in) :: pcols                ! Number of longitudes
+integer, intent(in) :: pver                 ! Number of vertical layers
+
+real,    intent(in) :: piln (pcols,pver+1)  ! Log interface pressures
+real,    intent(in) :: pmln (pcols,pver)    ! Log midpoint pressures
+real,    intent(in) :: pint (pcols,pver+1)  ! Interface pressures
+real,    intent(in) :: pmid (pcols,pver)    ! Midpoint pressures
+real,    intent(in) :: pdel (pcols,pver)    ! layer thickness
+real,    intent(in) :: rpdel(pcols,pver)    ! inverse of layer thickness
+real,    intent(in) :: t    (pcols,pver)    ! temperature
+real,    intent(in) :: q    (pcols,pver)    ! specific humidity
+
+! Output arguments
+
+real,    intent(out) :: zi(pcols,pver+1)    ! Height above surface at interfaces
+real,    intent(out) :: zm(pcols,pver)      ! Geopotential height at mid level
+!
+!---------------------------Local variables-----------------------------
+!
+logical  :: fvdyn              ! finite volume dynamics
+integer  :: i,k                ! Lon, level indices
+real     :: hkk                ! diagonal element of hydrostatic matrix
+real     :: hkl                ! off-diagonal element
+real     :: tv                 ! virtual temperature
+real     :: tvfac              ! Tv/T
+
+real, parameter :: ROG     = MAPL_RGAS/MAPL_GRAV
+!
+!-----------------------------------------------------------------------
+!
+
+! Set dynamics flag
+
+fvdyn = .true.
+
+! The surface height is zero by definition.
+
+I_LOOP: do i = 1, pcols
+
+  zi(i,pver+1) = 0.0
+
+! Compute zi, zm from bottom up.
+! Note, zi(i,k) is the interface above zm(i,k)
+
+  do k = pver, 1, -1
+
+! First set hydrostatic elements consistent with dynamics
+
+     if (fvdyn) then
+        hkl = piln(i,k+1) - piln(i,k)
+        hkk = piln(i,k+1) - pmln(i,k)
+     else
+        hkl = pdel(i,k) / pmid(i,k)
+        hkk = 0.5 * hkl
+     end if
+
+! Now compute tv, zm, zi
+
+     tvfac   = 1. + MAPL_VIREPS * q(i,k)
+     tv      = t(i,k) * tvfac
+
+     zm(i,k) = zi(i,k+1) + ROG * tv * hkk
+     zi(i,k) = zi(i,k+1) + ROG * tv * hkl
+  end do
+end do I_LOOP
+
+return
+end subroutine geopotential
 end program
 
 
