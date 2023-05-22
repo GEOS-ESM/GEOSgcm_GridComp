@@ -148,7 +148,6 @@ contains
        if (myid ==0) then
           call catch%allocate_catch()
           call catch%read_shared_nc4(formatter, __RC__)
-          call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
        endif
        call formatter%close()
      else
@@ -229,7 +228,7 @@ contains
       read(unit) this%     atau
       read(unit) this%     btau
       read(unit) this%      ity
-      read(unit) this%       tc
+      read(unit) !this%       tc
       read(unit) this%       qc
       read(unit) this%    capac
       read(unit) this%   catdef
@@ -424,7 +423,6 @@ contains
      allocate( this%      cdcr1(ntiles) )
      allocate( this%      cdcr2(ntiles) )
      allocate( this%      poros(ntiles) )
-     allocate( this%      ity(ntiles) )
 
      allocate( this%         tc(ntiles,4) )
      allocate( this%         qc(ntiles,4) )
