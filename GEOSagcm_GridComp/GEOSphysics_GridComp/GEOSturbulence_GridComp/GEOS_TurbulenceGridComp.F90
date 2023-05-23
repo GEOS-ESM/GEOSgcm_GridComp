@@ -3306,7 +3306,8 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-5, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,    trim(COMP_NAME)//"_SHC_PRNUM:",        default=1.0,  RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-6, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",         default=0.4,  RC=STATUS)
@@ -3315,9 +3316,9 @@ contains
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:",    default=0.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=1,    RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=1.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=1.5,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=2.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=5.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=1.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%KRADFAC,  trim(COMP_NAME)//"_SHC_KRADFAC:",      default=0.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
      end if
@@ -4087,7 +4088,7 @@ contains
         ! for now just use fixed values
         QPI = 0.
         QPL = 0.
-        PRANDTLSHOC = 0.9
+        PRANDTLSHOC = 1.0*SHOCPARAMS%PRNUM
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT, &
                        !== Inputs ==

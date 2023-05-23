@@ -1119,7 +1119,7 @@ contains
       do j=1,ny
         do i=1,nx
 
-          wrk = 0.1*min(1000.,adzl(i,j,k))
+          wrk = 0.1*min(500.,adzl(i,j,k))
                                                             ! Minimum 0.1 of local dz
           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
 

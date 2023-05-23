@@ -5,6 +5,7 @@ module SHOCPARAMS
  type SHOCPARAMS_TYPE
     integer :: LENOPT
     integer :: BUOYOPT
+    real    :: PRNUM
     real    :: LAMBDA
     real    :: TSCALE
     real    :: VONK
