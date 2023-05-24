@@ -27,9 +27,7 @@ MODULE Aer_Actv_Single_Moment
        real(AER_PR), parameter :: deltai    =  2.809e+3
        real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
-       real, parameter :: NN_LAND     =  150.0e6
-       real, parameter :: NN_OCEAN    =   30.0e6
-       real, parameter :: NN_MIN      =   30.0e6
+       real, parameter :: NN_MIN      =  100.0e6
        real, parameter :: NN_MAX      = 1000.0e6
 
        LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
@@ -40,7 +38,7 @@ MODULE Aer_Actv_Single_Moment
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
                                        sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
-                                       AeroProps, aero_aci, NACTL, NACTI, NWFA)
+                                       AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
       TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
@@ -50,7 +48,8 @@ MODULE Aer_Actv_Single_Moment
       real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel,zlo, qlcn, qicn, qlls, qils
       real, dimension (IM,JM,0:LM),intent(in ) :: zle
       real, dimension (IM,JM)     ,intent(in ) :: FRLAND
-      real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl     
+      real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl
+      real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
       logical                     ,intent(in ) :: USE_AERO_BUFFER
       
  
@@ -244,10 +243,9 @@ MODULE Aer_Actv_Single_Moment
              air_den      = press*28.8e-3/8.31/tk ! kg/m3
       ENDDO;ENDDO
     
-      NACTL = NN_MIN
-      NACTI = NN_MIN
-
       DO k=LM,1,-1
+       NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+       NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
        DO j=1,JM
         DO i=1,IM
               

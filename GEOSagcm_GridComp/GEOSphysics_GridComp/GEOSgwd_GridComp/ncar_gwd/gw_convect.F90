@@ -596,6 +596,14 @@ subroutine gw_beres_ifc( band, &
         effgw = 0.0
      end where
 
+!GEOS pressure scaling near model top
+     zfac_layer = 1.0e2 ! 1mb
+     do k=1,pver+1
+       do i=1,ncol
+         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
+       enddo
+     enddo
+
      do k = 0, pver
         ! spectrum source index
         if (pref(k+1) < desc%spectrum_source) desc%k(:) = k+1
@@ -611,7 +619,7 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha)
+          ttgw, gwut, alpha, tau_adjust=pint_adj)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
