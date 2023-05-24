@@ -20,6 +20,7 @@ program ncar_gwd_standalone
     real                  :: NCAR_ET_TAUBGND, NCAR_BKG_TNDMAX
     real                  :: NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH
     real                  :: NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX, NCAR_EFFGWORO
+    real                  :: NCAR_EFFGWBKG
     character*100         :: Errstring, dirName, rank
     logical               :: NCAR_TAU_TOP_ZERO, NCAR_DC_BERES, NCAR_SC_BERES
 
@@ -28,19 +29,20 @@ program ncar_gwd_standalone
 
     real, dimension(:,:,:), allocatable :: PLE, T, Q, U, V, HT_dpc, ZI
     real, dimension(:,:,:), allocatable :: PMID, PDEL, RPDEL, PILN, ZM, PMLN
-    real, dimension(:,:,:), allocatable :: DUDT_GWD, DVDT_GWD, DTDT_GWD, DUDT_ORG, DVDT_ORG, DTDT_ORG
+    real, dimension(:,:,:), allocatable :: DUDT_GWD_NCAR, DVDT_GWD_NCAR, DTDT_GWD_NCAR, DUDT_ORG_NCAR, DVDT_ORG_NCAR, DTDT_ORG_NCAR
     real, dimension(:,:,:), allocatable :: TAUXO_3D, TAUYO_3D, TAUXB_3D, TAUYB_3D, FEO_3D, FEB_3D, FEPO_3D, FEPB_3D
     real, dimension(:,:,:), allocatable :: DUBKGSRC, DVBKGSRC, DTBKGSRC
     real, dimension(:,:,:), allocatable :: ANGLL, HWDTH, KWVRDG, CLNGT, EFFRDG
-    real, dimension(:,:),   allocatable :: LATS, SGH, TAUXO_TMP, TAUYO_TMP, TAUXB_TMP, TAUYB_TMP
-    real, dimension(:,:),   allocatable :: GBXAR_TMP, GBXAR
+    real, dimension(:,:,:), allocatable :: HT_dc, HT_sc, QLDT_mst, QIDT_mst, MXDIS, ANIXY
+    real, dimension(:,:),   allocatable :: LATS, SGH, TAUXO_TMP_NCAR, TAUYO_TMP_NCAR, TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
+    real, dimension(:,:),   allocatable :: GBXAR_TMP, GBXAR, PHIS
     real, dimension(:),     allocatable :: PREF, alpha
 
-    real, dimension(:,:,:), allocatable :: DUDT_GWD_ref, DVDT_GWD_ref, DTDT_GWD_ref, DUDT_ORG_ref, DVDT_ORG_ref, DTDT_ORG_ref
+    real, dimension(:,:,:), allocatable :: DUDT_GWD_NCAR_ref, DVDT_GWD_NCAR_ref, DTDT_GWD_NCAR_ref, DUDT_ORG_NCAR_ref, DVDT_ORG_NCAR_ref, DTDT_ORG_NCAR_ref
     real, dimension(:,:,:), allocatable :: TAUXO_3D_ref, TAUYO_3D_ref, TAUXB_3D_ref, TAUYB_3D_ref
     real, dimension(:,:,:), allocatable :: FEO_3D_ref, FEB_3D_ref, FEPO_3D_ref, FEPB_3D_ref
     real, dimension(:,:,:), allocatable :: DUBKGSRC_ref, DVBKGSRC_ref, DTBKGSRC_ref
-    real, dimension(:,:),   allocatable :: TAUXO_TMP_ref, TAUYO_TMP_ref, TAUXB_TMP_ref, TAUYB_TMP_ref
+    real, dimension(:,:),   allocatable :: TAUXO_TMP_NCAR_ref, TAUYO_TMP_NCAR_ref, TAUXB_TMP_NCAR_ref, TAUYB_TMP_NCAR_ref
     real, dimension(:),     allocatable :: alpha_ref
 
 
@@ -76,7 +78,7 @@ program ncar_gwd_standalone
         IM = 180
         JM = 180
         LM = 72
-        DT = 450.0
+        DT = 600.0
     endif
 
     PGWV = 4
@@ -276,6 +278,18 @@ program ncar_gwd_standalone
 
         NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
         call gw_rdg_init ( rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+        
+        ! print*,'Rank = ', trim(rank), ': NCAR_ORO_GW_DC = ', NCAR_ORO_GW_DC
+        ! print*,'Rank = ', trim(rank), ': NCAR_ORO_FCRIT2 = ', NCAR_ORO_FCRIT2
+        ! print*,'Rank = ', trim(rank), ': NCAR_ORO_WAVELENGTH = ', NCAR_ORO_WAVELENGTH
+        ! print*,'Rank = ', trim(rank), ': NCAR_ORO_TNDMAX = ', NCAR_ORO_TNDMAX
+        ! print*,'Rank = ', trim(rank), ': NCAR_ORO_PGWV = ', NCAR_ORO_PGWV
+        ! print*,'Rank = ', trim(rank), ': rdg_band%ngwv = ', rdg_band%ngwv
+        ! print*,'Rank = ', trim(rank), ': rdg_band%dc = ', rdg_band%dc
+        ! print*,'Rank = ', trim(rank), ': rdg_band%sum(abs(cref)  = ', sum(abs(rdg_band%cref))
+        ! print*,'Rank = ', trim(rank), ': rdg_band%fcrit2 = ', rdg_band%fcrit2
+        ! print*,'Rank = ', trim(rank), ': rdg_band%kwv = ', rdg_band%kwv
+        ! print*,'Rank = ', trim(rank), ': rdg_band%effkwv = ', rdg_band%effkwv
     endif
 
     allocate(alpha(LM+1))
@@ -299,17 +313,22 @@ program ncar_gwd_standalone
     ! print*,'sum(abs(alpha)) = ', sum(abs(alpha))
     close(fileID)
 
-    ! print*,'sum(alpha - alpha_ref) = ', sum(alpha - alpha_ref)
-    ! print*,'sum(alpha_ref) = ', sum(alpha_ref)
+    print*,'sum(alpha - alpha_ref) = ', sum(alpha - alpha_ref)
 
 !     ! Input arrays
     allocate(PLE   (IM, JM, LM+1))
     allocate(T     (IM, JM, LM))
     allocate(Q     (IM, JM, LM))
-!     allocate(U     (IM, JM, LM))
-!     allocate(V     (IM, JM, LM))
-!     allocate(HT_dpc(IM, JM, LM))
-!     allocate(SGH   (IM, JM))
+    allocate(U     (IM, JM, LM))
+    allocate(V     (IM, JM, LM))
+    allocate(HT_dc (IM, JM, LM))
+    allocate(HT_sc (IM, JM, LM))
+    allocate(QLDT_mst (IM, JM, LM))
+    allocate(QIDT_mst (IM, JM, LM))
+    allocate(MXDIS(IM, JM, 16))
+    allocate(ANIXY(IM, JM, 16))
+    allocate(PHIS(IM, JM))
+    allocate(SGH   (IM, JM))
 !     allocate(PREF  (        LM+1))
     allocate(PMID  (IM, JM, LM))
     allocate(PMID_ref  (IM, JM, LM))
@@ -326,19 +345,19 @@ program ncar_gwd_standalone
     allocate(ZM    (IM, JM, LM))
     allocate(ZM_ref    (IM, JM, LM))
 !     ! Output arrays
-!     allocate(DUDT_GWD (IM, JM, LM))
-!     allocate(DVDT_GWD (IM, JM, LM))
-!     allocate(DTDT_GWD (IM, JM, LM))
-!     allocate(DUDT_ORG (IM, JM, LM))
-!     allocate(DVDT_ORG (IM, JM, LM))
-!     allocate(DTDT_ORG (IM, JM, LM))
-!     allocate(TAUXO_TMP(IM, JM))
-!     allocate(TAUYO_TMP(IM, JM))
+    allocate(DUDT_GWD_NCAR (IM, JM, LM))
+    allocate(DVDT_GWD_NCAR (IM, JM, LM))
+    allocate(DTDT_GWD_NCAR (IM, JM, LM))
+    allocate(DUDT_ORG_NCAR (IM, JM, LM))
+    allocate(DVDT_ORG_NCAR (IM, JM, LM))
+    allocate(DTDT_ORG_NCAR (IM, JM, LM))
+    allocate(TAUXO_TMP_NCAR(IM, JM))
+    allocate(TAUYO_TMP_NCAR(IM, JM))
+    allocate(TAUXB_TMP_NCAR(IM, JM))
+    allocate(TAUYB_TMP_NCAR(IM, JM))
 !     allocate(TAUXO_3D (IM, JM, LM+1))
 !     allocate(TAUYO_3D (IM, JM, LM+1))
 !     allocate(FEO_3D   (IM, JM, LM+1))
-!     allocate(TAUXB_TMP(IM, JM))
-!     allocate(TAUYB_TMP(IM, JM))
 !     allocate(TAUXB_3D (IM, JM, LM+1))
 !     allocate(TAUYB_3D (IM, JM, LM+1))
 !     allocate(FEB_3D   (IM, JM, LM+1))
@@ -349,19 +368,20 @@ program ncar_gwd_standalone
 !     allocate(DTBKGSRC (IM, JM, LM))
 
 !     ! Output Array References
-!     allocate(DUDT_GWD_ref (IM, JM, LM))
-!     allocate(DVDT_GWD_ref (IM, JM, LM))
-!     allocate(DTDT_GWD_ref (IM, JM, LM))
-!     allocate(DUDT_ORG_ref (IM, JM, LM))
-!     allocate(DVDT_ORG_ref (IM, JM, LM))
-!     allocate(DTDT_ORG_ref (IM, JM, LM))
-!     allocate(TAUXO_TMP_ref(IM, JM))
-!     allocate(TAUYO_TMP_ref(IM, JM))
+    allocate(DUDT_GWD_NCAR_ref (IM, JM, LM))
+    allocate(DVDT_GWD_NCAR_ref (IM, JM, LM))
+    allocate(DTDT_GWD_NCAR_ref (IM, JM, LM))
+    allocate(DUDT_ORG_NCAR_ref (IM, JM, LM))
+    allocate(DVDT_ORG_NCAR_ref (IM, JM, LM))
+    allocate(DTDT_ORG_NCAR_ref (IM, JM, LM))
+    allocate(TAUXO_TMP_NCAR_ref(IM, JM))
+    allocate(TAUYO_TMP_NCAR_ref(IM, JM))
+    allocate(TAUXB_TMP_NCAR_ref(IM, JM))
+    allocate(TAUYB_TMP_NCAR_ref(IM, JM))
 !     allocate(TAUXO_3D_ref (IM, JM, LM+1))
 !     allocate(TAUYO_3D_ref (IM, JM, LM+1))
 !     allocate(FEO_3D_ref   (IM, JM, LM+1))
-!     allocate(TAUXB_TMP_ref(IM, JM))
-!     allocate(TAUYB_TMP_ref(IM, JM))
+
 !     allocate(TAUXB_3D_ref (IM, JM, LM+1))
 !     allocate(TAUYB_3D_ref (IM, JM, LM+1))
 !     allocate(FEB_3D_ref   (IM, JM, LM+1))
@@ -387,27 +407,55 @@ program ncar_gwd_standalone
     read(fileID) Q
     close(fileID)
 
-!     open(newunit=fileID, file=trim(dirName) // "/U.in", status='old', form="unformatted", action="read")
-!     read(fileID) U
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/U_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) U
+    close(fileID)
 
 !     !write(*,*) 'sum(U) = ', sum(U)
 
-!     open(newunit=fileID, file=trim(dirName) // "/V.in", status='old', form="unformatted", action="read")
-!     read(fileID) V
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/V_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) V
+    close(fileID)
 
 !     !write(*,*) 'sum(V) = ', sum(V)
 
-!     open(newunit=fileID, file=trim(dirName) // "/ht_dpc.in", status='old', form="unformatted", action="read")
-!     read(fileID) HT_dpc
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/HT_dc_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) HT_dc
+    close(fileID)
 
 !     !write(*,*) 'sum(HT_dpc) = ', sum(HT_dpc)
 
-!     open(newunit=fileID, file=trim(dirName) // "/sgh.in", status='old', form="unformatted", action="read")
-!     read(fileID) SGH
-!     close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/HT_sc_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) HT_sc
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/QLDT_mst_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) QLDT_mst
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/QIDT_mst_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) QIDT_mst
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/MXDIS_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) MXDIS
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/ANIXY_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) ANIXY
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/PHIS_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) PHIS
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/NCAR_EFFGWBKG_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) NCAR_EFFGWBKG
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/SGH_"// trim(rank) // ".in", status='old', form="unformatted", action="read")
+    read(fileID) SGH
+    close(fileID)
 
 !     !write(*,*) 'sum(SGH) = ', sum(SGH)
 
@@ -467,16 +515,16 @@ program ncar_gwd_standalone
         PILN,  PMLN,  PLE,   PMID, PDEL, RPDEL,   &
         T,     Q,     ZI,    ZM                   )
 
-    ! open(newunit=fileID, file=trim(dirName) // "/ZI_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) ZI_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/ZI_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) ZI_ref
+    close(fileID)
 
-    ! open(newunit=fileID, file=trim(dirName) // "/ZM_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) ZM_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/ZM_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) ZM_ref
+    close(fileID)
 
-    ! print*,'sum(ZI_ref-ZI) = ', sum(ZI_ref-ZI)
-    ! print*,'sum(ZM_ref-ZM) = ', sum(ZM_ref-ZM)
+    print*,'sum(ZI_ref-ZI) = ', sum(ZI_ref-ZI)
+    print*,'sum(ZM_ref-ZM) = ', sum(ZM_ref-ZM)
 
     allocate(GBXAR_TMP(IM, JM))
     allocate(GBXAR_TMP_ref(IM, JM))
@@ -518,7 +566,6 @@ program ncar_gwd_standalone
     read(fileID) NCAR_EFFGWORO
     close(fileID)
 
-
     GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
     WHERE (ANGLL < -180)
         ANGLL = 0.0
@@ -529,109 +576,316 @@ program ncar_gwd_standalone
         EFFRDG(:,:,nrdg) = NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
     enddo
 
-    ! open(newunit=fileID, file=trim(dirName) // "/ANGLL_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) ANGLL_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/ANGLL_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) ANGLL_ref
+    close(fileID)
 
-    ! open(newunit=fileID, file=trim(dirName) // "/KWVRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) KWVRDG_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/KWVRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) KWVRDG_ref
+    close(fileID)
 
-    ! open(newunit=fileID, file=trim(dirName) // "/EFFRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) EFFRDG_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/EFFRDG_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) EFFRDG_ref
+    close(fileID)
 
-    ! open(newunit=fileID, file=trim(dirName) // "/GBXAR_TMP_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
-    ! read(fileID) GBXAR_TMP_ref
-    ! close(fileID)
+    open(newunit=fileID, file=trim(dirName) // "/GBXAR_TMP_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) GBXAR_TMP_ref
+    close(fileID)
 
-    ! print*,'sum(ANGLL_ref-ANGLL) = ', sum(ANGLL_ref-ANGLL)
-    ! print*,'sum(KWVRDG_ref-KWVRDG) = ', sum(KWVRDG_ref-KWVRDG)
-    ! print*,'sum(EFFRDG_ref-EFFRDG) = ', sum(EFFRDG_ref-EFFRDG)
-    ! print*,'sum(GBXAR_TMP_ref-GBXAR_TMP) = ', sum(GBXAR_TMP_ref-GBXAR_TMP)
+    print*,'sum(ANGLL_ref-ANGLL) = ', sum(ANGLL_ref-ANGLL)
+    print*,'sum(KWVRDG_ref-KWVRDG) = ', sum(KWVRDG_ref-KWVRDG)
+    print*,'sum(EFFRDG_ref-EFFRDG) = ', sum(EFFRDG_ref-EFFRDG)
+    print*,'NCAR_EFFGWORO = ', NCAR_EFFGWORO
+
+    print*,'sum(GBXAR_TMP_ref-GBXAR_TMP) = ', sum(GBXAR_TMP_ref-GBXAR_TMP)
     ! print*,'NCAR_NRDG = ', NCAR_NRDG
 
-! !$acc  data copyin(oro_band, beres_band, beres_desc) &
-! !!$acc       copyin(beres_band%cref, beres_band%ngwv, beres_band%dc) &
-! !!$acc       copyin(oro_band%cref, oro_band%ngwv) &
-! !!$acc       copyin(beres_desc%hd, beres_desc%mfcc, beres_desc%k) &
-! !$acc       copyin(PLE, T, U, V, HT_dpc) &
-! !$acc       copyin(SGH, PREF, PMID, PDEL, RPDEL, PILN, ZM, LATS) &
-! !$acc       copyout(DUDT_GWD, DVDT_GWD, DTDT_GWD) &
-! !$acc       copyout(DUDT_ORG, DVDT_ORG, DTDT_ORG) &
-! !$acc       copyout(TAUXO_TMP, TAUYO_TMP, TAUXO_3D, TAUYO_3D, FEO_3D) &
-! !$acc       copyout(TAUXB_TMP, TAUYB_TMP, TAUXB_3D, TAUYB_3D, FEB_3D) &
-! !$acc       copyout(FEPO_3D, FEPB_3D) &
-! !$acc       create(DUBKGSRC, DVBKGSRC, DTBKGSRC)
-! !$acc  data copyin(beres_band%cref, beres_band%ngwv, beres_band%dc) &
-! !$acc       copyin(oro_band%cref, oro_band%ngwv) &
-! !$acc       copyin(beres_desc%hd, beres_desc%mfcc, beres_desc%k)
+    DUDT_GWD_NCAR = 0.0
+    DVDT_GWD_NCAR = 0.0
+    DTDT_GWD_NCAR = 0.0
+    TAUXB_TMP_NCAR = 0.0
+    TAUYB_TMP_NCAR = 0.0
+    DUDT_ORG_NCAR = 0.0
+    DVDT_ORG_NCAR = 0.0
+    DTDT_ORG_NCAR = 0.0
+    TAUXO_TMP_NCAR = 0.0
+    TAUYO_TMP_NCAR = 0.0
+    ! print*,'Going into gw_intr_ncar'
+    ! print*,'DT = ', DT
+    ! print*,'NCAR_NRDG = ', NCAR_NRDG
+    ! print*,'sum(PLE) = ', sum(PLE)
+    ! print*,'sum(T) = ', sum(T)
+    ! print*,'sum(U) = ', sum(U)
+    ! print*,'sum(V) = ', sum(V)
+    ! print*,'sum(HT_dc) = ', sum(HT_dc)
+    ! print*,'sum(HT_sc) = ', sum(HT_sc)
+    ! print*,'sum(QLDT_mst) = ', sum(QLDT_mst)
+    ! print*,'sum(QIDT_mst) = ', sum(QIDT_mst)
+    ! print*,'sum(SGH) = ', sum(SGH)
+    ! print*,'sum(MXDIS) = ', sum(MXDIS)
+    ! print*,'sum(HWDTH) = ', sum(HWDTH)
+    ! print*,'sum(CLNGT) = ', sum(CLNGT)
+    ! print*,'sum(ANGLL) = ', sum(ANGLL)
+    ! print*,'sum(ANIXY) = ', sum(ANIXY)
+    ! print*,'sum(GBXAR_TMP) = ', sum(GBXAR_TMP)
+    ! print*,'sum(KWVRDG) = ', sum(KWVRDG)
+    ! print*,'sum(EFFRDG) = ', sum(EFFRDG)
+    ! print*,'sum(PREF) = ', sum(PREF)
+    ! print*,'sum(PMID) = ', sum(PMID)
+    ! print*,'sum(PDEL) = ', sum(PDEL)
+    ! print*,'sum(RPDEL) = ', sum(RPDEL)
+    ! print*,'sum(PILN) = ', sum(PILN)
+    ! print*,'sum(ZM) = ', sum(ZM)
+    ! print*,'sum(LATS) = ', sum(LATS)
+    ! print*,'sum(PHIS) = ', sum(PHIS)
+    ! print*,'sum(alpha) = ', sum(alpha)
+    
 
-!     call cpu_time(t_start)
+    call gw_intr_ncar(IM*JM,    LM,         DT,     NCAR_NRDG,   &
+                 beres_dc_desc, beres_sc_desc, &
+                 beres_band, oro_band, rdg_band, &
+                 PLE,       T,          U,          V,                   &
+                 HT_dc,     HT_sc,      QLDT_mst+QIDT_mst,               &
+                 SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
+                 ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
+                 PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+                 PHIS,                                                   &
+                 DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
+                 DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
+                 TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
+                 TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+                 NCAR_EFFGWORO, &
+                 NCAR_EFFGWBKG, alpha, &
+                 RC)
 
-!     call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-!             PGWV,      beres_desc, beres_band, oro_band,            &
-!             PLE,       T,          U,          V,      HT_dpc,      &
-!             SGH,       PREF,                                        &
-!             PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-!             DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-!             DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-!             TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-!             TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-!             FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-!             BGSTRESSMAX, effgworo, effgwbkg,   RC            )
+    open(newunit=fileID, file=trim(dirName) // "/DUDT_GWD_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DUDT_GWD_NCAR_ref
+    close(fileID)
 
+    open(newunit=fileID, file=trim(dirName) // "/DVDT_GWD_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DVDT_GWD_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/DTDT_GWD_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DTDT_GWD_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/DUDT_ORG_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DUDT_ORG_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/DVDT_ORG_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DVDT_ORG_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/DTDT_ORG_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) DTDT_ORG_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/TAUXO_TMP_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) TAUXO_TMP_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/TAUYO_TMP_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) TAUYO_TMP_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/TAUXB_TMP_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) TAUXB_TMP_NCAR_ref
+    close(fileID)
+
+    open(newunit=fileID, file=trim(dirName) // "/TAUYB_TMP_NCAR_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
+    read(fileID) TAUYB_TMP_NCAR_ref
+    close(fileID)
+    
+    print*,'sum(DUDT_GWD_NCAR_ref - DUDT_GWD_NCAR) = ', sum(DUDT_GWD_NCAR_ref - DUDT_GWD_NCAR)
+    print*,'sum(DVDT_GWD_NCAR_ref - DVDT_GWD_NCAR) = ', sum(DVDT_GWD_NCAR_ref - DVDT_GWD_NCAR)
+    print*,'sum(DTDT_GWD_NCAR_ref - DTDT_GWD_NCAR) = ', sum(DTDT_GWD_NCAR_ref - DTDT_GWD_NCAR)
+    print*,'sum(DUDT_ORG_NCAR_ref - DUDT_ORG_NCAR) = ', sum(DUDT_ORG_NCAR_ref - DUDT_ORG_NCAR)
+    print*,'sum(DVDT_ORG_NCAR_ref - DVDT_ORG_NCAR) = ', sum(DVDT_ORG_NCAR_ref - DVDT_ORG_NCAR)
+    print*,'sum(DTDT_ORG_NCAR_ref - DTDT_ORG_NCAR) = ', sum(DTDT_ORG_NCAR_ref - DTDT_ORG_NCAR)
+    print*,'sum(TAUXO_TMP_NCAR_ref - TAUXO_TMP_NCAR) = ', sum(TAUXO_TMP_NCAR_ref - TAUXO_TMP_NCAR)
+    print*,'sum(TAUYO_TMP_NCAR_ref - TAUYO_TMP_NCAR) = ', sum(TAUYO_TMP_NCAR_ref - TAUYO_TMP_NCAR)
+    print*,'sum(TAUXB_TMP_NCAR_ref - TAUXB_TMP_NCAR) = ', sum(TAUXB_TMP_NCAR_ref - TAUXB_TMP_NCAR)
+    print*,'sum(TAUYB_TMP_NCAR_ref - TAUYB_TMP_NCAR) = ', sum(TAUYB_TMP_NCAR_ref - TAUYB_TMP_NCAR)
 !     call cpu_time(t_end)
-! !$acc end data
-! !$acc end data
+
+    ! ! Use GEOS GWD only for Extratropical background sources...
+    ! DUDT_GWD_GEOS = 0.0
+    ! DVDT_GWD_GEOS = 0.0
+    ! DTDT_GWD_GEOS = 0.0
+    ! TAUXB_TMP_GEOS = 0.0
+    ! TAUYB_TMP_GEOS = 0.0
+    ! DUDT_ORG_GEOS = 0.0
+    ! DVDT_ORG_GEOS = 0.0
+    ! DTDT_ORG_GEOS = 0.0
+    ! TAUXO_TMP_GEOS = 0.0
+    ! TAUYO_TMP_GEOS = 0.0
+
+    ! if ( (GEOS_EFFGWORO /= 0.0) .OR. (GEOS_EFFGWBKG /= 0.0) ) then
+    !     call gw_intr   (IM*JM,      LM,         DT,                  &
+    !          GEOS_PGWV,                                              &
+    !          PLE,       T,          U,          V,      SGH,   PREF, &
+    !          PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+    !          DUDT_GWD_GEOS,  DVDT_GWD_GEOS,   DTDT_GWD_GEOS,         &
+    !          DUDT_ORG_GEOS,  DVDT_ORG_GEOS,   DTDT_ORG_GEOS,         &
+    !          TAUXO_TMP_GEOS, TAUYO_TMP_GEOS,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+    !          TAUXB_TMP_GEOS, TAUYB_TMP_GEOS,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+    !          FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+    !          GEOS_BGSTRESS, &
+    !          GEOS_EFFGWORO, &
+    !          GEOS_EFFGWBKG, &
+    !          RC)
+    !    endif
+
+    ! ! Total
+    ! DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR
+    ! DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR
+    ! DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR
+    ! ! Background
+    ! TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
+    ! TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
+    ! ! Orographic
+    ! DUDT_ORG=DUDT_ORG_GEOS+DUDT_ORG_NCAR
+    ! DVDT_ORG=DVDT_ORG_GEOS+DVDT_ORG_NCAR
+    ! DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
+    ! TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
+    ! TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
+
+    ! if (self%effbeljaars > 0.0) then
+    !     THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
+    !     DO J=1,JM
+    !         DO I=1,IM    
+    !             ! Find the PBL height
+    !             ikpbl = LM
+    !             do L=LM-1,1,-1
+    !                 tcrib = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*ZM(I,J,L)/ &
+    !                         (THV(I,J,LM)*MAX(U(I,J,L)**2+V(I,J,L)**2,1.0E-8))
+    !                 if (tcrib >= 0.25) then
+    !                     ikpbl = L
+    !                     exit
+    !                 end if
+    !             end do
+    !             ! determine the efolding height
+    !             a2(i,j)=self%effbeljaars * 1.08371722e-7 * VARFLT(i,j) * &
+    !                     MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+    !             ! Revise e-folding height based on PBL height and topographic std. dev.
+    !             Hefold(i,j) = 1500.0 !MIN(MAX(2*SQRT(VARFLT(i,j)),ZM(i,j,ikpbl)),1500.)
+    !         END DO
+    !     END DO
+
+    !     DO L=1, LM
+    !         DO J=1,JM
+    !             DO I=1,IM
+    !                 var_temp = 0.0
+    !                 if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j)) then
+    !                     wsp      = SQRT(U(i,j,l)**2 + V(i,j,l)**2)
+    !                     wsp      = SQRT(MIN(wsp/25.0,1.0))*MAX(25.0,wsp) ! enhance winds below 25 m/s
+    !                     var_temp = ZM(I,J,L)/Hefold(i,j)
+    !                     var_temp = exp(-var_temp*sqrt(var_temp))*(var_temp**(-1.2))
+    !                     var_temp = wsp*a2(i,j)*(var_temp/Hefold(i,j))
+    !                     !  Note:  This is a semi-implicit treatment of the time differencing
+    !                     !  per Beljaars et al. (2004, QJRMS) doi: 10.1256/qj.03.73
+    !                     DUDT_TOFD(i,j,l) = - var_temp*U(i,j,l)/(1. + var_temp*DT)
+    !                     DVDT_TOFD(i,j,l) = - var_temp*V(i,j,l)/(1. + var_temp*DT)
+    !                     ! Apply Tendency Limiter
+    !                     if (abs(DUDT_TOFD(i,j,l)) > self%limbeljaars) then
+    !                         DUDT_TOFD(i,j,l) = (self%limbeljaars/abs(DUDT_TOFD(i,j,l))) * DUDT_TOFD(i,j,l)
+    !                     end if
+    !                     if (abs(DVDT_TOFD(i,j,l)) > self%limbeljaars) then
+    !                         DVDT_TOFD(i,j,l) = (self%limbeljaars/abs(DVDT_TOFD(i,j,l))) * DVDT_TOFD(i,j,l)
+    !                     end if
+    !                 else
+    !                     DUDT_TOFD(i,j,l) = 0.0
+    !                     DVDT_TOFD(i,j,l) = 0.0
+    !                 end if
+    !             END DO
+    !         END DO
+    !     END DO
+    !     DUDT_GWD=DUDT_GWD+DUDT_TOFD
+    !     DVDT_GWD=DVDT_GWD+DVDT_TOFD
+    !     !deallocate( THV )
+    ! else
+    !     DUDT_TOFD=0.0
+    !     DVDT_TOFD=0.0
+    ! endif
+
+    ! CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
+    !     PREF,     &
+    !     PDEL,     &
+    !     U,        &
+    !     V,        &
+    !     DUDT_GWD, &
+    !     DVDT_GWD, &
+    !     DTDT_GWD, &
+    !     DUDT_ORG, &
+    !     DVDT_ORG, &
+    !     DTDT_ORG, &
+
+    !     DUDT_TOT, &
+    !     DVDT_TOT, &
+    !     DTDT_TOT, &
+    !     DUDT_RAH, &
+    !     DVDT_RAH, &
+    !     DTDT_RAH, &
+    !     PEGWD_X,  &
+    !     PEORO_X,  &
+    !     PERAY_X,  &
+    !     PEBKG_X,  &
+    !     KEGWD_X,  &
+    !     KEORO_X,  &
+    !     KERAY_X,  &
+    !     KEBKG_X,  &
+    !     KERES_X,  &
+    !     BKGERR_X  )
 
 !     open(newunit=fileID, file=trim(dirName) // "/dudt_gwd.out", status='old', form="unformatted", action="read")
-!     read(fileID) DUDT_GWD_ref
+!     read(fileID) DUDT_GWD_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DUDT_GWD_ref) = ', sum(DUDT_GWD_ref)
+!     !write(*,*) 'sum(DUDT_GWD_NCAR_ref) = ', sum(DUDT_GWD_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/dvdt_gwd.out", status='old', form="unformatted", action="read")
-!     read(fileID) DVDT_GWD_ref
+!     read(fileID) DVDT_GWD_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DVDT_GWD_ref) = ', sum(DVDT_GWD_ref)
+!     !write(*,*) 'sum(DVDT_GWD_NCAR_ref) = ', sum(DVDT_GWD_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/dtdt_gwd.out", status='old', form="unformatted", action="read")
-!     read(fileID) DTDT_GWD_ref
+!     read(fileID) DTDT_GWD_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DTDT_GWD_ref) = ', sum(DTDT_GWD_ref)
+!     !write(*,*) 'sum(DTDT_GWD_NCAR_ref) = ', sum(DTDT_GWD_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/dudt_org.out", status='old', form="unformatted", action="read")
-!     read(fileID) DUDT_ORG_ref
+!     read(fileID) DUDT_ORG_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DUDT_ORG_ref) = ', sum(DUDT_ORG_ref)
+!     !write(*,*) 'sum(DUDT_ORG_NCAR_ref) = ', sum(DUDT_ORG_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/dvdt_org.out", status='old', form="unformatted", action="read")
-!     read(fileID) DVDT_ORG_ref
+!     read(fileID) DVDT_ORG_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DVDT_ORG_ref) = ', sum(DVDT_ORG_ref)
+!     !write(*,*) 'sum(DVDT_ORG_NCAR_ref) = ', sum(DVDT_ORG_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/dtdt_org.out", status='old', form="unformatted", action="read")
-!     read(fileID) DTDT_ORG_ref
+!     read(fileID) DTDT_ORG_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(DTDT_ORG_ref) = ', sum(DTDT_ORG_ref)
+!     !write(*,*) 'sum(DTDT_ORG_NCAR_ref) = ', sum(DTDT_ORG_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauxo_tmp.out", status='old', form="unformatted", action="read")
-!     read(fileID) TAUXO_TMP_ref
+!     read(fileID) TAUXO_TMP_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(TAUXO_TMP_ref) = ', sum(TAUXO_TMP_ref)
+!     !write(*,*) 'sum(TAUXO_TMP_NCAR_ref) = ', sum(TAUXO_TMP_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauyo_tmp.out", status='old', form="unformatted", action="read")
-!     read(fileID) TAUYO_TMP_ref
+!     read(fileID) TAUYO_TMP_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(TAUYO_TMP_ref) = ', sum(TAUYO_TMP_ref)
+!     !write(*,*) 'sum(TAUYO_TMP_NCAR_ref) = ', sum(TAUYO_TMP_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauxo_3d.out", status='old', form="unformatted", action="read")
 !     read(fileID) TAUXO_3D_ref
@@ -652,16 +906,16 @@ program ncar_gwd_standalone
 !     !write(*,*) 'sum(FEO_3D_ref) = ', sum(FEO_3D_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauxb_tmp.out", status='old', form="unformatted", action="read")
-!     read(fileID) TAUXB_TMP_ref
+!     read(fileID) TAUXB_TMP_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(TAUXB_TMP_ref) = ', sum(TAUXB_TMP_ref)
+!     !write(*,*) 'sum(TAUXB_TMP_NCAR_ref) = ', sum(TAUXB_TMP_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauyb_tmp.out", status='old', form="unformatted", action="read")
-!     read(fileID) TAUYB_TMP_ref
+!     read(fileID) TAUYB_TMP_NCAR_ref
 !     close(fileID)
 
-!     !write(*,*) 'sum(TAUYB_TMP_ref) = ', sum(TAUYB_TMP_ref)
+!     !write(*,*) 'sum(TAUYB_TMP_NCAR_ref) = ', sum(TAUYB_TMP_NCAR_ref)
 
 !     open(newunit=fileID, file=trim(dirName) // "/tauxb_3d.out", status='old', form="unformatted", action="read")
 !     read(fileID) TAUXB_3D_ref
@@ -711,12 +965,12 @@ program ncar_gwd_standalone
 
 !     !write(*,*) 'sum(DTBKGSRC_ref) = ', sum(DTBKGSRC_ref)
 
-!     write(*,*) 'Sum Abs Diff DUDT_GWD = ', sum(abs(DUDT_GWD_ref)) - sum(abs(DUDT_GWD)), sum(abs(DUDT_GWD_ref)), sum(abs(DUDT_GWD))
-!     write(*,*) 'Sum Abs Diff DVDT_GWD = ', sum(abs(DVDT_GWD_ref)) - sum(abs(DVDT_GWD)), sum(abs(DVDT_GWD_ref)), sum(abs(DVDT_GWD))
-!     write(*,*) 'Sum Abs Diff DTDT_GWD = ', sum(abs(DTDT_GWD_ref)) - sum(abs(DTDT_GWD)), sum(abs(DTDT_GWD_ref)), sum(abs(DTDT_GWD))
-!     write(*,*) 'Sum Abs Diff DUDT_ORG = ', sum(abs(DUDT_ORG_ref)) - sum(abs(DUDT_ORG)), sum(abs(DUDT_ORG_ref)), sum(abs(DUDT_ORG))
-!     write(*,*) 'Sum Abs Diff DVDT_ORG = ', sum(abs(DVDT_ORG_ref)) - sum(abs(DVDT_ORG)), sum(abs(DVDT_ORG_ref)), sum(abs(DVDT_ORG))
-!     write(*,*) 'Sum Abs Diff DTDT_ORG = ', sum(abs(DTDT_ORG_ref)) - sum(abs(DTDT_ORG)), sum(abs(DTDT_ORG_ref)), sum(abs(DTDT_ORG))
+!     write(*,*) 'Sum Abs Diff DUDT_GWD_NCAR = ', sum(abs(DUDT_GWD_NCAR_ref)) - sum(abs(DUDT_GWD_NCAR)), sum(abs(DUDT_GWD_NCAR_ref)), sum(abs(DUDT_GWD_NCAR))
+!     write(*,*) 'Sum Abs Diff DVDT_GWD_NCAR = ', sum(abs(DVDT_GWD_NCAR_ref)) - sum(abs(DVDT_GWD_NCAR)), sum(abs(DVDT_GWD_NCAR_ref)), sum(abs(DVDT_GWD_NCAR))
+!     write(*,*) 'Sum Abs Diff DTDT_GWD_NCAR = ', sum(abs(DTDT_GWD_NCAR_ref)) - sum(abs(DTDT_GWD_NCAR)), sum(abs(DTDT_GWD_NCAR_ref)), sum(abs(DTDT_GWD_NCAR))
+!     write(*,*) 'Sum Abs Diff DUDT_ORG_NCAR = ', sum(abs(DUDT_ORG_NCAR_ref)) - sum(abs(DUDT_ORG_NCAR)), sum(abs(DUDT_ORG_NCAR_ref)), sum(abs(DUDT_ORG_NCAR))
+!     write(*,*) 'Sum Abs Diff DVDT_ORG_NCAR = ', sum(abs(DVDT_ORG_NCAR_ref)) - sum(abs(DVDT_ORG_NCAR)), sum(abs(DVDT_ORG_NCAR_ref)), sum(abs(DVDT_ORG_NCAR))
+!     write(*,*) 'Sum Abs Diff DTDT_ORG_NCAR = ', sum(abs(DTDT_ORG_NCAR_ref)) - sum(abs(DTDT_ORG_NCAR)), sum(abs(DTDT_ORG_NCAR_ref)), sum(abs(DTDT_ORG_NCAR))
 
 !     write(*,*) 'Execution time of gw_intr_ncar = ', t_end - t_start
     
