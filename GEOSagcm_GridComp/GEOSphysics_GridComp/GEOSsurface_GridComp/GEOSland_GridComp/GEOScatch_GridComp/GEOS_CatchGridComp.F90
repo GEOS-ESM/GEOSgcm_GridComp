@@ -572,9 +572,9 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC                          ,&
+    call MAPL_AddImportSpec(GC                                ,&
        SHORT_NAME = 'ITY'                                     ,&
-       LONG_NAME  = 'vegetation_type'			      ,&
+       LONG_NAME  = 'vegetation_type'                         ,&
        UNITS      = '1'                                       ,&
        DIMS       = MAPL_DimsTileOnly                         ,&
        VLOCATION  = MAPL_VLocationNone                        ,&
@@ -583,7 +583,7 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_AddImportSpec(GC                                ,&
        SHORT_NAME = 'ASCATZ0'                                 ,&
-       LONG_NAME  = 'ASCAT_roughness_length'		      ,&
+       LONG_NAME  = 'ASCAT_roughness_length'                  ,&
        UNITS      = 'm'                                       ,&
        DIMS       = MAPL_DimsTileOnly                         ,&
        VLOCATION  = MAPL_VLocationNone                        ,&
@@ -3054,16 +3054,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),   pointer :: D0
     real, dimension(:),   pointer :: GST
     real, dimension(:),   pointer :: VNT
-   real, pointer, dimension(:  )  :: MOT2M
-   real, pointer, dimension(:  )  :: MOQ2M
-   real, pointer, dimension(:  )  :: MOU2M
-   real, pointer, dimension(:  )  :: MOV2M
-   real, pointer, dimension(:  )  :: MOT10M
-   real, pointer, dimension(:  )  :: MOQ10M
-   real, pointer, dimension(:  )  :: MOU10M
-   real, pointer, dimension(:  )  :: MOV10M
-   real, pointer, dimension(:  )  :: MOU50M
-   real, pointer, dimension(:  )  :: MOV50M
+    real, pointer, dimension(:  ) :: MOT2M
+    real, pointer, dimension(:  ) :: MOQ2M
+    real, pointer, dimension(:  ) :: MOU2M
+    real, pointer, dimension(:  ) :: MOV2M
+    real, pointer, dimension(:  ) :: MOT10M
+    real, pointer, dimension(:  ) :: MOQ10M
+    real, pointer, dimension(:  ) :: MOU10M
+    real, pointer, dimension(:  ) :: MOV10M
+    real, pointer, dimension(:  ) :: MOU50M
+    real, pointer, dimension(:  ) :: MOV50M
     real, dimension(:),   pointer :: ITYO
 
 
@@ -3088,41 +3088,41 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: ZQ(:)
     integer,allocatable :: VEG(:)
     real,   allocatable :: Z0T(:,:)
-   real, allocatable              :: U50M (:)
-   real, allocatable              :: V50M (:)
-   real, allocatable              :: T10M (:)
-   real, allocatable              :: Q10M (:)
-   real, allocatable              :: U10M (:)
-   real, allocatable              :: V10M (:)
-   real, allocatable              :: T2M (:)
-   real, allocatable              :: Q2M (:)
-   real, allocatable              :: U2M (:)
-   real, allocatable              :: V2M (:)
-   real, allocatable              :: RHOH(:)
-   real, allocatable              :: VKH(:)
-   real, allocatable              :: VKM(:)
-   real, allocatable              :: USTAR(:)
-   real, allocatable              :: XX(:)
-   real, allocatable              :: YY(:)
-   real, allocatable              :: CU(:)
-   real, allocatable              :: CT(:)
-   real, allocatable              :: RIB(:)
-   real, allocatable              :: ZETA(:)
-   real, allocatable              :: WS(:)
-   integer, allocatable           :: IWATER(:)
-   real, allocatable              :: PSMB(:)
-   real, allocatable              :: PSL(:)
-   integer                        :: niter
+    real, allocatable              :: U50M (:)
+    real, allocatable              :: V50M (:)
+    real, allocatable              :: T10M (:)
+    real, allocatable              :: Q10M (:)
+    real, allocatable              :: U10M (:)
+    real, allocatable              :: V10M (:)
+    real, allocatable              :: T2M (:)
+    real, allocatable              :: Q2M (:)
+    real, allocatable              :: U2M (:)
+    real, allocatable              :: V2M (:)
+    real, allocatable              :: RHOH(:)
+    real, allocatable              :: VKH(:)
+    real, allocatable              :: VKM(:)
+    real, allocatable              :: USTAR(:)
+    real, allocatable              :: XX(:)
+    real, allocatable              :: YY(:)
+    real, allocatable              :: CU(:)
+    real, allocatable              :: CT(:)
+    real, allocatable              :: RIB(:)
+    real, allocatable              :: ZETA(:)
+    real, allocatable              :: WS(:)
+    integer, allocatable           :: IWATER(:)
+    real, allocatable              :: PSMB(:)
+    real, allocatable              :: PSL(:)
+    integer                        :: niter
 
-   integer                        :: CHOOSEZ0
-   real                           :: SCALE4Z0
-   real                           :: SCALE4ZVG
-   real                           :: SCALE4Z0_u
-   real                           :: MIN_VEG_HEIGHT 
-   
-   ! Offline mode
-   type(OFFLINE_WRAP) :: wrap
-   integer :: OFFLINE_MODE
+    integer                        :: CHOOSEZ0
+    real                           :: SCALE4Z0
+    real                           :: SCALE4ZVG
+    real                           :: SCALE4Z0_u
+    real                           :: MIN_VEG_HEIGHT 
+    
+    ! Offline mode
+    type(OFFLINE_WRAP) :: wrap
+    integer :: OFFLINE_MODE
 
 !=============================================================================
 ! Begin...
@@ -3177,248 +3177,248 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to inputs
 !-------------------
 
-   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,LAI    , 'LAI'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,Z2CH   , 'Z2CH'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,ITY    , 'ITY'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,ASCATZ0, 'ASCATZ0',    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,LAI    , 'LAI'    ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,Z2CH   , 'Z2CH'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,ITY    , 'ITY'    ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,ASCATZ0, 'ASCATZ0',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Pointers to internals
 !----------------------
  
-   call MAPL_GetPointer(INTERNAL,TC   , 'TC'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,QC   , 'QC'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,TC   , 'TC'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,QC   , 'QC'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Pointers to outputs
 !--------------------
 
-   call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0    , 'Z0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,D0    , 'D0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ITYO  , 'ITY'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,Z0    , 'Z0'      ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,D0    , 'D0'      ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,ITYO  , 'ITY'     ,    RC=STATUS)
+    VERIFY_(STATUS)
 
-   NT = size(TA)
+    NT = size(TA)
 
-   allocate(TVA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(TVS(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(URA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(UUU(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VEG(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(DZE(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZVG(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(Z0T(NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(D0T(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CHX(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CQX(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(RE (NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CN (NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZT (NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZQ (NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(UCN(NT),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(T2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(Q2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(v2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(T10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(Q10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(v10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U50M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(v50M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(RHOH(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(PSMB(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(PSL(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VKH(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VKM(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(USTAR(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(XX(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(YY(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CU(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CT(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(RIB(NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZETA(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(WS(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(IWATER(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+    allocate(TVA(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(TVS(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(URA(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(UUU(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VEG(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(DZE(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(ZVG(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(Z0T(NT,NUM_SUBTILES),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(D0T(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CHX(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CQX(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(RE (NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CN (NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(ZT (NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(ZQ (NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(UCN(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(T2M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(Q2M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(U2M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(v2M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(T10M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(Q10M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(U10M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(v10M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(U50M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(v50M (NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(RHOH(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(PSMB(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(PSL(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VKH(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VKM(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(USTAR(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(XX(NT)   ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(YY(NT)   ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CU(NT)   ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(CT(NT)   ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(RIB(NT)  ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(ZETA(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(WS(NT)   ,STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(IWATER(NT),STAT=STATUS)
+    VERIFY_(STATUS)
 
 !  Vegetation types used to index into tables
 !--------------------------------------------
 
-   VEG = nint(ITY(:))
-   _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
+    VEG = nint(ITY(:))
+    _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
 
 !  Clear the output tile accumulators
 !------------------------------------
    
-   CHX = 0.0
-   CQX = 0.0
+    CHX = 0.0
+    CQX = 0.0
 
-   if(associated(TH )) TH  = 0.0
-   if(associated(QH )) QH  = 0.0
-   if(associated(CMT)) CMT = 0.0
-   if(associated(CNT)) CNT = 0.0
-   if(associated(RIT)) RIT = 0.0
-   if(associated(Z0H)) Z0H = 0.0
-   if(associated(GST)) GST = 0.0
-   if(associated(VNT)) VNT = 0.0
-   if(associated(MOU50M)) MOU50M = 0.0
-   if(associated(MOV50M)) MOV50M = 0.0
-   if(associated(MOT10M)) MOT10M = 0.0
-   if(associated(MOQ10M)) MOQ10M = 0.0
-   if(associated(MOU10M)) MOU10M = 0.0
-   if(associated(MOV10M)) MOV10M = 0.0
-   if(associated( MOT2M))  MOT2M = 0.0
-   if(associated( MOQ2M))  MOQ2M = 0.0
-   if(associated( MOU2M))  MOU2M = 0.0
-   if(associated( MOV2M))  MOV2M = 0.0
+    if(associated(TH )) TH  = 0.0
+    if(associated(QH )) QH  = 0.0
+    if(associated(CMT)) CMT = 0.0
+    if(associated(CNT)) CNT = 0.0
+    if(associated(RIT)) RIT = 0.0
+    if(associated(Z0H)) Z0H = 0.0
+    if(associated(GST)) GST = 0.0
+    if(associated(VNT)) VNT = 0.0
+    if(associated(MOU50M)) MOU50M = 0.0
+    if(associated(MOV50M)) MOV50M = 0.0
+    if(associated(MOT10M)) MOT10M = 0.0
+    if(associated(MOQ10M)) MOQ10M = 0.0
+    if(associated(MOU10M)) MOU10M = 0.0
+    if(associated(MOV10M)) MOV10M = 0.0
+    if(associated( MOT2M))  MOT2M = 0.0
+    if(associated( MOQ2M))  MOQ2M = 0.0
+    if(associated( MOU2M))  MOU2M = 0.0
+    if(associated( MOV2M))  MOV2M = 0.0
 
-   select case (Z0_FORMULATION)
-      case (0)  ! no scaled at all
-         SCALE4ZVG   = 1
-         SCALE4Z0    = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (1) ! This case is bugged
-         SCALE4ZVG   = 1
-         SCALE4Z0    = 2
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (2)
-         SCALE4ZVG   = 1
-         SCALE4Z0    = 2
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.01         
-      case (3)
-         SCALE4ZVG   = 0.5
-         SCALE4Z0    = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (4) 
-         SCALE4ZVG   = 1
-         SCALE4Z0    = 2
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.1
-   end select
+    select case (Z0_FORMULATION)
+       case (0)  ! no scaled at all
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01
+       case (1) ! This case is bugged
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01         
+       case (2)
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.01         
+       case (3)
+          SCALE4ZVG   = 0.5
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01         
+       case (4) 
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.1
+    end select
 
-   SUBTILES: do N=1,NUM_SUBTILES
+    SUBTILES: do N=1,NUM_SUBTILES
 
 !  Effective vegetation height. In catchment, LAI dependence 
 !   includes the effect of partially vegetated areas,
@@ -3437,69 +3437,69 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  For now roughnesses and displacement heights
 !   are the same for all subtiles.
 
-   Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
-   IF (USE_ASCATZ0 == 1) THEN
-      WHERE (NDVI <= 0.2)
-         Z0T(:,N)  = ASCATZ0
-      END WHERE
-   ENDIF
-   D0T  = D0_BY_ZVEG*ZVG
+      Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
+      IF (USE_ASCATZ0 == 1) THEN
+         WHERE (NDVI <= 0.2)
+            Z0T(:,N)  = ASCATZ0
+         END WHERE
+      ENDIF
+      D0T  = D0_BY_ZVEG*ZVG
 
-   DZE  = max(DZ - D0T, 10.)
+      DZE  = max(DZ - D0T, 10.)
 
-   if(associated(Z0 )) Z0  = Z0T(:,N)
-   if(associated(D0 )) D0  = D0T
+      if(associated(Z0 )) Z0  = Z0T(:,N)
+      if(associated(D0 )) D0  = D0T
 
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
 
-   call MAPL_TimerOn(MAPL,"-SURF")
-   if(CHOOSEMOSFC.eq.0) then
-   WW(:,N) = 0.
-   CM(:,N) = 0.
+      call MAPL_TimerOn(MAPL,"-SURF")
+      if(CHOOSEMOSFC.eq.0) then
+        WW(:,N) = 0.
+        CM(:,N) = 0.
 
-    call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+        call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
 
-   elseif (CHOOSEMOSFC.eq.1)then
+      elseif (CHOOSEMOSFC.eq.1)then
   
-    niter = 6   ! number of internal iterations in the helfand MO surface layer routine
-    IWATER = 3
+        niter = 6   ! number of internal iterations in the helfand MO surface layer routine
+        IWATER = 3
   
-    PSMB = PS * 0.01            ! convert to MB
+        PSMB = PS * 0.01            ! convert to MB
 ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
-    PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
+        PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
                (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
   
-    CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+        CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                       IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
                       t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
   
-    CM(:,N)  = VKM
-    CH(:,N)  = VKH
-    CQ(:,N)  = VKH
+        CM(:,N)  = VKM
+        CH(:,N)  = VKH
+        CQ(:,N)  = VKH
   
-    CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
-    ZT = Z0T(:,N)
-    ZQ = Z0T(:,N)
-    RE = 0.
-    UUU = UU  
-    UCN = 0.
+        CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
+        ZT = Z0T(:,N)
+        ZQ = Z0T(:,N)
+        RE = 0.
+        UUU = UU  
+        UCN = 0.
   
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
-      if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
-      if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
-      if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
-      if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
-      if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
-      if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
-      if(associated(MOT2M))MOT2M = MOT2M + T2M(:)*FR(:,N)
-      if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
-      if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
-      if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
+        if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
+        if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
+        if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
+        if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
+        if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
+        if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
+        if(associated(MOT2M))MOT2M = MOT2M + T2M(:)*FR(:,N)
+        if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
+        if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
+        if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
 
-    endif
-    call MAPL_TimerOff(MAPL,"-SURF")
+      endif
+      call MAPL_TimerOff(MAPL,"-SURF")
 
 !  Aggregate to tile
 !-------------------
@@ -3519,55 +3519,55 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
       if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
 
-   end do SUBTILES
+    end do SUBTILES
 
-   if(associated( TH)) TH  = TH /CHX
-   if(associated( QH)) QH  = QH /CQX
-   if(associated(CHT)) CHT = CHX
-   if(associated(CQT)) CQT = CQX
-   if(associated(GST)) GST = sqrt(max(GST+UCN,0.0))
-   if(associated(ITYO)) ITYO = ITY
+    if(associated( TH)) TH  = TH /CHX
+    if(associated( QH)) QH  = QH /CQX
+    if(associated(CHT)) CHT = CHX
+    if(associated(CQT)) CQT = CQX
+    if(associated(GST)) GST = sqrt(max(GST+UCN,0.0))
+    if(associated(ITYO)) ITYO = ITY
 
-   deallocate(TVA)
-   deallocate(TVS)
-   deallocate(URA)
-   deallocate(UUU)
-   deallocate(ZVG)
-   deallocate(DZE)
-   deallocate(Z0T)
-   deallocate(D0T)
-   deallocate(CHX)
-   deallocate(CQX)
-   deallocate(VEG)
-   deallocate(RE )
-   deallocate(CN )
-   deallocate(ZT )
-   deallocate(ZQ )
-   deallocate(UCN)
-   deallocate(U50M )
-   deallocate(V50M )
-   deallocate(T10M )
-   deallocate(Q10M )
-   deallocate(U10M )
-   deallocate(V10M )
-   deallocate(T2M )
-   deallocate(Q2M )
-   deallocate(U2M )
-   deallocate(V2M )
-   deallocate(RHOH)
-   deallocate(VKH)
-   deallocate(VKM)
-   deallocate(USTAR)
-   deallocate(XX)
-   deallocate(YY)
-   deallocate(CU)
-   deallocate(CT)
-   deallocate(RIB)
-   deallocate(ZETA)
-   deallocate(WS)
-   deallocate(IWATER)
-   deallocate(PSMB)
-   deallocate(PSL)
+    deallocate(TVA)
+    deallocate(TVS)
+    deallocate(URA)
+    deallocate(UUU)
+    deallocate(ZVG)
+    deallocate(DZE)
+    deallocate(Z0T)
+    deallocate(D0T)
+    deallocate(CHX)
+    deallocate(CQX)
+    deallocate(VEG)
+    deallocate(RE )
+    deallocate(CN )
+    deallocate(ZT )
+    deallocate(ZQ )
+    deallocate(UCN)
+    deallocate(U50M )
+    deallocate(V50M )
+    deallocate(T10M )
+    deallocate(Q10M )
+    deallocate(U10M )
+    deallocate(V10M )
+    deallocate(T2M )
+    deallocate(Q2M )
+    deallocate(U2M )
+    deallocate(V2M )
+    deallocate(RHOH)
+    deallocate(VKH)
+    deallocate(VKM)
+    deallocate(USTAR)
+    deallocate(XX)
+    deallocate(YY)
+    deallocate(CU)
+    deallocate(CT)
+    deallocate(RIB)
+    deallocate(ZETA)
+    deallocate(WS)
+    deallocate(IWATER)
+    deallocate(PSMB)
+    deallocate(PSL)
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3965,21 +3965,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: lons
         real,pointer,dimension(:) :: slr
         real,pointer,dimension(:) :: rdc
-	real,pointer,dimension(:) :: PRECU
-	real,pointer,dimension(:) :: PRELS
-	real,pointer,dimension(:) :: SNOW
-	real,pointer,dimension(:) :: UUU, RHO
-	real,pointer,dimension(:) :: LAI0,GRN0,ZVG
-	real,pointer,dimension(:) :: Z0, D0
-	real,pointer,dimension(:) :: sfmc, rzmc, prmc, entot, wtot
-	real,pointer,dimension(:) :: ghflxsno, ghflxtskin
+        real,pointer,dimension(:) :: PRECU
+        real,pointer,dimension(:) :: PRELS
+        real,pointer,dimension(:) :: SNOW
+        real,pointer,dimension(:) :: UUU, RHO
+        real,pointer,dimension(:) :: LAI0,GRN0,ZVG
+        real,pointer,dimension(:) :: Z0, D0
+        real,pointer,dimension(:) :: sfmc, rzmc, prmc, entot, wtot
+        real,pointer,dimension(:) :: ghflxsno, ghflxtskin
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
         real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
-	real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
-	real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
-	real,pointer,dimension(:) :: VSUVR, VSUVF
-	real,pointer,dimension(:) :: ALWX, BLWX
+        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
+        real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
+        real,pointer,dimension(:) :: VSUVR, VSUVF
+        real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
         real,pointer,dimension(:) :: FICE1
         real,pointer,dimension(:) :: SLDTOT
@@ -4057,7 +4057,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                     :: NTILES
         integer                     :: I, N 
 
-	! dummy variables for call to get snow temp
+! dummy variables for call to get snow temp
 
         real    :: FICE
         logical :: DUMFLAG1,DUMFLAG2
@@ -4508,34 +4508,34 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RDC      (NTILES))  
         if (.not. associated(VISDF)) allocate(VISDF(NTILES))
         if (.not. associated(NIRDF)) allocate(NIRDF(NTILES))
-	allocate(UUU      (NTILES))
-	allocate(RHO      (NTILES))
-	allocate(ZVG      (NTILES))
-	allocate(LAI0     (NTILES))
-	allocate(GRN0     (NTILES))
-	allocate(Z0       (NTILES))
-	allocate(D0       (NTILES))
-	allocate(SFMC     (NTILES))
-	allocate(RZMC     (NTILES))
-	allocate(PRMC     (NTILES))
-	allocate(ENTOT    (NTILES))
-	allocate(ghflxsno (NTILES))
-	allocate(ghflxtskin(NTILES))
-	allocate(WTOT     (NTILES))
-	allocate(WCHANGE  (NTILES))
-	allocate(ECHANGE  (NTILES))
-	allocate(HSNACC   (NTILES))
-	allocate(EVACC    (NTILES))
-	allocate(SHACC    (NTILES))
-	allocate(VSUVR    (NTILES))
-	allocate(VSUVF    (NTILES))
-	allocate(SNOVR    (NTILES))
-	allocate(SNOVF    (NTILES))
-	allocate(SNONR    (NTILES))
-	allocate(SNONF    (NTILES))
-	allocate(CAT_ID   (NTILES))
-	allocate(ALWX     (NTILES))
-	allocate(BLWX     (NTILES))
+        allocate(UUU      (NTILES))
+        allocate(RHO      (NTILES))
+        allocate(ZVG      (NTILES))
+        allocate(LAI0     (NTILES))
+        allocate(GRN0     (NTILES))
+        allocate(Z0       (NTILES))
+        allocate(D0       (NTILES))
+        allocate(SFMC     (NTILES))
+        allocate(RZMC     (NTILES))
+        allocate(PRMC     (NTILES))
+        allocate(ENTOT    (NTILES))
+        allocate(ghflxsno (NTILES))
+        allocate(ghflxtskin(NTILES))
+        allocate(WTOT     (NTILES))
+        allocate(WCHANGE  (NTILES))
+        allocate(ECHANGE  (NTILES))
+        allocate(HSNACC   (NTILES))
+        allocate(EVACC    (NTILES))
+        allocate(SHACC    (NTILES))
+        allocate(VSUVR    (NTILES))
+        allocate(VSUVF    (NTILES))
+        allocate(SNOVR    (NTILES))
+        allocate(SNOVF    (NTILES))
+        allocate(SNONR    (NTILES))
+        allocate(SNONF    (NTILES))
+        allocate(CAT_ID   (NTILES))
+        allocate(ALWX     (NTILES))
+        allocate(BLWX     (NTILES))
         allocate(SHSNOW1   (NTILES))
         allocate(AVETSNOW1 (NTILES))
         allocate(WAT10CM1  (NTILES))
@@ -5033,22 +5033,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         QC(:,FSNW) = QSAT(:,FSNW)
         
-	! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
         SLDTOT = SNO+ICE+FRZR
         
-	! protect the forcing from unsavory values, as per practice in offline
-	! driver
-	! --------------------------------------------------------------------------
+! protect the forcing from unsavory values, as per practice in offline
+! driver
+! --------------------------------------------------------------------------
 
         _ASSERT(count(PLS<0.)==0,'needs informative message')
         _ASSERT(count(PCU<0.)==0,'needs informative message')
         _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
-        GRN0  = max(0.0001     , GRN)		
+        GRN0  = max(0.0001     , GRN)
         ZTH   = max(0.0001     , ZTH)
 
         TCO   = TC
@@ -5833,26 +5833,26 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(WESNN    )
         deallocate(HTSNNN   )
         deallocate(SNDZN    )
-	deallocate(TILEZERO )
+        deallocate(TILEZERO )
         deallocate(DZSF     )
-	deallocate(SWNETFREE)
-	deallocate(SWNETSNOW)
-	deallocate(VEG      )
-	deallocate(ZTH      )
-	deallocate(SLR      )
-	deallocate(RSL1     )
-	deallocate(RSL2     )
-	deallocate(SQSCAT   )
-	deallocate(RDC      )
+        deallocate(SWNETFREE)
+        deallocate(SWNETSNOW)
+        deallocate(VEG      )
+        deallocate(ZTH      )
+        deallocate(SLR      )
+        deallocate(RSL1     )
+        deallocate(RSL2     )
+        deallocate(SQSCAT   )
+        deallocate(RDC      )
         deallocate(UUU      )
         deallocate(RHO      )
         deallocate(ZVG      )
         deallocate(LAI0     )
         deallocate(GRN0     )
         deallocate(Z0       )
-	deallocate(D0       )
-	deallocate(SFMC     )
-	deallocate(RZMC     )
+        deallocate(D0       )
+        deallocate(SFMC     )
+        deallocate(RZMC     )
         deallocate(PRMC     )
         deallocate(ENTOT    )
         deallocate(WTOT     )
