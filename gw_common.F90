@@ -211,7 +211,7 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   real(GW_PRC) :: n2
 
   ! Interface temperature.
-  real(GW_PRC) :: ti(ncol,pver+1)
+!   real(GW_PRC) :: ti(ncol,pver+1)
 
   ! Minimum value of Brunt-Vaisalla frequency squared.
   real(GW_PRC), parameter :: n2min = 5.e-5_GW_PRC
@@ -219,42 +219,44 @@ subroutine gw_prof (ncol, pver, pint, pmid , t, rhoi, nm, ni)
   !------------------------------------------------------------------------
   ! Determine the interface densities and Brunt-Vaisala frequencies.
   !------------------------------------------------------------------------
+   do k = 1, pver+1
+      do i = 1, ncol
+         ! The top interface values are calculated assuming an isothermal
+         ! atmosphere above the top level.
+         if (k == 1) then
+            ! ti(i,k) = t(i,k)
+            rhoi(i,k) = pint(i,k) / (rair*t(i,k))
+            ni(i,k) = sqrt(gravit*gravit / (cpair*t(i,k)))
 
-
-
-  ! The top interface values are calculated assuming an isothermal
-  ! atmosphere above the top level.
-  k = 1
-  do i = 1, ncol
-     ti(i,k) = t(i,k)
-     rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
-     ni(i,k) = sqrt(gravit*gravit / (cpair*ti(i,k)))
-  end do
-
-  ! Interior points use centered differences.
-  ti(:,2:pver) = midpoint_interp(real(t,GW_PRC))
-  do k = 2, pver
-     do i = 1, ncol
-        rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
-        dtdp = (t(i,k)-t(i,k-1)) / ( pmid(i,k)-pmid(i,k-1) ) ! * p%rdst(i,k-1)
-        n2 = gravit*gravit/ti(i,k) * (1._GW_PRC/cpair - rhoi(i,k)*dtdp)
-        ni(i,k) = sqrt(max(n2min, n2))
-     end do
-  end do
-
-  ! Bottom interface uses bottom level temperature, density; next interface
-  ! B-V frequency.
-  k = pver+1
-  do i = 1, ncol
-     ti(i,k) = t(i,k-1)
-     rhoi(i,k) = pint(i,k) / (rair*ti(i,k))
-     ni(i,k) = ni(i,k-1)
-  end do
+         else if(k == pver+1) then
+            ! Bottom interface uses bottom level temperature, density; next interface
+            ! B-V frequency.
+            rhoi(i,k) = pint(i,k) / (rair*t(i,k-1))
+            ! Note : dtdp contains the rhoi computation when k = pver
+            dtdp = (pint(i,k-1) / (rair * 0.5_GW_PRC * (t(i,k-2)+t(i,k-1))))  &
+                  * ((t(i,k-1)-t(i,k-2)) / ( pmid(i,k-1)-pmid(i,k-2) )) ! * p%rdst(i,k-1)
+            n2 = gravit*gravit/(0.5_GW_PRC * (t(i,k-2)+t(i,k-1))) * (1._GW_PRC/cpair - dtdp)
+            ni(i,k) = sqrt(max(n2min, n2))
+            
+         else
+         ! Interior points use centered differences.
+            ! ti(i,k) = 0.5_r8 * (t(i,k-1)+t(i,k))
+            rhoi(i,k) = pint(i,k) / (rair * 0.5_GW_PRC * (t(i,k-1)+t(i,k)))
+            dtdp = (t(i,k)-t(i,k-1)) / ( pmid(i,k)-pmid(i,k-1) ) ! * p%rdst(i,k-1)
+            n2 = gravit*gravit/(0.5_GW_PRC * (t(i,k-1)+t(i,k))) * (1._GW_PRC/cpair - rhoi(i,k)*dtdp)
+            ni(i,k) = sqrt(max(n2min, n2))
+         endif
+      enddo
+   enddo
 
   !------------------------------------------------------------------------
   ! Determine the midpoint Brunt-Vaisala frequencies.
   !------------------------------------------------------------------------
-  nm = midpoint_interp(ni)
+   do k = 1, pver
+      do i = 1, ncol
+         nm(i,k) = 0.5_GW_PRC * (ni(i,k)+ni(i,k+1))
+      enddo
+   enddo
 
 end subroutine gw_prof
 
