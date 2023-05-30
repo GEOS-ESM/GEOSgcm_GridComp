@@ -103,12 +103,12 @@ echo " "
 echo "Options for land BCs version:"
 echo " "
 echo "   ${C2}F25 = Fortuna-2_5   (archived${CR}${C1}*${CR}${C2}: n/a)${CR}"
-echo "   ${C2}GM4 = Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Ganymed-4_0/)${CR}"
-echo "   ${C2}ICA = Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus/)${CR}"
-echo "   ${C2}NL3 = Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/)${CR}"
-echo "   ${C2}NL4 = NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/bcs_NLv4/NLv4/)${CR}"
+echo "   ${C2}GM4 = Ganymed-4_0   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)${CR}"
+echo "   ${C2}ICA = Icarus        (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)${CR}"
+echo "   ${C2}NL3 = Icarus-NLv3   (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/)${CR}"
+echo "   ${C2}NL4 = NLv4 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv4/)${CR}"
 echo "   ${C2}      = NL3 + JPL veg height{CR}"
-echo "   ${C2}NL5 = NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/)${CR}"
+echo "   ${C2}NL5 = NLv5 [SMAPL4] (archived${CR}${C1}*${CR}${C2}: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/Icarus-NLv5_EASE/)${CR}"
 echo "   ${C2}      = NL3 + JPL veg height + PEATMAP${CR}"
 echo "   ${C2}v06   = NL3 + JPL veg height + PEATMAP + MODIS snow alb${CR}"
 echo "   ${C2}v07   = NL3 + PEATMAP${CR}"
@@ -180,6 +180,7 @@ if ( $HELPMODE != YES ) then
 
    echo " "
    echo "Enter alphanumeric code(s) for atmospheric horizontal resolution from the above list"
+   echo "Do NOT specify a mix EASE grid and cs/LatLon grid resolutions."
    echo "(separate multiple entries by spaces):"
 
    HRCODE:
@@ -791,26 +792,26 @@ if( $nfiles >= 1 ) then
 endif
 
 mkdir -p $BCDIR 
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
 /bin/ln -s $bin_dir
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
@@ -919,7 +920,29 @@ cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
+
+mkdir -p $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
+mkdir -p $BCNAME/land/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
+
+/bin/mv  $BCNAME/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+if( $TRIPOL_OCEAN == TRUE ) /bin/mv  $BCNAME/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+
+/bin/mv  $BCNAME/clsm               $BCNAME/land/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv  $BCNAME/irrigation_${RS}_DC.dat \
+         $BCNAME/vegdyn_${RS}_DC.dat \
+         $BCNAME/nirdf_${RS}_DC.dat \
+         $BCNAME/visdf_${RS}_DC.dat \
+         $BCNAME/lai_clim_${RS}_DC.data \
+         $BCNAME/green_clim_${RS}_DC.data \
+         $BCNAME/lnfm_clim_${RS}_DC.data \
+         $BCNAME/ndvi_clim_${RS}_DC.data \
+         $BCNAME/land/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+/bin/mv $BCNAME/rst $BCNAME/til $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv   $BCNAME/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.j $BCNAME/geometry/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
@@ -969,7 +992,7 @@ if( $nfiles >= 1 ) then
 endif
 
 mkdir -p $BCDIR
-mkdir -p $EXPDIR/$OUTDIR/logs
+mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -977,19 +1000,19 @@ if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=1
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
 /bin/ln -s $bin_dir
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
@@ -1044,13 +1067,13 @@ set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
 cat << _EOF_ > $BCJOB-2
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME-2.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME-2.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME-2.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME-2.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME-2.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
@@ -1144,14 +1167,38 @@ cd ../
                     clsm
                 cd  ../ 
 
-/bin/mv rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-/bin/mv til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-/bin/mv $BCJOB-2 CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv    rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv    til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv    $BCJOB-2 CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
 cd ../../
+
+
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB-2              $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
+
+mkdir -p $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+mkdir -p $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+
+/bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+if( $TRIPOL_OCEAN == TRUE ) /bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+
+/bin/mv  $BCNAME/clsm               $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv  $BCNAME/irrigation_${RC}.dat  \
+         $BCNAME/vegdyn_${RC}.dat      \
+         $BCNAME/nirdf_${RC}.dat       \
+         $BCNAME/visdf_${RC}.dat       \
+         $BCNAME/lai_clim_${RC}.data   \
+         $BCNAME/green_clim_${RC}.data \
+         $BCNAME/lnfm_clim_${RC}.data  \
+         $BCNAME/ndvi_clim_${RC}.data  \
+         $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+/bin/mv $BCNAME/rst $BCNAME/til $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv   $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.j $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
@@ -1165,19 +1212,19 @@ else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
 /bin/ln -s $bin_dir
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s $MAKE_BCS_INPUT_DIR/ocean/MOM5/720x410 data/MOM5/720x410
@@ -1301,20 +1348,39 @@ cd ../
                     clsm
                 cd  ../ 
 
-/bin/mv rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-/bin/mv til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-/bin/mv $BCJOB CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv    rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv    til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv    $BCJOB CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCJOB                $BCNAME
+/bin/mv    $BCJOB              $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs  $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
-#/bin/rm -r $OUTDIR
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
+
+mkdir -p $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+mkdir -p $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+
+/bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+if( $TRIPOL_OCEAN == TRUE ) /bin/mv  $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN  $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+
+/bin/mv  $BCNAME/clsm               $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv  $BCNAME/irrigation_${RC}.dat  \
+         $BCNAME/vegdyn_${RC}.dat      \
+         $BCNAME/nirdf_${RC}.dat       \
+         $BCNAME/visdf_${RC}.dat       \
+         $BCNAME/lai_clim_${RC}.data   \
+         $BCNAME/green_clim_${RC}.data \
+         $BCNAME/lnfm_clim_${RC}.data  \
+         $BCNAME/ndvi_clim_${RC}.data  \
+         $BCNAME/land/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+
+/bin/mv $BCNAME/rst $BCNAME/til $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/mv   $BCNAME/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.j $BCNAME/geometry/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+/bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm
 #bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
-
-/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -1334,10 +1400,10 @@ if( $grid == ease ) then
   set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
   set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
-  set             BCNAME = SMAP_${EASEVERSION}_${HRCODE}
+  set             BCNAME = ${EASEVERSION}_${HRCODE}
   set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
   set             BCJOB  = $BCDIR/$BCNAME.j
-  set             THISGRID = SMAP-${EASEVERSION}-${HRCODE}
+  set             THISGRID = ${EASEVERSION}-${HRCODE}
 
   set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
   if( $nfiles >= 1 ) then
@@ -1353,7 +1419,7 @@ if( $grid == ease ) then
   endif
 
   mkdir -p $BCDIR 
-  mkdir -p $EXPDIR/$OUTDIR/logs
+  mkdir -p $EXPDIR/$OUTDIR/logs/$BCNAME
 
   echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
   /bin/rm -f     $BCJOB
@@ -1361,19 +1427,19 @@ if( $grid == ease ) then
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
-#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME.log
-#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME.err
+#SBATCH --output=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.log
+#SBATCH --error=$EXPDIR/$OUTDIR/logs/$BCNAME/$BCNAME.err
 #SBATCH --account=$group
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=28
+#SBATCH --nodes=1
 #SBATCH --job-name=$BCNAME.j
-#SBATCH --constraint=sky
+#SBATCH --constraint=sky|cas
 
 cd $BCDIR
 
 /bin/ln -s $bin_dir
 source bin/g5_modules
-mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
 cd ../
 limit stacksize unlimited
@@ -1401,7 +1467,7 @@ chmod 755 bin/create_README.csh
 bin/create_README.csh
 
 /bin/mv clsm  clsm.${IM}x${JM}
-/bin/cp til/SMAP_${EASEVERSION}_${HRCODE}_${RS}.til clsm.${IM}x${JM}
+/bin/cp til/${EASEVERSION}_${HRCODE}_${RS}.til clsm.${IM}x${JM}
 ##/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
@@ -1417,9 +1483,9 @@ cd clsm.${IM}x${JM}
 
 cd ../
 
-/bin/rm -rf              SMAP_${EASEVERSION}_${HRCODE}
-/bin/mv clsm.${IM}x${JM} SMAP_${EASEVERSION}_${HRCODE}
-                     cd  SMAP_${EASEVERSION}_${HRCODE} 
+/bin/rm -rf              ${EASEVERSION}_${HRCODE}
+/bin/mv clsm.${IM}x${JM} ${EASEVERSION}_${HRCODE}
+                     cd  ${EASEVERSION}_${HRCODE} 
                    mkdir clsm
                  /bin/mv ar.new \
                          bf.dat \
@@ -1449,18 +1515,40 @@ cd ../
                          clsm
                      cd  ../ 
 
-/bin/mv rst  SMAP_${EASEVERSION}_${HRCODE}
-/bin/mv til  SMAP_${EASEVERSION}_${HRCODE}
+/bin/mv rst  ${EASEVERSION}_${HRCODE}
+/bin/mv til  ${EASEVERSION}_${HRCODE}
 
 cd ../../
 /bin/mv    $BCDIR/$BCNAME .
 /bin/mv    $BCJOB                $BCNAME
 /bin/mv    $EXPDIR/$OUTDIR/logs   $BCNAME/.
-/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/mkCatchParam.log
+/bin/mv    $BCNAME/clsm/mkCatchParam.log $BCNAME/logs/$BCNAME/mkCatchParam.log
+
+mkdir -p $BCNAME/geometry/${EASEVERSION}_${HRCODE}
+mkdir -p $BCNAME/land/${EASEVERSION}_${HRCODE}
+
+/bin/mv  $BCNAME/${EASEVERSION}_${HRCODE}_${RS}.til  $BCNAME/geometry/${EASEVERSION}_${HRCODE}/.
+
+
+/bin/mv  $BCNAME/clsm               $BCNAME/land/${EASEVERSION}_${HRCODE}/.
+/bin/mv  $BCNAME/irrigation_${RS}_DE.dat  \
+         $BCNAME/vegdyn_${RS}_DE.dat      \
+         $BCNAME/nirdf_${RS}_DE.dat       \
+         $BCNAME/visdf_${RS}_DE.dat       \
+         $BCNAME/lai_clim_${RS}_DE.data   \
+         $BCNAME/green_clim_${RS}_DE.data \
+         $BCNAME/lnfm_clim_${RS}_DE.data  \
+         $BCNAME/ndvi_clim_${RS}_DE.data  \
+         $BCNAME/land/${EASEVERSION}_${HRCODE}/.
+
+/bin/mv $BCNAME/rst $BCNAME/til $BCNAME/geometry/${EASEVERSION}_${HRCODE}/.
+/bin/mv   $BCNAME/$BCNAME.j $BCNAME/geometry/${EASEVERSION}_${HRCODE}/.
+
+
 /bin/rm -r $OUTDIR
 
 #mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
-#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EASEVERSION}_${HRCODE}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
+#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t ${EASEVERSION}_${HRCODE}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
 #/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.TIL IRRIG/$BCNAME/.
 _EOF_
 

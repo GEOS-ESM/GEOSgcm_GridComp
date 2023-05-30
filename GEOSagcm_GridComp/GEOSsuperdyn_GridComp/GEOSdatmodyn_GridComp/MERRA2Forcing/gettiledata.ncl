@@ -58,7 +58,7 @@ begin
 
   cig = sprinti( "%10.0i", ig + 1)
   cjg = sprinti( "%10.0i", jg + 1)
-  system("cat /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | nl | grep '"+cig+cjg+"' > tile.tmp")
+  system("cat /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | nl | grep '"+cig+cjg+"' > tile.tmp")
 
 
   fsub = readAsciiTable("tile.tmp", 13, "float", 0)
@@ -127,26 +127,26 @@ begin
   print("XY1x1-C_"+abs(alatroundm1)+clatm1sign+"_"+abs(alonroundm1)+clonm1sign+"_"+abs(alatroundp1)+clatp1sign+"_"+abs(alonroundp1)+clonp1sign)
   print("     1")
   print("     1")
-  system("cat /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | tail -1")
+  system("cat /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | tail -1")
 
 
 
-  itype = toint( systemfunc("cat /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | tail -1 | cut -c 8-10") )
+  itype = toint( systemfunc("cat /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | tail -1 | cut -c 8-10") )
   if(itype.eq.100) then
     print("well, it's land "+itype)
   else
     print("well, it's not land "+itype)
   end if
 
-  npfaff = toint( systemfunc("cat /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | cut -c 8-10 | grep 100 | wc -l") )
+  npfaff = toint( systemfunc("cat /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | cut -c 8-10 | grep 100 | wc -l") )
   print("npfaff = "+npfaff)
-  ipfaff = toint( systemfunc("cat /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | cut -c 8-10 | grep 100 | wc -l") )
+  ipfaff = toint( systemfunc("cat /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til | head -"+subind+" | cut -c 8-10 | grep 100 | wc -l") )
   print("ipfaff = "+ipfaff)
 
 
   do k = 0, 13
-    green_head = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/green_clim_180x1080.data", k * 2, 14, "float")
-    ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/green_clim_180x1080.data", k * 2 + 1, npfaff, "float")
+    green_head = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/green_clim_180x1080.data", k * 2, 14, "float")
+    ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/green_clim_180x1080.data", k * 2 + 1, npfaff, "float")
     green_head(12) = 1.
     green_head(13) = 1.
     fbinrecwrite("green.data", k * 2, green_head)
@@ -154,12 +154,12 @@ begin
 
   end do
 
-  nirdf_recnum = fbinnumrec("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat")
+  nirdf_recnum = fbinnumrec("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat")
   nirdf_kend = nirdf_recnum / 2
 
   do k = 0, nirdf_kend - 1
-    nirdf_head = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat", k * 2, 14, "float")
-    ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat", k * 2 + 1, npfaff, "float")
+    nirdf_head = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat", k * 2, 14, "float")
+    ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/nirdf_180x1080.dat", k * 2 + 1, npfaff, "float")
     nirdf_head(12) = 1.
     nirdf_head(13) = 1.
     fbinrecwrite("nirdf.dat", k * 2, nirdf_head)
@@ -167,12 +167,12 @@ begin
   end do
 
 
-  lai_recnum = fbinnumrec("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data")
+  lai_recnum = fbinnumrec("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data")
   lai_kend = lai_recnum / 2
 ; print(lai_kend)
   do k = 0, lai_kend - 1
-    lai_head = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data", k * 2, 14, "float")
-    ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data", k * 2 + 1, npfaff, "float")
+    lai_head = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data", k * 2, 14, "float")
+    ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/lai_clim_180x1080.data", k * 2 + 1, npfaff, "float")
     lai_head(12) = 1.
     lai_head(13) = 1.
     fbinrecwrite("lai.data", k * 2, lai_head)
@@ -180,12 +180,12 @@ begin
 
   end do
 
-  visdf_recnum = fbinnumrec("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat")
+  visdf_recnum = fbinnumrec("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat")
   visdf_kend = visdf_recnum / 2
 ; print(visdf_kend)
   do k = 0, visdf_kend - 1
-    visdf_head = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat", k * 2, 14, "float")
-    ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat", k * 2 + 1, npfaff, "float")
+    visdf_head = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat", k * 2, 14, "float")
+    ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/visdf_180x1080.dat", k * 2 + 1, npfaff, "float")
     visdf_head(12) = 1.
     visdf_head(13) = 1.
     fbinrecwrite("visdf.dat", k * 2, visdf_head)
@@ -193,12 +193,12 @@ begin
   end do
 
 
-  ndvi_recnum = fbinnumrec("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data")
+  ndvi_recnum = fbinnumrec("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data")
   ndvi_kend = ndvi_recnum / 2
 ; print(ndvi_kend)
   do k = 0, ndvi_kend - 1
-    ndvi_head = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data", k * 2, 14, "float")
-    ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data", k * 2 + 1, npfaff, "float")
+    ndvi_head = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data", k * 2, 14, "float")
+    ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/ndvi_clim_180x1080.data", k * 2 + 1, npfaff, "float")
     ndvi_head(12) = 1.
     ndvi_head(13) = 1.
     fbinrecwrite("ndvi.data", k * 2, ndvi_head)
@@ -208,17 +208,17 @@ begin
 
 
 
-  ftile = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/vegdyn_180x1080.dat", 0, npfaff, "float")
+  ftile = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/vegdyn_180x1080.dat", 0, npfaff, "float")
   fbinrecwrite("vegdyn.data", 0, ftile(ipfaff-1))
 
 
-  fgcm = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_DYN_ave_180x1080.data", 0, (/1080,180/), "float")
+  fgcm = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_DYN_ave_180x1080.data", 0, (/1080,180/), "float")
   fbinrecwrite("topo_dynave.data", 0, fgcm(toint(jg),toint(ig)))
 
-  fgcm = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_GWD_var_180x1080.data", 0, (/1080,180/), "float")
+  fgcm = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_GWD_var_180x1080.data", 0, (/1080,180/), "float")
   fbinrecwrite("topo_gwdvar.data", 0, fgcm(toint(jg),toint(ig)))
 
-  fgcm = fbinrecread("/discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_TRB_var_180x1080.data", 0, (/1080,180/), "float")
+  fgcm = fbinrecread("/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_MERRA-2/CF0180x6C_DE1440xPE0720/topo_TRB_var_180x1080.data", 0, (/1080,180/), "float")
   fbinrecwrite("topo_trbvar.data", 0, fgcm(toint(jg),toint(ig)))
 
 end
