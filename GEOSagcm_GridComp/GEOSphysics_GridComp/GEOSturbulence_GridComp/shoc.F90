@@ -187,15 +187,15 @@ module shoc
   real tkesbtrans(nx,ny,nzm)
 
 ! Eddy length formulation 
-  real smixt    (nx,ny,nzm) ! Turbulent length scale, m
-  real smixt1    (nx,ny,nzm) ! Turbulent length scale, m
-  real smixt2    (nx,ny,nzm) ! Turbulent length scale, m
-  real smixt3    (nx,ny,nzm) ! Turbulent length scale, m
-  real smixt_incld(nx,ny,nzm) ! Turbulent length scale, m
+  real smixt      (nx,ny,nzm)  ! Turbulent length scale, m
+  real smixt1     (nx,ny,nzm)  ! Turbulent length scale, m
+  real smixt2     (nx,ny,nzm)  ! Turbulent length scale, m
+  real smixt3     (nx,ny,nzm)  ! Turbulent length scale, m
+  real smixt_incld(nx,ny,nzm)  ! Turbulent length scale, m
   real smixt_outcld(nx,ny,nzm) ! Turbulent length scale, m
-  real isotropy (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
-  real brunt    (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
-  real conv_vel2(nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
+  real isotropy    (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
+  real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
+  real conv_vel2   (nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
 
 
 ! Local variables
@@ -215,13 +215,13 @@ module shoc
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
 
 ! set parameter values
-  lambda  = shocparams%LAMBDA  ! used in return-to-isotropy timescale
-  Ck  = shocparams%CKVAL     ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
-  Ce  = shocparams%CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
-  Ces = shocparams%CESFAC*Ce
-  vonk = shocparams%VONK     ! Von Karman constant Moorthi - as in GFS
-  tscale = shocparams%TSCALE  ! time scale set based off of similarity results of BK13, s
-  bruntmin = shocparams%BRUNTMIN
+  lambda   = shocparams%LAMBDA              ! used in return-to-isotropy timescale
+  Ck       = shocparams%CKVAL               ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
+  Ce       = shocparams%CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
+  Ces      = shocparams%CESFAC*Ce           ! Ce surface factor
+  vonk     = shocparams%VONK                ! Von Karman constant Moorthi - as in GFS
+  tscale   = shocparams%TSCALE              ! time scale set based off of similarity results of BK13, s
+  bruntmin = shocparams%BRUNTMIN            ! minimum brunt vaisala freq used in length scale
 
 ! Map GEOS variables to those of SHOC
   do k=1,nz
@@ -246,12 +246,12 @@ module shoc
         omega(i,j,kinv)    = omega_inv(i,j,k)
         tabs(i,j,kinv)     = tabs_inv(i,j,k)
         qwv(i,j,kinv)      = qwv_inv(i,j,k)
-        qcl(i,j,kinv)       = qc_inv(i,j,k)
-        qci(i,j,kinv)       = qi_inv(i,j,k)
+        qcl(i,j,kinv)      = qc_inv(i,j,k)
+        qci(i,j,kinv)      = qi_inv(i,j,k)
         cld_sgs(i,j,kinv)  = cld_sgs_inv(i,j,k)
         tke(i,j,kinv)      = tke_inv(i,j,k)
         wthv_sec(i,j,kinv) = wthv_sec_inv(i,j,k)
-        wthv_mf(i,j,kinv) = wthv_mf_inv(i,j,k)
+        wthv_mf(i,j,kinv)  = wthv_mf_inv(i,j,k)
       enddo
     enddo
   enddo
@@ -259,16 +259,15 @@ module shoc
   do k=1,nzm
     do j=1,ny
       do i=1,nx
-        wrk          = 1.0 / prsl(i,j,k)
-        qv(i,j,k)    = max(qwv(i,j,k), 0.0)
-        thv(i,j,k)   = tabs(i,j,k) * (1.0+epsv*qv(i,j,k))
-        w(i,j,k)     = - rog * omega(i,j,k) * thv(i,j,k) * wrk
+        wrk            = 1.0 / prsl(i,j,k)
+        qv(i,j,k)      = max(qwv(i,j,k), 0.0)
+        thv(i,j,k)     = tabs(i,j,k) * (1.0+epsv*qv(i,j,k))
+        w(i,j,k)       = - rog * omega(i,j,k) * thv(i,j,k) * wrk
         qpl(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         qpi(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
 !        wqp_sec(i,j,k) = 0.0  ! Turbulent flux of precipiation
         total_water(i,j,k) = qcl(i,j,k) + qci(i,j,k) + qv(i,j,k)
-
-        prespot        = (100000.0*wrk) ** kapa ! Exner function
+        prespot        = (100000.0*wrk) ** kapa        ! Exner function
         bet(i,j,k)     = ggr/(tabs(i,j,k)*prespot)     ! Moorthi
         thv(i,j,k)     = thv(i,j,k)*prespot            ! Moorthi
 !
@@ -307,7 +306,7 @@ module shoc
 
   call tke_shoc()        ! Integrate prognostic TKE equation forward in time
 
-!  call canuto()
+!  call canuto()    ! Subroutine to calculate w third moment, based on Canuto et al 2001
 
 !=== Assign exports and flip vertical ===!
 
@@ -345,7 +344,7 @@ contains
 
     real grd,betdz,Cek,Cee,lstarn, lstarp, bbb, omn, omp,qsatt,dqsat, smix,         &
          buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss,a_prod_bu_debug, buoy_sgs_debug, &
-         tscale1, wrk, wrk1, wtke, wtk2, rdtn, dbuoy, krad, tke_env
+         tscale1, wrk, wrk1, wtke, wtk2, rdtn!, dbuoy, krad, tke_env
     integer i,j,k,ku,kd,itr
 
     rdtn = 1.0 / dtn
@@ -365,7 +364,7 @@ contains
     enddo
 
     call eddy_length()   ! Find turbulent mixing length, calcs brunt
-    call check_eddy()    ! Make sure it's reasonable
+!    call check_eddy()    ! Make sure it's reasonable
 
 
     do k=1,nzm      
@@ -446,13 +445,12 @@ contains
           a_diss     = (a_diss/dtn)*tke(i,j,k)    ! TKE dissipation term, epsilon
 
 ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
-!          if (buoy_sgs <= 0.0) then
           if (buoy_sgs <= bruntmin) then
-!            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,tscale1/(1.0+lambda*bruntmin*tscale1*tscale1))
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,tscale1))
           else
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,tscale1/(1.0+lambda*buoy_sgs*tscale1*tscale1)))
           endif
+          if (tke(i,j,k).lt.1e-4) isotropy(i,j,k) = 30.
 
 ! TKE budget terms
           tkesbdiss(i,j,k)       = -a_diss
@@ -481,36 +479,38 @@ contains
     do k=2,nzm
       do j=1,ny
         do i=1,nx
-          tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
           wrk1 = wrk / (prnum(i,j,k) + prnum(i,j,k-1))
 
-!          tkh(i,j,k) = 0.5*( smixt(i,j,k)*sqrt(tke(i,j,k)) &
+!          tkh(i,j,k) = 0.5*( smixt(i,j,k)*sqrt(tke(i,j,k)) &      ! alternate form
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
-          tkh(i,j,k) = wrk1 * (isotropy(i,j,k) + isotropy(i,j,k-1))     &
-                            * 2.*(tke_env) ! Eddy thermal diffusivity
-!                            * (tke(i,j,k)+tke(i,j,k-1)) ! Eddy thermal diffusivity
+
+          tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
+          tkh(i,j,k) = wrk1 * (isotropy(i,j,k) + isotropy(i,j,k-1))     &  
+                            * 2.*(tke_env)             ! remove MF TKE
+!                            * (tke(i,j,k)+tke(i,j,k-1)) ! use total TKE
+
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
         end do ! i
       end do ! j
     end do ! k
 
 ! add radiation-driven entrainment (simplified)
-  do j=1,ny
-    do i=1,nx
-      do k=2,nzm-1
-        if (zl(i,j,k).gt.4000.) exit
-        if (cld_sgs(i,j,k).gt.0.1 .and. cld_sgs(i,j,k+1).lt.0.1) then
+!  do j=1,ny
+!    do i=1,nx
+!      do k=2,nzm-1
+!        if (zl(i,j,k).gt.4000.) exit
+!        if (cld_sgs(i,j,k).gt.0.1 .and. cld_sgs(i,j,k+1).lt.0.1) then
 
-          dbuoy = max( 0.1, (thv(i,j,k)/ggr)*brunt(i,j,k) )
-          krad = -1.*adzl(i,j,k)*shocparams%kradfac*minval(dtdtrad(i,j,nzm-k-1:nzm-k+1))/dbuoy
-          tkh(i,j,k+1) = tkh(i,j,k+1) + krad  !add to KH at interface between cloud>0.1 and <0.1 
+!          dbuoy = max( 0.1, (thv(i,j,k)/ggr)*brunt(i,j,k) )
+!          krad = -1.*adzl(i,j,k)*shocparams%kradfac*minval(dtdtrad(i,j,nzm-k-1:nzm-k+1))/dbuoy
+!          tkh(i,j,k+1) = tkh(i,j,k+1) + krad  !add to KH at interface between cloud>0.1 and <0.1 
 !          print *,'krad=',krad,'  ztop=',zi(i,j,k+1)
 
-          exit
-        end if
-      end do
-    end do
-  end do
+!          exit
+!        end if
+!      end do
+!    end do
+!  end do
 
   end subroutine tke_shoc
 
@@ -780,17 +780,19 @@ contains
 
          brunt_dry = max( bruntmin, brunt_dry )
 
-         brunt_smooth = brunt2
-         brunt_smooth(:,:,nzm) = brunt2(:,:,nzm-1)
-         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))
+         brunt_smooth = brunt
+         brunt_smooth(:,:,nzm) = brunt(:,:,nzm-1)
+         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))   ! use avg of lowest 3 levs 
          brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
-         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
-         brunt_smooth(:,:,1:3) = max( bruntmin, brunt_smooth(:,:,1:3) )
-!         do kk = nzm-2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
+         brunt_smooth(:,:,3) = brunt_smooth(:,:,1)
+         do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
 !            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
-!            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk-1)+0.333*brunt2(:,:,kk)+0.334*brunt2(:,:,kk+1)
+!            where (brunt(:,:,kk+1).lt.1e-4) 
+              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
+!            end where
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
-!         end do
+         end do
+         brunt_smooth = max( bruntmin, brunt_smooth )
          
 
 
@@ -846,29 +848,24 @@ contains
           !----------------------------------
           ! calculate parcel mixing length
           !----------------------------------
-!           if (shocparams%LENOPT==2 .or. shocparams%LENOPT==3) then
-              kk = k
-!              tep = thv(i,j,k)+0.5*max(0.,wthv_sec(i,j,k)-wthv_mf(i,j,k)) / tkes
-              tep = thv(i,j,k)+max(0.,wthv_sec(i,j,k)) / (sqrt(2.)*tkes) ! upward T perturbation
-              do while (tep .gt. thv(i,j,kk) .and. kk.lt.nzm)
-                kk = kk+1
-              end do
-              ktop = kk
-              l_par(i,j) = zl(i,j,ktop) !+ (thv(i,j,ktop-1)-tep)* &
-!                              ((zl(i,j,ktop)-zl(i,j,ktop-1)))/(thv(i,j,ktop)-thv(i,j,ktop-1))
-              kk = k
-!              tep = thv(i,j,k)-0.5*max(0.,wthv_sec(i,j,k)-wthv_mf(i,j,k)) / tkes
-              tep = thv(i,j,k)-max(0.,wthv_sec(i,j,k)) / (sqrt(2.)*tkes) ! downward T perturbation
-              do while (tep .lt. thv(i,j,kk) .and. kk .gt. 1)
-                kk = kk-1
-              end do
-              l_par(i,j) = l_par(i,j) - zl(i,j,kk) !- (thv(i,j,kk+1)-tep)* &
-!                              ((zl(i,j,kk)-zl(i,j,kk+1)))/(thv(i,j,kk)-thv(i,j,kk+1))
-              l_par(i,j) = max(min(l_par(i,j),1500.),25.)
-              if (brunt_smooth(i,j,k).gt.1e-5) l_par(i,j) = max(25.,l_par(i,j)/2.)
-
-              wrk2 = (tscale*tkes*0.1*l_par(i,j))
-!            end if
+!              kk = k
+!              tep = thv(i,j,k)+max(0.,wthv_sec(i,j,k)) / (sqrt(2.)*tkes) ! upward T perturbation
+!              do while (tep .gt. thv(i,j,kk) .and. kk.lt.nzm)
+!                kk = kk+1
+!              end do
+!              ktop = kk
+!              l_par(i,j) = zl(i,j,ktop) !+ (thv(i,j,ktop-1)-tep)* &
+!!                              ((zl(i,j,ktop)-zl(i,j,ktop-1)))/(thv(i,j,ktop)-thv(i,j,ktop-1))
+!              kk = k
+!              tep = thv(i,j,k)-max(0.,wthv_sec(i,j,k)) / (sqrt(2.)*tkes) ! downward T perturbation
+!              do while (tep .lt. thv(i,j,kk) .and. kk .gt. 1)
+!                kk = kk-1
+!              end do
+!              l_par(i,j) = l_par(i,j) - zl(i,j,kk) !- (thv(i,j,kk+1)-tep)* &
+!!                              ((zl(i,j,kk)-zl(i,j,kk+1)))/(thv(i,j,kk)-thv(i,j,kk+1))
+!              l_par(i,j) = max(min(l_par(i,j),1500.),25.)
+!              if (brunt_smooth(i,j,k).gt.1e-5) l_par(i,j) = max(25.,l_par(i,j)/2.)
+!              wrk2 = (tscale*tkes*0.1*l_par(i,j))
 
           !-------------------------
           ! combine SHOC length scales
@@ -886,10 +883,14 @@ contains
 !                 if (nx.eq.1 .and. zl(i,j,k).lt.1500.) print *,'zl=',zl(i,j,k),' lmix=',l_mix(i,j),' linf=',l_inf(i,j),' lpar=',l_par(i,j)
 !                 wrk2 = (0.1*l_inf(i,j))**2
 !                 smixt1(i,j,k) = max(25.,sqrt(tscale*tkes*vonk*zl(i,j,k))*1.5*shocparams%LENFAC1) 
-                 smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
+                 smixt1(i,j,k) = vonk*zl(i,j,k)*exp(MIN(1000.,zl(i,j,k))**2/4e4)*shocparams%LENFAC1
 !                 smixt2(i,j,k) = max(25.,0.7*l_par(i,j)*shocparams%LENFAC2) !sqrt(wrk2)*3.3*shocparams%LENFAC
 !                 smixt2(i,j,k) = max(25.,sqrt(400.*tkes*l_inf(i,j))*shocparams%LENFAC2)
-                 smixt2(i,j,k) = sqrt(l_mix(i,j)*400.*tkes)*shocparams%LENFAC2
+                 if (zl(i,j,k).lt.l_mix(i,j)) then 
+                   smixt2(i,j,k) = sqrt(l_mix(i,j)*400.*tkes)*shocparams%LENFAC2
+                 else
+                   smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
+                 end if
                  smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
 !                 smixt3(i,j,k) = max(25.,shocparams&LENFAC2*20.*sqrt(500.-((zl(i,j,k)-500.)/24.)**2))
 
@@ -914,9 +915,7 @@ contains
                     smixt(i,j,k) = min(max_eddy_length_scale, 3./(1./smixt1(i,j,k)+1./smixt2(i,j,k)+1./smixt3(i,j,k)) )
 !                    smixt(i,j,k) = min(max_eddy_length_scale, min(smixt1(i,j,k),smixt2(i,j,k)) )
                  else if (shocparams%LENOPT .eq. 3) then
-                    wrk3 = tke(i,j,k) /(4. * brunt_smooth(i,j,k))
-                    wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
-                    smixt(i,j,k) = min(max_eddy_length_scale, 3.3*sqrt(wrk1)*shocparams%LENFAC2 )
+                      smixt(i,j,k) = min(max_eddy_length_scale, 3./SQRT(1./smixt1(i,j,k)**2+1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2) )
                  end if
 !              endif
            else if (shocparams%LENOPT .eq. 4) then
@@ -947,11 +946,10 @@ contains
               smixt3(i,j,k) = MAPL_UNDEF
            end if
 
-         smixt_outcld(i,j,k) = smixt(i,j,k)
- 
-           
+           wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
+           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
 
-!==================================
+           smixt_outcld(i,j,k) = smixt(i,j,k)
 
         end do
       end do
@@ -982,108 +980,108 @@ contains
 !    enddo
 !!! npa
     
-    do j=1,ny
-      do i=1,nx
+!    do j=1,ny
+!      do i=1,nx
           
-        if (cldarr(i,j) == 1) then ! If there's a cloud in this column 
+!        if (cldarr(i,j) == 1) then ! If there's a cloud in this column 
              
-          kl = 0
-          ku = 0
-          do k=2,nzm-3
+!          kl = 0
+!          ku = 0
+!          do k=2,nzm-3
                 
 ! Look for the cloud base in this column  
 ! thresh (=0) is a  variable local to eddy_length(). Should be a module constant.
-            wrk = qcl(i,j,k) + qci(i,j,k)
-            if (wrk > thresh .and. kl == 0) then
-              kl = k
-            endif
+!            wrk = qcl(i,j,k) + qci(i,j,k)
+!            if (wrk > thresh .and. kl == 0) then
+!              kl = k
+!            endif
                 
 ! Look for the cloud top in this column
-            if (wrk > thresh .and. qcl(i,j,k+1)+qci(i,j,k+1) <= thresh) then
-              ku = k
+!            if (wrk > thresh .and. qcl(i,j,k+1)+qci(i,j,k+1) <= thresh) then
+!              ku = k
 !!! npa
 ! conv_vel2 (Cubed convective velocity scale) is calculated in conv_scale()
 ! Use the value of conv_vel2 at the top of the cloud. 
 !              conv_var = conv_vel2(i,j,k)**(1./3.)
 !!! npa
-            endif
+!            endif
                 
 ! Compute the mixing length scale for the cloud layer that we just found
 !!! npa:  no need to exclude clouds 1 layer thick
 !            if (kl > 0 .and. ku > 0 .and. ku-kl > 1) then
-            if (kl > 0 .and. ku > 0 .and. ku-kl > 0) then
+!            if (kl > 0 .and. ku > 0 .and. ku-kl > 0) then
 
-              conv_var=0.
-              do kk=kl,ku
-                conv_var = conv_var+2.5*adzi(i,j,kk)*bet(i,j,kk)*wthv_sec(i,j,kk)
-              end do
-              conv_var = conv_var**(1./3.)
+!              conv_var=0.
+!              do kk=kl,ku
+!                conv_var = conv_var+2.5*adzi(i,j,kk)*bet(i,j,kk)*wthv_sec(i,j,kk)
+!              end do
+!              conv_var = conv_var**(1./3.)
 
 !!! npa                
-              if (conv_var > 0) then ! If convective vertical velocity scale > 0
+!              if (conv_var > 0) then ! If convective vertical velocity scale > 0
                  
-                depth = min((zl(i,j,ku)-zl(i,j,kl)) + adzi(i,j,kl), 400.)
+!                depth = min((zl(i,j,ku)-zl(i,j,kl)) + adzi(i,j,kl), 400.)
                       
                      
-                do kk=kl,ku
+!                do kk=kl,ku
 ! in-cloud turbulence length scale, Eq. 13 in BK13 (Eq. 4.18)
 
 !                  wrk = conv_var/(depth*sqrt(tke(i,j,kk)))
 !                  wrk = wrk * wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
 ! JDC Modify (based on Eq 13 in BK13)
-                  wrk = conv_var/(depth*depth*sqrt(tke(i,j,kk)))
-                  wrk = wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
-                  smixt_incld(i,j,kk) = 3.3/sqrt(wrk)
+!                  wrk = conv_var/(depth*depth*sqrt(tke(i,j,kk)))
+!                  wrk = wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
+!                  smixt_incld(i,j,kk) = 3.3/sqrt(wrk)
  
-                  smixt_incld(i,j,kk) = 300.  !!! TEMPORARY test
+!                  smixt_incld(i,j,kk) = 300.  !!! TEMPORARY test
                   
 ! npa modify, weight in-cloud length scale by local cloud fraction
-                  if (shocparams%CLDLEN/=0.) then
-                    smixt_incld(i,j,kk) = smixt_incld(i,j,kk)*shocparams%CLDLEN
-                    smixt(i,j,kk) = (1.-cld_sgs(i,j,kk))*smixt(i,j,kk) + cld_sgs(i,j,kk)*smixt_incld(i,j,kk)
-                    smixt(i,j,kk) = min(max_eddy_length_scale, smixt(i,j,kk))
-                  end if
+!                  if (shocparams%CLDLEN/=0.) then
+!                    smixt_incld(i,j,kk) = smixt_incld(i,j,kk)*shocparams%CLDLEN
+!                    smixt(i,j,kk) = (1.-cld_sgs(i,j,kk))*smixt(i,j,kk) + cld_sgs(i,j,kk)*smixt_incld(i,j,kk)
+!                    smixt(i,j,kk) = min(max_eddy_length_scale, smixt(i,j,kk))
+!                  end if
 
-                enddo
+!                enddo
                       
-              endif ! If convective vertical velocity scale > 0
-              kl = 0.
-              ku = 0.
-            endif ! if inside the cloud layer
+!              endif ! If convective vertical velocity scale > 0
+!              kl = 0.
+!              ku = 0.
+!            endif ! if inside the cloud layer
                 
-          enddo   ! k=2,nzm-3
-        endif     ! if in the cloudy column
-      enddo       ! i=1,nx
-    enddo         ! j=1,ny
+!          enddo   ! k=2,nzm-3
+!        endif     ! if in the cloudy column
+!      enddo       ! i=1,nx
+!    enddo         ! j=1,ny
     
     
   end subroutine eddy_length
 
 
-  subroutine conv_scale()
+!  subroutine conv_scale()
 
 ! This subroutine calculates the cubed convective velocity scale needed 
 ! for the definition of the length scale in clouds
 ! See Eq. 16 in BK13 (Eq. 4.21 in Pete's dissertation)
 
-    integer i, j, k
+!    integer i, j, k
 
 !!!!!!!!!
 !! A bug in formulation of conv_vel
 !  Obtain it by averaging conv_vel2 in the horizontal
 !!!!!!!!!!
 
-!   conv_vel(1)=0.      ! Horizontally averaged convective velocity scale cubed 
-    do j=1,ny
-      do i=1,nx
-        conv_vel2(i,j,1) = 0. ! Convective velocity scale cubed
-      enddo
-    enddo
+!!   conv_vel(1)=0.      ! Horizontally averaged convective velocity scale cubed 
+!    do j=1,ny
+!      do i=1,nx
+!        conv_vel2(i,j,1) = 0. ! Convective velocity scale cubed
+!      enddo
+!    enddo
 ! Integrate velocity scale in the vertical
-    do k=2,nzm
-!     conv_vel(k)=conv_vel(k-1)
-      do j=1,ny
-        do i=1,nx
+!    do k=2,nzm
+!!     conv_vel(k)=conv_vel(k-1)
+!      do j=1,ny
+!        do i=1,nx
 !**********************************************************************
 !Do not include grid-scale contribution to convective velocity scale in GCM applications 
 !         conv_vel(k)=conv_vel(k-1)+2.5*adzi(k)*bet(k)*(tvwle(k)+tvws(k))
@@ -1092,13 +1090,13 @@ contains
 !         conv_vel2(i,j,k)=conv_vel2(i,j,k-1)+2.5*adzi(k)*bet(k)*(tvwle(k)+wthv_sec(i,j,k))
 !**********************************************************************
 
-          conv_vel2(i,j,k) = conv_vel2(i,j,k-1)                               &
-                           + 2.5*adzi(i,j,k)*bet(i,j,k)*wthv_sec(i,j,k)
-        enddo
-      enddo
-    enddo
+!          conv_vel2(i,j,k) = conv_vel2(i,j,k-1)                               &
+!                           + 2.5*adzi(i,j,k)*bet(i,j,k)*wthv_sec(i,j,k)
+!        enddo
+!      enddo
+!    enddo
 
-  end subroutine conv_scale
+!  end subroutine conv_scale
 
 
   subroutine check_eddy()
@@ -1436,11 +1434,11 @@ contains
 
     end do
 
-!  if (DOCANUTO==0) then
+  if (DOCANUTO==1) then
     qt3 = max( MFQT3, qt3*max(1.-DT/QT3_TSCALE,0.0) )
     hl3 = MFHL3
     w3  = (1.-MFFRC)*0.5*((Sqrt(w2)-MFAW/(1.-MFFRC))**3 + (-Sqrt(w2)-MFAW/(1.-MFFRC))**3) + MFW3
-!  else
+  else
 
 ! pre-define adzl, 
   do k=2,LM
@@ -1567,7 +1565,7 @@ contains
 !   qt3 = 1.2*w3*(qt2/w2)**1.5
 !   hl3 = w3 * (hl2 / w2)**1.5
 
-!  end if ! DOCANUTO conditional
+  end if ! DOCANUTO conditional
 
  end subroutine update_moments
 

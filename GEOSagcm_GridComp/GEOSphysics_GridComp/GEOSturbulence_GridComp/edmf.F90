@@ -185,6 +185,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
       awqi3 =0.
       awu3  =0.
       awv3  =0.
+
       buoyf =0.
       mfw2  =0.
       mfw3  =0.
@@ -250,7 +251,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 ! if surface buoyancy is positive then mass-flux, otherwise not
   IF ( (wthv > 0.0 .and. TKE3(IH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
-!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl
+!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH)
 
      if (PARAMS%doclasp/=0) then
        nup2 = count(mfsrcthl(IH,1:nup)>=-2.0)
@@ -476,7 +477,8 @@ end if
           UPA(kts-1,I)=MFAREA(IH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)  ! npa
-          UPA(kts-1,I)=0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW))
+!          print *,'UPA factor = ',MIN(1.5,0.5+wthv/0.2)
+          UPA(kts-1,I)=MIN(1.5,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         end if
 
         UPU(kts-1,I)=U(kts)
@@ -517,17 +519,17 @@ end if
    ENDDO
 
 
-   if (THVsrfF .gt. wthv .and. THVsrfF .gt. 0.1) then
+   if (THVsrfF .gt. 0.9*wthv .and. THVsrfF .gt. 0.1) then
    ! change surface THV so that the fluxes from the mass flux equal prescribed values
-        UPTHV(kts-1,:)=(UPTHV(kts-1,:)-THV(kts))*wthv/THVsrfF+THV(kts)
-         print *,'adjusting surface THV perturbation by a factor',wthv/THVsrfF
+        UPTHV(kts-1,:)=(UPTHV(kts-1,:)-THV(kts))*0.9*wthv/THVsrfF+THV(kts)
+!         print *,'adjusting surface THV perturbation by a factor',0.9*wthv/THVsrfF
    endif
 
-   IF ( (QTsrfF .gt. wqt) .and. (wqt .gt. 0.) )  then
+   IF ( (QTsrfF .gt. 0.9*wqt) .and. (wqt .gt. 0.) )  then
    ! change surface QT so that the fluxes from the mass flux equal prescribed values
    ! - we do not need to worry about the negative values as they should not exist -
-        UPQT(kts-1,:)=(UPQT(kts-1,:)-QT(kts))*wqt/QTsrfF+QT(kts)
-        print *,'adjusting surface QT perturbation by a factor',wqt/QTsrfF
+        UPQT(kts-1,:)=(UPQT(kts-1,:)-QT(kts))*0.9*wqt/QTsrfF+QT(kts)
+!        print *,'adjusting surface QT perturbation by a factor',0.9*wqt/QTsrfF
    ENDIF
 
 
@@ -624,8 +626,6 @@ end if
   ! If it does, rescale updraft area.
   ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]
 
-!         UPA = 0.5*UPA   ! rescale area preemtively to reduce sensitivity to vertical resolution
-
          factor = 1.0
          DO k=KTS,KTE
             mf = SUM(RHOE(K)*UPA(K,:)*UPW(K,:))
@@ -633,7 +633,7 @@ end if
                factor = min(factor,PARAMS%MFLIMFAC*dp(K)/(mf*MAPL_GRAV*dt) )
             end if
          ENDDO
-         if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
+!         if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
          UPA = factor*UPA 
 
          DO k=KTS,KTE
@@ -780,7 +780,6 @@ end if
           s_aw3(K)=s_aw3(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)*UPW(K,I)
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
-!          s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
           if (PARAMS%IMPLICIT == 1) then
              tmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs ! updraft S
@@ -867,9 +866,7 @@ end if
       mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))
       mfqt3(IH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
       mfhl3(IH,K)=0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
-!      mfwqt(IH,K)=0.5*(s_awqt(KTE+KTS-K-1)+s_awqt(KTE+KTS-K))
       mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
-!      mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
 
   ENDDO
 
