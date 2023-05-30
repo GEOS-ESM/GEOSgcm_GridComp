@@ -1067,73 +1067,81 @@ subroutine postintr(pcols,pver,dt, h0, hh, z1, tau1, &
     !---------------------------Local variables-----------------------------
     !
     integer :: i,k
-    real :: zref, kray
+    real :: zref, kray, ts, te
     !
     !-----------------------------------------------------------------------
     !
 
-    I_LOOP: DO I = 1, PCOLS
+    call cpu_time(ts)
 
-    PEGWD(I)  = 0.0
-    PEORO(I)  = 0.0
-    PERAY(I)  = 0.0
-    PEBKG(I)  = 0.0
-    KEGWD(I)  = 0.0
-    KEORO(I)  = 0.0
-    KERAY(I)  = 0.0
-    KEBKG(I)  = 0.0
-    KERES(I)  = 0.0
-    BKGERR(I) = 0.0
+    DO I = 1, PCOLS
+
+        PEGWD(I)  = 0.0
+        PEORO(I)  = 0.0
+        PERAY(I)  = 0.0
+        PEBKG(I)  = 0.0
+        KEGWD(I)  = 0.0
+        KEORO(I)  = 0.0
+        KERAY(I)  = 0.0
+        KEBKG(I)  = 0.0
+        KERES(I)  = 0.0
+        BKGERR(I) = 0.0
+    enddo
 
     DO K = 1, PVER
+        DO I = 1, PCOLS
 
-    ! Rayleigh friction
-    !------------------
-        if (TAU1 > 0.0) then
-        ZREF     = H0 * LOG(MAPL_P00/(0.5*(PREF(K)+PREF(K+1))))
-        KRAY     = (1.0/TAU1)*( 1.0 - TANH( (Z1-ZREF)/HH ) )
-        KRAY     = KRAY/(1+DT*KRAY)
-        DUDT_RAH(I,K) = -U(I,K)*KRAY
-        DVDT_RAH(I,K) = -V(I,K)*KRAY
-        DTDT_RAH(I,K) = - ((U(I,K) + (0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) + &
-                            (V(I,K) + (0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K)   ) * (1.0/MAPL_CP)
-        else
-        DUDT_RAH(I,K) = 0.0
-        DVDT_RAH(I,K) = 0.0
-        DTDT_RAH(I,K) = 0.0
-        endif
+            ! Rayleigh friction
+            !------------------
+            if (TAU1 > 0.0) then
+            ZREF     = H0 * LOG(MAPL_P00/(0.5*(PREF(K)+PREF(K+1))))
+            KRAY     = (1.0/TAU1)*( 1.0 - TANH( (Z1-ZREF)/HH ) )
+            KRAY     = KRAY/(1+DT*KRAY)
+            DUDT_RAH(I,K) = -U(I,K)*KRAY
+            DVDT_RAH(I,K) = -V(I,K)*KRAY
+            DTDT_RAH(I,K) = - ((U(I,K) + (0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) + &
+                                (V(I,K) + (0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K)   ) * (1.0/MAPL_CP)
+            else
+            DUDT_RAH(I,K) = 0.0
+            DVDT_RAH(I,K) = 0.0
+            DTDT_RAH(I,K) = 0.0
+            endif
 
-        DUDT_TOT(I,K) = DUDT_RAH(I,K) + DUDT_GWD(I,K)
-        DVDT_TOT(I,K) = DVDT_RAH(I,K) + DVDT_GWD(I,K)
-        DTDT_TOT(I,K) = DTDT_RAH(I,K) + DTDT_GWD(I,K)
+            DUDT_TOT(I,K) = DUDT_RAH(I,K) + DUDT_GWD(I,K)
+            DVDT_TOT(I,K) = DVDT_RAH(I,K) + DVDT_GWD(I,K)
+            DTDT_TOT(I,K) = DTDT_RAH(I,K) + DTDT_GWD(I,K)
 
-    ! KE dIagnostics
-    !----------------
+            ! KE dIagnostics
+            !----------------
 
-        PEGWD(I) = PEGWD(I) +  DTDT_TOT(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-        PEORO(I) = PEORO(I) +  DTDT_ORG(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-        PERAY(I) = PERAY(I) +  DTDT_RAH(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-        PEBKG(I) = PEBKG(I) + (DTDT_GWD(I,K)-DTDT_ORG(I,K))*PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            PEGWD(I) = PEGWD(I) +  DTDT_TOT(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            PEORO(I) = PEORO(I) +  DTDT_ORG(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            PERAY(I) = PERAY(I) +  DTDT_RAH(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            PEBKG(I) = PEBKG(I) + (DTDT_GWD(I,K)-DTDT_ORG(I,K))*PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
 
-        KEGWD(I) = KEGWD(I) + ((U(I,K)+(0.5*DT)*DUDT_TOT(I,K))*DUDT_TOT(I,K) +   &
-                                (V(I,K)+(0.5*DT)*DVDT_TOT(I,K))*DVDT_TOT(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
+            KEGWD(I) = KEGWD(I) + ((U(I,K)+(0.5*DT)*DUDT_TOT(I,K))*DUDT_TOT(I,K) +   &
+                                    (V(I,K)+(0.5*DT)*DVDT_TOT(I,K))*DVDT_TOT(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
 
-        KEORO(I) = KEORO(I) + ((U(I,K)+(0.5*DT)*DUDT_ORG(I,K))*DUDT_ORG(I,K) +   &
-                                (V(I,K)+(0.5*DT)*DVDT_ORG(I,K))*DVDT_ORG(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
+            KEORO(I) = KEORO(I) + ((U(I,K)+(0.5*DT)*DUDT_ORG(I,K))*DUDT_ORG(I,K) +   &
+                                    (V(I,K)+(0.5*DT)*DVDT_ORG(I,K))*DVDT_ORG(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
 
-        KERAY(I) = KERAY(I) + ((U(I,K)+(0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) +   &
-                                (V(I,K)+(0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
+            KERAY(I) = KERAY(I) + ((U(I,K)+(0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) +   &
+                                    (V(I,K)+(0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
 
-        KEBKG(I) = KEBKG(I) + ((U(I,K)+(0.5*DT)*(DUDT_GWD(I,K) - DUDT_ORG(I,K)))*(DUDT_GWD(I,K) - DUDT_ORG(I,K)) +     &
-                                (V(I,K)+(0.5*DT)*(DVDT_GWD(I,K) - DVDT_ORG(I,K)))*(DVDT_GWD(I,K) - DVDT_ORG(I,K))   ) * &
-                                PDEL(I,K)*(1.0/MAPL_GRAV)
+            KEBKG(I) = KEBKG(I) + ((U(I,K)+(0.5*DT)*(DUDT_GWD(I,K) - DUDT_ORG(I,K)))*(DUDT_GWD(I,K) - DUDT_ORG(I,K)) +     &
+                                    (V(I,K)+(0.5*DT)*(DVDT_GWD(I,K) - DVDT_ORG(I,K)))*(DVDT_GWD(I,K) - DVDT_ORG(I,K))   ) * &
+                                    PDEL(I,K)*(1.0/MAPL_GRAV)
+        END DO
     END DO
 
-    BKGERR(I) = -( PEBKG(I) + KEBKG(I) )
-    KERES(I)  =    PEGWD(I) + KEGWD(I) + BKGERR(I)
+    DO I = 1, PCOLS
+        BKGERR(I) = -( PEBKG(I) + KEBKG(I) )
+        KERES(I)  =    PEGWD(I) + KEGWD(I) + BKGERR(I)
+    enddo
 
-    END DO I_LOOP
+    call cpu_time(te)
 
+    print*,'postintr time = ', te-ts
 end subroutine postintr
 end program
 
