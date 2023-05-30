@@ -3123,7 +3123,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
    integer :: OFFLINE_MODE
-   integer                        ::  comm, mype
 
 !=============================================================================
 ! Begin...
@@ -3173,10 +3172,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_VMGet(VM, localPet=mype, rc=status)
     VERIFY_(STATUS)
 
 ! Pointers to inputs
@@ -3621,7 +3616,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                           :: SCALE4Z0_u
     real                            :: MIN_VEG_HEIGHT
     type(ESMF_VM)                   :: VM
-    integer                         ::  comm, mype
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3648,10 +3642,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
-    call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_VMGet(VM, localPet=mype, rc=status)
-    VERIFY_(STATUS)
 
    select case (Z0_FORMULATION)
       case (0)  ! no scaled at all
@@ -4256,9 +4246,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call ESMF_VMGet(VM, localPet=mype, rc=status)
-        VERIFY_(STATUS)
- 
         ! -----------------------------------------------------
         ! IMPORT Pointers
         ! -----------------------------------------------------
