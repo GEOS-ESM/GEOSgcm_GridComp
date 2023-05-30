@@ -620,7 +620,20 @@ program gwd_standalone
     print*,'sum(TAUXB_TMP_NCAR_ref - TAUXB_TMP_NCAR) = ', sum(TAUXB_TMP_NCAR_ref - TAUXB_TMP_NCAR)
     print*,'sum(TAUYB_TMP_NCAR_ref - TAUYB_TMP_NCAR) = ', sum(TAUYB_TMP_NCAR_ref - TAUYB_TMP_NCAR)
 
+    !$acc data copyin(PREF, PDEL, U, V, DUDT_GWD, DVDT_GWD, DTDT_GWD, DUDT_ORG, DVDT_ORG, DTDT_ORG, &
+    !$acc             T, Q, PMID, ZM, VARFLT, AREA, &
+    !$acc             DUDT_GWD_NCAR, DVDT_GWD_NCAR, DTDT_GWD_NCAR, TAUXB_TMP_NCAR, TAUYB_TMP_NCAR, &
+    !$acc             DUDT_ORG_NCAR, DVDT_ORG_NCAR, DTDT_ORG_NCAR, TAUXO_TMP_NCAR, TAUYO_TMP_NCAR) &
+    !$acc      copyout(DUDT_TOT, DVDT_TOT, DTDT_TOT, DUDT_RAH, DVDT_RAH, DTDT_RAH, &
+    !$acc              PEGWD_X, PEORO_X, PERAY_X, PEBKG_X, KEGWD_X, KEORO_X,  &
+    !$acc              KERAY_X, KEBKG_X, KERES_X, BKGERR_X, &
+    !$acc              DUDT_TOFD, DVDT_TOFD) &
+    !$acc      create(THV, Hefold, a2, DUDT_GWD_GEOS, DVDT_GWD_GEOS, DTDT_GWD_GEOS, &
+    !$acc             TAUXB_TMP_GEOS, TAUYB_TMP_GEOS, DUDT_ORG_GEOS, DVDT_ORG_GEOS, &
+    !$acc             DTDT_ORG_GEOS, TAUXO_TMP_GEOS, TAUYO_TMP_GEOS)
+
     ! Use GEOS GWD only for Extratropical background sources...
+    !$acc kernels
     DUDT_GWD_GEOS = 0.0
     DVDT_GWD_GEOS = 0.0
     DTDT_GWD_GEOS = 0.0
@@ -663,10 +676,15 @@ program gwd_standalone
     DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
     TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
     TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
-
+    !$acc end kernels
 
     if (effbeljaars > 0.0) then
+        !$acc kernels
         THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
+        !$acc end kernels
+
+        !$acc parallel loop gang vector collapse(2) &
+        !$acc private(ikpbl, tcrib)
         DO J=1,JM
             DO I=1,IM    
                 ! Find the PBL height
@@ -686,7 +704,10 @@ program gwd_standalone
                 Hefold(i,j) = 1500.0 !MIN(MAX(2*SQRT(VARFLT(i,j)),ZM(i,j,ikpbl)),1500.)
             END DO
         END DO
+        !$acc end parallel
 
+        !$acc parallel loop gang vector collapse(3) &
+        !$acc private(var_temp, wsp)
         DO L=1, LM
             DO J=1,JM
                 DO I=1,IM
@@ -715,12 +736,18 @@ program gwd_standalone
                 END DO
             END DO
         END DO
+        !$acc end parallel
+
+        !$acc kernels
         DUDT_GWD=DUDT_GWD+DUDT_TOFD
         DVDT_GWD=DVDT_GWD+DVDT_TOFD
+        !$acc end kernels
         !deallocate( THV )
     else
+        !$acc kernels
         DUDT_TOFD=0.0
         DVDT_TOFD=0.0
+        !$acc end kernels
     endif
 
     open(newunit=fileID, file=trim(dirName) // "/DUDT_TOFD_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
@@ -730,6 +757,8 @@ program gwd_standalone
     open(newunit=fileID, file=trim(dirName) // "/DVDT_TOFD_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
     read(fileID) DVDT_TOFD_ref
     close(fileID)
+
+    !$acc update host(DUDT_TOFD, DVDT_TOFD)
 
     print*,'sum(DUDT_TOFD_ref - DUDT_TOFD) = ', sum(DUDT_TOFD_ref - DUDT_TOFD)
     print*,'sum(DVDT_TOFD_ref - DVDT_TOFD) = ', sum(DVDT_TOFD_ref - DVDT_TOFD)
@@ -745,7 +774,6 @@ program gwd_standalone
         DUDT_ORG, &
         DVDT_ORG, &
         DTDT_ORG, &
-
         DUDT_TOT, &
         DVDT_TOT, &
         DTDT_TOT, &
@@ -762,6 +790,8 @@ program gwd_standalone
         KEBKG_X,  &
         KERES_X,  &
         BKGERR_X  )
+
+!$acc end data
 
     open(newunit=fileID, file=trim(dirName) // "/DUDT_TOT_"// trim(rank) // ".out", status='old', form="unformatted", action="read")
     read(fileID) DUDT_TOT_ref
@@ -1074,8 +1104,8 @@ subroutine postintr(pcols,pver,dt, h0, hh, z1, tau1, &
 
     call cpu_time(ts)
 
+!$acc parallel loop gang copyin(PCOLS)
     DO I = 1, PCOLS
-
         PEGWD(I)  = 0.0
         PEORO(I)  = 0.0
         PERAY(I)  = 0.0
@@ -1087,7 +1117,10 @@ subroutine postintr(pcols,pver,dt, h0, hh, z1, tau1, &
         KERES(I)  = 0.0
         BKGERR(I) = 0.0
     enddo
+!$acc end parallel
 
+!$acc parallel loop gang vector collapse(2) &
+!$acc private(ZREF, KRAY)
     DO K = 1, PVER
         DO I = 1, PCOLS
 
@@ -1111,33 +1144,54 @@ subroutine postintr(pcols,pver,dt, h0, hh, z1, tau1, &
             DVDT_TOT(I,K) = DVDT_RAH(I,K) + DVDT_GWD(I,K)
             DTDT_TOT(I,K) = DTDT_RAH(I,K) + DTDT_GWD(I,K)
 
-            ! KE dIagnostics
+            ! KE diagnostics
             !----------------
-
+            !$acc atomic update
             PEGWD(I) = PEGWD(I) +  DTDT_TOT(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-            PEORO(I) = PEORO(I) +  DTDT_ORG(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-            PERAY(I) = PERAY(I) +  DTDT_RAH(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
-            PEBKG(I) = PEBKG(I) + (DTDT_GWD(I,K)-DTDT_ORG(I,K))*PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            !$acc end atomic
 
+            !$acc atomic update
+            PEORO(I) = PEORO(I) +  DTDT_ORG(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            !$acc end atomic
+            
+            !$acc atomic update
+            PERAY(I) = PERAY(I) +  DTDT_RAH(I,K)               *PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            !$acc end atomic
+
+            !$acc atomic update
+            PEBKG(I) = PEBKG(I) + (DTDT_GWD(I,K)-DTDT_ORG(I,K))*PDEL(I,K)*(MAPL_CP/MAPL_GRAV)
+            !$acc end atomic
+
+            !$acc atomic update
             KEGWD(I) = KEGWD(I) + ((U(I,K)+(0.5*DT)*DUDT_TOT(I,K))*DUDT_TOT(I,K) +   &
                                     (V(I,K)+(0.5*DT)*DVDT_TOT(I,K))*DVDT_TOT(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
+            !$acc end atomic
 
+            !$acc atomic update
             KEORO(I) = KEORO(I) + ((U(I,K)+(0.5*DT)*DUDT_ORG(I,K))*DUDT_ORG(I,K) +   &
                                     (V(I,K)+(0.5*DT)*DVDT_ORG(I,K))*DVDT_ORG(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
+            !$acc end atomic
 
+            !$acc atomic update
             KERAY(I) = KERAY(I) + ((U(I,K)+(0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) +   &
                                     (V(I,K)+(0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K) ) * PDEL(I,K)*(1.0/MAPL_GRAV)
-
+            !$acc end atomic
+            
+            !$acc atomic update
             KEBKG(I) = KEBKG(I) + ((U(I,K)+(0.5*DT)*(DUDT_GWD(I,K) - DUDT_ORG(I,K)))*(DUDT_GWD(I,K) - DUDT_ORG(I,K)) +     &
                                     (V(I,K)+(0.5*DT)*(DVDT_GWD(I,K) - DVDT_ORG(I,K)))*(DVDT_GWD(I,K) - DVDT_ORG(I,K))   ) * &
                                     PDEL(I,K)*(1.0/MAPL_GRAV)
+            !$acc end atomic
         END DO
     END DO
+!$acc end parallel
 
+!$acc parallel loop gang
     DO I = 1, PCOLS
         BKGERR(I) = -( PEBKG(I) + KEBKG(I) )
         KERES(I)  =    PEGWD(I) + KEGWD(I) + BKGERR(I)
     enddo
+!$acc end parallel
 
     call cpu_time(te)
 

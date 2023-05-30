@@ -75,7 +75,7 @@ real, parameter, public :: MAPL_RHO_SNOW      = 330.0           ! snow density  
 
 
 !EOP
-
+!$acc declare create(MAPL_CP, MAPL_GRAV, MAPL_P00, MAPL_KAPPA)
 end module MAPL_CONSTANTSMOD
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
