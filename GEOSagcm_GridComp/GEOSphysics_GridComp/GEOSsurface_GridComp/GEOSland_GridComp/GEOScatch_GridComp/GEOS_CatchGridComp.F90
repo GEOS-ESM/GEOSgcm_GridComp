@@ -3155,8 +3155,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
-    call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
-    
     ! For the OFFLINE case, first update some diagnostic vars
     if (OFFLINE_MODE /=0) then
        call MAPL_TimerOn(MAPL, "-RUN0")
@@ -4215,7 +4213,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
         VERIFY_(status)
 
-        call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
         OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
@@ -4666,8 +4663,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         LAI0  = LAI
  
-        call ESMF_VMGetCurrent ( VM, RC=STATUS )
-
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
@@ -5258,8 +5253,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             call MAPL_GetPointer(INTERNAL,OLD_ITY,'OLD_ITY',RC=STATUS)
             VERIFY_(STATUS)
             N = count(OLD_ITY.ne.ITY)
-            call ESMF_VMGetCurrent ( VM, RC=STATUS )
-            VERIFY_(STATUS)
             call MAPL_CommsAllReduceMax ( VM, N, NMAX, 1, RC=STATUS )
             VERIFY_(STATUS)
             _ASSERT(NMAX==0,'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data')
