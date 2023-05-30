@@ -1403,7 +1403,7 @@ if( $grid == ease ) then
   set             BCNAME = ${EASEVERSION}_${HRCODE}
   set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
   set             BCJOB  = $BCDIR/$BCNAME.j
-  set             THISGRID = ${EASEVERSION}-${HRCODE}
+#  set             THISGRID = ${EASEVERSION}-${HRCODE}
 
   set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
   if( $nfiles >= 1 ) then
