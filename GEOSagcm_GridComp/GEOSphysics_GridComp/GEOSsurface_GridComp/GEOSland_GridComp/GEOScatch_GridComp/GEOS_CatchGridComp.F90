@@ -85,7 +85,6 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_LDAS_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -109,41 +108,32 @@ real,   parameter :: EMSSNO        =    0.99999
 ! - reichle, 29 Oct 2010
 
 ! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
+! SURFLAY moved to internal state 
 
-! pchakrab: save the resource variable CATCHMENT_OFFLINE
-! Internal state and its wrapper
-type T_OFFLINE_MODE
-   private
-   !    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
-   !    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
-   !    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
-   !                               restart; select when using GEOSldas to create restarts for the GCM.
-   ! see also GEOSldas repo: src/Applications/LDAS_App/GEOSldas_LDAS.rc
-   integer :: CATCH_OFFLINE                    
-end type T_OFFLINE_MODE
-type OFFLINE_WRAP
-   type(T_OFFLINE_MODE), pointer :: ptr=>null()
-end type OFFLINE_WRAP
-
-!#for_ldas_coupling
 type T_CATCH_STATE
     private
     type (ESMF_FieldBundle)  :: Bundle
     logical :: LDAS_CORRECTOR
+    ! CATCH_OFFLINE:
+    !    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+    !    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+    !    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+    !                               restart; select when using GEOSldas to create restarts for the GCM.
+    ! see also GEOSldas repo: src/Applications/LDAS_App/GEOSldas_LDAS.rc
+    integer :: CATCH_OFFLINE                    
+    integer :: CATCH_SPINUP
+    integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+    integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
+    real    :: SURFLAY          ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
+                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+    real    :: FWETC, FWETL
+    logical :: USE_FWET_FOR_RUNOFF
 end type T_CATCH_STATE
 
 type CATCH_WRAP
    type (T_CATCH_STATE), pointer :: PTR
 end type CATCH_WRAP
-!#--
 
-integer :: CATCH_SPINUP
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
-real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-real    :: FWETC, FWETL
-logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -175,13 +165,13 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(T_OFFLINE_MODE), pointer :: internal=>null()
-    type(OFFLINE_WRAP) :: wrap
-    integer :: OFFLINE_MODE
+    type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE=>null()
+    type(CATCH_WRAP) :: wrap
+    integer :: OFFLINE_MODE, SNOW_ALBEDO_INFO, N_CONST_LAND4SNWALB
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
-
+    
 ! Begin...
 ! --------
 
@@ -198,58 +188,33 @@ subroutine SetServices ( GC, RC )
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage whether we are running Catch in the offline mode or not
 
-    allocate(internal, stat=status)
+    allocate(CATCH_INTERNAL_STATE, stat=status)
     VERIFY_(status)
-    wrap%ptr => internal
-    call ESMF_UserCompSetInternalState(gc, 'OfflineMode', wrap, status)
+    wrap%ptr => CATCH_INTERNAL_STATE
+    call ESMF_UserCompSetInternalState(gc, 'CatchInternal', wrap, status)
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
+    CATCH_INTERNAL_STATE%CATCH_OFFLINE = OFFLINE_MODE
 
-    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
-    !    0: DEFAULT 
-    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
-    call MAPL_GetResource ( MAPL, CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    
-    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-
-    call MAPL_GetResource (SCF, SURFLAY,             label='SURFLAY:',             DEFAULT=50.,     __RC__ )
-    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
-    call MAPL_GetResource (SCF, USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
-    call MAPL_GetResource (SCF, USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
-    
-    if (.NOT. USE_FWET_FOR_RUNOFF) then
-       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
-       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
-    else
-       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
-       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
-    endif
-
     ! SNOW ALBEDO 
     ! 0 : parameterization based on look-up table 
     ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
     call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
+    CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO = SNOW_ALBEDO_INFO
 
     ! GOSWIM SNOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
     call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
+    CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB = N_CONST_LAND4SNWALB
 
-    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-    ! __________________________________________
-    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
 
     call ESMF_ConfigDestroy(SCF, __RC__)
 
@@ -2793,7 +2758,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                                 :: KND, DIMS, HW, LOCATION
     character(len=ESMF_MAXSTR)              :: INCR_NAMES(25)
     type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
-    type (CATCH_wrap)                       :: WRAP2
+    type (CATCH_wrap)                       :: WRAP
     type (ESMF_Field)                       :: FIELD
     integer                                 :: I
     integer                                 :: LDAS_INTERVAL, ADAS_INTERVAL
@@ -2804,6 +2769,8 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                                 :: LandAssim_DT
     integer                                 :: LandAssim_T0
     integer                                 :: T0sec, h, m, s
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 
 !=============================================================================
@@ -2828,18 +2795,43 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"INITIALIZE")
 
-! Allocate this instance of the internal state and put it in wrapper.
-! -------------------------------------------------------------------
 
-    allocate( CATCH_INTERNAL_STATE, stat=STATUS )
+    ! retrieve interal state
+
+    call ESMF_UserCompGetInternalState ( GC, 'CatchInternal',wrap,status )
     VERIFY_(STATUS)
-    WRAP2%PTR => CATCH_INTERNAL_STATE
+    CATCH_INTERNAL_STATE => wrap%ptr
 
-! Save pointer to the wrapped internal state in the GC
-! ----------------------------------------------------
-
-    call ESMF_UserCompSetInternalState ( GC, 'CATCH_STATE',wrap2,status )
+    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
+    !    0: DEFAULT 
+    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
+    call MAPL_GetResource ( MAPL, CATCH_INTERNAL_STATE%CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%SURFLAY,   label='SURFLAY:',             DEFAULT=50.,     __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF) then
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
+    else
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
+    endif
+
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
+
+    call ESMF_ConfigDestroy(SCF, __RC__)
 
 !#for_ldas_coupling 
 !
@@ -3120,9 +3112,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                           :: SCALE4Z0_u
     real                           :: MIN_VEG_HEIGHT 
     
-    ! Offline mode
-    type(OFFLINE_WRAP) :: wrap
-    integer :: OFFLINE_MODE
+    type(CATCH_WRAP)               :: wrap
+    type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
 
 !=============================================================================
 ! Begin...
@@ -3149,13 +3140,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"RUN1")
 
-    ! Get component's offline mode from its pvt internal state
-    call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
     VERIFY_(status)
-    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
+    CATCH_INTERNAL_STATE=>wrap%ptr
 
     ! For the OFFLINE case, first update some diagnostic vars
-    if (OFFLINE_MODE /=0) then
+    if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
        call MAPL_TimerOn(MAPL, "-RUN0")
        call RUN0(gc, import, export, clock, rc)
        call MAPL_TimerOff(MAPL, "-RUN0")
@@ -3390,7 +3380,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated( MOU2M))  MOU2M = 0.0
     if(associated( MOV2M))  MOV2M = 0.0
 
-    select case (Z0_FORMULATION)
+    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
        case (0)  ! no scaled at all
           SCALE4ZVG   = 1
           SCALE4Z0    = 1
@@ -3425,7 +3415,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   as well as the phenology of the deciduous types. These
 !   effects will be separated in future formulations.
 
-      if (Z0_FORMULATION == 4) then
+      if (CATCH_INTERNAL_STATE%Z0_FORMULATION == 4) then
          ! make canopy height >= min veg height:
          Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
          ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
@@ -3438,7 +3428,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   are the same for all subtiles.
 
       Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
-      IF (USE_ASCATZ0 == 1) THEN
+      IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) THEN
          WHERE (NDVI <= 0.2)
             Z0T(:,N)  = ASCATZ0
          END WHERE
@@ -3454,13 +3444,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------
 
       call MAPL_TimerOn(MAPL,"-SURF")
-      if(CHOOSEMOSFC.eq.0) then
+      if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
         WW(:,N) = 0.
         CM(:,N) = 0.
 
         call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
 
-      elseif (CHOOSEMOSFC.eq.1)then
+      elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
   
         niter = 6   ! number of internal iterations in the helfand MO surface layer routine
         IWATER = 3
@@ -3616,6 +3606,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                           :: SCALE4Z0_u
     real                            :: MIN_VEG_HEIGHT
     type(ESMF_VM)                   :: VM
+    type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
+    type (CATCH_WRAP)                       :: wrap
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3632,6 +3624,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+     ! Get component's private internal state
+    call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
+    VERIFY_(status)
+    CATCH_INTERNAL_STATE=>wrap%ptr
+
 ! Get parameters from generic state.
 !-----------------------------------
 
@@ -3643,7 +3640,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
-   select case (Z0_FORMULATION)
+   select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
       case (0)  ! no scaled at all
          SCALE4ZVG   = 1
          SCALE4Z0_u  = 1
@@ -4076,10 +4073,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 #endif
         integer :: NT_GLOBAL
 
-        ! Offline case
-
-        type(OFFLINE_WRAP)          :: wrap
-        integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
         ! un-adulterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
@@ -4088,9 +4081,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! CATCHMENT_SPINUP
         integer                     :: CurrMonth, CurrDay, CurrHour, CurrMin, CurrSec
 
-!#for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
-        type (CATCH_WRAP)                       :: wrap2
+        type (CATCH_WRAP)                       :: wrap
 
         ! local variables for LDAS increment (25) 
         real, pointer, dimension(:) :: tcfsat_incr
@@ -4149,6 +4141,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
+        integer                       :: NUM_LDAS_ENSEMBLE
 
 !#---
 
@@ -4200,11 +4193,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
         ! Get component's private internal state
-        call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
+        call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
         VERIFY_(status)
-
-        ! Component's offline mode
-        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
+        CATCH_INTERNAL_STATE=>wrap%ptr
 
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
@@ -4227,6 +4218,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)           
         ldas_ens_id = ldas_first_ens_id
         
+        call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+        VERIFY_(STATUS)
         if(NUM_LDAS_ENSEMBLE > 1) then
            !for GEOSldas comp_name should be catch_exxxx, digit starting from 8th character
            read(comp_name(8:), *) ldas_ens_id
@@ -4368,7 +4361,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -4597,7 +4590,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Offline land spin-up.
         ! --------------------------------------------------------------------------
         
-        if (CATCH_SPINUP /= 0) then
+        if (CATCH_INTERNAL_STATE%CATCH_SPINUP /= 0) then
            
            ! remove snow every Aug 1, 0z (Northern Hemisphere) or Feb 1, 0z (Southern Hemisphere)
            !
@@ -4644,7 +4637,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               
            end if  ! 0z on first of month
               
-        end if     ! if (CATCH_SPINUP /= 0)
+        end if     ! if (CATCH_INTERNAL_STATE%CATCH_SPINUP /= 0)
         
         ! --------------------------------------------------------------------------
 
@@ -4661,7 +4654,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! surface layer depth for soil moisture
         ! --------------------------------------------------------------------------
         
-        DZSF(    :) = SURFLAY
+        DZSF(    :) = CATCH_INTERNAL_STATE%SURFLAY
 
         ! --------------------------------------------------------------------------
         ! build arrays from internal state
@@ -4758,7 +4751,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ZTH = max(0.0,ZTH)
 
-     if (Z0_FORMULATION == 4) then
+     if (CATCH_INTERNAL_STATE%Z0_FORMULATION == 4) then
         ! make canopy height >= min veg height:
         Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
         ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)         
@@ -4772,7 +4765,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
      !   are the same for all subtiles.
      !---------------------------------------------------
      
-     IF (USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0
+     IF (CATCH_INTERNAL_STATE%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0
      D0   = D0_BY_ZVEG*ZVG
 
      UUU = max(UU,MAPL_USMIN) * (log((ZVG-D0+Z0)/Z0) &
@@ -4787,7 +4780,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
      
-     select case (AEROSOL_DEPOSITION)
+     select case (CATCH_INTERNAL_STATE%AEROSOL_DEPOSITION)
      case (0)
         DUDP(:,:)=0.
         DUSV(:,:)=0.
@@ -4881,7 +4874,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -4915,7 +4908,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call   SNOW_ALBEDO(NTILES, N_snow, CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -4923,7 +4916,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, &  ! instantaneous snow      albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1, DRPAR, DFPAR)    
 
-        if (SNOW_ALBEDO_INFO == 1) then
+        if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
            
            ! use MODIS-derived snow albedo from bcs (via Catch restart)
            ! 
@@ -4980,7 +4973,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         DEDTC=0.0
         DHSDQA=0.0
 
-        if(OFFLINE_MODE /=0) then
+        if(CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
            do N=1,NUM_SUBTILES
               CFT   (:,N) = 1.0
               CFQ   (:,N) = 1.0
@@ -4992,7 +4985,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
@@ -5156,7 +5149,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
+           call WRITE_PARALLEL(CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5257,10 +5250,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! LDAS increments application to Catchment states during coupled run 
 !--------------------------------------------------------------------
 !   retrieve saved pointer 
-        call ESMF_UserCompGetInternalState(gc, 'CATCH_STATE', wrap2, status)
+        call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
         VERIFY_(STATUS)
-
-        CATCH_INTERNAL_STATE => WRAP2%PTR
+        CATCH_INTERNAL_STATE => WRAP%PTR
 
         call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
              DEFAULT=0, RC=STATUS)
@@ -5481,7 +5473,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
+             DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
+             CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
+             cat_id, VEG, DZSF                                    ,&
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5564,7 +5558,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
-        if (OFFLINE_MODE /=0) then
+        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
@@ -5607,7 +5601,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call   SNOW_ALBEDO(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -5615,7 +5609,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
 
-        if (SNOW_ALBEDO_INFO == 1) then
+        if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
            
            ! use MODIS-derived snow albedo from bcs (via Catch restart)
            ! 
@@ -5663,7 +5657,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if (OFFLINE_MODE == 0) then
+        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
 !amm add correction term to latent heat diagnostics (HLATN is always allocated)
 !    this will impact the export LHLAND
         HLATN = HLATN - LHACC
@@ -5807,7 +5801,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -6000,6 +5994,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, allocatable :: dummy(:)
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
+  type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE
+  type(CATCH_WRAP) :: wrap
 
   ! Begin...
 
@@ -6011,6 +6007,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Get MAPL object
   call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
   VERIFY_(status)
+
+  ! Get component's private internal state
+   call ESMF_UserCompGetInternalState(gc, 'CatchInternal', wrap, status)
+   VERIFY_(status)
+   CATCH_INTERNAL_STATE=>wrap%ptr
 
   ! Get component's internal ESMF state
   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
@@ -6124,7 +6125,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! -step-1-
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
-  dzsf = SURFLAY
+  dzsf = CATCH_INTERNAL_STATE%SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
