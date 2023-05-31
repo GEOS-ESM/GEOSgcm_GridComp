@@ -124,13 +124,17 @@ module Process_Library_standalone
             enddo
         end do
 !$acc end parallel
-    
-!$acc kernels
-        where(CAPE <= 0.0)
-           CAPE=MAPL_UNDEF
-           INHB=MAPL_UNDEF
-        end where
-!$acc end kernels
+
+!$acc parallel loop gang vector collapse(2)
+        do J = 1,JM
+            do I = 1,IM
+                if(CAPE(I,J) <= 0.0) then
+                    CAPE(I,J) = mapl_undef
+                    INHB(I,J) = mapl_undef
+                endif
+            enddo
+        enddo
+!$acc end parallel
     end subroutine BUOYANCY
 
     subroutine pdffrac (flag,qtmean,sigmaqt1,sigmaqt2,qstar,clfrac)
