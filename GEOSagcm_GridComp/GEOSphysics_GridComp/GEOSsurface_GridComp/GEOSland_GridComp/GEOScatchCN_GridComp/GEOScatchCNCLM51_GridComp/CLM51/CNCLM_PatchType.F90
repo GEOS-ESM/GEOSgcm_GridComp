@@ -129,6 +129,7 @@ module PatchType
        do nz = 1,num_zon    ! CN zone loop
           n = n + 1
           do p = 0,numpft  ! PFT index loop
+             np = np + 1
              this%itype(np) = p
              do nv = 1,num_veg ! defined veg loop
                 this%wtcol(np) = 0.
