@@ -1082,9 +1082,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_hlqt_contribution',                                 &
-       UNITS      = 'kg K kg-1',                                               &
-       SHORT_NAME = 'EDMF_HLQT'    ,                                          &
+       LONG_NAME  = 'edmf_SL_QT_covariance_contribution',                    &
+       UNITS      = 'kg K kg-1',                                             &
+       SHORT_NAME = 'EDMF_HLQT'    ,                                         &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1092,7 +1092,7 @@ contains
     
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w2_contribution',                                  &
-       UNITS      = 'm2 s-2',                                               &
+       UNITS      = 'm2 s-2',                                                &
        SHORT_NAME = 'EDMF_W2'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1101,7 +1101,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w3_contribution',                                  &
-       UNITS      = 'm3 s-3',                                               &
+       UNITS      = 'm3 s-3',                                                &
        SHORT_NAME = 'EDMF_W3'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1109,9 +1109,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_qt3_contribution',                                  &
-       UNITS      = 'kg3 kg-3',                                               &
-       SHORT_NAME = 'EDMF_QT3'    ,                                           &
+       LONG_NAME  = 'edmf_qt3_contribution',                                 &
+       UNITS      = 'kg3 kg-3',                                              &
+       SHORT_NAME = 'EDMF_QT3'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -3772,7 +3772,8 @@ contains
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, EDMFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.3,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.25,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=0.75,  RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3868,8 +3869,12 @@ contains
     end if
 #endif
 
-    call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
+
+!===============================================================
+!                      EDMF Mass Flux
+!===============================================================
+    call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
 ! Initialize EDMF output variables needed for update_moments
     mfhl2  = 0.0
@@ -3882,9 +3887,7 @@ contains
     mfwqt  = 0.0
     mfwhl  = 0.0
     mftke  = 0.0
-!    edmf_hl2  = 0.0
-!    edmf_qt2  = 0.0
-!    edmf_hlqt = 0.0
+
 
     IF(DoMF /= 0) then
 
@@ -4092,7 +4095,7 @@ contains
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT, &
                        !== Inputs ==
-                       DT/DMI(:,:,1:LM),      &
+!                       DT/DMI(:,:,1:LM),      &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -4106,11 +4109,11 @@ contains
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
-                       RADLW(:,:,1:LM),       &
+!                       RADLW(:,:,1:LM),       &
                        WTHV2(:,:,1:LM),       &
                        BUOYF(:,:,1:LM),       &
                        PRANDTLSHOC(:,:,1:LM), &
-                       EDMFZCLD,              &
+!                       EDMFZCLD,              &
                        MFTKE,                 &
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
@@ -4121,16 +4124,16 @@ contains
                        TKEDISS,               &
                        TKEBUOY,               &
                        TKESHEAR,              &
-                       TKETRANS,              &
+!                       TKETRANS,              &
                        LSHOC,                 &
-                       LSHOC_CLR,             &
-                       LSHOC_CLD,             &
+!                       LSHOC_CLR,             &
+!                       LSHOC_CLD,             &
                        LSHOC1,                &
                        LSHOC2,                &
                        LSHOC3,                &
                        BRUNTMST,              &
-                       BRUNTDRY,              &
-                       SHEARSHOC,             &
+!                       BRUNTDRY,              &
+!                       SHEARSHOC,             &
                        !== Tuning params ==
                        SHOCPARAMS )
 
@@ -4632,16 +4635,16 @@ contains
                           Z,              &
                           ZLE,            &
                           KH,             &
-                          BRUNTDRY,       &
+                          BRUNTMST,       &
                           TKESHOC,        &
                           ISOTROPY,       &
                           QT,             &
                           HL,             &
                           EDMF_FRC,       &
-                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
-                          MFQT2,          &
+!                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
+!                          MFQT2,          &
                           MFQT3,          &
-                          MFHL2,          &
+!                          MFHL2,          &
                           MFHL3,          &
                           MFW2,           &
                           MFW3,           &
@@ -5840,7 +5843,6 @@ end subroutine RUN1
       ALLOC_TMP = .FALSE.
 
       call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
-!      call MAPL_GetPointer(INTERNAL, QVCORRECT , 'QVCORRECT' , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , RC=STATUS); VERIFY_(STATUS)
@@ -5848,14 +5850,18 @@ end subroutine RUN1
       call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
+
+      ! MF contribution, used to calculate TRB fluxes above
       call MAPL_GetPointer(EXPORT, SLFLXMF  , 'SLFLXMF'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QTFLXMF  , 'QTFLXMF'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, MFAW     , 'MFAW'     , RC=STATUS); VERIFY_(STATUS)
 
+      ! Used in update_moments for ADG PDF (requires all of above)
       call MAPL_GetPointer(EXPORT, WHL,     'WHL'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, WQT,     'WQT'   , RC=STATUS); VERIFY_(STATUS)
-      if (associated(WHL)) call MAPL_GetPointer(EXPORT, MFWHL ,  'EDMF_WHL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      if (associated(WQT)) call MAPL_GetPointer(EXPORT, MFWQT ,  'EDMF_WQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+!      if (associated(WHL)) call MAPL_GetPointer(EXPORT, MFWHL ,  'EDMF_WHL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+!      if (associated(WQT)) call MAPL_GetPointer(EXPORT, MFWQT ,  'EDMF_WQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
       call MAPL_GetPointer(EXPORT, KETRB ,  'KETRB' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KESRF ,  'KESRF' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KETOP ,  'KETOP' , RC=STATUS); VERIFY_(STATUS)

@@ -274,7 +274,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
  if (params%ET == 2 ) then
     pmid = 0.5*(pw3(IH,kts-1:kte-1)+pw3(IH,kts:kte))
     call calc_mf_depth(kts,kte,t3(IH,:),zlo3(IH,:)-zw3(IH,kte),qv3(IH,:),pmid,ztop,wthv,wqt)
-    edmfdepth(IH) = (1.-DT/1800.)*edmfdepth(IH) + (DT/1800.)*ztop
+!    edmfdepth(IH) = (1.-DT/1800.)*edmfdepth(IH) + (DT/1800.)*ztop
+    edmfdepth(IH) = ztop
     L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
 
     ! Reduce L0 over ocean where LTS > 18 to encourage StCu formation
@@ -287,7 +288,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
           end if
        end do
        lts = lts - thv3(IH,kte)
-       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
+!       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
+       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(lts-19.)) )
     end if 
 else if (params%ET == 3 ) then
     L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
@@ -372,13 +374,13 @@ dp = p(kts-1:kte-1)-p(kts:kte)
 !    print *,'ENTf=',ENTf(110:,:)
 
    ! get Poisson P(dz/L0)
-  seedmf(1) = 1000000 * ( 100*thl(kts) - INT(100*thl(kts)))
-  seedmf(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
+  THE_SEED(1) = 1000000 * ( 100*thl(kts) - INT(100*thl(kts)))
+  THE_SEED(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
 
-  THE_SEED(1)=seedmf(1) + seedmf(2)
-  THE_SEED(2)=seedmf(1) - seedmf(2)
-  THE_SEED(1)=THE_SEED(1)*seedmf(1)/( seedmf(2) + 10)
-  THE_SEED(2)=THE_SEED(2)*seedmf(1)/( seedmf(2) + 10)
+!  THE_SEED(1)=seedmf(1)
+!  THE_SEED(2)=seedmf(2)
+!  THE_SEED(1)=THE_SEED(1)*seedmf(1)/( seedmf(2) + 10)
+!  THE_SEED(2)=THE_SEED(2)*seedmf(1)/( seedmf(2) + 10)
   if(THE_SEED(1) == 0) THE_SEED(1) =  5
   if(THE_SEED(2) == 0) THE_SEED(2) = -5
 
@@ -599,22 +601,22 @@ end if
             end if ! check if updraft still rising
          ENDDO   ! loop over updrafts
 
-                ! rescale velocities if MF exceeds layer mass
-              if (ZW(k)<200.) then
-                mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-                factor = 2.*dp(K)/(mf*MAPL_GRAV*dt)
-                if (factor .lt. 1.0) then
-                  UPW(k,:) = UPW(k,:)*factor
+         ! near-surface CFL: rescale velocities if MF exceeds 2x layer mass
+         if (ZW(k)<200.) then
+            mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
+            factor = (1.+(PARAMS%MFLIMFAC-1.)*(ZW(k)/200.))*dp(K)/(mf*MAPL_GRAV*dt)
+            if (factor .lt. 1.0) then
+               UPW(k,:) = UPW(k,:)*factor
 !                  print *,'rescaling UPW by factor: ',factor
-                end if
-              end if
+            end if
+         end if
 
-             ! loop over vertical
-            ENDDO vertint
+         ! loop over vertical
+         ENDDO vertint
 
          do k=kts,kte
            tmp = sum(UPA(k,:))
-           if (tmp .gt. 0.) then
+           if (tmp .gt. 0.) then   ! weighted avg of lateral entrainment rate
              entx(ih,KTE-k+KTS) = sum(UPA(k,:)*ENT(k,:))/tmp
            else
              entx(ih,KTE-k+KTS) = MAPL_UNDEF

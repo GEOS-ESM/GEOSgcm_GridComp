@@ -17,6 +17,7 @@ module EDMFPARAMS
     real    :: ENTWFAC
     real    :: EDFAC
     real    :: ENT0
+    real    :: ENT0LTS
     real    :: ALPHATH
     real    :: ALPHAQT
     real    :: ALPHAW

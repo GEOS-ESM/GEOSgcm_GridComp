@@ -33,19 +33,18 @@ module shoc
 
  contains
 
- subroutine run_shoc( nx, ny, nzm, nz, dtn, dm_inv,              &  ! in
+ subroutine run_shoc( nx, ny, nzm, nz, dtn,               &  ! in
                  prsl_inv, phii_inv, phil_inv, u_inv, v_inv,     &  ! in
                  omega_inv,                                      &  ! in       
                  tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
-                 qpl_inv, cld_sgs_inv, dtdtrad, wthv_sec_inv,    &  ! in
-                 wthv_mf_inv, prnum, mfdepth, tke_mf,            &  ! in
+                 qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
+                 wthv_mf_inv, prnum, tke_mf,                     &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  isotropy_inv,                                   &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
-                 tkesbshear_inv,tkesbtrans_inv,                  &  ! out
-                 smixt_inv,smixt_oc_inv,smixt_ic_inv,            &  ! out
-                 smixt1_inv,smixt2_inv,smixt3_inv,               &  ! out
-                 bruntmst_inv,bruntdry_inv,shear_inv,            &  ! out
+                 tkesbshear_inv,                                 &  ! out
+                 smixt_inv, smixt1_inv,smixt2_inv,smixt3_inv,    &  ! out
+                 bruntmst_inv,                                   &  ! out
                  shocparams )
 
 
@@ -76,7 +75,7 @@ module shoc
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
   type(shocparams_type), intent(in) :: shocparams
   real, intent(in   ) :: dtn          ! Physics time step, s 
-  real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
+!  real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure   
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
   real, intent(in   ) :: phil_inv (nx,ny,nzm) ! layer geopotential height  
@@ -93,9 +92,9 @@ module shoc
   real, intent(in   ) :: qpl_inv    (nx,ny,nzm) ! rain mixing ratio, kg/kg
   real, intent(in   ) :: qpi_inv    (nx,ny,nzm) ! snow mixing ratio, kg/kg
   real, intent(in   ) :: cld_sgs_inv(nx,ny,nzm) ! sgs cloud fraction
-  real, intent(in   ) :: dtdtrad    (nx,ny,nzm) ! radiative cooling tendency
+!  real, intent(in   ) :: dtdtrad    (nx,ny,nzm) ! radiative cooling tendency
   real, intent(in   ) :: tke_mf     (nx,ny,nz)  ! MF vertical velocity on edges, m/s
-  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
+!  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
   real, intent(inout) :: prnum      (nx,ny,nzm) ! turbulent Prandtl number
@@ -104,17 +103,13 @@ module shoc
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
   real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production 
   real, dimension(:,:,:), pointer :: tkesbshear_inv ! shear production 
-  real, dimension(:,:,:), pointer :: tkesbtrans_inv ! tke transport 
+!  real, dimension(:,:,:), pointer :: tkesbtrans_inv ! tke transport 
 
   real, dimension(:,:,:), pointer :: smixt_inv    ! dissipation length scale
   real, dimension(:,:,:), pointer :: smixt1_inv   ! length scale, term 1
   real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
   real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
-  real, dimension(:,:,:), pointer :: smixt_oc_inv ! dissipation length scale
-  real, dimension(:,:,:), pointer :: smixt_ic_inv ! dissipation length scale
   real, dimension(:,:,:), pointer :: bruntmst_inv ! moist Brunt vaisala frequency
-  real, dimension(:,:,:), pointer :: bruntdry_inv ! dry Brunt vaisala frequency
-  real, dimension(:,:,:), pointer :: shear_inv    ! squared shear diagnostic
 
 ! SHOC tunable parameters
   real :: lambda
@@ -167,7 +162,7 @@ module shoc
   real w       (nx,ny,nzm)  ! z-wind, m/s
   real bet     (nx,ny,nzm)  ! ggr/tv0
   real gamaz   (nx,ny,nzm)  ! ggr/cp*z
-  real dm      (nx,ny,nzm)  
+!  real dm      (nx,ny,nzm)  
   real prsl    (nx,ny,nzm)  
   real u       (nx,ny,nzm)  
   real v       (nx,ny,nzm)  
@@ -184,15 +179,13 @@ module shoc
   real tkesbdiss(nx,ny,nzm)
   real tkesbbuoy(nx,ny,nzm)
   real tkesbshear(nx,ny,nzm)
-  real tkesbtrans(nx,ny,nzm)
+!  real tkesbtrans(nx,ny,nzm)
 
 ! Eddy length formulation 
   real smixt      (nx,ny,nzm)  ! Turbulent length scale, m
   real smixt1     (nx,ny,nzm)  ! Turbulent length scale, m
   real smixt2     (nx,ny,nzm)  ! Turbulent length scale, m
   real smixt3     (nx,ny,nzm)  ! Turbulent length scale, m
-  real smixt_incld(nx,ny,nzm)  ! Turbulent length scale, m
-  real smixt_outcld(nx,ny,nzm) ! Turbulent length scale, m
   real isotropy    (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
   real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
   real conv_vel2   (nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
@@ -200,7 +193,7 @@ module shoc
 
 ! Local variables
 
-  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth, brunt_dry
+  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth!, brunt_dry
 
   real, dimension(nx,ny)     :: denom, numer, l_inf, l_mix, cldarr, zcb, l_par
 
@@ -239,7 +232,7 @@ module shoc
         kinv = nzm-k+1
         zl(i,j,kinv)       = phil_inv(i,j,k)-phii_inv(i,j,nz)
         tkh(i,j,kinv)      = tkh_inv(i,j,k)
-        dm(i,j,kinv)       = dm_inv(i,j,k)
+!        dm(i,j,kinv)       = dm_inv(i,j,k)
         prsl(i,j,kinv)     = prsl_inv(i,j,k)
         u(i,j,kinv)        = u_inv(i,j,k)
         v(i,j,kinv)        = v_inv(i,j,k)
@@ -319,18 +312,14 @@ module shoc
   if (associated(tkesbdiss_inv))  tkesbdiss_inv(:,:,1:nzm)  = tkesbdiss(:,:,nzm:1:-1)
   if (associated(tkesbbuoy_inv))  tkesbbuoy_inv(:,:,1:nzm)  = tkesbbuoy(:,:,nzm:1:-1)
   if (associated(tkesbshear_inv)) tkesbshear_inv(:,:,1:nzm) = tkesbshear(:,:,nzm:1:-1)
-  if (associated(tkesbtrans_inv)) tkesbtrans_inv(:,:,1:nzm) = tkesbtrans(:,:,nzm:1:-1)
+!  if (associated(tkesbtrans_inv)) tkesbtrans_inv(:,:,1:nzm) = tkesbtrans(:,:,nzm:1:-1)
 
   if (associated(smixt_inv))    smixt_inv(:,:,1:nzm)    = smixt(:,:,nzm:1:-1)
   if (associated(smixt1_inv))   smixt1_inv(:,:,1:nzm)   = smixt1(:,:,nzm:1:-1)
   if (associated(smixt2_inv))   smixt2_inv(:,:,1:nzm)   = smixt2(:,:,nzm:1:-1)
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
-  if (associated(smixt_oc_inv)) smixt_oc_inv(:,:,1:nzm) = smixt_outcld(:,:,nzm:1:-1)
-  if (associated(smixt_ic_inv)) smixt_ic_inv(:,:,1:nzm) = smixt_incld(:,:,nzm:1:-1)
   
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
-  if (associated(bruntdry_inv)) bruntdry_inv(:,:,1:nzm) = brunt_dry(:,:,nzm:1:-1)
-  if (associated(shear_inv))    shear_inv(:,:,1:nzm)    = def2(:,:,nzm:1:-1)
 
 !========================================!
 
@@ -344,7 +333,7 @@ contains
 
     real grd,betdz,Cek,Cee,lstarn, lstarp, bbb, omn, omp,qsatt,dqsat, smix,         &
          buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss,a_prod_bu_debug, buoy_sgs_debug, &
-         tscale1, wrk, wrk1, wtke, wtk2, rdtn!, dbuoy, krad, tke_env
+         tscale1, wrk, wrk1, wtke, wtk2, rdtn, tke_env!, dbuoy, krad
     integer i,j,k,ku,kd,itr
 
     rdtn = 1.0 / dtn
@@ -358,7 +347,7 @@ contains
           tkesbdiss(i,j,k)  = 0.
           tkesbshear(i,j,k) = 0.
           tkesbbuoy(i,j,k)  = 0.
-          tkesbtrans(i,j,k) = 0.
+!          tkesbtrans(i,j,k) = 0.
         enddo
       enddo
     enddo
@@ -398,7 +387,7 @@ contains
           if (shocparams%BUOYOPT==2) then
             a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
           else 
-            a_prod_bu = -1.*wrk*brunt_dry(i,j,k) + (ggr / thv(i,j,k))*wthv_mf(i,j,k)
+            a_prod_bu = -1.*wrk*brunt(i,j,k) + (ggr / thv(i,j,k))*wthv_mf(i,j,k)
           end if
 
           buoy_sgs = brunt(i,j,k)
@@ -625,7 +614,7 @@ contains
           endif
           betdz = bet(i,j,k) / thedz
 
-          brunt_dry(i,j,k) = betdz*(thv(i,j,kc)-thv(i,j,kb))  !g/thv/dz *(thv-thv)
+!          brunt_dry(i,j,k) = betdz*(thv(i,j,kc)-thv(i,j,kb))  !g/thv/dz *(thv-thv)
 
 ! Reinitialize the mixing length related arrays to zero
           smixt(i,j,k)    = 1.0   ! shoc_mod module variable smixt
@@ -778,7 +767,7 @@ contains
       end do
 
 
-         brunt_dry = max( bruntmin, brunt_dry )
+!         brunt_dry = max( bruntmin, brunt_dry )
 
          brunt_smooth = brunt
          brunt_smooth(:,:,nzm) = brunt(:,:,nzm-1)
@@ -891,7 +880,13 @@ contains
                  else
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
                  end if
-                 smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
+
+                 ! Kludgey adjustment to increase StCu
+                 if (zl(i,j,k).lt.1200. .and. cld_sgs(i,j,k).gt.0.4 .and. brunt(i,j,k+1).gt.2e-4) then
+                   smixt3(i,j,k) = 0.5*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
+                 else
+                   smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
+                 end if
 !                 smixt3(i,j,k) = max(25.,shocparams&LENFAC2*20.*sqrt(500.-((zl(i,j,k)-500.)/24.)**2))
 
                  if (shocparams%LENOPT .eq. 1) then    ! JPL Blending approach
@@ -941,15 +936,13 @@ contains
               smixt3(i,j,k) = 3.3*shocparams%LENFAC1*vonk*zl(i,j,k)
            else if (shocparams%LENOPT .eq. 5) then   ! Suselj
               smixt1(i,j,k) = 0.4*zl(i,j,k)*shocparams%LENFAC1
-              smixt2(i,j,k) = shocparams%LENFAC2*min(max(1.,mfdepth(i,j)/3.)*1e-6/brunt2(i,j,k),400.)*tkes  ! assume ustar=1 for now
+              smixt2(i,j,k) = shocparams%LENFAC2*min(max(1.,l_mix(i,j)/3.)*1e-6/brunt2(i,j,k),400.)*tkes  ! assume ustar=1 for now
               smixt(i,j,k) = smixt2(i,j,k) + ( smixt1(i,j,k) - smixt2(i,j,k) )*exp(-0.01*zl(i,j,k))
               smixt3(i,j,k) = MAPL_UNDEF
            end if
 
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
            smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
-
-           smixt_outcld(i,j,k) = smixt(i,j,k)
 
         end do
       end do
@@ -1193,47 +1186,47 @@ contains
 
 
  subroutine update_moments( IM, JM, LM, & ! in
-                             DT,      &  ! in
-                             SH,      &  ! in
-                             EVAP,    &  ! in
-                             ZL,      &  ! in
-                             ZLE,     &  ! in
-                             KH,      &  ! in
-                             BRUNT,   &  ! in
-                             TKE,     &  ! in
+                             DT,       &  ! in
+                             SH,       &  ! in
+                             EVAP,     &  ! in
+                             ZL,       &  ! in
+                             ZLE,      &  ! in
+                             KH,       &  ! in
+                             BRUNT,    &  ! in
+                             TKE,      &  ! in
                              ISOTROPY, &  ! in
-                             QT,      &  ! in
-                             HL,      &  ! in
-                             MFFRC,   &  ! in
-                             MFAW,    &  ! in
-                             MFQT2,   &  ! in
-                             MFQT3,   &  ! in
-                             MFHL2,   &  ! in
-                             MFHL3,   &  ! in
-                             MFW2,    &  ! in
-                             MFW3,    &  ! in
-                             MFWQT,   &  ! in
-                             MFWHL,   &  ! in
-                             MFHLQT,  &  ! in
-                             qt2,     &  ! inout
-                             qt3,     &  ! inout
-                             hl2,     &  ! out
-                             hl3,     &  ! out
-                             w2,      &  ! out
-                             w3,      &  ! out
-                             w3can,   &  ! out
-                             wqt,     &  ! out
-                             whl,     &  ! out
-                             hlqt,    &  ! out
-                             qt2diag,    &  ! out
-                             hl2diag,    &  ! out
-                             hlqtdiag,    &  ! out
-                           doprogqt2, &  ! tuning parameters
-                           hl2tune,   &
-                           qt2tune,   &
-                           hlqt2tune, &
-                           qt2scale,  &
-                           qt3_tscale,&
+                             QT,       &  ! in
+                             HL,       &  ! in
+                             MFFRC,    &  ! in
+!                             MFAW,     &  ! in
+!                             MFQT2,    &  ! in
+                             MFQT3,    &  ! in
+!                             MFHL2,    &  ! in
+                             MFHL3,    &  ! in
+                             MFW2,     &  ! in
+                             MFW3,     &  ! in
+                             MFWQT,    &  ! in
+                             MFWHL,    &  ! in
+                             MFHLQT,   &  ! in
+                             qt2,      &  ! inout
+                             qt3,      &  ! inout
+                             hl2,      &  ! out
+                             hl3,      &  ! out
+                             w2,       &  ! out
+                             w3,       &  ! out
+                             w3can,    &  ! out
+                             wqt,      &  ! out
+                             whl,      &  ! out
+                             hlqt,     &  ! out
+                             qt2diag,  &  ! out
+                             hl2diag,  &  ! out
+                             hlqtdiag, &  ! out
+                           doprogqt2,  &  ! tuning parameters
+                           hl2tune,    &
+                           qt2tune,    &
+                           hlqt2tune,  &
+                           qt2scale,   &
+                           qt3_tscale, &
                            docanuto )
 
 
@@ -1250,10 +1243,10 @@ contains
     real,    intent(in   ) :: QT   (IM,JM,LM)  ! total water
     real,    intent(in   ) :: HL   (IM,JM,LM)  ! liquid water static energy
     real,    intent(in   ) :: MFFRC(IM,JM,LM)  ! mass flux area fraction 
-    real,    intent(in   ) :: MFAW(IM,JM,LM)  ! 
-    real,    intent(in   ) :: MFQT2(IM,JM,LM)  ! 
+!    real,    intent(in   ) :: MFAW(IM,JM,LM)  ! 
+!    real,    intent(in   ) :: MFQT2(IM,JM,LM)  ! 
     real,    intent(in   ) :: MFQT3(IM,JM,LM)  ! 
-    real,    intent(in   ) :: MFHL2(IM,JM,LM)  ! 
+!    real,    intent(in   ) :: MFHL2(IM,JM,LM)  ! 
     real,    intent(in   ) :: MFHL3(IM,JM,LM)  ! 
     real,    intent(in   ) :: MFW2 (IM,JM,LM)  ! 
     real,    intent(in   ) :: MFW3 (IM,JM,LM)  ! 
@@ -1434,10 +1427,12 @@ contains
 
     end do
 
-  if (DOCANUTO==1) then
-    qt3 = max( MFQT3, qt3*max(1.-DT/QT3_TSCALE,0.0) )
+  if (DOCANUTO==0) then
+!    qt3 = max( 1.5*MFQT3, qt3*max(1.-DT/QT3_TSCALE,0.0) )
+    qt3 = ( qt3 + MFQT3 ) / ( 1. + DT/QT3_TSCALE )
     hl3 = MFHL3
-    w3  = (1.-MFFRC)*0.5*((Sqrt(w2)-MFAW/(1.-MFFRC))**3 + (-Sqrt(w2)-MFAW/(1.-MFFRC))**3) + MFW3
+    w3  = MFW3
+!    w3  = (1.-MFFRC)*0.5*((Sqrt(w2)-MFAW/(1.-MFFRC))**3 + (-Sqrt(w2)-MFAW/(1.-MFFRC))**3) + MFW3
   else
 
 ! pre-define adzl, 
