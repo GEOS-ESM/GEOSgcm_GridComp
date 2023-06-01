@@ -129,16 +129,20 @@ module PatchType
        do nz = 1,num_zon    ! CN zone loop
           n = n + 1
           do p = 0,numpft  ! PFT index loop
-             np = np + 1
+             this%itype(np) = p
              do nv = 1,num_veg ! defined veg loop
-                this%active(np) = .true.
-                this%itype(np) = ityp(nc,nv,nz)
-                this%wtcol(np) = fveg(nc,nv,nz)
-                this%column(np) = n 
+                this%wtcol(np) = 0.
+                this%column(np) = n
                 this%gridcell(np) = nc
-                this%wtgcell(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
+                this%wtgcell(np)  = 0.
                 this%landunit(np) = nc
-                this%wtlunit(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
+                this%wtlunit(np)  = 0.
+                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                   this%active(np) = .true.
+                   this%wtcol(np) = fveg(nc,nv,nz)
+                   this%wtgcell(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
+                   this%wtlunit(np)  = fveg(nc,nv,nz)*CN_zone_weight(nz)
+                end if
              end do ! nv
           end do ! p
         end do ! nz
