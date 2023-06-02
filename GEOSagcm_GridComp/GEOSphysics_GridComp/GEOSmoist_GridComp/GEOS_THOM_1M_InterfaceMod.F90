@@ -312,7 +312,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
-    real, allocatable, dimension(:,:,:) :: DZ, DZET, DP, MASS, iMASS
+    real, allocatable, dimension(:,:,:) :: VVEL, DZ, DP, MASS, iMASS
     real, allocatable, dimension(:,:,:) :: DQST3, QST3
     real, allocatable, dimension(:,:,:) :: AIRDEN
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
@@ -479,7 +479,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
-    ALLOCATE ( DZET (IM,JM,LM  ) )
     ALLOCATE ( DZ   (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
@@ -487,6 +486,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( DQST3(IM,JM,LM  ) )
     ALLOCATE (  QST3(IM,JM,LM  ) )
     ALLOCATE (AIRDEN(IM,JM,LM  ) )
+    ALLOCATE (  VVEL(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
      ! Local tendencies
     ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
@@ -552,8 +552,8 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DO L=0,LM
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
-    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
-    DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
+    ZL0      = 0.5*(ZLE0(:,:,1:LM) + ZLE0(:,:,0:LM-1) ) ! Layer Height (m) above the surface
+    DZ       =     (ZLE0(:,:,1:LM) - ZLE0(:,:,0:LM-1) ) ! Layer thickness (m)
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
@@ -561,6 +561,11 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     U0       = U
     V0       = V
     AIRDEN = 100.*PLmb/T/MAPL_RGAS
+    if (LHYDROSTATIC) then 
+      VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
+    else 
+      VVEL = W
+    endif
 
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -813,8 +818,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      DVDT_micro = V
      DTDT_micro = T
 
-        ! Delta-Z layer thickness
-         DZ = DZET
         ! Zero-out local microphysics tendencies
          DQVDTmic = 0.
          DQLDTmic = 0.
@@ -853,7 +856,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call mp_gt_driver(qv=RAD_QV, qc=RAD_CF, qr=RAD_QR, qi=RAD_QI, qs=RAD_QS, qg=RAD_QG, &
                               ni=NCPI, nr=NRAIN, &
                             ! nc=nc, nwfa=nwfa, nifa=nifa, nwfa2d=nwfa2d, nifa2d=nifa2d,     &
-                              tt=T, p=PLmb*100.0, w=W, dz=DZ, dt_in=DT_MOIST, dt_inner=min(150.0,DT_MOIST),  &
+                              tt=T, p=PLmb*100.0, w=VVEL, dz=DZ, dt_in=DT_MOIST, dt_inner=min(150.0,DT_MOIST),  &
                               sedi_semi=.FALSE., decfl=10, lsm=iLand2D,                  &
                                  rainnc=PRCP_RAIN,      &
                                  snownc=PRCP_SNOW,      &
