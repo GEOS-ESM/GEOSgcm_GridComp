@@ -48,7 +48,7 @@ module clm_time_manager
 
    integer,  parameter :: uninit_int = -999999999
    integer, save ::&
-        dtime          = uninit_int ! timestep in seconds
+        dtime          = uninit_int,  &! timestep in seconds
         dtime_rad      = uninit_int,  &! radiation interval in seconds
         nstep_rad_prev = uninit_int    ! radiation interval in seconds
 
