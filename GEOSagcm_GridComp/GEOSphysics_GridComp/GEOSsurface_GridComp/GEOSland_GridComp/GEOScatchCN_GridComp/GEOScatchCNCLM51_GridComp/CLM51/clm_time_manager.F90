@@ -42,9 +42,9 @@ module clm_time_manager
       is_end_curr_day,          &! return true on last timestep in current day
       is_beg_curr_year,         &! return true on first timestep in current year
       is_restart,               &! return true if this is a restart run
-      is_first_step,            &  ! dummy function here, because it is loaded, but not used
-      is_near_local_noon        ! return true if near local noon
-      update_rad_dtime,         &! track radiation interval via nstep
+      is_first_step,            &! dummy function here, because it is loaded, but not used
+      is_near_local_noon,       &! return true if near local noon
+      update_rad_dtime          ! track radiation interval via nstep
 
    integer,  parameter :: uninit_int = -999999999
    integer, save ::&
