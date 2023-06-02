@@ -227,7 +227,7 @@ contains
       read(unit) this%     tsb2
       read(unit) this%     atau
       read(unit) this%     btau
-      read(unit) !this%      ity
+      read(unit)                  ! skip over "ity"
       read(unit) this%       tc
       read(unit) this%       qc
       read(unit) this%    capac
