@@ -215,6 +215,25 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
     CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB = N_CONST_LAND4SNWALB
 
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%SURFLAY,   label='SURFLAY:',             DEFAULT=50.,     __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF) then
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
+    else
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
+       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
+    endif
+
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
+
 
     call ESMF_ConfigDestroy(SCF, __RC__)
 
@@ -2807,31 +2826,6 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
     call MAPL_GetResource ( MAPL, CATCH_INTERNAL_STATE%CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%SURFLAY,   label='SURFLAY:',             DEFAULT=50.,     __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
-    
-    if (.NOT. CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF) then
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
-    else
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
-    endif
-
-    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-    ! __________________________________________
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
-
-    call ESMF_ConfigDestroy(SCF, __RC__)
 
 !#for_ldas_coupling 
 !
