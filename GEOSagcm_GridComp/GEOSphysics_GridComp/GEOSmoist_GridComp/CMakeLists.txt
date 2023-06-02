@@ -8,6 +8,7 @@ set (srcs
   cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
   wv_sat_methods.F90
   GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90
+  GEOS_THOM_1M_InterfaceMod.F90 module_mp_thompson.F90 module_mp_radar.F90 machine.F
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 ConvPar_GF2020.F90 ConvPar_GF_Shared.F90 module_gate.F90
   GEOS_UW_InterfaceMod.F90 uwshcu.F90
   aer_actv_single_moment.F90

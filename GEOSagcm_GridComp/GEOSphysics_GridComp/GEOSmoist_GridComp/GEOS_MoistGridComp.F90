@@ -20,8 +20,9 @@ module GEOS_MoistGridCompMod
 
   use ESMF
   use MAPL
-  use GEOS_GFDL_1M_InterfaceMod
   use GEOS_BACM_1M_InterfaceMod
+  use GEOS_GFDL_1M_InterfaceMod
+  use GEOS_THOM_1M_InterfaceMod
   use GEOS_MGB2_2M_InterfaceMod
   use GEOS_RAS_InterfaceMod
   use GEOS_GF_InterfaceMod
@@ -37,7 +38,7 @@ module GEOS_MoistGridCompMod
 
   character(LEN=ESMF_MAXSTR):: CONVPAR_OPTION  ! GF, RAS, NONE
   character(LEN=ESMF_MAXSTR):: SHALLOW_OPTION  ! UW, NONE
-  character(LEN=ESMF_MAXSTR):: CLDMICR_OPTION  ! BACM_1M, GFDL_1M, MGB2_2M
+  character(LEN=ESMF_MAXSTR):: CLDMICR_OPTION  ! BACM_1M, GFDL_1M, THOM_1M, MGB2_2M
 
   private
 
@@ -165,13 +166,14 @@ contains
                adjustl(SHALLOW_OPTION)=="NONE"
     _ASSERT( LSHALLOW, 'Unsupported Shallow Convection Option' )
 
-    ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
+    ! Inititialize cloud microphysics (Options: BACM_1M, GFDL_1M, THOM_1M or MGB2_2M)
     !--------------------------------------------------------------
     call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
-               adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
-               adjustl(CLDMICR_OPTION)=="GFDL_1M"
+               adjustl(CLDMICR_OPTION)=="GFDL_1M" .or. &
+               adjustl(CLDMICR_OPTION)=="THOM_1M" .or. &
+               adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
     call ESMF_ConfigGetAttribute( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
@@ -192,8 +194,9 @@ contains
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
     ! !IMPORT STATE:
 
@@ -1899,6 +1902,14 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &    
+         SHORT_NAME = 'SNOW_RATIO',                                      &
+         LONG_NAME = 'ratio_of_snow_to_total_precip',&
+         UNITS     = '1',                                           &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='LS_PRCP',                                     &
@@ -5048,6 +5059,7 @@ contains
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
 
     ! All done
@@ -5314,6 +5326,7 @@ contains
        if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+       if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 
        ! Exports
