@@ -44,10 +44,14 @@ module clm_time_manager
       is_restart,               &! return true if this is a restart run
       is_first_step,            &  ! dummy function here, because it is loaded, but not used
       is_near_local_noon        ! return true if near local noon
+      update_rad_dtime,         &! track radiation interval via nstep
 
    integer,  parameter :: uninit_int = -999999999
    integer, save ::&
         dtime          = uninit_int ! timestep in seconds
+        dtime_rad      = uninit_int,  &! radiation interval in seconds
+        nstep_rad_prev = uninit_int    ! radiation interval in seconds
+
  contains
 
 !=========================================================================================
@@ -99,13 +103,43 @@ integer function get_nstep(istep)
 end function get_nstep
 
 !=========================================================================================
+  subroutine update_rad_dtime(doalb)
+    !---------------------------------------------------------------------------------
+    ! called only on doalb timesteps to save off radiation nsteps
+    ! 
+    ! Local Arguments
+    logical,intent(in) ::  doalb
+    integer :: dtime,nstep
+
+    if (doalb) then
+
+       dtime=get_step_size()
+       nstep = get_nstep()
+
+       if (nstep_rad_prev == uninit_int ) then 
+          dtime_rad = dtime
+          nstep_rad_prev = nstep
+       else 
+          dtime_rad = (nstep - nstep_rad_prev) * dtime
+          nstep_rad_prev = nstep
+       endif
+    end if
+  end subroutine update_rad_dtime
+
+  !=========================================================================================
 
 integer function get_rad_step_size()
 
-  ! Return the step size in seconds.
+    character(len=*), parameter :: sub = 'clm::get_rad_step_size'
 
- get_rad_step_size = -999999999  ! gkw: to make sure this is not used
-  
+!    if ( .not. check_timemgr_initialized(sub) ) return
+
+    if (nstep_rad_prev == uninit_int ) then 
+       get_rad_step_size=get_step_size()
+    else 
+       get_rad_step_size=dtime_rad
+    end if
+
 end function get_rad_step_size
 
 !=========================================================================================

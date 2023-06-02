@@ -7,7 +7,7 @@ module CN_initMod
   use clm_varcon        , only : clm_varcon_init
   use clm_varpar        , only : VAR_COL, VAR_PFT, clm_varpar_init
   use clm_varctl        , only : use_century_decomp, init_clm_varctl
-  use clm_time_manager  , only : get_step_size
+  use clm_time_manager  , only : get_step_size, update_rad_dtime
   use decompMod      
   use filterMod
   use CNVegNitrogenStateType
@@ -361,6 +361,10 @@ module CN_initMod
   ! initialize custom type used to pass Catchment information to nested CLM fire types
 
   call cn2clm_inst%Init         (bounds)
+
+  ! initialize radiation time
+
+  call update_rad_dtime(.true.)
 
  end subroutine CN_init
 end module CN_initMod
