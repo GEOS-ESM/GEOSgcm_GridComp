@@ -769,6 +769,8 @@ contains
     character(len=2)           :: dateline
     integer                    :: imsize,nn
     integer                    :: LM
+    real                       :: sigma,STRETCH_FACTOR
+
     real, pointer, dimension(:)      :: PREF
 
 ! NCAR GWD variables
@@ -830,13 +832,16 @@ contains
       call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, LATS=LATS, _RC)
       
      ! Get grid name to determine IMSIZE
-      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM_GRIDNAME:', _RC)
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM.GRIDNAME:', _RC)
             GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
       imchar = GRIDNAME(3:index(GRIDNAME,'x')-1)
       read(imchar,*) imsize
       if(dateline.eq.'CF') imsize = imsize*4
+      call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
+      imsize = imsize*CEILING(STRETCH_FACTOR)
+      sigma = 1.0-0.9900*exp(-0.12500*4.e7*0.9/imsize/3000.) ! Modified from Arakawa 2011 sigma used in GF2020
 
 ! Gravity wave drag
 ! -----------------
@@ -858,8 +863,7 @@ contains
        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
-                                         NCAR_EFFGWBKG = min(1.0, 0.75*imsize/720.0)
-       call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=NCAR_EFFGWBKG, _RC)
+       call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, _RC)
        call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
        call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=50.0, _RC)
@@ -882,9 +886,9 @@ contains
 ! -----------------
       call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-                                   NCAR_QBO_HDEPTH_SCALING = min( imsize/1440.0 , 1.0 )
+                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - (1.0-0.125)*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = max( 20.0*720.0/imsize , 1.0 )
+                                   NCAR_HR_CF = ceiling(50.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
@@ -901,7 +905,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=50.0,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=400.0, _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0, _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
                  ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
@@ -1053,7 +1057,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          IM=IM, JM=JM, LM=LM,        &
          RUNALARM=ALARM, LATS=LATS,  &
                            _RC )
-    
+
 ! If its time, recalculate the GWD tendency
 ! -----------------------------------------
 

@@ -5003,7 +5003,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         type(ESMF_Config)           :: CF
         type(MAPL_SunOrbit)         :: ORBIT
-        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime
+        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime, NextRecordTime
         type(ESMF_Time)             :: BEFORE
         type(ESMF_Time)             :: NOW
         type(ESMF_Time)             :: MODELSTART
@@ -5168,11 +5168,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------
     real   , allocatable, dimension (:,:)      :: parzone
 
+    logical           :: record
+    type(ESMF_Alarm)  :: RecordAlarm 
+
+    character(len=ESMF_MAXSTR) :: Co2_CycleFile
+
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
-
-        ! Begin
-
-        IAm=trim(COMP_NAME)//"Driver"
 
         ! --------------------------------------------------------------------------
         ! Get time step from configuration
@@ -5656,7 +5657,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           call MPI_Info_create(info, STATUS); VERIFY_(status)
           call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS); VERIFY_(status)
 
-          STATUS = NF_OPEN ('CO2_MonthlyMean_DiurnalCycle.nc4', NF_NOWRITE, CTfile); VERIFY_(status) 
+          call MAPL_GetResource (MAPL, CO2_CycleFile, label = 'CO2_MonthlyMean_DiurnalCycle_FILE:',  &
+                                default = 'CO2_MonthlyMean_DiurnalCycle.nc4', RC=STATUS )
+          VERIFY_(STATUS) 
+
+          STATUS = NF_OPEN (trim(CO2_CycleFile), NF_NOWRITE, CTfile); VERIFY_(status) 
 
           allocate (CT_CO2V (1: NUNQ, 1:12, 1:8))
           allocate (CTCO2_TMP (1:CT_grid_N_lon, 1:CT_grid_N_lat, 1:12, 1:8))
@@ -6842,7 +6847,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
-       if(NextTime == StopTime) then
+       record = .false.
+       call ESMF_ClockGetAlarm ( CLOCK, alarmname="RecordAlarm001", ALARM=RecordAlarm, RC=STATUS )
+       if (status == 0) then
+           call ESMF_AlarmGet( RecordAlarm, RingTime=NextRecordTime, _RC)
+           if (NextTime == NextRecordTime) record = .true.
+       endif
+
+       if(NextTime == StopTime  .or. record ) then
           
           call CN_exit(ntiles,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)     
           i = 1

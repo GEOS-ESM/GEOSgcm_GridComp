@@ -101,29 +101,6 @@ module GEOS_OradGridCompMod
 
 ! !INTERNAL STATE:
 
-
-   call MAPL_AddInternalSpec(GC                                        ,&
-        LONG_NAME          = 'KPAR_previous'                                ,&
-        UNITS              = 'm-1'                                          ,&
-        SHORT_NAME         = 'KPAR_PREV'                                    ,&
-        DIMS               = MAPL_DimsHorzOnly                              ,&
-        VLOCATION          = MAPL_VLocationNone                             ,&
-        REFRESH_INTERVAL   = -1, &! kludgy flag to indicate time not set
-        RC=STATUS                                                            )
-
-     VERIFY_(STATUS)
-
-   call MAPL_AddInternalSpec(GC                                        ,&
-        LONG_NAME          = 'KPAR_next'                                    ,&
-        UNITS              = 'm-1'                                          ,&
-        SHORT_NAME         = 'KPAR_NEXT'                                    ,&
-        DIMS               = MAPL_DimsHorzOnly                              ,&
-        VLOCATION          = MAPL_VLocationNone                             ,&
-        REFRESH_INTERVAL   = -1, & ! kludgy flag to indicate time not set
-        RC=STATUS                                                            )
-
-     VERIFY_(STATUS)
-
    if (ocean_extData) then
      call MAPL_AddImportSpec(GC,                               &
           SHORT_NAME = 'DATA_KPAR',                            &
@@ -134,7 +111,6 @@ module GEOS_OradGridCompMod
           RC=STATUS  )
      VERIFY_(STATUS)
    end if
-
 
 !  !EXPORT STATE:
 
@@ -507,14 +483,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------
 
    if (.not. ocean_extData) then
-      kpar = 1.0
-#if 0
      call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
      VERIFY_(STATUS)
 
-     call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-     VERIFY_(STATUS)
-#endif
+     if (datafile == '/dev/null') then
+        kpar = 1.0
+     else
+        call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+        VERIFY_(STATUS)
+     end if
    else
      call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
      KPAR = data_kpar

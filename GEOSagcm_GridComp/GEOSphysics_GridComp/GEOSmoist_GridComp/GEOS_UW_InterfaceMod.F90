@@ -56,10 +56,42 @@ subroutine UW_Setup (GC, CF, RC)
 
 end subroutine UW_Setup
 
-subroutine UW_Initialize (MAPL, RC)
+subroutine UW_Initialize (MAPL, CLOCK, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional                   :: RC  ! return code
     integer :: LM
+
+    type (ESMF_Alarm   )            :: ALARM
+    type (ESMF_TimeInterval)        :: TINT
+    real(ESMF_KIND_R8)              :: DT_R8
+    real                            :: MOIST_DT
+    real                            :: UW_DT
+
+    type(ESMF_Calendar)     :: calendar
+    type(ESMF_Time)         :: currentTime
+    type(ESMF_Alarm)        :: UW_RunAlarm
+    type(ESMF_Time)         :: ringTime
+    type(ESMF_TimeInterval) :: ringInterval
+    integer                 :: year, month, day, hh, mm, ss
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    MOIST_DT = DT_R8
+    call MAPL_GetResource(MAPL, UW_DT, 'UW_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
+
+    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(UW_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+
+    UW_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
+                                   Name         = 'UW_RunAlarm',&
+                                   RingInterval = ringInterval, &
+                                   RingTime     = currentTime,  &
+                                   Enabled      = .true.   ,    &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_Get ( MAPL, LM=LM, RC=STATUS )
     VERIFY_(STATUS)
@@ -75,15 +107,19 @@ subroutine UW_Initialize (MAPL, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=0.0,    RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=1.0e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
     else
       call MAPL_GetResource(MAPL, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 2.0,   RC=STATUS) ; VERIFY_(STATUS)
+    endif
+    if (JASON_UW) then
+      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 12.0,  RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+    else
       call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
@@ -153,22 +189,28 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: PTR2D
 
     type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config  )            :: CF
     type (ESMF_State   )            :: INTERNAL
-    type (ESMF_Alarm   )            :: ALARM
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
-    real                            :: DT_MOIST
+    real                            :: UW_DT
+    type(ESMF_Alarm)                :: alarm
+    logical                         :: alarm_is_ringing
 
     ! Local variables
 
     integer                         :: I, J, L
     integer                         :: IM,JM,LM
-    real, pointer, dimension(:,:)   :: LONS
-    real, pointer, dimension(:,:)   :: LATS
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
-    VERIFY_(STATUS)
+    call ESMF_ClockGetAlarm(clock, 'UW_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+    
+    if (alarm_is_ringing) then
+    
+!!! call WRITE_PARALLEL('UW is Running')
+    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    UW_DT = DT_R8                   
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -182,17 +224,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !-----------------------------------
 
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         RUNALARM = ALARM,             &
-         CF       = CF,                &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
          INTERNAL_ESMF_STATE=INTERNAL, &
          RC=STATUS )
     VERIFY_(STATUS)
-
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    DT_MOIST = DT_R8
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -283,7 +317,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
  
       !  Call UW shallow convection
       !----------------------------------------------------------------
-      call compute_uwshcu_inv(IM*JM, LM,       DT_MOIST,  & ! IN
+      call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
             U, V, Q, QLTOT, QITOT, T, TKE, KPBL_SC,       &
             SH, EVAP, CNPCPRATE, FRLAND,                  &
@@ -307,10 +341,10 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
       !  Apply tendencies
       !--------------------------------------------------------------
-        Q  = Q  + DQVDT_SC * DT_MOIST    ! note this adds to the convective
-        T  = T  +  DTDT_SC * DT_MOIST    !  tendencies calculated below
-        U  = U  +  DUDT_SC * DT_MOIST
-        V  = V  +  DVDT_SC * DT_MOIST
+        Q  = Q  + DQVDT_SC * UW_DT    ! note this adds to the convective
+        T  = T  +  DTDT_SC * UW_DT    !  tendencies calculated below
+        U  = U  +  DUDT_SC * UW_DT
+        V  = V  +  DVDT_SC * UW_DT
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
         where (DETR_SC.ne.MAPL_UNDEF)
@@ -319,8 +353,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           MFD_SC = 0.0
         end where
        ! Tiedtke-style cloud fraction !!
-        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
-        CLCN = CLCN + DQADT_SC*DT_MOIST
+       !if (JASON_UW) then
+           DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
+       !else
+       !   DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS ! Generally reduces low cloud QA
+       !endif
+        CLCN = CLCN + DQADT_SC*UW_DT
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
       !---------------------------------------------------------------
@@ -337,16 +375,16 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QIDET_SC = 0.
         END WHERE
        ! add detrained shallow convective ice/liquid source
-        QLCN = QLCN + QLDET_SC*DT_MOIST
-        QICN = QICN + QIDET_SC*DT_MOIST
+        QLCN = QLCN + QLDET_SC*UW_DT
+        QICN = QICN + QIDET_SC*UW_DT
        ! scale the detrained fluxes before exporting
         QLDET_SC = QLDET_SC*MASS
         QIDET_SC = QIDET_SC*MASS
       !  Apply condensate tendency from subsidence, and sink from
       !  condensate entrained into shallow updraft. 
       !-------------------------------------------------------------
-        QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
-        QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
+        QLLS = QLLS + (QLSUB_SC+QLENT_SC)*UW_DT
+        QILS = QILS + (QISUB_SC+QIENT_SC)*UW_DT
       !  Precipitation
       !--------------------------------------------------------------
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', RC=STATUS); VERIFY_(STATUS)
@@ -388,6 +426,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR2D)) PTR2D = CUSH
 
     call MAPL_TimerOff (MAPL,"--UW")
+
+  endif
 
 end subroutine UW_Run
 

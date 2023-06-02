@@ -177,7 +177,7 @@ CONTAINS
                                ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
                                ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                ,RADSW   ,RADLW ,DQDT_BL  ,DTDT_BL                 &
-                               ,FRLAND  ,AREA  ,USTAR ,TSTAR ,QSTAR ,T2M ,Q2M     &
+                               ,FRLAND  ,AREA  ,T2M ,Q2M     &
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN  ,CNVFRC,SRFTYPE                           &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
@@ -210,7 +210,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: RADSW, RADLW, DQDT_BL, DTDT_BL
 
-    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: FRLAND, AREA, USTAR, TSTAR, QSTAR, &
+    REAL   ,DIMENSION(mxp,myp)       ,INTENT(IN)   :: FRLAND, AREA, &
                                                       T2M, Q2M, TA, QA, SH, EVAP, PHIS,  &
                                                       LONS, LATS, &
                                                       STOCHASTIC_SIG
@@ -548,8 +548,8 @@ CONTAINS
        DO k=1,mzp
          gsf_t (k,i,j) = 0.
          gsf_q (k,i,j) = 0.
-        sgsf_t (k,i,j) = DTDT_BL(i,j,flip(k)) + RADSW(i,j,flip(k)) + RADLW(i,j,flip(k))
-        sgsf_q (k,i,j) = DQDT_BL(i,j,flip(k))
+        sgsf_t (k,i,j) = 0.
+        sgsf_q (k,i,j) = 0.
         advf_t (k,i,j) = 0.
        ENDDO
       ENDDO
@@ -2313,9 +2313,8 @@ loop1:  do n=1,maxiens
                ierrc(i)='scale_dep renders convection insignificant'
              endif
              if(ierr(i) /= 0) cycle
-            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
-            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1750.))
-             sig(i)= 1.0-0.7500*exp(-0.25000*(dx(i)/6000.))
+             sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.)) ! Arakawa 2011 sigma
+            !sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/ 500.)) ! Modified from Arakawa 2011 sigma
              if (stochastic_sig(i) /= 1.0) then
                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
              endif
@@ -9231,8 +9230,8 @@ loop0:  do k= kbcon(i),ktop(i)
              outtem (i,k) = tend2d(k,1)
              outq   (i,k) = tend2d(k,2)
              outqc  (i,k) = tend2d(k,3)
-                  outu   (i,k) = tend2d(k,4)
-                   outv   (i,k) = tend2d(k,5)
+             outu   (i,k) = tend2d(k,4)
+             outv   (i,k) = tend2d(k,5)
            ENDDO
 cycle
 
