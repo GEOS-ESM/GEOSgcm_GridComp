@@ -312,12 +312,9 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: U0, V0
     real, allocatable, dimension(:,:,:) :: PLEmb, ZLE0
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0
-    real, allocatable, dimension(:,:,:) :: VVEL, DZ, DP, MASS, iMASS
+    real, allocatable, dimension(:,:,:) :: VVEL, DELZ, DP, MASS, iMASS
     real, allocatable, dimension(:,:,:) :: DQST3, QST3
     real, allocatable, dimension(:,:,:) :: AIRDEN
-    real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                                           DQSDTmic, DQGDTmic, DQADTmic, &
-                                            DUDTmic,  DVDTmic,  DTDTmic
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable, dimension(:,:) :: KLCL
@@ -342,6 +339,20 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DBZ3D
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    ! Thompson Pointers for inputs
+    real, dimension(:,:,:), allocatable, target  :: inputs
+    real, dimension(:,:,:), pointer :: qv   => null()
+    real, dimension(:,:,:), pointer :: qc   => null()
+    real, dimension(:,:,:), pointer :: qr   => null()
+    real, dimension(:,:,:), pointer :: qi   => null()
+    real, dimension(:,:,:), pointer :: qs   => null()
+    real, dimension(:,:,:), pointer :: qg   => null()
+    real, dimension(:,:,:), pointer :: ni   => null()
+    real, dimension(:,:,:), pointer :: nr   => null()
+    real, dimension(:,:,:), pointer :: tt   => null()
+    real, dimension(:,:,:), pointer :: pp   => null()
+    real, dimension(:,:,:), pointer :: ww   => null()
+    real, dimension(:,:,:), pointer :: dz   => null()
     ! Thompson Pointers for extended diags
     real, dimension(:,:,:), allocatable, target  :: diag3d
     real, dimension(:,:,:), pointer :: prw_vcdc   => null()
@@ -399,10 +410,10 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer            :: spp_mp_opt = 0 
     integer            :: spp_mp = 0
     integer            :: n_var_spp
-    real, dimension(:,:), pointer :: spp_wts_mp
-    real, dimension(:)  , pointer :: spp_prt_list
-    real, dimension(:)  , pointer :: spp_stddev_cutoff
-    character(len=3),dimension(:)  , pointer :: spp_var_list
+    real, dimension(:,:), pointer :: spp_wts_mp => null()
+    real, dimension(:)  , pointer :: spp_prt_list => null()
+    real, dimension(:)  , pointer :: spp_stddev_cutoff => null()
+    character(len=3),dimension(:)  , pointer :: spp_var_list => null()
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -479,7 +490,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( V0   (IM,JM,LM  ) )
     ALLOCATE ( ZL0  (IM,JM,LM  ) )
     ALLOCATE ( PLmb (IM,JM,LM  ) )
-    ALLOCATE ( DZ   (IM,JM,LM  ) )
+    ALLOCATE ( DELZ (IM,JM,LM  ) )
     ALLOCATE ( DP   (IM,JM,LM  ) )
     ALLOCATE ( MASS (IM,JM,LM  ) )
     ALLOCATE ( iMASS(IM,JM,LM  ) )
@@ -488,25 +499,30 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (AIRDEN(IM,JM,LM  ) )
     ALLOCATE (  VVEL(IM,JM,LM  ) )
     ALLOCATE ( TMP3D(IM,JM,LM  ) )
-     ! Local tendencies
-    ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQLDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQIDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQRDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQSDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQGDTmic(IM,JM,LM  ) )
-    ALLOCATE ( DQADTmic(IM,JM,LM  ) )
-    ALLOCATE (  DUDTmic(IM,JM,LM  ) )
-    ALLOCATE (  DVDTmic(IM,JM,LM  ) )
-    ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
     ALLOCATE ( iLand2D      (IM,JM) ) 
                iLand2D = NINT(FRLAND)
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
+    ! INOUT Arrays
+    ALLOCATE ( inputs(IM*JM,LM,12) )
+    inputs = 0.0
+    qv => inputs(:,:,1:1)
+    qc => inputs(:,:,2:2)
+    qr => inputs(:,:,3:3)
+    qi => inputs(:,:,4:4)
+    qs => inputs(:,:,5:5)
+    qg => inputs(:,:,6:6)
+    ni => inputs(:,:,7:7)
+    nr => inputs(:,:,8:8)
+    tt => inputs(:,:,9:9)
+    pp => inputs(:,:,10:10)
+    ww => inputs(:,:,11:11)
+    dz => inputs(:,:,12:12)
+
     ! Extended diagnostics
-    ALLOCATE ( diag3d(IM,JM,37) )
+    ALLOCATE ( diag3d(IM*JM,LM,37) )
     diag3d = 0.0
     prw_vcdc   => diag3d(:,:,1:1)
     prw_vcde   => diag3d(:,:,2:2)
@@ -553,7 +569,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
     END DO
     ZL0      = 0.5*(ZLE0(:,:,1:LM) + ZLE0(:,:,0:LM-1) ) ! Layer Height (m) above the surface
-    DZ       =     (ZLE0(:,:,1:LM) - ZLE0(:,:,0:LM-1) ) ! Layer thickness (m)
+    DELZ     =     (ZLE0(:,:,1:LM) - ZLE0(:,:,0:LM-1) ) ! Layer thickness (m)
     DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
@@ -818,17 +834,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      DVDT_micro = V
      DTDT_micro = T
 
-        ! Zero-out local microphysics tendencies
-         DQVDTmic = 0.
-         DQLDTmic = 0.
-         DQRDTmic = 0.
-         DQIDTmic = 0.
-         DQSDTmic = 0.
-         DQGDTmic = 0.
-         DQADTmic = 0.
-          DUDTmic = 0.
-          DVDTmic = 0.
-          DTDTmic = 0.
        ! Zero-out 3D Precipitation Fluxes 
         ! Ice
          PFI_LS = 0.
@@ -852,11 +857,23 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          if (all(NCPI  == 0.0)) NCPI  = make_IceNumber (RAD_QI*AIRDEN, T) / AIRDEN
         ! Ensure we have 1st guess rain number where mass non-zero but no number.
          if (all(NRAIN == 0.0)) NRAIN = make_RainNumber(RAD_QR*AIRDEN, T) / AIRDEN
+        ! RESHAPE
+         qv = RESHAPE(RAD_QV,(/IM*JM,LM,1/))
+         qc = RESHAPE(RAD_QL,(/IM*JM,LM,1/))
+         qr = RESHAPE(RAD_QR,(/IM*JM,LM,1/))
+         qi = RESHAPE(RAD_QI,(/IM*JM,LM,1/))
+         qs = RESHAPE(RAD_QS,(/IM*JM,LM,1/))
+         qg = RESHAPE(RAD_QG,(/IM*JM,LM,1/))
+         ni = RESHAPE(NCPI,(/IM*JM,LM,1/))
+         nr = RESHAPE(NRAIN,(/IM*JM,LM,1/))
+         tt = RESHAPE(T,(/IM*JM,LM,1/))
+         pp = RESHAPE(PLmb*100.0,(/IM*JM,LM,1/))
+         ww = RESHAPE(VVEL,(/IM*JM,LM,1/))
+         dz = RESHAPE(DELZ,(/IM*JM,LM,1/))
         ! Run the driver
-         call mp_gt_driver(qv=RAD_QV, qc=RAD_CF, qr=RAD_QR, qi=RAD_QI, qs=RAD_QS, qg=RAD_QG, &
-                              ni=NCPI, nr=NRAIN, &
+         call mp_gt_driver(qv=qv, qc=qc, qr=qr, qi=qi, qs=qs, qg=qg, ni=ni, nr=nr, &
                             ! nc=nc, nwfa=nwfa, nifa=nifa, nwfa2d=nwfa2d, nifa2d=nifa2d,     &
-                              tt=T, p=PLmb*100.0, w=VVEL, dz=DZ, dt_in=DT_MOIST, dt_inner=min(150.0,DT_MOIST),  &
+                              tt=tt, p=pp, w=ww, dz=dz, dt_in=DT_MOIST, dt_inner=min(150.0,DT_MOIST),  &
                               sedi_semi=.FALSE., decfl=10, lsm=iLand2D,                  &
                                  rainnc=PRCP_RAIN,      &
                                  snownc=PRCP_SNOW,      &
@@ -870,15 +887,15 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                               do_radar_ref=.TRUE., fullradar_diag=.TRUE., first_time_step=.TRUE., &
                               refl_10cm=DBZ3D, &
                               has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,       &
-                              rand_perturb_on=spp_mp_opt, kme_stoch=kme_stoch,               &
-                              rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
-                              spp_prt_list=spp_prt_list, n_var_spp=n_var_spp,                &
-                              spp_stddev_cutoff=spp_stddev_cutoff,                           &
+                              rand_perturb_on=spp_mp_opt, kme_stoch=kme_stoch, n_var_spp=n_var_spp,&
+                          !   rand_pert=spp_wts_mp, spp_var_list=spp_var_list,               &
+                          !   spp_prt_list=spp_prt_list,                                     &
+                          !   spp_stddev_cutoff=spp_stddev_cutoff,                           &
                               ! Extended diagnostics
                               ext_diag=.TRUE., &
-                              tten3=DTDTmic, &
-                              qvten3=DQVDTmic, qrten3=DQRDTmic, qsten3=DQSDTmic, qgten3=DQGDTmic, &
-                              qiten3=DQIDTmic, qcten3=DQADTmic, pfils=PFI_LS, pflls=PFL_LS, &
+                              tten3=tten3, &
+                              qvten3=qvten3, qrten3=qrten3, qsten3=qsten3, qgten3=qgten3, &
+                              qiten3=qiten3, qcten3=qcten3, pfils=PFI_LS, pflls=PFL_LS, &
                               ! Unfilled
                               ! vts1=vts1, txri=txri, txrc=txrc,                             &
                               prw_vcdc=prw_vcdc,                                             &
@@ -898,33 +915,31 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                               ! Error handling
                               errmsg=errmsg, errflg=STATUS)
           _ASSERT( STATUS==0, errmsg )
-     ! Apply tendencies
-        !T = T + DTDTmic * DT_MOIST
-        !U = U + DUDTmic * DT_MOIST
-        !V = V + DVDTmic * DT_MOIST
-     ! Apply moist/cloud species tendencies
-        !RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
-        !RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
-        !RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
-        !RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
-        !RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
-        !RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
-        !RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+     ! RESHAPE
+         RAD_QV = RESHAPE(qv,(/IM,JM,LM/))
+         RAD_QL = RESHAPE(qc,(/IM,JM,LM/))
+         RAD_QR = RESHAPE(qr,(/IM,JM,LM/))
+         RAD_QI = RESHAPE(qi,(/IM,JM,LM/))
+         RAD_QS = RESHAPE(qs,(/IM,JM,LM/))
+         RAD_QG = RESHAPE(qg,(/IM,JM,LM/))
+         NCPI   = RESHAPE(ni,(/IM,JM,LM/))
+         NRAIN  = RESHAPE(nr,(/IM,JM,LM/))
+         T      = RESHAPE(tt,(/IM,JM,LM/))
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
-     ! Convert precip diagnostics from mm/day to kg m-2 s-1
-         PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
-         PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
-         PRCP_ICE     = MAX(PRCP_ICE     / 86400.0, 0.0)
-         PRCP_GRAUPEL = MAX(PRCP_GRAUPEL / 86400.0, 0.0)
+     ! Convert precip diagnostics from mm to kg m-2 s-1
+         PRCP_RAIN    = MAX(PRCP_RAIN    / DT_MOIST, 0.0)
+         PRCP_SNOW    = MAX(PRCP_SNOW    / DT_MOIST, 0.0)
+         PRCP_ICE     = MAX(PRCP_ICE     / DT_MOIST, 0.0)
+         PRCP_GRAUPEL = MAX(PRCP_GRAUPEL / DT_MOIST, 0.0)
      ! Fill GEOS precip diagnostics
          LS_PRCP = PRCP_RAIN
          LS_SNR  = PRCP_SNOW
          ICE     = PRCP_ICE + PRCP_GRAUPEL
          FRZR    = 0.0
      ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-         PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
-         PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
+       ! PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
+       ! PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
      ! Redistribute precipitation fluxes for chemistry
          TMP3D =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
          PFL_AN(:,:,1:LM) = PFL_LS(:,:,1:LM) * TMP3D
