@@ -198,36 +198,36 @@ contains
       integer, optional, intent(out) :: rc
       integer :: unit
       open(newunit=unit, file=filename, form='unformatted', action='read')
-      read(unit) ! skip  bf1
-      read(unit) ! skip  bf2
-      read(unit) ! skip  bf3
+      read(unit)                  ! skip     bf1
+      read(unit)                  ! skip     bf2
+      read(unit)                  ! skip     bf3
       read(unit) this%   vgwmax
-      read(unit) this%   cdcr1
-      read(unit) this%   cdcr2
-      read(unit) ! skip  psis
-      read(unit) ! skip  bee
-      read(unit) this%   poros
-      read(unit) ! skip  wpwet
-      read(unit) ! skip    cond
-      read(unit) ! skip     gnu
-      read(unit) ! skip    ars1
-      read(unit) ! skip    ars2
-      read(unit) ! skip    ars3
-      read(unit) ! skip    ara1
-      read(unit) ! skip    ara2
-      read(unit) ! skip    ara3
-      read(unit) ! skip    ara4
-      read(unit) ! skip    arw1
-      read(unit) ! skip    arw2
-      read(unit) ! skip    arw3
-      read(unit) ! skip    arw4
-      read(unit) ! skip    tsa1
-      read(unit) ! skip    tsa2
-      read(unit) ! skip    tsb1
-      read(unit) ! skip    tsb2
-      read(unit) ! skip    atau
-      read(unit) ! skip    btau
-      read(unit) ! skip    ity
+      read(unit) this%    cdcr1
+      read(unit) this%    cdcr2
+      read(unit)                  ! skip    psis
+      read(unit)                  ! skip     bee
+      read(unit) this%    poros
+      read(unit)                  ! skip   wpwet
+      read(unit)                  ! skip    cond
+      read(unit)                  ! skip     gnu
+      read(unit)                  ! skip    ars1
+      read(unit)                  ! skip    ars2
+      read(unit)                  ! skip    ars3
+      read(unit)                  ! skip    ara1
+      read(unit)                  ! skip    ara2
+      read(unit)                  ! skip    ara3
+      read(unit)                  ! skip    ara4
+      read(unit)                  ! skip    arw1
+      read(unit)                  ! skip    arw2
+      read(unit)                  ! skip    arw3
+      read(unit)                  ! skip    arw4
+      read(unit)                  ! skip    tsa1
+      read(unit)                  ! skip    tsa2
+      read(unit)                  ! skip    tsb1
+      read(unit)                  ! skip    tsb2
+      read(unit)                  ! skip    atau
+      read(unit)                  ! skip    btau
+      read(unit)                  ! skip     ity
       read(unit) this%       tc
       read(unit) this%       qc
       read(unit) this%    capac
