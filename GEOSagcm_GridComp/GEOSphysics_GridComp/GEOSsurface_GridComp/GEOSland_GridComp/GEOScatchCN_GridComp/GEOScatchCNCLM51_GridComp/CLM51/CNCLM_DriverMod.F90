@@ -64,7 +64,7 @@ contains
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
-                      fsnow,tg10d,t2m5d,sndzn5d,water_inst, &
+                      fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -112,6 +112,7 @@ contains
  real, dimension(nch), intent(in) :: t2m5d     ! 5-day running mean of daily minimum 2m temperature [K]
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
  type(water_type),     intent(in) :: water_inst
+ logical,              intent(in) :: first
 
  ! OUTPUT
 
@@ -206,7 +207,6 @@ contains
 
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
- logical, save :: first = .true.
  integer  :: n, p, nc, nz, np, nv
 
  !-------------------------------
@@ -356,7 +356,7 @@ contains
          soilbiogeochem_carbonflux_inst, &
          soilbiogeochem_nitrogenflux_inst, atm2lnd_inst )
   else
-    first = .false.
+    !first = .false.
   end if
 
       grc%prev_dayl = grc%dayl ! set previous day length for following time steps (dayl itself is computed in GridComp)
