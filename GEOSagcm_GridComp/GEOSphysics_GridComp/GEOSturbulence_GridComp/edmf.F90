@@ -288,7 +288,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
           end if
        end do
        lts = lts - thv3(IH,kte)
-       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
+!       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
        L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(lts-19.))) )
     end if 
 else if (params%ET == 3 ) then
@@ -374,13 +374,13 @@ dp = p(kts-1:kte-1)-p(kts:kte)
 !    print *,'ENTf=',ENTf(110:,:)
 
    ! get Poisson P(dz/L0)
-  seedmf(1) = 1000000 * ( 100*thl(kts) - INT(100*thl(kts)))
-  seedmf(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
+  THE_SEED(1) = 1000000 * ( 100*thl(kts) - INT(100*thl(kts)))
+  THE_SEED(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
 
-  THE_SEED(1)=seedmf(1) + seedmf(2)
-  THE_SEED(2)=seedmf(1) - seedmf(2)
-  THE_SEED(1)=THE_SEED(1)*seedmf(1)/( seedmf(2) + 10)
-  THE_SEED(2)=THE_SEED(2)*seedmf(1)/( seedmf(2) + 10)
+!  THE_SEED(1)=seedmf(1)
+!  THE_SEED(2)=seedmf(2)
+!  THE_SEED(1)=THE_SEED(1)*seedmf(1)/( seedmf(2) + 10)
+!  THE_SEED(2)=THE_SEED(2)*seedmf(1)/( seedmf(2) + 10)
   if(THE_SEED(1) == 0) THE_SEED(1) =  5
   if(THE_SEED(2) == 0) THE_SEED(2) = -5
 
@@ -390,7 +390,7 @@ dp = p(kts-1:kte-1)-p(kts:kte)
 if (L0 .gt. 0. ) then
 
    ! entrainent: Ent=Ent0/dz*P(dz/L0)
-   if (PARAMS%ENTRAIN==0) then
+   if (PARAMS%ENTRAIN==0 .or. PARAMS%ENTRAIN==4) then
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
 !    print *,'ENTi plume1=',ENTi(:,1)
 !    print *,'ENTi plume2=',ENTi(:,2)
@@ -409,7 +409,7 @@ if (L0 .gt. 0. ) then
 !       if (ZW(k).lt.500.) ENT(k,i) = 2.*ENT(k,i)
      enddo
     enddo
-   else if (PARAMS%ENTRAIN==1 .or. PARAMS%ENTRAIN==4) then
+   else if (PARAMS%ENTRAIN==1 ) then
     call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
     do i=1,Nup   ! Vary entrainment across updrafts, 0.75-1.25x
      do k=kts,kte
@@ -602,22 +602,22 @@ end if
             end if ! check if updraft still rising
          ENDDO   ! loop over updrafts
 
-                ! rescale velocities if MF exceeds layer mass
-              if (ZW(k)<200.) then
-                mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-                factor = 2.*dp(K)/(mf*MAPL_GRAV*dt)
-                if (factor .lt. 1.0) then
-                  UPW(k,:) = UPW(k,:)*factor
+         ! near-surface CFL: rescale velocities if MF exceeds 2x layer mass
+         if (ZW(k)<200.) then
+            mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
+            factor = (1.+(PARAMS%MFLIMFAC-1.)*(ZW(k)/200.))*dp(K)/(mf*MAPL_GRAV*dt)
+            if (factor .lt. 1.0) then
+               UPW(k,:) = UPW(k,:)*factor
 !                  print *,'rescaling UPW by factor: ',factor
-                end if
-              end if
+            end if
+         end if
 
-             ! loop over vertical
-            ENDDO vertint
+         ! loop over vertical
+         ENDDO vertint
 
          do k=kts,kte
            tmp = sum(UPA(k,:))
-           if (tmp .gt. 0.) then
+           if (tmp .gt. 0.) then   ! weighted avg of lateral entrainment rate
              entx(ih,KTE-k+KTS) = sum(UPA(k,:)*ENT(k,:))/tmp
            else
              entx(ih,KTE-k+KTS) = MAPL_UNDEF
