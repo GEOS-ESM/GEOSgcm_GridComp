@@ -12,7 +12,7 @@ module test_process_library_subroutines
     real, dimension(:,:,:), allocatable :: MASS, Q, Q_comp
     real, dimension(:,:,:), allocatable :: T, QST3, DQST3, DZET, ZL0, BYNCY, BYNCY_comp, PLmb, PLEmb
     real, dimension(:,:),   allocatable :: SBCAPE, SBCIN, SBCAPE_comp, SBCIN_comp
-    real, dimension(:,:),   allocatable :: LFC, LNB
+    real, dimension(:,:),   allocatable :: LFC, LNB, LFC_comp, LNB_comp
     real, dimension(:,:),   pointer     :: MLCAPE, MUCAPE, MLCIN, MUCIN
 
     contains
@@ -42,6 +42,8 @@ module test_process_library_subroutines
         allocate(BYNCY_comp(IM, JM, LM))
         allocate(LFC(IM, JM))
         allocate(LNB(IM, JM))
+        allocate(LFC_comp(IM, JM))
+        allocate(LNB_comp(IM, JM))
 
         open(newunit=fileID, file=trim(dirName) // "/T_" // trim(rank_str) // ".in", &
             status='old', form="unformatted", action="read")
@@ -124,9 +126,9 @@ module test_process_library_subroutines
         close(fileID)
 
 !$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb, MLCAPE, MUCAPE, &
-!$acc             MLCIN, MUCIN, BYNCY, LFC, LNB ) &
+!$acc             MLCIN, MUCIN) &
 !$acc      copyout(BYNCY) &
-!$acc      copy(SBCIN, SBSCAPE)
+!$acc      copy(SBCIN, SBSCAPE, LFC, LNB)
 
         print*,'Testing Buoyancy2 Subroutine'
 
@@ -158,6 +160,23 @@ module test_process_library_subroutines
 
         print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
         print*,'sum(SBCIN) = ', sum(SBCIN)
+
+        open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LFC_comp
+        close(fileID)
+
+        print*,'sum(LFC - LFC_comp) = ', sum(LFC - LFC_comp)
+        print*,'sum(LFC) = ', sum(LFC)
+
+        open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LNB_comp
+        close(fileID)
+
+        print*,'sum(LNB - LNB_comp) = ', sum(LNB - LNB_comp)
+        print*,'sum(LNB) = ', sum(LNB)
+        
         
     end subroutine
 end module
