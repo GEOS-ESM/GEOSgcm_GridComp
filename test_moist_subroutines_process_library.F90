@@ -1,0 +1,159 @@
+module test_process_library_subroutines
+
+    use Process_Library_standalone
+    use timing_module
+
+    implicit none
+
+    public test_BUOYANCY2
+
+    private
+
+    real, dimension(:,:,:), allocatable :: MASS, Q, Q_comp
+    real, dimension(:,:,:), allocatable :: T, QST3, DQST3, DZET, ZL0, BYNCY, BYNCY_comp, PLmb, PLEmb
+    real, dimension(:,:),   allocatable :: SBCAPE, SBCIN
+    real, dimension(:,:),   allocatable :: LFC, LNB
+    real, dimension(:,:),   pointer     :: MLCAPE, MUCAPE, MLCIN, MUCIN
+
+    contains
+
+    subroutine test_BUOYANCY2(IM, JM, LM, dirName, rank_str)
+
+        integer :: IM, JM, LM, fileID
+        character*100 :: dirName, rank_str
+
+        allocate(T(IM, JM, LM))
+        allocate(Q(IM, JM, LM))
+        allocate(QST3(IM, JM, LM))
+        allocate(DQST3(IM, JM, LM))
+        allocate(DZET(IM, JM, LM))
+        allocate(ZL0(IM, JM, LM))
+        allocate(PLMB(IM, JM, LM))
+        allocate(PLEmb(IM, JM, 0:LM))
+        allocate(SBCAPE(IM, JM))
+        allocate(MLCAPE(IM, JM))
+        allocate(MUCAPE(IM, JM))
+        allocate(SBCIN(IM, JM))
+        allocate(MLCIN(IM, JM))
+        allocate(MUCIN(IM, JM))
+        allocate(BYNCY(IM, JM, LM))
+        allocate(BYNCY_comp(IM, JM, LM))
+        allocate(LFC(IM, JM))
+        allocate(LNB(IM, JM))
+
+        open(newunit=fileID, file=trim(dirName) // "/T_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) T
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/Q_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) Q
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/QST3_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) QST3
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/DQST3_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) DQST3
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/DZET_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) DZET
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/ZL0_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) ZL0
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/PLmb_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) PLmb
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/PLEmb_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) PLEmb
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCAPE
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/MLCAPE_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MLCAPE
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/MUCAPE_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MUCAPE
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCIN
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/MLCIN_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MLCIN
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/MUCIN_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MUCIN
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LFC
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LNB
+        close(fileID)
+
+!$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0) &
+!$acc      copyout(BYNCY)
+
+        print*,'Testing Buoyancy2 Subroutine'
+
+        call start_timing()
+        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+        call end_timing()
+        call print_timing()
+!$acc end data
+        open(newunit=fileID, file=trim(dirName) // "/BYNCY_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) BYNCY_comp
+        close(fileID)
+
+        print*,'sum(BYNCY - BYNCY_comp) = ', sum(BYNCY - BYNCY_comp)
+        print*,'sum(BYNCY) = ', sum(BYNCY)
+        
+    end subroutine
+end module
+
+! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+  
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+  
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+  
+! http://www.apache.org/licenses/LICENSE-2.0
+  
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.
