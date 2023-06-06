@@ -11,7 +11,7 @@ module test_process_library_subroutines
 
     real, dimension(:,:,:), allocatable :: MASS, Q, Q_comp
     real, dimension(:,:,:), allocatable :: T, QST3, DQST3, DZET, ZL0, BYNCY, BYNCY_comp, PLmb, PLEmb
-    real, dimension(:,:),   allocatable :: SBCAPE, SBCIN
+    real, dimension(:,:),   allocatable :: SBCAPE, SBCIN, SBCAPE_comp, SBCIN_comp
     real, dimension(:,:),   allocatable :: LFC, LNB
     real, dimension(:,:),   pointer     :: MLCAPE, MUCAPE, MLCIN, MUCIN
 
@@ -31,9 +31,11 @@ module test_process_library_subroutines
         allocate(PLMB(IM, JM, LM))
         allocate(PLEmb(IM, JM, 0:LM))
         allocate(SBCAPE(IM, JM))
+        allocate(SBCAPE_comp(IM, JM))
         allocate(MLCAPE(IM, JM))
         allocate(MUCAPE(IM, JM))
         allocate(SBCIN(IM, JM))
+        allocate(SBCIN_comp(IM, JM))
         allocate(MLCIN(IM, JM))
         allocate(MUCIN(IM, JM))
         allocate(BYNCY(IM, JM, LM))
@@ -121,8 +123,10 @@ module test_process_library_subroutines
         read(fileID) LNB
         close(fileID)
 
-!$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0) &
-!$acc      copyout(BYNCY)
+!$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb, MLCAPE, MUCAPE, &
+!$acc             MLCIN, MUCIN, BYNCY, LFC, LNB ) &
+!$acc      copyout(BYNCY) &
+!$acc      copy(SBCIN, SBSCAPE)
 
         print*,'Testing Buoyancy2 Subroutine'
 
@@ -138,6 +142,22 @@ module test_process_library_subroutines
 
         print*,'sum(BYNCY - BYNCY_comp) = ', sum(BYNCY - BYNCY_comp)
         print*,'sum(BYNCY) = ', sum(BYNCY)
+
+        open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCAPE_comp
+        close(fileID)
+
+        print*,'sum(SBCAPE - SBCAPE_comp) = ', sum(SBCAPE - SBCAPE_comp)
+        print*,'sum(SBCAPE) = ', sum(SBCAPE)
+
+        open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCIN_comp
+        close(fileID)
+
+        print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
+        print*,'sum(SBCIN) = ', sum(SBCIN)
         
     end subroutine
 end module
