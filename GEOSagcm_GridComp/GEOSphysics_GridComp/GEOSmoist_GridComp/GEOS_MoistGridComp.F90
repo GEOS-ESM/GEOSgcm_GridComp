@@ -264,7 +264,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
-         SHORT_NAME = 'WHL',                                                   &
+         SHORT_NAME = 'WSL',                                                   &
          LONG_NAME  = 'Liquid_water_static_energy_flux',                       &
          UNITS      = 'K m s-1',                                               &
          DIMS       = MAPL_DimsHorzVert,                                       &
@@ -297,7 +297,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL3',                                       &
+            SHORT_NAME = 'SL3',                                       &
             LONG_NAME  = 'third_moment_of_liquid_water_static_energy',    &
             UNITS      = 'K+3',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -319,7 +319,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL2',                                       &
+            SHORT_NAME = 'SL2',                                       &
             LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
             UNITS      = 'K+2',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -352,7 +352,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HLQT',                                      &
+            SHORT_NAME = 'SLQT',                                      &
             LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity', &
             UNITS      = 'K',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &

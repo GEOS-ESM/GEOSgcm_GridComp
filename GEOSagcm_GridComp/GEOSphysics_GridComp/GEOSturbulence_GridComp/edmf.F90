@@ -43,7 +43,8 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
              dry_thl3,moist_thl3, &
              dry_u3,moist_u3, &
              dry_v3,moist_v3, &
-             moist_qc3, edmfdepth, &
+             moist_qc3,  &
+!             moist_qc3, edmfdepth, &
              buoyf, entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
@@ -109,7 +110,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfhl2,&
                                                          mfhlqt,entx !mfwhl,entx
       REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf, mfwhl, mfwqt, mftke
-      REAL, DIMENSION(ITS:ITE), INTENT(INOUT) :: edmfdepth
+!      REAL, DIMENSION(ITS:ITE), INTENT(INOUT) :: edmfdepth
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables
@@ -275,8 +276,9 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
     pmid = 0.5*(pw3(IH,kts-1:kte-1)+pw3(IH,kts:kte))
     call calc_mf_depth(kts,kte,t3(IH,:),zlo3(IH,:)-zw3(IH,kte),qv3(IH,:),pmid,ztop,wthv,wqt)
 !    edmfdepth(IH) = (1.-DT/1800.)*edmfdepth(IH) + (DT/1800.)*ztop
-    edmfdepth(IH) = ztop
-    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
+!    edmfdepth(IH) = ztop
+!    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
+    L0 = max(min(ztop,3000.),500.) / params%L0fac
 
     ! Reduce L0 over ocean where LTS > 18 to encourage StCu formation
     lts =  0.0
@@ -291,8 +293,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 !       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
        L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(lts-19.))) )
     end if 
-else if (params%ET == 3 ) then
-    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
+!else if (params%ET == 3 ) then
+!    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
  else
     L0 = params%L0
  end if  
@@ -557,7 +559,7 @@ end if
 !                 ENT(K,I) = (1.-PARAMS%STOCHFRAC)*PARAMS%Ent0/L0 &
 !                            + PARAMS%STOCHFRAC*PARAMS%ENT0*0.0032/max(0.1,UPW(K-1,I))
 !                 ENT(K,I) = 1e-3*(PARAMS%Ent0/(max(min(UPW(K-1,I),2.0),0.5))-0.5) 
-                  ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,I))/UPW(K-1,I))
+                  ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,I))/max(0.1,UPW(K-1,I)))
                end if
 
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
@@ -875,7 +877,7 @@ end if
 
  END IF   !  IF ( wthv > 0.0 )
 
- if (params%ET == 3 ) edmfdepth(IH) = zw( COUNT( dry_a3(IH,:)+moist_a3(IH,:) .gt. tmp1d ) )
+! if (params%ET == 3 ) edmfdepth(IH) = zw( COUNT( dry_a3(IH,:)+moist_a3(IH,:) .gt. tmp1d ) )
 
 ENDDO ! loop over horizontal area
 

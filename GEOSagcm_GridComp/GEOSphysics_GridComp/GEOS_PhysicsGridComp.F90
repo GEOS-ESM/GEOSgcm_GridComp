@@ -1286,9 +1286,9 @@ contains
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
                          'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
-                         'HL2          ', 'HL3          ', 'W2           ',     &
-                         'W3           ', 'HLQT         ', 'WQT          ',     &
-                         'WHL          ', 'QT2          ', 'QT3          '/),    &
+                         'SL2          ', 'SL3          ', 'W2           ',     &
+                         'W3           ', 'SLQT         ', 'WQT          ',     &
+                         'WSL          ', 'QT2          ', 'QT3          '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )

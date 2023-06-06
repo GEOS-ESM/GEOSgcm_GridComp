@@ -38,7 +38,7 @@ module shoc
                  omega_inv,                                      &  ! in       
                  tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
-                 wthv_mf_inv, prnum, tke_mf,                     &  ! in
+                 wthv_mf_inv, prnum_inv, tke_mf,                 &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  isotropy_inv,                                   &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
@@ -97,7 +97,7 @@ module shoc
 !  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
-  real, intent(inout) :: prnum      (nx,ny,nzm) ! turbulent Prandtl number
+  real, intent(in   ) :: prnum_inv  (nx,ny,nzm) ! turbulent Prandtl number
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
 
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
@@ -174,6 +174,7 @@ module shoc
   real cld_sgs (nx,ny,nzm)
   real tke     (nx,ny,nzm)
   real tkh     (nx,ny,nzm)
+  real prnum   (nx,ny,nzm)
   real wthv_sec(nx,ny,nzm)
   real wthv_mf(nx,ny,nzm)
   real tkesbdiss(nx,ny,nzm)
@@ -232,6 +233,7 @@ module shoc
         kinv = nzm-k+1
         zl(i,j,kinv)       = phil_inv(i,j,k)-phii_inv(i,j,nz)
         tkh(i,j,kinv)      = tkh_inv(i,j,k)
+        prnum(i,j,kinv)    = prnum_inv(i,j,k)
 !        dm(i,j,kinv)       = dm_inv(i,j,k)
         prsl(i,j,kinv)     = prsl_inv(i,j,k)
         u(i,j,kinv)        = u_inv(i,j,k)
