@@ -1082,9 +1082,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_SL_QT_covariance_contribution',                    &
-       UNITS      = 'kg K kg-1',                                             &
-       SHORT_NAME = 'EDMF_HLQT'    ,                                         &
+       LONG_NAME  = 'edmf_hlqt_contribution',                                 &
+       UNITS      = 'kg K kg-1',                                               &
+       SHORT_NAME = 'EDMF_HLQT'    ,                                          &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1092,7 +1092,7 @@ contains
     
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w2_contribution',                                  &
-       UNITS      = 'm2 s-2',                                                &
+       UNITS      = 'm2 s-2',                                               &
        SHORT_NAME = 'EDMF_W2'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1101,7 +1101,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'edmf_w3_contribution',                                  &
-       UNITS      = 'm3 s-3',                                                &
+       UNITS      = 'm3 s-3',                                               &
        SHORT_NAME = 'EDMF_W3'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1109,9 +1109,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'edmf_qt3_contribution',                                 &
-       UNITS      = 'kg3 kg-3',                                              &
-       SHORT_NAME = 'EDMF_QT3'    ,                                          &
+       LONG_NAME  = 'edmf_qt3_contribution',                                  &
+       UNITS      = 'kg3 kg-3',                                               &
+       SHORT_NAME = 'EDMF_QT3'    ,                                           &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -3184,9 +3184,11 @@ contains
      real,               dimension(LM+1) :: temparray, htke
      real,               dimension(IM,JM,LM  ) :: tcrib !TransCom bulk Ri
      real,               dimension(LM+1) :: thetav
+     real,               dimension(IM,JM,LM+1) :: tmp3de
 
 ! variables associated with SHOC
-     real, dimension( IM, JM, LM )       :: PRANDTLSHOC,QPL,QPI
+     real, dimension( IM, JM, LM+1 )     :: PRANDTLSHOC
+     real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2, DOCANUTO
      real                                :: HL2TUNE, QT2TUNE, HLQT2TUNE,          &
                                             QT2SCALE, QT3_TSCALE
@@ -3772,7 +3774,7 @@ contains
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, EDMFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.25,  RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.3,   RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=0.75,  RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
@@ -3869,12 +3871,8 @@ contains
     end if
 #endif
 
-
-
-!===============================================================
-!                      EDMF Mass Flux
-!===============================================================
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
+
 
 ! Initialize EDMF output variables needed for update_moments
     mfhl2  = 0.0
@@ -3887,7 +3885,9 @@ contains
     mfwqt  = 0.0
     mfwhl  = 0.0
     mftke  = 0.0
-
+!    edmf_hl2  = 0.0
+!    edmf_qt2  = 0.0
+!    edmf_hlqt = 0.0
 
     IF(DoMF /= 0) then
 
@@ -4091,11 +4091,36 @@ contains
         ! for now just use fixed values
         QPI = 0.
         QPL = 0.
-        PRANDTLSHOC = 1.0*SHOCPARAMS%PRNUM
+ 
+        RI = 0.0
+        DZ = MINTHICK
+        DZ(:,:,1:LM-1) = (Z(:,:,1:LM-1) - Z(:,:,2:LM))
+        TM(:,:,1:LM-1) = (THV(:,:,1:LM-1) + THV(:,:,2:LM))*0.5
+        DTM(:,:,1:LM-1) = (THV(:,:,1:LM-1) - THV(:,:,2:LM))
+        DU(:,:,1:LM-1) = (U(:,:,1:LM-1) - U(:,:,2:LM))**2 + &
+                         (V(:,:,1:LM-1) - V(:,:,2:LM))**2
 
+        DZ =  max(DZ, MINTHICK)
+        DU(:,:,1:LM-1) = sqrt(DU(:,:,1:LM-1))/DZ
+
+        RI(:,:,1:LM-1) = MAPL_GRAV*(DTM(:,:,1:LM-1)/DZ(:,:,1:LM-1))/(TM(:,:,1:LM-1)*( max(DU(:,:,1:LM-1), MINSHEAR)**2))
+
+        if (SHOCPARAMS%PRNUM.lt.0.) then
+           where (RI.le.0.)
+             PRANDTLSHOC = 1.0
+           elsewhere
+             tmp3de = RI*(1.+6.*RI)
+             PRANDTLSHOC = (1.+4.*tmp3de*SQRT(1.+8.*tmp3de/3.))/(1.+4.*tmp3de)
+   !          PRANDTLSHOC = 1.+min(4.,3.5*RI)
+           end where
+        else
+           PRANDTLSHOC = SHOCPARAMS%PRNUM
+        end if
+
+       
         call RUN_SHOC( IM, JM, LM, LM+1, DT, &
                        !== Inputs ==
-!                       DT/DMI(:,:,1:LM),      &
+                       DT/DMI(:,:,1:LM),      &
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
                        Z(:,:,1:LM),           &
@@ -4109,11 +4134,11 @@ contains
                        QPI(:,:,1:LM),         &
                        QPL(:,:,1:LM),         &
                        QA(:,:,1:LM),          &
-!                       RADLW(:,:,1:LM),       &
+                       RADLW(:,:,1:LM),       &
                        WTHV2(:,:,1:LM),       &
                        BUOYF(:,:,1:LM),       &
                        PRANDTLSHOC(:,:,1:LM), &
-!                       EDMFZCLD,              &
+                       EDMFZCLD,              &
                        MFTKE,                 &
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
@@ -4124,16 +4149,16 @@ contains
                        TKEDISS,               &
                        TKEBUOY,               &
                        TKESHEAR,              &
-!                       TKETRANS,              &
+                       TKETRANS,              &
                        LSHOC,                 &
-!                       LSHOC_CLR,             &
-!                       LSHOC_CLD,             &
+                       LSHOC_CLR,             &
+                       LSHOC_CLD,             &
                        LSHOC1,                &
                        LSHOC2,                &
                        LSHOC3,                &
                        BRUNTMST,              &
-!                       BRUNTDRY,              &
-!                       SHEARSHOC,             &
+                       BRUNTDRY,              &
+                       SHEARSHOC,             &
                        !== Tuning params ==
                        SHOCPARAMS )
 
@@ -4162,19 +4187,19 @@ contains
             ALHFAC, ALMFAC,                 &
             ZKMENV, ZKHENV, AKHMMAX,        &
             ALH, KMLS, KHLS                 )
-      else
-        RI = 0.0
-        DZ = MINTHICK
-        DZ(:,:,1:LM-1) = (Z(:,:,1:LM-1) - Z(:,:,2:LM))
-        TM(:,:,1:LM-1) = (THV(:,:,1:LM-1) + THV(:,:,2:LM))*0.5
-        DTM(:,:,1:LM-1) = (THV(:,:,1:LM-1) - THV(:,:,2:LM))
-        DU(:,:,1:LM-1) = (U(:,:,1:LM-1) - U(:,:,2:LM))**2 + &
-                         (V(:,:,1:LM-1) - V(:,:,2:LM))**2
+!      else
+!        RI = 0.0
+!        DZ = MINTHICK
+!        DZ(:,:,1:LM-1) = (Z(:,:,1:LM-1) - Z(:,:,2:LM))
+!        TM(:,:,1:LM-1) = (THV(:,:,1:LM-1) + THV(:,:,2:LM))*0.5
+!        DTM(:,:,1:LM-1) = (THV(:,:,1:LM-1) - THV(:,:,2:LM))
+!        DU(:,:,1:LM-1) = (U(:,:,1:LM-1) - U(:,:,2:LM))**2 + &
+!                         (V(:,:,1:LM-1) - V(:,:,2:LM))**2
 
-        DZ =  max(DZ, MINTHICK)
-        DU(:,:,1:LM-1) = sqrt(DU(:,:,1:LM-1))/DZ
+!        DZ =  max(DZ, MINTHICK)
+!        DU(:,:,1:LM-1) = sqrt(DU(:,:,1:LM-1))/DZ
 
-        RI(:,:,1:LM-1) = MAPL_GRAV*(DTM(:,:,1:LM-1)/DZ(:,:,1:LM-1))/(TM(:,:,1:LM-1)*( max(DU(:,:,1:LM-1), MINSHEAR)**2)) 
+!        RI(:,:,1:LM-1) = MAPL_GRAV*(DTM(:,:,1:LM-1)/DZ(:,:,1:LM-1))/(TM(:,:,1:LM-1)*( max(DU(:,:,1:LM-1), MINSHEAR)**2)) 
       end if
 
 
@@ -4635,16 +4660,16 @@ contains
                           Z,              &
                           ZLE,            &
                           KH,             &
-                          BRUNTMST,       &
+                          BRUNTDRY,       &
                           TKESHOC,        &
                           ISOTROPY,       &
                           QT,             &
                           HL,             &
                           EDMF_FRC,       &
-!                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
-!                          MFQT2,          &
+                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
+                          MFQT2,          &
                           MFQT3,          &
-!                          MFHL2,          &
+                          MFHL2,          &
                           MFHL3,          &
                           MFW2,           &
                           MFW3,           &
@@ -4762,20 +4787,22 @@ contains
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      if (associated(TKE)) then         ! Reminder: TKE is on model edges
-        if (DO_SHOC /= 0) then
-          TKE = TKESHOC
-        else
-          TKE = MAPL_UNDEF
-          do L = 1,LM-1
-            TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
-            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
-          enddo
-        end if
-      end if ! TKE
+!      if (associated(TKE)) then         ! Reminder: TKE is on model edges
+!        if (DO_SHOC /= 0) then
+!          TKE(:,:,1:LM-1) = 0.5*(TKESHOC(:,:,1:LM-1)+TKESHOC(:,:,2:LM))
+!          TKE(:,:,LM)     = 0.5*TKESHOC(:,:,LM)
+!          TKE(:,:,0)      = 0.
+!        else
+!          TKE = MAPL_UNDEF
+!          do L = 1,LM-1
+!            TKE(:,:,L) = ( LAMBDADISS * &
+!            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+ !           (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
+ !           (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
+!            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
+!          enddo
+!        end if
+!      end if ! TKE
 
       ! RI local diagnostic for pbl height thresh 0.
       if (associated(ZPBLRI)) then
@@ -5843,6 +5870,7 @@ end subroutine RUN1
       ALLOC_TMP = .FALSE.
 
       call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
+!      call MAPL_GetPointer(INTERNAL, QVCORRECT , 'QVCORRECT' , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , RC=STATUS); VERIFY_(STATUS)
@@ -5850,18 +5878,14 @@ end subroutine RUN1
       call MAPL_GetPointer(EXPORT, SLFLXTRB , 'SLFLXTRB' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UFLXTRB  , 'UFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, VFLXTRB  , 'VFLXTRB'  , RC=STATUS); VERIFY_(STATUS)
-
-      ! MF contribution, used to calculate TRB fluxes above
       call MAPL_GetPointer(EXPORT, SLFLXMF  , 'SLFLXMF'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QTFLXMF  , 'QTFLXMF'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, MFAW     , 'MFAW'     , RC=STATUS); VERIFY_(STATUS)
 
-      ! Used in update_moments for ADG PDF (requires all of above)
       call MAPL_GetPointer(EXPORT, WHL,     'WHL'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, WQT,     'WQT'   , RC=STATUS); VERIFY_(STATUS)
-!      if (associated(WHL)) call MAPL_GetPointer(EXPORT, MFWHL ,  'EDMF_WHL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-!      if (associated(WQT)) call MAPL_GetPointer(EXPORT, MFWQT ,  'EDMF_WQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-
+      if (associated(WHL)) call MAPL_GetPointer(EXPORT, MFWHL ,  'EDMF_WHL', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      if (associated(WQT)) call MAPL_GetPointer(EXPORT, MFWQT ,  'EDMF_WQT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KETRB ,  'KETRB' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KESRF ,  'KESRF' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KETOP ,  'KETOP' , RC=STATUS); VERIFY_(STATUS)
