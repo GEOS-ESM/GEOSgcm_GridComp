@@ -1783,6 +1783,169 @@ module test_GEOS5_subroutines
         print*,'sum(diff(prfil_gf_2d)) = ', sum(prfil_gf_2d_ref-prfil_gf_2d)
         ! print*,'sum(prfil_gf_2d_ref) = ', sum(prfil_gf_2d_ref)
         ! print*,'sum(prfil_gf_2d) = ', sum(prfil_gf_2d)
+
+
+        ! Encoding results for CI
+        print*, '#CI#VAR|outt#DIFF|',sum(outt_ref - outt)
+        print*, '#CI#VAR|outt#NEW|',sum(outt)
+        print*, '#CI#VAR|outt#REF|',sum(outt_ref)
+        print*, '#CI#VAR|outt#THRSH|',sum(outt_ref)*1.0e-9
+
+        print*, '#CI#VAR|outq#DIFF|',sum(outq_ref - outq)
+        print*, '#CI#VAR|outq#NEW|',sum(outq)
+        print*, '#CI#VAR|outq#REF|',sum(outq_ref)
+        print*, '#CI#VAR|outq#THRSH|',sum(outq_ref)*1.0e-9
+
+        print*, '#CI#VAR|outqc#DIFF|',sum(outqc_ref - outqc)
+        print*, '#CI#VAR|outqc#NEW|',sum(outqc)
+        print*, '#CI#VAR|outqc#REF|',sum(outqc_ref)
+        print*, '#CI#VAR|outqc#THRSH|',sum(outqc_ref)*1.0e-9
+
+        print*, '#CI#VAR|outu#DIFF|',sum(outu_ref - outu)
+        print*, '#CI#VAR|outu#NEW|',sum(outu)
+        print*, '#CI#VAR|outu#REF|',sum(outu_ref)
+        print*, '#CI#VAR|outu#THRSH|',sum(outu_ref)*1.0e-9
+
+        print*, '#CI#VAR|outv#DIFF|',sum(outv_ref - outv)
+        print*, '#CI#VAR|outv#NEW|',sum(outv)
+        print*, '#CI#VAR|outv#REF|',sum(outv_ref)
+        print*, '#CI#VAR|outv#THRSH|',sum(outv_ref)*1.0e-9
+
+        print*, '#CI#VAR|out_chem#DIFF|',sum(out_chem_ref - out_chem)
+        print*, '#CI#VAR|out_chem#NEW|',sum(out_chem)
+        print*, '#CI#VAR|out_chem#REF|',sum(out_chem_ref)
+        print*, '#CI#VAR|out_chem#THRSH|',sum(out_chem_ref)*1.0e-9
+
+        print*, '#CI#VAR|ierr4d_deep#DIFF|',sum(ierr4d_ref - ierr4d_deep)
+        print*, '#CI#VAR|ierr4d_deep#NEW|',sum(ierr4d_deep)
+        print*, '#CI#VAR|ierr4d_deep#REF|',sum(ierr4d_ref)
+        print*, '#CI#VAR|ierr4d_deep#THRSH|',sum(ierr4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|jmin4d#DIFF|',sum(jmin4d_ref - jmin4d)
+        print*, '#CI#VAR|jmin4d#NEW|',sum(jmin4d)
+        print*, '#CI#VAR|jmin4d#REF|',sum(jmin4d_ref)
+        print*, '#CI#VAR|jmin4d#THRSH|',sum(jmin4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|klcl4d#DIFF|',sum(klcl4d_ref - klcl4d)
+        print*, '#CI#VAR|klcl4d#NEW|',sum(klcl4d)
+        print*, '#CI#VAR|klcl4d#REF|',sum(klcl4d_ref)
+        print*, '#CI#VAR|klcl4d#THRSH|',sum(klcl4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|k224d#DIFF|',sum(k224d_ref - k224d)
+        print*, '#CI#VAR|k224d#NEW|',sum(k224d)
+        print*, '#CI#VAR|k224d#REF|',sum(k224d_ref)
+        print*, '#CI#VAR|k224d#THRSH|',sum(k224d_ref)*1.0e-9
+
+        print*, '#CI#VAR|kbcon4d#DIFF|',sum(kbcon4d_ref - kbcon4d)
+        print*, '#CI#VAR|kbcon4d#NEW|',sum(kbcon4d)
+        print*, '#CI#VAR|kbcon4d#REF|',sum(kbcon4d_ref)
+        print*, '#CI#VAR|kbcon4d#THRSH|',sum(kbcon4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|ktop4d#DIFF|',sum(ktop4d_ref - ktop4d)
+        print*, '#CI#VAR|ktop4d#NEW|',sum(ktop4d)
+        print*, '#CI#VAR|ktop4d#REF|',sum(ktop4d_ref)
+        print*, '#CI#VAR|ktop4d#THRSH|',sum(ktop4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|kstabi4d#DIFF|',sum(kstabi4d_ref - kstabi4d)
+        print*, '#CI#VAR|kstabi4d#NEW|',sum(kstabi4d)
+        print*, '#CI#VAR|kstabi4d#REF|',sum(kstabi4d_ref)
+        print*, '#CI#VAR|kstabi4d#THRSH|',sum(kstabi4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|kstabm4d#DIFF|',sum(kstabm4d_ref - kstabm4d)
+        print*, '#CI#VAR|kstabm4d#NEW|',sum(kstabm4d)
+        print*, '#CI#VAR|kstabm4d#REF|',sum(kstabm4d_ref)
+        print*, '#CI#VAR|kstabm4d#THRSH|',sum(kstabm4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|cprr4d#DIFF|',sum(cprr4d_ref - cprr4d)
+        print*, '#CI#VAR|cprr4d#NEW|',sum(cprr4d)
+        print*, '#CI#VAR|cprr4d#REF|',sum(cprr4d_ref)
+        print*, '#CI#VAR|cprr4d#THRSH|',sum(cprr4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|xmb4d#DIFF|',sum(xmb4d_ref - xmb4d)
+        print*, '#CI#VAR|xmb4d#NEW|',sum(xmb4d)
+        print*, '#CI#VAR|xmb4d#REF|',sum(xmb4d_ref)
+        print*, '#CI#VAR|xmb4d#THRSH|',sum(xmb4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|edt4d#DIFF|',sum(edt4d_ref - edt4d)
+        print*, '#CI#VAR|edt4d#NEW|',sum(edt4d)
+        print*, '#CI#VAR|edt4d#REF|',sum(edt4d_ref)
+        print*, '#CI#VAR|edt4d#THRSH|',sum(edt4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|pwav4d#DIFF|',sum(pwav4d_ref - pwav4d)
+        print*, '#CI#VAR|pwav4d#NEW|',sum(pwav4d)
+        print*, '#CI#VAR|pwav4d#REF|',sum(pwav4d_ref)
+        print*, '#CI#VAR|pwav4d#THRSH|',sum(pwav4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|sigma4d#DIFF|',sum(sigma4d_ref - sigma4d)
+        print*, '#CI#VAR|sigma4d#NEW|',sum(sigma4d)
+        print*, '#CI#VAR|sigma4d#REF|',sum(sigma4d_ref)
+        print*, '#CI#VAR|sigma4d#THRSH|',sum(sigma4d_ref)*1.0e-9
+
+        print*, '#CI#VAR|pcup5d#DIFF|',sum(pcup5d_ref - pcup5d)
+        print*, '#CI#VAR|pcup5d#NEW|',sum(pcup5d)
+        print*, '#CI#VAR|pcup5d#REF|',sum(pcup5d_ref)
+        print*, '#CI#VAR|pcup5d#THRSH|',sum(pcup5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|up_massentr5d#DIFF|',sum(up_massentr5d_ref - up_massentr5d)
+        print*, '#CI#VAR|up_massentr5d#NEW|',sum(up_massentr5d)
+        print*, '#CI#VAR|up_massentr5d#REF|',sum(up_massentr5d_ref)
+        print*, '#CI#VAR|up_massentr5d#THRSH|',sum(up_massentr5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|dd_massentr5d#DIFF|',sum(dd_massentr5d_ref - dd_massentr5d)
+        print*, '#CI#VAR|dd_massentr5d#NEW|',sum(dd_massentr5d)
+        print*, '#CI#VAR|dd_massentr5d#REF|',sum(dd_massentr5d_ref)
+        print*, '#CI#VAR|dd_massentr5d#THRSH|',sum(dd_massentr5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|dd_massdetr5d#DIFF|',sum(dd_massdetr5d_ref - dd_massdetr5d)
+        print*, '#CI#VAR|dd_massdetr5d#NEW|',sum(dd_massdetr5d)
+        print*, '#CI#VAR|dd_massdetr5d#REF|',sum(dd_massdetr5d_ref)
+        print*, '#CI#VAR|dd_massdetr5d#THRSH|',sum(dd_massdetr5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|zup5d#DIFF|',sum(zup5d_ref - zup5d)
+        print*, '#CI#VAR|zup5d#NEW|',sum(zup5d)
+        print*, '#CI#VAR|zup5d#REF|',sum(zup5d_ref)
+        print*, '#CI#VAR|zup5d#THRSH|',sum(zup5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|zdn5d#DIFF|',sum(zdn5d_ref - zdn5d)
+        print*, '#CI#VAR|zdn5d#NEW|',sum(zdn5d)
+        print*, '#CI#VAR|zdn5d#REF|',sum(zdn5d_ref)
+        print*, '#CI#VAR|zdn5d#THRSH|',sum(zdn5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|prup5d#DIFF|',sum(prup5d_ref - prup5d)
+        print*, '#CI#VAR|prup5d#NEW|',sum(prup5d)
+        print*, '#CI#VAR|prup5d#REF|',sum(prup5d_ref)
+        print*, '#CI#VAR|prup5d#THRSH|',sum(prup5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|prdn5d#DIFF|',sum(prdn5d_ref - prdn5d)
+        print*, '#CI#VAR|prdn5d#NEW|',sum(prdn5d)
+        print*, '#CI#VAR|prdn5d#REF|',sum(prdn5d_ref)
+        print*, '#CI#VAR|prdn5d#THRSH|',sum(prdn5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|clwup5d#DIFF|',sum(clwup5d_ref - clwup5d)
+        print*, '#CI#VAR|clwup5d#NEW|',sum(clwup5d)
+        print*, '#CI#VAR|clwup5d#REF|',sum(clwup5d_ref)
+        print*, '#CI#VAR|clwup5d#THRSH|',sum(clwup5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|tup5d#DIFF|',sum(tup5d_ref - tup5d)
+        print*, '#CI#VAR|tup5d#NEW|',sum(tup5d)
+        print*, '#CI#VAR|tup5d#REF|',sum(tup5d_ref)
+        print*, '#CI#VAR|tup5d#THRSH|',sum(tup5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|conv_cld_fr5d#DIFF|',sum(conv_cld_fr5d_ref - conv_cld_fr5d)
+        print*, '#CI#VAR|conv_cld_fr5d#NEW|',sum(conv_cld_fr5d)
+        print*, '#CI#VAR|conv_cld_fr5d#REF|',sum(conv_cld_fr5d_ref)
+        print*, '#CI#VAR|conv_cld_fr5d#THRSH|',sum(conv_cld_fr5d_ref)*1.0e-9
+
+        print*, '#CI#VAR|revsu_gf_2d#DIFF|',sum(revsu_gf_2d_ref - revsu_gf_2d)
+        print*, '#CI#VAR|revsu_gf_2d#NEW|',sum(revsu_gf_2d)
+        print*, '#CI#VAR|revsu_gf_2d#REF|',sum(revsu_gf_2d_ref)
+        print*, '#CI#VAR|revsu_gf_2d#THRSH|',sum(revsu_gf_2d_ref)*1.0e-9
+
+        print*, '#CI#VAR|prfil_gf_2d#DIFF|',sum(prfil_gf_2d_ref - prfil_gf_2d)
+        print*, '#CI#VAR|prfil_gf_2d#NEW|',sum(prfil_gf_2d)
+        print*, '#CI#VAR|prfil_gf_2d#REF|',sum(prfil_gf_2d_ref)
+        print*, '#CI#VAR|prfil_gf_2d#THRSH|',sum(prfil_gf_2d_ref)*1.0e-9
+
     end subroutine
 
 end module
