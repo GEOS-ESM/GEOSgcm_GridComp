@@ -136,20 +136,12 @@ PROGRAM mkEASETilesParam
       gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nr_string)
 
       if (index(EASELabel,'M03') /=0) then ! EASE  3 km grid
-        if (index(EASELabel, 'v1') /=0) then
-           print*, " EASEv1_M03 is not implemented"
-           stop
-         endif
          regrid = .true.
          NC = 21600
          NR = 10800
          NT = 500000000
       endif
       if (index(EASELabel,'M01') /=0) then ! EASE  1 km grid
-        if (index(EASELabel, 'v1') /=0) then
-           print*, " EASEv1_M01 is not implemented"
-           stop
-         endif
          regrid = .true.
          NC = 43200
          NR = 21600

@@ -231,8 +231,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "EASEv1",
             "message": "Select EASEv1 grid resolution: \n ",
             "choices": [ \
-#                 "M01  --  1km $34668x14688$", \
-#                 "M03  --  3km $11556x4896$", \
+                 "M01  --  1km $34668x14688$", \
+                 "M03  --  3km $11556x4896$", \
                  "M09  --  9km  $3852x1632$", \
                  "M25  -- 25km  $1383x586$", \
                  "M36  -- 36km   $963x408$"],
