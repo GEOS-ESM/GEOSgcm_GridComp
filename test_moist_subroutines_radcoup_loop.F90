@@ -351,6 +351,96 @@ module test_radcoup_subroutines
         print*,'Compare sum(RHX_ref) = ',sum(RHX_ref)
         print*,'***'
 
+        ! Encoding results for CI
+        print*, '#CI#VAR|Q#DIFF|',sum(Q_ref - Q)
+        print*, '#CI#VAR|Q#NEW|',sum(Q)
+        print*, '#CI#VAR|Q#REF|',sum(Q_ref)
+        print*, '#CI#VAR|Q#THRSH|',sum(Q_ref)*1.0e-9
+
+        print*, '#CI#VAR|T#DIFF|',sum(T_ref - T)
+        print*, '#CI#VAR|T#NEW|',sum(T)
+        print*, '#CI#VAR|T#REF|',sum(T_ref)
+        print*, '#CI#VAR|T#THRSH|',sum(T_ref)*1.0e-9
+
+        print*, '#CI#VAR|QLLS#DIFF|',sum(QLLS_ref - QLLS)
+        print*, '#CI#VAR|QLLS#NEW|',sum(QLLS)
+        print*, '#CI#VAR|QLLS#REF|',sum(QLLS_ref)
+        print*, '#CI#VAR|QLLS#THRSH|',sum(QLLS_ref)*1.0e-9
+
+        print*, '#CI#VAR|QILS#DIFF|',sum(QILS_ref - QILS)
+        print*, '#CI#VAR|QILS#NEW|',sum(QILS)
+        print*, '#CI#VAR|QILS#REF|',sum(QILS_ref)
+        print*, '#CI#VAR|QILS#THRSH|',sum(QILS_ref)*1.0e-9
+
+        print*, '#CI#VAR|CLLS#DIFF|',sum(CLLS_ref - CLLS)
+        print*, '#CI#VAR|CLLS#NEW|',sum(CLLS)
+        print*, '#CI#VAR|CLLS#REF|',sum(CLLS_ref)
+        print*, '#CI#VAR|CLLS#THRSH|',sum(CLLS_ref)*1.0e-9
+
+        print*, '#CI#VAR|QLCN#DIFF|',sum(QLCN_ref - QLCN)
+        print*, '#CI#VAR|QLCN#NEW|',sum(QLCN)
+        print*, '#CI#VAR|QLCN#REF|',sum(QLCN_ref)
+        print*, '#CI#VAR|QLCN#THRSH|',sum(QLCN_ref)*1.0e-9
+
+        print*, '#CI#VAR|QICN#DIFF|',sum(QICN_ref - QICN)
+        print*, '#CI#VAR|QICN#NEW|',sum(QICN)
+        print*, '#CI#VAR|QICN#REF|',sum(QICN_ref)
+        print*, '#CI#VAR|QICN#THRSH|',sum(QICN_ref)*1.0e-9
+
+        print*, '#CI#VAR|CLCN#DIFF|',sum(CLCN_ref - CLCN)
+        print*, '#CI#VAR|CLCN#NEW|',sum(CLCN)
+        print*, '#CI#VAR|CLCN#REF|',sum(CLCN_ref)
+        print*, '#CI#VAR|CLCN#THRSH|',sum(CLCN_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QV#DIFF|',sum(RAD_QV_ref - RAD_QV)
+        print*, '#CI#VAR|RAD_QV#NEW|',sum(RAD_QV)
+        print*, '#CI#VAR|RAD_QV#REF|',sum(RAD_QV_ref)
+        print*, '#CI#VAR|RAD_QV#THRSH|',sum(RAD_QV_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QL#DIFF|',sum(RAD_QL_ref - RAD_QL)
+        print*, '#CI#VAR|RAD_QL#NEW|',sum(RAD_QL)
+        print*, '#CI#VAR|RAD_QL#REF|',sum(RAD_QL_ref)
+        print*, '#CI#VAR|RAD_QL#THRSH|',sum(RAD_QL_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QI#DIFF|',sum(RAD_QI_ref - RAD_QI)
+        print*, '#CI#VAR|RAD_QI#NEW|',sum(RAD_QI)
+        print*, '#CI#VAR|RAD_QI#REF|',sum(RAD_QI_ref)
+        print*, '#CI#VAR|RAD_QI#THRSH|',sum(RAD_QI_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QR#DIFF|',sum(RAD_QR_ref - RAD_QR)
+        print*, '#CI#VAR|RAD_QR#NEW|',sum(RAD_QR)
+        print*, '#CI#VAR|RAD_QR#REF|',sum(RAD_QR_ref)
+        print*, '#CI#VAR|RAD_QR#THRSH|',sum(RAD_QR_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QS#DIFF|',sum(RAD_QS_ref - RAD_QS)
+        print*, '#CI#VAR|RAD_QS#NEW|',sum(RAD_QS)
+        print*, '#CI#VAR|RAD_QS#REF|',sum(RAD_QS_ref)
+        print*, '#CI#VAR|RAD_QS#THRSH|',sum(RAD_QS_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_QG#DIFF|',sum(RAD_QG_ref - RAD_QG)
+        print*, '#CI#VAR|RAD_QG#NEW|',sum(RAD_QG)
+        print*, '#CI#VAR|RAD_QG#REF|',sum(RAD_QG_ref)
+        print*, '#CI#VAR|RAD_QG#THRSH|',sum(RAD_QG_ref)*1.0e-9
+
+        print*, '#CI#VAR|RAD_CF#DIFF|',sum(RAD_CF_ref - RAD_CF)
+        print*, '#CI#VAR|RAD_CF#NEW|',sum(RAD_CF)
+        print*, '#CI#VAR|RAD_CF#REF|',sum(RAD_CF_ref)
+        print*, '#CI#VAR|RAD_CF#THRSH|',sum(RAD_CF_ref)*1.0e-9
+
+        print*, '#CI#VAR|CLDREFFL#DIFF|',sum(CLDREFFL_ref - CLDREFFL)
+        print*, '#CI#VAR|CLDREFFL#NEW|',sum(CLDREFFL)
+        print*, '#CI#VAR|CLDREFFL#REF|',sum(CLDREFFL_ref)
+        print*, '#CI#VAR|CLDREFFL#THRSH|',sum(CLDREFFL_ref)*1.0e-9
+
+        print*, '#CI#VAR|CLDREFFI#DIFF|',sum(CLDREFFI_ref - CLDREFFI)
+        print*, '#CI#VAR|CLDREFFI#NEW|',sum(CLDREFFI)
+        print*, '#CI#VAR|CLDREFFI#REF|',sum(CLDREFFI_ref)
+        print*, '#CI#VAR|CLDREFFI#THRSH|',sum(CLDREFFI_ref)*1.0e-9
+
+        print*, '#CI#VAR|RHX#DIFF|',sum(RHX_ref - RHX)
+        print*, '#CI#VAR|RHX#NEW|',sum(RHX)
+        print*, '#CI#VAR|RHX#REF|',sum(RHX_ref)
+        print*, '#CI#VAR|RHX#THRSH|',sum(RHX_ref)*1.0e-9
     end subroutine
 
 end module
