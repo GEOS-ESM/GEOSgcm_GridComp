@@ -167,6 +167,22 @@ module test_process_library_subroutines
         print*,'Compare sum(BYNCY_comp) = ',sum(BYNCY_comp)
         print*,'***'
         
+        ! Encoding results for CI
+        print*, '#CI#VAR|INHB#DIFF|',sum(INHB - INHB_comp)
+        print*, '#CI#VAR|INHB#NEW|',sum(INHB)
+        print*, '#CI#VAR|INHB#REF|',sum(INHB_comp)
+        print*, '#CI#VAR|INHB#THRSH|',sum(INHB_comp)*1.0e-9
+        
+        print*, '#CI#VAR|CAPE#DIFF|',sum(CAPE - CAPE_comp)
+        print*, '#CI#VAR|CAPE#NEW|',sum(CAPE)
+        print*, '#CI#VAR|CAPE#REF|',sum(CAPE_comp)
+        print*, '#CI#VAR|CAPE#THRSH|',sum(CAPE_comp)*1.0e-9
+        
+        print*, '#CI#VAR|BYNCY#DIFF|',sum(BYNCY - BYNCY_comp)
+        print*, '#CI#VAR|BYNCY#NEW|',sum(BYNCY)
+        print*, '#CI#VAR|BYNCY#REF|',sum(BYNCY_comp)
+        print*, '#CI#VAR|BYNCY#THRSH|',sum(BYNCY_comp)*1.0e-9
+
     end subroutine
 
     subroutine test_hystpdf(IM, JM, LM, dirName, rank_str)
