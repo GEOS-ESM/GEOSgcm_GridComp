@@ -33,6 +33,8 @@
   public GEOS_Qsat
   public GEOS_DQsat
 
+  public ESINIT_v2
+
 !   public GEOS_TRILU
 !   public GEOS_TRISOLVE
 
@@ -154,7 +156,7 @@
 
       ! class(Logger), pointer :: lgr
       logical :: debugIsEnabled
-
+!$acc declare create(UTBL, ESTBLW, FIRST, ESTBLE, ESTFRZ, TMINLQU, TMINICE, ESTBLX, ESTLQU, TYPE)
   contains
 
 !BOPI
@@ -219,6 +221,7 @@
 
 
        function QSATLQU0(TL,PL,DQ) result(QS)
+!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ
@@ -323,6 +326,7 @@
 
 
        function QSATICE0(TL,PL,DQ) result(QS)
+!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ
@@ -499,6 +503,7 @@
     
        
   function QSAT0(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
+!$acc routine seq
     real,   intent(IN) :: TL, PL
     logical, optional, intent(IN) :: PASCALS
     real,    optional, intent(IN) :: RAMP
@@ -936,7 +941,7 @@
 ! !=======================================================================================
 
         subroutine ESINIT
-
+!$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa
@@ -977,6 +982,13 @@
 
        end subroutine ESINIT
 
+      subroutine ESINIT_v2
+         if(FIRST) then
+            FIRST = .false.
+            call ESINIT
+         endif
+      !$acc update device(FIRST)
+      end subroutine
 !        subroutine LOGGER_INIT
 
 !           implicit none

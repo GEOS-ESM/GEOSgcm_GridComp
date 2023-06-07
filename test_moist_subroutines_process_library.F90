@@ -2,6 +2,7 @@ module test_process_library_subroutines
 
     use Process_Library_standalone
     use timing_module
+    use GEOS_UtilsMod
 
     implicit none
 
@@ -128,7 +129,10 @@ module test_process_library_subroutines
 !$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb, MLCAPE, MUCAPE, &
 !$acc             MLCIN, MUCIN) &
 !$acc      copyout(BYNCY) &
-!$acc      copy(SBCIN, SBSCAPE, LFC, LNB)
+!$acc      copy(SBCIN, SBCAPE, LFC, LNB)
+
+        ! This is to initialize arrays in GEOS_UtilsMod ahead of time
+        call ESINIT_v2
 
         print*,'Testing Buoyancy2 Subroutine'
 
