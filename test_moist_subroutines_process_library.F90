@@ -421,60 +421,49 @@ module test_process_library_subroutines
         print*,'Compare WQL_IJL : ',WQL_IJL_ref-WQL_IJL
 
         ! Encoding results for CI
-        print*, '#CI#VAR|Q_IJL#DIFF|',sum(Q_IJL_ref - Q_IJL)
-        print*, '#CI#VAR|Q_IJL#NEW|',sum(Q_IJL)
-        print*, '#CI#VAR|Q_IJL#REF|',sum(Q_IJL_ref)
-        print*, '#CI#VAR|Q_IJL#THRSH|',sum(Q_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|Q_IJL#DIFF|',Q_IJL_ref - Q_IJL
+        print*, '#CI#VAR|Q_IJL#NEW|',Q_IJL
+        print*, '#CI#VAR|Q_IJL#REF|',Q_IJL_ref
 
-        print*, '#CI#VAR|QLLS_IJL#DIFF|',sum(QLLS_IJL_ref - QLLS_IJL)
-        print*, '#CI#VAR|QLLS_IJL#NEW|',sum(QLLS_IJL)
-        print*, '#CI#VAR|QLLS_IJL#REF|',sum(QLLS_IJL_ref)
-        print*, '#CI#VAR|QLLS_IJL#THRSH|',sum(QLLS_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|QLLS_IJL#DIFF|',QLLS_IJL_ref - QLLS_IJL
+        print*, '#CI#VAR|QLLS_IJL#NEW|',QLLS_IJL
+        print*, '#CI#VAR|QLLS_IJL#REF|',QLLS_IJL_ref
 
-        print*, '#CI#VAR|QLCN_IJL#DIFF|',sum(QLCN_IJL_ref - QLCN_IJL)
-        print*, '#CI#VAR|QLCN_IJL#NEW|',sum(QLCN_IJL)
-        print*, '#CI#VAR|QLCN_IJL#REF|',sum(QLCN_IJL_ref)
-        print*, '#CI#VAR|QLCN_IJL#THRSH|',sum(QLCN_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|QLCN_IJL#DIFF|',QLCN_IJL_ref - QLCN_IJL
+        print*, '#CI#VAR|QLCN_IJL#NEW|',QLCN_IJL
+        print*, '#CI#VAR|QLCN_IJL#REF|',QLCN_IJL_ref
 
-        print*, '#CI#VAR|QILS_IJL#DIFF|',sum(QILS_IJL_ref - QILS_IJL)
-        print*, '#CI#VAR|QILS_IJL#NEW|',sum(QILS_IJL)
-        print*, '#CI#VAR|QILS_IJL#REF|',sum(QILS_IJL_ref)
-        print*, '#CI#VAR|QILS_IJL#THRSH|',sum(QILS_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|QILS_IJL#DIFF|',QILS_IJL_ref - QILS_IJL
+        print*, '#CI#VAR|QILS_IJL#NEW|',QILS_IJL
+        print*, '#CI#VAR|QILS_IJL#REF|',QILS_IJL_ref
 
-        print*, '#CI#VAR|QICN_IJL#DIFF|',sum(QICN_IJL_ref - QICN_IJL)
-        print*, '#CI#VAR|QICN_IJL#NEW|',sum(QICN_IJL)
-        print*, '#CI#VAR|QICN_IJL#REF|',sum(QICN_IJL_ref)
-        print*, '#CI#VAR|QICN_IJL#THRSH|',sum(QICN_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|QICN_IJL#DIFF|',QICN_IJL_ref - QICN_IJL
+        print*, '#CI#VAR|QICN_IJL#NEW|',QICN_IJL
+        print*, '#CI#VAR|QICN_IJL#REF|',QICN_IJL_ref
 
-        print*, '#CI#VAR|T_IJL_ref#DIFF|',sum(T_IJL_ref_ref - T_IJL_ref)
-        print*, '#CI#VAR|T_IJL_ref#NEW|',sum(T_IJL_ref)
-        print*, '#CI#VAR|T_IJL_ref#REF|',sum(T_IJL_ref_ref)
-        print*, '#CI#VAR|T_IJL_ref#THRSH|',sum(T_IJL_ref_ref)*1.0e-9
+        print*, '#CI#VAR|T_IJL_ref#DIFF|',T_IJL_ref_ref - T_IJL_ref
+        print*, '#CI#VAR|T_IJL_ref#NEW|',T_IJL_ref
+        print*, '#CI#VAR|T_IJL_ref#REF|',T_IJL_ref_ref
 
-        print*, '#CI#VAR|CLLS_IJL#DIFF|',sum(CLLS_IJL_ref - CLLS_IJL)
-        print*, '#CI#VAR|CLLS_IJL#NEW|',sum(CLLS_IJL)
-        print*, '#CI#VAR|CLLS_IJL#REF|',sum(CLLS_IJL_ref)
-        print*, '#CI#VAR|CLLS_IJL#THRSH|',sum(CLLS_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|CLLS_IJL#DIFF|',CLLS_IJL_ref - CLLS_IJL
+        print*, '#CI#VAR|CLLS_IJL#NEW|',CLLS_IJL
+        print*, '#CI#VAR|CLLS_IJL#REF|',CLLS_IJL_ref
 
-        print*, '#CI#VAR|PDF_A_IJL#DIFF|',sum(PDF_A_IJL_ref - PDF_A_IJL)
-        print*, '#CI#VAR|PDF_A_IJL#NEW|',sum(PDF_A_IJL)
-        print*, '#CI#VAR|PDF_A_IJL#REF|',sum(PDF_A_IJL_ref)
-        print*, '#CI#VAR|PDF_A_IJL#THRSH|',sum(PDF_A_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|PDF_A_IJL#DIFF|',PDF_A_IJL_ref - PDF_A_IJL
+        print*, '#CI#VAR|PDF_A_IJL#NEW|',PDF_A_IJL
+        print*, '#CI#VAR|PDF_A_IJL#REF|',PDF_A_IJL_ref
 
-        print*, '#CI#VAR|PDFITERS_IJL#DIFF|',sum(PDFITERS_IJL_ref - PDFITERS_IJL)
-        print*, '#CI#VAR|PDFITERS_IJL#NEW|',sum(PDFITERS_IJL)
-        print*, '#CI#VAR|PDFITERS_IJL#REF|',sum(PDFITERS_IJL_ref)
-        print*, '#CI#VAR|PDFITERS_IJL#THRSH|',sum(PDFITERS_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|PDFITERS_IJL#DIFF|',PDFITERS_IJL_ref - PDFITERS_IJL
+        print*, '#CI#VAR|PDFITERS_IJL#NEW|',PDFITERS_IJL
+        print*, '#CI#VAR|PDFITERS_IJL#REF|',PDFITERS_IJL_ref
 
-        print*, '#CI#VAR|WTHV2_IJL#DIFF|',sum(WTHV2_IJL_ref - WTHV2_IJL)
-        print*, '#CI#VAR|WTHV2_IJL#NEW|',sum(WTHV2_IJL)
-        print*, '#CI#VAR|WTHV2_IJL#REF|',sum(WTHV2_IJL_ref)
-        print*, '#CI#VAR|WTHV2_IJL#THRSH|',sum(WTHV2_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|WTHV2_IJL#DIFF|',WTHV2_IJL_ref - WTHV2_IJL
+        print*, '#CI#VAR|WTHV2_IJL#NEW|',WTHV2_IJL
+        print*, '#CI#VAR|WTHV2_IJL#REF|',WTHV2_IJL_ref
 
-        print*, '#CI#VAR|WQL_IJL#DIFF|',sum(WQL_IJL_ref - WQL_IJL)
-        print*, '#CI#VAR|WQL_IJL#NEW|',sum(WQL_IJL)
-        print*, '#CI#VAR|WQL_IJL#REF|',sum(WQL_IJL_ref)
-        print*, '#CI#VAR|WQL_IJL#THRSH|',sum(WQL_IJL_ref)*1.0e-9
+        print*, '#CI#VAR|WQL_IJL#DIFF|',WQL_IJL_ref - WQL_IJL
+        print*, '#CI#VAR|WQL_IJL#NEW|',WQL_IJL
+        print*, '#CI#VAR|WQL_IJL#REF|',WQL_IJL_ref
     end subroutine
 
 end module
