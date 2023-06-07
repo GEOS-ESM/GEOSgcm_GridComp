@@ -154,9 +154,18 @@ module test_process_library_subroutines
         close(fileID)
         ! write(*,*) 'sum(abs(INHB)) = ', sum(abs(INHB_comp))
 
-        print*,'sum(INHB - INHB_comp) = ', sum(INHB - INHB_comp)
-        print*,'sum(CAPE - CAPE_comp) = ', sum(CAPE - CAPE_comp)
-        print*,'sum(BYNCY - BYNCY_comp) = ', sum(BYNCY - BYNCY_comp)
+        print*,'Compare sum(diff(INHB)) = ',sum(INHB - INHB_comp)
+        print*,'Compare sum(INHB) = ',sum(INHB)
+        print*,'Compare sum(INHB_comp) = ',sum(INHB_comp)
+        print*,'***'
+        print*,'Compare sum(diff(CAPE)) = ',sum(CAPE - CAPE_comp)
+        print*,'Compare sum(CAPE) = ',sum(CAPE)
+        print*,'Compare sum(CAPE_comp) = ',sum(CAPE_comp)
+        print*,'***'
+        print*,'Compare sum(diff(BYNCY)) = ',sum(BYNCY - BYNCY_comp)
+        print*,'Compare sum(BYNCY) = ',sum(BYNCY)
+        print*,'Compare sum(BYNCY_comp) = ',sum(BYNCY_comp)
+        print*,'***'
         
     end subroutine
 
