@@ -441,9 +441,9 @@ module test_process_library_subroutines
         print*, '#CI#VAR|QICN_IJL#NEW|',QICN_IJL
         print*, '#CI#VAR|QICN_IJL#REF|',QICN_IJL_ref
 
-        print*, '#CI#VAR|T_IJL_ref#DIFF|',T_IJL_ref_ref - T_IJL_ref
-        print*, '#CI#VAR|T_IJL_ref#NEW|',T_IJL_ref
-        print*, '#CI#VAR|T_IJL_ref#REF|',T_IJL_ref_ref
+        print*, '#CI#VAR|T_IJL#DIFF|',T_IJL_ref - T_IJL
+        print*, '#CI#VAR|T_IJL#NEW|',T_IJL
+        print*, '#CI#VAR|T_IJL#REF|',T_IJL_ref
 
         print*, '#CI#VAR|CLLS_IJL#DIFF|',CLLS_IJL_ref - CLLS_IJL
         print*, '#CI#VAR|CLLS_IJL#NEW|',CLLS_IJL
