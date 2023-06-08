@@ -183,9 +183,9 @@ module test_aer_activation_subroutine
         ! call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
         !                         SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
         !                         AeroProps, AERO, NACTL, NACTI, NWFA, dirName, rank_str)
-        ! call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-        !                         SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-        !                         AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+        call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                                SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
+                                AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6,dirName, rank_str)
         call cpu_time(tEnd)
 
 !$acc end data
