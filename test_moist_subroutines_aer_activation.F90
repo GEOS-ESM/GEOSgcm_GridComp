@@ -10,7 +10,7 @@ module test_aer_activation_subroutine
 
     real, dimension(:,:,:), &
           allocatable :: Q, T, PLmb, PLO, PLE, ZL0, ZLE0, QLCN, &
-                         QICN, QLLS, QILS, OMEGA, NACTL, NACTI, &
+                         QICN, QLLS, QILS, TKE, TMP3D, NACTL, NACTI, &
                          NWFA, NACTL_comp, NACTI_comp, NWFA_comp
                     
     real, dimension(:,:), allocatable :: SH, EVAP, KPBL, FRLAND
@@ -29,6 +29,7 @@ module test_aer_activation_subroutine
 
         integer :: IM, JM, LM, fileID
         character*100 :: dirName, rank_str
+        real :: CCN_OCN, CCN_LND
 
         allocate(Q   (IM, JM, LM))
         allocate(T   (IM, JM, LM))
@@ -41,7 +42,8 @@ module test_aer_activation_subroutine
         allocate(QICN(IM, JM, LM))
         allocate(QLLS(IM, JM, LM))
         allocate(QILS(IM, JM, LM))
-        allocate(OMEGA(IM, JM, LM))
+        allocate(TKE(IM, JM, LM))
+        allocate(TMP3D(IM, JM, LM))
         allocate(NACTL(IM, JM, LM))
         allocate(NACTI(IM, JM, LM))
         allocate(NWFA (IM, JM, LM))
@@ -135,11 +137,15 @@ module test_aer_activation_subroutine
         close(fileID)
         ! write(*,*) 'sum(abs(KPBL)) = ', sum(abs(KPBL))
 
-        open(newunit=fileID, file=trim(dirName) // "/OMEGA_" // trim(rank_str) // ".in", &
+        open(newunit=fileID, file=trim(dirName) // "/TKE_" // trim(rank_str) // ".in", &
             status='old', form="unformatted", action="read")
-        read(fileID) OMEGA
+        read(fileID) TKE
         close(fileID)
-        ! write(*,*) 'sum(abs(OMEGA)) = ', sum(abs(OMEGA))
+        
+        open(newunit=fileID, file=trim(dirName) // "/TMP3D_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) TMP3D
+        close(fileID)
 
         open(newunit=fileID, file=trim(dirName) // "/FRLAND_" // trim(rank_str) // ".in", &
             status='old', form="unformatted", action="read")
@@ -153,6 +159,16 @@ module test_aer_activation_subroutine
         close(fileID)
         ! write(*,*) 'USE_AERO_BUFFER = ', USE_AERO_BUFFER
 
+        open(newunit=fileID, file=trim(dirName) // "/CCN_LND_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) CCN_LND
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // "/CCN_OCN_" // trim(rank_str) // ".in", &
+            status='old', form="unformatted", action="read")
+        read(fileID) CCN_OCN
+        close(fileID)
+
         AERO = 7
         PLO = PLmb*100.0
 
@@ -164,9 +180,12 @@ module test_aer_activation_subroutine
 !$acc      copyout(NACTL, NACTI, NWFA)
 
         call cpu_time(tStart)
-        call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                                SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
-                                AeroProps, AERO, NACTL, NACTI, NWFA, dirName, rank_str)
+        ! call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+        !                         SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
+        !                         AeroProps, AERO, NACTL, NACTI, NWFA, dirName, rank_str)
+        ! call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+        !                         SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
+        !                         AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
         call cpu_time(tEnd)
 
 !$acc end data

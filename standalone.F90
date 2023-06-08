@@ -19,25 +19,25 @@ program test_moist_subroutines
     write(*,*) "DirName is ",dirName
     write(*,*) "rank_str is ",rank_str
 
-    if (dirName(1:10) == './c24_data') then
-        IM = 24
-        JM = 24
-        LM = 72
-    elseif (dirName(1:10) == './c90_data') then
-        IM = 90
-        JM = 90
-        LM = 72
+    ! if (dirName(1:10) == './c24_data') then
+    !     IM = 24
+    !     JM = 24
+    !     LM = 72
+    ! elseif (dirName(1:10) == './c90_data') then
+    !     IM = 90
+    !     JM = 90
+    !     LM = 72
 
-    elseif (dirName(1:11) == './c180_data') then
+    ! elseif (dirName(1:11) == './c180_data') then
         IM = 180
         JM = 180
         LM = 72
-    endif
+    ! endif
 
-    if(trim(dirName(12:25)) == 'aer_activation' .or. trim(dirName(13:26)) == 'aer_activation') then
-        write(*,*) "Routine: (",dirName(12:25), " or ",dirName(13:26),")"
+    ! if(trim(dirName(12:25)) == 'aer_activation' .or. trim(dirName(13:26)) == 'aer_activation') then
+    !     write(*,*) "Routine: (",dirName(12:25), " or ",dirName(13:26),")"
         call test_aer_activation(IM, JM, LM, dirName, rank_str)
-    endif
+    ! endif
 end program
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”

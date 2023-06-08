@@ -34,29 +34,30 @@ module moist_subroutines_aer_activation
 
     LOGICAL  :: USE_AEROSOL_NN = .TRUE.
 
+    real        , parameter :: R_AIR     =  3.47e-3 !m3 Pa kg-1K-1
     real(AER_PR), parameter :: zero_par  =  1.e-6   ! small non-zero value
-    real(AER_PR), parameter :: ai        =  0.0000594D0
-    real(AER_PR), parameter :: bi        =  3.33D0
-    real(AER_PR), parameter :: ci        =  0.0264D0
-    real(AER_PR), parameter :: di        =  0.0033D0
+    real(AER_PR), parameter :: ai        =  0.0000594
+    real(AER_PR), parameter :: bi        =  3.33
+    real(AER_PR), parameter :: ci        =  0.0264
+    real(AER_PR), parameter :: di        =  0.0033
 
-    real(AER_PR), parameter :: betai     = -2.262D+3
-    real(AER_PR), parameter :: gamai     =  5.113D+6
-    real(AER_PR), parameter :: deltai    =  2.809D+3
-    real(AER_PR), parameter :: densic    =  500.D0   !Ice crystal density in kgm-3
+    real(AER_PR), parameter :: betai     = -2.262e+3
+    real(AER_PR), parameter :: gamai     =  5.113e+6
+    real(AER_PR), parameter :: deltai    =  2.809e+3
+    real(AER_PR), parameter :: densic    =  917.0   !Ice crystal density in kgm-3
 
- 
-    !-- try 50.e6 over ocean, 300e6 over land   
-    real, parameter :: NN_LAND     = 150.0e6
-    real, parameter :: NN_OCEAN    =  30.0e6
-    real, parameter :: NN_MIN      = NN_OCEAN
+    real, parameter :: NN_MIN      =  100.0e6
+    real, parameter :: NN_MAX      = 1000.0e6
     real :: tStart, tEnd, time
 
     contains
 
+    ! SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
+    !     sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
+    !     AeroProps, aero_aci, NACTL, NACTI, NWFA, dirName, rank_str)
     SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
-        sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
-        AeroProps, aero_aci, NACTL, NACTI, NWFA, dirName, rank_str)
+            sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
+            AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN,dirName, rank_str)
         IMPLICIT NONE
         integer, intent(in)::IM,JM,LM
         TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
@@ -64,17 +65,17 @@ module moist_subroutines_aer_activation
         integer, intent(inout) :: aero_aci
         real, dimension (IM,JM,LM)  ,intent(in ) :: plo ! Pa
         real, dimension (IM,JM,0:LM),intent(in ) :: ple ! Pa
-        real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,omega,zlo, qlcn, qicn, qlls, qils
+        real, dimension (IM,JM,LM)  ,intent(in ) :: q,t,tke,vvel,zlo, qlcn, qicn, qlls, qils
         real, dimension (IM,JM,0:LM),intent(in ) :: zle
         real, dimension (IM,JM)     ,intent(in ) :: FRLAND
-        real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl     
+        real, dimension (IM,JM)     ,intent(in ) :: sh, evap, kpbl
+        real                        ,intent(in ) :: NN_LAND, NN_OCEAN 
         logical                     ,intent(in ) :: USE_AERO_BUFFER
 
         real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
 
-        real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact,ac,fracactn,eta,xlogsigm,sm 
-        real(AER_PR), dimension (IM,JM)  :: naer_cb, zws
-        real(AER_PR)                     :: wupdraft,tk,press,air_den,QC,QL,WC,BB,RAUX
+        real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
+        real(AER_PR)                     :: wupdraft,tk,press,air_den,QI,QL,WC,BB,RAUX
 
         integer, dimension (IM,JM) :: kpbli
 
@@ -166,11 +167,11 @@ module moist_subroutines_aer_activation
                 allocate(   ni(n_modes))
                 allocate(bibar(n_modes))
                 allocate( nact(n_modes))
-                allocate(ac(n_modes))
-                allocate(fracactn(n_modes))
-                allocate(eta(n_modes))
-                allocate(xlogsigm(n_modes))
-                allocate(sm(n_modes))
+                ! allocate(ac(n_modes))
+                ! allocate(fracactn(n_modes))
+                ! allocate(eta(n_modes))
+                ! allocate(xlogsigm(n_modes))
+                ! allocate(sm(n_modes))
 
                 allocate(aero_aci_modes(n_modes))
 
@@ -240,14 +241,14 @@ module moist_subroutines_aer_activation
                     read(fileID) aci_sigma
                     close(fileID)
 
-                    open(newunit=fileID, file=trim(dirName) // "/aci_density_" // trim(n_str) // "_" // trim(rank_str) // ".in", &
-                        status='old', form="unformatted", action="read")
-                    read(fileID) aci_density
-                    close(fileID)
-
                     open(newunit=fileID, file=trim(dirName) // "/aci_hygroscopicity_" // trim(n_str) // "_" // trim(rank_str) // ".in", &
                         status='old', form="unformatted", action="read")
                     read(fileID) aci_hygroscopicity
+                    close(fileID)
+
+                    open(newunit=fileID, file=trim(dirName) // "/aci_density_" // trim(n_str) // "_" // trim(rank_str) // ".in", &
+                        status='old', form="unformatted", action="read")
+                    read(fileID) aci_density
                     close(fileID)
 
                     open(newunit=fileID, file=trim(dirName) // "/aci_f_dust_" // trim(n_str) // "_" // trim(rank_str) // ".in", &
@@ -297,8 +298,6 @@ module moist_subroutines_aer_activation
 !$acc      copyin(kpbli,buffer)
 
                 if (USE_AERO_BUFFER) then
-!$acc parallel
-!$acc loop gang vector collapse(4)
                     do k = 1, LM
                         do j = 1, JM
                             do i = 1, IM
@@ -316,175 +315,127 @@ module moist_subroutines_aer_activation
                             end do
                         end do
                     end do
-!$acc end parallel
+   
                     deallocate(buffer)
                 end if
-
-!$acc parallel
-!$acc loop gang vector collapse(3) private(nfaux)
+                 
+                
                 do k = 1, LM
                     do j = 1, JM
                         do i = 1, IM
-                            nfaux =  0.0
-!$acc loop seq
-                            do n = 1, n_modes
-                                if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
+                        nfaux =  0.0
+                        do n = 1, n_modes
+                            if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
                                     nfaux =  nfaux + AeroProps(i,j,k)%num(n)
-                                end if                           
-                           end do !modes
-                            NWFA(I, J, K)  =  nfaux
+                            end if                           
+                        end do !modes
+                        NWFA(I, J, K)  =  nfaux
                         end do
                     end do 
                 end do 
-!$acc end parallel
-
+                
+   
                 deallocate(aero_aci_modes)
-
-                !----- aerosol activation (single-moment uphysics)     
-!$acc parallel
-!$acc loop gang vector collapse(2) private(aux1,hfs,hfl,aux2,aux3) 
-                do j = 1, JM
-                    do i = 1, IM
-                        aux1=  ple(i,j,LM)/(287.04*(t(i,j,LM)*(1.+0.608*q(i,j,LM)))) ! air_dens (kg m^-3)
-                        hfs = -sh  (i,j) ! W m^-2
-                        hfl = -evap(i,j) ! kg m^-2 s^-1
-                        aux2= (hfs/MAPL_CP + 0.608*t(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
-                        aux3=  zle(i,j,kpbli(i,j))           ! pbl height (m)
-                        !-convective velocity scale W* (m/s)
-                        zws(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/t(i,j,LM))
-                        zws(i,j) = 1.2*zws(i,j)**0.3333 ! m/s           
-                    enddo
-                enddo
-!$acc end parallel
-
+   
                 !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
                 numbinit = 0.
                 WC       = 0.
                 BB       = 0.
                 RAUX     = 0.
-
+                    
                 !--- determing aerosol number concentration at cloud base
-!$acc parallel
-!$acc loop gang vector collapse(2) private(k,tk,press,air_den)
                 DO j=1,JM
-                    Do i=1,IM 
+                Do i=1,IM 
                         k            = kpbli(i,j)
-                        naer_cb(i,j) = zero_par
-                        tk           = t(i,j,k)              ! K
+                        tk           = T(i,j,k)              ! K
                         press        = plo(i,j,k)            ! Pa     
                         air_den      = press*28.8e-3/8.31/tk ! kg/m3
-!$acc loop seq
-                        DO n=1,n_modes
-                            if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) &
-                            naer_cb(i,j)= naer_cb(i,j) + AeroProps(i,j,k)%num(n) * air_den         
-                            naer_cb(i,j)= naer_cb(i,j)* 1.e+6  ! #/cm3
-                            naer_cb(i,j)= max(real(1.0e-1,AER_PR),min(naer_cb(i,j),100.0))
-                        ENDDO
-                    ENDDO
-                ENDDO!;ENDDO
-!$acc end parallel
-
-!$acc parallel
-!$acc loop gang vector collapse(3) private(tk,press,air_den,qc,ql,wupdraft,ni,rg,sig0,bibar,ac,fracactn,eta,xlogsigm,sm,numbinit,WC,BB,RAUX)
-                DO k=LM,1,-1
-                    DO j=1,JM
-                        Do i=1,IM
-                            tk                 = t(i,j,k)                         ! K
-                            press              = plo(i,j,k)                       ! Pa   
-                            air_den            = press*28.8e-3/8.31/tk            ! kg/m3
-                            qc                 = qicn(i,j,k)+qils(i,j,k)*1.e+3    ! g/kg
-                            ql                 = qlcn(i,j,k)+qlls(i,j,k)*1.e+3    ! g/kg
-
-                            IF( plo(i,j,k) > 34000.0) THEN 
-
-                                wupdraft           = -9.81*air_den*omega(i,j,k)     ! m/s - grid-scale only              
-
-                                !--in the boundary layer, add Wstar
-                                if(k >= kpbli(i,j) .and. k < LM)  wupdraft = wupdraft+zws(i,j) 
-
-                                IF(wupdraft > 0.1 .AND. wupdraft < 100.) THEN 
-
-                                    ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
-                                    rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
-                                    sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
-                                    bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
-
-                                    IF( tk >= 245.0) then   
-                                        call GetActFrac(           n_modes    &
-                                            ,      ni(1:n_modes)   &  
-                                            ,      rg(1:n_modes)   & 
-                                            ,    sig0(1:n_modes)   &  
+                ENDDO;ENDDO
+       
+            DO k=LM,1,-1
+                NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+                NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+                DO j=1,JM
+                    DO i=1,IM
+                    
+                        tk                 = T(i,j,k)                         ! K
+                        press              = plo(i,j,k)                       ! Pa   
+                        air_den            = press*28.8e-3/8.31/tk            ! kg/m3
+                        qi                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
+                        ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
+                        wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
+        
+                        ! Liquid Clouds
+                        IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
+                            (wupdraft > 0.1 .and. wupdraft < 100.) ) then
+            
+                            ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
+                            rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
+                            sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
+                            bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
+            
+                            call GetActFrac(           n_modes    &
+                                            ,      ni(1:n_modes)   &
+                                            ,      rg(1:n_modes)   &
+                                            ,    sig0(1:n_modes)   &
                                             ,      tk              &
-                                            ,   press              & 
-                                            ,wupdraft              & 
+                                            ,   press              &
+                                            ,wupdraft              &
                                             ,    nact(1:n_modes)   &
                                             ,   bibar(1:n_modes)   &
-                                            ,ac,fracactn,eta,xlogsigm,sm)
-
-                                        numbinit     = 0.
-                                        NACTL(i,j,k) = 0.
-!$acc loop seq
-                                        DO n=1,n_modes
-                                            numbinit     = numbinit    + AeroProps(i,j,k)%num(n)*air_den
-                                            NACTL(i,j,k) = NACTL(i,j,k)+ nact(n)
-                                        ENDDO
-
-                                        NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
-
-                                    ENDIF ! tk>245
-                                ENDIF   ! updraft > 0.1
-                            ENDIF   ! plo > 34000.0
-
-                            IF( tk <= 268.0) then
-                                IF( (QC >= 0.5) .and. (QL >= 0.5)) then
-                                    ! Number of activated IN following deMott (2010) [#/m3]  
-                                    NACTI(i,j,k) = (1.e+3*ai*((273.16-tk)**bi) *  (naer_cb(i,j))**(ci*(273.16-tk)+di))  !#/m3
-                                ELSE   !tk<243
-                                    ! Number of activated IN following Wyser  
-
-                                    WC    = air_den*QC  !kg/m3
-                                    if (WC >= tiny(1.0)) then
-                                        BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-tk)**1.5)
-                                    else
-                                        BB = -6.
-                                    end if
-                                    BB     = MIN((MAX(BB,-6.)),-2.)  
-
-                                    RAUX   = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-                                    RAUX   = (betai + (gamai + deltai * RAUX**3)**0.5)**0.33333
-                                    NACTI(i,j,k) = (3.* WC)/(4.*MAPL_PI*densic*(1.D-6*RAUX)**3)  !#/m3
-
-                                ENDIF  !Mixed phase
-
-                            ENDIF ! tk<=268
-                            !
-                            !
-                            !-- fix limit for NACTL/NACTI
-                            IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = FRLAND(i,j)*NN_LAND + (1.0-FRLAND(i,j))*NN_OCEAN
-
-                        ENDDO
-                    ENDDO
-                ENDDO
-!$acc end parallel
+                                            )
+    
+                            numbinit = 0.
+                            NACTL(i,j,k) = 0.
+                            DO n=1,n_modes
+                                numbinit = numbinit + AeroProps(i,j,k)%num(n)*air_den
+                                NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+                            ENDDO
+                            NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
+    
+                        ENDIF ! Liquid Clouds
+    
+                        ! Ice Clouds
+                        IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
+                            numbinit = 0.
+                            DO n=1,n_modes
+                                if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
+                                numbinit = numbinit + AeroProps(i,j,k)%num(n)
+                            ENDDO
+                            numbinit = numbinit * air_den ! #/m3
+                            ! Number of activated IN following deMott (2010) [#/m3]
+                            NACTI(i,j,k) = ai*((MAPL_TICE-tk)**bi) * numbinit**(ci*(MAPL_TICE-tk)+di) !#/m3
+                        ENDIF
+    
+                        !-- apply limits for NACTL/NACTI
+                        IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
+                        IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
+                        IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
+                        IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
+    
+            ENDDO;ENDDO;ENDDO
+   
+            deallocate(   rg)
+            deallocate(   ni)
+            deallocate(bibar)
+            deallocate( nact)
+   
+        end if ! n_modes > 0
+         
+        else ! USE_AEROSOL_NN
+   
+            do k = 1, LM
+                NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+                NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
+            end do
+   
+        end if
 
 !$acc end data
 
                 call cpu_time(tEnd)
                 time = tEnd - tStart
                 print*, 'Aer_Activation Computation Time = ', time
-
-                deallocate(   rg)
-                deallocate(   ni)
-                deallocate(bibar)
-                deallocate( nact)
-                deallocate(ac)
-                deallocate(fracactn)
-                deallocate(eta)
-                deallocate(xlogsigm)
-                deallocate(sm)
-
-            end if
-        end if
 
     END SUBROUTINE Aer_Activation
 
@@ -496,8 +447,7 @@ module moist_subroutines_aer_activation
         ,ptot                         & !pres             (i,j,k)                     & 
         ,wupdraft                     & !wupdraft             (i,j,k)                     & 
         ,nact                         & !nact             (i,j,k,1:nmodes)             &
-        ,bibar,ac,fracactn,eta,xlogsigm,sm)
-!$acc routine seq
+        ,bibar)
         
         IMPLICIT NONE
   
@@ -510,13 +460,10 @@ module moist_subroutines_aer_activation
         real(AER_PR) :: tkelvin              !< absolute temperature [k]
         real(AER_PR) :: ptot                 !< ambient pressure [pa]
         real(AER_PR) :: wupdraft             !< updraft velocity [m/s]
-        real(AER_PR) :: ac(nmodes)           !< minimum dry radius for activation for each mode [um]
-        real(AER_PR) :: fracactn(nmodes)     !< activating fraction of number conc. for each mode [1]
+!       real(AER_PR) :: ac(nmodes)           !< minimum dry radius for activation for each mode [um]
+!       real(AER_PR) :: fracactn(nmodes)     !< activating fraction of number conc. for each mode [1]
         real(AER_PR) :: nact(nmodes)         !< activating number concentration for each mode [#/m^3]
         real(AER_PR) :: bibar(nmodes)        ! hygroscopicity parameter for each mode [1]
-        real(AER_PR) :: eta(nmodes)
-        real(AER_PR) :: xlogsigm(nmodes)
-        real(AER_PR) :: sm(nmodes)
   
         ! local variables. 
   
@@ -525,20 +472,19 @@ module moist_subroutines_aer_activation
         !--------------------------------------------------------------------------------------------------------------
         ! calculate the droplet activation parameters for each mode. 
         !--------------------------------------------------------------------------------------------------------------
-        call ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact,ac,fracactn,eta,xlogsigm,sm)
+        call ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
   
     end subroutine GetActFrac
 
-    subroutine ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact,ac,fracactn,eta,xlogsigm,sm)
-!$acc routine seq
+    subroutine ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
 
         IMPLICIT NONE
-    
+  
         ! Arguments.
         
         integer :: nmodes            !< number of modes [1]      
         real(AER_PR) :: xnap(nmodes)      !< number concentration for each mode [#/m^3]
-    !     real(AER_PR) :: xmap(nmodes)      !< mass   concentration for each mode [ug/m^3]
+  !     real(AER_PR) :: xmap(nmodes)      !< mass   concentration for each mode [ug/m^3]
         real(AER_PR) :: rg(nmodes)        !< geometric mean radius for each mode [um]
         real(AER_PR) :: sigmag(nmodes)    !< geometric standard deviation for each mode [um]
         real(AER_PR) :: bibar(nmodes)     !< hygroscopicity parameter for each mode [1]
@@ -548,14 +494,14 @@ module moist_subroutines_aer_activation
         real(AER_PR) :: ac(nmodes)        !< minimum dry radius for activation for each mode [um]
         real(AER_PR) :: fracactn(nmodes)  !< activating fraction of number conc. for each mode [1]
         real(AER_PR) :: nact(nmodes)      !< activating number concentration for each mode [#/m^3]
-    
+  
         ! parameters.
         
         real(AER_PR), parameter :: pi            = 3.141592653589793d+00
         real(AER_PR), parameter :: twopi         = 2.0d+00 * pi
         real(AER_PR), parameter :: sqrt2         = 1.414213562d+00
         real(AER_PR), parameter :: threesqrt2by2 = 1.5d+00 * sqrt2
-    
+  
         real(AER_PR), parameter :: avgnum   = 6.0221367d+23       ! [1/mol]
         real(AER_PR), parameter :: rgasjmol = 8.31451d+00         ! [j/mol/k]
         real(AER_PR), parameter :: wmolmass = 18.01528d-03        ! molar mass of h2o     [kg/mol]
@@ -580,9 +526,9 @@ module moist_subroutines_aer_activation
         real(AER_PR), parameter :: deltat   = 2.160d-07           ! thermal jump length [m]  
         real(AER_PR), parameter :: alphac   = 1.000d+00           ! condensation mass accommodation coefficient [1]  
         real(AER_PR), parameter :: alphat   = 0.960d+00           ! thermal accommodation coefficient [1]  
-    
+  
         ! local variables. 
-    
+  
         integer            :: i                              ! loop counter 
         real(AER_PR)            :: dv                             ! diffusion coefficient for water [m^2/s] 
         real(AER_PR)            :: dvprime                        ! modified diffusion coefficient for water [m^2/s] 
@@ -606,16 +552,16 @@ module moist_subroutines_aer_activation
         real(AER_PR)            :: u                              ! argument to error function [1]
         real(AER_PR)            :: erf                            ! error function [1], but not declared in an f90 module 
         real(AER_PR)            :: smax                           ! maximum supersaturation [1]
-    
+  
         real(AER_PR)            :: aux1,aux2                           ! aux
-    !----------------------------------------------------------------------------------------------------------------------
-    !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
-    !     values close to those given in a-z et al. 1998 figure 5. 
-    !----------------------------------------------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------------------
+  !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
+  !     values close to those given in a-z et al. 1998 figure 5. 
+  !----------------------------------------------------------------------------------------------------------------------
         rdrp = 0.105d-06   ! [m] tuned to approximate the results in figures 1-5 in a-z et al. 1998.  
-    !----------------------------------------------------------------------------------------------------------------------
-    !     these variables are common to all modes and need only be computed once. 
-    !----------------------------------------------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------------------
+  !     these variables are common to all modes and need only be computed once. 
+  !----------------------------------------------------------------------------------------------------------------------
         dv = dijh2o0*(p0dij/ptot)*(tkelvin/t0dij)**1.94d+00                 ! [m^2/s] (p&k,2nd ed., p.503)
         surten = 76.10d-03 - 0.155d-03 * (tkelvin-273.15d+00)               ! [j/m^2] 
         wpe = exp( 77.34491296d+00 - 7235.424651d+00/tkelvin - 8.2d+00*log(tkelvin) + tkelvin*5.7113d-03 )  ! [pa] 
@@ -630,54 +576,54 @@ module moist_subroutines_aer_activation
         a = (2.0d+00*surten*wmolmass)/(denh2o*rgasjmol*tkelvin)                                 ! [m] 
         alpha = (gravity/(rgasjmol*tkelvin))*((wmolmass*heatvap)/(cpair*tkelvin) - amolmass)    ! [1/m] 
         gamma = (rgasjmol*tkelvin)/(wpe*wmolmass) &
-                + (wmolmass*heatvap*heatvap)/(cpair*ptot*amolmass*tkelvin)                        ! [m^3/kg]
+              + (wmolmass*heatvap*heatvap)/(cpair*ptot*amolmass*tkelvin)                        ! [m^3/kg]
         dum = sqrt(alpha*wupdraft/g)                  ! [1/m] 
         zeta = 2.d+00*a*dum/3.d+00                    ! [1] 
-    !----------------------------------------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------------
         ! write(1,'(a27,4d15.5)')'surten,wpe,a            =',surten,wpe,a
         ! write(1,'(a27,4d15.5)')'xka,xkaprime,dv,dvprime =',xka,xkaprime,dv,dvprime
         ! write(1,'(a27,4d15.5)')'alpha,gamma,g, zeta     =',alpha,gamma,g,zeta
-    !----------------------------------------------------------------------------------------------------------------------
-    !     these variables must be computed for each mode. 
-    !----------------------------------------------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------------------
+  !     these variables must be computed for each mode. 
+  !----------------------------------------------------------------------------------------------------------------------
         xlogsigm(:) = log(sigmag(:))                                                    ! [1] 
         smax = 0.0d+00                                                                  ! [1]
         
         do i=1, nmodes
-        
-            sm(i) = ( 2.0d+00/sqrt(bibar(i)) ) * ( a/(3.0*rg(i)) )**1.5d+00               ! [1] 
-            eta(i) = dum**3 / (twopi*denh2o*gamma*xnap(i))                                ! [1] 
-    
-            !--------------------------------------------------------------------------------------------------------------
-            ! write(1,'(a27,i4,4d15.5)')'i,eta(i),sm(i) =',i,eta(i),sm(i)
-            !--------------------------------------------------------------------------------------------------------------
-            f1 = 0.5d+00 * exp(2.50d+00 * xlogsigm(i)**2)                                 ! [1] 
-            f2 = 1.0d+00 +     0.25d+00 * xlogsigm(i)                                     ! [1] 
-            smax = smax + (   f1*(  zeta  / eta(i)              )**1.50d+00 &
-                            + f2*(sm(i)**2/(eta(i)+3.0d+00*zeta))**0.75d+00 ) / sm(i)**2  ! [1] - eq. (6)
+      
+          sm(i) = ( 2.0d+00/sqrt(bibar(i)) ) * ( a/(3.0*rg(i)) )**1.5d+00               ! [1] 
+          eta(i) = dum**3 / (twopi*denh2o*gamma*xnap(i))                                ! [1] 
+  
+          !--------------------------------------------------------------------------------------------------------------
+          ! write(1,'(a27,i4,4d15.5)')'i,eta(i),sm(i) =',i,eta(i),sm(i)
+          !--------------------------------------------------------------------------------------------------------------
+          f1 = 0.5d+00 * exp(2.50d+00 * xlogsigm(i)**2)                                 ! [1] 
+          f2 = 1.0d+00 +     0.25d+00 * xlogsigm(i)                                     ! [1] 
+          smax = smax + (   f1*(  zeta  / eta(i)              )**1.50d+00 &
+                          + f2*(sm(i)**2/(eta(i)+3.0d+00*zeta))**0.75d+00 ) / sm(i)**2  ! [1] - eq. (6)
         enddo 
         smax = 1.0d+00 / sqrt(smax)                                                     ! [1]
         
         
         !aux1=0.0D0; aux2=0.0D0
         do i=1, nmodes
-    
-            ac(i)       = rg(i) * ( sm(i) / smax )**0.66666666666666667d+00               ! [um]
-    
-            u           = log(ac(i)/rg(i)) / ( sqrt2 * xlogsigm(i) )                      ! [1]
-            fracactn(i) = 0.5d+00 * (1.0d+00 - erf(u))                                    ! [1]
-            nact(i)     = fracactn(i) * xnap(i)                                           ! [#/m^3]
-            !--------------------------------------------------------------------------------------------------------------
-            !aux1=aux1+ xnap(i); aux2=aux2+ nact(i) 
-            
-            !if(fracactn(i) .gt. 0.9999999d+00 ) then
-            !   write(*,*)i,ac(i),u,fracactn(i),xnap(i)
-            !  print*,' xxx',i,ac(i),u,fracactn(i),xnap(i)
-            ! stop
-            ! endif
-            !--------------------------------------------------------------------------------------------------------------
+  
+          ac(i)       = rg(i) * ( sm(i) / smax )**0.66666666666666667d+00               ! [um]
+  
+          u           = log(ac(i)/rg(i)) / ( sqrt2 * xlogsigm(i) )                      ! [1]
+          fracactn(i) = 0.5d+00 * (1.0d+00 - erf(u))                                    ! [1]
+          nact(i)     = fracactn(i) * xnap(i)                                           ! [#/m^3]
+          !--------------------------------------------------------------------------------------------------------------
+          !aux1=aux1+ xnap(i); aux2=aux2+ nact(i) 
+          
+          !if(fracactn(i) .gt. 0.9999999d+00 ) then
+          !   write(*,*)i,ac(i),u,fracactn(i),xnap(i)
+          !  print*,' xxx',i,ac(i),u,fracactn(i),xnap(i)
+          ! stop
+          ! endif
+          !--------------------------------------------------------------------------------------------------------------
         enddo 
-    
+  
         return
     end subroutine ActFrac_Mat
 end module
