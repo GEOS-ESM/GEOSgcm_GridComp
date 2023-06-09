@@ -31,7 +31,7 @@ contains
 SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
               zlo3,zw3,pw3,rhoe3,tke3,nup,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
-              ust2,wthl2,wqt2,frland,pblh2, &
+              wthl2,wqt2,frland,eis,pblh2, &
 !              mfsrcthl, mfsrcqt, mfw, mfarea, &
             ! outputs - variables needed for solver
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
@@ -84,7 +84,8 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3,TKE3
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
-       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
+!       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
+       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: WTHL2,WQT2,PBLH2,FRLAND,PHIS,EIS
        REAL, INTENT(IN) :: DT
        INTEGER :: NUP2
 
@@ -243,7 +244,7 @@ DO IH=ITS,ITE ! loop over the horizontal dimension
 
 wthl=wthl2(IH)/mapl_cp
 wqt=wqt2(IH)
-ust=ust2(IH)
+!ust=ust2(IH)
 pblh=pblh2(IH)
 
 pblh=max(pblh,pblhmin)
@@ -291,7 +292,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
        end do
        lts = lts - thv3(IH,kte)
 !       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
-       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(lts-19.))) )
+       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-19.))) )
+!       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(EIS(IH)-7.))) )
     end if 
 !else if (params%ET == 3 ) then
 !    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
@@ -863,16 +865,14 @@ end if
 
 ! buoyancy is defined on full levels
   DO k=kts,kte
-       buoyf(IH,K)=s_buoyf(KTE+KTS-K)
-
+      buoyf(IH,K)=s_buoyf(KTE+KTS-K)    ! can be used in SHOC
       mfw2(IH,K)=0.5*(s_aw2(KTE+KTS-K-1)+s_aw2(KTE+KTS-K))
       mfw3(IH,K)=0.5*(s_aw3(KTE+KTS-K-1)+s_aw3(KTE+KTS-K))
-      mfhl2(IH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))
-      mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))
+      mfhl2(IH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
+      mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       mfqt3(IH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
       mfhl3(IH,K)=0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
       mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
-
   ENDDO
 
  END IF   !  IF ( wthv > 0.0 )

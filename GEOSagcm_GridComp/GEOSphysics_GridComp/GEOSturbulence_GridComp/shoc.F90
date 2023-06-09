@@ -476,8 +476,8 @@ contains
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
 
           tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
-          tkh(i,j,k) = wrk1 * (isotropy(i,j,k) + isotropy(i,j,k-1))     &  
-                            * 2.*(tke_env)             ! remove MF TKE
+          tkh(i,j,k) = wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
+                       * 2.*(tke_env)             ! remove MF TKE
 !                            * (tke(i,j,k)+tke(i,j,k-1)) ! use total TKE
 
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
@@ -779,7 +779,8 @@ contains
          do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
 !            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
 !            where (brunt(:,:,kk+1).lt.1e-4) 
-              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
+!              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
+              brunt_smooth(:,:,kk) = 0.5*(brunt(:,:,kk)+brunt(:,:,kk+1))   ! smooth up only
 !            end where
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
          end do
@@ -883,9 +884,9 @@ contains
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
                  end if
 
-                 ! Kludgey adjustment to increase StCu
-                 if (zl(i,j,k).lt.1200. .and. cld_sgs(i,j,k).gt.0.4 .and. brunt(i,j,k+1).gt.2e-4) then
-                    smixt3(i,j,k) = 0.5*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
+                 ! Kludgey adjustment to increase StCu by reducing L3 at cloud top
+                 if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. (cld_sgs(i,j,k).gt.0.2.or.cld_sgs(i,j,k-1).gt.0.2) .and. brunt(i,j,k+1).gt.2e-4) then
+                    smixt3(i,j,k) = (0.25+(1-0.25)*(zl(i,j,k)-200.)/1500.)*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
                  else
                     smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
                  end if
@@ -1210,6 +1211,7 @@ contains
                              MFWQT,    &  ! in
                              MFWHL,    &  ! in
                              MFHLQT,   &  ! in
+                             WQT_DC,   &  ! in
                              qt2,      &  ! inout
                              qt3,      &  ! inout
                              hl2,      &  ! out
@@ -1254,7 +1256,8 @@ contains
     real,    intent(in   ) :: MFW3 (IM,JM,LM)  ! 
     real,    intent(in   ) :: MFWQT(IM,JM,0:LM)  ! 
     real,    intent(in   ) :: MFWHL(IM,JM,0:LM)  ! 
-    real,    intent(in   ) :: MFHLQT(IM,JM,LM) ! 
+    real,    intent(in   ) :: MFHLQT(IM,JM,LM) !
+    real,    intent(in   ) :: WQT_DC(IM,JM,0:LM)  ! 
     real,    intent(inout) :: qt2  (IM,JM,LM)  ! total water variance
     real,    intent(inout) :: qt3  (IM,JM,LM)  ! third moment of total water
     real,    intent(  out) :: hl2  (IM,JM,LM)  ! liquid water static energy variance
@@ -1333,7 +1336,7 @@ contains
 
         ! Second moment of total water mixing ratio.  Eq 3 in BK13
         qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
-        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k))*qtgrad(:,:,k)  ! gradient production
+        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
         qt2_edge_nomf(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k))*qtgrad(:,:,k)  ! gradient production
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13

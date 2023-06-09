@@ -590,6 +590,24 @@ contains
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'WQT_DC',                                      &
+       LONG_NAME  = 'Total_water_flux_from_deep_convection',       &
+       UNITS      = 'kg kg-1 m s-1',                               &
+       DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'EIS',                                         &
+       LONG_NAME  = 'Estimated_inversion_strength',                &
+       UNITS      = 'K',                                           &
+       DEFAULT    = 0.0,                                           &
+       DIMS       = MAPL_DimsHorzOnly,                             &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
 #ifdef USE_SCM_SURF
     call MAPL_AddImportSpec(GC,                                              &
        SHORT_NAME = 'SHOBS',                                                 &
@@ -2727,7 +2745,7 @@ contains
 
 ! SHOC-related variables
     integer                             :: DO_SHOC
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
@@ -2798,6 +2816,8 @@ contains
     call MAPL_GetPointer(IMPORT, EVAP, 'EVAP',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WQT_DC, 'WQT_DC',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PHIS,   'PHIS',    RC=STATUS)
     VERIFY_(STATUS)
@@ -3031,7 +3051,7 @@ contains
      type (ESMF_FieldBundle)             :: TR
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
-     real, dimension(:,:  ), pointer     :: AREA, VARFLT
+     real, dimension(:,:  ), pointer     :: AREA, VARFLT, EIS
      real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QCTOT
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
@@ -3261,6 +3281,7 @@ contains
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,   EIS,     'EIS', RC=STATUS); VERIFY_(STATUS)
 
      if (LM .eq. 72) then
        call MAPL_GetResource (MAPL, JASON_TRB,                      "JASON_TRB:",    default=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
@@ -3905,8 +3926,8 @@ contains
       call RUN_EDMF(1, IM*JM, 1, LM, DT,      & ! in
                PHIS, Z, ZL0, PLE, RHOE, TKESHOC,       & ! in
                NUMUP, U, V, T, THL, THV, QT,  & ! in
-               Q, QL, QI, USTAR,              & ! in
-               SH, EVAP, frland, zpbl,        & ! in
+               Q, QL, QI,                     & ! in
+               SH, EVAP, frland, EIS, zpbl,   & ! in
 !               MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP imports
                ae3, aw3, aws3, awqv3,         & ! for trisolver 
                awql3, awqi3, awu3, awv3,      & ! for trisolver
@@ -4690,6 +4711,7 @@ contains
                           MFWQT,          &
                           MFWSL,          &
                           MFSLQT,         &
+                          WQT_DC,         &
                           qt2,            &  ! inout
                           qt3,            &
                           sl2,            &  ! out
@@ -4801,22 +4823,6 @@ contains
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-!      if (associated(TKE)) then         ! Reminder: TKE is on model edges
-!        if (DO_SHOC /= 0) then
-!          TKE(:,:,1:LM-1) = 0.5*(TKESHOC(:,:,1:LM-1)+TKESHOC(:,:,2:LM))
-!          TKE(:,:,LM)     = 0.5*TKESHOC(:,:,LM)
-!          TKE(:,:,0)      = 0.
-!        else
-!          TKE = MAPL_UNDEF
-!          do L = 1,LM-1
-!            TKE(:,:,L) = ( LAMBDADISS * &
-!            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
- !           (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
- !           (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
-!            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
-!          enddo
-!        end if
-!      end if ! TKE
 
       ! RI local diagnostic for pbl height thresh 0.
       if (associated(ZPBLRI)) then

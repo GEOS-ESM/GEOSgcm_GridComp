@@ -312,7 +312,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     ! Exports
     real, pointer, dimension(:,:,:) :: CNV_MF0, ENTLAM
-    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD
+    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
     real, pointer, dimension(:,:,:) :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
     real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
@@ -472,6 +472,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     ! Initialize tendencies
     call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -510,7 +511,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     IF (USE_GF2020==1) THEN
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
-         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
+         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                          &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA, KH           &
                                  ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT, ENTLAM     &
@@ -523,7 +524,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
                                  ,MUPDP,MUPSH,MUPMD,MDNDP                           &
-                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
+                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, PRFIL                                      &

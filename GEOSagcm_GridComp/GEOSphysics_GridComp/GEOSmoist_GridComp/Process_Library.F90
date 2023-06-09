@@ -1303,7 +1303,7 @@ module GEOSmoist_Process_Library
    real, parameter :: epsv=MAPL_H2OMW/MAPL_AIRMW
 
    real, parameter :: use_aterm_memory = 1.
-   real, parameter :: tauskew = 3600. 
+   real, parameter :: tauskew = 2400. 
 
 ! define conserved variables
    gamaz = gocp * zl
@@ -1353,7 +1353,7 @@ module GEOSmoist_Process_Library
 
           if (mffrc>=1e-3) then                ! if active updraft this timestep
             if (aterm<0.5) then                ! if distribution is skewed (recent updrafts)
-              aterm = max(mffrc,aterm*max(1.-DT/tauskew,0.0))
+              aterm = (aterm+mffrc)/(1.+DT/tauskew) !max(mffrc,aterm*max(1.-DT/tauskew,0.0))
             else                               ! if distribution unskewed
               aterm = mffrc
             end if

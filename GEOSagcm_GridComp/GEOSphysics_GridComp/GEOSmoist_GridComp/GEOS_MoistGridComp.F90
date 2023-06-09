@@ -869,6 +869,15 @@ contains
 #endif
 
     call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'WQT_DC',                                                &
+       LONG_NAME  = 'Total_water_flux_from_deep_convection',                 &
+       UNITS      = 'kg kg-1 m s-1',                                         &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &
        LONG_NAME  = 'Buoyancy_flux_for_SHOC',                                &
        UNITS      = '1',                                                     &
@@ -876,7 +885,6 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
-
 
     call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WQL',                                                   &
