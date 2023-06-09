@@ -3336,19 +3336,19 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,    trim(COMP_NAME)//"_SHC_PRNUM:",        default=1.0,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-6, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,    trim(COMP_NAME)//"_SHC_PRNUM:",        default=-1.0, RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-7, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",         default=0.4,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.15, RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=0.3,  RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.1,  RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=1.0,  RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:",    default=0.,   RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=1,    RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=1.5,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=2.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=1.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=3,    RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=4.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=1.0,  RC=STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=2.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%KRADFAC,  trim(COMP_NAME)//"_SHC_KRADFAC:",      default=0.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
      end if
@@ -3359,7 +3359,7 @@ contains
      call MAPL_GetResource (MAPL, QT2TUNE,   'QT2TUNE:',    DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE, 'SLQT2TUNE:',  DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, QT2SCALE,  'QT2SCALE:',   DEFAULT = 2000.0, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 3600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 2400.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,  'DOCANUTO:',   DEFAULT = 0, RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
@@ -4146,7 +4146,7 @@ contains
 !             tmp3de = RI*(1.+6.*RI)
 !             PRANDTLSHOC = (0.9+4.*tmp3de*SQRT(1.-SHOCPARAMS%PRNUM*8.*tmp3de/3.))/(1.+4.*tmp3de)
              ! Han and Bretherton 2019
-             PRANDTLSHOC = 0.9+2.1*MIN(10.,RI)
+             PRANDTLSHOC = 0.9+2.1*MIN(10.,RI) ! limit RI to avoid instability
            end where
         else
            PRANDTLSHOC = SHOCPARAMS%PRNUM

@@ -476,10 +476,14 @@ contains
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
 
           tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
-          tkh(i,j,k) = wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
+          if (brunt(i,j,k).gt.2e-4) then
+            tkh(i,j,k) = wrk1*min(isotropy(i,j,k),isotropy(i,j,k-1))    &
+                       * 4.*(tke_env)             ! remove MF TKE
+          else
+            tkh(i,j,k) = wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
                        * 2.*(tke_env)             ! remove MF TKE
 !                            * (tke(i,j,k)+tke(i,j,k-1)) ! use total TKE
-
+          end if
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
         end do ! i
       end do ! j
@@ -779,8 +783,8 @@ contains
          do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
 !            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
 !            where (brunt(:,:,kk+1).lt.1e-4) 
-!              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
-              brunt_smooth(:,:,kk) = 0.5*(brunt(:,:,kk)+brunt(:,:,kk+1))   ! smooth up only
+              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
+!              brunt_smooth(:,:,kk) = 0.5*(brunt(:,:,kk)+brunt(:,:,kk+1))   ! smooth up only
 !            end where
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
          end do
