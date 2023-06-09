@@ -176,16 +176,13 @@ module test_aer_activation_subroutine
 
 !$acc data copy(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
 !$acc           AeroProps%fsoot,AeroProps%forg) &
-!$acc      copyin(Q,T,PLO,PLE,ZL0,ZLE0,QLCN,QICN,QLLS,QILS,SH,EVAP,KPBL,OMEGA,FRLAND) &
+!$acc      copyin(Q,T,PLO,PLE,ZL0,ZLE0,QLCN,QICN,QLLS,QILS,SH,EVAP,KPBL,TKE,TMP3D,FRLAND) &
 !$acc      copyout(NACTL, NACTI, NWFA)
 
         call cpu_time(tStart)
-        ! call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-        !                         SH, EVAP, KPBL, OMEGA, FRLAND, USE_AERO_BUFFER, &
-        !                         AeroProps, AERO, NACTL, NACTI, NWFA, dirName, rank_str)
-        call Aer_Activation(IM,JM,LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                                SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                                AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6,dirName, rank_str)
+        call Aer_Activation(IM, JM, LM, Q, T, PLO, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                            SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
+                            AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6,dirName, rank_str)
         call cpu_time(tEnd)
 
 !$acc end data

@@ -29,6 +29,7 @@ program test_moist_subroutines
     !     LM = 72
 
     ! elseif (dirName(1:11) == './c180_data') then
+    ! Note : Currently the standalone assumes C180 test data as input
         IM = 180
         JM = 180
         LM = 72

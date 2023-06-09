@@ -52,9 +52,6 @@ module moist_subroutines_aer_activation
 
     contains
 
-    ! SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
-    !     sh, evap, kpbl, omega, FRLAND, USE_AERO_BUFFER, &
-    !     AeroProps, aero_aci, NACTL, NACTI, NWFA, dirName, rank_str)
     SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
             sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
             AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN,dirName, rank_str)
@@ -293,11 +290,11 @@ module moist_subroutines_aer_activation
 
 !$acc data present(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
 !$acc              AeroProps%fsoot,AeroProps%forg,&
-!$acc              NWFA,ple,t,q,sh,evap,zle,plo,qicn,qils,qlcn,qlls,omega,NACTL,NACTI,FRLAND) &
-!$acc      create(zws,naer_cb) &
+!$acc              NWFA,ple,t,q,sh,evap,zle,plo,qicn,qils,qlcn,qlls,tke, vvel,NACTL,NACTI,FRLAND) &
 !$acc      copyin(kpbli,buffer)
 
                 if (USE_AERO_BUFFER) then
+!$acc parallel loop gang vector collapse(4)
                     do k = 1, LM
                         do j = 1, JM
                             do i = 1, IM
@@ -315,15 +312,16 @@ module moist_subroutines_aer_activation
                             end do
                         end do
                     end do
-   
+!$acc end parallel
                     deallocate(buffer)
                 end if
                  
-                
+!$acc parallel loop gang vector collapse(3) private(nfaux)
                 do k = 1, LM
                     do j = 1, JM
                         do i = 1, IM
                         nfaux =  0.0
+!$acc loop seq
                         do n = 1, n_modes
                             if (AeroProps(i,j,k)%kap(n) .gt. 0.4) then 
                                     nfaux =  nfaux + AeroProps(i,j,k)%num(n)
@@ -333,7 +331,7 @@ module moist_subroutines_aer_activation
                         end do
                     end do 
                 end do 
-                
+!$acc end parallel
    
                 deallocate(aero_aci_modes)
    
@@ -342,96 +340,89 @@ module moist_subroutines_aer_activation
                 WC       = 0.
                 BB       = 0.
                 RAUX     = 0.
-                    
-                !--- determing aerosol number concentration at cloud base
-                DO j=1,JM
-                Do i=1,IM 
-                        k            = kpbli(i,j)
-                        tk           = T(i,j,k)              ! K
-                        press        = plo(i,j,k)            ! Pa     
-                        air_den      = press*28.8e-3/8.31/tk ! kg/m3
-                ENDDO;ENDDO
-       
-            DO k=LM,1,-1
-                NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-                NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
-                DO j=1,JM
-                    DO i=1,IM
-                    
-                        tk                 = T(i,j,k)                         ! K
-                        press              = plo(i,j,k)                       ! Pa   
-                        air_den            = press*28.8e-3/8.31/tk            ! kg/m3
-                        qi                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
-                        ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
-                        wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
+
+!$acc parallel loop gang vector collapse(3) &
+!$acc          private(tk, press, air_den, qi, ql, wupdraft, numbinit)
+                DO k=LM,1,-1
+                    DO j=1,JM
+                        DO i=1,IM
+                            NACTL(i,j,k) = NN_LAND*FRLAND(i,j) + NN_OCEAN*(1.0-FRLAND(i,j))
+                            NACTI(i,j,k) = NN_LAND*FRLAND(i,j) + NN_OCEAN*(1.0-FRLAND(i,j))
+                        
+                            tk                 = T(i,j,k)                         ! K
+                            press              = plo(i,j,k)                       ! Pa   
+                            air_den            = press*28.8e-3/8.31/tk            ! kg/m3
+                            qi                 = (qicn(i,j,k)+qils(i,j,k))*1.e+3  ! g/kg
+                            ql                 = (qlcn(i,j,k)+qlls(i,j,k))*1.e+3  ! g/kg
+                            wupdraft           = vvel(i,j,k) + SQRT(tke(i,j,k))
+            
+                            ! Liquid Clouds
+                            IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
+                                (wupdraft > 0.1 .and. wupdraft < 100.) ) then
+                
+                                ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
+                                rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
+                                sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
+                                bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
+                
+                                call GetActFrac(           n_modes    &
+                                                ,      ni(1:n_modes)   &
+                                                ,      rg(1:n_modes)   &
+                                                ,    sig0(1:n_modes)   &
+                                                ,      tk              &
+                                                ,   press              &
+                                                ,wupdraft              &
+                                                ,    nact(1:n_modes)   &
+                                                ,   bibar(1:n_modes)   &
+                                                )
         
-                        ! Liquid Clouds
-                        IF( (tk >= MAPL_TICE-40.0) .and. (plo(i,j,k) > 10000.0) .and. &
-                            (wupdraft > 0.1 .and. wupdraft < 100.) ) then
-            
-                            ni   (1:n_modes)    =   max(AeroProps(i,j,k)%num(1:n_modes)*air_den,  zero_par)  ! unit: [m-3]
-                            rg   (1:n_modes)    =   max(AeroProps(i,j,k)%dpg(1:n_modes)*0.5*1.e6, zero_par)  ! unit: [um]
-                            sig0 (1:n_modes)    =       AeroProps(i,j,k)%sig(1:n_modes)                      ! unit: [um]
-                            bibar(1:n_modes)    =   max(AeroProps(i,j,k)%kap(1:n_modes),          zero_par)                 
-            
-                            call GetActFrac(           n_modes    &
-                                            ,      ni(1:n_modes)   &
-                                            ,      rg(1:n_modes)   &
-                                            ,    sig0(1:n_modes)   &
-                                            ,      tk              &
-                                            ,   press              &
-                                            ,wupdraft              &
-                                            ,    nact(1:n_modes)   &
-                                            ,   bibar(1:n_modes)   &
-                                            )
-    
-                            numbinit = 0.
-                            NACTL(i,j,k) = 0.
-                            DO n=1,n_modes
-                                numbinit = numbinit + AeroProps(i,j,k)%num(n)*air_den
-                                NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
-                            ENDDO
-                            NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
-    
-                        ENDIF ! Liquid Clouds
-    
-                        ! Ice Clouds
-                        IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
-                            numbinit = 0.
-                            DO n=1,n_modes
-                                if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
-                                numbinit = numbinit + AeroProps(i,j,k)%num(n)
-                            ENDDO
-                            numbinit = numbinit * air_den ! #/m3
-                            ! Number of activated IN following deMott (2010) [#/m3]
-                            NACTI(i,j,k) = ai*((MAPL_TICE-tk)**bi) * numbinit**(ci*(MAPL_TICE-tk)+di) !#/m3
-                        ENDIF
-    
-                        !-- apply limits for NACTL/NACTI
-                        IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
-                        IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
-                        IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
-                        IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
-    
-            ENDDO;ENDDO;ENDDO
+                                numbinit = 0.
+                                NACTL(i,j,k) = 0.
+                                DO n=1,n_modes
+                                    numbinit = numbinit + AeroProps(i,j,k)%num(n)*air_den
+                                    NACTL(i,j,k)= NACTL(i,j,k) + nact(n) !#/m3
+                                ENDDO
+                                NACTL(i,j,k) = MIN(NACTL(i,j,k),0.99*numbinit)
+        
+                            ENDIF ! Liquid Clouds
+        
+                            ! Ice Clouds
+                            IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
+                                numbinit = 0.
+                                DO n=1,n_modes
+                                    if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
+                                    numbinit = numbinit + AeroProps(i,j,k)%num(n)
+                                ENDDO
+                                numbinit = numbinit * air_den ! #/m3
+                                ! Number of activated IN following deMott (2010) [#/m3]
+                                NACTI(i,j,k) = ai*((MAPL_TICE-tk)**bi) * numbinit**(ci*(MAPL_TICE-tk)+di) !#/m3
+                            ENDIF
+        
+                            !-- apply limits for NACTL/NACTI
+                            IF(NACTL(i,j,k) < NN_MIN) NACTL(i,j,k) = NN_MIN
+                            IF(NACTL(i,j,k) > NN_MAX) NACTL(i,j,k) = NN_MAX
+                            IF(NACTI(i,j,k) < NN_MIN) NACTI(i,j,k) = NN_MIN
+                            IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
+        
+                ENDDO;ENDDO;ENDDO
    
             deallocate(   rg)
             deallocate(   ni)
             deallocate(bibar)
             deallocate( nact)
-   
+!$acc end data
         end if ! n_modes > 0
          
         else ! USE_AEROSOL_NN
-   
+!$acc kernels
             do k = 1, LM
                 NACTL(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
                 NACTI(:,:,k) = NN_LAND*FRLAND + NN_OCEAN*(1.0-FRLAND)
             end do
-   
+!$acc end kernels
         end if
 
-!$acc end data
+
 
                 call cpu_time(tEnd)
                 time = tEnd - tStart
