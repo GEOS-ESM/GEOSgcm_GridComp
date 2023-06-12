@@ -439,7 +439,7 @@ module moist_subroutines_aer_activation
         ,wupdraft                     & !wupdraft             (i,j,k)                     & 
         ,nact                         & !nact             (i,j,k,1:nmodes)             &
         ,bibar)
-        
+!$acc routine seq    
         IMPLICIT NONE
   
         ! arguments.
@@ -468,7 +468,7 @@ module moist_subroutines_aer_activation
     end subroutine GetActFrac
 
     subroutine ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
-
+!$acc routine seq
         IMPLICIT NONE
   
         ! Arguments.
@@ -482,8 +482,8 @@ module moist_subroutines_aer_activation
         real(AER_PR) :: tkelvin           !< absolute temperature [k]
         real(AER_PR) :: ptot              !< ambient pressure [pa]
         real(AER_PR) :: wupdraft          !< updraft velocity [m/s]
-        real(AER_PR) :: ac(nmodes)        !< minimum dry radius for activation for each mode [um]
-        real(AER_PR) :: fracactn(nmodes)  !< activating fraction of number conc. for each mode [1]
+        ! real(AER_PR) :: ac(nmodes)        !< minimum dry radius for activation for each mode [um]
+        ! real(AER_PR) :: fracactn(nmodes)  !< activating fraction of number conc. for each mode [1]
         real(AER_PR) :: nact(nmodes)      !< activating number concentration for each mode [#/m^3]
   
         ! parameters.
@@ -528,9 +528,9 @@ module moist_subroutines_aer_activation
         real(AER_PR)            :: surten                         ! surface tension of air-water interface [j/m^2] 
         real(AER_PR)            :: xka                            ! thermal conductivity of air [j/m/s/k]  
         real(AER_PR)            :: xkaprime                       ! modified thermal conductivity of air [j/m/s/k]  
-        real(AER_PR)            :: eta(nmodes)                    ! model parameter [1]  
+        real(AER_PR)            :: eta                            ! model parameter [1]  
         real(AER_PR)            :: zeta                           ! model parameter [1]  
-        real(AER_PR)            :: xlogsigm(nmodes)               ! ln(sigmag) [1]   
+        ! real(AER_PR)            :: xlogsigm(nmodes)               ! ln(sigmag) [1]   
         real(AER_PR)            :: a                              ! [m]
         real(AER_PR)            :: g                              ! [m^2/s]   
         real(AER_PR)            :: rdrp                           ! [m]   
@@ -538,13 +538,15 @@ module moist_subroutines_aer_activation
         real(AER_PR)            :: f2                             ! [1]
         real(AER_PR)            :: alpha                          ! [1/m]
         real(AER_PR)            :: gamma                          ! [m^3/kg]   
-        real(AER_PR)            :: sm(nmodes)                     ! [1]   
+        real(AER_PR)            :: sm                             ! [1]   
         real(AER_PR)            :: dum                            ! [1/m]    
         real(AER_PR)            :: u                              ! argument to error function [1]
         real(AER_PR)            :: erf                            ! error function [1], but not declared in an f90 module 
         real(AER_PR)            :: smax                           ! maximum supersaturation [1]
   
-        real(AER_PR)            :: aux1,aux2                           ! aux
+        real(AER_PR)            :: aux1,aux2                      ! aux
+        real(AER_PR)            :: ac                             !< minimum dry radius for activation for each mode [um]
+        real(AER_PR)            :: fracactn                       !< activating fraction of number conc. for each mode [1]
   !----------------------------------------------------------------------------------------------------------------------
   !     rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
   !     values close to those given in a-z et al. 1998 figure 5. 
@@ -577,33 +579,33 @@ module moist_subroutines_aer_activation
   !----------------------------------------------------------------------------------------------------------------------
   !     these variables must be computed for each mode. 
   !----------------------------------------------------------------------------------------------------------------------
-        xlogsigm(:) = log(sigmag(:))                                                    ! [1] 
-        smax = 0.0d+00                                                                  ! [1]
+        ! xlogsigm(:) = log(sigmag(:))                                                   ! [1] 
+        smax = 0.0d+00                                                                   ! [1]
         
         do i=1, nmodes
       
-          sm(i) = ( 2.0d+00/sqrt(bibar(i)) ) * ( a/(3.0*rg(i)) )**1.5d+00               ! [1] 
-          eta(i) = dum**3 / (twopi*denh2o*gamma*xnap(i))                                ! [1] 
-  
-          !--------------------------------------------------------------------------------------------------------------
-          ! write(1,'(a27,i4,4d15.5)')'i,eta(i),sm(i) =',i,eta(i),sm(i)
-          !--------------------------------------------------------------------------------------------------------------
-          f1 = 0.5d+00 * exp(2.50d+00 * xlogsigm(i)**2)                                 ! [1] 
-          f2 = 1.0d+00 +     0.25d+00 * xlogsigm(i)                                     ! [1] 
-          smax = smax + (   f1*(  zeta  / eta(i)              )**1.50d+00 &
-                          + f2*(sm(i)**2/(eta(i)+3.0d+00*zeta))**0.75d+00 ) / sm(i)**2  ! [1] - eq. (6)
+            sm    = ( 2.0d+00/sqrt(bibar(i)) ) * ( a/(3.0*rg(i)) )**1.5d+00              ! [1] 
+            eta   = dum**3 / (twopi*denh2o*gamma*xnap(i))                                ! [1] 
+    
+            !--------------------------------------------------------------------------------------------------------------
+            ! write(1,'(a27,i4,4d15.5)')'i,eta(i),sm(i) =',i,eta(i),sm(i)
+            !--------------------------------------------------------------------------------------------------------------
+            f1 = 0.5d+00 * exp(2.50d+00 * log(sigmag(i))**2)                              ! [1] 
+            f2 = 1.0d+00 +     0.25d+00 * log(sigmag(i))                                  ! [1] 
+            smax = smax + (   f1*(  zeta  / eta                 )**1.50d+00 &
+                            + f2*(sm**2/(eta   +3.0d+00*zeta))**0.75d+00 ) / sm**2        ! [1] - eq. (6)
         enddo 
-        smax = 1.0d+00 / sqrt(smax)                                                     ! [1]
+        smax = 1.0d+00 / sqrt(smax)                                                       ! [1]
         
         
         !aux1=0.0D0; aux2=0.0D0
         do i=1, nmodes
-  
-          ac(i)       = rg(i) * ( sm(i) / smax )**0.66666666666666667d+00               ! [um]
-  
-          u           = log(ac(i)/rg(i)) / ( sqrt2 * xlogsigm(i) )                      ! [1]
-          fracactn(i) = 0.5d+00 * (1.0d+00 - erf(u))                                    ! [1]
-          nact(i)     = fracactn(i) * xnap(i)                                           ! [#/m^3]
+            sm    = ( 2.0d+00/sqrt(bibar(i)) ) * ( a/(3.0*rg(i)) )**1.5d+00               ! [1] 
+            ac          = rg(i) * ( sm / smax )**0.66666666666666667d+00               ! [um]
+    
+            u           = log(ac/rg(i)) / ( sqrt2 * log(sigmag(i)) )                      ! [1]
+            fracactn    = 0.5d+00 * (1.0d+00 - erf(u))                                    ! [1]
+            nact(i)     = fracactn * xnap(i)                                              ! [#/m^3]
           !--------------------------------------------------------------------------------------------------------------
           !aux1=aux1+ xnap(i); aux2=aux2+ nact(i) 
           
