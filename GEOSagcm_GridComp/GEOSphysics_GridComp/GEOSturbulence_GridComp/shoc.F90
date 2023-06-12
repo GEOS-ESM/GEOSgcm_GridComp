@@ -38,13 +38,13 @@ module shoc
                  omega_inv,                                      &  ! in       
                  tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
-                 wthv_mf_inv, prnum_inv, tke_mf,                 &  ! in
+                 wthv_mf_inv, tke_mf,                            &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
                  isotropy_inv,                                   &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
                  tkesbshear_inv,                                 &  ! out
                  smixt_inv, smixt1_inv,smixt2_inv,smixt3_inv,    &  ! out
-                 bruntmst_inv,                                   &  ! out
+                 bruntmst_inv, ri_inv, prnum_inv,                &  ! out
                  shocparams )
 
 
@@ -56,13 +56,13 @@ module shoc
                      kapa = rgas/cp,            &
                      gocp = ggr/cp,             &
                      rog = rgas*ggri,           &
-                     sqrt2 = sqrt(2.0),         &
-                     sqrtpii = 1.0/sqrt(pi+pi), &
-                     epsterm = rgas/rv,         &
-                     twoby3 = 2.0/3.0,          &
-                     onebeps = 1.0/epsterm,     &
-                     twoby15 = 2.0 / 15.0,      &
-                     onebrvcp= 1.0/(rv*cp),     &
+!                     sqrt2 = sqrt(2.0),         &
+!                     sqrtpii = 1.0/sqrt(pi+pi), &
+!                     epsterm = rgas/rv,         &
+!                     twoby3 = 2.0/3.0,          &
+!                     onebeps = 1.0/epsterm,     &
+!                     twoby15 = 2.0 / 15.0,      &
+!                     onebrvcp= 1.0/(rv*cp),     &
                      tkef1=0.5,                 &
                      tkef2=1.0-tkef1,           &
                      tkhmax=1000.0,             & 
@@ -97,7 +97,6 @@ module shoc
 !  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
-  real, intent(in   ) :: prnum_inv  (nx,ny,nzm) ! turbulent Prandtl number
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
 
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
@@ -110,6 +109,8 @@ module shoc
   real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
   real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
   real, dimension(:,:,:), pointer :: bruntmst_inv ! moist Brunt vaisala frequency
+  real, dimension(:,:,:), pointer :: ri_inv
+  real, dimension(:,:,:), pointer :: prnum_inv
 
 ! SHOC tunable parameters
   real :: lambda
@@ -130,19 +131,19 @@ module shoc
 ! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) 
 ! real, parameter :: Ces = Ce/0.7*3.0
 
-  real :: vonk, tscale
+  real :: tscale
   real, parameter :: w_tol_sqd = 4.0e-04   ! Min vlaue of second moment of w
   real, parameter :: w_thresh  = 0.0, thresh = 0.0
 
 ! These parameters are a tie-in with a microphysical scheme
 ! Double check their values for the Zhao-Carr scheme.
-  real, parameter :: tbgmin = 233.16    ! Minimum temperature for cloud water., K
-  real, parameter :: tbgmax = 273.16    ! Maximum temperature for cloud ice, K
-  real, parameter :: a_bg   = 1.0/(tbgmax-tbgmin)
+!  real, parameter :: tbgmin = 233.16    ! Minimum temperature for cloud water., K
+!  real, parameter :: tbgmax = 273.16    ! Maximum temperature for cloud ice, K
+!  real, parameter :: a_bg   = 1.0/(tbgmax-tbgmin)
 
 ! Parameters to tune the second order moments-  No tuning is performed currently
-  real :: thl2tune, qw2tune, qwthl2tune
-  real, parameter :: thl_tol  = 1.e-2, rt_tol = 1.e-4
+!  real :: thl2tune, qw2tune, qwthl2tune
+!  real, parameter :: thl_tol  = 1.e-2, rt_tol = 1.e-4
 
 ! Number iterations for TKE solution
   integer, parameter :: nitr=6
@@ -153,9 +154,10 @@ module shoc
   real zi      (nx,ny,nz)   ! height of the interface levels, m
   real adzl    (nx,ny,nzm)  ! layer thickness i.e. zi(k+1)-zi(k) - defined at levels
   real adzi    (nx,ny,nz)   ! level thickness i.e. zl(k)-zl(k-1) - defined at interface
- 
+  real ri      (nx,ny,nz)   ! Richardson number 
+
   real hl      (nx,ny,nzm)  ! liquid/ice water static energy , K
-  real hvl     (nx,ny,nzm)  ! liquid/ice water static energy , K
+!  real hvl     (nx,ny,nzm)  ! liquid/ice water static energy , K
   real qv      (nx,ny,nzm)  ! water vapor, kg/kg
   real qcl     (nx,ny,nzm)  ! liquid water  (condensate), kg/kg
   real qci     (nx,ny,nzm)  ! ice water  (condensate), kg/kg
@@ -174,7 +176,7 @@ module shoc
   real cld_sgs (nx,ny,nzm)
   real tke     (nx,ny,nzm)
   real tkh     (nx,ny,nzm)
-  real prnum   (nx,ny,nzm)
+  real prnum   (nx,ny,nz)
   real wthv_sec(nx,ny,nzm)
   real wthv_mf(nx,ny,nzm)
   real tkesbdiss(nx,ny,nzm)
@@ -203,19 +205,19 @@ module shoc
        tkes,      pval,     pkap,     thlsec,   qwsec,      &
        qwthlsec,  wqwsec,   wthlsec,  dum,      sm,         &
        prespot,   wrk,      wrk1,     wrk2,     wrk3,       & 
-       tkeavg,    dtqw,     dtqi,     tep,      qsp,        &
-       bruntmin
+       tkeavg,    dtqw,     dtqi
 
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
+
+  real, parameter :: bruntmin = 1e-7
+  real, parameter :: vonk = 0.4
 
 ! set parameter values
   lambda   = shocparams%LAMBDA              ! used in return-to-isotropy timescale
   Ck       = shocparams%CKVAL               ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
   Ce       = shocparams%CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
   Ces      = shocparams%CESFAC*Ce           ! Ce surface factor
-  vonk     = shocparams%VONK                ! Von Karman constant Moorthi - as in GFS
   tscale   = shocparams%TSCALE              ! time scale set based off of similarity results of BK13, s
-  bruntmin = shocparams%BRUNTMIN            ! minimum brunt vaisala freq used in length scale
 
 ! Map GEOS variables to those of SHOC
   do k=1,nz
@@ -233,7 +235,7 @@ module shoc
         kinv = nzm-k+1
         zl(i,j,kinv)       = phil_inv(i,j,k)-phii_inv(i,j,nz)
         tkh(i,j,kinv)      = tkh_inv(i,j,k)
-        prnum(i,j,kinv)    = prnum_inv(i,j,k)
+!        prnum(i,j,kinv)    = prnum_inv(i,j,k)
 !        dm(i,j,kinv)       = dm_inv(i,j,k)
         prsl(i,j,kinv)     = prsl_inv(i,j,k)
         u(i,j,kinv)        = u_inv(i,j,k)
@@ -272,8 +274,8 @@ module shoc
 ! Liquid/ice water static energy - ! Note the the units are degrees K
         hl(i,j,k) = tabs(i,j,k) + gamaz(i,j,k) - fac_cond*(qcl(i,j,k)+qpl(i,j,k)) &
                                                - fac_fus *(qci(i,j,k)+qpi(i,j,k))
-        hvl(i,j,k) = tabs(i,j,k)*(1.0+epsv*qv(i,j,k)-qcl(i,j,k))+gamaz(i,j,k) &
-                     - fac_cond*qcl(i,j,k) - fac_fus *qci(i,j,k)
+!        hvl(i,j,k) = tabs(i,j,k)*(1.0+epsv*qv(i,j,k)-qcl(i,j,k))+gamaz(i,j,k) &
+!                     - fac_cond*qcl(i,j,k) - fac_fus *qci(i,j,k)
       enddo
     enddo
   enddo
@@ -298,7 +300,6 @@ module shoc
     enddo
   enddo
 
-
   call tke_shoc()        ! Integrate prognostic TKE equation forward in time
 
 !  call canuto()    ! Subroutine to calculate w third moment, based on Canuto et al 2001
@@ -314,7 +315,6 @@ module shoc
   if (associated(tkesbdiss_inv))  tkesbdiss_inv(:,:,1:nzm)  = tkesbdiss(:,:,nzm:1:-1)
   if (associated(tkesbbuoy_inv))  tkesbbuoy_inv(:,:,1:nzm)  = tkesbbuoy(:,:,nzm:1:-1)
   if (associated(tkesbshear_inv)) tkesbshear_inv(:,:,1:nzm) = tkesbshear(:,:,nzm:1:-1)
-!  if (associated(tkesbtrans_inv)) tkesbtrans_inv(:,:,1:nzm) = tkesbtrans(:,:,nzm:1:-1)
 
   if (associated(smixt_inv))    smixt_inv(:,:,1:nzm)    = smixt(:,:,nzm:1:-1)
   if (associated(smixt1_inv))   smixt1_inv(:,:,1:nzm)   = smixt1(:,:,nzm:1:-1)
@@ -322,6 +322,8 @@ module shoc
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
   
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
+  if (associated(prnum_inv))    prnum_inv(:,:,1:nz)     = prnum(:,:,nz:1:-1)
+  if (associated(ri_inv))       ri_inv(:,:,1:nz)        = ri(:,:,nz:1:-1)
 
 !========================================!
 
@@ -341,6 +343,8 @@ contains
     rdtn = 1.0 / dtn
 
     call tke_shear_prod(def2)   ! Calculate shear production of TKE
+
+    call calc_numbers()     ! returns RI and PRNUM
 
     do k=1,nzm
       do j=1,ny
@@ -508,6 +512,30 @@ contains
 !  end do
 
   end subroutine tke_shoc
+
+  subroutine calc_numbers()
+     ! Defines Richardson number and Prandtl number on edges
+   
+     RI = 0.0
+     RI(:,:,2:nz-1) = ggr*(THV(:,:,2:nzm) - THV(:,:,1:nzm-1)) /adzi(:,:,1:nzm-1)
+     RI(:,:,2:nz-1) = RI(:,:,2:nz-1)/( (THV(:,:,1:nzm-1) + THV(:,:,2:nzm))*0.5* &
+                      (MAX(0.01,SQRT( (u(:,:,1:nzm-1)-u(:,:,2:nzm))**2 + (v(:,:,1:nzm-1)-v(:,:,2:nzm))**2 )) / adzi(:,:,1:nzm-1))**2 )
+
+     if (SHOCPARAMS%PRNUM.lt.0.) then
+        where (RI.le.0. .or. tke_mf.gt.1e-4)
+          PRNUM = 0.9
+        elsewhere
+          ! He et al 2019                                                                                                                      
+!             tmp3de = RI*(1.+6.*RI)                                                                                                             
+!          PRNUM = (0.9+4.*tmp3de*SQRT(1.-SHOCPARAMS%PRNUM*8.*tmp3de/3.))/(1.+4.*tmp3de)                                                    
+        ! Han and Bretherton 2019                                                                                                            
+          PRNUM = 0.9+2.1*MIN(10.,RI) ! limit RI to avoid instability                                                                    
+        end where
+     else
+        PRNUM = SHOCPARAMS%PRNUM
+     end if
+
+  end subroutine calc_numbers
 
  
   subroutine tke_shear_prod(def2)
@@ -1233,7 +1261,6 @@ contains
                            hl2tune,    &
                            qt2tune,    &
                            hlqt2tune,  &
-                           qt2scale,   &
                            qt3_tscale, &
                            docanuto )
 
@@ -1278,7 +1305,6 @@ contains
 
     real,    intent(in   ) :: HL2TUNE,     &   ! tuning parameters
                               HLQT2TUNE,   &
-                              QT2SCALE,    &
                               QT2TUNE,     &
                               QT3_TSCALE    
 
@@ -1371,10 +1397,11 @@ contains
 
           wrk1 = 0.5*(qt2_edge(:,:,kd)+qt2_edge(:,:,ku))              ! averaging gradient production term
           if (DOPROGQT2 /= 0) then
-            qt2(:,:,k) = qt2(:,:,k) + DT*(wrk1)
-
-            wrk3 = QT2TUNE*sqrt(0.01+TKE(:,:,k))/(QT2SCALE*0.4*ZL(:,:,k)/(0.4*ZL(:,:,k)+QT2SCALE)) ! dissipation
-            qt2(:,:,k) = qt2(:,:,k) / (1. + DT*wrk3)
+!            qt2(:,:,k) = qt2(:,:,k) + DT*(wrk1)
+!            wrk3 = QT2TUNE*sqrt(0.01+TKE(:,:,k))/(QT2SCALE*0.4*ZL(:,:,k)/(0.4*ZL(:,:,k)+QT2SCALE)) ! dissipation
+!            qt2(:,:,k) = qt2(:,:,k) / (1. + DT*wrk3)
+            wrk3 = QT2TUNE*1.5e-4 ! dissipation                                                                                                                                  
+            qt2(:,:,k) = (qt2(:,:,k)+DT*wrk1) / (1. + DT*wrk3)
           else
             qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1
           end if
@@ -1393,11 +1420,10 @@ contains
 
           wrk1 = 0.5*(qt2_edge(:,:,kd)+qt2_edge(:,:,ku))              ! averaging gradient production term
           if (DOPROGQT2 /= 0) then
-            qt2(:,:,k) = qt2(:,:,k) + DT*(wrk1)
-
+!            qt2(:,:,k) = qt2(:,:,k) + DT*(wrk1)
 !            wrk3 = QT2TUNE*sqrt(0.01+min(0.1,TKE(:,:,k)))/(QT2SCALE*0.4*ZL(:,:,k)/(0.4*ZL(:,:,k)+QT2SCALE)) ! dissipation
             wrk3 = QT2TUNE*1.5e-4 ! dissipation
-            qt2(:,:,k) = qt2(:,:,k) / (1. + DT*wrk3)
+            qt2(:,:,k) = (qt2(:,:,k)+DT*wrk1) / (1. + DT*wrk3)
             qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge(:,:,kd)+qt2_edge(:,:,ku))
           else
 !            qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1 + MFQT2(:,:,k)

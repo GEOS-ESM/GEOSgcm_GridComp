@@ -29,13 +29,13 @@ public run_edmf
 contains
 
 SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
-              zlo3,zw3,pw3,rhoe3,tke3,nup,&
+              zlo3,zw3,pw3,rhoe3,tke3,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
-              wthl2,wqt2,frland,eis,pblh2, &
+              wthl2,wqt2,frland,pblh2, &
 !              mfsrcthl, mfsrcqt, mfw, mfarea, &
             ! outputs - variables needed for solver
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,mftke, &
+             mfw2,mfw3,mfqt3,mfhl3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,mftke,buoyf, &
              ! outputs - updraft properties
              dry_a3,moist_a3, &
               dry_w3,moist_w3, &
@@ -45,7 +45,7 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
              dry_v3,moist_v3, &
              moist_qc3,  &
 !             moist_qc3, edmfdepth, &
-             buoyf, entx, edmfmf, &
+             entx, edmfmf, &
 #ifdef EDMF_DIAG
              w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
              w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -80,12 +80,12 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
 ! s_aw3,s_awthl3 ... (ITS:ITE,KTS-1:KTE)
 
        type (EDMFPARAMS_TYPE), INTENT(IN) :: PARAMS
-       INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP!,DOCLASP
+       INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE!,DOCLASP
        REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3,TKE3
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
 !       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
-       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: WTHL2,WQT2,PBLH2,FRLAND,PHIS,EIS
+       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: WTHL2,WQT2,PBLH2,FRLAND,PHIS
        REAL, INTENT(IN) :: DT
        INTEGER :: NUP2
 
@@ -113,10 +113,10 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
       REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf, mfwhl, mfwqt, mftke
 !      REAL, DIMENSION(ITS:ITE), INTENT(INOUT) :: edmfdepth
 ! updraft properties
-      REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
+      REAL,DIMENSION(KTS-1:KTE,1:PARAMS%NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables
-      REAl,DIMENSION(KTS:KTE,1:NUP) :: ENT,ENTf
-      INTEGER,DIMENSION(KTS:KTE,1:NUP) :: ENTi
+      REAl,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENT,ENTf
+      INTEGER,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENTi
 ! internal variables
        INTEGER :: K,I,IH
        REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
@@ -251,14 +251,14 @@ pblh=max(pblh,pblhmin)
 wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
-  IF ( (wthv > 0.0 .and. TKE3(IH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:nup) >= -2.0) .and. PARAMS%doclasp/=0)) then
+  IF ( (wthv > 0.0 .and. TKE3(IH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:PARAMS%NUP) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH)
 
      if (PARAMS%doclasp/=0) then
-       nup2 = count(mfsrcthl(IH,1:nup)>=-2.0)
+       nup2 = count(mfsrcthl(IH,1:PARAMS%NUP)>=-2.0)
      else
-       nup2 = nup
+       nup2 = PARAMS%NUP
      end if
 
  UPW=0.
@@ -293,7 +293,6 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
        lts = lts - thv3(IH,kte)
 !       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
        L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.2*(lts-18.))) )
-!       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(EIS(IH)-7.))) )
     end if 
 !else if (params%ET == 3 ) then
 !    L0 = max(min(edmfdepth(IH),3000.),500.) / params%L0fac
@@ -395,10 +394,10 @@ if (L0 .gt. 0. ) then
 
    ! entrainent: Ent=Ent0/dz*P(dz/L0)
    if (PARAMS%ENTRAIN==0 .or. PARAMS%ENTRAIN==4) then
-    call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
+    call Poisson(1,Nup2,kts,kte,ENTf,ENTi,the_seed)
 !    print *,'ENTi plume1=',ENTi(:,1)
 !    print *,'ENTi plume2=',ENTi(:,2)
-    do i=1,Nup
+    do i=1,Nup2
      do k=kts,kte
        ENT(k,i) = (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
                 + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) !&
@@ -414,16 +413,16 @@ if (L0 .gt. 0. ) then
      enddo
     enddo
    else if (PARAMS%ENTRAIN==1 ) then
-    call Poisson(1,Nup,kts,kte,ENTf,ENTi,the_seed)
-    do i=1,Nup   ! Vary entrainment across updrafts, 0.75-1.25x
+    call Poisson(1,Nup2,kts,kte,ENTf,ENTi,the_seed)
+    do i=1,Nup2   ! Vary entrainment across updrafts, 0.75-1.25x
      do k=kts,kte
-       ENT(k,i) = ((FLOAT(Nup-i)*0.5/FLOAT(Nup))+0.75)*( (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
+       ENT(k,i) = ((FLOAT(Nup2-i)*0.5/FLOAT(Nup2))+0.75)*( (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
                 + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) ) !&
 !       if (ZW(k).lt.500.) ENT(k,i) = 2.*ENT(k,i)
      enddo
     enddo
    else if (PARAMS%ENTRAIN==2) then
-    do i=1,Nup   ! alternate approach from Soares et al 2004
+    do i=1,Nup2   ! alternate approach from Soares et al 2004
      do k=kts,kte
        ENT(k,i) = PARAMS%Ent0*(1./(ZW(k)+ZW(k)-ZW(k-1))+1./(max(0.,L0-ZW(k))+ZW(k)-ZW(k-1)))
      enddo

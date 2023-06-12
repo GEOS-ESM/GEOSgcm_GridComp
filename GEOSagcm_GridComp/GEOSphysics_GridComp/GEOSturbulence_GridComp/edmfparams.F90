@@ -7,6 +7,7 @@ module EDMFPARAMS
     integer :: IMPLICIT
     integer :: ENTRAIN
     integer :: DOCLASP
+    integer :: NUP
     integer :: THERMAL_PLUME
     integer :: TEST
     integer :: DEBUG
