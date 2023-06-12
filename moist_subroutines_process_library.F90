@@ -1427,7 +1427,7 @@ module Process_Library_standalone
                 FILLQ(I,J) = TPW2-TPW1
             enddo
         enddo
-!$acc end parallel
+!$acc end parallel loop
 
     end subroutine FILLQ2ZERO
 
