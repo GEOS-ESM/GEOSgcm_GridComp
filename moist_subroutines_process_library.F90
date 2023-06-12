@@ -52,7 +52,7 @@ module Process_Library_standalone
     real, parameter :: mapl_undef = 1.0e15  ! NOTE : This is the value pulled from MAPL_Mod
 
     public :: hystpdf, ICE_FRACTION, FILLQ2ZERO, BUOYANCY, EVAP3, SUBL3, FIX_UP_CLOUDS, RADCOUPLE
-!$acc declare create(gravbcp, alhlbcp,mapl_undef)
+
     contains
 
     subroutine BUOYANCY( T, Q, QS, DQS, DZ, ZLO, BUOY, CAPE, INHB)
@@ -92,7 +92,7 @@ module Process_Library_standalone
                 enddo
             enddo
         enddo
-!$acc end parallel
+!$acc end parallel loop
 
 !$acc parallel loop gang vector collapse(2)
         do J = 1,JM
@@ -103,7 +103,7 @@ module Process_Library_standalone
                 INHB(I,J) = 0.
             enddo
         enddo
-!$acc end parallel
+!$acc end parallel loop
 
 !$acc parallel loop gang vector collapse(3)
         do L=1,LM-1
@@ -123,7 +123,7 @@ module Process_Library_standalone
                 enddo
             enddo
         end do
-!$acc end parallel
+!$acc end parallel loop
 
 !$acc parallel loop gang vector collapse(2)
         do J = 1,JM
@@ -134,7 +134,7 @@ module Process_Library_standalone
                 endif
             enddo
         enddo
-!$acc end parallel
+!$acc end parallel loop
     end subroutine BUOYANCY
 
     subroutine pdffrac (flag,qtmean,sigmaqt1,sigmaqt2,qstar,clfrac)
