@@ -11,11 +11,13 @@ OBJ = MAPL_SatVapor.o MAPL_Constants.o GEOS_Utilities.o \
 	  test_moist_subroutines_process_library.o \
 	  standalone.o
 
+FFLAGS ?=$(OPT)
+
 %.o : %.F90
-	$(FC) -c -o $@ $^ $(OPT) $(INC)
+	$(FC) -c -o $@ $^ $(FFLAGS) $(INC)
 
 $(programName) : $(OBJ)
-	$(FC) -o $@ $^ $(OPT) $(INC) $(LIB)
+	$(FC) -o $@ $^ $(FFLAGS) $(INC) $(LIB)
 
 clean :
 	rm -rf *.o *.mod $(programName) *~ *.out output_data s_* coverage* *.gcda *.gcno *.spi *.spl *.dyn
