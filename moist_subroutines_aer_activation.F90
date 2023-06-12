@@ -291,7 +291,7 @@ module moist_subroutines_aer_activation
 !$acc data present(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
 !$acc              AeroProps%fsoot,AeroProps%forg,&
 !$acc              NWFA,ple,t,q,sh,evap,zle,plo,qicn,qils,qlcn,qlls,tke, vvel,NACTL,NACTI,FRLAND) &
-!$acc      copyin(kpbli,buffer)
+!$acc      copyin(kpbli,buffer) create(ni,rg,sig0,nact)
 
                 if (USE_AERO_BUFFER) then
 !$acc parallel loop gang vector collapse(4)
@@ -389,6 +389,7 @@ module moist_subroutines_aer_activation
                             ! Ice Clouds
                             IF( (tk <= MAPL_TICE) .and. ((QI > tiny(1.)) .or. (QL > tiny(1.))) ) then
                                 numbinit = 0.
+!$acc loop seq
                                 DO n=1,n_modes
                                     if (AeroProps(i,j,k)%dpg(n) .ge. 0.5e-6) & ! diameters > 0.5 microns
                                     numbinit = numbinit + AeroProps(i,j,k)%num(n)
@@ -405,12 +406,12 @@ module moist_subroutines_aer_activation
                             IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
         
                 ENDDO;ENDDO;ENDDO
-   
+!$acc end data 
             deallocate(   rg)
             deallocate(   ni)
             deallocate(bibar)
             deallocate( nact)
-!$acc end data
+
         end if ! n_modes > 0
          
         else ! USE_AEROSOL_NN
