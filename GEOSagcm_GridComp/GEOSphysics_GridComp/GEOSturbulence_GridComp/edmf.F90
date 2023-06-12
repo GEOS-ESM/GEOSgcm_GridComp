@@ -292,7 +292,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
        end do
        lts = lts - thv3(IH,kte)
 !       L0 = L0/(1.5+0.5*TANH(lts-18.))  ! reduce L0 by half for LTS > 18
-       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-19.))) )
+       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.2*(lts-18.))) )
 !       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.5*(EIS(IH)-7.))) )
     end if 
 !else if (params%ET == 3 ) then
@@ -456,7 +456,7 @@ end if
  !
  ! surface conditions
  !
-   wstar=max(wstarmin,(mapl_grav/300.*wthv*pblh)**(1./3.))  ! convective velocity scale
+   wstar=max(wstarmin,(mapl_grav*wthv*pblh/300.)**(1./3.))  ! convective velocity scale
    qstar=max(0.,wqt)/wstar
    thstar=max(0.01,wthv)/wstar
 
@@ -482,8 +482,7 @@ end if
           UPW(kts-1,I) = MFW(IH,I)
           UPA(kts-1,I)=MFAREA(IH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
         else
-          UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)  ! npa
-!          print *,'UPA factor = ',MIN(1.5,0.5+wthv/0.2)
+          UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
           UPA(kts-1,I)=MIN(1.5,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         end if
 

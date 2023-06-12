@@ -3797,7 +3797,7 @@ contains
       call MAPL_GetResource (MAPL, EDMFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       !
       call MAPL_GetResource (MAPL, EDMFPARAMS%ENTWFAC,   "EDMF_ENTWFAC:",       default=0.333, RC=STATUS)  
-      ! coefficients for surface forcing
+      ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=0.5,   RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=2.89,  RC=STATUS) 
@@ -3810,7 +3810,7 @@ contains
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
       call MAPL_GetResource (MAPL, EDMFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
-      call MAPL_GetResource (MAPL, EDMFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, EDMFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=3.5,   RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
       call MAPL_GetResource (MAPL, EDMFPARAMS%EDfac,     "EDMF_EDFAC:",         default=1.,    RC=STATUS)
       call MAPL_GetResource (MAPL, EDMFPARAMS%DOCLASP,   "DOCLASP:",            default=0,     RC=STATUS)
