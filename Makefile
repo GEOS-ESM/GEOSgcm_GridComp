@@ -10,11 +10,13 @@ OBJ = MAPL_Constants.o module_gate.o ConvPar_GF_Shared.o moist_subroutines_GEOS5
 	  test_moist_subroutines_GEOS5.o \
 	  standalone.o
 
+FFLAGS ?=$(OPT)
+
 %.o : %.F90
-	$(FC) -c -o $@ $^ $(OPT) $(INC)
+	$(FC) -c -o $@ $^ $(FFLAGS) $(INC)
 
 $(programName) : $(OBJ)
-	$(FC) -o $@ $^ $(OPT) $(INC) $(LIB)
+	$(FC) -o $@ $^ $(FFLAGS) $(INC) $(LIB)
 
 clean :
 	rm -rf *.o *.mod $(programName) *~ *.out output_data s_* coverage* *.gcda *.gcno *.spi *.spl *.dyn
