@@ -1200,7 +1200,18 @@ contains
 ! -----------------
 
      call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ', 'RH2     ', 'DQDT    ',      &
+        SRC_NAME    = (/ 'Q        ', 'RH2      ', 'DQDT     ',      &
+                         'FCLD     ', 'CNV_MFC  ', 'CNV_MFD  ',      &
+                         'QL       ', 'PFL_CN_GF', 'PFL_LSAN ',      &
+                         'PFI_CN_GF', 'PFI_LSAN ', 'QCTOT    ',      &
+                         'CNV_QC   ', 'QLTOT    ', 'QLCN     ',      &
+                         'QICN     ', 'DQLDT    ', 'QITOT    ',      &
+                         'REV_CN   ', 'REV_LS   ', 'REV_AN   ',      &
+                         'LFR_GCC  ', 'DQIDT    ', 'QI       ',      &
+                         'DQRC     ', 'CNV_CVW  ', 'DQRL     ',      &
+                         'CNV_FRC  ', 'RI       ', 'RL       ',      &
+                         'BYNCY    ', 'CAPE     ', 'INHB     ' /),   &
+        DST_NAME    = (/ 'Q       ', 'RH2     ', 'DQDT    ',      &
                          'FCLD    ', 'CNV_MFC ', 'CNV_MFD ',      &
                          'QL      ', 'PFL_CN  ', 'PFL_LSAN',      &
                          'PFI_CN  ', 'PFI_LSAN', 'QCTOT   ',      &
@@ -1209,7 +1220,8 @@ contains
                          'REV_CN  ', 'REV_LS  ', 'REV_AN  ',      &
                          'LFR_GCC ', 'DQIDT   ', 'QI      ',      &
                          'DQRC    ', 'CNV_CVW ', 'DQRL    ',      &
-                         'CNV_FRC ', 'RI      ',  'RL      ' /),  &
+                         'CNV_FRC ', 'RI      ', 'RL      ',      &
+                         'BYNCY   ', 'CAPE    ', 'INHB    ' /),   &
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
