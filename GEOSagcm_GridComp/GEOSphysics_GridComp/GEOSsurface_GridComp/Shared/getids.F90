@@ -436,7 +436,7 @@ contains
                   icl_ityp1 = iclass(sub_ityp1)
                   
                   do i = 1,nplus
-                     if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
+                     if((sub_fevg1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
                           iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
                           (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
                           iclass(ityp_new)==iclass(sub_ityp2(i))))) then
