@@ -190,13 +190,16 @@ contains
        gfEnvRestartSkip = MAPL_RestartSkip
     endif
 
-    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
-    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
+    !       the first MAPL_AddInternalSpec call must be from the microphysics
+
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
+    if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
 
     ! !IMPORT STATE:
 
@@ -2276,50 +2279,50 @@ contains
 
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='MLCAPE',                                      & 
+         SHORT_NAME='MLCAPE',                                      &
          LONG_NAME ='cape_for_mixed_layer_parcel',                 &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='MLCIN',                                       & 
+         SHORT_NAME='MLCIN',                                       &
          LONG_NAME ='inhibition_for_mixed_layer_parcel',           &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='MUCAPE',                                      & 
+         SHORT_NAME='MUCAPE',                                      &
          LONG_NAME ='cape_for_most_unstable_parcel',               &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='SBCAPE',                                      & 
+         SHORT_NAME='SBCAPE',                                      &
          LONG_NAME ='cape_for_surface_parcel',               &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='MUCIN',                                       & 
+         SHORT_NAME='MUCIN',                                       &
          LONG_NAME ='inhibition_for_most_unstable_parcel',         &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME='SBCIN',                                       & 
+         SHORT_NAME='SBCIN',                                       &
          LONG_NAME ='inhibition_for_surface_parcel',         &
          UNITS     ='J kg-1',                                      &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2396,15 +2399,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='ZLNB',                                        & 
+         SHORT_NAME='ZLNB',                                        &
          LONG_NAME ='level_of_neutral_buoyancy',                    &
          UNITS     ='m'  ,                                         &
-         DIMS      = MAPL_DimsHorzOnly,                            & 
+         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='ZCBL',                                        & 
+         SHORT_NAME='ZCBL',                                        &
          LONG_NAME ='height_of_cloud_base_layer',                  &
          UNITS     ='m'  ,                                         &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5049,10 +5052,13 @@ contains
       call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
       call aer_cloud_init()
       call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
-    else
+    endif
+
+    ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
+    !     Note: It's possible these aren't *used* if USE_AEROSOL_NN=.TRUE. but they are still passed
+    !           in so they have to be defined
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
-    endif
 
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
