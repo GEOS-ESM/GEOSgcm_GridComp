@@ -288,8 +288,9 @@ module moist_subroutines_aer_activation
 
                 call cpu_time(tStart)
 
-!$acc data present(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
-!$acc              AeroProps%fsoot,AeroProps%forg,&
+!!$acc data present(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
+!!$acc              AeroProps%fsoot,AeroProps%forg,&
+!$acc data present(AeroProps, &
 !$acc              NWFA,ple,t,q,sh,evap,zle,plo,qicn,qils,qlcn,qlls,tke, vvel,NACTL,NACTI,FRLAND) &
 !$acc      copyin(kpbli,buffer) create(ni,rg,sig0,nact)
 
@@ -312,7 +313,7 @@ module moist_subroutines_aer_activation
                             end do
                         end do
                     end do
-!$acc end parallel
+!$acc end parallel loop
                     deallocate(buffer)
                 end if
                  
@@ -331,7 +332,7 @@ module moist_subroutines_aer_activation
                         end do
                     end do 
                 end do 
-!$acc end parallel
+!$acc end parallel loop
    
                 deallocate(aero_aci_modes)
    
@@ -406,6 +407,7 @@ module moist_subroutines_aer_activation
                             IF(NACTI(i,j,k) > NN_MAX) NACTI(i,j,k) = NN_MAX
         
                 ENDDO;ENDDO;ENDDO
+!$acc end parallel loop
 !$acc end data 
             deallocate(   rg)
             deallocate(   ni)

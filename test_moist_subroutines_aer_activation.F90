@@ -21,8 +21,8 @@ module test_aer_activation_subroutine
 
     logical :: USE_AERO_BUFFER
     real :: tStart, tEnd, time
-!$acc declare create(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%den, &
-!$acc                AeroProps%kap,AeroProps%fdust,AeroProps%fsoot,AeroProps%forg)
+!$acc declare create(AeroProps)!,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%den, &
+!!$acc                AeroProps%kap,AeroProps%fdust,AeroProps%fsoot,AeroProps%forg)
     contains
 
     subroutine test_aer_activation(IM, JM, LM, dirName, rank_str)
@@ -174,8 +174,7 @@ module test_aer_activation_subroutine
 
         print*,'Testing Aer_Activation Subroutine'
 
-!$acc data copy(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
-!$acc           AeroProps%fsoot,AeroProps%forg) &
+!$acc data copy(AeroProps) &
 !$acc      copyin(Q,T,PLO,PLE,ZL0,ZLE0,QLCN,QICN,QLLS,QILS,SH,EVAP,KPBL,TKE,TMP3D,FRLAND) &
 !$acc      copyout(NACTL, NACTI, NWFA)
 
@@ -184,7 +183,6 @@ module test_aer_activation_subroutine
                             SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6,dirName, rank_str)
         call cpu_time(tEnd)
-
 !$acc end data
 
         time = tEnd - tStart
