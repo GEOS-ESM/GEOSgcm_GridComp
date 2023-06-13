@@ -218,7 +218,7 @@ module GEOS_SaltwaterGridCompMod
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'surface_outgoing_longwave_flux',&
+        LONG_NAME          = 'surface_emitted_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
