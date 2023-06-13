@@ -14,7 +14,8 @@ module GEOS_CatchCNGridCompMod
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
        NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
- 
+
+  use  CATCHCN_INTERNAL_TYPE_Mod
   implicit none
   private
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -48,9 +49,13 @@ subroutine SetServices ( GC, RC )
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
+    type(ESMF_GridComp), pointer :: gcs(:)
+    type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL_STATE
+    type(CATCHCN_WRAP)             :: wrap
+
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
-    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2, SNOW_ALBEDO_INFO
+    integer                                 :: LSM_CHOICE
     character(len=ESMF_MAXSTR)              :: tmp
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
 
@@ -70,28 +75,25 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+   allocate(CATCHCN_INTERNAL_STATE)
+   wrap%ptr => CATCHCN_INTERNAL_STATE
+
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         !catchcn_exxxx
         tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
     endif
 
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=2, RC=STATUS) ; VERIFY_(STATUS)
 
-    ! SNOW ALBEDO -- so far, only parameterization based on look-up table is implemented for CatchCN
-    ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
-    call ESMF_ConfigGetAttribute (SCF, label='SNOW_ALBEDO_INFO:', value=SNOW_ALBEDO_INFO, DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
+    call surface_params_to_internal(wrap, SCF,  __RC__)
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCHCN_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
 
-    _ASSERT( SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")
-
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
+    VERIFY_(STATUS)
     if ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
@@ -102,6 +104,11 @@ subroutine SetServices ( GC, RC )
        _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")
     endif
 
+    call MAPL_Get(MAPL, GCS=gcs, rc=status)
+    VERIFY_(status)
+
+    call ESMF_UserCompSetInternalState(gcs(CATCHCN), 'CATCHCN_STATE', wrap, status)
+    VERIFY_(status)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
@@ -304,7 +311,7 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (ATM_CO2 == 4) THEN
+    IF (CATCHCN_INTERNAL_STATE%ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
@@ -1008,7 +1015,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE' ,CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
 
-    if (DO_GOSWIM /= 0) then
+    if (CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
