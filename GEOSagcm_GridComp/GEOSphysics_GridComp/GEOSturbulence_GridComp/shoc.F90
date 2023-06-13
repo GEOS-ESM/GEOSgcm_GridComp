@@ -40,7 +40,7 @@ module shoc
                  qpl_inv, cld_sgs_inv, wthv_sec_inv,             &  ! in
                  wthv_mf_inv, tke_mf,                            &  ! in
                  tke_inv, tkh_inv,                               &  ! inout
-                 isotropy_inv,                                   &  ! out
+                 tkm_inv, isotropy_inv,                          &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
                  tkesbshear_inv,                                 &  ! out
                  smixt_inv, smixt1_inv,smixt2_inv,smixt3_inv,    &  ! out
@@ -96,7 +96,8 @@ module shoc
   real, intent(in   ) :: tke_mf     (nx,ny,nz)  ! MF vertical velocity on edges, m/s
 !  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
-  real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
+  real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy scalar diffusivity
+  real, intent(  out) :: tkm_inv    (nx,ny,nzm) ! eddy momentum diffusivity
   real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
 
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
@@ -307,6 +308,7 @@ module shoc
 !=== Assign exports and flip vertical ===!
 
   tkh_inv(:,:,1:nzm)       = tkh(:,:,nzm:1:-1)
+  tkm_inv(:,:,1:nzm)       = min(tkhmax,tkh(:,:,nzm:1:-1)*prnum(:,:,nzm:1:-1))
   isotropy_inv(:,:,1:nzm)  = isotropy(:,:,nzm:1:-1)
   tke_inv(:,:,1:nzm)       = tke(:,:,nzm:1:-1)
 
@@ -1449,9 +1451,9 @@ contains
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 1-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.005*QT(:,:,k))**2)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.005*QT(:,:,k))**2)
+        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
 
         ! Ensure realizibility
