@@ -1,5 +1,17 @@
 !  $Id$
 
+#define _DEALLOC(A) \
+    if(associated(A))then; \
+          if(MAPL_ShmInitialized)then; \
+              call MAPL_SyncSharedMemory(rc=STATUS); \
+              call MAPL_DeAllocNodeArray(A,rc=STATUS); \
+           else; \
+              deallocate(A,stat=STATUS); \
+           endif; \
+       _VERIFY(STATUS); \
+       NULLIFY(A); \
+    endif
+
 #include "MAPL_Generic.h"
 
 
@@ -25,7 +37,13 @@ module GEOS_LakeGridCompMod
   integer, parameter :: NUM_SUBTILES = 2
 
   type lake_state
-       integer:: CHOOSEMOSFC
+     private
+     integer:: CHOOSEMOSFC
+     logical :: InitDone
+     logical, pointer :: mask(:) => null()
+     real :: tol_frice
+     character(len=ESMF_MAXSTR) :: sstfile
+     character(len=ESMF_MAXSTR) :: DataFrtFile
   end type lake_state
 
   type lake_state_wrap
@@ -192,7 +210,7 @@ module GEOS_LakeGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'surface_outgoing_longwave_flux',&
+        LONG_NAME          = 'surface_emitted_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -600,7 +618,7 @@ module GEOS_LakeGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -609,7 +627,7 @@ module GEOS_LakeGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -672,7 +690,7 @@ module GEOS_LakeGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -854,6 +872,7 @@ module GEOS_LakeGridCompMod
 
     allocate(mystate,stat=status)
     VERIFY_(status)
+    mystate%InitDone = .false.
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
@@ -914,8 +933,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   type (MAPL_MetaComp), pointer   :: MAPL
   type (ESMF_State       )            :: INTERNAL
-  type (ESMF_Alarm       )            :: ALARM
-  type (ESMF_Config      )            :: CF
 
 ! pointers to export
 
@@ -1553,6 +1570,13 @@ contains
    real, parameter :: LAKECAP      = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEDEPTH    )
    real, parameter :: LAKEICECAP   = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEICEDEPTH )
 
+   logical :: datalake
+   integer :: dlk
+   real, allocatable :: DATA_SST(:), DATA_FR(:)
+   character(len=ESMF_MAXSTR) :: maskfile
+   real, parameter :: Tfreeze = MAPL_TICE - 1.8
+   type(lake_state_wrap) :: wrap
+   type(lake_state), pointer :: mystate
 
 !  Begin...
 !----------
@@ -1713,6 +1737,80 @@ contains
     if(associated(QST    )) QST     = 0.0
     if(associated(HLWUP  )) HLWUP   = ALW 
     if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
+    ! datalake addition
+    !==================
+
+    ! check resource if datalake is enabled
+    call MAPL_GetResource ( MAPL, DLK, Label="DATALAKE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    DATALAKE = (DLK /= 0)
+
+    call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+
+    ! Initialize a mask where we could apply the SST/FR from Reynolds/Ostia
+    if (.not. associated(mystate%mask)) then
+       allocate(mystate%mask(NT), stat=status); VERIFY_(STATUS)
+       mystate%mask = .false.
+    end if
+           
+    if (datalake) then
+
+        ! next section is done only once. We do it here since the Initalize
+        ! method of this component defaults to MAPL_GenericInitialize
+        
+        if (.not. mystate%InitDone) then
+           mystate%InitDone = .true.
+           call MAPL_GetResource ( MAPL, mystate%sstfile, &
+                Label="LAKE_SST_FILE:", DEFAULT="sst.data", RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_GetResource ( MAPL, mystate%dataFrtFile, &
+                Label="LAKE_FRT_FILE:", DEFAULT="fraci.data", RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_GetResource ( MAPL, mystate%tol_frice, &
+                Label="LAKE_TOL_FRICE:", DEFAULT=1.0e-2, RC=STATUS)
+           VERIFY_(STATUS)
+
+           call MAPL_GetResource ( MAPL, MASKFILE, &
+                Label="DATALAKE_MASK_FILE:", DEFAULT="DataLakeMask.data", RC=STATUS)
+           VERIFY_(STATUS)
+
+           !ALT: For now we are reading the entire mask from a file
+           ! we might decide later to use a different strategy (for example
+           ! Santha suggested lat-lon based description)
+
+           call DataLakeReadMask(MAPL, mystate%mask, &
+                maskfile, RC=status)
+           VERIFY_(STATUS)
+        end if
+
+
+       allocate(DATA_SST(NT), DATA_FR(NT), stat=status); VERIFY_(STATUS)
+       call MAPL_ReadForcing(MAPL, 'SST', mystate%sstfile,&
+            CURRENT_TIME, DATA_SST, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_ReadForcing(MAPL, 'FR', mystate%dataFrtFile,&
+            CURRENT_TIME, DATA_FR, RC=STATUS)
+       VERIFY_(STATUS)
+
+       do I=1,NT
+          if(mystate%mask(i)) then
+             ! we are operating over the 'observed' lake: Great Lakes and Caspian Sea (set by mask)
+             TS(I,WATER) = DATA_SST(I)
+             TS(I,ICE)   = Tfreeze
+             if (data_fr(i) > mystate%tol_frice) then !have lake ice
+                FR(I,WATER) = 1.0-DATA_FR(I)
+                FR(I,ICE)   = DATA_FR(I)
+             else
+                FR(I,WATER) = 1.0
+                FR(I,ICE)   = 0.0
+             end if
+          end if
+       end do
+
+       deallocate(DATA_SST, DATA_FR)
+    end if
 
     do N=1,NUM_SUBTILES
        CFT = (CH(:,N)/CTATM)
@@ -1749,7 +1847,7 @@ contains
 ! Update surface temperature and moisture
 !----------------------------------------
 
-       TS(:,N) = TS(:,N) + DTS
+       where(.not.mystate%mask) TS(:,N) = TS(:,N) + DTS
        DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
        QS(:,N) = QS(:,N) + DQS  
 
@@ -1773,6 +1871,10 @@ contains
 ! Update Ice fraction
 !--------------------
     do I=1,NT
+!$       if(mystate%mask(i)) cycle 
+       if(mystate%mask(i)) then
+          cycle 
+       end if
        if    (TS(I,ICE)>MAPL_TICE .and. FR(I,ICE)>0.0) then
           ! MELT
           FR(I,WATER) = 1.0
@@ -1918,6 +2020,54 @@ contains
 
 
 end subroutine RUN2
+
+subroutine DataLakeReadMask(mapl, msk, maskfile, rc)
+  implicit none
+  ! arguments
+  type (MAPL_MetaComp), pointer  :: MAPL
+  logical, intent(INOUT)           :: msk(:)
+  character(len=*), intent(IN)   :: maskfile
+  integer, optional, intent(OUT) :: rc
+
+  ! errlog vars
+  integer :: status
+  character(len=ESMF_MAXSTR), parameter :: Iam='DataLakeReadMask'
+  
+  ! local vars
+  integer                       :: unit
+  integer, pointer              :: tilemask(:) => null()
+  type(ESMF_Grid)               :: TILEGRID
+  type(MAPL_LocStream)          :: LOCSTREAM
+  integer :: NT
+  real, allocatable :: imask(:)
+
+  ! this is the first attempt to read the mask. For now we support binary
+  call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+  VERIFY_(STATUS)
+
+  call MAPL_TileMaskGet(tilegrid, tilemask, rc=status)
+  VERIFY_(STATUS)
+
+  nt = size(msk)
+  allocate(imask(nt), stat=status)
+
+  unit = GETFILE( maskfile, form="unformatted", RC=STATUS )
+  VERIFY_(STATUS)
+
+  call MAPL_VarRead(unit, tilegrid, imask,  mask=tilemask, rc=status)
+  VERIFY_(STATUS)
+
+  call FREE_FILE(unit, RC=STATUS)
+  VERIFY_(STATUS)
+
+  msk = (imask /= 0.0)
+  deallocate(imask)
+  _DEALLOC(tilemask)
+
+  RETURN_(ESMF_SUCCESS)
+end subroutine DataLakeReadMask
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
