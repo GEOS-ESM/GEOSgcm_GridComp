@@ -28,7 +28,7 @@ public run_edmf
 
 contains
 
-SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
+SUBROUTINE RUN_EDMF(its,ite,jts,jte,kts,kte,dt,phis, &
               zlo3,zw3,pw3,rhoe3,tke3,&
               u3,v3,t3,thl3,thv3,qt3,qv3,ql3,qi3,&
               wthl2,wqt2,frland,pblh2, &
@@ -77,134 +77,153 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
 !  mfhl2=sum_i a_i h_i^2
 !
 ! three dimensional outputs are on edges as well, but turned around
-! dry_a3,moist_a3,dry_thl3, ... (ITS:ITE,KTS-1:KTE)
-! s_aw3,s_awthl3 ... (ITS:ITE,KTS-1:KTE)
+! dry_a3,moist_a3,dry_thl3, ... (ITS:ITE,JTS:JTE,KTS-1:KTE)
+! s_aw3,s_awthl3 ... (ITS:ITE,JTS:JTE,KTS-1:KTE)
 
-       type (EDMFPARAMS_TYPE), INTENT(IN) :: PARAMS
-       INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE!,DOCLASP
-       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3,TKE3
-       REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
-       REAL,DIMENSION(ITS:ITE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
+   type (EDMFPARAMS_TYPE), INTENT(IN) :: PARAMS
+   INTEGER, INTENT(IN) :: ITS,ITE,JTS,JTE,KTS,KTE!,DOCLASP
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(IN) :: U3,V3,T3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3,TKE3
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE) :: mfsrcqt,mfsrcthl,mfw,mfarea
 !       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2,FRLAND,PHIS
-       REAL,DIMENSION(ITS:ITE), INTENT(IN) :: WTHL2,WQT2,PBLH2,FRLAND,PHIS
-       REAL, INTENT(IN) :: DT
-       INTEGER :: NUP2
+   REAL,DIMENSION(ITS:ITE,JTS:JTE), INTENT(IN) :: WTHL2,WQT2,PBLH2,FRLAND,PHIS
+   REAL, INTENT(IN) :: DT
+   INTEGER :: NUP2
 
 ! outputs
-       REAL, DIMENSION(:,:), POINTER :: dry_w3
-       REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: dry_a3, moist_a3,moist_w3, &
-               dry_qt3,moist_qt3,dry_thl3,moist_thl3,dry_u3,moist_u3,dry_v3,moist_v3,moist_qc3
+   REAL, DIMENSION(:,:,:), POINTER :: dry_w3,   moist_w3,   &
+                                      dry_qt3,  moist_qt3,  &
+                                      dry_thl3, moist_thl3, &
+                                      dry_u3,   moist_u3,   &
+                                      dry_v3,   moist_v3,   &
+                                      moist_qc3
+
+   REAL, DIMENSION(:,:,:), POINTER :: entx
+
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: dry_a3, moist_a3
 
 #ifdef EDMF_DIAG
-       REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: w_plume1,w_plume2,w_plume3,w_plume4, &
-                                                         w_plume5,w_plume6,w_plume7, &
-                                                         w_plume8,w_plume9,w_plume10
-       REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4, &
-                                                         qt_plume5,qt_plume6,qt_plume7, &
-                                                         qt_plume8,qt_plume9,qt_plume10
-       REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: thl_plume1,thl_plume2,thl_plume3,thl_plume4, &
-                                                         thl_plume5,thl_plume6,thl_plume7, &
-                                                         thl_plume8,thl_plume9,thl_plume10
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: w_plume1,w_plume2,w_plume3,w_plume4, &
+                                                     w_plume5,w_plume6,w_plume7, &
+                                                     w_plume8,w_plume9,w_plume10
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4, &
+                                                     qt_plume5,qt_plume6,qt_plume7, &
+                                                     qt_plume8,qt_plume9,qt_plume10
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: thl_plume1,thl_plume2,thl_plume3,thl_plume4, &
+                                                     thl_plume5,thl_plume6,thl_plume7, &
+                                                     thl_plume8,thl_plume9,thl_plume10
 #endif
 
-  ! outputs - variables needed for solver (s_aw - sum ai*wi, s_awphi - sum ai*wi*phii)
-        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
-         REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
-                                                         mfhlqt,entx !mfwhl,entx
-      REAL, DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: edmfmf, mfwhl, mfwqt, mftke
+! outputs - variables needed for solver (s_aw - sum ai*wi, s_awphi - sum ai*wi*phii)
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
+! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
+                                                     mfhlqt
+   REAL, DIMENSION(ITS:ITE,JTS:JTE,KTS-1:KTE), INTENT(OUT) :: edmfmf, mfwhl, mfwqt, mftke
 !      REAL, DIMENSION(ITS:ITE), INTENT(INOUT) :: edmfdepth
 ! updraft properties
-      REAL,DIMENSION(KTS-1:KTE,1:PARAMS%NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
- ! entrainment variables
-      REAl,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENT,ENTf
-      INTEGER,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENTi
+   REAL,DIMENSION(KTS-1:KTE,1:PARAMS%NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
+! entrainment variables
+   REAl,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENT,ENTf
+   INTEGER,DIMENSION(KTS:KTE,1:PARAMS%NUP) :: ENTi
 ! internal variables
-       INTEGER :: K,I,IH
-       REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
-               wmin,wmax,wlv,wtv,wp
-       REAL :: B,QTn,THLn,THVn,QCn,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
+   INTEGER :: K,I,IH,JH
+   REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
+           wmin,wmax,wlv,wtv,wp
+   REAL :: B,QTn,THLn,THVn,QCn,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
 
 ! internal flipped variables (GEOS5)
-
-       REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
-       REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
-       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
+   REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
+   REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
+   REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
 ! internal surface cont
-      REAL :: UST,WTHL,WQT,PBLH
-       REAL,DIMENSION(KTS-1:KTE) :: dry_a, moist_a,dry_w,moist_w, &
-               dry_qt,moist_qt,dry_thl,moist_thl,dry_u,moist_u,dry_v,moist_v, moist_qc
-        REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
-        REAL,DIMENSION(KTS:KTE) ::  s_buoyf
-        REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
+   REAL :: UST,WTHL,WQT,PBLH
+   REAL,DIMENSION(KTS-1:KTE) :: dry_a, moist_a,dry_w,moist_w, &
+             dry_qt,moist_qt,dry_thl,moist_thl,dry_u,moist_u,dry_v,moist_v, moist_qc
+   REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
+   REAL,DIMENSION(KTS:KTE) ::  s_buoyf
+   REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_ahl3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl,qte
 ! exner function
-        REAL,DIMENSION(KTS:KTE) :: exf,dp,pmid
-        REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
-        REAL,DIMENSION(KTS-1:KTE) :: rhoe
+   REAL,DIMENSION(KTS:KTE) :: exf,dp,pmid
+   REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
+   REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
-        REAL :: L0,ztop,tmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
-        INTEGER, DIMENSION(2) :: seedmf,the_seed
+   REAL :: L0,ztop,tmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
+   INTEGER, DIMENSION(2) :: seedmf,the_seed
 
+   LOGICAL :: calc_avg_diag
 
 ! velocity equation parameters
- REAL,PARAMETER :: &
-         Wa=1., &  ! buoyancy term
-         Wb=1.5      ! entrainment term
+   REAL,PARAMETER :: &
+       Wa=1., &  ! buoyancy term
+       Wb=1.5      ! entrainment term
 !        Wa=1., &    ! original
 !        Wb=1.5
 
 ! min values to avoid singularities
-  REAL,PARAMETER :: &
-     WSTARmin=1.e-3, &
-     PBLHmin=100.
+   REAL,PARAMETER :: &
+       WSTARmin=1.e-3, &
+       PBLHmin=100.
 
-     ! temporary, set 
-      mfsrcthl = 0.
-      mfsrcqt  = 0.
-      mfw      = 0.
-      mfarea   = 0.
+   ! temporary, set
+   mfsrcthl = 0.
+   mfsrcqt  = 0.
+   mfw      = 0.
+   mfarea   = 0.
 
-      tmp1d(:) = 1e-3
+   tmp1d(:) = 1e-3
 
-     ! set updraft properties to zero/undef
-      dry_a3=0.
-      moist_a3=0.
-      if (associated(dry_w3)) then
-        dry_w3=mapl_undef
-      end if
-      moist_w3=mapl_undef
-      dry_qt3=mapl_undef
-      moist_qt3=mapl_undef
-      dry_thl3=mapl_undef
-      moist_thl3=mapl_undef
-      dry_u3=mapl_undef
-      moist_u3=mapl_undef
-      dry_v3=mapl_undef
-      moist_v3=mapl_undef
-      moist_qc3=mapl_undef
-      ! outputs - variables needed for solver
-      aw3   =0.
-      aws3  =0.
-      awqv3 =0.
-      awql3 =0.
-      awqi3 =0.
-      awu3  =0.
-      awv3  =0.
+   ! If any average diagnostics requested, perform required calculations,
+   ! otherwise skip for efficiency
+   calc_avg_diag = (associated(dry_w3)   .or. associated(moist_w3)   .or. &
+                    associated(dry_qt3)  .or. associated(moist_qt3)  .or. &
+                    associated(dry_thl3) .or. associated(moist_thl3) .or. &
+                    associated(dry_u3)   .or. associated(moist_u3)   .or. &
+                    associated(dry_v3)   .or. associated(moist_v3)   .or. &
+                    associated(moist_qc3) )
 
-      buoyf =0.
-      mfw2  =0.
-      mfw3  =0.
-      mfqt3 =0.
-      mfhl3 =0.
-!      mfqt2 =0.
-      mfwqt =0.
-!      mfhl2 =0.
-      mfhlqt=0.
-      mfwhl =0.
-      mftke =0.
-      entx = mapl_undef
-      edmfmf=0.
+   ! set updraft properties to zero/undef
+   dry_a3   = 0.
+   moist_a3 = 0.
+   if (calc_avg_diag) then
+      if (associated(dry_w3))     dry_w3     = mapl_undef
+      if (associated(moist_w3))   moist_w3   = mapl_undef
+      if (associated(dry_qt3))    dry_qt3    = mapl_undef
+      if (associated(moist_qt3))  moist_qt3  = mapl_undef
+      if (associated(dry_thl3))   dry_thl3   = mapl_undef
+      if (associated(moist_thl3)) moist_thl3 = mapl_undef
+      if (associated(dry_u3))     dry_u3     = mapl_undef
+      if (associated(moist_u3))   moist_u3   = mapl_undef
+      if (associated(dry_v3))     dry_v3     = mapl_undef
+      if (associated(moist_v3))   moist_v3   = mapl_undef
+      if (associated(moist_qc3))  moist_qc3  = mapl_undef
+   end if
+
+   ! outputs - variables needed for solver
+    aw3   =0.
+    aws3  =0.
+    awqv3 =0.
+    awql3 =0.
+    awqi3 =0.
+    awu3  =0.
+    awv3  =0.
+
+    buoyf =0.
+    mfw2  =0.
+    mfw3  =0.
+    mfqt3 =0.
+    mfhl3 =0.
+    !      mfqt2 =0.
+    mfwqt =0.
+    !      mfhl2 =0.
+    mfhlqt=0.
+    mfwhl =0.
+    mftke =0.
+    edmfmf=0.
+
+    if (associated(entx)) entx = mapl_undef
+
 
    ! this is the environmental area - by default 1.
      ae3=PARAMS%EDfac
@@ -242,24 +261,24 @@ SUBROUTINE RUN_EDMF(its,ite,kts,kte,dt,phis, &
       thl_plume10 = mapl_undef
 #endif
 
-DO IH=ITS,ITE ! loop over the horizontal dimension
+DO IH=ITS,ITE ! loop over the horizontal dimensions
+  DO JH=JTS,JTE
 
-
-wthl=wthl2(IH)/mapl_cp
-wqt=wqt2(IH)
-!ust=ust2(IH)
-pblh=pblh2(IH)
+wthl=wthl2(IH,JH)/mapl_cp
+wqt=wqt2(IH,JH)
+!ust=ust2(IH,JH)
+pblh=pblh2(IH,JH)
 
 pblh=max(pblh,pblhmin)
-wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
+wthv=wthl+mapl_epsilon*thv3(IH,JH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
-  IF ( (wthv > 0.0 .and. TKE3(IH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,1:PARAMS%NUP) >= -2.0) .and. PARAMS%doclasp/=0)) then
+  IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. PARAMS%doclasp==0) .or. (any(mfsrcthl(IH,JH,1:PARAMS%NUP) >= -2.0) .and. PARAMS%doclasp/=0)) then
 
-!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH)
+!     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)
 
      if (PARAMS%doclasp/=0) then
-       nup2 = count(mfsrcthl(IH,1:PARAMS%NUP)>=-2.0)
+       nup2 = count(mfsrcthl(IH,JH,1:PARAMS%NUP)>=-2.0)
      else
        nup2 = PARAMS%NUP
      end if
@@ -277,56 +296,56 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
 ! Estimate scale height for entrainment calculation
  if (params%ET == 2 ) then
-    pmid = 0.5*(pw3(IH,kts-1:kte-1)+pw3(IH,kts:kte))
-    call calc_mf_depth(kts,kte,t3(IH,:),zlo3(IH,:)-zw3(IH,kte),qv3(IH,:),pmid,ztop,wthv,wqt)
+    pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
+    call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
     L0 = max(min(ztop,3000.),500.) / params%L0fac
 
     ! Reduce L0 over ocean where LTS > 18 to encourage StCu formation
     lts =  0.0
-    if (FRLAND(IH)<0.5) then
+    if (FRLAND(IH,JH)<0.5) then
        do k = kte-1,kts+1,-1
-          if (zlo3(IH,k)-zw3(IH,kte).gt.3000.0) then
-             lts = thv3(IH,k+1)
+          if (zlo3(IH,JH,k)-zw3(IH,JH,kte).gt.3000.0) then
+             lts = thv3(IH,JH,k+1)
              exit
           end if
        end do
-       lts = lts - thv3(IH,kte)
+       lts = lts - thv3(IH,JH,kte)
        L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.2*(lts-18.))) )
-    end if 
+    end if
  else
     L0 = params%L0
- end if  
+ end if
 
 !
 ! flipping variables (GEOS5)
 !
   DO k=kts,kte
-      zlo(k)=zlo3(IH,kte-k+kts)-zw3(IH,kte)
-      u(k)=u3(IH,kte-k+kts)
-      v(k)=v3(IH,kte-k+kts)
-      thl(k)=thl3(IH,kte-k+kts)
-      thv(k)=thv3(IH,kte-k+kts)
-      qt(k)=qt3(IH,kte-k+kts)
-      qv(k)=qv3(IH,kte-k+kts)
-      ql(k)=ql3(IH,kte-k+kts)
-      qi(k)=qi3(IH,kte-k+kts)
+      zlo(k)=zlo3(IH,JH,kte-k+kts)-zw3(IH,JH,kte)
+      u(k)=u3(IH,JH,kte-k+kts)
+      v(k)=v3(IH,JH,kte-k+kts)
+      thl(k)=thl3(IH,JH,kte-k+kts)
+      thv(k)=thv3(IH,JH,kte-k+kts)
+      qt(k)=qt3(IH,JH,kte-k+kts)
+      qv(k)=qv3(IH,JH,kte-k+kts)
+      ql(k)=ql3(IH,JH,kte-k+kts)
+      qi(k)=qi3(IH,JH,kte-k+kts)
       if (k<kte) then
          if (PARAMS%DISCRETE == 0) then
-            ui(k)   = 0.5*( u3(IH,kte-k+kts)   + u3(IH,kte-k+kts-1) )
-            vi(k)   = 0.5*( v3(IH,kte-k+kts)   + v3(IH,kte-k+kts-1) )
-            thli(k) = 0.5*( thl3(IH,kte-k+kts) + thl3(IH,kte-k+kts-1) )
-            qti(k)  = 0.5*( qt3(IH,kte-k+kts)  + qt3(IH,kte-k+kts-1) )
-            qvi(k)  = 0.5*( qv3(IH,kte-k+kts)  + qv3(IH,kte-k+kts-1) )
-            qli(k)  = 0.5*( ql3(IH,kte-k+kts)  + ql3(IH,kte-k+kts-1) )
-            qii(k)  = 0.5*( qi3(IH,kte-k+kts)  + qi3(IH,kte-k+kts-1) )
+            ui(k)   = 0.5*( u3(IH,JH,kte-k+kts)   + u3(IH,JH,kte-k+kts-1) )
+            vi(k)   = 0.5*( v3(IH,JH,kte-k+kts)   + v3(IH,JH,kte-k+kts-1) )
+            thli(k) = 0.5*( thl3(IH,JH,kte-k+kts) + thl3(IH,JH,kte-k+kts-1) )
+            qti(k)  = 0.5*( qt3(IH,JH,kte-k+kts)  + qt3(IH,JH,kte-k+kts-1) )
+            qvi(k)  = 0.5*( qv3(IH,JH,kte-k+kts)  + qv3(IH,JH,kte-k+kts-1) )
+            qli(k)  = 0.5*( ql3(IH,JH,kte-k+kts)  + ql3(IH,JH,kte-k+kts-1) )
+            qii(k)  = 0.5*( qi3(IH,JH,kte-k+kts)  + qi3(IH,JH,kte-k+kts-1) )
          else
-            ui(k)   = u3(IH,kte-k+kts-1)
-            vi(k)   = v3(IH,kte-k+kts-1)
-            thli(k) = thl3(IH,kte-k+kts-1)
-            qti(k)  = qt3(IH,kte-k+kts-1)
-            qvi(k)  = qv3(IH,kte-k+kts-1)
-            qli(k)  = ql3(IH,kte-k+kts-1)
-            qii(k)  = qi3(IH,kte-k+kts-1)
+            ui(k)   = u3(IH,JH,kte-k+kts-1)
+            vi(k)   = v3(IH,JH,kte-k+kts-1)
+            thli(k) = thl3(IH,JH,kte-k+kts-1)
+            qti(k)  = qt3(IH,JH,kte-k+kts-1)
+            qvi(k)  = qv3(IH,JH,kte-k+kts-1)
+            qli(k)  = ql3(IH,JH,kte-k+kts-1)
+            qii(k)  = qi3(IH,JH,kte-k+kts-1)
          end if
       end if
   ENDDO
@@ -346,9 +365,9 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
   qii(kts-1)  = qi(kts)
 
 DO k=kts-1,kte
-   rhoe(k) = rhoe3(IH,kte-k+kts-1)
-   zw(k)   = zw3(IH,kte-k+kts-1)-zw3(IH,kte)
-   p(k)    = pw3(IH,kte-k+kts-1)
+   rhoe(k) = rhoe3(IH,JH,kte-k+kts-1)
+   zw(k)   = zw3(IH,JH,kte-k+kts-1)-zw3(IH,JH,kte)
+   p(k)    = pw3(IH,JH,kte-k+kts-1)
 ENDDO
 
 dp = p(kts-1:kte-1)-p(kts:kte)
@@ -402,7 +421,7 @@ if (L0 .gt. 0. ) then
 !          ENT(k,i) = (1.-PARAMS%STOCHFRAC) * PARAMS%Ent0/L0 &
 !                   + PARAMS%STOCHFRAC * real(ENTi(k,i))*PARAMS%Ent0/(ZW(k)-ZW(k-1)) !&
 !       end if
-!                + 1.*tke3(ih,kte-k+kts)/L0
+!                + 1.*tke3(IH,JH,kte-k+kts)/L0
 !       ENT(k,i) = ENT(k,i) * (1000./max(ZW(k),500.))
 !       if (ZW(k).lt.500.) ENT(k,i) = 2.*ENT(k,i)
      enddo
@@ -423,7 +442,7 @@ if (L0 .gt. 0. ) then
      enddo
     enddo
    end if
-!    ENT = (1.+frland(IH))*ENT  ! double entrainment over land to reduce PBLH
+!    ENT = (1.+frland(IH,JH))*ENT  ! double entrainment over land to reduce PBLH
 !    print *,'ZW=',ZW
 !    print *,'ENT=',SUM(ENT,DIM=2)/10.
 
@@ -473,8 +492,8 @@ end if
         wtv=wmin+(wmax-wmin)/(real(NUP2))*real(i)
 
         if (PARAMS%doclasp/=0) then
-          UPW(kts-1,I) = MFW(IH,I)
-          UPA(kts-1,I)=MFAREA(IH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
+          UPW(kts-1,I) = MFW(IH,JH,I)
+          UPA(kts-1,I)=MFAREA(IH,JH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
           UPA(kts-1,I)=MIN(1.5,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
@@ -484,8 +503,8 @@ end if
         UPV(kts-1,I)=V(kts)
 
         if (PARAMS%doclasp/=0) then   ! if CLASP, use tile-based perturbations
-          UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,I)
-          UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,I)
+          UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,JH,I)
+          UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,JH,I)
         else
           UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
 !          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
@@ -553,8 +572,8 @@ end if
                elseif (PARAMS%ENTRAIN==4) then
 !                 ENT(K,I) = (1.-PARAMS%STOCHFRAC)*PARAMS%Ent0/L0 &
 !                            + PARAMS%STOCHFRAC*PARAMS%ENT0*0.0032/max(0.1,UPW(K-1,I))
-!                 ENT(K,I) = 1e-3*(PARAMS%Ent0/(max(min(UPW(K-1,I),2.0),0.5))-0.5) 
-                  ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,I))/max(0.1,UPW(K-1,I)))
+!                 ENT(K,I) = 1e-3*(PARAMS%Ent0/(max(min(UPW(K-1,I),2.0),0.5))-0.5)
+                  ENT(K,I) = ENT(K,I)*(1.+3.0*sqrt(TKE3(IH,JH,I))/max(0.1,UPW(K-1,I)))
                end if
 
                EntExp=exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
@@ -612,14 +631,16 @@ end if
          ! loop over vertical
          ENDDO vertint
 
-         do k=kts,kte
-           tmp = sum(UPA(k,:))
-           if (tmp .gt. 0.) then   ! weighted avg of lateral entrainment rate
-             entx(ih,KTE-k+KTS) = sum(UPA(k,:)*ENT(k,:))/tmp
-           else
-             entx(ih,KTE-k+KTS) = MAPL_UNDEF
-           end if
-         end do
+         if (associated(entx)) then
+           do k=kts,kte
+             tmp = sum(UPA(k,:))
+             if (tmp .gt. 0.) then   ! weighted avg of lateral entrainment rate
+               entx(IH,JH,KTE-k+KTS) = sum(UPA(k,:)*ENT(k,:))/tmp
+             else
+               entx(IH,JH,KTE-k+KTS) = MAPL_UNDEF
+             end if
+           end do
+         end if
 
 
   ! CFL condition: Check that mass flux does not exceed layer mass at any level
@@ -634,10 +655,10 @@ end if
             end if
          ENDDO
 !         if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
-         UPA = factor*UPA 
+         UPA = factor*UPA
 
          DO k=KTS,KTE
-            edmfmf(IH,KTE-k+KTS-1) = rhoe(K)*SUM(upa(K,:)*upw(K,:))
+            edmfmf(IH,JH,KTE-k+KTS-1) = rhoe(K)*SUM(upa(K,:)*upw(K,:))
          ENDDO
 
   !
@@ -662,38 +683,38 @@ end if
 
       DO k=KTS-1,KTE  ! loop in vertical
 #ifdef EDMF_DIAG
-        w_plume1(IH,k) = upw(kte+kts-k-1,1)
-        w_plume2(IH,k) = upw(kte+kts-k-1,2)
-        w_plume3(IH,k) = upw(kte+kts-k-1,3)
-        w_plume4(IH,k) = upw(kte+kts-k-1,4)
-        w_plume5(IH,k) = upw(kte+kts-k-1,5)
-        w_plume6(IH,k) = upw(kte+kts-k-1,6)
-        w_plume7(IH,k) = upw(kte+kts-k-1,7)
-        w_plume8(IH,k) = upw(kte+kts-k-1,8)
-        w_plume9(IH,k) = upw(kte+kts-k-1,9)
-        w_plume10(IH,k)= upw(kte+kts-k-1,10)
-        qt_plume1(IH,k) = upqt(kte+kts-k-1,1)
-        qt_plume2(IH,k) = upqt(kte+kts-k-1,2)
-        qt_plume3(IH,k) = upqt(kte+kts-k-1,3)
-        qt_plume4(IH,k) = upqt(kte+kts-k-1,4)
-        qt_plume5(IH,k) = upqt(kte+kts-k-1,5)
-        qt_plume6(IH,k) = upqt(kte+kts-k-1,6)
-        qt_plume7(IH,k) = upqt(kte+kts-k-1,7)
-        qt_plume8(IH,k) = upqt(kte+kts-k-1,8)
-        qt_plume9(IH,k) = upqt(kte+kts-k-1,9)
-        qt_plume10(IH,k)= upqt(kte+kts-k-1,10)
-        thl_plume1(IH,k) = upthl(kte+kts-k-1,1)
-        thl_plume2(IH,k) = upthl(kte+kts-k-1,2)
-        thl_plume3(IH,k) = upthl(kte+kts-k-1,3)
-        thl_plume4(IH,k) = upthl(kte+kts-k-1,4)
-        thl_plume5(IH,k) = upthl(kte+kts-k-1,5)
-        thl_plume6(IH,k) = upthl(kte+kts-k-1,6)
-        thl_plume7(IH,k) = upthl(kte+kts-k-1,7)
-        thl_plume8(IH,k) = upthl(kte+kts-k-1,8)
-        thl_plume9(IH,k) = upthl(kte+kts-k-1,9)
-        thl_plume10(IH,k)= upthl(kte+kts-k-1,10)
+        w_plume1(IH,JH,k) = upw(kte+kts-k-1,1)
+        w_plume2(IH,JH,k) = upw(kte+kts-k-1,2)
+        w_plume3(IH,JH,k) = upw(kte+kts-k-1,3)
+        w_plume4(IH,JH,k) = upw(kte+kts-k-1,4)
+        w_plume5(IH,JH,k) = upw(kte+kts-k-1,5)
+        w_plume6(IH,JH,k) = upw(kte+kts-k-1,6)
+        w_plume7(IH,JH,k) = upw(kte+kts-k-1,7)
+        w_plume8(IH,JH,k) = upw(kte+kts-k-1,8)
+        w_plume9(IH,JH,k) = upw(kte+kts-k-1,9)
+        w_plume10(IH,JH,k)= upw(kte+kts-k-1,10)
+        qt_plume1(IH,JH,k) = upqt(kte+kts-k-1,1)
+        qt_plume2(IH,JH,k) = upqt(kte+kts-k-1,2)
+        qt_plume3(IH,JH,k) = upqt(kte+kts-k-1,3)
+        qt_plume4(IH,JH,k) = upqt(kte+kts-k-1,4)
+        qt_plume5(IH,JH,k) = upqt(kte+kts-k-1,5)
+        qt_plume6(IH,JH,k) = upqt(kte+kts-k-1,6)
+        qt_plume7(IH,JH,k) = upqt(kte+kts-k-1,7)
+        qt_plume8(IH,JH,k) = upqt(kte+kts-k-1,8)
+        qt_plume9(IH,JH,k) = upqt(kte+kts-k-1,9)
+        qt_plume10(IH,JH,k)= upqt(kte+kts-k-1,10)
+        thl_plume1(IH,JH,k) = upthl(kte+kts-k-1,1)
+        thl_plume2(IH,JH,k) = upthl(kte+kts-k-1,2)
+        thl_plume3(IH,JH,k) = upthl(kte+kts-k-1,3)
+        thl_plume4(IH,JH,k) = upthl(kte+kts-k-1,4)
+        thl_plume5(IH,JH,k) = upthl(kte+kts-k-1,5)
+        thl_plume6(IH,JH,k) = upthl(kte+kts-k-1,6)
+        thl_plume7(IH,JH,k) = upthl(kte+kts-k-1,7)
+        thl_plume8(IH,JH,k) = upthl(kte+kts-k-1,8)
+        thl_plume9(IH,JH,k) = upthl(kte+kts-k-1,9)
+        thl_plume10(IH,JH,k)= upthl(kte+kts-k-1,10)
 #endif
-          
+
          DO I=1,NUP2 ! first sum over all i-updrafts
             IF ((UPQL(K,I)>0.) .OR. UPQI(K,I)>0.)  THEN
                moist_a(K)=moist_a(K)+UPA(K,I)
@@ -712,12 +733,12 @@ end if
 !               dry_v(K)=dry_v(K)+UPA(K,I)*UPV(K,I)
             ENDIF
          ENDDO  ! first sum over all i-updrafts
-      
 
 
-         if (associated(dry_w3)) then
 
-         DO I=1,NUP2 ! first sum over all i-updrafts                                                                                                                                      
+         if (calc_avg_diag) then
+
+         DO I=1,NUP2 ! first sum over all i-updrafts
             IF ((UPQL(K,I)>0.) .OR. UPQI(K,I)>0.)  THEN
 !               moist_a(K)=moist_a(K)+UPA(K,I)
                moist_w(K)=moist_w(K)+UPA(K,I)*UPW(K,I)
@@ -804,19 +825,17 @@ end if
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
           if (PARAMS%IMPLICIT == 1) then
-             tmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs ! updraft S
+             tmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + phis(IH,JH) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs ! updraft S
           else
-!             tmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
-!             tmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl - exfh(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl
              tmp =   mapl_cp*exfh(k)*( UPTHL(K,i) - THLI(K) ) &
-                    + mapl_alhl*( UPQL(K,i) - QLI(K) ) &
-                    + mapl_alhs*( UPQI(K,I) - QII(K) )
+                         + mapl_alhl*( UPQL(K,i) - QLI(K) )   &
+                         + mapl_alhs*( UPQI(K,I) - QII(K) )
           end if
           ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
-          s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*tmp
-          s_ahl2(k)=s_ahl2(K)+UPA(K,i)*ltm*ltm
-          s_ahl3(k)=s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
-          s_awhl(k)=s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
+          s_aws(k)  = s_aws(K)+UPA(K,i)*UPW(K,i)*tmp
+          s_ahl2(k) = s_ahl2(K)+UPA(K,i)*ltm*ltm
+          s_ahl3(k) = s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
+          s_awhl(k) = s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
           if (PARAMS%IMPLICIT == 1) then
              s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*UPU(K,I)
              s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*UPV(K,I)
@@ -831,7 +850,7 @@ end if
              s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*(UPQI(K,I) - QII(K))
           end if
           s_awqt(k)  = s_awqt(K)  + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - QTI(K))
-          mftke(IH,k) = mftke(IH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
+          mftke(IH,JH,k) = mftke(IH,JH,k) + UPA(KTE+KTS-K-1,i)*0.5*UPW(KTE+KTS-K-1,I)*UPW(KTE+KTS-K-1,I)
          ENDDO
 
        DO k=KTS,KTE
@@ -850,55 +869,53 @@ end if
 !
 ! turn around the outputs and fill them in the 3d fields
 !
-   if (associated(dry_w3)) then
-   DO K=KTS-1,KTE
-      ! mass-flux diagnostic variables
-      dry_a3(IH,K)=dry_a(KTE+KTS-K-1)
-      moist_a3(IH,K)=moist_a(KTE+KTS-K-1)
-      dry_w3(IH,K)=dry_w(KTE+KTS-K-1)
-      moist_w3(IH,K)=moist_w(KTE+KTS-K-1)
-      dry_qt3(IH,K)=dry_qt(KTE+KTS-K-1)
-      moist_qt3(IH,K)=moist_qt(KTE+KTS-K-1)
-      dry_thl3(IH,K)= dry_thl(KTE+KTS-K-1)
-      moist_thl3(IH,K)=moist_thl(KTE+KTS-K-1)
-      dry_u3(IH,K)=dry_u(KTE+KTS-K-1)
-      moist_u3(IH,K)=moist_u(KTE+KTS-K-1)
-      dry_v3(IH,K)=dry_v(KTE+KTS-K-1)
-      moist_v3(IH,K)=moist_v(KTE+KTS-K-1)
-      moist_qc3(IH,K)=moist_qc(KTE+KTS-K-1)
-   END DO
-   end if
+   dry_a3(IH,JH,KTS-1:KTE)    = dry_a(KTE:KTS-1:-1)
+   moist_a3(IH,JH,KTS-1:KTE)  = moist_a(KTE:KTS-1:-1)
+   if (associated(dry_w3))     dry_w3(IH,JH,KTS-1:KTE)     = dry_w(KTE:KTS-1:-1)
+   if (associated(moist_w3))   moist_w3(IH,JH,KTS-1:KTE)   = moist_w(KTE:KTS-1:-1)
+   if (associated(dry_qt3))    dry_qt3(IH,JH,KTS-1:KTE)    = dry_qt(KTE:KTS-1:-1)
+   if (associated(moist_qt3))  moist_qt3(IH,JH,KTS-1:KTE)  = moist_qt(KTE:KTS-1:-1)
+   if (associated(dry_thl3))   dry_thl3(IH,JH,KTS-1:KTE)   = dry_thl(KTE:KTS-1:-1)
+   if (associated(moist_thl3)) moist_thl3(IH,JH,KTS-1:KTE) = moist_thl(KTE:KTS-1:-1)
+   if (associated(dry_u3))     dry_u3(IH,JH,KTS-1:KTE)     = dry_u(KTE:KTS-1:-1)
+   if (associated(moist_u3))   moist_u3(IH,JH,KTS-1:KTE)   = moist_u(KTE:KTS-1:-1)
+   if (associated(dry_v3))     dry_v3(IH,JH,KTS-1:KTE)     = dry_v(KTE:KTS-1:-1)
+   if (associated(moist_v3))   moist_v3(IH,JH,KTS-1:KTE)   = moist_v(KTE:KTS-1:-1)
+   if (associated(moist_qc3))  moist_qc3(IH,JH,KTS-1:KTE)  = moist_qc(KTE:KTS-1:-1)
+
+
    DO K=KTS-1,KTE
       ! outputs - variables needed for solver
-      aw3(IH,K)=s_aw(KTE+KTS-K-1)
-      aws3(IH,K)=s_aws(KTE+KTS-K-1)
-      awqv3(IH,K)=s_awqv(KTE+KTS-K-1)
-      awql3(IH,K)=s_awql(KTE+KTS-K-1)
-      awqi3(IH,K)=s_awqi(KTE+KTS-K-1)
-      awu3(IH,K)=s_awu(KTE+KTS-K-1)
-      awv3(IH,K)=s_awv(KTE+KTS-K-1)
-      ae3(IH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*PARAMS%EDfac
-      mfwhl(IH,K) = s_awhl(KTE+KTS-K-1)
-      mfwqt(IH,K) = s_awqt(KTE+KTS-K-1)
+      aw3(IH,JH,K)=s_aw(KTE+KTS-K-1)
+      aws3(IH,JH,K)=s_aws(KTE+KTS-K-1)
+      awqv3(IH,JH,K)=s_awqv(KTE+KTS-K-1)
+      awql3(IH,JH,K)=s_awql(KTE+KTS-K-1)
+      awqi3(IH,JH,K)=s_awqi(KTE+KTS-K-1)
+      awu3(IH,JH,K)=s_awu(KTE+KTS-K-1)
+      awv3(IH,JH,K)=s_awv(KTE+KTS-K-1)
+      ae3(IH,JH,K)=(1.-dry_a(KTE+KTS-K-1)-moist_a(KTE+KTS-K-1))*PARAMS%EDfac
+      mfwhl(IH,JH,K) = s_awhl(KTE+KTS-K-1)
+      mfwqt(IH,JH,K) = s_awqt(KTE+KTS-K-1)
     ENDDO
 
 ! buoyancy is defined on full levels
   DO k=kts,kte
-      buoyf(IH,K)=s_buoyf(KTE+KTS-K)    ! can be used in SHOC
-      mfw2(IH,K)=0.5*(s_aw2(KTE+KTS-K-1)+s_aw2(KTE+KTS-K))
-      mfw3(IH,K)=0.5*(s_aw3(KTE+KTS-K-1)+s_aw3(KTE+KTS-K))
-!      mfhl2(IH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
-!      mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
-      mfqt3(IH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
-      mfhl3(IH,K)=0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
-      mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
+      buoyf(IH,JH,K)=s_buoyf(KTE+KTS-K)    ! can be used in SHOC
+      mfw2(IH,JH,K)=0.5*(s_aw2(KTE+KTS-K-1)+s_aw2(KTE+KTS-K))
+      mfw3(IH,JH,K)=0.5*(s_aw3(KTE+KTS-K-1)+s_aw3(KTE+KTS-K))
+!      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
+!      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
+      mfqt3(IH,JH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
+      mfhl3(IH,JH,K)=0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
+      mfhlqt(IH,JH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
   ENDDO
 
  END IF   !  IF ( wthv > 0.0 )
 
-! if (params%ET == 3 ) edmfdepth(IH) = zw( COUNT( dry_a3(IH,:)+moist_a3(IH,:) .gt. tmp1d ) )
+! if (params%ET == 3 ) edmfdepth(IH,JH) = zw( COUNT( dry_a3(IH,JH,:)+moist_a3(IH,JH,:) .gt. tmp1d ) )
 
 ENDDO ! loop over horizontal area
+ENDDO
 
 
 END SUBROUTINE run_edmf
@@ -915,7 +932,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
   real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,wstar,qstar,thstar,sigmaQT,sigmaTH
   integer  :: k
 
-   wstar=max(0.1,(mapl_grav/300.*wthv*1e3)**(1./3.))  ! convective velocity scale                                                                                                       
+   wstar=max(0.1,(mapl_grav/300.*wthv*1e3)**(1./3.))  ! convective velocity scale
    qstar=max(0.,wqt)/wstar
    thstar=max(0.,wthv)/wstar
 
@@ -1055,12 +1072,12 @@ function  get_alhl3(T,IM,JM,LM,iceramp)
 real,dimension(IM,JM,LM) ::  T,get_alhl3
 real :: iceramp
 integer :: IM,JM,LM
-integer :: I,J,L
+integer :: IH,JH,L
 
-do i=1,im
-  do j=1,jm
+do ih=1,im
+  do jh=1,jm
     do l=1,lm
-        get_alhl3(i,j,l)=get_alhl(T(i,j,l),iceramp)
+        get_alhl3(IH,JH,l)=get_alhl(T(IH,JH,l),iceramp)
     enddo
   enddo
 enddo
@@ -1106,7 +1123,7 @@ integer :: sed_len
 integer,dimension(2),  intent(in) :: seed
 
 integer :: seed_len
-integer :: i,j,idum,p
+integer :: IH,JH,idum,p
 integer,allocatable :: theseed(:)
 
 call random_seed(SIZE=seed_len)
@@ -1120,10 +1137,10 @@ if (seed_len > 2) theseed(3:) = 1+seed(2)
 call random_seed(put=theseed)
 
 
-do i=istart,iend
-  do j=jstart,jend
-!    poi(i,j)=poidev(mu(i,j),idum)
-    poi(i,j)=poidev(mu(i,j))
+do ih=istart,iend
+  do jh=jstart,jend
+!    poi(IH,JH)=poidev(mu(IH,JH),idum)
+    poi(IH,JH)=poidev(mu(IH,JH))
   enddo
 enddo
 

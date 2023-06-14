@@ -259,7 +259,7 @@ module shoc
       do i=1,nx
         wrk            = 1.0 / prsl(i,j,k)
         qv(i,j,k)      = max(qwv(i,j,k), 0.0)
-        thv(i,j,k)     = tabs(i,j,k) * (1.0+epsv*qv(i,j,k))
+        thv(i,j,k)     = tabs(i,j,k) * (1.0+epsv*qv(i,j,k)-qcl(i,j,k)-qci(i,j,k))
         w(i,j,k)       = - rog * omega(i,j,k) * thv(i,j,k) * wrk
         qpl(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         qpi(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
@@ -517,11 +517,21 @@ contains
 
   subroutine calc_numbers()
      ! Defines Richardson number and Prandtl number on edges
-   
+    real, dimension(nx,ny,nzm-1) :: DU,TM,DTM   
+
+     DU  = (U(:,:,1:nzm-1) - U(:,:,2:nzm))**2 + &    ! shear on edges
+           (V(:,:,1:nzm-1) - V(:,:,2:nzm))**2 
+     DU  = MAX( SQRT(DU) / adzi(:,:,1:nzm-1), 0.003 ) 
+    
+     TM  = 0.5*( THV(:,:,1:nzm-1)+THV(:,:,2:nzm) )
+     DTM = THV(:,:,2:nzm) - THV(:,:,1:nzm-1)
+
      RI = 0.0
-     RI(:,:,2:nz-1) = ggr*(THV(:,:,2:nzm) - THV(:,:,1:nzm-1)) /adzi(:,:,1:nzm-1)
-     RI(:,:,2:nz-1) = RI(:,:,2:nz-1)/( (THV(:,:,1:nzm-1) + THV(:,:,2:nzm))*0.5* &
-                      (MAX(0.01,SQRT( (u(:,:,1:nzm-1)-u(:,:,2:nzm))**2 + (v(:,:,1:nzm-1)-v(:,:,2:nzm))**2 )) / adzi(:,:,1:nzm-1))**2 )
+     RI(:,:,2:nz-1) = ggr*( DTM / adzi(:,:,1:nzm-1) ) / ( TM * (DU**2) )
+
+!     RI(:,:,2:nz-1) = ggr*(THV(:,:,2:nzm) - THV(:,:,1:nzm-1)) /adzi(:,:,1:nzm-1)
+!     RI(:,:,2:nz-1) = RI(:,:,2:nz-1)/( (THV(:,:,1:nzm-1) + THV(:,:,2:nzm))*0.5* &
+!                      (MAX(0.001,SQRT( (u(:,:,1:nzm-1)-u(:,:,2:nzm))**2 + (v(:,:,1:nzm-1)-v(:,:,2:nzm))**2 )) / adzi(:,:,1:nzm-1))**2 )
 
      if (SHOCPARAMS%PRNUM.lt.0.) then
         where (RI.le.0. .or. tke_mf.gt.1e-4)

@@ -3860,10 +3860,9 @@ contains
     mfwsl  = 0.0
     mftke  = 0.0
 
-
     IF(DoMF /= 0) then
 
-      call RUN_EDMF(1, IM*JM, 1, LM, DT,      &
+      call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,      &
                     !== Inputs ==
                     PHIS,                     &
                     Z,                        &
@@ -3911,17 +3910,17 @@ contains
                     edmfdrya, edmfmoista,     & ! outputs for ADG PDF
                     !== Diagnostics, not used elsewhere ==
                     edmf_dry_w,               &
-                    edmfmoistw,               &
-                    edmfdryqt,                &
-                    edmfmoistqt,              &
-                    edmfdrythl,               &
-                    edmfmoistthl,             &
-                    edmfdryu,                 &
-                    edmfmoistu,               &
-                    edmfdryv,                 &
-                    edmfmoistv,               &
-                    edmfmoistqc,              &
-                    edmf_ent,                 &
+                    edmf_moist_w,             &
+                    edmf_dry_qt,              &
+                    edmf_moist_qt,            &
+                    edmf_dry_thl,             &
+                    edmf_moist_thl,           &
+                    edmf_dry_u,               &
+                    edmf_moist_u,             &
+                    edmf_dry_v,               &
+                    edmf_moist_v,             &
+                    edmf_moist_qc,            &
+                    edmf_entx,                &
 #ifdef EDMF_DIAG
                w_plume1,w_plume2,w_plume3,w_plume4,w_plume5, &
                w_plume6,w_plume7,w_plume8,w_plume9,w_plume10, &
@@ -3968,19 +3967,7 @@ contains
 #endif
       if (associated(edmf_dry_a))     edmf_dry_a = edmfdrya 
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
-!      if (associated(edmf_dry_w))     edmf_dry_w = edmfdryw 
-      if (associated(edmf_moist_w))   edmf_moist_w = edmfmoistw 
-      if (associated(edmf_dry_qt))    edmf_dry_qt = edmfdryqt 
-      if (associated(edmf_moist_qt))  edmf_moist_qt = edmfmoistqt 
-      if (associated(edmf_dry_thl))   edmf_dry_thl = edmfdrythl 
-      if (associated(edmf_moist_thl)) edmf_moist_thl = edmfmoistthl 
-      if (associated(edmf_dry_u))     edmf_dry_u = edmfdryu 
-      if (associated(edmf_moist_u))   edmf_moist_u = edmfmoistu 
-      if (associated(edmf_dry_v))     edmf_dry_v = edmfdryv 
-      if (associated(edmf_moist_v))   edmf_moist_v = edmfmoistv 
-      if (associated(edmf_moist_qc))  edmf_moist_qc = edmfmoistqc 
       if (associated(edmf_buoyf))     edmf_buoyf = buoyf 
-      if (associated(edmf_entx))      edmf_entx = edmf_ent
       if (associated(edmf_mfx))       edmf_mfx = edmf_mf
       if (associated(mfaw))           mfaw = edmf_mf/rhoe
       if (associated(slflxmf))        slflxmf = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
