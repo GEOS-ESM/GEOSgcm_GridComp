@@ -14,14 +14,21 @@ module Process_Library_standalone
         module procedure ICE_FRACTION_SC
     end interface ICE_FRACTION
 
+    interface MELTFRZ
+        ! module procedure MELTFRZ_3D
+        ! module procedure MELTFRZ_2D
+        ! module procedure MELTFRZ_1D
+        module procedure MELTFRZ_SC
+    end interface MELTFRZ
+
     ! In anvil/convective clouds
-    real, parameter :: aT_ICE_ALL = 245.16
-    real, parameter :: aT_ICE_MAX = 261.16
+    real, parameter :: aT_ICE_ALL = 252.16
+    real, parameter :: aT_ICE_MAX = 268.16
     real, parameter :: aICEFRPWR  = 2.0
     ! Over snow/ice SRF_TYPE = 2
-    real, parameter :: iT_ICE_ALL = MAPL_TICE-40.0
-    real, parameter :: iT_ICE_MAX = MAPL_TICE
-    real, parameter :: iICEFRPWR  = 4.0
+    real, parameter :: iT_ICE_ALL = 236.16
+    real, parameter :: iT_ICE_MAX = 261.16
+    real, parameter :: iICEFRPWR  = 6.0
     ! Over Land     SRF_TYPE = 1
     real, parameter :: lT_ICE_ALL = 239.16
     real, parameter :: lT_ICE_MAX = 261.16
@@ -35,11 +42,18 @@ module Process_Library_standalone
     real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
     real, parameter :: K_COND  =  2.4e-2    ! J m**-1 s**-1 K**-1
     real, parameter :: DIFFU   =  2.2e-5    ! m**2 s**-1
+    real, parameter :: taufrz  =  450.0
     ! LDRADIUS4
-    real, parameter :: RHO_I   =  916.8     ! Density of ice crystal in kg/m^3
-    real, parameter :: RHO_W   = 1000.0     ! Density of liquid water in kg/m^3
-    real, parameter :: be      = 1./3. - 0.14
-    real, parameter :: bx      = 100.* (3./(4.*MAPL_PI))**(1./3.) * 0.07*6.92
+    real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
+    real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
+    real, parameter :: Lk      = 0.75    ! tunable shape effect (0.5:1)
+    real, parameter :: Lbe     = 1./3. - 0.14
+    real, parameter :: Lbx     = Ldiss*1.e3*(3./(4.*MAPL_PI*Lk*RHO_W*1.e-3))**(1./3.)
+                             ! LDRADIUS eqs are in cgs units
+
+    ! Ice
+    real, parameter :: RHO_I   =  916.8  ! Density of ice crystal in kg/m^3
+    
     ! combined constantc
     real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
     real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
@@ -51,9 +65,33 @@ module Process_Library_standalone
 
     real, parameter :: mapl_undef = 1.0e15  ! NOTE : This is the value pulled from MAPL_Mod
 
-    public :: hystpdf, ICE_FRACTION, FILLQ2ZERO, BUOYANCY, EVAP3, SUBL3, FIX_UP_CLOUDS, RADCOUPLE
+    public :: hystpdf, ICE_FRACTION, MELTFRZ, FILLQ2ZERO, BUOYANCY, EVAP3, SUBL3, FIX_UP_CLOUDS, RADCOUPLE
 
     contains
+
+    subroutine MELTFRZ_SC( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+        real, intent(in   ) :: DT, CNVFRC, SRFTYPE
+        real, intent(inout) :: TE,QL,QI
+        real  :: fQi,dQil
+        integer :: K
+        ! freeze liquid first
+        if ( TE <= MAPL_TICE ) then
+            fQi  = ice_fraction( TE, CNVFRC, SRFTYPE )
+            dQil = Ql *(1.0 - EXP( -Dt * fQi / taufrz ) )
+            dQil = max(  0., dQil )
+            Qi   = Qi + dQil
+            Ql   = Ql - dQil
+            TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+        end if
+        ! melt ice instantly above 0^C
+        if ( TE > MAPL_TICE ) then
+            dQil = -Qi
+            dQil = min(  0., dQil )
+            Qi   = Qi + dQil
+            Ql   = Ql - dQil
+            TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
+        end if
+    end subroutine MELTFRZ_SC
 
     subroutine BUOYANCY( T, Q, QS, DQS, DZ, ZLO, BUOY, CAPE, INHB)
 
@@ -109,9 +147,9 @@ module Process_Library_standalone
         real sigmaqt2           ! width of distribution (sigma)
         real qstar              ! saturation q at grid box avg T
         real clfrac             ! cloud fraction (area under pdf from qs)
-  
+
         real :: qtmode, qtmin, qtmax
-  
+
         if(flag.eq.1) then
             if((qtmean+sigmaqt1).lt.qstar) then
                 clfrac = 0.
@@ -136,7 +174,7 @@ module Process_Library_standalone
                 clfrac = 1.
             endif
         endif
-  
+
         return
     end subroutine pdffrac
 
@@ -145,22 +183,22 @@ module Process_Library_standalone
         implicit none
   
         integer flag            ! flag to indicate shape of pdf
-                                ! 1 for tophat, 2 for triangular
+                              ! 1 for tophat, 2 for triangular
         real qtmean4            ! Grid box value of q total
         real sigmaqt14          ! width of distribution (to left)
         real sigmaqt24          ! width of distribution (to right)
         real qstar4             ! saturation q at grid box avg T
         real condensate4        ! condensate (area under (q*-qt)*pdf from qs)
-  
+
         real *8 :: qtmode, qtmin, qtmax, constA, constB, cloudf
         real *8 :: term1, term2, term3
         real *8 :: qtmean, sigmaqt1, sigmaqt2, qstar, condensate
-  
+
         qtmean = dble(qtmean4)
         sigmaqt1 = dble(sigmaqt14)
         sigmaqt2 = dble(sigmaqt24)
         qstar = dble(qstar4)
-  
+
         if(flag.eq.1) then
             if(qtmean+sigmaqt1.lt.qstar) then
                 condensate = 0.d0
@@ -198,7 +236,7 @@ module Process_Library_standalone
             endif
         endif
         condensate4 = real(condensate)
-  
+
         return
     end subroutine pdfcondensate
 
@@ -342,97 +380,97 @@ module Process_Library_standalone
         real, parameter :: use_aterm_memory = 1.
         real, parameter :: tauskew = 3600. 
 
-        ! define conserved variables
-        gamaz = gocp * zl
-        thv   = tabs * (1.0+epsv*qwv)
-        thv   = thv*(100000.0/pval) ** kapa
+    ! define conserved variables
+   gamaz = gocp * zl
+   thv   = tabs * (1.0+epsv*qwv)
+   thv   = thv*(100000.0/pval) ** kapa
 
-        w_first = - rog * omega * thv / pval
+   w_first = - rog * omega * thv / pval
 
-        ! Initialize cloud variables to zero
-        diag_qn   = 0.0
-        diag_frac = 0.0
-        diag_ql   = 0.0
-        diag_qi   = 0.0
+! Initialize cloud variables to zero
+   diag_qn   = 0.0
+   diag_frac = 0.0
+   diag_ql   = 0.0
+   diag_qi   = 0.0
 
-        pkap = (pval/100000.0) ** kapa
+   pkap = (pval/100000.0) ** kapa
 
 
-        ! Compute square roots of some variables so we don't have to do it again
-        if (w_sec > 0.0) then
+! Compute square roots of some variables so we don't have to do it again
+          if (w_sec > 0.0) then
             sqrtw2   = sqrt(w_sec)
             Skew_w   = w3var / (sqrtw2*sqrtw2*sqrtw2)
-        else
+          else
             sqrtw2   = w_thresh
             Skew_w   = 0.
-        endif
-        if (thlsec > 0.0) then
+          endif
+          if (thlsec > 0.0) then
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
-        else
+          else
             sqrtthl  = 0.0
             skew_thl = 0.
-        endif
-        if (qwsec > 0.0) then
+          endif
+          if (qwsec > 0.0) then
             sqrtqt   = sqrt(qwsec)
             skew_qw =  qt3/sqrtqt**3
-        else
+          else
             sqrtqt   = 1e-4*total_water
             skew_qw  = 0.
-        endif
+          endif
 
-        ! Find parameters of the double Gaussian PDF of vertical velocity
+! Find parameters of the double Gaussian PDF of vertical velocity
 
-        !          aterm = pdf_a
+!          aterm = pdf_a
 
-        if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
-            aterm = pdf_a
+         if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
+          aterm = pdf_a
 
-            if (mffrc>=1e-3) then                ! if active updraft this timestep
-                if (aterm<0.5) then                ! if distribution is skewed (recent updrafts)
-                    aterm = max(mffrc,aterm*max(1.-DT/tauskew,0.0))
-                else                               ! if distribution unskewed
-                    aterm = mffrc
-                end if
-            else                                 ! if no active updraft
-                if (aterm.lt.0.5 .and. aterm.gt.1e-3) then  ! but there is residual skewness
-                    aterm = aterm*max(1.-DT/tauskew,0.0)
-                else
-                    aterm = 0.5
-                end if
+          if (mffrc>=1e-3) then                ! if active updraft this timestep
+            if (aterm<0.5) then                ! if distribution is skewed (recent updrafts)
+              aterm = max(mffrc,aterm*max(1.-DT/tauskew,0.0))
+            else                               ! if distribution unskewed
+              aterm = mffrc
             end if
+          else                                 ! if no active updraft
+            if (aterm.lt.0.5 .and. aterm.gt.1e-3) then  ! but there is residual skewness
+              aterm = aterm*max(1.-DT/tauskew,0.0)
+            else
+              aterm = 0.5
+            end if
+          end if
 
-        else  ! don't use memory in aterm and qt skewness
+         else  ! don't use memory in aterm and qt skewness
 
-            aterm = mffrc
-            aterm = max(1e-3,min(0.99,aterm))
-            if (mffrc.le.1e-3) aterm = 0.5
-        end if
+           aterm = mffrc
+           aterm = max(1e-3,min(0.99,aterm))
+           if (mffrc.le.1e-3) aterm = 0.5
+         end if
 
-        onema = 1.0 - aterm
+         onema = 1.0 - aterm
 
 
-        ! If variance of w is too small or no skewness then
-        !          IF (w_sec <= w_tol_sqd .or. mffrc.lt.0.01) THEN ! If variance of w is too small then
-        IF (w_sec <= w_tol_sqd) THEN ! If variance of w is too small then
+! If variance of w is too small or no skewness then
+!          IF (w_sec <= w_tol_sqd .or. mffrc.lt.0.01) THEN ! If variance of w is too small then
+          IF (w_sec <= w_tol_sqd) THEN ! If variance of w is too small then
             Skew_w = 0.
             w1_1   = 0.
             w1_2   = 0.
             w2_1   = w_sec
             w2_2   = w_sec
-            !            aterm  = 0.5
-            !            onema  = 0.5
-        ELSE
+!            aterm  = 0.5
+!            onema  = 0.5
+          ELSE
 
-            ! Proportionality coefficients between widths of each vertical velocity
-            ! gaussian and the sqrt of the second moment of w
-            !           w2_1 = 0.4
-            !           w2_2 = 0.4
+! Proportionality coefficients between widths of each vertical velocity
+! gaussian and the sqrt of the second moment of w
+ !           w2_1 = 0.4
+ !           w2_2 = 0.4
 
-            ! analytic double gaussian 2, variable sigma_w
+! analytic double gaussian 2, variable sigma_w
 
             wrk2 = 0.667*abs(Skew_w)**0.333    ! m below A.24
-            ! not used     wrk = (1+wrk2*wrk2)**3/((3.+wrk2*wrk2)*wrk2)**2  ! M in A.24
+! not used     wrk = (1+wrk2*wrk2)**3/((3.+wrk2*wrk2)*wrk2)**2  ! M in A.24
 
             w2_1 = (onema/(aterm*(1.+wrk2**2)))**0.5
             w2_2 = (aterm/(onema*(1.+wrk2**2)))**0.5
@@ -440,31 +478,31 @@ module Process_Library_standalone
             w1_1 = wrk2*w2_1             ! w1_tilde in A.23
             w1_2 = -wrk2*w2_2
 
-            ! Compute realtive weight of the first PDF "plume"
-            ! See Eq A4 in Pete's dissertaion -  Ensure 0.01 < a < 0.99
+! Compute realtive weight of the first PDF "plume"
+! See Eq A4 in Pete's dissertaion -  Ensure 0.01 < a < 0.99
 
-            !            wrk = 1.0 - w2_1    ! 1-sigw2tilde = 1-0.4
-            !            aterm = max(0.01,min(0.5*(1.-Skew_w*sqrt(1./(4.*wrk*wrk*wrk+Skew_w*Skew_w))),0.99))
+!            wrk = 1.0 - w2_1    ! 1-sigw2tilde = 1-0.4
+!            aterm = max(0.01,min(0.5*(1.-Skew_w*sqrt(1./(4.*wrk*wrk*wrk+Skew_w*Skew_w))),0.99))
 
-            !            sqrtw2t = sqrt(wrk)
+!            sqrtw2t = sqrt(wrk)
 
-            ! Eq. A.5-A.6
-            !            wrk  =   sqrt(onema/aterm)
-            !            w1_1 =   sqrtw2t * wrk  ! w1tilde (A.5)
-            !            w1_2 = - sqrtw2t / wrk  ! w2tilde (A.6)
+! Eq. A.5-A.6
+!            wrk  =   sqrt(onema/aterm)
+!            w1_1 =   sqrtw2t * wrk  ! w1tilde (A.5)
+!            w1_2 = - sqrtw2t / wrk  ! w2tilde (A.6)
 
-            !            w2_1 = w2_1 * w_sec  ! sigma_w1 **2
-            !            w2_2 = w2_2 * w_sec  ! sigma_w2 **2
+!            w2_1 = w2_1 * w_sec  ! sigma_w1 **2
+!            w2_2 = w2_2 * w_sec  ! sigma_w2 **2
 
-        ENDIF
+          ENDIF
 
 
-        !  Find parameters of the PDF of liquid/ice static energy
+!  Find parameters of the PDF of liquid/ice static energy
 
-        ! inter-gaussian flux limited to 2x total flux
-        !          whlntrgs = max(min(whlfac,2.*abs(wthlsec)),-2.*abs(wthlsec))
+          ! inter-gaussian flux limited to 2x total flux
+!          whlntrgs = max(min(whlfac,2.*abs(wthlsec)),-2.*abs(wthlsec))
 
-        IF (thlsec <= thl_tol*thl_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
+          IF (thlsec <= thl_tol*thl_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
             thl1_1     = thl_first
             thl1_2     = thl_first
             thl2_1     = thlsec
@@ -472,16 +510,16 @@ module Process_Library_standalone
             sqrtthl2_1 = sqrt(thlsec)
             sqrtthl2_2 = sqrtthl2_1
 
-        ELSE
+          ELSE
 
-            !            corrtest1 = max(-1.0,min(1.0,whlntrgs/(sqrtw2*sqrtthl)))
+!            corrtest1 = max(-1.0,min(1.0,whlntrgs/(sqrtw2*sqrtthl)))
             corrtest1 = max(-1.0,min(1.0,wthlsec/(sqrtw2*sqrtthl)))
 
             thl1_1 = -corrtest1 / w1_2       ! A.7
             thl1_2 = -corrtest1 / w1_1       ! A.8
 
-            !            thl1_1 = -whlntrgs / (w1_2*sqrtthl)   !   normalized
-            !            thl1_2 = -whlntrgs / (w1_1*sqrtthl)
+!            thl1_1 = -whlntrgs / (w1_2*sqrtthl)   !   normalized
+!            thl1_2 = -whlntrgs / (w1_1*sqrtthl)
 
             wrk1   = thl1_1 * thl1_1
             wrk2   = thl1_2 * thl1_2
@@ -489,13 +527,13 @@ module Process_Library_standalone
             wrk4   = skew_thl - aterm*wrk1*thl1_1 - onema*wrk2*thl1_2
             wrk    = 3. * (thl1_2-thl1_1)
             if (wrk /= 0.0) then
-                thl2_1 = thlsec * min(100.,max(0.,( 3.*thl1_2*wrk3-wrk4)/(aterm*wrk))) ! A.9
-                thl2_2 = thlsec * min(100.,max(0.,(-3.*thl1_1*wrk3+wrk4)/(onema*wrk))) ! A.10
+              thl2_1 = thlsec * min(100.,max(0.,( 3.*thl1_2*wrk3-wrk4)/(aterm*wrk))) ! A.9
+              thl2_2 = thlsec * min(100.,max(0.,(-3.*thl1_1*wrk3+wrk4)/(onema*wrk))) ! A.10
             else
-                !              thl2_1 = 0.0
-                !              thl2_2 = 0.0
-                thl2_1 = thlsec
-                thl2_2 = thlsec
+!              thl2_1 = 0.0
+!              thl2_2 = 0.0
+              thl2_1 = thlsec
+              thl2_2 = thlsec
             endif
 
             thl1_1 = thl1_1*sqrtthl + thl_first    ! convert to physical units
@@ -504,46 +542,46 @@ module Process_Library_standalone
             sqrtthl2_1 = sqrt(thl2_1)
             sqrtthl2_2 = sqrt(thl2_2)
 
-        ENDIF
+          ENDIF
 
-        ! implied correlation coefficient
+          ! implied correlation coefficient
 #ifdef PDFDIAG
-        PDF_RWTH = max(-1.,min(1.,( wthlsec/sqrtw2-aterm*(thl1_1-thl_first)*(w1_1-w_first) &
-            -onema*(thl1_2-thl_first)*(w1_2-w_first) )               &
-            / (aterm*sqrt(thl2_1*w2_1)+onema*sqrt(thl2_2*w2_2)) ))
+          PDF_RWTH = max(-1.,min(1.,( wthlsec/sqrtw2-aterm*(thl1_1-thl_first)*(w1_1-w_first) &
+                     -onema*(thl1_2-thl_first)*(w1_2-w_first) )               &
+                     / (aterm*sqrt(thl2_1*w2_1)+onema*sqrt(thl2_2*w2_2)) ))
 #endif
 
-        !  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
+!  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
 
-        ! inter-gaussian flux, limited to 2x total flux
-        !          wqtntrgs = max(min(wqtfac,2.*abs(wqwsec)),-2.*abs(wqwsec))
+          ! inter-gaussian flux, limited to 2x total flux
+!          wqtntrgs = max(min(wqtfac,2.*abs(wqwsec)),-2.*abs(wqwsec))
 
-        IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
+          IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
             if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.eq.0.) then ! if no residual skewness
-                qw1_1     = total_water
-                qw1_2     = total_water
-                qw2_1     = qwsec
-                qw2_2     = qwsec
-                sqrtqw2_1 = sqrt(qw2_1)
-                sqrtqw2_2 = sqrt(qw2_2)
+              qw1_1     = total_water
+              qw1_2     = total_water
+              qw2_1     = qwsec
+              qw2_2     = qwsec
+              sqrtqw2_1 = sqrt(qw2_1)
+              sqrtqw2_2 = sqrt(qw2_2)
             else
-                !              qw1_1     = total_water
-                !              qw1_2     = total_water
-                !              qw2_1     = qwsec
-                !              qw2_2     = qwsec
-                wrk1 = min(10.,skew_qw*sqrtqt**3)   ! third moment qt
-                qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
-                qw1_2 = (total_water -aterm*qw1_1)/onema
-                qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
-                qw2_2 = qw2_1
-                sqrtqw2_1 = sqrt(qw2_1)
-                sqrtqw2_2 = sqrt(qw2_2)
+!              qw1_1     = total_water
+!              qw1_2     = total_water
+!              qw2_1     = qwsec
+!              qw2_2     = qwsec
+              wrk1 = min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+              qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
+              qw1_2 = (total_water -aterm*qw1_1)/onema
+              qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
+              qw2_2 = qw2_1
+              sqrtqw2_1 = sqrt(qw2_1)
+              sqrtqw2_2 = sqrt(qw2_2)
             end if
 
-        ELSE  ! active updrafts
+          ELSE  ! active updrafts
 
-            !            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
+!            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
             corrtest2 = max(-1.0,min(1.0,0.5*wqwsec/(sqrtw2*sqrtqt)))
 
             qw1_1 = - corrtest2 / w1_2            ! A.7
@@ -558,13 +596,13 @@ module Process_Library_standalone
             wrk   = 3. * (qw1_2-qw1_1)
 
             if (wrk /= 0.0) then
-                qw2_1 = qwsec * min(100.,max(0.,( 3.*qw1_2*wrk3-wrk4)/(aterm*wrk))) ! A.10
-                qw2_2 = qwsec * min(100.,max(0.,(-3.*qw1_1*wrk3+wrk4)/(onema*wrk))) ! A.11
+              qw2_1 = qwsec * min(100.,max(0.,( 3.*qw1_2*wrk3-wrk4)/(aterm*wrk))) ! A.10
+              qw2_2 = qwsec * min(100.,max(0.,(-3.*qw1_1*wrk3+wrk4)/(onema*wrk))) ! A.11
             else
-                !              qw2_1 = 0.0
-                !              qw2_2 = 0.0
-                qw2_1 = qwsec
-                qw2_2 = qwsec
+!              qw2_1 = 0.0
+!              qw2_2 = 0.0
+              qw2_1 = qwsec
+              qw2_2 = qwsec
             endif
 
             qw1_1 = qw1_1*sqrtqt + total_water
@@ -573,166 +611,166 @@ module Process_Library_standalone
             sqrtqw2_1 = sqrt(qw2_1)
             sqrtqw2_2 = sqrt(qw2_2)
 
-        ENDIF   ! if qwsec small
+          ENDIF   ! if qwsec small
 
-        ! implied correlation coefficient
+          ! implied correlation coefficient
 #ifdef PDFDIAG
-        PDF_RWQT = max(-1.,min(1.,( wqwsec/sqrtw2-aterm*(qw1_1-total_water)*(w1_1-w_first) &
-            -onema*(qw1_2-total_water)*(w1_2-w_first) )              &
-            / (aterm*sqrt(qw2_1*w2_1)+onema*sqrt(qw2_2*w2_2)) ))
+          PDF_RWQT = max(-1.,min(1.,( wqwsec/sqrtw2-aterm*(qw1_1-total_water)*(w1_1-w_first) &
+                     -onema*(qw1_2-total_water)*(w1_2-w_first) )              &
+                     / (aterm*sqrt(qw2_1*w2_1)+onema*sqrt(qw2_2*w2_2)) ))
 #endif
 
-        !  CONVERT FROM TILDA VARIABLES TO "REAL" VARIABLES
+!  CONVERT FROM TILDA VARIABLES TO "REAL" VARIABLES
 
-        w1_1 = w1_1*sqrtw2 + w_first    ! using A.5 and A.6
-        w1_2 = w1_2*sqrtw2 + w_first    ! note: this is already done for w2_x
+          w1_1 = w1_1*sqrtw2 + w_first    ! using A.5 and A.6
+          w1_2 = w1_2*sqrtw2 + w_first    ! note: this is already done for w2_x
 
 
-        !=== Assign PDF diagnostics ===!
+!=== Assign PDF diagnostics ===!
 
-        pdf_a = aterm
+          pdf_a = aterm
 
 #ifdef PDFDIAG
-        pdf_th1 = thl1_1
-        pdf_th2 = thl1_2
-        pdf_sigth1 = sqrtthl2_1
-        pdf_sigth2 = sqrtthl2_2
+          pdf_th1 = thl1_1
+          pdf_th2 = thl1_2
+          pdf_sigth1 = sqrtthl2_1
+          pdf_sigth2 = sqrtthl2_2
 
-        pdf_qt1 = qw1_1
-        pdf_qt2 = qw1_2
-        pdf_sigqt1 = sqrtqw2_1
-        pdf_sigqt2 = sqrtqw2_2
+          pdf_qt1 = qw1_1
+          pdf_qt2 = qw1_2
+          pdf_sigqt1 = sqrtqw2_1
+          pdf_sigqt2 = sqrtqw2_2
 
-        pdf_w1 = w1_1
-        pdf_w2 = w1_2
-        if (w2_1.ne.0.) then
+          pdf_w1 = w1_1
+          pdf_w2 = w1_2
+          if (w2_1.ne.0.) then
             pdf_sigw1 = w2_1*sqrtw2
             pdf_sigw2 = w2_2*sqrtw2
-        else
+          else
             pdf_sigw1 = 0.0
             pdf_sigw2 = 0.0
-        end if
+          end if
 #endif
 
-        !==============================!
+!==============================!
 
 
-        !  FIND WITHIN-PLUME CORRELATIONS
+!  FIND WITHIN-PLUME CORRELATIONS
 
-        testvar = aterm*sqrtqw2_1*sqrtthl2_1 + onema*sqrtqw2_2*sqrtthl2_2
+          testvar = aterm*sqrtqw2_1*sqrtthl2_1 + onema*sqrtqw2_2*sqrtthl2_2
 
-        IF (testvar == 0) THEN
+          IF (testvar == 0) THEN
             r_qwthl_1 = 0.
-        ELSE
+          ELSE
             r_qwthl_1 = max(-1.0,min(1.0,(qwthlsec-aterm*(qw1_1-total_water)*(thl1_1-thl_first)-onema*(qw1_2-total_water)*(thl1_2-thl_first))/testvar)) ! A.12
-        ENDIF
+          ENDIF
 
 #ifdef PDFDIAG
-        pdf_rqtth = r_qwthl_1
+          pdf_rqtth = r_qwthl_1
 #endif
 
 
-        !  BEGIN TO COMPUTE CLOUD PROPERTY STATISTICS
-        ! This section follows Bogenschutz thesis Appendix A, based on
-        ! Sommeria and Deardorff (1977) and Lewellen and Yoh (1993).
+!  BEGIN TO COMPUTE CLOUD PROPERTY STATISTICS
+! This section follows Bogenschutz thesis Appendix A, based on
+! Sommeria and Deardorff (1977) and Lewellen and Yoh (1993).
 
-        Tl1_1 = thl1_1 - gamaz
-        Tl1_2 = thl1_2 - gamaz
+          Tl1_1 = thl1_1 - gamaz
+          Tl1_2 = thl1_2 - gamaz
 
-        ! Now compute qs
+! Now compute qs
 
-        esval1_1 = 0.
-        esval1_2 = 0.
-        esval2_1 = 0.
-        esval2_2 = 0.
-        om1      = 1.
-        om2      = 1.
+          esval1_1 = 0.
+          esval1_2 = 0.
+          esval2_1 = 0.
+          esval2_2 = 0.
+          om1      = 1.
+          om2      = 1.
 
-        ! Partition based on temperature for the first plume
+! Partition based on temperature for the first plume
 
-        IF (Tl1_1 >= tbgmax) THEN
+          IF (Tl1_1 >= tbgmax) THEN
             esval1_1 = MAPL_EQsat(Tl1_1)
             lstarn1  = lcond
-        ELSE IF (Tl1_1 < tbgmin) THEN
+          ELSE IF (Tl1_1 < tbgmin) THEN
             esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
             lstarn1  = lsub
-        ELSE
+          ELSE
             esval1_1 = MAPL_EQsat(Tl1_1)
             esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
             om1      = max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))
             lstarn1  = lcond + (1.-om1)*lfus
-        ENDIF
+          ENDIF
 
-        ! this is qs evaluated at Tl
-        qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
-            + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
+          ! this is qs evaluated at Tl
+          qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
+                + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
 
-        beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
+          beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
 
-        ! Are the two plumes equal?  If so then set qs and beta
-        ! in each column to each other to save computation
-        IF (Tl1_1 == Tl1_2) THEN
+! Are the two plumes equal?  If so then set qs and beta
+! in each column to each other to save computation
+          IF (Tl1_1 == Tl1_2) THEN
             qs2   = qs1
             beta2 = beta1
-        ELSE
+          ELSE
 
             IF (Tl1_2 < tbgmin) THEN
-                esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-                lstarn2  = lsub
+              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
+              lstarn2  = lsub
             ELSE IF (Tl1_2 >= tbgmax) THEN
-                esval1_2 = MAPL_EQsat(Tl1_2)
-                lstarn2  = lcond
+              esval1_2 = MAPL_EQsat(Tl1_2)
+              lstarn2  = lcond
             ELSE
-                esval1_2 = MAPL_EQsat(Tl1_2)
-                esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-                om2      = max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
-                lstarn2  = lcond + (1.-om2)*lfus
+              esval1_2 = MAPL_EQsat(Tl1_2)
+              esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
+              om2      = max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
+              lstarn2  = lcond + (1.-om2)*lfus
             ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
-            + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
+                  + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
 
             beta2 = (lstarn2*lstarn2*onebrvcp) / (Tl1_2*Tl1_2)              ! A.18
 
-        ENDIF
+          ENDIF
 
 
-        !  Now compute cloud stuff -  compute s term
+!  Now compute cloud stuff -  compute s term
 
-        cqt1  = 1.0 / (1.0+beta1*qs1)                                     ! A.19
-        wrk   = (1.0+beta1*qw1_1) * cqt1
+          cqt1  = 1.0 / (1.0+beta1*qs1)                                     ! A.19
+          wrk   = (1.0+beta1*qw1_1) * cqt1
 
-        s1    = qw1_1 - qs1* wrk                                          ! A.17
-        cthl1 = cqt1*wrk*(cp/lcond)*beta1*qs1*pkap                        ! A.20
+          s1    = qw1_1 - qs1* wrk                                          ! A.17
+          cthl1 = cqt1*wrk*(cp/lcond)*beta1*qs1*pkap                        ! A.20
 
-        wrk1   = cthl1 * cthl1
-        wrk2   = cqt1  * cqt1
-        std_s1 = sqrt(max(0.,wrk1*thl2_1+wrk2*qw2_1-2.*cthl1*sqrtthl2_1*cqt1*sqrtqw2_1*r_qwthl_1))
+          wrk1   = cthl1 * cthl1
+          wrk2   = cqt1  * cqt1
+          std_s1 = sqrt(max(0.,wrk1*thl2_1+wrk2*qw2_1-2.*cthl1*sqrtthl2_1*cqt1*sqrtqw2_1*r_qwthl_1))
 
-        qn1 = 0.
-        C1  = 0.
+          qn1 = 0.
+          C1  = 0.
 
-        IF (std_s1 /= 0) THEN
+          IF (std_s1 /= 0) THEN
             wrk = s1 / (std_s1*sqrt2)
             C1 = 0.5*(1.+erf(wrk))                                         ! A.15
             IF (C1 /= 0) qn1 = s1*C1 + (std_s1*sqrtpii)*exp(-wrk*wrk)      ! A.16
-        ELSEIF (s1 > 0) THEN
+          ELSEIF (s1 > 0) THEN
             C1  = 1.0
             qn1 = s1
-        ENDIF
+          ENDIF
 
-        ! now compute non-precipitating cloud condensate
+! now compute non-precipitating cloud condensate
 
-        ! If two plumes exactly equal, then just set many of these
-        ! variables to themselves to save on computation.
-        IF (qw1_1 == qw1_2 .and. thl2_1 == thl2_2 .and. qs1 == qs2) THEN
+! If two plumes exactly equal, then just set many of these
+! variables to themselves to save on computation.
+          IF (qw1_1 == qw1_2 .and. thl2_1 == thl2_2 .and. qs1 == qs2) THEN
             s2     = s1
             cthl2  = cthl1
             cqt2   = cqt1
             std_s2 = std_s1
             C2     = C1
             qn2    = qn1
-        ELSE
+          ELSE
 
             cqt2   = 1.0 / (1.0+beta2*qs2)
             wrk    = (1.0+beta2*qw1_2) * cqt2
@@ -746,88 +784,88 @@ module Process_Library_standalone
             C2  = 0.
 
             IF (std_s2 /= 0) THEN
-                wrk = s2 / (std_s2*sqrt2)
-                C2  = 0.5*(1.+erf(wrk))
-                IF (C2 /= 0) qn2 = s2*C2 + (std_s2*sqrtpii)*exp(-wrk*wrk)
+              wrk = s2 / (std_s2*sqrt2)
+              C2  = 0.5*(1.+erf(wrk))
+              IF (C2 /= 0) qn2 = s2*C2 + (std_s2*sqrtpii)*exp(-wrk*wrk)
             ELSEIF (s2 > 0) THEN
-                C2  = 1.0
-                qn2 = s2
+              C2  = 1.0
+              qn2 = s2
             ENDIF
 
-        ENDIF
+          ENDIF
 
 
-        ! finally, compute the SGS cloud fraction
-        diag_frac = aterm*C1 + onema*C2
+! finally, compute the SGS cloud fraction
+          diag_frac = aterm*C1 + onema*C2
 
-        om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
-        om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
+          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
+          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
 
-        qn1 = min(qn1,qw1_1)
-        qn2 = min(qn2,qw1_2)
+          qn1 = min(qn1,qw1_1)
+          qn2 = min(qn2,qw1_2)
 
-        ql1 = qn1*om1
-        ql2 = qn2*om2
+          ql1 = qn1*om1
+          ql2 = qn2*om2
 
-        qi1 = qn1 - ql1
-        qi2 = qn2 - ql2
+          qi1 = qn1 - ql1
+          qi2 = qn2 - ql2
 
-        diag_qn = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
-        diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-        diag_qi = diag_qn - diag_ql
+          diag_qn = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
+          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
+          diag_qi = diag_qn - diag_ql
 
-        !!! temporary
-        !          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
-
-
-        ! Update temperature variable based on diagnosed cloud properties
-        om1         = max(0.,min(1.,(tabs-tbgmin)*a_bg))
-        lstarn1     = lcond + (1.-om1)*lfus
-        !          tabs = thl_first - gamaz + fac_cond*(diag_ql) &
-        !                            + fac_sub *(diag_qi) !&
-        !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
-        ! Update moisture fields
+!!! temporary
+!          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
 
 
+! Update temperature variable based on diagnosed cloud properties
+          om1         = max(0.,min(1.,(tabs-tbgmin)*a_bg))
+          lstarn1     = lcond + (1.-om1)*lfus
+!          tabs = thl_first - gamaz + fac_cond*(diag_ql) &
+!                            + fac_sub *(diag_qi) !&
+                    !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
+! Update moisture fields
 
-        qc      = diag_ql + diag_qi
-        !         qi      = diag_qi
-        !         qwv     = total_water - diag_qn
-        cld_sgs = diag_frac
 
-        if (sqrtqt>0.0 .AND. sqrtw2>0.0) then
+
+         qc      = diag_ql + diag_qi
+!         qi      = diag_qi
+!         qwv     = total_water - diag_qn
+         cld_sgs = diag_frac
+
+         if (sqrtqt>0.0 .AND. sqrtw2>0.0) then
             rwqt = (1.-0.5)*wqwsec/(sqrtqt*sqrtw2)
-            !            rwqt = (wqwsec)/(sqrtqt*sqrtw2)
-            !            rwqt = max(-1.,min(1.,pdf_rwqt))
-        else
+!            rwqt = (wqwsec)/(sqrtqt*sqrtw2)
+!            rwqt = max(-1.,min(1.,pdf_rwqt))
+         else
             rwqt = 0.0
-        end if
-        if (sqrtthl>0.0 .AND. sqrtw2>0.0) then
+         end if
+         if (sqrtthl>0.0 .AND. sqrtw2>0.0) then
             rwthl = wthlsec/(sqrtthl*sqrtw2)
-            !            rwthl = max(-1.,min(1.,pdf_rwth))
-        else
+!            rwthl = max(-1.,min(1.,pdf_rwth))
+         else
             rwthl = 0.0
-        end if
+         end if
 
-        wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
-        wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
+         wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
+         wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
 
 
-        ! Compute the liquid water flux
-        wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
-        wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
+! Compute the liquid water flux
+          wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
+          wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
 
-        ! diagnostic buoyancy flux.  Includes effects from liquid water, ice
-        ! condensate, liquid & ice precipitation
-        wrk = epsv * thv
+! diagnostic buoyancy flux.  Includes effects from liquid water, ice
+! condensate, liquid & ice precipitation
+          wrk = epsv * thv
 
-        bastoeps = (rv/rgas) * thv   ! thetav / epsilon
+          bastoeps = (rv/rgas) * thv   ! thetav / epsilon
 
-        wthv_sec = wthlsec + wrk*wqwsec                                     &
-            + (fac_cond-bastoeps)*wqls                                 &
-            + (fac_sub-bastoeps) *wqis
+          wthv_sec = wthlsec + wrk*wqwsec                                     &
+                   + (fac_cond-bastoeps)*wqls                                 &
+                   + (fac_sub-bastoeps) *wqis
 
-        !                          + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
+!                          + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
 
     end subroutine partition_dblgss
 
@@ -865,19 +903,19 @@ module Process_Library_standalone
             QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
 
         DIFF = 0.0     
-        DEP=0.0 
-        QI = QILS + QICN !neccesary because NI is for convective and large scale 
-        QL = QLLS +QLCN
-        QTOT=QI+QL
-        FQA = 0.0
+        DEP  = 0.0 
+        QI   = QILS + QICN !neccesary because NI is for convective and large scale 
+        QL   = QLLS + QLCN
+        QTOT = QI+QL
+        FQA  = 0.0
         if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
-        NIX= (1.0-FQA)*NI
-
-        DQALL=DQALL/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-        CFALL= min(CF+AF, 1.0)
-        TC=TE-MAPL_TICE
+        NIX  = (1.0-FQA)*NI
+    
+        DQALL = DQALL/DTIME
+        CFALL = min(CF+AF, 1.0)
+        TC    = TE-MAPL_TICE
         fQI_0 = fQI
-
+    
         !Completelely glaciated cloud:
         if (TE .ge. iT_ICE_MAX) then   !liquid cloud
             FQI   = 0.0
@@ -890,48 +928,48 @@ module Process_Library_standalone
                 ! new 0518 this line ensures that only preexisting ice can grow by deposition.
                 ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
                 else
-                    fQi  =   ice_fraction( TE, CNVFRC, SRF_TYPE )
+                    fQi = ice_fraction( TE, CNVFRC, SRF_TYPE )
                 end if                      
                 return 
             end if 
-        
-            QVINC=  QV 
-            QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
-            QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
-            QVINC =MIN(QVINC, QSLIQ) !limit to below water saturation 
-
+            
+            QVINC =  QV 
+            QSLIQ = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
+            QSICE = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
+            QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation 
+    
             ! Calculate deposition onto preexisting ice 
-
+    
             DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
             DENAIR=PL*100.0/MAPL_RGAS/TE
             DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
             LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
-
+    
             if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
                 DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
             else
-                DC = 20.0e-6
+                DC=20.0e-6
             end if
-
+    
             TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
-
+    
             DEP=0.0
             if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
-                AUX =max(min(DTIME*TEFF, 20.0), 0.0)
+                AUX=max(min(DTIME*TEFF, 20.0), 0.0)
                 DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
             end if
             DEP=MAX(DEP, -QILS/DTIME) !only existing ice can be sublimated
-
+    
             DQI = 0.0
             DQL = 0.0
-            FQI=0.0
+            FQI = 0.0
             !Partition DQALL accounting for Bergeron-Findensen process
             if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
                 if (DEP .gt. 0.0) then 
                     DQI = min(DEP, DQALL + QLLS/DTIME)
                     DQL = DQALL - DQI
                 else
-                    DQL=DQALL ! could happen because the PDF allows condensation in subsaturated conditions
+                    DQL = DQALL ! could happen because the PDF allows condensation in subsaturated conditions
                     DQI = 0.0 
                 end if
             end if
@@ -940,7 +978,7 @@ module Process_Library_standalone
                 DQI = max(DQALL - DQL, -QILS/DTIME)        
             end if
             if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
-
+    
         end if !=====  
 
     end subroutine Bergeron_Partition
@@ -1010,7 +1048,7 @@ module Process_Library_standalone
             if ( TEMP <= iT_ICE_ALL ) then
                 ICEFRCT_M = 1.000
             else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-                ICEFRCT_M = 1.00 -  ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL )
+                ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
             end if
             ICEFRCT_M = MIN(ICEFRCT_M,1.00)
             ICEFRCT_M = MAX(ICEFRCT_M,0.00)
@@ -1052,13 +1090,13 @@ module Process_Library_standalone
         PL          , &
         ZL          , &
         QV          , &
-        QCl         , &
-        QAl         , &
-        QCi         , &
-        QAi         , &
+        QLLS        , &
+        QLCN        , &
+        QILS        , &
+        QICN        , &
         TE          , &
-        CF          , &
-        AF          , &
+        CLLS        , &
+        CLCN        , &
         NL          , &
         NI          , &
         WHL         , &
@@ -1071,8 +1109,8 @@ module Process_Library_standalone
         MFQT3       , &
         MFHL3       , &
         MF_FRC      , &
-        PDF_A,      &  ! can remove these after development
-        PDFITERS,   &
+        PDF_A       , &  ! can remove these after development
+        PDFITERS    , &
 #ifdef PDFDIAG
         PDF_SIGW1,  &
         PDF_SIGW2,  &
@@ -1094,10 +1132,10 @@ module Process_Library_standalone
         WQL,        &
         needs_preexisting, &
         USE_BERGERON )
-!$acc routine seq
+
         real, intent(in)    :: DT,ALPHA,PL,ZL
         integer, intent(in) :: PDFSHAPE
-        real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
+        real, intent(inout) :: TE,QV,QLLS,QILS,CLLS,QLCN,QICN,CLCN,PDF_A
         real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
         real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
 #ifdef PDFDIAG
@@ -1111,268 +1149,217 @@ module Process_Library_standalone
         logical, intent(in) :: needs_preexisting, USE_BERGERON
 
         ! internal arrays
-        real :: QCO, QVO, CFO, QAO, TAU,HL
-        real :: QT, QMX, QMN, DQ, sigmaqt1, sigmaqt2
+        real :: TAU,HL
+        real :: QT, sigmaqt1, sigmaqt2
 
-        real :: TEO,QSx,DQsx,QS,DQs
+        real :: QSx,DQsx,QS,DQs
 
         real :: TEp, QSp, CFp, QVp, QCp
         real :: TEn, QSn, CFn, QVn, QCn
 
-        real :: QCx, QVx, CFx, QAx, QC, QA, fQi
-        real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
-
-!      real :: fQip
+        real :: QAo, QAx, QCx, QC, fQi
+        real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
 
         real :: tmpARR
-        real :: ALHX, DQCALL
+        real :: alhxbcp, DQCALL
         ! internal scalars
         integer :: N, nmax
 
-        QC = QCl + QCi
-        QA = QAl + QAi
-        QT  =  QC  + QA + QV  !Total water after microphysics
-        tmpARR = 0.0
-        nmax =  20
-        QAx = 0.0
+        character*(10) :: Iam='Process_Library:hystpdf'
 
-        if ( AF < 1.0 )  tmpARR = 1./(1.-AF)
+                        tmpARR = 0.0
+        if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
 
-        TEo = TE
+                        QAx = 0.0
+        if (CLCN > 0.0) QAx = (QLCN+QICN)/CLCN
 
-        DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
-        CFx = CF*tmpARR
-        QCx = QC*tmpARR
-        QVx = ( QV - QSx*AF )*tmpARR
+        CFn = (CLLS       )*tmpARR
+        QCn = (QLLS + QILS)*tmpARR
+        TEn = TE
 
-        if ( AF >= 1.0 )  QVx = QSx*1.e-4 
-        if ( AF >  0.0 )  QAx = QA/AF
+        DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
+        QVn = ( QV - QSx*CLCN )*tmpARR
 
-        QT  = QCx + QVx
+        QT = QCn + QVn  !Total LS water after microphysics
 
-        TEp = TEo
-        QSn = QSx
-        TEn = TEo
-        CFn = CFx
-        QVn = QVx
-        QCn = QCx
-        DQS = DQSx
-
-        fQi = ice_fraction( TE, CNVFRC,SRF_TYPE )
-        ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-
-        HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
-
+        nmax = 20
         do n=1,nmax
 
-            QVp = QVn
+            QVp = QVn 
             QCp = QCn
             CFp = CFn
             TEp = TEn
-
-            if(PDFSHAPE.lt.2) then
-
-            sigmaqt1  = ALPHA*QSn
-            sigmaqt2  = ALPHA*QSn
-
-            elseif(PDFSHAPE.eq.2) then  ! triangular
-                ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
-                ! for triangular, skewed r : sigmaqt1 < sigmaqt2
-                ! try: skewed right below 500 mb
+            DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+            if(PDFSHAPE.lt.2) then  ! top-hat
                 sigmaqt1  = ALPHA*QSn
                 sigmaqt2  = ALPHA*QSn
-    !         elseif(pdffrac .eq. 3) then ! single gaussian
-
+            elseif(PDFSHAPE.eq.2) then  ! triangular
+                ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*QSn (alpha is half width)
+                ! for triangular, skewed r : sigmaqt1 < sigmaqt2
+                sigmaqt1  = ALPHA*QSn
+                sigmaqt2  = ALPHA*QSn
+            elseif(PDFSHAPE .eq. 3) then ! single gaussian
+                ! missing
             elseif(PDFSHAPE .eq. 4) then !lognormal (sigma is dimmensionless)
                 sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
             endif
 
             if (PDFSHAPE.lt.5) then
-                call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
-                call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+                call pdffrac(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,CFn)
+                call pdfcondensate(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,QCn)
             elseif (PDFSHAPE.eq.5) then
 
                 ! Update the liquid water static energy
-                ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-                HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+                fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
+                alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+                HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
-                call partition_dblgss(DT/nmax,           &
-                                    TEn,          &
-                                    QVn,          &
-                                    QCn,          &
-                                    0.0,          & ! assume OMEGA=0
-                                    ZL,           &
-                                    PL*100.,      &
-                                    QT,           &
-                                    HL,          &
-                                    WHL,         &
-                                    WQT,         &
-                                    HL2,         &
-                                    QT2,         &
-                                    HLQT,        & 
-                                    W3,           &
-                                    W2,           &
-                                    MFQT3,        &
-                                    MFHL3,        &
-                                    MF_FRC,       &
-                                    PDF_A,        &
+                call partition_dblgss(DT/nmax,      &
+                                        TEn,          &
+                                        QVn,          &
+                                        QCn,          &
+                                        0.0,          & ! assume OMEGA=0
+                                        ZL,           &
+                                        PL*100.,      &
+                                        QT,           &
+                                        HL,           &
+                                        WHL,          &
+                                        WQT,          &
+                                        HL2,          &
+                                        QT2,          &
+                                        HLQT,         & 
+                                        W3,           &
+                                        W2,           &
+                                        MFQT3,        &
+                                        MFHL3,        &
+                                        MF_FRC,       &
+                                        PDF_A,        &
 #ifdef PDFDIAG
-                                    PDF_SIGW1,    &
-                                    PDF_SIGW2,    &
-                                    PDF_W1,       &
-                                    PDF_W2,       &
-                                    PDF_SIGHL1,   &
-                                    PDF_SIGHL2,   &
-                                    PDF_HL1,      &
-                                    PDF_HL2,      &
-                                    PDF_SIGQT1,   &
-                                    PDF_SIGQT2,   &
-                                    PDF_QT1,      &
-                                    PDF_QT2,      &
-                                    PDF_RHLQT,    &
-                                    PDF_RWHL,     &
-                                    PDF_RWQT,     &
+                                        PDF_SIGW1,    &
+                                        PDF_SIGW2,    &
+                                        PDF_W1,       &
+                                        PDF_W2,       &
+                                        PDF_SIGHL1,   &
+                                        PDF_SIGHL2,   &
+                                        PDF_HL1,      &
+                                        PDF_HL2,      &
+                                        PDF_SIGQT1,   &
+                                        PDF_SIGQT2,   &
+                                        PDF_QT1,      &
+                                        PDF_QT2,      &
+                                        PDF_RHLQT,    &
+                                        PDF_RWHL,     &
+                                        PDF_RWQT,     &
 #endif
-                                    WTHV2,        &
-                                    WQL,          &
-                                    CFn)
+                                        WTHV2,        &
+                                        WQL,          &
+                                        CFn)
             endif
 
             IF(USE_BERGERON) THEN
                 DQCALL = QCn - QCp
-                CF  = CFn * ( 1.-AF)
-                Nfac = 100.*PL*R_AIR/TEp !density times conversion factor
+                Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
                 NLv = NL/Nfac
                 NIv = NI/Nfac
                 call Bergeron_Partition( &         !Microphysically-based partitions the new condensate
                         DT               , &
                         PL               , &
-                        TEp              , &
+                        TEn              , &
                         QT               , &
-                        QCi              , &
-                        QAi              , &
-                        QCl              , &
-                        QAl              , &
-                        CF               , &
-                        AF               , &
+                        QILS             , &
+                        QICN             , &
+                        QLLS             , &
+                        QLCN             , &
+                        CLLS             , &
+                        CLCN             , &
                         NLv              , &
                         NIv              , &
                         DQCALL           , &
                         fQi              , & 
                         CNVFRC,SRF_TYPE  , &
-                        needs_preexisting)
+                    needs_preexisting)
             ELSE
-                fQi = ice_fraction( TEp, CNVFRC,SRF_TYPE )
+                fQi = ice_fraction( TEn, CNVFRC,SRF_TYPE )
             ENDIF
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        ! These lines represent adjustments
-        ! to anvil condensate due to the 
-        ! assumption of a stationary TOTAL 
-        ! water PDF subject to a varying 
-        ! QSAT value during the iteration
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-            if ( AF > 0. ) then
-                QAo = QAx  ! + QSx - QS 
+            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
+            if(PDFSHAPE.eq.1) then 
+                QCn = QCp +     (QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
+            elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
+                ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
+                ! for now, just use relaxation of 1/2 of top-hat.
+                QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
+            endif
+
+            if ( CLCN > 0. ) then
+                QAo = QAx
             else
                 QAo = 0.
             end if
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-
-            if(PDFSHAPE.eq.1) then 
-                QCn = QCp + ( QCn - QCp ) / ( 1. - (CFn * (ALPHA-1.) - (QCn/QSn))*DQS*ALHX/MAPL_CP)             
-            elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
-                ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
-                ! for now, just use relaxation of 1/2.
-                if (n.ne.nmax) QCn = QCp + ( QCn - QCp ) *0.5
-            endif
 
             QVn = QVp - (QCn - QCp)
-            TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
-                +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
+            TEn = TEp + (1.0-fQi)*(alhlbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN ) &
+                    +      fQi *(alhsbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN )
 
             PDFITERS = n
-            if (abs(Ten - Tep) .lt. 0.00001) exit 
-
-            DQS  = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+            if (abs(TEn - TEp) .lt. 0.00001) exit 
 
         enddo ! qsat iteration
 
-        CFo = CFn
-        CF = CFn
-        QCo = QCn
-        QVo = QVn
-        TEo = TEn
-
-        ! Update prognostic variables.  Deal with special case of AF=1
-        ! Temporary variables QCo, QAo become updated grid means.
-        if ( AF < 1.0 ) then
-            CF  = CFo * ( 1.-AF)
-            QCo = QCo * ( 1.-AF)
-            QAo = QAo *   AF  
+        if ( CLCN < 1.0 ) then
+            CLLS = CFn * (1.-CLCN)
+            QCn  = QCn * (1.-CLCN)
+            QAo  = QAo *     CLCN  
         else
-
-            ! Special case AF=1, i.e., box filled with anvil. 
+            ! Special case CLCN=1, i.e., box filled with anvil. 
             !   - Note: no guarantee QV_box > QS_box
-            CF  = 0.          ! Remove any other cloud
-            QAo = QA  + QC    ! Add any LS condensate to anvil type
-            QCo = 0.          ! Remove same from LS   
-            QT  = QAo + QV    ! Total water
+            CLLS = 0.              ! Remove any LS cloud
+            QAo  = QLCN+QICN+QLLS+QILS  ! Add all LS condensate to anvil type
+            QCn  = 0.              ! Remove same from new LS   
+            QT   = QAo + QV        ! Update total water
             ! Now set anvil condensate to any excess of total water 
             ! over QSx (saturation value at top)
             QAo = MAX( QT - QSx, 0. )
         end if
 
         ! Now take {\em New} condensate and partition into ice and liquid
-        ! taking care to keep both >=0 separately. New condensate can be
-        ! less than old, so $\Delta$ can be < 0.
 
-        dQCl = 0.0
-        dQCi = 0.0
-        dQAl = 0.0
-        dQAi = 0.0
-
-        !large scale   
-
-        QCx   = QCo - QC
-        if  (QCx .lt. 0.0) then  !net evaporation. Water evaporates first
-            dQCl = max(QCx, -QCl)   
-            dQCi = max(QCx - dQCl, -QCi)
+        ! large-scale
+        QCx = QCn - (QLLS+QILS)
+        if (QCx .lt. 0.0) then  !net evaporation
+            dQLLS = max(QCx        , -QLLS) ! Water evaporates first
+            dQILS = max(QCx - dQLLS, -QILS) ! Then sublimation
         else
-            dQCl  = (1.0-fQi)*QCx
-            dQCi  =    fQi  * QCx
+            dQLLS = (1.0-fQi)*QCx
+            dQILS =      fQi *QCx
         end if
 
-        !Anvil   
-        QAx   = QAo - QA
-
-        if  (QAx .lt. 0.0) then  !net evaporation. Water evaporates first
-            dQAl = max(QAx, -QAl)   
-            dQAi = max(QAx - dQAl, -QAi)
-        else            
-            dQAl  =  (1.0-fQi)*QAx
-            dQAi  = QAx*fQi
+        ! convective
+        QAx = QAo - (QLCN+QICN)
+        if  (QAx .lt. 0.0) then  !net evaporation
+            dQLCN = max(QAx        , -QLCN) ! Water evaporates first
+            dQICN = max(QAx - dQLCN, -QICN) ! Then sublimation
+        else
+            dQLCN  = (1.0-fQi)*QAx
+            dQICN  =      fQi *QAx
         end if
 
         ! Clean-up cloud if fractions are too small
-        if ( AF < 1.e-5 ) then
-            dQAi = -QAi
-            dQAl = -QAl
+        if ( CLCN < 1.e-5 ) then
+            dQICN = -QICN
+            dQLCN = -QLCN
         end if
-        if ( CF < 1.e-5 ) then
-            dQCi = -QCi
-            dQCl = -QCl
+        if ( CLLS < 1.e-5 ) then
+            dQILS = -QILS
+            dQLLS = -QLLS
         end if
 
-        QAi    = QAi + dQAi
-        QAl    = QAl + dQAl
-        QCi    = QCi + dQCi
-        QCl    = QCl + dQCl
-        QV     = QV  - ( dQAi+dQCi+dQAl+dQCl) 
-
-        TE  = TE + (MAPL_ALHL*( dQAi+dQCi+dQAl+dQCl)+MAPL_ALHF*(dQAi+dQCi))/ MAPL_CP
+        QICN   = QICN + dQICN
+        QLCN   = QLCN + dQLCN
+        QILS   = QILS + dQILS
+        QLLS   = QLLS + dQLLS
+        QV     = QV -         (dQICN+dQILS+dQLCN+dQLLS)
+        TE     = TE + alhlbcp*(dQICN+dQILS+dQLCN+dQLLS) + alhfbcp*(dQICN+dQILS)
 
         ! We need to take care of situations where QS moves past QA
         ! during QSAT iteration. This should be only when QA/AF is small
@@ -1382,12 +1369,12 @@ module Process_Library_standalone
         ! We get rid of anvil fraction also, although strictly
         ! speaking, PDF-wise, we should not do this.
         if ( QAo <= 0. ) then
-            QV  = QV + QAi + QAl
-            TE  = TE - (MAPL_ALHS/MAPL_CP)*QAi - (MAPL_ALHL/MAPL_CP)*QAl
-            QAi = 0.
-            QAl = 0.
-            AF  = 0.  
-        end if
+            QV   = QV + QICN + QLCN
+            TE   = TE - alhsbcp*QICN - alhlbcp*QLCN
+            QICN = 0.
+            QLCN = 0.
+            CLCN = 0.
+     end if
 
     end subroutine hystpdf
 
@@ -1450,8 +1437,7 @@ module Process_Library_standalone
         F       , &
         NL      , &
         NI      , &
-        QS      , &
-        EVAP_C  )
+        QS      )
         !$acc routine seq
         real, intent(in   ) :: DT 
         real, intent(in   ) :: A_EFF
@@ -1463,9 +1449,8 @@ module Process_Library_standalone
         real, intent(inout) :: F
         real, intent(in   ) :: NL,NI
         real, intent(in   ) :: QS
-        real, intent(out)   :: EVAP_C
 
-        real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC  !,QS
+        real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !!         EVAPORATION OF CLOUD WATER.             !!
@@ -1473,11 +1458,11 @@ module Process_Library_standalone
         !!  DelGenio et al (1996, J. Clim., 9, 270-303)    !!
         !!  formulation  (Eq.s 15-17)                      !!
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
+      
         !   QS  = QSAT(         &
         !               TE    , &
         !               PL      )
-     
+        
         ES = 100.* PL * QS  / ( (EPSILON) + (1.0-(EPSILON))*QS )  ! (100's <-^ convert from mbar to Pa)
 
         RHx = MIN( QV/QS , 1.00 )
@@ -1502,7 +1487,7 @@ module Process_Library_standalone
         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1)
         
         if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
-            EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+            EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
             EVAP = MIN( EVAP , QL  )
         else
             EVAP = 0.0
@@ -1516,8 +1501,6 @@ module Process_Library_standalone
         QV = QV + EVAP
         QL = QL - EVAP
         TE = TE - alhlbcp*EVAP
-
-        EVAP_C = EVAP
 
     end subroutine EVAP3
 
@@ -1533,8 +1516,7 @@ module Process_Library_standalone
         F         , &
         NL        , &
         NI        , &
-        QS        , &
-        SUBLC_C )
+        QS        )
         !$acc routine seq
         real, intent(in   ) :: DT
         real, intent(in   ) :: A_EFF
@@ -1546,9 +1528,8 @@ module Process_Library_standalone
         real, intent(inout) :: F
         real, intent(in   ) :: NL,NI
         real, intent(in   ) :: QS
-        real, intent(out)   :: SUBLC_C
 
-        real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC !, QS
+        real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !!         SUBLORATION OF CLOUD WATER.             !!
@@ -1585,7 +1566,7 @@ module Process_Library_standalone
         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2)
         
         if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
-            SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
+            SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
             SUBL = MIN( SUBL , QI  )
         else
             SUBL = 0.0
@@ -1600,8 +1581,6 @@ module Process_Library_standalone
         QI = QI - SUBL
         TE = TE - alhsbcp*SUBL
 
-        SUBLC_C = SUBL
-
     end subroutine SUBL3
 
     function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
@@ -1612,26 +1591,30 @@ module Process_Library_standalone
         REAL  :: RADIUS
         INTEGER, PARAMETER  :: LIQUID=1, ICE=2
         REAL :: NNX,RHO,BB,WC
- 
+
         !- air density (kg/m^3)
-        RHO = 100.*PL / (MAPL_RGAS*TE )
+        RHO = (100.*PL) / (MAPL_RGAS*TE )
         IF(ITYPE == LIQUID) THEN
- 
-            !- liquid cloud effective radius ----- 
-            !- [liu&daum, 2000 and 2005. liu et al 2008]
+
+        !- liquid cloud effective radius ----- 
             !- liquid water content
-            WC = RHO*QC*1000. !g/m3
-            !- cloud drop number concentration #/m3
+            WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+            !- cloud drop number concentration
             !- from the aerosol model + ....
-            NNX = NNL*1.e-6
+            NNX = max(NNL*1.e-6, 10.0)
             !- radius in meters
-            RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**be))
- 
+            !- [liu&daum, 2000 and 2005. liu et al 2008]
+            RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+
         ELSEIF(ITYPE == ICE) THEN
- 
-            !- ice cloud effective radius ----- 
+
+        !- ice cloud effective radius ----- 
             !- ice water content
-            WC = RHO*QC*1000.  !g/m3
+            WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
+            !- cloud ice number concentration #/m3
+            !- from the aerosol model + ....
+            NNX = NNI*1.e-6 ! #/m3
+            !- radius in meters
             !------ice cloud effective radius ----- [klaus wyser, 1998]
             if(TE>MAPL_TICE .or. QC <=0.) then
                 BB = -2.
@@ -1640,8 +1623,8 @@ module Process_Library_standalone
             endif
             BB     = MIN((MAX(BB,-6.)),-2.)
             RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-            RADIUS = RADIUS * 1.e-6 !- convert to meter
- 
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
+
         ELSE
             STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
         ENDIF

@@ -13,10 +13,10 @@ module evap_subl_pdf_loop
     contains
 
     subroutine evap_subl_pdf_loop_standalone(IM, JM, LM, do_qa, USE_BERGERON, PDFSHAPE, DT_MOIST, CCW_EVAP_EFF, &
-        CCI_EVAP_EFF, maxrhcrit2D, turnrhcrit2D, minrhcrit2D, TROPP, CNV_FRC, SRF_TYPE, &
+        CCI_EVAP_EFF, dw_ocean, dw_land, turnrhcrit, CNV_FRC, SRF_TYPE, EIS, KLCL, AREA, &
         PLmb, PLEmb, ZL0, NACTL, NACTI, WHL, WQT, HL2, &
-        QT2, HLQT, W3, W2, QT3, HL, HL3, EDMF_FRC, QST3, PDFITERS, WTHV2, WQL, &
-        Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A, SUBLC, RHX, EVAPC)
+        QT2, HLQT, W3, W2, QT3, HL3, EDMF_FRC, QST3, PDFITERS, WTHV2, WQL, &
+        Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A, SUBLC, RHX, EVAPC, RHCRIT3D)
 
         implicit none
 
@@ -27,21 +27,23 @@ module evap_subl_pdf_loop
         logical, intent(IN) :: do_qa, USE_BERGERON
 
         integer, intent(IN) :: PDFSHAPE
-        real, intent(IN)    :: DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF
+        real, intent(IN)    :: DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF, dw_ocean, dw_land
+        real, intent(INOUT) :: turnrhcrit
 
-        real, dimension(:,:),   intent(IN) :: maxrhcrit2D, turnrhcrit2D, minrhcrit2D, TROPP, CNV_FRC, SRF_TYPE
+        integer, dimension(:,:),   intent(IN) :: KLCL
+        real, dimension(:,:),   intent(IN) :: CNV_FRC, SRF_TYPE, EIS, AREA
         real, dimension(:,:,:), intent(IN) :: PLmb, ZL0, NACTL, NACTI, WHL, WQT, HL2, &
-            QT2, HLQT, W3, W2, QT3, HL, HL3, EDMF_FRC, &
+            QT2, HLQT, W3, W2, QT3, HL3, EDMF_FRC, &
             QST3
+        real, dimension(:,:,:), pointer, intent(INOUT) :: RHCRIT3D
         real, dimension(1:IM,1:JM,0:LM), intent(IN) :: PLEmb
-        real, dimension(:,:,:), intent(INOUT) ::  PDFITERS, WTHV2, WQL, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
-        real, dimension(:,:,:), intent(OUT)   ::  SUBLC, RHX, EVAPC
+        real, dimension(:,:,:), intent(INOUT) ::  Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
+        real, dimension(:,:,:), intent(OUT)   ::  WTHV2, WQL, PDFITERS, SUBLC, RHX, EVAPC
 
         ! Local variables
         integer :: I, J, L
-        real    :: turnrhcrit_up
-        real    :: ALPHAl, ALPHAu, ALPHA, RHCRIT
-        real    :: EVAPC_C, SUBLC_C
+        real    :: facEIS, minrhcrit
+        real    :: ALPHA, RHCRIT
 
         call update_ESTBLX_to_GPU
 
@@ -51,35 +53,34 @@ module evap_subl_pdf_loop
         do L=1,LM
             do J=1,JM
                 do I=1,IM
-                    if (.not. do_qa) then ! if not doing the evap/subl/pdf inside of GFDL-MP 
-                        ! Send the condensates through the pdf after convection
-                        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-                        ALPHA = maxrhcrit2D(I,J)
-                        ! lower turn from maxrhcrit
-                        if (PLmb(i,j,l) .le. turnrhcrit2D(I,J)) then
-                            ALPHAl = minrhcrit2D(I,J)
+                    ! Send the condensates through the pdf after convection
+                    facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
+                    ! determine combined minrhcrit in stable/unstable regimes
+                    minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
+                    if (turnrhcrit <= 0.0) then
+                        ! determine the turn pressure using the LCL
+                        turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                    endif
+                    ! Use Slingo-Ritter (1985) formulation for critical relative humidity
+                    RHCRIT = 1.0
+                    ! lower turn from maxrhcrit=1.0
+                    if (PLmb(i,j,l) .le. turnrhcrit) then
+                        RHCRIT = minrhcrit
+                    else
+                        if (L.eq.LM) then
+                            RHCRIT = 1.0
                         else
-                            if (L.eq.LM) then
-                                ALPHAl = maxrhcrit2D(I,J)
-                            else
-                                ALPHAl = minrhcrit2D(I,J) + (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                                        ((atan( (2.*(PLmb(i,j,l)-turnrhcrit2D(I,J))/min(100., PLEmb(i,j,LM)-turnrhcrit2D(I,J))-1.) * &
-                                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-                            endif
-                        endif
-                        ! upper turn back to maxrhcrit
-                        turnrhcrit_up = TROPP(i,j)/100.0
-                        IF (turnrhcrit_up == MAPL_UNDEF) turnrhcrit_up = 100.
-                        if (PLmb(i,j,l) .le. turnrhcrit_up) then
-                            ALPHAu = maxrhcrit2D(I,J)
-                        else
-                            ALPHAu = maxrhcrit2D(I,J) - (maxrhcrit2D(I,J)-minrhcrit2D(I,J))/(19.) * &
-                                    ((atan( (2.*(PLmb(i,j,l)-turnrhcrit_up)/( turnrhcrit2D(I,J)-turnrhcrit_up)-1.) * &
+                            RHCRIT = minrhcrit + (1.0-minrhcrit)/(19.) * &
+                                    ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
                                     tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                         endif
-                        ! combine and limit
-                        ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
-                        ! Put condensates in touch with the PDF
+                    endif
+                    ! include grid cell area scaling and limit RHcrit to > 70% 
+                    ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)*SQRT(SQRT(AREA(I,J)/1.e10)) ) )
+                    ! fill RHCRIT export
+                    if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
+                    ! Put condensates in touch with the PDF
+                    if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP 
                         call hystpdf( &
                                     DT_MOIST       , &
                                     ALPHA          , &
@@ -114,32 +115,44 @@ module evap_subl_pdf_loop
                                     WQL(I,J,L)     , &
                                     .false.        , & 
                                     USE_BERGERON)
-
-                        ! evaporation for CN/LS
+                        RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+                        ! meltfrz new condensates
+                        call MELTFRZ ( DT_MOIST     , &
+                                       CNV_FRC(I,J) , &
+                                       SRF_TYPE(I,J), &
+                                       T(I,J,L)     , &
+                                       QLCN(I,J,L)  , &
+                                       QICN(I,J,L) )
+                        call MELTFRZ ( DT_MOIST     , &
+                                       CNV_FRC(I,J) , &
+                                       SRF_TYPE(I,J), &
+                                       T(I,J,L)     , &
+                                       QLLS(I,J,L)  , &
+                                       QILS(I,J,L) )
+                    endif
+                    ! evaporation for CN
+                    if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
                         RHCRIT = 1.0
-                        ! EVAPC(I,J,L) = Q(I,J,L)
-
+                        EVAPC(I,J,L) = Q(I,J,L)
                         call EVAP3 (         &
                                 DT_MOIST      , &
                                 CCW_EVAP_EFF  , &
                                 RHCRIT        , &
                                 PLmb(I,J,L)  , &
-                                T(I,J,L)  , &
-                                Q(I,J,L)  , &
+                                   T(I,J,L)  , &
+                                   Q(I,J,L)  , &
                                 QLCN(I,J,L)  , &
                                 QICN(I,J,L)  , &
                                 CLCN(I,J,L)  , &
                                 NACTL(I,J,L)  , &
                                 NACTI(I,J,L)  , &
-                                QST3(I,J,L), &
-                                EVAPC_C  )
-
-                        EVAPC(I,J,L) = EVAPC_C / DT_MOIST
-                        ! EVAPC(I,J,L) = (Q(I,J,L) - EVAPC(I,J,L)) / DT_MOIST
-                        ! sublimation for CN/LS
+                                QST3(I,J,L)  )
+                        EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
+                    endif
+                    ! sublimation for CN
+                    if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
                         RHCRIT = 1.0 - ALPHA
-                        ! SUBLC(I,J,L) =   Q(I,J,L)
-
+                        SUBLC(I,J,L) = Q(I,J,L)
                         call SUBL3 (        &
                                 DT_MOIST      , &
                                 CCI_EVAP_EFF  , &
@@ -152,15 +165,11 @@ module evap_subl_pdf_loop
                                 CLCN(I,J,L)  , &
                                 NACTL(I,J,L)  , &
                                 NACTI(I,J,L)  , &
-                                QST3(I,J,L),  &
-                                SUBLC_C)
-
-                        SUBLC(I,J,L) = SUBLC_C / DT_MOIST
-                        ! SUBLC(I,J,L) = (Q(I,J,L) - SUBLC(I,J,L)) / DT_MOIST
-                        ! cleanup clouds
-                        call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-                        RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+                                QST3(I,J,L)  )
+                        SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
                     endif
+                    ! cleanup clouds
+                    call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
                 end do ! IM loop
             end do ! JM loop
         end do ! LM loop

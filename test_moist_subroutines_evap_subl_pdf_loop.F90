@@ -19,25 +19,28 @@ module test_evap_subl_pdf_subroutines
 
         character*100, intent(IN) :: dirName, rank_str
 
-        real :: DT_MOIST, ALPHA, CCW_EVAP_EFF, CCI_EVAP_EFF
+        real :: DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF, dw_ocean, dw_land, turnrhcrit
 
         integer :: PDFSHAPE, fileID
 
         logical :: do_qa, USE_BERGERON
 
-        real, dimension(:,:), allocatable :: maxrhcrit2D, turnrhcrit2D, minrhcrit2D, TROPP, CNV_FRC, SRF_TYPE
+        integer, dimension(:,:), allocatable :: KLCL
+        real, dimension(:,:), allocatable :: CNV_FRC, SRF_TYPE, EIS, AREA
         real, dimension(:,:,:), allocatable :: PLmb, PLEmb, ZL0, NACTL, NACTI, WHL, WQT, HL2, &
-            QT2, HLQT, W3, W2, QT3, HL, HL3, EDMF_FRC, QST3
+            QT2, HLQT, W3, W2, QT3, HL3, EDMF_FRC, QST3
+        real, dimension(:,:,:), allocatable, target     :: RHCRIT3D
         real, dimension(:,:,:), allocatable ::  PDFITERS, WTHV2, WQL, Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A
         real, dimension(:,:,:), allocatable ::  PDFITERS_ref, WTHV2_ref, WQL_ref, Q_ref, T_ref, QLLS_ref, QILS_ref, &
             CLLS_ref, QLCN_ref, QICN_ref, CLCN_ref, PDF_A_ref, SUBLC, SUBLC_ref, RHX, RHX_ref, EVAPC, EVAPC_ref
 
-        ALLOCATE(turnrhcrit2D(IM,JM))
-        ALLOCATE(minrhcrit2D (IM,JM))
-        ALLOCATE(maxrhcrit2D (IM,JM))
-        ALLOCATE(TROPP       (IM,JM))
+        real, dimension(:,:,:), pointer :: RHCRIT3D_ptr
+
         allocate(CNV_FRC     (IM,JM))
         allocate(SRF_TYPE    (IM,JM))
+        allocate(EIS(IM, JM))
+        allocate(KLCL(IM, JM))
+        allocate(AREA(IM, JM))
 
         allocate(PLmb  (IM,JM,LM))
         ALLOCATE(PLEmb (IM,JM,0:LM) )
@@ -52,7 +55,6 @@ module test_evap_subl_pdf_subroutines
         allocate(W3   (IM, JM, LM))
         allocate(W2   (IM, JM, LM))
         allocate(QT3  (IM, JM, LM))
-        allocate(HL   (IM, JM, LM))
         allocate(HL3  (IM, JM, LM))
         allocate(EDMF_FRC (IM, JM, LM))
         allocate(QST3 (IM, JM, LM))
@@ -68,6 +70,8 @@ module test_evap_subl_pdf_subroutines
         allocate(QICN   (IM, JM, LM))
         allocate(CLCN   (IM, JM, LM))
         allocate(PDF_A   (IM, JM, LM))
+        allocate(RHCRIT3D (IM, JM, LM))
+
         allocate(PDFITERS_ref   (IM, JM, LM))
         allocate(WTHV2_ref   (IM, JM, LM))
         allocate(Q_ref    (IM, JM, LM))
@@ -86,6 +90,8 @@ module test_evap_subl_pdf_subroutines
         allocate(RHX_ref(IM, JM, LM))
         allocate(EVAPC_ref(IM, JM, LM))
 
+        RHCRIT3D_ptr => RHCRIT3D
+
         open(newunit=fileID, file=trim(dirName) // '/DT_MOIST_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) DT_MOIST
         close(fileID)
@@ -94,7 +100,7 @@ module test_evap_subl_pdf_subroutines
         open(newunit=fileID, file=trim(dirName) // '/PDFSHAPE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) PDFSHAPE
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(PDFSHAPE) = ', PDFSHAPE
+        ! write(*,*) 'Rank ', trim(rank_str),': PDFSHAPE = ', PDFSHAPE
 
         open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) CNV_FRC
@@ -221,25 +227,10 @@ module test_evap_subl_pdf_subroutines
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': In sum(PDF_A) = ', sum(PDF_A)
 
-        open(newunit=fileID, file=trim(dirName) // '/PDFITERS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) PDFITERS
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(PDFITERS) = ', sum(PDFITERS)
-
-        open(newunit=fileID, file=trim(dirName) // '/WTHV2_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) WTHV2
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(WTHV2) = ', sum(WTHV2)
-
-        open(newunit=fileID, file=trim(dirName) // '/WQL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) WQL
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(WQL) = ', sum(WQL)
-
         open(newunit=fileID, file=trim(dirName) // '/USE_BERGERON_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) USE_BERGERON
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(USE_BERGERON) = ', USE_BERGERON
+        ! write(*,*) 'Rank ', trim(rank_str),': In USE_BERGERON = ', USE_BERGERON
 
         open(newunit=fileID, file=trim(dirName) // '/CCW_EVAP_EFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) CCW_EVAP_EFF
@@ -256,41 +247,47 @@ module test_evap_subl_pdf_subroutines
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': In sum(CCI_EVAP_EFF) = ', CCI_EVAP_EFF
 
-        open(newunit=fileID, file=trim(dirName) // '/minrhcrit2D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) minrhcrit2D
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(minrhcrit2D) = ', sum(minrhcrit2D)
-
-        open(newunit=fileID, file=trim(dirName) // '/maxrhcrit2D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) maxrhcrit2D
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(maxrhcrit2D) = ', sum(maxrhcrit2D)
-
-        open(newunit=fileID, file=trim(dirName) // '/turnrhcrit2D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) turnrhcrit2D
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(turnrhcrit2D) = ', sum(turnrhcrit2D)
-
         open(newunit=fileID, file=trim(dirName) // '/PLEmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) PLEmb
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': In sum(PLEmb) = ', sum(PLEmb)
 
-        open(newunit=fileID, file=trim(dirName) // '/TROPP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) TROPP
+        open(newunit=fileID, file=trim(dirName) // '/EIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) EIS
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(TROPP) = ', sum(TROPP)
 
-        open(newunit=fileID, file=trim(dirName) // '/do_qa_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) do_qa
+        open(newunit=fileID, file=trim(dirName) // '/dw_ocean_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) dw_ocean
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In sum(do_qa) = ', do_qa
+
+        open(newunit=fileID, file=trim(dirName) // '/dw_land_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) dw_land
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/KLCL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) KLCL
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RHCRIT3D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) RHCRIT3D
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) AREA
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/turnrhcrit_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) turnrhcrit
+        close(fileID)
+
+        ! Note : do_qa is manually set and may not represent a particular problem setup
+        do_qa = .false.
 
         !$acc data copyin(DT_MOIST, PDFSHAPE, CNV_FRC, SRF_TYPE, PLmb, ZL0, &
         !$acc             NACTL, NACTI, WHL, WQT, HL2, QT2, &
         !$acc             HLQT, W3, W2, QT3, HL3, EDMF_FRC, USE_BERGERON, &
-        !$acc             QST3, CCI_EVAP_EFF, CCW_EVAP_EFF, maxrhcrit2D, turnrhcrit2D, minrhcrit2D, &
-        !$acc             PLEmb, TROPP) &
+        !$acc             QST3, CCI_EVAP_EFF, CCW_EVAP_EFF, &
+        !$acc             PLEmb) &
         !$acc      copy(Q, QLLS, QLCN, QILS, QICN, T, CLLS, &
         !$acc           CLCN, PDF_A, PDFITERS, WTHV2, WQL) &
         !$acc      copyout(EVAPC,RHX, SUBLC)
@@ -298,10 +295,10 @@ module test_evap_subl_pdf_subroutines
         call start_timing()
 
         call evap_subl_pdf_loop_standalone(IM, JM, LM, do_qa, USE_BERGERON, PDFSHAPE, DT_MOIST, CCW_EVAP_EFF, &
-            CCI_EVAP_EFF, maxrhcrit2D, turnrhcrit2D, minrhcrit2D, TROPP, CNV_FRC, SRF_TYPE, &
+            CCI_EVAP_EFF, dw_ocean, dw_land, turnrhcrit, CNV_FRC, SRF_TYPE, EIS, KLCL, AREA, &
             PLmb, PLEmb, ZL0, NACTL, NACTI, WHL, WQT, HL2, &
-            QT2, HLQT, W3, W2, QT3, HL, HL3, EDMF_FRC, QST3, PDFITERS, WTHV2, WQL, &
-            Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A, SUBLC, RHX, EVAPC)
+            QT2, HLQT, W3, W2, QT3, HL3, EDMF_FRC, QST3, PDFITERS, WTHV2, WQL, &
+            Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, PDF_A, SUBLC, RHX, EVAPC, RHCRIT3D_ptr)
 
         call end_timing()
 
@@ -309,6 +306,18 @@ module test_evap_subl_pdf_subroutines
 
         call print_timing()
 
+        open(newunit=fileID, file=trim(dirName) // '/PDFITERS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PDFITERS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WTHV2_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WTHV2_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WQL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WQL_ref
+        close(fileID)
+        
         open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) Q_ref
         close(fileID)
@@ -357,6 +366,18 @@ module test_evap_subl_pdf_subroutines
         read(fileID) EVAPC_ref
         close(fileID)
 
+        print*,'Compare sum(diff(PDFITERS)) = ',sum(PDFITERS_ref - PDFITERS)
+        print*,'Compare sum(PDFITERS) = ',sum(PDFITERS)
+        print*,'Compare sum(PDFITERS_ref) = ',sum(PDFITERS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WTHV2)) = ',sum(WTHV2_ref - WTHV2)
+        print*,'Compare sum(WTHV2) = ',sum(WTHV2)
+        print*,'Compare sum(WTHV2_ref) = ',sum(WTHV2_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WQL)) = ',sum(WQL_ref - WQL)
+        print*,'Compare sum(WQL) = ',sum(WQL)
+        print*,'Compare sum(WQL_ref) = ',sum(WQL_ref)
+        print*,'***'
         print*,'Compare sum(diff(Q)) = ',sum(Q_ref - Q)
         print*,'Compare sum(Q) = ',sum(Q)
         print*,'Compare sum(Q_ref) = ',sum(Q_ref)
@@ -407,6 +428,18 @@ module test_evap_subl_pdf_subroutines
         print*,'***'
 
         ! Encoding results for CI
+        print*, '#CI#VAR|PDFITERS#DIFF|',sum(PDFITERS_ref - PDFITERS)
+        print*, '#CI#VAR|PDFITERS#NEW|',sum(PDFITERS)
+        print*, '#CI#VAR|PDFITERS#REF|',sum(PDFITERS_ref)
+
+        print*, '#CI#VAR|WTHV2#DIFF|',sum(WTHV2_ref - WTHV2)
+        print*, '#CI#VAR|WTHV2#NEW|',sum(WTHV2)
+        print*, '#CI#VAR|WTHV2#REF|',sum(WTHV2_ref)
+
+        print*, '#CI#VAR|WQL#DIFF|',sum(WQL_ref - WQL)
+        print*, '#CI#VAR|WQL#NEW|',sum(WQL)
+        print*, '#CI#VAR|WQL#REF|',sum(WQL_ref)
+
         print*, '#CI#VAR|Q#DIFF|',sum(Q_ref - Q)
         print*, '#CI#VAR|Q#NEW|',sum(Q)
         print*, '#CI#VAR|Q#REF|',sum(Q_ref)
