@@ -28,7 +28,7 @@ PROGRAM mkEASETilesParam
       
       implicit none
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
-      integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
+      integer ::  NC, NR, NT, ND = 10000, ND_raster = 10000
       
       integer, parameter :: nc_esa = 129600, nr_esa = 64800
 
@@ -62,7 +62,7 @@ PROGRAM mkEASETilesParam
       character(3) :: easegrid      
       real :: clat, clon, r_ease, s_ease, da
       real :: fr_gcm
-      integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX
+      integer :: ind_col, ind_row, status, ncid, varid, nciv,nland_cells, DOM_INDX, error_code, MPI_COMM_WORLD
       !REAL (kind=8), PARAMETER :: RADIUS=6378137.0,pi=3.14159265358979323846
       character*100 :: veg_class (12)
       character*200 :: gfile,gtopo30
@@ -135,17 +135,25 @@ PROGRAM mkEASETilesParam
       write(nr_string, '(i0)') nr_ease
       gfile = trim(EASElabel)//'_'//trim(nc_string)//'x'//trim(nr_string)
 
-      if (index(EASELabel,'M03') /=0) then ! EASE  3 km grid
-         regrid = .true.
-         NC = 21600
-         NR = 10800
-         NT = 500000000
-      endif
       if (index(EASELabel,'M01') /=0) then ! EASE  1 km grid
          regrid = .true.
-         NC = 43200
-         NR = 21600
          NT = 1500000000
+      endif
+      if (index(EASELabel,'M03') /=0) then ! EASE  3 km grid
+         regrid = .true.
+         NT = 1500000000
+      endif
+      if (index(EASELabel,'M09') /=0) then ! EASE  9 km grid
+         regrid = .true.
+         NT = 16330000
+      endif
+      if (index(EASELabel,'M25') /=0) then ! EASE  25 km grid
+         regrid = .true.
+         NT = 16330000
+      endif
+      if (index(EASELabel,'M36') /=0) then ! EASE  36 km grid
+         regrid = .true.
+         NT = 16330000
       endif
 
       allocate(land_id    (1:NT))
@@ -178,7 +186,8 @@ PROGRAM mkEASETilesParam
       !else
       !   if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
       !endif
-      
+
+     ! Only MASK file we use with EASE grid in bcs package is GEOS5_10arcsec_mask, all other are not supported.  
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
          ! New ESA (Veg) + SRTM (catchments) based mask file
          ! is overlaid on the EASE grid
@@ -315,155 +324,156 @@ PROGRAM mkEASETilesParam
          print *,'Min and Max of tile indices:',minval(catid_index),maxval(catid_index)
 
       else
-         
-         ! Old IGBP (Veg) + HYDRO1k (catchments) based mask will
-         ! Overlaid on EASE mask
-         ! -----------------------------------------------------
-         
-         allocate(iaster      (i_raster,j_raster)) 
-         allocate(i2aster     (i_raster,j_raster))         
-         allocate(veg         (1:nc,1:nr))
-         allocate(catid       (1:nc,1:nr))
-         allocate(catid_index (1:nc,1:nr))          
-         allocate(tileid_index(1:nc,1:nr))
-
-         dx  = 360._8/nc
-         dy  = 180._8/nr
-         d2r = MAPL_PI_R8/180._8
-         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
-         
-         tileid_index = 0        
-
-         !  Simple Biosphere 2 Model Legend 
-         !  Value Class Name 
-         !  (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
-         !  the types vary 0-11 (array index minus 1) 
-         
-         veg_class(1)  = 'Ocean'
-         veg_class(2)  = 'Broadleaf Evergreen Trees' 
-         veg_class(3)  = 'Broadleaf Deciduous Trees' 
-         veg_class(4)  = 'Broadleaf and Needleleaf Trees' 
-         veg_class(5)  = 'Needleleaf Evergreen Trees' 
-         veg_class(6)  = 'Needleleaf Deciduous Trees' 
-         veg_class(7)  = 'Short Vegetation/C4 Grassland'
-         veg_class(8)  = 'Shrubs with Bare Soil' 
-         veg_class(9)  = 'Dwarf Trees and Shrubs' 
-         veg_class(10) = 'Agriculture or C3 Grassland' 
-         veg_class(11) = 'Water, Wetlands'
-         veg_class(12) = 'Ice/Snow'
-         
-         ! reading SiB2 land cover classification data - the origin of the 
-         ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
-         ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
-         
-         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
-              form='unformatted', &
-              action='read', convert='big_endian',status='old')
-         
-         READ(10)i2aster
-         
-         close (10,status='keep')
-         
-         if(regrid) then
-            call RegridRaster1 (i2aster,veg)
-         else
-            veg = i2aster
-         endif
-         
-         deallocate (i2aster)
-         
-         !   reading 2.5'x2.5' global raster file of Pfafstetter Catchment IDs
-         !   In this version, the dateline has been overlaid over the catchments those straddle 
-         !   across. The numbers contain for
-         !    1 global ocean catchment                : Pfafstetter ID 0
-         !    36716 global land catchments            : Pfafstetter IDs 1000-5999900
-         !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
-         !    1 global ice catchment                  : Pfafstetter ID 6200000
-         
-         open (10,file= trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
-              action='read', status='old')!
-         
-         do j=1,j_raster
-            read(10,*)(iaster(i,j),i=1,i_raster)
-         end do
-         
-         close (10,status='keep')
-         
-         if(regrid) then
-            call RegridRaster(iaster,catid)
-         else
-            catid =  iaster
-         endif
-         
-         print *,'Read global.cat_id.catch.DL' 
-         print *,'Min and Max of Pfafstetter IDs:', minval(catid),maxval(catid)
-         
-         ! reading the 2.5'x2.5' global raster file of tile indices for the 
-         !  above Pfafstetter Catchments
-         !  1 global ocean catchment                : tile_index 36719
-         !  36716 global land catchments            : tile_index 1-36716
-         !  1 global inland water (lakes) catchment : tile_index 36717
-         !  1 global ice catchment                  : tile_index 36718
-         ! ------------------------------------------------------------
-         
-         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/topo/'  &
-              //'PfafstatterDL.rst', form='unformatted',        &
-              action='read',convert='little_endian', status='old')
-         
-         do j=1,j_raster
-            read(10)(iaster(i,j),i=1,i_raster)
-         end do
-         
-         close (10,status='keep')
-         
-         if(regrid) then
-            call RegridRaster(iaster,catid_index)
-         else
-            catid_index =  iaster
-         endif
-         
-         deallocate (iaster)
-         
-         print *,'Read PfafstatterDL.rst' 
-         print *,'Min and Max of tile indices:',minval(catid_index),maxval(catid_index)
- 
-         ! While looping through the nc x nr grid (tile raster), this section counts # of  
-         ! EASE grid cells that contain land, ice or water, seperately.
-         ! Each EASE grid cell is assigned with an ID = ind_row*ND +  ind_col. 
-         ! This is just the prelimiminery assessment in the process of assigning separate  
-         !     tiles for land, water and ice fractions within the EASE Grid cell
-         ! The program checks each nc x nr pixels whether there is a EASE grid cell underneath, and counts
-         ! number of water, land and ice pixels as seen on veg raster.
-         ! -----------------------------------------------------------------------------------------------
-         
-         
-         do i = 1 ,nc
-            
-            clon = -180. + float(i-1)*dx + dx/2.
-            
-            do j =nr ,1 ,-1
-               
-               clat = -90. + float(j-1)*dy + dy/2.
-               call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
-               
-               ind_col = nint(r_ease) + 1 
-               ind_row = nint(s_ease) + 1
-               
-               if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_ease)) then
-                  l=  ind_row*ND +  ind_col
-                  
-                  if(veg(i,j)==LakeType) then 
-                     water_id(l) = 1
-                  else if(veg(i,j)==IceType) then
-                     ice_id  (l) = 1
-                  else
-                     land_id (l) = 1
-                  endif
-               endif
-            end do
-         end do
-
-      endif
+         print *,'Only mask file we support with EASE grid is GEOS5_10arcsec_mask'
+          call MPI_Abort(MPI_COMM_WORLD,error_code,status)
+!         ! Old IGBP (Veg) + HYDRO1k (catchments) based mask will
+!         ! Overlaid on EASE mask
+!         ! -----------------------------------------------------
+!         
+!         allocate(iaster      (i_raster,j_raster)) 
+!         allocate(i2aster     (i_raster,j_raster))         
+!         allocate(veg         (1:nc,1:nr))
+!         allocate(catid       (1:nc,1:nr))
+!         allocate(catid_index (1:nc,1:nr))          
+!         allocate(tileid_index(1:nc,1:nr))
+!
+!         dx  = 360._8/nc
+!         dy  = 180._8/nr
+!         d2r = MAPL_PI_R8/180._8
+!         !da  = MAPL_radius*MAPL_radius*pi*pi*dx*dy/180./180./1000000.    
+!         
+!         tileid_index = 0        
+!
+!         !  Simple Biosphere 2 Model Legend 
+!         !  Value Class Name 
+!         !  (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
+!         !  the types vary 0-11 (array index minus 1) 
+!         
+!         veg_class(1)  = 'Ocean'
+!         veg_class(2)  = 'Broadleaf Evergreen Trees' 
+!         veg_class(3)  = 'Broadleaf Deciduous Trees' 
+!         veg_class(4)  = 'Broadleaf and Needleleaf Trees' 
+!         veg_class(5)  = 'Needleleaf Evergreen Trees' 
+!         veg_class(6)  = 'Needleleaf Deciduous Trees' 
+!         veg_class(7)  = 'Short Vegetation/C4 Grassland'
+!         veg_class(8)  = 'Shrubs with Bare Soil' 
+!         veg_class(9)  = 'Dwarf Trees and Shrubs' 
+!         veg_class(10) = 'Agriculture or C3 Grassland' 
+!         veg_class(11) = 'Water, Wetlands'
+!         veg_class(12) = 'Ice/Snow'
+!         
+!         ! reading SiB2 land cover classification data - the origin of the 
+!         ! 2.5'x2.5' vegetation raster file is global 1min IGBP data 
+!         ! (ftp://edcftp.cr.usgs.gov/pub/data/glcc/globe/latlon/sib22_0.leg)
+!         
+!         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/veg/pft/v1/sib22.5_v2.0.dat', &
+!              form='unformatted', &
+!              action='read', convert='big_endian',status='old')
+!         
+!         READ(10)i2aster
+!         
+!         close (10,status='keep')
+!         
+!         if(regrid) then
+!            call RegridRaster1 (i2aster,veg)
+!         else
+!            veg = i2aster
+!         endif
+!         
+!         deallocate (i2aster)
+!         
+!         !   reading 2.5'x2.5' global raster file of Pfafstetter Catchment IDs
+!         !   In this version, the dateline has been overlaid over the catchments those straddle 
+!         !   across. The numbers contain for
+!         !    1 global ocean catchment                : Pfafstetter ID 0
+!         !    36716 global land catchments            : Pfafstetter IDs 1000-5999900
+!         !    1 global inland water (lakes) catchment : Pfafstetter ID 6190000
+!         !    1 global ice catchment                  : Pfafstetter ID 6200000
+!         
+!         open (10,file= trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/global.cat_id.catch.DL', form='formatted', &
+!              action='read', status='old')!
+!         
+!         do j=1,j_raster
+!            read(10,*)(iaster(i,j),i=1,i_raster)
+!         end do
+!         
+!         close (10,status='keep')
+!         
+!         if(regrid) then
+!            call RegridRaster(iaster,catid)
+!         else
+!            catid =  iaster
+!         endif
+!         
+!         print *,'Read global.cat_id.catch.DL' 
+!         print *,'Min and Max of Pfafstetter IDs:', minval(catid),maxval(catid)
+!         
+!         ! reading the 2.5'x2.5' global raster file of tile indices for the 
+!         !  above Pfafstetter Catchments
+!         !  1 global ocean catchment                : tile_index 36719
+!         !  36716 global land catchments            : tile_index 1-36716
+!         !  1 global inland water (lakes) catchment : tile_index 36717
+!         !  1 global ice catchment                  : tile_index 36718
+!         ! ------------------------------------------------------------
+!         
+!         open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/land/topo/'  &
+!              //'PfafstatterDL.rst', form='unformatted',        &
+!              action='read',convert='little_endian', status='old')
+!         
+!         do j=1,j_raster
+!            read(10)(iaster(i,j),i=1,i_raster)
+!         end do
+!         
+!         close (10,status='keep')
+!         
+!         if(regrid) then
+!            call RegridRaster(iaster,catid_index)
+!         else
+!            catid_index =  iaster
+!         endif
+!         
+!         deallocate (iaster)
+!         
+!         print *,'Read PfafstatterDL.rst' 
+!         print *,'Min and Max of tile indices:',minval(catid_index),maxval(catid_index)
+! 
+!         ! While looping through the nc x nr grid (tile raster), this section counts # of  
+!         ! EASE grid cells that contain land, ice or water, seperately.
+!         ! Each EASE grid cell is assigned with an ID = ind_row*ND +  ind_col. 
+!         ! This is just the prelimiminery assessment in the process of assigning separate  
+!         !     tiles for land, water and ice fractions within the EASE Grid cell
+!         ! The program checks each nc x nr pixels whether there is a EASE grid cell underneath, and counts
+!         ! number of water, land and ice pixels as seen on veg raster.
+!         ! -----------------------------------------------------------------------------------------------
+!         
+!         
+!         do i = 1 ,nc
+!            
+!            clon = -180. + float(i-1)*dx + dx/2.
+!            
+!            do j =nr ,1 ,-1
+!               
+!               clat = -90. + float(j-1)*dy + dy/2.
+!               call EASE_convert(EASELabel, clat, clon, r_ease, s_ease)
+!               
+!               ind_col = nint(r_ease) + 1 
+!               ind_row = nint(s_ease) + 1
+!               
+!               if((ind_row.ge.1).and.(veg(i,j).ne.OceanType).and.(ind_row.le.nr_ease)) then
+!                  l=  ind_row*ND +  ind_col
+!                  
+!                  if(veg(i,j)==LakeType) then 
+!                     water_id(l) = 1
+!                  else if(veg(i,j)==IceType) then
+!                     ice_id  (l) = 1
+!                  else
+!                     land_id (l) = 1
+!                  endif
+!               endif
+!            end do
+!         end do
+!
+      endif ! (GEOS5_10arcsec_mask)
       
       ! Reading SRTM elevation data - to be consistent with AGCM
       ! --------------------------------------------------------     
@@ -668,7 +678,8 @@ PROGRAM mkEASETilesParam
          if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
             pfaf = cindex
          else
-            pfaf = catid(all_id(l)-ND_raster*(all_id(l)/ND_raster),all_id(l)/ND_raster)
+            print *,'Only mask file we support with EASE grid is GEOS5_10arcsec_mask'
+          !  pfaf = catid(all_id(l)-ND_raster*(all_id(l)/ND_raster),all_id(l)/ND_raster)
          endif
 
          if ((l > l_index).and.(l <= w_index)) typ =19
