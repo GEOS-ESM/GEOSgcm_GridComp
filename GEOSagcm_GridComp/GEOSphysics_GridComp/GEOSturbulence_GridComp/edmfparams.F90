@@ -7,6 +7,7 @@ module EDMFPARAMS
     integer :: IMPLICIT
     integer :: ENTRAIN
     integer :: DOCLASP
+    integer :: NUP
     integer :: THERMAL_PLUME
     integer :: TEST
     integer :: DEBUG
@@ -17,6 +18,7 @@ module EDMFPARAMS
     real    :: ENTWFAC
     real    :: EDFAC
     real    :: ENT0
+    real    :: ENT0LTS
     real    :: ALPHATH
     real    :: ALPHAQT
     real    :: ALPHAW
@@ -29,6 +31,7 @@ module EDMFPARAMS
     real    :: CTH2
     real    :: RH0_QB
     real    :: C_KH_MF
+    real    :: MFLIMFAC
     real    :: ICE_RAMP
  endtype EDMFPARAMS_TYPE
 
