@@ -438,7 +438,7 @@ contains
                      nx = nv - 1
                   endif
 
-               elseif (.not.isCLM51) then
+               else if (.not.isCLM51) then
 
    	         if (nv == 1) ityp_new = CLMC_pt1(n)
                  if (nv == 1) fveg_new = CLMC_pf1(n)
@@ -456,7 +456,7 @@ contains
                   else
                      nx = nv - 2
                   endif
-               end if                  
+               endif                  
 
                   sub_ityp1 = ityp_offl (sub_tid,nv)
                   sub_fevg1 = fveg_offl (sub_tid,nv)
@@ -506,12 +506,12 @@ contains
              if (isCLM51) then
                 if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
                 if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
-             elseif (.not.isCLM51) then
+             else if (.not.isCLM51) then
                 if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
                 if((tile_found).and.((CLMC_pf2(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
                 if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,3) < 0))) tile_found = .false.
                 if((tile_found).and.((CLMC_sf2(n) > fmin).and.(Id(n,4) < 0))) tile_found = .false.          
-             end if
+             endif
 
              if(tile_found) GO TO 100
            

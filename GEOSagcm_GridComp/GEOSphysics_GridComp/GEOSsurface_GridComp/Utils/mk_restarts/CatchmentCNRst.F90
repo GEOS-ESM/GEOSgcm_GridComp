@@ -635,19 +635,19 @@ gg    integer, allocatable :: ity(:), abm (:)
              if (CLMC_pt1(n).eq.CLMC_pt2(n)) then
                 CLMC_pf1(n) = CLMC_pf1(n) + CLMC_pf2(n)
                 CLMC_pf2(n) = 0.
-             elseif (CLMC_pt1(n).ne.CLMC_pt2(n)) then
+             else if (CLMC_pt1(n).ne.CLMC_pt2(n)) then
                 CLMC_pf1(n) = maxval((/ CLMC_pf1(n), CLMC_pf2(n) /))
-             end if
+             endif
 
              if (CLMC_st1(n).eq.CLMC_st2(n)) then
                 CLMC_sf1(n) = CLMC_sf1(n) + CLMC_sf2(n)
                 CLMC_sf2(n) = 0. 
-             elseif (CLMC_st1(n).ne.CLMC_st2(n)) then
+             else if (CLMC_st1(n).ne.CLMC_st2(n)) then
                 CLMC_sf1(n) = maxval((/ CLMC_sf1(n), CLMC_sf2(n) /))
-             end if
+             endif
         end do
  
-     end if
+     endif
 
      if ((this%isCLM40).or.(this%isCLM45)) then
         this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
@@ -655,7 +655,7 @@ gg    integer, allocatable :: ity(:), abm (:)
      elseif (this%isCLM51) then
         this%cnity = reshape([CLMC_pt1,CLMC_st1],[ntiles,2])
         this%fvg   = reshape([CLMC_pf1,CLMC_sf1],[ntiles,2])
-     end if 
+     endif 
 
      this%ndep = ndep
      this%t2   = t2
@@ -811,9 +811,9 @@ gg    integer, allocatable :: ity(:), abm (:)
 
         if ((this%isCLM40) .or. (this%isCLM45)) then
             npft_int = npft
-        elseif (this%isCLM51) then
+        else if (this%isCLM51) then
             npft_int = npft_51
-        end if
+        endif
 
         do n = 1, in_ntiles
            do nv = 1,nveg
@@ -842,11 +842,11 @@ gg    integer, allocatable :: ity(:), abm (:)
 
               if((ityp_offl(N,1) == 0).and.(ityp_offl(N,2) /= 0)) then
                 ityp_offl(N,1) = ityp_offl(N,2)
-              elseif if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) then
+              else if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) then
                 ityp_offl(N,2) = ityp_offl(N,1)
-              end if   
+              endif   
 
-           end if
+           endif
        end do
     endif
 
@@ -871,12 +871,12 @@ gg    integer, allocatable :: ity(:), abm (:)
               call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
-            elseif (this%isCLM51) then
+            else if (this%isCLM51) then
               call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
               call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
-            end if 
+            endif 
         enddo
         st  = low_ind(1)
         l   = nt_local(1)
@@ -895,7 +895,7 @@ gg    integer, allocatable :: ity(:), abm (:)
            CLMC_st1 = this%cnity(st:ed,2)
            CLMC_pf1 = this%fvg(st:ed,1)
            CLMC_sf1 = this%fvg(st:ed,2)
-        end if 
+        endif 
      else
         tag = myid*numprocs
         if ((this%isCLM40) .or. (this%isCLM45)) then
