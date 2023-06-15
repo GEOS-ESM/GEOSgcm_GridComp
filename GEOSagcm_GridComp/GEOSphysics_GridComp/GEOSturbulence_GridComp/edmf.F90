@@ -310,7 +310,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,JH,kte)*wqt
           end if
        end do
        lts = lts - thv3(IH,JH,kte)
-       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.2*(lts-18.))) )
+       L0 = L0/( 1.0 + (params%ent0lts/params%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-19.))) )
     end if
  else
     L0 = params%L0
