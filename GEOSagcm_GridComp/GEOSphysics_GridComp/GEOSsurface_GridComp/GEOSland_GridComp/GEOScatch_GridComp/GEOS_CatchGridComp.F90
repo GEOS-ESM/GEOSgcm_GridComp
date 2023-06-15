@@ -52,6 +52,7 @@ module GEOS_CatchGridCompMod
 !#for_ldas_coupling 
   use catch_incr
 !#--
+  use catch_wrap_stateMod
   
 implicit none
 private
@@ -110,31 +111,6 @@ real,   parameter :: EMSSNO        =    0.99999
 ! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
 ! SURFLAY moved to internal state 
 
-type T_CATCH_STATE
-    private
-    type (ESMF_FieldBundle)  :: Bundle
-    logical :: LDAS_CORRECTOR
-    ! CATCH_OFFLINE:
-    !    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
-    !    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
-    !    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
-    !                               restart; select when using GEOSldas to create restarts for the GCM.
-    ! see also GEOSldas repo: src/Applications/LDAS_App/GEOSldas_LDAS.rc
-    integer :: CATCH_OFFLINE                    
-    integer :: CATCH_SPINUP
-    integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-    integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
-    real    :: SURFLAY          ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-    real    :: FWETC, FWETL
-    logical :: USE_FWET_FOR_RUNOFF
-end type T_CATCH_STATE
-
-type CATCH_WRAP
-   type (T_CATCH_STATE), pointer :: PTR
-end type CATCH_WRAP
-
-
 contains
 
 !BOP
@@ -165,7 +141,8 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE=>null()
+    type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE
+    class(T_CATCH_STATE), pointer :: statePtr
     type(CATCH_WRAP) :: wrap
     integer :: OFFLINE_MODE, SNOW_ALBEDO_INFO, N_CONST_LAND4SNWALB
     integer :: RESTART
@@ -190,52 +167,29 @@ subroutine SetServices ( GC, RC )
 
     allocate(CATCH_INTERNAL_STATE, stat=status)
     VERIFY_(status)
-    wrap%ptr => CATCH_INTERNAL_STATE
-    call ESMF_UserCompSetInternalState(gc, 'CatchInternal', wrap, status)
+    statePtr => CATCH_INTERNAL_STATE
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
     CATCH_INTERNAL_STATE%CATCH_OFFLINE = OFFLINE_MODE
-
+    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
+    !    0: DEFAULT 
+    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
+    call MAPL_GetResource ( MAPL, CATCH_INTERNAL_STATE%CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    ! SNOW ALBEDO 
-    ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
-    call MAPL_GetResource (SCF, SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0, __RC__ )
-    CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO = SNOW_ALBEDO_INFO
 
-    ! GOSWIM SNOW_ALBEDO 
-    ! 0 : GOSWIM snow albedo scheme is turned off
-    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
-    CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB = N_CONST_LAND4SNWALB
-
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%SURFLAY,   label='SURFLAY:',             DEFAULT=50.,     __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
-    
-    if (.NOT. CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF) then
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
-    else
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
-       call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
-    endif
-
-    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-    ! __________________________________________
-    call MAPL_GetResource (SCF, CATCH_INTERNAL_STATE%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0, __RC__ )
-
+    call surface_params_to_wrap_state(statePtr, SCF, _RC)
 
     call ESMF_ConfigDestroy(SCF, __RC__)
+
+    wrap%ptr => CATCH_INTERNAL_STATE
+    call ESMF_UserCompSetInternalState(gc, 'CatchInternal', wrap, status)
 
 ! Set the Run entry points
 ! ------------------------
@@ -2821,11 +2775,6 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     CATCH_INTERNAL_STATE => wrap%ptr
 
-    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
-    !    0: DEFAULT 
-    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
-    call MAPL_GetResource ( MAPL, CATCH_INTERNAL_STATE%CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
 
 !#for_ldas_coupling 
 !

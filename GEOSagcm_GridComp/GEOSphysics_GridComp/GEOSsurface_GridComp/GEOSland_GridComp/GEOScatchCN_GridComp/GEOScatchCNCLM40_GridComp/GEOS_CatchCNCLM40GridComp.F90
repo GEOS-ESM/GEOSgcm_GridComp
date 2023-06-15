@@ -211,10 +211,10 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
 
-    call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
     catchcn_internal => wrap%ptr
-    OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
     ATM_CO2      = catchcn_internal%ATM_CO2
     N_CONST_LAND4SNWALB  = catchcn_internal%N_CONST_LAND4SNWALB 
     RUN_IRRIG    = catchcn_internal%RUN_IRRIG
@@ -3880,10 +3880,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     Iam=trim(COMP_NAME)//"::RUN1"
 
     ! Get component's offline mode from its pvt internal state
-    call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
     catchcn_internal => wrap%ptr
-    OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -5126,10 +5126,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
         ! Get component's private internal state
-        call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+        call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
         VERIFY_(status)
         catchcn_internal => wrap%ptr
-        OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE
+        OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -7871,7 +7871,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
   VERIFY_(status)
 
-  call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+  call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
   VERIFY_(status)
   catchcn_internal => wrap%ptr
 
@@ -8259,7 +8259,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES, elai, esai)
   VERIFY_(STATUS)
   Iam=trim(COMP_NAME)//"::read_prescribed_LAI"
 
-  call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+  call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
   VERIFY_(status)
   catchcn_internal => wrap%ptr
 

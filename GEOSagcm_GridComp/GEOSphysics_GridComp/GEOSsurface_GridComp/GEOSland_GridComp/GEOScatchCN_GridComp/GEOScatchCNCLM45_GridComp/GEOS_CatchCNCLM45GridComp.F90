@@ -217,10 +217,10 @@ subroutine SetServices ( GC, RC )
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage where we are running Catch in the offline mode or not
 
-    call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
     catchcn_internal => wrap%ptr 
-    OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE 
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE 
   
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
@@ -3849,10 +3849,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     Iam=trim(COMP_NAME)//"::RUN1"
 
     ! Get component's offline mode from its pvt internal state
-    call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
     catchcn_internal=>wrap%ptr
-    OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -5143,10 +5143,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
         ! Get component's private internal state
-        call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+        call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
         VERIFY_(status)
         catchcn_internal => wrap%ptr
-        OFFLINE_MODE = catchcn_internal%CATCHCN_OFFLINE
+        OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
         ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
@@ -8204,7 +8204,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
   VERIFY_(status)
 
-  call ESMF_UserCompGetInternalState(gc, 'CATCHCN_STATE', wrap, status)
+  call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
   VERIFY_(status)
   catchcn_internal => wrap%ptr 
   ! Pointers to IMPORTs

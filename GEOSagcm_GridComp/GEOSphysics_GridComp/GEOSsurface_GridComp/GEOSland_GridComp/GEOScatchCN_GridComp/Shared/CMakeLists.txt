@@ -5,7 +5,7 @@ set (srcs
   catchmentCN.F90
   catchcn_iau.F90
   clm_varpar_shared.F90
-  catchcn_internal_type.F90 )
+  )
 
 esma_add_library (${this}
   SRCS ${srcs}

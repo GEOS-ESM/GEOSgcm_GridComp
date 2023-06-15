@@ -15,7 +15,8 @@ module GEOS_CatchCNGridCompMod
        NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
 
-  use  CATCHCN_INTERNAL_TYPE_Mod
+  use  catch_wrap_stateMod
+
   implicit none
   private
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -51,6 +52,7 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
     type(ESMF_GridComp), pointer :: gcs(:)
     type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL_STATE
+    class(T_CATCH_STATE),  pointer :: statePtr
     type(CATCHCN_WRAP)             :: wrap
 
     character(len=ESMF_MAXSTR)              :: SURFRC
@@ -75,25 +77,27 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-   allocate(CATCHCN_INTERNAL_STATE)
-   wrap%ptr => CATCHCN_INTERNAL_STATE
+    allocate(CATCHCN_INTERNAL_STATE)
+    statePtr =>CATCHCN_INTERNAL_STATE
 
-    tmp = ''
-    if (NUM_LDAS_ENSEMBLE >1) then
-        !catchcn_exxxx
-        tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
-    endif
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
 
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call surface_params_to_internal(wrap, SCF,  __RC__)
-    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCHCN_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)    
+    call surface_params_to_wrap_state(statePtr, SCF,  _RC)
+
+    call ESMF_ConfigDestroy(SCF, _RC)
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
+    tmp = ''
+    if (NUM_LDAS_ENSEMBLE >1) then
+        !catchcn_exxxx
+        tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
+    endif
     if ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
@@ -107,7 +111,8 @@ subroutine SetServices ( GC, RC )
     call MAPL_Get(MAPL, GCS=gcs, rc=status)
     VERIFY_(status)
 
-    call ESMF_UserCompSetInternalState(gcs(CATCHCN), 'CATCHCN_STATE', wrap, status)
+    wrap%ptr =>CATCHCN_INTERNAL_STATE
+    call ESMF_UserCompSetInternalState(gcs(CATCHCN), 'CatchcnInternal', wrap, status)
     VERIFY_(status)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
