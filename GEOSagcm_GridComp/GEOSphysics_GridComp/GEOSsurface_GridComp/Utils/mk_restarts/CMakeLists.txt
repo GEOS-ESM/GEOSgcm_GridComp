@@ -3,6 +3,7 @@ esma_set_this ()
 set(srcs
   CatchmentRst.F90
   CatchmentCNRst.F90
+  getids.F90
 )
 
 set (exe_srcs
