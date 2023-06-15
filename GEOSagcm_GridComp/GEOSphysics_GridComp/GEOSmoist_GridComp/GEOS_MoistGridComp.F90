@@ -188,7 +188,7 @@ contains
        gfEnvRestartSkip = MAPL_RestartSkip
     endif
 
-    ! NOTE: Binary restarts expect Q to be the first thing in the moist_internal_rst. Thus,
+    ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
 
     if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Setup(GC, CF, RC=STATUS) ; VERIFY_(STATUS)
