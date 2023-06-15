@@ -679,6 +679,7 @@ PROGRAM mkEASETilesParam
             pfaf = cindex
          else
             print *,'Only mask file we support with EASE grid is GEOS5_10arcsec_mask'
+            call MPI_Abort(MPI_COMM_WORLD,error_code,status)
           !  pfaf = catid(all_id(l)-ND_raster*(all_id(l)/ND_raster),all_id(l)/ND_raster)
          endif
 
