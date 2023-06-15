@@ -12,7 +12,7 @@ module clm_varpar
 !
  use clm_varpar_shared, only : VAR_COL =>VAR_COL_51, VAR_PFT => VAR_PFT_51, &
                                numpft => numpft_CN51, NUM_ZON => NUM_ZON_CN, &
-                               NUM_VEG => NUM_VEG_CN
+                               NUM_VEG => NUM_VEG_CN51
 
 ! !PUBLIC TYPES:
   implicit none

@@ -331,18 +331,21 @@ contains
      deallocate (mask)
    
     end subroutine GetIds_accurate_mpi
-   
+  
     ! ***************************************************************************** 
    
     subroutine GetIds_carbon (loni,lati,lono,lato,Id, tid_in, &
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-         fveg_offl, ityp_offl)
-      
+         fveg_offl, ityp_offl,isCLM51)
+
+    use clm_varpar_shared , only : nveg_40 => NUM_VEG_CN, nveg_51 => NUM_VEG_CN51, &
+                                 npft => numpft_CN, npft_51 => numpft_CN51
       implicit none
-      integer, parameter :: npft    = 19 
-      integer, parameter :: nveg    = 4
+      integer :: nveg
       real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
-      integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+      integer :: iclass_40_45(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+      integer :: iclass_51(npft_51) = (/1,1,2,3,3,4,5,5,6,7,9,10,11,11,11/)
+      integer, dimension(:), allocatable :: iclass
       integer :: NT_IN, NT_OUT, n, i, nplus,nv, nx, ityp_new 
       integer, dimension (:), intent (in) :: tid_in 
       integer, dimension (:,:), intent (inout) :: id
@@ -350,6 +353,7 @@ contains
       real, dimension (:), intent (in) :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
            CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
       real, dimension(:,:), intent (in)   :: fveg_offl, ityp_offl
+      logical, intent(in)                 :: isCLM51
       logical                             :: tile_found
       logical, allocatable, dimension (:) :: mask
       integer, allocatable, dimension (:) :: sub_tid
@@ -359,6 +363,16 @@ contains
       
       NT_IN  = SIZE (loni)
       NT_OUT = SIZE (lono)
+
+      if (isCLM51) then
+         allocate(iclass(1:npft_51))
+         iclass = iclass_51
+         nveg = nveg_51   
+      elseif (.not.isCLM51) then
+        allocate(iclass(1:npft))
+        iclass = iclass_40_45
+        nveg = nveg_40
+      end if 
       
       allocate (mask   (1:  NT_IN))
       
@@ -410,23 +424,40 @@ contains
    
             NV_LOOP: do nv = 1, nveg
                
-   	    if (nv == 1) ityp_new = CLMC_pt1(n)
-               if (nv == 1) fveg_new = CLMC_pf1(n)
-               if (nv == 2) ityp_new = CLMC_pt2(n)
-               if (nv == 2) fveg_new = CLMC_pf2(n)
-               if (nv == 3) ityp_new = CLMC_st1(n)
-               if (nv == 3) fveg_new = CLMC_sf1(n)
-               if (nv == 4) ityp_new = CLMC_st2(n) 
-               if (nv == 4) fveg_new = CLMC_sf2(n)
+               if (isCLM51) then
+                 if (nv == 1) ityp_new = CLMC_pt1(n)
+                 if (nv == 1) fveg_new = CLMC_pf1(n)
+                 if (nv == 2) ityp_new = CLMC_st1(n)
+                 if (nv == 2) fveg_new = CLMC_sf1(n)
+
+                 SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
+
+                  if(nv <= 1) then ! index for secondary PFT index if primary or primary if secondary
+                     nx = nv + 1
+                  else
+                     nx = nv - 1
+                  endif
+
+               elseif (.not.isCLM51) then
+
+   	         if (nv == 1) ityp_new = CLMC_pt1(n)
+                 if (nv == 1) fveg_new = CLMC_pf1(n)
+                 if (nv == 2) ityp_new = CLMC_pt2(n)
+                 if (nv == 2) fveg_new = CLMC_pf2(n)
+                 if (nv == 3) ityp_new = CLMC_st1(n)
+                 if (nv == 3) fveg_new = CLMC_sf1(n)
+                 if (nv == 4) ityp_new = CLMC_st2(n) 
+                 if (nv == 4) fveg_new = CLMC_sf2(n)
         
-               SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
+                 SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
            
                   if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
                      nx = nv + 2
                   else
                      nx = nv - 2
                   endif
-                  
+               end if                  
+
                   sub_ityp1 = ityp_offl (sub_tid,nv)
                   sub_fevg1 = fveg_offl (sub_tid,nv)
                   sub_ityp2 = ityp_offl (sub_tid,nx)
@@ -436,7 +467,7 @@ contains
                   icl_ityp1 = iclass(sub_ityp1)
                   
                   do i = 1,nplus
-                     if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
+                     if((sub_fevg1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
                           iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
                           (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
                           iclass(ityp_new)==iclass(sub_ityp2(i))))) then
@@ -472,11 +503,16 @@ contains
              deallocate (sub_ityp1, sub_fevg1, sub_ityp2, sub_fevg2, rev_dist)  
    
              tile_found = .true.   
-             if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
-             if((tile_found).and.((CLMC_pf2(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
-             if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,3) < 0))) tile_found = .false.
-             if((tile_found).and.((CLMC_sf2(n) > fmin).and.(Id(n,4) < 0))) tile_found = .false.          
-   
+             if (isCLM51) then
+                if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
+                if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
+             elseif (.not.isCLM51) then
+                if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
+                if((tile_found).and.((CLMC_pf2(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
+                if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,3) < 0))) tile_found = .false.
+                if((tile_found).and.((CLMC_sf2(n) > fmin).and.(Id(n,4) < 0))) tile_found = .false.          
+             end if
+
              if(tile_found) GO TO 100
            
              ! if not increase the window size

@@ -7,7 +7,7 @@ module CatchmentCNRstMod
   use ESMF
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
-  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &
+  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg_40 => NUM_VEG_CN, nveg_51 => NUM_VEG_CN51, &
                                  VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
                                  VAR_COL_51, VAR_PFT_51, &
                                  npft => numpft_CN, npft_51 => numpft_CN51
@@ -28,6 +28,7 @@ module CatchmentCNRstMod
 
      integer :: VAR_COL
      integer :: VAR_PFT
+     integer :: NVEG
      real, allocatable ::    cnity(:,:)
      real, allocatable ::    fvg(:,:)
      real, allocatable ::    tg(:,:)
@@ -122,16 +123,19 @@ contains
         catch%isCLM40 = .true.
         catch%VAR_COL = VAR_COL_40
         catch%VAR_PFT = VAR_PFT_40
+        catch%NVEG    = nveg_40
      endif
      if (index(cnclm, '45') /=0) then
         catch%isCLM45 = .true.
         catch%VAR_COL = VAR_COL_45
         catch%VAR_PFT = VAR_PFT_45
+        catch%nveg    = nveg_40
      endif
      if (index(cnclm, '51') /=0) then
         catch%VAR_COL = VAR_COL_51
         catch%VAR_PFT = VAR_PFT_51
         catch%isCLM51 = .true.
+        catch%nveg    = nveg_51
      endif
 
      if (myid == 0) then
@@ -376,7 +380,9 @@ contains
      integer, optional, intent(out):: rc
      integer :: status
      integer  :: ncol,npft, ntiles
-
+    
+     
+     nveg = this%NVEG
      ntiles = this%ntiles
      ncol = nzone* this%VAR_COL 
      npft = nzone*nveg*this%VAR_PFT
@@ -454,15 +460,18 @@ contains
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
     real, allocatable :: T2(:), hdm(:), fc(:), gdp(:), peatf(:)
-    integer, allocatable :: ity(:), abm (:)
+gg    integer, allocatable :: ity(:), abm (:)
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
     integer       :: idum, i,j,n, ib, nv
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
+    integer, dimension(npft) :: map_pft
     logical       :: NEWLAND
     logical       :: file_exists
 
     type(NetCDF4_Fileformatter) :: CatchCNFmt
     character*256        :: Iam = "add_bcs"
+
+    nveg = this%nveg 
 
     open (10,file =trim(OutBcsDir)//"/clsm/catchment.def",status='old',form='formatted')
     read (10,*) ntiles
@@ -604,8 +613,49 @@ contains
         endif
      enddo 
 
-     this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
-     this%fvg   = reshape([CLMC_pf1,CLMC_pf2,CLMC_sf1,CLMC_sf2],[ntiles,4])
+     ! if using Catchment-CN5.1, reduce down to 2 PFTs
+     ! step 1: map split PFTs to their parent type
+     ! step 2: add up area fractions
+
+     if (this%isCLM51) then
+
+        map_pft = (/ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15 /)
+
+        do n = 1,ntiles
+   
+             ! map split PFTs to parent PFTs
+             CLMC_pt1(n) = map_pft(CLMC_pt1(n))
+             CLMC_pt2(n) = map_pft(CLMC_pt2(n))
+             CLMC_st1(n) = map_pft(CLMC_st1(n))
+             CLMC_st2(n) = map_pft(CLMC_st2(n))
+    
+             ! combine area fractions of same PFTs, 
+             ! otherwise retain area fraction of single present PFT
+
+             if (CLMC_pt1(n).eq.CLMC_pt2(n)) then
+                CLMC_pf1(n) = CLMC_pf1(n) + CLMC_pf2(n)
+                CLMC_pf2(n) = 0.
+             elseif (CLMC_pt1(n).ne.CLMC_pt2(n)) then
+                CLMC_pf1(n) = maxval((/ CLMC_pf1(n), CLMC_pf2(n) /))
+             end if
+
+             if (CLMC_st1(n).eq.CLMC_st2(n)) then
+                CLMC_sf1(n) = CLMC_sf1(n) + CLMC_sf2(n)
+                CLMC_sf2(n) = 0. 
+             elseif (CLMC_st1(n).ne.CLMC_st2(n)) then
+                CLMC_sf1(n) = maxval((/ CLMC_sf1(n), CLMC_sf2(n) /))
+             end if
+        end do
+ 
+     end if
+
+     if ((this%isCLM40).or.(this%isCLM45)) then
+        this%cnity = reshape([CLMC_pt1,CLMC_pt2,CLMC_st1,CLMC_st2],[ntiles,4])
+        this%fvg   = reshape([CLMC_pf1,CLMC_pf2,CLMC_sf1,CLMC_sf2],[ntiles,4])
+     elseif (this%isCLM51) then
+        this%cnity = reshape([CLMC_pt1,CLMC_st1],[ntiles,2])
+        this%fvg   = reshape([CLMC_pf1,CLMC_sf1],[ntiles,2])
+     end if 
 
      this%ndep = ndep
      this%t2   = t2
@@ -661,7 +711,7 @@ contains
 
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
-
+     nveg = this%NVEG
      in_ntiles = this%ntiles
      var_pft = this%var_pft
      var_col = this%var_col
@@ -773,18 +823,30 @@ contains
 
            if (nint(this%tile_id(n)) /= n) stop ("cannot assign ity_offl to cnity and fvg_offl to fvg")
 
-           if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) == 0)) then
-              if(ityp_offl(N,1) /= 0) then
-                 ityp_offl(N,3) = ityp_offl(N,1)
-              else
-                 ityp_offl(N,3) = ityp_offl(N,2)
-              endif
-           endif
+           if ((this%isCLM40) .or. (this%isCLM45)) then
 
-           if((ityp_offl(N,1) == 0).and.(ityp_offl(N,2) /= 0)) ityp_offl(N,1) = ityp_offl(N,2)
-           if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) ityp_offl(N,2) = ityp_offl(N,1)
-           if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) /= 0)) ityp_offl(N,3) = ityp_offl(N,4)
-           if((ityp_offl(N,4) == 0).and.(ityp_offl(N,3) /= 0)) ityp_offl(N,4) = ityp_offl(N,3)
+              if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) == 0)) then
+                 if(ityp_offl(N,1) /= 0) then
+                    ityp_offl(N,3) = ityp_offl(N,1)
+                 else
+                    ityp_offl(N,3) = ityp_offl(N,2)
+                 endif
+              endif
+
+              if((ityp_offl(N,1) == 0).and.(ityp_offl(N,2) /= 0)) ityp_offl(N,1) = ityp_offl(N,2)
+              if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) ityp_offl(N,2) = ityp_offl(N,1)
+              if((ityp_offl(N,3) == 0).and.(ityp_offl(N,4) /= 0)) ityp_offl(N,3) = ityp_offl(N,4)
+              if((ityp_offl(N,4) == 0).and.(ityp_offl(N,3) /= 0)) ityp_offl(N,4) = ityp_offl(N,3)
+
+           elseif (this%isCLM51) then
+
+              if((ityp_offl(N,1) == 0).and.(ityp_offl(N,2) /= 0)) then
+                ityp_offl(N,1) = ityp_offl(N,2)
+              elseif if((ityp_offl(N,2) == 0).and.(ityp_offl(N,1) /= 0)) then
+                ityp_offl(N,2) = ityp_offl(N,1)
+              end if   
+
+           end if
        end do
     endif
 
@@ -800,36 +862,57 @@ contains
            st  = low_ind(i+1)
            l   = nt_local(i+1)
            tag = i*numprocs
-           call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,3),l, MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%cnity(st,4),l, MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+4, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
-           call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
+           if ((this%isCLM40) .or. (this%isCLM45)) then
+              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,3),l, MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,4),l, MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+4, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+5, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,3),l,   MPI_REAL, i, tag+6, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,4),l,   MPI_REAL, i, tag+7, MPI_COMM_WORLD, mpierr)
+            elseif (this%isCLM51) then
+              call MPI_send(this%cnity(st,1),l, MPI_REAL, i, tag, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%cnity(st,2),l, MPI_REAL, i, tag+1, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,1),l,   MPI_REAL, i, tag+2, MPI_COMM_WORLD, mpierr)
+              call MPI_send(this%fvg(st,2),l,   MPI_REAL, i, tag+3, MPI_COMM_WORLD, mpierr)
+            end if 
         enddo
         st  = low_ind(1)
         l   = nt_local(1)
         ed  = st + l -1
-        CLMC_pt1 = this%cnity(st:ed,1)
-        CLMC_pt2 = this%cnity(st:ed,2)
-        CLMC_st1 = this%cnity(st:ed,3)
-        CLMC_st2 = this%cnity(st:ed,4)
-        CLMC_pf1 = this%fvg(st:ed,1)
-        CLMC_pf2 = this%fvg(st:ed,2)
-        CLMC_sf1 = this%fvg(st:ed,3)
-        CLMC_sf2 = this%fvg(st:ed,4)
+        if ((this%isCLM40) .or. (this%isCLM45)) then
+           CLMC_pt1 = this%cnity(st:ed,1)
+           CLMC_pt2 = this%cnity(st:ed,2)
+           CLMC_st1 = this%cnity(st:ed,3)
+           CLMC_st2 = this%cnity(st:ed,4)
+           CLMC_pf1 = this%fvg(st:ed,1)
+           CLMC_pf2 = this%fvg(st:ed,2)
+           CLMC_sf1 = this%fvg(st:ed,3)
+           CLMC_sf2 = this%fvg(st:ed,4)
+        elseif (this%isCLM51) then
+           CLMC_pt1 = this%cnity(st:ed,1)
+           CLMC_st1 = this%cnity(st:ed,2)
+           CLMC_pf1 = this%fvg(st:ed,1)
+           CLMC_sf1 = this%fvg(st:ed,2)
+        end if 
      else
         tag = myid*numprocs
-        call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_st2,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, tag+4, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_pf2,nt_local(myid+1) , MPI_REAL, 0, tag+5, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+6, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
-        call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, tag+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        if ((this%isCLM40) .or. (this%isCLM45)) then
+           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pt2,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_st2,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, tag+4, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pf2,nt_local(myid+1) , MPI_REAL, 0, tag+5, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+6, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_sf2,nt_local(myid+1) , MPI_REAL, 0, tag+7, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        elseif (this%isCLM51) then
+           call MPI_RECV(CLMC_pt1,nt_local(myid+1) , MPI_REAL, 0, tag,  MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_st1,nt_local(myid+1) , MPI_REAL, 0, tag+1, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_pf1,nt_local(myid+1) , MPI_REAL, 0, tag+2, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           call MPI_RECV(CLMC_sf1,nt_local(myid+1) , MPI_REAL, 0, tag+3, MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+        end if 
     endif
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -838,7 +921,7 @@ contains
 
     call GetIds(this%lonc,this%latc,this%lonn,this%latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-             fveg_offl, ityp_offl)
+             fveg_offl, ityp_offl,this%isCLM51)
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
@@ -884,6 +967,7 @@ contains
           tg_tmp(:,i) = this%tg(this%id_glb(:),i)
         enddo        
         this%tg = tg_tmp
+        deallocate(tg_tmp)
        
         var_out = this%bflowm (this%id_glb(:))
         this%bflowm = var_out
@@ -936,6 +1020,10 @@ contains
            this%tprec60d= var_out
            var_out = this%t2m10d  (this%id_glb(:))
            this%t2m10d  = var_out
+           do nz = 1, nzone
+              var_out_zone(:,nz) = this%sfmm(this%id_glb(:), nz)
+           enddo
+           this%sfmm = var_out_zone
         endif
 
         i = 1
@@ -1010,14 +1098,27 @@ contains
      allocate (CLMC_st2(NTILES))
      allocate (VAR_DUM (NTILES))
 
-     CLMC_pt1 = this%cnity(:,1)
-     CLMC_pt2 = this%cnity(:,2)
-     CLMC_st1 = this%cnity(:,3)
-     CLMC_st2 = this%cnity(:,4)
-     CLMC_pf1 = this%fvg(:,1)
-     CLMC_pf2 = this%fvg(:,2)
-     CLMC_sf1 = this%fvg(:,3)
-     CLMC_sf2 = this%fvg(:,4)
+     if ((this%isCLM40).or.(this%isCLM45)) then
+        CLMC_pt1 = this%cnity(:,1)
+        CLMC_pt2 = this%cnity(:,2)
+        CLMC_st1 = this%cnity(:,3)
+        CLMC_st2 = this%cnity(:,4)
+        CLMC_pf1 = this%fvg(:,1)
+        CLMC_pf2 = this%fvg(:,2)
+        CLMC_sf1 = this%fvg(:,3)
+        CLMC_sf2 = this%fvg(:,4)
+
+     elseif (this%isCLM51) then
+
+        CLMC_pt1 = this%cnity(:,1)
+        CLMC_st1 = this%cnity(:,3)
+        CLMC_st2 = this%cnity(:,4)
+        CLMC_pf1 = this%fvg(:,1)
+        CLMC_pf2 = this%fvg(:,2)
+        CLMC_sf1 = this%fvg(:,3)
+        CLMC_sf2 = this%fvg(:,4)
+
+     end if 
 
      allocate (var_col_out (1: NTILES, 1 : nzone,1 : var_col))
      allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft))
@@ -1031,20 +1132,38 @@ contains
 
         NVLOOP2 : do nv = 1, nveg
 
-           if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
-              nx = nv + 2
-           else
-              nx = nv - 2
-           endif
+           if ((this%isCLM40).or.(this%isCLM45)) then
+             
+              if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
+                 nx = nv + 2
+              else
+                 nx = nv - 2
+              endif
 
-           if (nv == 1) ityp_new = CLMC_pt1(n)
-           if (nv == 1) fveg_new = CLMC_pf1(n)
-           if (nv == 2) ityp_new = CLMC_pt2(n)
-           if (nv == 2) fveg_new = CLMC_pf2(n)
-           if (nv == 3) ityp_new = CLMC_st1(n)
-           if (nv == 3) fveg_new = CLMC_sf1(n)
-           if (nv == 4) ityp_new = CLMC_st2(n)
-           if (nv == 4) fveg_new = CLMC_sf2(n)
+              if (nv == 1) ityp_new = CLMC_pt1(n)
+              if (nv == 1) fveg_new = CLMC_pf1(n)
+              if (nv == 2) ityp_new = CLMC_pt2(n)
+              if (nv == 2) fveg_new = CLMC_pf2(n)
+              if (nv == 3) ityp_new = CLMC_st1(n)
+              if (nv == 3) fveg_new = CLMC_sf1(n)
+              if (nv == 4) ityp_new = CLMC_st2(n)
+              if (nv == 4) fveg_new = CLMC_sf2(n)
+ 
+           elseif (this%isCLM51) then
+             
+              if(nv <= 1) then ! index for secondary PFT index if primary or primary if secondary
+                 nx = nv + 1
+              else
+                 nx = nv - 1
+              endif
+
+              if (nv == 1) ityp_new = CLMC_pt1(n)
+              if (nv == 1) fveg_new = CLMC_pf1(n)
+              if (nv == 2) ityp_new = CLMC_st1(n)
+              if (nv == 2) fveg_new = CLMC_sf1(n) 
+
+           end if
+
            if (fveg_new > fmin) then
 
               offl_cell    = Id_glb(n,nv)
@@ -1112,15 +1231,21 @@ contains
               var_col_out(n, nz,29) = max(var_col_out(n, nz,29), 0.)
 
               NVLOOP3 : do nv = 1,nveg
-
-                 if (nv == 1) ityp_new = CLMC_pt1(n)
-                 if (nv == 1) fveg_new = CLMC_pf1(n)
-                 if (nv == 2) ityp_new = CLMC_pt2(n)
-                 if (nv == 2) fveg_new = CLMC_pf2(n)
-                 if (nv == 3) ityp_new = CLMC_st1(n)
-                 if (nv == 3) fveg_new = CLMC_sf1(n)
-                 if (nv == 4) ityp_new = CLMC_st2(n)
-                 if (nv == 4) fveg_new = CLMC_sf2(n)
+                 if ((this%isCLM40).or.(this%isCLM45)) then
+                    if (nv == 1) ityp_new = CLMC_pt1(n)
+                    if (nv == 1) fveg_new = CLMC_pf1(n)
+                    if (nv == 2) ityp_new = CLMC_pt2(n)
+                    if (nv == 2) fveg_new = CLMC_pf2(n)
+                    if (nv == 3) ityp_new = CLMC_st1(n)
+                    if (nv == 3) fveg_new = CLMC_sf1(n)
+                    if (nv == 4) ityp_new = CLMC_st2(n)
+                    if (nv == 4) fveg_new = CLMC_sf2(n)
+                 elseif (this%isCLM51) then
+                    if (nv == 1) ityp_new = CLMC_pt1(n)
+                    if (nv == 1) fveg_new = CLMC_pf1(n)
+                    if (nv == 2) ityp_new = CLMC_st1(n)
+                    if (nv == 2) fveg_new = CLMC_sf1(n)
+                 end if
 
                  if(fveg_new > fmin) then
                     var_pft_out(n, nz,nv, 1) = max(var_pft_out(n, nz,nv, 1),0.)
@@ -1201,6 +1326,8 @@ contains
                        var_pft_out(n, nz,nv,79) = max(var_pft_out(n, nz,nv,79),0.)
                        var_pft_out(n, nz,nv,80) = max(var_pft_out(n, nz,nv,80),0.)
                        var_pft_out(n, nz,nv,81) = max(var_pft_out(n, nz,nv,81),0.)
+                       var_pft_out(n, nz,nv,82) = max(var_pft_out(n, nz,nv,82),0.)
+                       var_pft_out(n, nz,nv,83) = max(var_pft_out(n, nz,nv,83),0.)
                     end if
                  endif
               end do NVLOOP3  ! end veg loop                 
