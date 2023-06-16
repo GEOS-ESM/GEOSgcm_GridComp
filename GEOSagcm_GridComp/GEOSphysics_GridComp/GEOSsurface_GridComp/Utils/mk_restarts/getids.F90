@@ -430,33 +430,37 @@ contains
                  if (nv == 2) ityp_new = CLMC_st1(n)
                  if (nv == 2) fveg_new = CLMC_sf1(n)
 
-                 SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
+                else if (.not.isCLM51) then
 
-                  if(nv <= 1) then ! index for secondary PFT index if primary or primary if secondary
-                     nx = nv + 1
-                  else
-                     nx = nv - 1
-                  endif
-
-               else if (.not.isCLM51) then
-
-   	         if (nv == 1) ityp_new = CLMC_pt1(n)
+                 if (nv == 1) ityp_new = CLMC_pt1(n)
                  if (nv == 1) fveg_new = CLMC_pf1(n)
                  if (nv == 2) ityp_new = CLMC_pt2(n)
                  if (nv == 2) fveg_new = CLMC_pf2(n)
                  if (nv == 3) ityp_new = CLMC_st1(n)
                  if (nv == 3) fveg_new = CLMC_sf1(n)
-                 if (nv == 4) ityp_new = CLMC_st2(n) 
+                 if (nv == 4) ityp_new = CLMC_st2(n)
                  if (nv == 4) fveg_new = CLMC_sf2(n)
-        
+
+                 end if
+
+
                  SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
-           
-                  if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
+
+                 if (isCLM51) then
+                    if(nv <= 1) then ! index for secondary PFT index if primary or primary if secondary
+                       nx = nv + 1
+                    else
+                       nx = nv - 1
+                    endif
+
+                 else if (.not.isCLM51) then
+
+                    if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
                      nx = nv + 2
-                  else
-                     nx = nv - 2
-                  endif
-               endif                  
+                    else
+                       nx = nv - 2
+                    endif
+                 endif                  
 
                   sub_ityp1 = ityp_offl (sub_tid,nv)
                   sub_fevg1 = fveg_offl (sub_tid,nv)
