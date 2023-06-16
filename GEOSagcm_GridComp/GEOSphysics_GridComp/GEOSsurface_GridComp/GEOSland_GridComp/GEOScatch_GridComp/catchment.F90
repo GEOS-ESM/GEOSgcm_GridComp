@@ -139,7 +139,7 @@
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
                      ETURBS, DEDQAS, DEDTCS, HSTURBS,DHSDQAS, DHSDTCS,         &
                      TM, QM, ra1, ra2, ra4, raS, SUNANG, PARDIR, PARDIF,       &
-                     SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,  Z2,        &
+                     SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,  Z2,        &  ! HLWDWN = *absorbed* longwave only (excl reflected)
                      SQSCAT, RSOIL1, RSOIL2,   RDC,                            &
                      QSAT1, DQS1, ALW1, BLW1,  QSAT2, DQS2, ALW2, BLW2,        &
                      QSAT4, DQS4, ALW4, BLW4,  QSATS, DQSS, ALWS, BLWS,        &
@@ -152,7 +152,7 @@
                      WESNN, HTSNNN, SNDZN,                                     &
                      EVAP, SHFLUX, RUNOFF,                                     &
                      EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &
-                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
+                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
                      GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
                      TP1, TP2, TP3, TP4, TP5, TP6,                             &
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
