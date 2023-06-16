@@ -458,7 +458,7 @@ contains
     real, allocatable :: T2(:), hdm(:), fc(:), gdp(:), peatf(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
-    integer       :: idum, i,j,n, ib, nv
+    integer       :: idum, i,j,n, ib, nv, nveg
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
     integer, dimension(npft) :: map_pft
     logical       :: NEWLAND
