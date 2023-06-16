@@ -286,13 +286,11 @@ module moist_subroutines_aer_activation
 
                 end do ACTIVATION_PROPERTIES
 
-                call cpu_time(tStart)
-
-!!$acc data present(AeroProps,AeroProps%num,AeroProps%dpg,AeroProps%sig,AeroProps%kap,AeroProps%den,AeroProps%fdust,&
-!!$acc              AeroProps%fsoot,AeroProps%forg,&
 !$acc data present(AeroProps, &
 !$acc              NWFA,ple,t,q,sh,evap,zle,plo,qicn,qils,qlcn,qlls,tke, vvel,NACTL,NACTI,FRLAND) &
 !$acc      copyin(kpbli,buffer) create(ni,rg,sig0,nact)
+
+                call cpu_time(tStart)
 
                 if (USE_AERO_BUFFER) then
 !$acc parallel loop gang vector collapse(4)
@@ -443,7 +441,6 @@ module moist_subroutines_aer_activation
         ,nact                         & !nact             (i,j,k,1:nmodes)             &
         ,bibar)
 !$acc routine seq    
-        IMPLICIT NONE
   
         ! arguments.
         
@@ -472,7 +469,6 @@ module moist_subroutines_aer_activation
 
     subroutine ActFrac_Mat(nmodes,xnap,rg,sigmag,bibar,tkelvin,ptot,wupdraft,nact)
 !$acc routine seq
-        IMPLICIT NONE
   
         ! Arguments.
         
