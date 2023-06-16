@@ -427,7 +427,7 @@ contains
         allocate(this%t2m10d  (ntiles))
         allocate(this%sfmm    (ntiles,nzone))
      endif
-     if (this%isCLM51)
+     if (this%isCLM51) then
         allocate(this%ar1m    (ntiles))
         allocate(this%rainfm  (ntiles))
         allocate(this%rhm     (ntiles))
