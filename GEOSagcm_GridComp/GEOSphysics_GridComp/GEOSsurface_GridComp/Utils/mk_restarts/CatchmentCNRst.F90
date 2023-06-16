@@ -699,7 +699,7 @@ contains
                           var_out_zone(:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
-     integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
+     integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft, nveg
      real, allocatable, dimension(:) :: lat_tmp
      type(MAPL_SunOrbit)         :: ORBIT
      type(ESMF_Time)             :: CURRENT_TIME
