@@ -321,20 +321,20 @@ contains
         call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
         call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
         call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
-        call MAPL_VarWrite(formatter,"RHM",     var)
-        call MAPL_VarWrite(formatter,"WINDM",   var)
-        call MAPL_VarWrite(formatter,"RAINFM",  var)
-        call MAPL_VarWrite(formatter,"SNOWFM",  var)
-        call MAPL_VarWrite(formatter,"RUNSRFM", var)
-        call MAPL_VarWrite(formatter,"AR1M",    var)
-        call MAPL_VarWrite(formatter,"T2M10D",  var)
-        call MAPL_VarWrite(formatter,"RH30D",  var)
-        call MAPL_VarWrite(formatter,"TPREC10D",var)
-        call MAPL_VarWrite(formatter,"TPREC60D",var)
+
+        call MAPL_VarWrite(formatter,"RHM",     this%rhm      )
+        call MAPL_VarWrite(formatter,"WINDM",   this%windm    )
+        call MAPL_VarWrite(formatter,"RAINFM",  this%rainfm   )
+        call MAPL_VarWrite(formatter,"SNOWFM",  this%snowfm   )
+        call MAPL_VarWrite(formatter,"RUNSRFM", this%runsrfm  )
+        call MAPL_VarWrite(formatter,"AR1M",    this%ar1m     )
+        call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
+        call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
+        call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
+
      elseif (this%isCLM51) then
-          do j=1,dim1
-             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
-          enddo
+
+         call MAPL_VarWrite(formatter,"SFMM",  this%sfmm)
 
           call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
           call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
@@ -354,17 +354,6 @@ contains
           call MAPL_VarWrite(formatter,"RH30D",   this%RH30D)
           call MAPL_VarWrite(formatter,"TPREC10D",this%TPREC10D)
           call MAPL_VarWrite(formatter,"TPREC60D",this%TPREC60D)
-     else
-        call MAPL_VarWrite(formatter,"SFMCM",  var)
-        call MAPL_VarWrite(formatter,"RHM",     this%rhm      )
-        call MAPL_VarWrite(formatter,"WINDM",   this%windm    )
-        call MAPL_VarWrite(formatter,"RAINFM",  this%rainfm   )
-        call MAPL_VarWrite(formatter,"SNOWFM",  this%snowfm   )
-        call MAPL_VarWrite(formatter,"RUNSRFM", this%runsrfm  )
-        call MAPL_VarWrite(formatter,"AR1M",    this%ar1m     )
-        call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
-        call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
-        call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
 
      endif
 
@@ -410,19 +399,6 @@ contains
      allocate(this%HDM(ntiles))
      allocate(this%GDP(ntiles))
      allocate(this%PEATF(ntiles))
-     allocate(this%RHM(ntiles))
-     allocate(this%WINDM(ntiles))
-     allocate(this%RAINFM(ntiles))
-     allocate(this%SNOWFM(ntiles))
-     allocate(this%RUNSRFM(ntiles))
-     allocate(this%AR1M(ntiles))
-     allocate(this%RH30D(ntiles))
-     allocate(this%TG10D(ntiles))
-     allocate(this%T2M10D(ntiles))
-     allocate(this%T2MMIN5D(ntiles))
-     allocate(this%TPREC10D(ntiles))
-     allocate(this%TPREC60D(ntiles))
-     allocate(this%SNDZM5D(ntiles))
 
      allocate(this%bflowm  (ntiles))
      allocate(this%totwatm (ntiles))
@@ -435,7 +411,6 @@ contains
      allocate(this%psnsham(ntiles,nveg,nzone))
      allocate(this%rzmm   (ntiles,nzone))
      allocate(this%tgwm   (ntiles,nzone))
-
 
      if (this%isCLM40) then
         allocate(this%sfmcm   (ntiles))
@@ -451,6 +426,22 @@ contains
         allocate(this%tprec60d(ntiles))
         allocate(this%t2m10d  (ntiles))
         allocate(this%sfmm    (ntiles,nzone))
+     endif
+     if (this%isCLM51)
+        allocate(this%ar1m    (ntiles))
+        allocate(this%rainfm  (ntiles))
+        allocate(this%rhm     (ntiles))
+        allocate(this%runsrfm (ntiles))
+        allocate(this%snowfm  (ntiles))
+        allocate(this%windm   (ntiles))
+        allocate(this%tprec10d(ntiles))
+        allocate(this%tprec60d(ntiles))
+        allocate(this%t2m10d  (ntiles))
+        allocate(this%sfmm    (ntiles,nzone))
+        allocate(this%rh30d   (ntiles))
+        allocate(this%tg10d   (ntiles))
+        allocate(this%t2mmin5d(ntiles))
+        allocate(this%sndzm5d (ntiles))
      endif
 
      _RETURN(_SUCCESS)
@@ -702,16 +693,11 @@ contains
          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE, &
                                AGCM_MI, AGCM_S,  dofyr
-<<<<<<< HEAD
-     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
-     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
-     integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
-=======
+
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
                           var_out_zone(:,:)
-     integer :: status, in_ntiles, out_ntiles, numprocs
->>>>>>> develop
+     integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      real, allocatable, dimension(:) :: lat_tmp
@@ -981,11 +967,8 @@ contains
         enddo        
         this%tg = tg_tmp
         deallocate(tg_tmp)
-<<<<<<< HEAD
-       
-=======
 
->>>>>>> develop
+
         var_out = this%bflowm (this%id_glb(:))
         this%bflowm = var_out
         var_out = this%totwatm(this%id_glb(:))
