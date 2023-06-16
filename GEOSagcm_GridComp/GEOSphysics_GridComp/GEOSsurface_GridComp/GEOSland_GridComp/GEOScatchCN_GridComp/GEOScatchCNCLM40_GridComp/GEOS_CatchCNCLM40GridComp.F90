@@ -477,7 +477,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_longwave_flux',&
+         LONG_NAME          = 'surface_absorbed_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'LWDNSRF'                     ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -486,7 +486,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'ALW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -495,7 +495,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W_m-2 K-1'                   ,&
          SHORT_NAME         = 'BLW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -2346,7 +2346,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_outgoing_longwave_flux',&
+    LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -3036,7 +3036,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWUPSNOW',                    &
-    LONG_NAME          = 'Net_longwave_snow',         &
+    LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -3045,7 +3045,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWDNSNOW',                    &
-    LONG_NAME          = 'Net_longwave_snow',         &
+    LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -5003,7 +5003,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         type(ESMF_Config)           :: CF
         type(MAPL_SunOrbit)         :: ORBIT
-        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime
+        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime, NextRecordTime
         type(ESMF_Time)             :: BEFORE
         type(ESMF_Time)             :: NOW
         type(ESMF_Time)             :: MODELSTART
@@ -5167,6 +5167,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Variables for FPAR
         ! --------------------------
     real   , allocatable, dimension (:,:)      :: parzone
+
+    logical           :: record
+    type(ESMF_Alarm)  :: RecordAlarm 
+
     character(len=ESMF_MAXSTR) :: Co2_CycleFile
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
@@ -6843,7 +6847,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
-       if(NextTime == StopTime) then
+       record = .false.
+       call ESMF_ClockGetAlarm ( CLOCK, alarmname="RecordAlarm001", ALARM=RecordAlarm, RC=STATUS )
+       if (status == 0) then
+           call ESMF_AlarmGet( RecordAlarm, RingTime=NextRecordTime, _RC)
+           if (NextTime == NextRecordTime) record = .true.
+       endif
+
+       if(NextTime == StopTime  .or. record ) then
           
           call CN_exit(ntiles,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)     
           i = 1
@@ -7198,7 +7209,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
                 RA(:,FSAT), RA(:,FTRN), RA(:,FWLT), RA(:,FSNW)       ,&
 
-                ZTH,  SWNETFREE, SWNETSNOW, LWDNSRF                  ,&
+                ZTH,  SWNETFREE, SWNETSNOW, LWDNSRF                  ,&  ! LWDNSRF = *absorbed* longwave only (excl reflected)
 
                 PS*.01                                               ,&
 
@@ -7228,7 +7239,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 BFLOW                                                ,&
                 RUNSURF                                              ,&
                 SMELT                                                ,&
-                HLWUP                                                ,&
+                HLWUP                                                ,&  ! *emitted* longwave only (excl reflected)
                 SWNDSRF                                              ,&
                 HLATN                                                ,&
                 QINFIL                                               ,&

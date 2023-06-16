@@ -175,6 +175,7 @@ contains
            call MAPL_VarRead(formatter,"T2M10D",    catch%T2M10D     , __RC__)
            call MAPL_VarRead(formatter,"TPREC10D",  catch%TPREC10D   , __RC__)
            call MAPL_VarRead(formatter,"TPREC60D",  catch%TPREC60D   , __RC__)
+           call MAPL_VarRead(formatter,"SFMM",      catch%sfmm       , __RC__)
         endif
 
         if( catch%isCLM51) then
@@ -222,6 +223,8 @@ contains
         call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
         call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
         call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
+        call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
+        call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
 
      call formatter%close()
@@ -393,8 +396,6 @@ contains
      allocate(this%cnity(ntiles,nveg))
      allocate(this%fvg(ntiles,nveg))
      allocate(this%tg(ntiles,nveg))
-     allocate(this%tgwm(ntiles,nzone))
-     allocate(this%rzmm(ntiles,nzone))
      allocate(this%TILE_ID(ntiles))
      allocate(this%ndep(ntiles))
      allocate(this%t2(ntiles))
@@ -432,6 +433,9 @@ contains
      allocate(this%asnowm  (ntiles))
      allocate(this%psnsunm(ntiles,nveg,nzone))
      allocate(this%psnsham(ntiles,nveg,nzone))
+     allocate(this%rzmm   (ntiles,nzone))
+     allocate(this%tgwm   (ntiles,nzone))
+
 
      if (this%isCLM40) then
         allocate(this%sfmcm   (ntiles))
@@ -446,6 +450,7 @@ contains
         allocate(this%tprec10d(ntiles))
         allocate(this%tprec60d(ntiles))
         allocate(this%t2m10d  (ntiles))
+        allocate(this%sfmm    (ntiles,nzone))
      endif
 
      _RETURN(_SUCCESS)
@@ -697,9 +702,16 @@ contains
          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
      integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE, &
                                AGCM_MI, AGCM_S,  dofyr
+<<<<<<< HEAD
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
+=======
+     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
+     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
+                          var_out_zone(:,:)
+     integer :: status, in_ntiles, out_ntiles, numprocs
+>>>>>>> develop
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
      real, allocatable, dimension(:) :: lat_tmp
@@ -959,6 +971,7 @@ contains
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
         allocate (var_out     (out_ntiles))
         allocate (var_psn     (out_ntiles, nveg, nzone))
+        allocate (var_out_zone(out_ntiles, nzone))
 
         this%tile_id = [(i*1.0, i=1, out_ntiles)]
 
@@ -968,7 +981,11 @@ contains
         enddo        
         this%tg = tg_tmp
         deallocate(tg_tmp)
+<<<<<<< HEAD
        
+=======
+
+>>>>>>> develop
         var_out = this%bflowm (this%id_glb(:))
         this%bflowm = var_out
         var_out = this%totwatm(this%id_glb(:))
@@ -996,6 +1013,16 @@ contains
            enddo
         enddo
         this%psnsham = var_psn
+
+        do nz = 1, nzone
+           var_out_zone(:,nz) = this%rzmm(this%id_glb(:), nz)
+        enddo
+        this%rzmm = var_out_zone
+
+        do nz = 1, nzone
+           var_out_zone(:,nz) = this%tgwm(this%id_glb(:), nz)
+        enddo
+        this%tgwm = var_out_zone
 
         if (this%isCLM40) then
            var_out = this%sfmcm (this%id_glb(:))

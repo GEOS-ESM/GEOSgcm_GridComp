@@ -281,7 +281,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_longwave_flux',&
+         LONG_NAME          = 'surface_absorbed_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'LWDNSRF'                     ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -290,7 +290,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'ALW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -299,7 +299,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W_m-2 K-1'                   ,&
          SHORT_NAME         = 'BLW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&

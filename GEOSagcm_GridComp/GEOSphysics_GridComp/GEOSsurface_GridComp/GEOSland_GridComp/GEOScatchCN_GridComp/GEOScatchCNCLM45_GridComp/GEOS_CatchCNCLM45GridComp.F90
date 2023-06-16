@@ -472,7 +472,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'surface_downwelling_longwave_flux',&
+         LONG_NAME          = 'surface_absorbed_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'LWDNSRF'                     ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -481,7 +481,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'ALW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -490,7 +490,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
+         LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux',&
          UNITS              = 'W_m-2 K-1'                   ,&
          SHORT_NAME         = 'BLW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
@@ -1838,6 +1838,28 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
   
   call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sunlit leaf maintenance respiration',&
+       UNITS              = 'umol CO2 m-2 s-1'                              ,&
+       SHORT_NAME         = 'LMRSUNM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for shaded leaf maintenance respiration',&
+       UNITS              = 'umol CO2 m-2 s-1'                   ,&
+       SHORT_NAME         = 'LMRSHAM'                  ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for snow depth'     ,&
        UNITS              = 'm'                         ,&
        SHORT_NAME         = 'SNDZM'                     ,&
@@ -1886,7 +1908,18 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartOptional        ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-    
+   
+  call MAPL_AddInternalSpec(GC,                    &
+       LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'RUNSURF'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
   !---------- GOSWIM snow impurity related variables ----------
 
   if (N_CONST_LAND4SNWALB /= 0) then 
@@ -2229,14 +2262,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'RUNSURF'                   ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowmelt_flux'             ,&
@@ -2248,7 +2273,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_outgoing_longwave_flux',&
+    LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2938,7 +2963,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWUPSNOW',                    &
-    LONG_NAME          = 'Net_longwave_snow',         &
+    LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2947,7 +2972,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWDNSNOW',                    &
-    LONG_NAME          = 'Net_longwave_snow',         &
+    LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -4672,6 +4697,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: cnsum
         real, dimension(:,:,:), pointer :: psnsunm
         real, dimension(:,:,:), pointer :: psnsham
+        real, dimension(:,:,:), pointer :: lmrsunm
+        real, dimension(:,:,:), pointer :: lmrsham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: asnowm
         real, dimension(:,:), pointer :: RDU001
@@ -4951,7 +4978,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         type(ESMF_Config)           :: CF
         type(MAPL_SunOrbit)         :: ORBIT
-        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime
+        type(ESMF_Time)             :: CURRENT_TIME, StopTime, NextTime, NextRecordTime
         type(ESMF_Time)             :: BEFORE
         type(ESMF_Time)             :: NOW
         type(ESMF_Time)             :: MODELSTART
@@ -5093,7 +5120,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     real, allocatable, dimension(:) :: totwat ! total soil liquid water (kg/m2)
     real, save :: ashift = 0. ! for baseflow. gkw: this should match value in routine "base" in catchment
-    real, allocatable, dimension(:), save :: runsrf  ! surface runoff (kg/m2/s) 
     real :: Qair_sat                                 ! saturated specific humidity (kg/kg)
     real, allocatable, dimension(:) :: Qair_relative          ! relative humidity (%)
 
@@ -5107,7 +5133,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! static summing arrays for CN
     ! ----------------------------
-    real, allocatable, dimension(:,:,:), save :: lmrsunm, lmrsham
     real, allocatable, dimension(:) :: ht, tp, soilice
     real :: zbar, frice
 
@@ -5149,9 +5174,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp
     real, allocatable, dimension(:) :: SNOVR_tmp, SNONR_tmp, SNOVF_tmp, SNONF_tmp
 
+    logical           :: record
+    type(ESMF_Alarm)  :: RecordAlarm
+
     ! Variables for FPAR
             ! --------------------------
-                real   , allocatable, dimension (:,:)      :: parzone
+    real   , allocatable, dimension (:,:)      :: parzone
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
 
@@ -5359,11 +5387,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LMRSUNM    ,'LMRSUNM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LMRSHAM    ,'LMRSHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,T2M10D     ,'T2M10D'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC10D   ,'TPREC10D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,RUNSURF    ,'RUNSURF'    ,RC=STATUS); VERIFY_(STATUS)
  
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
@@ -5405,7 +5436,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,ICESOI             , 'ICESOI' ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPSNO             , 'EVPSNO'              ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,BFLOW              , 'BASEFLOW',ALLOC=.true.,          RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RUNSURF            , 'RUNSURF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT              , 'SMELT'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP              , 'HLWUP'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF            , 'SWNDSRF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
@@ -5571,13 +5601,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       ! variables used for summing CN inputs over multiple land model calls; not saved on restart 
       ! fzeng: run must end on a CN call step
       ! -----------------------------------------------------------------------------------------
-      allocate( lmrsunm(ntiles,nveg,nzone) )
-      allocate( lmrsham(ntiles,nveg,nzone) )
-      allocate(             runsrf(ntiles) )      
+      !allocate( lmrsunm(ntiles,nveg,nzone) )
+      !allocate( lmrsham(ntiles,nveg,nzone) )
       
-      lmrsunm = 0.
-      lmrsham = 0.      
-      runsrf = 0.
+      !lmrsunm = 0.
+      !lmrsham = 0.      
            
       first = .false.
       
@@ -6883,7 +6911,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     windm   = windm   + UU
     rainfm  = rainfm  + (PCU + PLS)
     snowfm  = snowfm  + SNO
-    runsrfm = runsrfm + runsrf
+    runsrfm = runsrfm + RUNSURF
     ar1m    = ar1m    + car1        
     psnsunm = psnsunm + psnsun*laisun
     psnsham = psnsham + psnsha*laisha
@@ -7095,7 +7123,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
-       if(NextTime == StopTime) then
+       record = .false.
+       call ESMF_ClockGetAlarm ( CLOCK, alarmname="RecordAlarm001", ALARM=RecordAlarm, RC=STATUS )
+       if (status == 0) then
+           call ESMF_AlarmGet( RecordAlarm, RingTime = NextRecordTime, _RC)
+           if (NextTime == NextRecordTime) record = .true.
+       endif
+
+       if(NextTime == StopTime .or. record ) then
           
           call CN_exit(ntiles,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)     
           i = 1
@@ -7447,7 +7482,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
                 RA(:,FSAT), RA(:,FTRN), RA(:,FWLT), RA(:,FSNW)       ,&
 
-                ZTH,  SWNETFREE, SWNETSNOW, LWDNSRF                  ,&
+                ZTH,  SWNETFREE, SWNETSNOW, LWDNSRF                  ,&  ! LWDNSRF = *absorbed* longwave only (excl reflected)
 
                 PS*.01                                               ,&
 
@@ -7477,7 +7512,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 BFLOW                                                ,&
                 RUNSURF                                              ,&
                 SMELT                                                ,&
-                HLWUP                                                ,&
+                HLWUP                                                ,&  ! *emitted* longwave only (excl reflected)
                 SWNDSRF                                              ,&
                 HLATN                                                ,&
                 QINFIL                                               ,&
@@ -7511,9 +7546,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TP4 = TP4 + MAPL_TICE
            TP5 = TP5 + MAPL_TICE
            TP6 = TP6 + MAPL_TICE
-
-
-             runsrf = RUNSURF    ! for N leaching, fzeng
 
         end if
 
