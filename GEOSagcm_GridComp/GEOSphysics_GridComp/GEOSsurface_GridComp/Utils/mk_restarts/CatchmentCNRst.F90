@@ -371,7 +371,7 @@ contains
      class(CatchmentCNRst), intent(inout) :: this
      integer, optional, intent(out):: rc
      integer :: status
-     integer  :: ncol,npft, ntiles
+     integer  :: ncol,npft, ntiles, nveg
     
      
      nveg = this%NVEG
