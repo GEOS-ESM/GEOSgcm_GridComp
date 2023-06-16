@@ -58,9 +58,12 @@ module evap_subl_pdf_loop
                     ! determine combined minrhcrit in stable/unstable regimes
                     minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
                     if (turnrhcrit <= 0.0) then
-                        print*,I, J, L, ' turnrhcrit = ', turnrhcrit
+                        ! Note : assuming a sequential execution of this triple-nested loop, the index of
+                        !        KLCL will always be I = 1 and J = 1.  With that, hard-coding KLCL as
+                        !        KLCL(1,1) should not change the result.
                         ! determine the turn pressure using the LCL
-                        turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                        ! turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                        turnrhcrit  = PLmb(I, J, KLCL(1,1)) - 250.0 ! 250mb above the LCL
                     endif
                     ! Use Slingo-Ritter (1985) formulation for critical relative humidity
                     RHCRIT = 1.0

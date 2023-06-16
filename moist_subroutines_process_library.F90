@@ -70,6 +70,7 @@ module Process_Library_standalone
     contains
 
     subroutine MELTFRZ_SC( DT, CNVFRC, SRFTYPE, TE, QL, QI )
+!$acc routine seq
         real, intent(in   ) :: DT, CNVFRC, SRFTYPE
         real, intent(inout) :: TE,QL,QI
         real  :: fQi,dQil
@@ -1132,7 +1133,7 @@ module Process_Library_standalone
         WQL,        &
         needs_preexisting, &
         USE_BERGERON )
-
+!$acc routine seq
         real, intent(in)    :: DT,ALPHA,PL,ZL
         integer, intent(in) :: PDFSHAPE
         real, intent(inout) :: TE,QV,QLLS,QILS,CLLS,QLCN,QICN,CLCN,PDF_A

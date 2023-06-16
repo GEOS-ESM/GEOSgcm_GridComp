@@ -74,6 +74,7 @@ module test_evap_subl_pdf_subroutines
 
         allocate(PDFITERS_ref   (IM, JM, LM))
         allocate(WTHV2_ref   (IM, JM, LM))
+        allocate(WQL_ref (IM, JM, LM))
         allocate(Q_ref    (IM, JM, LM))
         allocate(T_ref    (IM, JM, LM))
         allocate(QLLS_ref   (IM, JM, LM))
@@ -475,6 +476,10 @@ module test_evap_subl_pdf_subroutines
         print*, '#CI#VAR|PDF_A#DIFF|',sum(PDF_A_ref - PDF_A)
         print*, '#CI#VAR|PDF_A#NEW|',sum(PDF_A)
         print*, '#CI#VAR|PDF_A#REF|',sum(PDF_A_ref)
+
+        print*, '#CI#VAR|SUBLC#DIFF|',sum(SUBLC_ref - SUBLC)
+        print*, '#CI#VAR|SUBLC#NEW|',sum(SUBLC)
+        print*, '#CI#VAR|SUBLC#REF|',sum(SUBLC_ref)
 
         print*, '#CI#VAR|RHX#DIFF|',sum(RHX_ref - RHX)
         print*, '#CI#VAR|RHX#NEW|',sum(RHX)
