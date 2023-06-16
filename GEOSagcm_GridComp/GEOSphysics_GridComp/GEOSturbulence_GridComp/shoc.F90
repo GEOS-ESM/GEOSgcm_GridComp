@@ -989,7 +989,7 @@ contains
            end if
 
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
-           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
+           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(zl(i,j,nzm)-zl(i,j,k))/zl(i,j,nzm),smixt(i,j,k))) 
 
         end do
       end do
