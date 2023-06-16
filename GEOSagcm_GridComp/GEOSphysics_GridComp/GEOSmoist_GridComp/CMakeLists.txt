@@ -1,6 +1,9 @@
 esma_set_this()
 
+option(GPU_BUILD "Build with OpenACC support" OFF)
+
 set (srcs
+  ProcessLibraryParameters.F90
   Process_Library.F90
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
@@ -15,13 +18,18 @@ set (srcs
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
+if (GPU_BUILD)
+  list (APPEND srcs
+    kernels-openacc/buoyancy.F90
+    kernels-openacc/fillq2zero.F90)
+else ()
+  list (APPEND srcs
+    kernels/buoyancy.F90
+    kernels/fillq2zero.F90)
+endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
    set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
-endif ()
-
-if (CMAKE_Fortran_COMPILER_ID MATCHES GNU AND CMAKE_BUILD_TYPE MATCHES Release)
-   string (REPLACE "${FOPT3}" "${FOPT2}" CMAKE_Fortran_FLAGS_RELEASE ${CMAKE_Fortran_FLAGS_RELEASE})
 endif ()
 
 # Note For unknown reasons, BACM_1M_Interface takes 20 minutes to compile at O3
@@ -38,6 +46,10 @@ get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
    )
+if (GPU_BUILD)
+  message(STATUS "Building OpenACC ports of Moist routines")
+  target_compile_options(${this} PRIVATE -fopenacc -foffload=nvptx-none)
+endif ()
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )

@@ -31,6 +31,8 @@ module GEOS_MoistGridCompMod
   use Aer_Actv_Single_Moment
   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
+  use BuoyancyMod, only: buoyancy
+  use Fillq2zeroMod, only: fillq2zero
   use GEOS_UtilsMod
 
   implicit none

@@ -12,6 +12,7 @@ module GEOSmoist_Process_Library
   use GEOS_UtilsMod
   use Aer_Actv_Single_Moment
   use aer_cloud
+  use ProcessLibraryParameters, only: alhlbcp, gravbcp
 
   implicit none
   private
@@ -67,8 +68,6 @@ module GEOSmoist_Process_Library
 
   ! combined constantc
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
-  real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
-  real, parameter :: alhlbcp = MAPL_ALHL/MAPL_CP
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
@@ -92,10 +91,10 @@ module GEOSmoist_Process_Library
 
   public :: AeroProps
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
-  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
+  public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS
   public :: hystpdf, fix_up_clouds_2M
-  public :: FILLQ2ZERO, FILLQ2ZERO1
+  public :: FILLQ2ZERO1
   public :: MELTFRZ
   public :: DIAGNOSE_PRECIP_TYPE
   public :: VertInterp, cs_interpolator
@@ -706,51 +705,7 @@ module GEOSmoist_Process_Library
 
   end subroutine RETURN_CAPE_CIN
 
-
-  subroutine BUOYANCY( T, Q, QS, DQS, DZ, ZLO, BUOY, CAPE, INHB)
-
-
-    ! !DESCRIPTION: Computes the buoyancy $ g \frac{T_c-T_e}{T_e} $ at each level
-    !  for a parcel raised from the surface. $T_c$ is the virtual temperature of
-    !  the parcel and $T_e$ is the virtual temperature of the environment.
-
-    real, dimension(:,:,:),   intent(in)  :: T, Q, QS, DQS, DZ, ZLO
-    real, dimension(:,:,:),   intent(out) :: BUOY
-    real, dimension(:,:),     intent(out) :: CAPE, INHB
-
-    integer :: L, LM
-
-    LM = size(T,3)
-
-    BUOY(:,:,LM) =  T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)
-
-    do L=LM-1,1,-1
-       BUOY(:,:,L) = BUOY(:,:,LM) - (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*QS(:,:,L))
-       BUOY(:,:,L) = MAPL_GRAV*BUOY(:,:,L) / ( (1.+ alhlbcp*DQS(:,:,L))*T(:,:,L) )
-    enddo
-
-    BUOY(:,:,LM) = 0.0
-
-    CAPE = 0.
-    INHB = 0.
-
-    do L=1,LM-1
-       where(BUOY(:,:,L)>0.)
-          CAPE = CAPE + BUOY(:,:,L)*DZ(:,:,L)
-       end where
-       where(BUOY(:,:,L)<0.)
-          INHB = INHB - BUOY(:,:,L)*DZ(:,:,L)
-       end where
-    end do
-
-    where(CAPE <= 0.0)
-       CAPE=MAPL_UNDEF
-       INHB=MAPL_UNDEF
-    end where
-
-  end subroutine BUOYANCY
-
-   subroutine RADCOUPLE(  &
+  subroutine RADCOUPLE(   &
          TE,              & 
          PL,              & 
          CF,              & 
@@ -2264,51 +2219,6 @@ module GEOSmoist_Process_Library
          TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
       end if
    end subroutine MELTFRZ_SC
-
-  subroutine FILLQ2ZERO( Q, MASS, FILLQ  )
-
-    ! New algorithm to fill the negative q values in a mass conserving way.
-    ! Conservation of TPW was checked. Donifan Barahona
-    ! Updated from FILLQ2ZERO, avoids the usage of scalars
-
-    real, dimension(:,:,:),   intent(inout)  :: Q
-    real, dimension(:,:,:),   intent(in)     :: MASS
-    real, dimension(:,:),     intent(  out)  :: FILLQ
-    real, dimension(:,:), allocatable        :: TPW1, TPW2, TPWC
-    integer                                  :: IM,JM,LM, l
-
-    IM = SIZE( Q, 1 )
-    JM = SIZE( Q, 2 )
-    LM = SIZE( Q, 3 )
-
-    ALLOCATE(TPW1(IM, JM))
-    ALLOCATE(TPW2(IM, JM))
-    ALLOCATE(TPWC(IM, JM))
-
-    TPW2 =0.0
-    TPWC= 0.0
-    TPW1 = SUM( Q*MASS, 3 )
-
-    WHERE (Q < 0.0)
-       Q=0.0
-    END WHERE
-
-    TPW2 = SUM( Q*MASS, 3 )
-
-    WHERE (TPW2 > 0.0)
-       TPWC=(TPW2-TPW1)/TPW2
-    END WHERE
-
-    do l=1,LM
-       Q(:, :, l)= Q(:, :, l)*(1.0-TPWC) !reduce Q proportionally to the increase in TPW
-    end do
-
-    FILLQ = TPW2-TPW1
-
-    DEALLOCATE(TPW1)
-    DEALLOCATE(TPW2)
-    DEALLOCATE(TPWC)
-  end subroutine FILLQ2ZERO
 
   subroutine FILLQ2ZERO1( Q, MASS, FILLQ  )
     real, dimension(:,:,:),   intent(inout)  :: Q

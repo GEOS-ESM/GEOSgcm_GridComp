@@ -14,6 +14,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
+  use Fillq2zeroMod, only: fillq2zero
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
