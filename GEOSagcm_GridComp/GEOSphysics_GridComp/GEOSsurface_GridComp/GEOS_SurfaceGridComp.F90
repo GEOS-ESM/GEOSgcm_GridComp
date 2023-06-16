@@ -74,7 +74,12 @@ module GEOS_SurfaceGridCompMod
 
   type( ESMF_VM ) :: VMG
 
-! !PUBLIC MEMBER FUNCTIONS:
+  integer, allocatable :: karray(:)
+  integer, allocatable :: kdx(:)
+  integer, allocatable :: BlockSizes(:), displ(:)
+
+
+  ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
 
@@ -112,7 +117,7 @@ module GEOS_SurfaceGridCompMod
   type T_Routing
      integer :: srcTileID, dstTileID,     &
                 srcIndex=-1, dstIndex=-1, &
-                srcPE=-1, dstPE=-1 
+                srcPE=-1, dstPE=-1, SeqIdx=-1 
      real    :: weight
   end type T_Routing
 
@@ -3739,9 +3744,11 @@ module GEOS_SurfaceGridCompMod
     integer, pointer         :: Active(:,:)
     integer, pointer         :: ActiveGlobal(:,:)
     integer                  :: numActive, numLocalRoutings
-    integer, allocatable     :: BlockSizes(:), displ(:)
     integer, pointer         :: Local_Id(:)
     integer                  :: unit
+    integer :: ksum, n, nsdx
+    integer :: ntotal, k
+    integer, allocatable :: kn(:), kseq(:), tmparray(:)
 #ifdef DEBUG
     character(len=ESMF_MAXSTR)  :: routefile
 #endif
@@ -3812,7 +3819,8 @@ module GEOS_SurfaceGridCompMod
 !  assigned an index of -1.
 
        Routing => tmpLocalRoutings(i)
-
+       Routing%seqIdx = i
+       
        call Tile2Index(Routing, Local_Id)
 
        if(Routing%srcIndex>0 .and. Routing%dstIndex>0) then
@@ -3922,6 +3930,68 @@ module GEOS_SurfaceGridCompMod
     end do
     close(unit)
 
+#endif
+    
+#ifndef OLD_ROUTING_SCHEME
+    !ALT NEW ROUTING
+    !ALT new method to make communication more effective
+    !notneedeed nddx=0
+    nsdx=0
+    do i=1,numLocalRoutings
+       !notneeded if (mype == Routing(i)%dstPE) nddx = nddx+1
+       if (mype == LocalRoutings(i)%srcPE) nsdx = nsdx+1
+    end do
+    allocate(kdx(nsdx), blocksizes(nDEs), _STAT)
+    blocksizes=0
+    
+    ! exchange with everybody else
+    call MPI_AllGather(nsdx, 1, MP_Integer, &
+         blocksizes, 1, MP_Integer, comm, status)
+    _VERIFY(status)
+    
+    ! not everybody has blocksizes(nDEs)
+
+    ntotal = sum(blocksizes) ! this should be the same as npairs
+
+    _ASSERT(ntotal==numRoutings, 'Number source/sinks does not match')
+    allocate (karray(numRoutings), _STAT) !declare as target!!!
+    karray = 0
+    allocate (displ(0:nDEs), _STAT) !declare as target!!!
+    
+    ksum = 0
+    displ(0)=ksum
+    do n=1,nDEs
+       ksum = ksum + blocksizes(n)
+       displ(n)=ksum
+    end do
+    ! as another sanity check: ksum should be the same as npairs
+    _ASSERT(displ(nDEs)==ntotal, 'Displ source/sinks does not match')
+
+    allocate(kseq(nsdx), _STAT)
+    allocate(tmparray(numRoutings), _STAT)
+    ! local k index
+    k=0
+    do i=1,size(LocalRoutings)
+       if (mype==LocalRoutings(i)%srcPE) then
+          k=k+1
+          kseq(k) = LocalRoutings(i)%seqIdx
+          kdx(k) = i
+       end if
+    end do
+
+    call MPI_AllGatherV(kseq, nsdx, MP_Integer, &
+         tmparray, blocksizes, displ, MP_Integer, comm, status)
+    _VERIFY(STATUS)      
+
+    deallocate(kseq)
+    do n=1,nDEs
+       do k=1,blocksizes(n)
+          i=tmparray(displ(n-1)+k)
+          karray(i)=k
+       end do
+    end do
+    deallocate(tmparray)
+    
 #endif
     return
 
@@ -10236,7 +10306,8 @@ module GEOS_SurfaceGridCompMod
       integer       :: i
       real          :: TileDischarge
       integer       :: mpstatus(MP_STATUS_SIZE)
-
+      integer :: n, k
+      real, allocatable :: td(:), tarray(:)
 
       call ESMF_VMGetCurrent(VM,                                RC=STATUS)
       VERIFY_(STATUS)
@@ -10247,6 +10318,33 @@ module GEOS_SurfaceGridCompMod
 
       Discharge   = 0.0
 
+#ifndef OLD_ROUTING_SCHEME
+      n=size(kdx)
+      allocate(td(n), _STAT)
+      allocate(tarray(displ(nDEs)), _STAT)
+      do k=1,n
+         i=kdx(k)
+         ! TileDischage
+         TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
+         TileDischarge = max(TileDischarge, 0.0)
+         td(k) = TileDischarge
+      end do
+!!      print *,'DEBUGtd:',mype,n,td(1:min(n,3))
+      call MPI_AllGatherV(td, n, MP_Real, &
+           tarray, blocksizes, displ, MP_Real, comm, status)
+      _VERIFY(STATUS)      
+
+      do i=1,size(Routing)
+         if(Routing(i)%DstPE==myPE) then
+            n=Routing(i)%srcPe
+            k=karray(Routing(i)%seqIdx)
+            TileDischarge=tarray(displ(n)+k)
+            Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
+         end if
+      end do
+      deallocate(td, _STAT)
+      deallocate(tarray, _STAT)
+#else
       do i=1,size(Routing)
          if(Routing(i)%SrcPE==myPE) then
             TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
@@ -10267,7 +10365,8 @@ module GEOS_SurfaceGridCompMod
             end if
          end if
       end do
-
+#endif
+      
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
 
