@@ -48,8 +48,8 @@ module evap_subl_pdf_loop
         call update_ESTBLX_to_GPU
 
         ! evap/subl/pdf
-        !$acc parallel loop gang vector collapse(3) private(ALPHA, ALPHAl, ALPHAu, turnrhcrit_up, RHCRIT, &
-        !$acc                                               EVAPC_C, SUBLC_C)
+        !$acc parallel loop gang vector collapse(3) private(facEIS, minrhcrit, RHCRIT, ALPHA) &
+        !$acc               firstprivate(turnrhcrit)
         do L=1,LM
             do J=1,JM
                 do I=1,IM
@@ -58,6 +58,7 @@ module evap_subl_pdf_loop
                     ! determine combined minrhcrit in stable/unstable regimes
                     minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
                     if (turnrhcrit <= 0.0) then
+                        print*,I, J, L, ' turnrhcrit = ', turnrhcrit
                         ! determine the turn pressure using the LCL
                         turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
                     endif
