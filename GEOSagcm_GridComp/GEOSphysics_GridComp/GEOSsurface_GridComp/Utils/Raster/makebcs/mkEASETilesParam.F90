@@ -36,12 +36,21 @@ PROGRAM mkEASETilesParam
       use netcdf
       
       implicit none
+      
+      integer, parameter :: nc_esa = 129600       ! number of cols in 10-arcsec ESA mask file
+      integer, parameter :: nr_esa =  64800       ! number of rows in 10-arcsec ESA mask file
+      
+      ! define tile types used for processing here (values may be from ESA mask?) 
+      
+      integer, parameter :: OceanType  =  0  
+      integer, parameter :: LandType   =  1 ! land    type used for processing here; in GEOS, land    tiles are type=100
+      integer, parameter :: LakeType   = 10 ! lake    type used for processing here; in GEOS, lake    tiles are type= 19
+      integer, parameter :: IceType    = 11 ! landice type used for processing here; in GEOS, landice tiles are type= 20
 
+      
       integer :: i, j, ig, jg, n
       integer :: NC, NR, N_ease_grid_cells, NDND, ND_raster
       
-      integer, parameter :: nc_esa = 129600, nr_esa = 64800
-
       ! For regridding
 
       integer,     allocatable, dimension(:,:), target   :: geos_msk 
@@ -70,7 +79,6 @@ PROGRAM mkEASETilesParam
       !INTEGER*8    :: PFAF_CODE  
 
       integer      :: l, l_index, i_index, w_index, typ, pfaf, cindex
-      integer      :: LandType, LakeType, IceType, OceanType
       real         :: clat, clon, r_ease, s_ease
       real         :: fr_gcm
       integer      :: ind_col, ind_row, status, ncid, varid, nciv                        !, DOM_INDX
@@ -181,13 +189,6 @@ PROGRAM mkEASETilesParam
       land_id     =  0
       water_id    =  0
       ice_id      =  0             
-
-      ! define tile types used for processing here (possibly from ESA mask) 
-
-      OceanType   =  0
-      IceType     = 11  ! landice type used for processing here; in GEOS, landice tiles are type= 20
-      LakeType    = 10  ! lake    type used for processing here; in GEOS, lake    tiles are type= 19
-      LandType    =  1  ! land    type used for processing here; in GEOS, land    tiles are type=100
 
       ! Step size for conversion of 2-dim indexing into 1-dim indexing:  l = ind_row*NDND + ind_col
       ! If conversion was simply to get from 2-dim to 1-dim indexing for EASE grid cells, 
@@ -913,7 +914,7 @@ PROGRAM mkEASETilesParam
       close(11,status='keep')          
       
       deallocate( tileid_index, catid_index,veg )
-      deallocate( tile_area, ease_grid_area, tile_ele, tile_area_land, my_land, all_id )
+      deallocate( tile_area, ease_grid_area, tile_ele, my_land, all_id )
       
       ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
 !
