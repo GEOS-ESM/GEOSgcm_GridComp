@@ -270,12 +270,12 @@ PROGRAM mkEASETilesParam
          ! read list of Pfafstetter catchment IDs ('PfafID') from 10-arcsec mask file into variable 'SRTM_catid[_r8]'
          ! [vector of length SRTM_maxcat]
 
-         status    = NF90_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid)
-         status    = nf90_inq_varid(ncid, name='PfafID', varid=varid)
-         status    = nf90_get_var(ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/))   
+         status    = NF90_OPEN( trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid )
+         status    = nf90_inq_varid( ncid, name='PfafID', varid=varid )
+         status    = nf90_get_var( ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/) )   
          if(status /=0) then
-            PRINT *, NF90_STRERROR(STATUS)
-            print *, 'Problem with NF90_OPEN',trim(MaskFile)
+            PRINT *, trim(NF90_STRERROR(STATUS))
+            print *, 'Problem with NF90_OPEN(): ', trim(MaskFile)
          endif
          SRTM_catid = int8(SRTM_catid_r8)                         ! convert data to integer*8    -- contains 12-digit Pfaf code
          SRTM_catid (SRTM_maxcat + 1) = 190000000                 ! append ID for Lake type
@@ -289,7 +289,7 @@ PROGRAM mkEASETilesParam
 
          !i1 = 0  ! count # of 30-arcsec pixels - NOT USED
 
-         status    = nf90_inq_varid(ncid, name='CatchIndex', varid=varid)
+         status = nf90_inq_varid(ncid, name='CatchIndex', varid=varid)
 
          do j=1,nr
             
@@ -298,12 +298,12 @@ PROGRAM mkEASETilesParam
             ! read slice of variable 'CatchIndex' from 10-arcsec mask file into variable 'geos_msk' 
             ! [2d-array: 129600-by-3]
 
-            status  = NF90_GET_VAR (ncid, varid, geos_msk, (/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/)) ! Read 10-arcsec rows that lie within the raster row 'j'  
+            status  = NF90_GET_VAR( ncid, varid, geos_msk, (/1,(j-1)*dy_esa +1/), (/nc_esa,dy_esa/) ) ! Read 10-arcsec rows that lie within the raster row 'j'  
             !status  = NF_GET_VARA_INT (ncid,4,(/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/),geos_msk) ! Read 10-arcsec rows that lie within the raster row 'j'  
             
             if(status /=0) then
-               PRINT *, NF90_STRERROR(STATUS)
-               print *, 'Problem with NF_GET_VARA_INT',trim(MaskFile),status
+               PRINT *, trim(NF90_STRERROR(STATUS))
+               print *, 'Problem with NF_GET_VAR(): ', trim(MaskFile), status
             endif
             
             do i = 1,nc    
@@ -317,8 +317,8 @@ PROGRAM mkEASETilesParam
                subset => geos_msk ((i-1)*dx_esa + 1 : i*dx_esa, 1:dy_esa) ! rectangular array contains ESA pixels that lie within the raster grid cell at i,j
                
                if(maxval (subset) > SRTM_maxcat) then
-                  where (subset == 190000000) subset = SRTM_maxcat + 1     ! Lake type      (convert ID from 190000000 to SRTM_maxcat+1)
-                  where (subset == 200000000) subset = SRTM_maxcat + 2     ! Landice type   (convert ID from 200000000 to SRTM_maxcat+2)
+                  where (subset == 190000000) subset = SRTM_maxcat + 1    ! Lake type      (convert ID from 190000000 to SRTM_maxcat+1)
+                  where (subset == 200000000) subset = SRTM_maxcat + 2    ! Landice type   (convert ID from 200000000 to SRTM_maxcat+2)
                endif
 
                if (maxval(subset) > 0) then  ! check if there are Non-ocean ESA pixels 
