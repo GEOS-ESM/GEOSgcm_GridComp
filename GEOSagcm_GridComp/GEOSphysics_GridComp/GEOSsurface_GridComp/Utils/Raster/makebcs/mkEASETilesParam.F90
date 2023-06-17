@@ -47,7 +47,6 @@ PROGRAM mkEASETilesParam
       integer, parameter :: LakeType   = 10 ! lake    type used for processing here; in GEOS, lake    tiles are type= 19
       integer, parameter :: IceType    = 11 ! landice type used for processing here; in GEOS, landice tiles are type= 20
 
-      
       integer :: i, j, ig, jg, n
       integer :: NC, NR, N_ease_grid_cells, NDND, ND_raster
       
@@ -110,6 +109,8 @@ PROGRAM mkEASETilesParam
       character(len=10)      :: nc_string, nr_string
       character(len=128)     :: usage1, usage2
       character(len=128)     :: Iam = "mkEASETilesParam"
+
+      character(len=512)     :: fname_mask
 
       ! --------------------------------------------------------------------------------------
 
@@ -226,6 +227,9 @@ PROGRAM mkEASETilesParam
          
          ! ESA/SRTM mask file is 10-arcsec resolution;  coarsen here to 30-arcsec raster grid:
 
+         ! NOTE: Only coastlines (and lake shorelines?) are at 10-arcsec resolution.
+         !       The original Pfaf catchments are at 1-arcmin resolution (~2 km).
+
          nc = 43200  ! Number of rows    in raster file
          nr = 21600  ! Number of columns in raster file
 
@@ -270,13 +274,30 @@ PROGRAM mkEASETilesParam
          ! read list of Pfafstetter catchment IDs ('PfafID') from 10-arcsec mask file into variable 'SRTM_catid[_r8]'
          ! [vector of length SRTM_maxcat]
 
-         status    = NF90_OPEN( trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF90_NOWRITE, ncid )
+         fname_mask = trim(MAKE_BCS_INPUT_DIR) // '/shared/mask/GEOS5_10arcsec_mask.nc'
+
+         print *, 'Opening ', trim(fname_mask)
+
+         status    = NF90_OPEN( fname_mask, NF90_NOWRITE, ncid )
+         if(status /=0) then
+            PRINT *, trim(NF90_STRERROR(STATUS))
+            print *, 'Problem with NF90_OPEN():  ', trim(fname_mask), '  ', ncid, status
+         else
+            print *, 'ncid=', ncid
+         endif
+         
          status    = nf90_inq_varid( ncid, name='PfafID', varid=varid )
+         if(status /=0) then
+            PRINT *, trim(NF90_STRERROR(STATUS))
+            print *, 'Problem with NF90_INQ_VARID():  PfafID  ', ncid, varid, status
+         endif
+
          status    = nf90_get_var( ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/) )   
          if(status /=0) then
             PRINT *, trim(NF90_STRERROR(STATUS))
-            print *, 'Problem with NF90_OPEN(): ', trim(MaskFile)
+            print *, 'Problem with NF90_GET_VAR():  PfafID  ', ncid, varid, SRTM_maxcat, status
          endif
+
          SRTM_catid = int8(SRTM_catid_r8)                         ! convert data to integer*8    -- contains 12-digit Pfaf code
          SRTM_catid (SRTM_maxcat + 1) = 190000000                 ! append ID for Lake type
          SRTM_catid (SRTM_maxcat + 2) = 200000000                 ! append ID for Landice type
@@ -290,6 +311,10 @@ PROGRAM mkEASETilesParam
          !i1 = 0  ! count # of 30-arcsec pixels - NOT USED
 
          status = nf90_inq_varid(ncid, name='CatchIndex', varid=varid)
+         if(status /=0) then
+            PRINT *, trim(NF90_STRERROR(STATUS))
+            print *, 'Problem with NF90_INQ_VARID():  CatchIndex  ', ncid, varid, status
+         endif
 
          do j=1,nr
             
@@ -298,12 +323,12 @@ PROGRAM mkEASETilesParam
             ! read slice of variable 'CatchIndex' from 10-arcsec mask file into variable 'geos_msk' 
             ! [2d-array: 129600-by-3]
 
-            status  = NF90_GET_VAR( ncid, varid, geos_msk, (/1,(j-1)*dy_esa +1/), (/nc_esa,dy_esa/) ) ! Read 10-arcsec rows that lie within the raster row 'j'  
+            status = NF90_GET_VAR( ncid, varid, geos_msk, (/1,(j-1)*dy_esa+1/), (/nc_esa,dy_esa/) ) ! Read 10-arcsec rows that lie within the raster row 'j'  
             !status  = NF_GET_VARA_INT (ncid,4,(/1,(j-1)*dy_esa +1/),(/nc_esa,dy_esa/),geos_msk) ! Read 10-arcsec rows that lie within the raster row 'j'  
             
             if(status /=0) then
                PRINT *, trim(NF90_STRERROR(STATUS))
-               print *, 'Problem with NF_GET_VAR(): ', trim(MaskFile), status
+               print *, 'Problem with NF_GET_VAR():  CatchIndex  ', ncid, varid, j, dy_esa, nc_esa, status
             endif
             
             do i = 1,nc    
