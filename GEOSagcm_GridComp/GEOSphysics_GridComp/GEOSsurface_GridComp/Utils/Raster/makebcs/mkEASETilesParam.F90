@@ -114,7 +114,7 @@ PROGRAM mkEASETilesParam
 
       ! --------------------------------------------------------------------------------------
 
-      call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
+      call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR )
 
       usage1 = 'USAGE : bin/mkEASETilesParam.x -ease_label EASELabel                    '
       usage2 = '        where EASELabel = *EASEv[x]_M[yy]*, x={1,2}, yy={01,03,09,25,36}'
@@ -615,9 +615,10 @@ PROGRAM mkEASETilesParam
 
       n_landlakelandice = n_land + n_lake + n_landice
 
-      print *,'# of Land    tiles: ', n_land
-      print *,'# of Lake    tiles: ', n_lake
-      print *,'# of Landice tiles: ', n_landice
+      print *,'# of Land              tiles: ', n_land
+      print *,'# of Lake              tiles: ', n_lake
+      print *,'# of Landice           tiles: ', n_landice
+      print *,'# of Land+Lake+Landice tiles: ', n_landlakelandice
 
       l_index     = 0                   ! start index for land    EASE cells
       w_index     = n_land              ! start index for lake    EASE cells
@@ -700,8 +701,9 @@ PROGRAM mkEASETilesParam
                      if(water_id(l)==0) then
                         ! raster grid cell is first Lake type seen for this EASE grid cell, tile ID has not yet been set
                         ! recall: tile IDs for Lake: [(n_land+1):(n_land+n_lake)], and w_index was initalized to n_land above 
-                        w_index = w_index + 1                 
-                        tileid_index(i,j)= w_index  
+                        w_index           = w_index + 1                 
+                        water_id(l)       = w_index     ! needed so if condition will be false for next raster grid cell of same type
+                        tileid_index(i,j) = w_index  
                      else
                         ! no action needed (tile ID does not depend on number of contributing Lake raster grid cells)
                      endif
@@ -711,8 +713,9 @@ PROGRAM mkEASETilesParam
                      if(ice_id(l)==0) then
                         ! raster grid cell is first Landice type seen for this EASE grid cell, tile ID has not yet been set
                         ! recall: tile IDs for Landice: [(n_land+n_lake+1):n_landlakelandice], and i_index was initalized to n_land+n_lake above 
-                        i_index = i_index + 1
-                        tileid_index(i,j)= i_index
+                        i_index           = i_index + 1
+                        ice_id(l)         = i_index     ! needed so if condition will be false for next raster grid cell of same type
+                        tileid_index(i,j) = i_index
                      else
                         ! no action needed (tile ID does not depend on number of contributing Landice raster grid cells)                     
                      endif
@@ -722,8 +725,9 @@ PROGRAM mkEASETilesParam
                      if(land_id(l)==0) then
                         ! raster grid cell is first Land type seen for this EASE grid cell, tile ID has not yet been set
                         ! recall: tile IDs for Land: [1:n_land], and l_index was initalized to 0 above 
-                        l_index = l_index + 1     
-                        tileid_index(i,j)= l_index
+                        l_index           = l_index + 1     
+                        land_id(l)        = l_index     ! needed so if condition will be false for next raster grid cell of same type
+                        tileid_index(i,j) = l_index
                      else
                         ! no action needed (tile ID does not depend on number of contributing Land raster grid cells)                     
                      endif
