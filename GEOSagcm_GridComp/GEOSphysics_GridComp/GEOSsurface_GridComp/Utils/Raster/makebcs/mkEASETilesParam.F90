@@ -281,7 +281,9 @@ PROGRAM mkEASETilesParam
          status    = NF90_OPEN( fname_mask, NF90_NOWRITE, ncid )
          if(status /=0) then
             PRINT *, trim(NF90_STRERROR(STATUS))
-            print *, 'Problem with NF90_OPEN():  ', trim(fname_mask), '  ', ncid, status
+            print *, 'ERROR -- NF90_OPEN():  ', trim(fname_mask), '  ', ncid, status
+            print *, trim(Iam), '.x STOPPING.'
+            stop
          else
             print *, 'ncid=', ncid
          endif
@@ -289,13 +291,17 @@ PROGRAM mkEASETilesParam
          status    = nf90_inq_varid( ncid, name='PfafID', varid=varid )
          if(status /=0) then
             PRINT *, trim(NF90_STRERROR(STATUS))
-            print *, 'Problem with NF90_INQ_VARID():  PfafID  ', ncid, varid, status
+            print *, 'ERROR -- NF90_INQ_VARID():  PfafID  ', ncid, varid, status
+            print *, trim(Iam), '.x STOPPING.'
+            stop
          endif
 
          status    = nf90_get_var( ncid, varid, SRTM_catid_r8, (/1/),(/SRTM_maxcat/) )   
          if(status /=0) then
             PRINT *, trim(NF90_STRERROR(STATUS))
-            print *, 'Problem with NF90_GET_VAR():  PfafID  ', ncid, varid, SRTM_maxcat, status
+            print *, 'ERROR -- NF90_GET_VAR():  PfafID  ', ncid, varid, SRTM_maxcat, status
+            print *, trim(Iam), '.x STOPPING.'
+            stop
          endif
 
          SRTM_catid = int8(SRTM_catid_r8)                         ! convert data to integer*8    -- contains 12-digit Pfaf code
@@ -313,7 +319,9 @@ PROGRAM mkEASETilesParam
          status = nf90_inq_varid(ncid, name='CatchIndex', varid=varid)
          if(status /=0) then
             PRINT *, trim(NF90_STRERROR(STATUS))
-            print *, 'Problem with NF90_INQ_VARID():  CatchIndex  ', ncid, varid, status
+            print *, 'ERROR -- NF90_INQ_VARID():  CatchIndex  ', ncid, varid, status
+            print *, trim(Iam), '.x STOPPING.'
+            stop
          endif
 
          do j=1,nr
@@ -328,7 +336,9 @@ PROGRAM mkEASETilesParam
             
             if(status /=0) then
                PRINT *, trim(NF90_STRERROR(STATUS))
-               print *, 'Problem with NF_GET_VAR():  CatchIndex  ', ncid, varid, j, dy_esa, nc_esa, status
+               print *, 'ERROR -- NF_GET_VAR():  CatchIndex  ', ncid, varid, j, dy_esa, nc_esa, status
+               print *, trim(Iam), '.x STOPPING.'
+               stop   
             endif
             
             do i = 1,nc    
@@ -703,10 +713,9 @@ PROGRAM mkEASETilesParam
                         ! recall: tile IDs for Lake: [(n_land+1):(n_land+n_lake)], and w_index was initalized to n_land above 
                         w_index           = w_index + 1                 
                         water_id(l)       = w_index     ! needed so if condition will be false for next raster grid cell of same type
-                        tileid_index(i,j) = w_index  
-                     else
-                        ! no action needed (tile ID does not depend on number of contributing Lake raster grid cells)
-                     endif
+                     end if
+                     
+                     tileid_index(i,j) = water_id(l) 
                      
                   case (IceType)    ! raster grid cell (i,j) is Landice
                      
@@ -715,10 +724,9 @@ PROGRAM mkEASETilesParam
                         ! recall: tile IDs for Landice: [(n_land+n_lake+1):n_landlakelandice], and i_index was initalized to n_land+n_lake above 
                         i_index           = i_index + 1
                         ice_id(l)         = i_index     ! needed so if condition will be false for next raster grid cell of same type
-                        tileid_index(i,j) = i_index
-                     else
-                        ! no action needed (tile ID does not depend on number of contributing Landice raster grid cells)                     
-                     endif
+                     end if
+                     
+                     tileid_index(i,j) = ice_id(l)
                      
                   case (LandType)   ! raster grid cell (i,j) is Land
                      
@@ -727,10 +735,9 @@ PROGRAM mkEASETilesParam
                         ! recall: tile IDs for Land: [1:n_land], and l_index was initalized to 0 above 
                         l_index           = l_index + 1     
                         land_id(l)        = l_index     ! needed so if condition will be false for next raster grid cell of same type
-                        tileid_index(i,j) = l_index
-                     else
-                        ! no action needed (tile ID does not depend on number of contributing Land raster grid cells)                     
-                     endif
+                     end if
+
+                     tileid_index(i,j) = land_id(l)
                                     
                      ! sum up area and (area-weighted) elevation (only over raster grid cells of type land!)
                      
