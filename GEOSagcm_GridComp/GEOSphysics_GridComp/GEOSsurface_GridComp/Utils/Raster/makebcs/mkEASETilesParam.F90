@@ -48,7 +48,7 @@ PROGRAM mkEASETilesParam
       integer, parameter :: IceType    = 11 ! landice type used for processing here; in GEOS, landice tiles are type= 20
 
       integer :: i, j, ig, jg, n
-      integer :: NC, NR, N_ease_grid_cells, NDND, ND_raster
+      integer :: nc, nr, N_ease_grid_cells, NDND, ND_raster
       
       ! For regridding
 
@@ -191,14 +191,10 @@ PROGRAM mkEASETilesParam
       water_id    =  0
       ice_id      =  0             
 
-      ! Step size for conversion of 2-dim indexing into 1-dim indexing:  l = ind_row*NDND + ind_col
-      ! If conversion was simply to get from 2-dim to 1-dim indexing for EASE grid cells, 
-      !  NDND=nc_ease would suffice
-      ! Here, NDND is computed as a power of 10, leaving room for "empty" indices that may or may not be needed later.
-      ! - reichle, 15 Jun 2023
+      ! conversion from 2-dim to 1-dim index for EASE grid: l = (ind_row-1)*NDND + ind_col
 
       !NDND        = 10*10**(nint(log10(1.*nr_ease)))
-      
+
       NDND = nc_ease
 
       !   Check for the 10 arc-sec MaskFile
@@ -670,8 +666,12 @@ PROGRAM mkEASETilesParam
       ! global nc x nr array of tileid_index(nc,nr) contains corresponding tile_index values which 
       !        is derived in the below loop
  
-      ND_raster = 10*10**(nint(log10(1.*NR)))
+      ! conversion from 2-dim index to 1-dim index for raster grid: all_ind(l) = (j-1)*ND_raster + i
 
+      !ND_raster = 10*10**(nint(log10(1.*NR)))
+
+      ND_raster = nc
+      
       !i2 = 1   -- NOT USED
 
       do i = 1 ,nc
@@ -757,8 +757,8 @@ PROGRAM mkEASETilesParam
                   
                   tile_area(tileid_index(i,j)) = tile_area(tileid_index(i,j)) + pix_area     
                   
-                  my_land(tileid_index(i,j)) = l                    ! store 1-dim index of all EASE grid cells
-                  all_id( tileid_index(i,j)) = j*ND_raster + i      ! store 1-dim index of all 30-arcsec raster grid cells; BUG????
+                  my_land(tileid_index(i,j)) = l                     ! for this tile, store 1-dim index for EASE grid cells
+                  all_id( tileid_index(i,j)) = (j-1)*ND_raster + i   ! for this tile, store 1-dim index for raster grid cells - last in prevails!
 
                   ! BUG??? all_id stores only the 1-dim index of the 30-arcsec raster grid cells that is the 
                   !        last one to contribute to the EASE tile specified by tileid_index(i,j)
@@ -774,7 +774,29 @@ PROGRAM mkEASETilesParam
                
          end do
       end do
+
+      ! verify l_index, w_index, i_index against tile counts from first loop
       
+      if (l_index/= n_land            ) then
+        print *, 'ERROR: l_index = ', l_index, ' must now match # of Land              tiles = ', n_land
+        print *, 'STOPPING.'
+        stop
+      end if
+
+      if (w_index/=(n_land+n_lake)    ) then
+        print *, 'ERROR: w_index = ', w_index, ' must now match # of Land+Lake         tiles = ', n_land+n_lake
+        print *, 'STOPPING.'
+        stop
+         
+      end if
+
+      if (i_index/= n_landlakelandice ) then
+        print *, 'ERROR: i_index = ', i_index, ' must now match # of Land+Lake+Landice tiles = ', n_landlakelandice
+        print *, 'STOPPING.'
+        stop
+         
+      end if
+
       deallocate(land_id, q0)
       deallocate(water_id)
       deallocate(ice_id  )
@@ -847,7 +869,7 @@ PROGRAM mkEASETilesParam
          !ig    = my_land(l)-NDND*(my_land(l)/NDND)
          !jg    = my_land(l)/NDND
   
-         ! get row and column indices from 1-dim index  (that is, invert l=(ind_row-1)*NDND+ind_col)
+         ! for EASE grid: get row and column indices from 1-dim index  (that is, invert l=(ind_row-1)*NDND+ind_col)
          
          jg = (my_land(l)-1)/NDND + 1          ! = ind_row (1-based)   [note integer division]
          
@@ -863,11 +885,16 @@ PROGRAM mkEASETilesParam
          !        last of the 30-arcsec raster grid cells that contribute to the EASE tile
          ! 
          
+         ! for raster grid: get row and column indices from 1-dim index (that is, invert all_id(l)=(j-1)*ND_raster + i
 
-
- 
-         cindex= catid_index(all_id(l)-ND_raster*(all_id(l)/ND_raster),all_id(l)/ND_raster)
-
+         j = (all_id(l) -1)/ND_raster + 1
+         
+         i = all_id(l) - ND_raster*(j-1)
+         
+         !cindex= catid_index(all_id(l)-ND_raster*(all_id(l)/ND_raster),all_id(l)/ND_raster)
+         
+         cindex = catid_index(i,j)
+         
          if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
             pfaf = cindex
          else
