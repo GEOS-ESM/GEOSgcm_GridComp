@@ -56,13 +56,6 @@ module shoc
                      kapa = rgas/cp,            &
                      gocp = ggr/cp,             &
                      rog = rgas*ggri,           &
-!                     sqrt2 = sqrt(2.0),         &
-!                     sqrtpii = 1.0/sqrt(pi+pi), &
-!                     epsterm = rgas/rv,         &
-!                     twoby3 = 2.0/3.0,          &
-!                     onebeps = 1.0/epsterm,     &
-!                     twoby15 = 2.0 / 15.0,      &
-!                     onebrvcp= 1.0/(rv*cp),     &
                      tkef1=0.5,                 &
                      tkef2=1.0-tkef1,           &
                      tkhmax=1000.0,             & 
@@ -75,7 +68,6 @@ module shoc
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
   type(shocparams_type), intent(in) :: shocparams
   real, intent(in   ) :: dtn          ! Physics time step, s 
-!  real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
   real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure   
   real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
   real, intent(in   ) :: phil_inv (nx,ny,nzm) ! layer geopotential height  
@@ -94,7 +86,6 @@ module shoc
   real, intent(in   ) :: cld_sgs_inv(nx,ny,nzm) ! sgs cloud fraction
 !  real, intent(in   ) :: dtdtrad    (nx,ny,nzm) ! radiative cooling tendency
   real, intent(in   ) :: tke_mf     (nx,ny,nz)  ! MF vertical velocity on edges, m/s
-!  real, intent(in   ) :: mfdepth    (nx,ny)     ! depth of MF
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy scalar diffusivity
   real, intent(  out) :: tkm_inv    (nx,ny,nzm) ! eddy momentum diffusivity
@@ -103,7 +94,6 @@ module shoc
   real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
   real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production 
   real, dimension(:,:,:), pointer :: tkesbshear_inv ! shear production 
-!  real, dimension(:,:,:), pointer :: tkesbtrans_inv ! tke transport 
 
   real, dimension(:,:,:), pointer :: smixt_inv    ! dissipation length scale
   real, dimension(:,:,:), pointer :: smixt1_inv   ! length scale, term 1
@@ -129,22 +119,8 @@ module shoc
   real, parameter :: Cs  = 0.15
   real :: Ck, Ce, Ces
 
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) 
-! real, parameter :: Ces = Ce/0.7*3.0
 
   real :: tscale
-  real, parameter :: w_tol_sqd = 4.0e-04   ! Min vlaue of second moment of w
-  real, parameter :: w_thresh  = 0.0, thresh = 0.0
-
-! These parameters are a tie-in with a microphysical scheme
-! Double check their values for the Zhao-Carr scheme.
-!  real, parameter :: tbgmin = 233.16    ! Minimum temperature for cloud water., K
-!  real, parameter :: tbgmax = 273.16    ! Maximum temperature for cloud ice, K
-!  real, parameter :: a_bg   = 1.0/(tbgmax-tbgmin)
-
-! Parameters to tune the second order moments-  No tuning is performed currently
-!  real :: thl2tune, qw2tune, qwthl2tune
-!  real, parameter :: thl_tol  = 1.e-2, rt_tol = 1.e-4
 
 ! Number iterations for TKE solution
   integer, parameter :: nitr=6
@@ -158,14 +134,12 @@ module shoc
   real ri      (nx,ny,nz)   ! Richardson number 
 
   real hl      (nx,ny,nzm)  ! liquid/ice water static energy , K
-!  real hvl     (nx,ny,nzm)  ! liquid/ice water static energy , K
   real qv      (nx,ny,nzm)  ! water vapor, kg/kg
   real qcl     (nx,ny,nzm)  ! liquid water  (condensate), kg/kg
   real qci     (nx,ny,nzm)  ! ice water  (condensate), kg/kg
   real w       (nx,ny,nzm)  ! z-wind, m/s
   real bet     (nx,ny,nzm)  ! ggr/tv0
   real gamaz   (nx,ny,nzm)  ! ggr/cp*z
-!  real dm      (nx,ny,nzm)  
   real prsl    (nx,ny,nzm)  
   real u       (nx,ny,nzm)  
   real v       (nx,ny,nzm)  
@@ -183,7 +157,6 @@ module shoc
   real tkesbdiss(nx,ny,nzm)
   real tkesbbuoy(nx,ny,nzm)
   real tkesbshear(nx,ny,nzm)
-!  real tkesbtrans(nx,ny,nzm)
 
 ! Eddy length formulation 
   real smixt      (nx,ny,nzm)  ! Turbulent length scale, m
@@ -192,14 +165,13 @@ module shoc
   real smixt3     (nx,ny,nzm)  ! Turbulent length scale, m
   real isotropy    (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
   real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
-  real conv_vel2   (nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
 
 
 ! Local variables
 
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth!, brunt_dry
 
-  real, dimension(nx,ny)     :: denom, numer, l_inf, l_mix, cldarr, zcb, l_par
+  real, dimension(nx,ny)     :: l_inf, l_mix, zcb, l_par!, denom, numer, cldarr
 
   real lstarn,    depth,    omn,      betdz,    bbb,        &
        term,      qsatt,    dqsat,    thedz,    conv_var,   &  
@@ -214,6 +186,8 @@ module shoc
   real, parameter :: vonk = 0.4
 
 ! set parameter values
+! real, parameter :: Ce  = Ck**3/(0.7*Cs**4)
+! real, parameter :: Ces = Ce/0.7*3.0  
   lambda   = shocparams%LAMBDA              ! used in return-to-isotropy timescale
   Ck       = shocparams%CKVAL               ! Coeff in the eddy diffusivity - TKE relationship, see Eq. 7 in BK13 
   Ce       = shocparams%CEFAC*Ck**3/Cs**4   ! diss ~= Ce * sqrt(tke)
@@ -236,8 +210,6 @@ module shoc
         kinv = nzm-k+1
         zl(i,j,kinv)       = phil_inv(i,j,k)-phii_inv(i,j,nz)
         tkh(i,j,kinv)      = tkh_inv(i,j,k)
-!        prnum(i,j,kinv)    = prnum_inv(i,j,k)
-!        dm(i,j,kinv)       = dm_inv(i,j,k)
         prsl(i,j,kinv)     = prsl_inv(i,j,k)
         u(i,j,kinv)        = u_inv(i,j,k)
         v(i,j,kinv)        = v_inv(i,j,k)
@@ -263,7 +235,6 @@ module shoc
         w(i,j,k)       = - rog * omega(i,j,k) * thv(i,j,k) * wrk
         qpl(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         qpi(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
-!        wqp_sec(i,j,k) = 0.0  ! Turbulent flux of precipiation
         total_water(i,j,k) = qcl(i,j,k) + qci(i,j,k) + qv(i,j,k)
         prespot        = (100000.0*wrk) ** kapa        ! Exner function
         bet(i,j,k)     = ggr/(tabs(i,j,k)*prespot)     ! Moorthi
@@ -275,8 +246,6 @@ module shoc
 ! Liquid/ice water static energy - ! Note the the units are degrees K
         hl(i,j,k) = tabs(i,j,k) + gamaz(i,j,k) - fac_cond*(qcl(i,j,k)+qpl(i,j,k)) &
                                                - fac_fus *(qci(i,j,k)+qpi(i,j,k))
-!        hvl(i,j,k) = tabs(i,j,k)*(1.0+epsv*qv(i,j,k)-qcl(i,j,k))+gamaz(i,j,k) &
-!                     - fac_cond*qcl(i,j,k) - fac_fus *qci(i,j,k)
       enddo
     enddo
   enddo
@@ -302,8 +271,6 @@ module shoc
   enddo
 
   call tke_shoc()        ! Integrate prognostic TKE equation forward in time
-
-!  call canuto()    ! Subroutine to calculate w third moment, based on Canuto et al 2001
 
 !=== Assign exports and flip vertical ===!
 
@@ -337,9 +304,9 @@ contains
 ! This subroutine solves the TKE equation, 
 ! Heavily based on SAM's tke_full.f90 by Marat Khairoutdinov
 
-    real grd,betdz,Cek,Cee,lstarn, lstarp, bbb, omn, omp,qsatt,dqsat, smix,         &
-         buoy_sgs,ratio,a_prod_sh,a_prod_bu,a_diss,a_prod_bu_debug, buoy_sgs_debug, &
-         tscale1, wrk, wrk1, wtke, wtk2, rdtn, tke_env!, dbuoy, krad
+    real grd,betdz,Cek,Cee,lstarn, bbb, omn, omp,qsatt,dqsat, smix,         &
+         buoy_sgs,a_prod_sh,a_prod_bu,a_diss,a_prod_bu_debug, buoy_sgs_debug, &
+         tscale1, wrk, wrk1, wtke, wtk2, rdtn, tke_env
     integer i,j,k,ku,kd,itr
 
     rdtn = 1.0 / dtn
@@ -355,14 +322,11 @@ contains
           tkesbdiss(i,j,k)  = 0.
           tkesbshear(i,j,k) = 0.
           tkesbbuoy(i,j,k)  = 0.
-!          tkesbtrans(i,j,k) = 0.
         enddo
       enddo
     enddo
 
     call eddy_length()   ! Find turbulent mixing length, calcs brunt
-!    call check_eddy()    ! Make sure it's reasonable
-
 
     do k=1,nzm      
       ku = k+1
@@ -408,13 +372,10 @@ contains
             smix = min(grd,max(0.1*grd, 0.76*sqrt(tke(i,j,k)/(buoy_sgs+1.e-10))))
           end if
 
-          ratio     = smix/grd
-
-          Cee = Cek* (pt19 + pt51*ratio)
+          Cee = Cek* (pt19 + pt51*smix/grd)
 
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
           a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.1)    ! TKE shear production term
-!          a_prod_sh = min(tkhmax,(wrk+0.00001))*def2(i,j,k)    ! TKE shear production term
 
 ! Semi-implicitly integrate TKE equation forward in time
           wtke = tke(i,j,k)
@@ -458,20 +419,10 @@ contains
       end do   ! j loop
     end do     ! k
 
-    ! reduce isotropy above mixed layer/1000m to suppress cloudy diffusive plumes
-!    do j=1,ny
-!      do i=1,nx
-!        itr=2
-!        do while (tkh(i,j,itr).gt.2.0 .or. zl(i,j,itr).lt.1000.)
-!          itr=itr+1
-!        end do
-!        do k=itr+1,nzm
-!          isotropy(i,j,k) = isotropy(i,j,k)*exp((zl(i,j,itr)-zl(i,j,k))/200.)
-!        end do       
-!      end do
-!    end do
-!    isotropy = max(30.,min(max_eddy_dissipation_time_scale,isotropy))
 
+    ! Below averages TKE from adjacent levels and subtracts TKE diagnosed from EDMF updrafts
+    ! to estimate an environmental TKE on edge. Isotropy from adjacent levels is similarly
+    ! averaged, and product of edge isotropy and environmental TKE provides diffusivity.
     wrk = 0.5 * ck
     do k=2,nzm
       do j=1,ny
@@ -528,10 +479,6 @@ contains
 
      RI = 0.0
      RI(:,:,2:nz-1) = ggr*( DTM / adzi(:,:,1:nzm-1) ) / ( TM * (DU**2) )
-
-!     RI(:,:,2:nz-1) = ggr*(THV(:,:,2:nzm) - THV(:,:,1:nzm-1)) /adzi(:,:,1:nzm-1)
-!     RI(:,:,2:nz-1) = RI(:,:,2:nz-1)/( (THV(:,:,1:nzm-1) + THV(:,:,2:nzm))*0.5* &
-!                      (MAX(0.001,SQRT( (u(:,:,1:nzm-1)-u(:,:,2:nzm))**2 + (v(:,:,1:nzm-1)-v(:,:,2:nzm))**2 )) / adzi(:,:,1:nzm-1))**2 )
 
      if (SHOCPARAMS%PRNUM.lt.0.) then
         where (RI.le.0. .or. tke_mf.gt.1e-4)
@@ -623,22 +570,20 @@ contains
 
   subroutine eddy_length()
 
-! This subroutine computes the turbulent length scale based on a new
-! formulation described in BK13
+! This subroutine computes the turbulent length scale
 
 ! Local variables
-    real    wrk, wrk1, wrk2, wrk3, zdecay
-    integer i, j, k, kk, ktop, kl, ku, kb, kc, kli, kui
+    real    wrk, wrk1, wrk2, wrk3!, zdecay
+    integer i, j, k, kk, kl, ku, kb, kc!, ktop
     
-    do j=1,ny
-      do i=1,nx
-        cldarr(i,j) = 0.0
-        numer(i,j)  = 0.0
-        denom(i,j)  = 0.0
-      enddo
-    enddo
+!    do j=1,ny
+!      do i=1,nx
+!        cldarr(i,j) = 0.0
+!        numer(i,j)  = 0.0
+!        denom(i,j)  = 0.0
+!      enddo
+!    enddo
     
-! Find the length scale outside of clouds, that includes boundary layers.
     
     do k=1,nzm
       kb = k-1
