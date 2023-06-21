@@ -67,7 +67,7 @@ module GEOS_CatchCNCLM45GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
-  use catchcn_internal_type_mod
+  use catch_wrap_stateMod
 
 implicit none
 private

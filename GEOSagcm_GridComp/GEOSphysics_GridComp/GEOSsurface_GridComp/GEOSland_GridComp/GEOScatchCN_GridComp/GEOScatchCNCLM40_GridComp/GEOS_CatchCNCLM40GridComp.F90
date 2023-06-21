@@ -65,7 +65,7 @@ module GEOS_CatchCNCLM40GridCompMod
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist,            &
        catch_calc_zbar, catch_calc_peatclsm_waterlevel, irrigation_rate, &
        gndtmp
-  use catchcn_internal_type_Mod
+  use catch_wrap_stateMod
 
 implicit none
 private
