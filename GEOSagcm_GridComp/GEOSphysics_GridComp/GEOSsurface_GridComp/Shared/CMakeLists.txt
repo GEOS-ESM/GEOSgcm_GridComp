@@ -10,7 +10,6 @@ install( FILES ${resource_files}
    )
 
 set (srcs
-  getids.F90
   StieglitzSnow.F90
   SurfParams.F90)
 
