@@ -198,7 +198,7 @@ subroutine SetServices ( GC, RC )
     type(T_CATCHCN_STATE), pointer :: catchcn_internal
     type(CATCHCN_WRAP) :: wrap
     integer :: OFFLINE_MODE
-    integer :: RESTART, ATM_CO2, N_CONST_LAND4SNWALB, RUN_IRRIG
+    integer :: RESTART
 
 ! Begin...
 ! --------
@@ -215,10 +215,6 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
     catchcn_internal => wrap%ptr
     OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
-    ATM_CO2      = catchcn_internal%ATM_CO2
-    N_CONST_LAND4SNWALB  = catchcn_internal%N_CONST_LAND4SNWALB 
-    RUN_IRRIG    = catchcn_internal%RUN_IRRIG
-
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
@@ -427,7 +423,7 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (ATM_CO2 == 4) THEN
+    IF (catchcn_internal%ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
@@ -1911,7 +1907,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (N_CONST_LAND4SNWALB /= 0) then 
+  if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -2025,7 +2021,7 @@ subroutine SetServices ( GC, RC )
 
 ! IRRIGATION MODEL INTERNAL
 
-  IF (RUN_IRRIG /= 0) THEN
+  IF (catchcn_internal%RUN_IRRIG /= 0) THEN
 
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'fraction_of_irrigated_cropland',&
@@ -2123,7 +2119,7 @@ subroutine SetServices ( GC, RC )
 
   !  EXPORT STATE:
 
-  IF (RUN_IRRIG /= 0) THEN
+  IF (catchcn_internal%RUN_IRRIG /= 0) THEN
      call MAPL_AddExportSpec(GC                            ,&
           LONG_NAME          = 'irrigation_rate'           ,&
           UNITS              = 'kg m-2 s-1'                ,&

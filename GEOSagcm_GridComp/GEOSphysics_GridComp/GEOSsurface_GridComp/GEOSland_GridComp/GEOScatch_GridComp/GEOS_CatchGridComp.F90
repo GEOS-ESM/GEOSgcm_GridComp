@@ -144,7 +144,7 @@ subroutine SetServices ( GC, RC )
     type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE
     class(T_CATCH_STATE), pointer :: statePtr
     type(CATCH_WRAP) :: wrap
-    integer :: OFFLINE_MODE, SNOW_ALBEDO_INFO, N_CONST_LAND4SNWALB
+    integer :: OFFLINE_MODE
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
@@ -186,10 +186,11 @@ subroutine SetServices ( GC, RC )
 
     call surface_params_to_wrap_state(statePtr, SCF, _RC)
 
-    call ESMF_ConfigDestroy(SCF, __RC__)
+    call ESMF_ConfigDestroy(SCF, _RC)
 
     wrap%ptr => CATCH_INTERNAL_STATE
     call ESMF_UserCompSetInternalState(gc, 'CatchInternal', wrap, status)
+
 
 ! Set the Run entry points
 ! ------------------------
@@ -1322,7 +1323,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (SNOW_ALBEDO_INFO == 1) then
+  if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'effective_snow_albedo'               ,&
        UNITS              = '1'                         ,&
@@ -1414,7 +1415,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
  
-  if (N_CONST_LAND4SNWALB /= 0) then 
+  if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then 
 
      call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
