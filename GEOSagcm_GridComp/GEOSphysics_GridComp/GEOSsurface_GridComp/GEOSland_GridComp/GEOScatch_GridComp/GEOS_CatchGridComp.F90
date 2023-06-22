@@ -174,11 +174,6 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
     CATCH_INTERNAL_STATE%CATCH_OFFLINE = OFFLINE_MODE
-    ! CATCHMENT_SPINUP mode (use integer to leave room for additional spinup modes in future)
-    !    0: DEFAULT 
-    !    1: remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
-    call MAPL_GetResource ( MAPL, CATCH_INTERNAL_STATE%CATCH_SPINUP, Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
@@ -4526,10 +4521,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
         VERIFY_(STATUS)
         if (MAPL_AM_I_Root(VM).and.debugzth) then
-         print *,' start time of clock '
-         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+           print *,' start time of clock '
+           CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
         endif
-
+        
         ! --------------------------------------------------------------------------
         ! Offline land spin-up.
         ! --------------------------------------------------------------------------
@@ -4547,7 +4542,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               
               if      (CurrMonth==8) then
                  
-                 where ( LATS >= 0. ) 
+                 where ( LATS >= 0. )    ! [radians]
                     
                     WESNN1  = 0.
                     WESNN2  = 0.
@@ -4563,7 +4558,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                                   
               else if (CurrMonth==2) then
                  
-                 where ( LATS <  0. ) 
+                 where ( LATS <  0. )    ! [radians]
                     
                     WESNN1  = 0.
                     WESNN2  = 0.

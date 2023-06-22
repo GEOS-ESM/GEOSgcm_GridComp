@@ -4951,10 +4951,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(T_CATCHCN_STATE), pointer :: catchcn_internal
         integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
-        ! un-adelterated TC's and QC's
+        ! unadulterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
         real, pointer               :: PLSIN(:)
+        
+        ! CATCHMENT_SPINUP
+        integer                     :: CurrMonth, CurrDay, CurrHour, CurrMin, CurrSec
 
         ! --------------------------------------------------------------------------
         ! Lookup tables
@@ -5743,6 +5746,73 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(PLSIN    (NTILES))
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
+        
+        debugzth = .false.
+
+        ! --------------------------------------------------------------------------
+        ! Get the current time. 
+        ! --------------------------------------------------------------------------
+        
+        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
+        VERIFY_(STATUS)
+        if (MAPL_AM_I_Root(VM).and.debugzth) then
+           print *,' start time of clock '
+           CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+        endif
+
+        ! --------------------------------------------------------------------------
+        ! Offline land spin-up.
+        ! --------------------------------------------------------------------------
+        
+        if (CATCHCN_INTERNAL%CATCH_SPINUP /= 0) then
+           
+           ! remove snow every Aug 1, 0z (Northern Hemisphere) or Feb 1, 0z (Southern Hemisphere)
+           !
+           ! assumes that CURRENT_TIME actually hits 0z on first of month (which seems safe enough)
+
+           call ESMF_TimeGet(CURRENT_TIME, mm=CurrMonth, dd=CurrDay, h=CurrHour, m=CurrMin, s=CurrSec, rc=STATUS) 
+           VERIFY_(STATUS)
+           
+           if (CurrDay==1 .and. CurrHour==0 .and. CurrMin==0 .and. CurrSec==0) then
+              
+              if      (CurrMonth==8) then
+                 
+                 where ( LATS >= 0. )    ! [radians]
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                                  
+              else if (CurrMonth==2) then
+                 
+                 where ( LATS <  0. )    ! [radians]
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                 
+              end if              
+              
+           end if  ! 0z on first of month
+              
+        end if     ! if (CATCHCN_INTERNAL%CATCH_SPINUP /= 0)
+        
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
@@ -5819,19 +5889,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN (1,:) = SNDZN1
         SNDZN (2,:) = SNDZN2
         SNDZN (3,:) = SNDZN3
-
-        debugzth = .false.
-
-        ! --------------------------------------------------------------------------
-        ! Get the current time. 
-        ! --------------------------------------------------------------------------
-
-        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-        VERIFY_(STATUS)
-        if (MAPL_AM_I_Root(VM).and.debugzth) then
-         print *,' start time of clock '
-         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
-        endif
 
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
