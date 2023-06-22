@@ -1884,7 +1884,7 @@ module GEOSmoist_Process_Library
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
 
                       QAx = 0.0
-      if (CLCN > 0.0) QAx = (QLCN+QICN)/CLCN
+      if (CLCN > tiny(1.0)) QAx = (QLCN+QICN)/CLCN
 
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
