@@ -4191,13 +4191,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    where(ITY(:,1) > 0.)
      VEG1 = map_cat(nint(ITY(:,1)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-    elsewhere
-     VEG1 = map_cat(nint(ITY(:,2)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   where(ITY(:,3) > 0.)
-     VEG2 = map_cat(nint(ITY(:,3)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-    elsewhere
-     VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
+   where(ITY(:,2) > 0.)
+     VEG2 = map_cat(nint(ITY(:,2)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
    _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message')
    _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
@@ -4221,8 +4217,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       
    END DO
    
-   FVG1 = fvg(:,1) + fvg(:,2)  ! gkw: primary   vegetation fraction
-   FVG2 = fvg(:,3) + fvg(:,4)  ! gkw: secondary vegetation fraction
+   FVG1 = fvg(:,1) 
+   FVG2 = fvg(:,2)
 
 ! set CLM CN PFT & fraction, set carbon zone weights
 ! --------------------------------------------------
@@ -5868,19 +5864,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         CAT_ID = nint(tile_id)
 
-        where(ITY(:,1) > 0.)             ! gkw: account for "split" types
+        where(ITY(:,1) > 0.)           
           VEG1 = map_cat(nint(ITY(:,1))) ! map  primary  CN PFT to catchment type
-         elsewhere
-          VEG1 = map_cat(nint(ITY(:,2))) ! map  primary  CN PFT to catchment type
         endwhere
-        where(ITY(:,3) > 0.)
-          VEG2 = map_cat(nint(ITY(:,3))) ! map secondary CN PFT to catchment type
-         elsewhere
-          VEG2 = map_cat(nint(ITY(:,4))) ! map secondary CN PFT to catchment type
+        where(ITY(:,2) > 0.)
+          VEG2 = map_cat(nint(ITY(:,2))) ! map secondary CN PFT to catchment type
         endwhere
 
-        fveg1(:) = fvg(:,1) + fvg(:,2) ! sum veg fractions (primary)   gkw: NVEG specific
-        fveg2(:) = fvg(:,3) + fvg(:,4) ! sum veg fractions (secondary) gkw: fveg1+fveg2=1
+        fveg1(:) = fvg(:,1) 
+        fveg2(:) = fvg(:,2)
 
         allocate ( lai1(ntiles) )
         allocate ( lai2(ntiles) )
@@ -8359,18 +8351,14 @@ subroutine RUN0(gc, import, export, clock, rc)
 
    where(ITY(:,1) > 0.)
      VEG1 = map_cat(nint(ITY(:,1)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-    elsewhere
-     VEG1 = map_cat(nint(ITY(:,2)))  ! gkw: primary   CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   where(ITY(:,3) > 0.)
-     VEG2 = map_cat(nint(ITY(:,3)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
-    elsewhere
-     VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
+   where(ITY(:,2) > 0.)
+     VEG2 = map_cat(nint(ITY(:,2)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
    _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message') 
    _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
-   fveg1(:) = fvg(:,1) + fvg(:,2) ! sum veg fractions (primary)   gkw: NUM_VEG specific
-   fveg2(:) = fvg(:,3) + fvg(:,4) ! sum veg fractions (secondary) gkw: fveg1+fveg2=1
+   fveg1(:) = fvg(:,1) 
+   fveg2(:) = fvg(:,2) 
 
   ! Compute ASNOW and EMIS
   allocate(wesnn(3,ntiles), stat=status)
