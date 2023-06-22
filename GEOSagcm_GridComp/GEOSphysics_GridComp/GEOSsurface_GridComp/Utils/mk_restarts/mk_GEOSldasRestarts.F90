@@ -651,7 +651,7 @@ contains
 
         call GetIds(lonc,latc,lonn,latt,id_loc_cn, tid_offl, &
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-             fveg_offl, ityp_offl)
+             fveg_offl, ityp_offl,.false.) !jkolassa June 2023: logical argument hardcoded at end means this code does not work for Catchment-CN5.1; acceptable since mk_GEOSldasRestarts.F90 will be replaced
 
         if(root_proc) allocate (id_glb_cn  (ntiles,nveg))
 
@@ -2086,7 +2086,7 @@ contains
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl, &
          CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
-         fveg_offl, ityp_offl)
+         fveg_offl, ityp_offl,.false.) !jkolassa June 2023: logical input argument hardcoded at end means that this code does not work for Catchment-CN5.1, which is considered acceptable, since mk_GEOSldasRestarts.F90 is about to be replaced with code that doe swork for Catchment-CN5.1
       
     ! update id_glb in root
     
