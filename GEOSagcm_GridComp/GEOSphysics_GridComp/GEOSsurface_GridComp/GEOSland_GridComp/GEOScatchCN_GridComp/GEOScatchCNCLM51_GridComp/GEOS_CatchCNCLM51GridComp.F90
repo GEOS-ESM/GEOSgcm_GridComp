@@ -4260,20 +4260,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    lai1 = 0.
    wght = 0.
    do nz = 1,nzone
-     do nv = 1,2
-       lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-       wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-     end do
+     nv = 1
+     lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+     wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
    end do
    lai1 = lai1 / max(wght,1.e-8) ! LAI for primary vegetation type
 
    lai2 = 0.
    wght = 0.
    do nz = 1,nzone
-     do nv = 3,4
-       lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-       wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-     end do
+     nv = 2
+     lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+     wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
    end do
    lai2 = lai2 / max(wght,1.e-8) ! LAI for secondary vegetation type
 
@@ -5881,20 +5879,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         lai1 = 0.
         wght = 0.
         do nz = 1,nzone
-          do nv = 1,2
-            lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-            wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-          end do
+          nv = 1
+          lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+          wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
         end do
         lai1 = lai1 / max(wght,1.e-8) ! LAI for primary vegetation type
 
         lai2 = 0.
         wght = 0.
         do nz = 1,nzone
-          do nv = 3,4
-            lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-            wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-          end do
+          nv = 2
+          lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+          wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
         end do
         lai2 = lai2 / max(wght,1.e-8) ! LAI for secondary vegetation type
 
@@ -7115,20 +7111,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     lai1 = 0.
     wght = 0.
     do nz = 1,nzone
-      do nv = 1,2
-        lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-        wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-      end do
+      nv = 1
+      lai1(:) = lai1(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+      wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
     end do
     lai1 = lai1 / max(wght,1.e-8) ! LAI for primary vegetation type
 
     lai2 = 0.
     wght = 0.
     do nz = 1,nzone
-      do nv = 3,4
-        lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
-        wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
-      end do
+      nv = 2
+      lai2(:) = lai2(:) + max(elai(:,nv,nz),0.)*fveg(:,nv,nz)*wtzone(:,nz)
+      wght(:) = wght(:) +                       fveg(:,nv,nz)*wtzone(:,nz)
     end do
     lai2 = lai2 / max(wght,1.e-8) ! LAI for secondary vegetation type
 
