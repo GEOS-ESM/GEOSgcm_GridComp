@@ -206,8 +206,8 @@ PROGRAM mkEASETilesParam
      
      ! Coarsen 10-arcsec mask to 30-arcsec "raster" grid
 
-     nc = 43200  ! Number of rows    of raster grid
-     nr = 21600  ! Number of columns of raster grid
+     nc = 43200  ! Number of columns of raster grid
+     nr = 21600  ! Number of rows    of raster grid
      
      regrid = .true.
      
