@@ -29,15 +29,6 @@
 #                                                                                  #
 #################################################################################### 
 
-# ---- Catchment[CN] spinup mode 
-#
-#    0 : No spinup (default)
-#    1 : remove snow every Aug 1 in N. Hemisphere and every Feb 1 in S. Hemisphere
-#
-#
-# GEOSagcm=>CATCHMENT_SPINUP: 0
-# GEOSldas=>CATCHMENT_SPINUP: 0
-
 # ---- Surface layer turbulence scheme
 #
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1/9.1/10.0)

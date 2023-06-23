@@ -60,7 +60,6 @@ contains
     real :: FWETC_default, FWETL_default
     integer:: status
     
-    call MAPL_GetResource( SCF, statePtr%CATCH_SPINUP,        label='CATCHMENT_SPINUP:',    DEFAULT=0,             __RC__ )
     call MAPL_GetResource( SCF, statePtr%SURFLAY,             label='SURFLAY:',             DEFAULT=50.,           __RC__ )
     call MAPL_GetResource( SCF, statePtr%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,             __RC__ )
     call MAPL_GetResource( SCF, statePtr%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,             __RC__ )

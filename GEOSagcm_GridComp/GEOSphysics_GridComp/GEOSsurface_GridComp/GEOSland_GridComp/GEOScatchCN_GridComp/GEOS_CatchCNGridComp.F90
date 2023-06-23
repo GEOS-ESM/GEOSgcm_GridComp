@@ -80,9 +80,13 @@ subroutine SetServices ( GC, RC )
     allocate(CATCHCN_INTERNAL_STATE)
     statePtr =>CATCHCN_INTERNAL_STATE
 
+    ! resource variables for offline GEOSldas; for documentation, see GEOSldas/src/Applications/LDAS_App/GEOSldas_LDAS.rc
     call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)    
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
 
+    ! resource variables from GEOS_SurfaceGridComp.rc    
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
