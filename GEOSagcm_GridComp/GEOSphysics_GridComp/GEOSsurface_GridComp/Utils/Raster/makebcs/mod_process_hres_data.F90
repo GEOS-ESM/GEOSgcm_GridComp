@@ -1138,28 +1138,52 @@ END SUBROUTINE HISTOGRAM
    dy_geos = 180./real(nr)
 
    if((nc_data  >= nc).and.(nr_data >= nr)) then
-
+      
+      ! data to be remapped has resolution same as or finer than that of raster grid with tile_id
+      
+      ! Step 1:
+      ! Apply primitive regridding of tile_id(1:nc,1:nr) to iraster(1:nc_data,1:nr_data)
+      !
+      ! NOTE: When the mask file is GEOS5_10arcsec_mask*.nc, then tile_id raster grid is nc=nx=43200 by nr=ny=21600.
+      !       In mkCatchParam.F90, nc_data=43200 and nr_data=21600 except for GEOLAND and old (16-day) MODIS1 data.
+      !       --> In most cases, RegridRaster should have no impact and could probably be skipped.
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
-      call RegridRaster(tile_id,iraster)
-      NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
+      call RegridRaster(tile_id,iraster)   
+
+      ! now iraster contains tile_id on nc_data-by-nr_data grid
+      
+      ! count number of (regridded) raster grid cells that contribute to land tiles (excl. lake, landice, ocean)
+      NPLUS = count(iraster >= 1 .and. iraster <= ncatch) 
+      
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)   ! allocate and initialize to 0
       allocate (rmap%map (1:NPLUS))     
       rmap%map%NT = 0
-      pix_count = 1
+      pix_count = 1         ! 1-dim indexing of 1:NPLUS raster grid cells that contribute to land tiles
       do j = 1,nr_data
          do i =  1,nc_data
             if((iraster (i,j) >=1).and.(iraster (i,j) <=ncatch)) then
-               rmap%map(pix_count)%NT = 1
-               rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = iraster (i,j)
-               rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = 1
-               rmap%ij_index(i,j) = pix_count
+               ! raster grid cell (i,j) contributes to a land tile;
+               ! data & raster resolutions are such that there is at most 1 tile ID per raster grid cell
+               rmap%map(pix_count)%NT       = 1
+               rmap%map(pix_count)%TID  (1) = iraster (i,j)     ! tile_id values in 1-dim array
+               rmap%map(pix_count)%count(1) = 1
+               rmap%ij_index(i,j)           = pix_count         ! 1-dim index on 2-dim array
                pix_count = pix_count + 1
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
+      ! verify pix_count = NPLUS+1
+      if (pix_count/=(NPLUS+1)) then
+         print *, 'ERROR 1 in create_mapping(); stopping.'
+         stop
+      end if
+      
    else
+      
+      ! data to be remapped has coarser resolution than that of raster grid with tile_id
+      
       NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
       allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
       allocate (rmap%map (1:NPLUS))     

@@ -29,7 +29,9 @@ PROGRAM mkCatchParam
   
   ! The default is NC=i_raster=8640, NR=j_raster=4320 via "use rmTinyCatchParaMod", but
   ! NC and NR are typically overwritten through command-line arguments "-x nx -y ny".
- 
+  !
+  ! In make_bcs, nc=nx=43200 and nr=ny=21600 whenever the mask file is GEOS5_10arcsec_mask*.nc.
+
   integer              :: NC = i_raster, NR = j_raster    
   character*5          :: LBCSV = 'UNDEF'
   character*128        :: Gridname = ''

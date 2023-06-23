@@ -6670,15 +6670,24 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 subroutine RegridRaster(Rin,Rout)
 
-  integer, intent(IN)  :: Rin(:,:)
+  ! primitive regridding of integer values from 2-dim array Rin to 2-dim array Rout
+  !
+  ! If Rin is higher-resolution than Rout:
+  !   An Rout grid cell is assigned the value of the Rin grid cell that is 
+  !    near the corner of the Rout grid cell. 
+  ! If Rout is higher-resolution than Rin:
+  !   An Rout grid cell is assigned the value of the Rin grid cell that 
+  !   contains the center of the Rout grid cell. 
+
+  integer, intent(IN)  :: Rin( :,:)
   integer, intent(OUT) :: Rout(:,:)
-
+  
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
-
+  integer      ::  i,  j, ii, jj
+  
   xx = size(Rin ,1)/float(size(Rout,1))
   yy = size(Rin ,2)/float(size(Rout,2))
-
+  
   do j=1,size(Rout,2)
      jj = (j-1)*yy + 1
      do i=1,size(Rout,1)
@@ -6686,18 +6695,20 @@ subroutine RegridRaster(Rin,Rout)
         Rout(i,j) = Rin(ii,jj)
      end do
   end do
-
+  
 end subroutine RegridRaster
 
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRaster1(Rin,Rout)
 
-  integer*1, intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded integer*1 values
+
+  integer*1, intent(IN)  :: Rin( :,:)
   integer*1, intent(OUT) :: Rout(:,:)
 
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      ::  i, j, ii, jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
   yy = size(Rin ,2)/float(size(Rout,2))
@@ -6712,16 +6723,17 @@ subroutine RegridRaster1(Rin,Rout)
 
 end subroutine RegridRaster1
 
-
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRaster2(Rin,Rout)
 
-  integer(kind=2), intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded integer*2 values
+
+  integer(kind=2), intent(IN)  :: Rin( :,:)
   integer(kind=2), intent(OUT) :: Rout(:,:)
 
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      ::  i,  j, ii, jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
   yy = size(Rin ,2)/float(size(Rout,2))
@@ -6736,20 +6748,21 @@ subroutine RegridRaster2(Rin,Rout)
 
 end subroutine RegridRaster2
 
-
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRasterReal(Rin,Rout)
 
-  real, intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded real values
+
+  real, intent(IN)  :: Rin( :,:)
   real, intent(OUT) :: Rout(:,:)
-
+  
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
-
+  integer      ::  i,  j, ii, jj
+  
   xx = size(Rin ,1)/float(size(Rout,1))
   yy = size(Rin ,2)/float(size(Rout,2))
-
+  
   do j=1,size(Rout,2)
      jj = (j-1)*yy + 1
      do i=1,size(Rout,1)
