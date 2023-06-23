@@ -5469,7 +5469,7 @@ contains
 
 if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
      (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
-     (trim(name) /= 'QLCN') .and. (trim(name) /= 'QICN') .and. &
+!     (trim(name) /= 'QLCN') .and. (trim(name) /= 'QICN') .and. &
      (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
     
 
@@ -5514,16 +5514,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
- elseif (trim(name)=='QLCN') then
-          CX => CQ
-          DX => DKQQ
-          AK => AKQQ; BK => BKQQ; CK => CKQQ
-          SX=S+YQL
- elseif (trim(name)=='QICN') then
-          CX => CQ
-          DX => DKQQ
-          AK => AKQQ; BK => BKQQ; CK => CKQQ
-          SX=S+YQI
+! elseif (trim(name)=='QLCN') then
+!          CX => CQ
+!          DX => DKQQ
+!          AK => AKQQ; BK => BKQQ; CK => CKQQ
+!          SX=S+YQL
+! elseif (trim(name)=='QICN') then
+!          CX => CQ
+!          DX => DKQQ
+!          AK => AKQQ; BK => BKQQ; CK => CKQQ
+!          SX=S+YQI
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKUU

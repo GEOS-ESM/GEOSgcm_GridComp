@@ -1614,15 +1614,19 @@ module GEOSmoist_Process_Library
 ! Partition based on temperature for the first plume
 
           IF (Tl1_1 >= tbgmax) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1)
+!            esval1_1 = MAPL_EQsat(Tl1_1)
+            esval1_1 = MAPL_EQsat(tabs)
             lstarn1  = lcond
           ELSE IF (Tl1_1 < tbgmin) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
+!            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
+            esval1_1 = MAPL_EQsat(tabs)
             lstarn1  = lsub
           ELSE
-            esval1_1 = MAPL_EQsat(Tl1_1)
-            esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            om1      = max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))
+!            esval1_1 = MAPL_EQsat(Tl1_1)
+            esval1_1 = MAPL_EQsat(tabs)
+!            esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
+            esval2_1 = MAPL_EQsat(tabs)
+            om1      = max(0.,min(1.,a_bg*(tabs-tbgmin)))
             lstarn1  = lcond + (1.-om1)*lfus
           ENDIF
 

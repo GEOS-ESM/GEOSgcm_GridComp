@@ -197,7 +197,8 @@ module shoc
 
 ! Local variables
 
-  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth!, brunt_dry
+  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth
+  real, dimension(nx,ny,nz)  :: brunt_edge
 
   real, dimension(nx,ny)     :: denom, numer, l_inf, l_mix, cldarr, zcb, l_par
 
@@ -930,10 +931,11 @@ contains
 
                  ! Kludgey adjustment to increase StCu by reducing L3 at cloud top
                  if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. (cld_sgs(i,j,k).gt.0.2.or.cld_sgs(i,j,k-1).gt.0.2) .and. brunt(i,j,k+1).gt.2e-4) then
-                    smixt3(i,j,k) = (0.25+(1-0.25)*(zl(i,j,k)-200.)/1500.)*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
+                    smixt3(i,j,k) = (0.1+(0.5-0.1)*(zl(i,j,k)-200.)/1500.)*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
                  else
                     smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k))) 
                  end if
+!                 if (zl(i,j,k).gt.4000.) smixt3(i,j,k) = smixt3(i,j,k)*exp(-(zl(i,j,k)-4000.)/1000.)
 !                 smixt3(i,j,k) = max(25.,shocparams&LENFAC2*20.*sqrt(500.-((zl(i,j,k)-500.)/24.)**2))
 
                  if (shocparams%LENOPT .eq. 1) then    ! JPL Blending approach
@@ -988,8 +990,8 @@ contains
               smixt3(i,j,k) = MAPL_UNDEF
            end if
 
-           wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
-           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
+           wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m).  Reduce max length with height
+           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(zl(i,j,nzm)-zl(i,j,k))/zl(i,j,nzm),smixt(i,j,k))) 
 
         end do
       end do
@@ -1461,9 +1463,20 @@ contains
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 1-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
-        hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+!        where (zl(:,:,k).lt.2000.)
+          qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+          qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+          hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
+
+!        elsewhere (zl(:,:,k) .gt. 2000. .and. zl(:,:,k) .lt. 4000.)
+!          qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*(1.+(zl(:,:,k)-2000.)/500.)*QT(:,:,k))**2)
+!          qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.05*QT(:,:,k))**2)
+!        elsewhere
+!          qt2(:,:,k) = (0.01*QT(:,:,k))**2
+!          qt2diag(:,:,k) = (0.01*QT(:,:,k))**2
+!          hl2(:,:,k) = HL2MIN
+!        endwhere
+!        hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
 
         ! Ensure realizibility
