@@ -310,6 +310,16 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'TOTABCKTOA',                               &
+         LONG_NAME  = 'total_attenuated_backscatter_toa',         &
+         UNITS      = '',                                         &
+         DIMS       = MAPL_DimsHorzVert,                          &
+         VLOCATION  = MAPL_VLocationCenter,                       &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'TH',                                        &
         LONG_NAME  = 'potential_temperature',                     &
@@ -1789,6 +1799,33 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'planetary_boundary_layer_height_atbtoa',                &
+       SHORT_NAME = 'ZPBLATBGRAD',                                            &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'planetary_boundary_layer_height_atbtoa',                &
+       SHORT_NAME = 'ZPBLATBTHRESH',                                            &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'ATB_signal_to_noise',                                   &
+       SHORT_NAME = 'SIGNOISE',                                              &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'pbltop_level',                                          &
        SHORT_NAME = 'KPBL',                                                  &
        UNITS      = '1',                                                     &
@@ -2569,7 +2606,7 @@ contains
     real, dimension(:,:,:), pointer     :: AKQ, BKQ, CKQ, DKQ
     real, dimension(:,:,:), pointer     :: AKV, BKV, CKV, DKV, EKV, FKV
     real, dimension(:,:,:), pointer     :: PLE, ZLE, SINC
-    real, dimension(:,:,:), pointer     :: ZLS, ZLES
+    real, dimension(:,:,:), pointer     :: ZLS, ZLES, TOTABCKTOA
     real, dimension(:,:  ), pointer     :: CU, CT, CQ, ZPBL, PHIS
     integer                             :: IM, JM, LM
     real                                :: DT
@@ -2635,6 +2672,11 @@ contains
      call MAPL_GetPointer(IMPORT,  PLE,   'PLE',     RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,  ZLE,   'ZLE',     RC=STATUS)
+     VERIFY_(STATUS)
+
+! Get attenuated backscatter for PBLH
+!------------------------------------
+     call MAPL_GetPointer(IMPORT,  TOTABCKTOA,   'TOTABCKTOA',     RC=STATUS)
      VERIFY_(STATUS)
 
 ! Get surface exchange coefficients
@@ -2906,6 +2948,9 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLRI => null()
      real, dimension(:,:  ), pointer     :: ZPBLRI2 => null()
      real, dimension(:,:  ), pointer     :: ZPBLTHV => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBTHRESH => null()
+     real, dimension(:,:  ), pointer     :: ZPBLATBGRAD => null()
+     real, dimension(:,:  ), pointer     :: SIGNOISE => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
      real, dimension(:,:  ), pointer     :: ZPBL_SC => null()                
@@ -2969,7 +3014,7 @@ contains
      real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
      real                                :: SMTH_HGT
-     real                                :: a1,a2
+     real                                :: tmp1
      real,           dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
      integer                             :: I,J,L,LOCK_ON,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
@@ -3225,6 +3270,12 @@ contains
      call MAPL_GetPointer(EXPORT,    ZPBLRI2,  'ZPBLRI2',           RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZPBLTHV,  'ZPBLTHV',           RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLATBTHRESH,  'ZPBLATBTHRESH',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLATBGRAD,  'ZPBLATBGRAD',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    SIGNOISE,  'SIGNOISE',     RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -4601,7 +4652,7 @@ contains
             do J = 1, JM
 
                do L=LM,1,-1
-                  thetav(L) = T(I,J,L)*(1.0*MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
+                  thetav(L) = TH(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))
                end do
 
                maxdthvdz = 0
@@ -4619,6 +4670,98 @@ contains
             end do 
          end do 
       end if ! ZPBLTHV
+
+      if (associated(ZPBLATBTHRESH)) then
+
+        ZPBLATBTHRESH = MAPL_UNDEF
+
+        do I = 1,IM
+          do J = 1,JM
+            ! avg ATB 200-400 above surface
+            L = LM
+            do while (Z(I,J,L).lt.200.)
+              L = L-1
+            end do
+            K = L  ! first level above 200m
+            tmp1 = 0.
+            do while (Z(I,J,K).lt.400.)
+              tmp1 = tmp1 + TOTABCKTOA(I,J,K)
+              K = K-1
+            end do
+            tmp1 = tmp1/FLOAT(L-K) ! avg ATB
+        
+!            if (tmp1 .gt. 1e-3) then
+              ! scan upward until ATB(K) and ATB(K-1) < 0.85*ATB300.
+              ! interpolate to find height where ATB = threshold
+              K = L ! start just above 200m 
+              do while ( Z(I,J,K).lt.5000. )
+                if (TOTABCKTOA(I,J,K).lt.0.85*tmp1 .and. TOTABCKTOA(I,J,K-1).lt.0.85*tmp1) then
+                   ZPBLATBTHRESH(I,J) = Z(I,J,K)-(TOTABCKTOA(I,J,K)-0.85*tmp1)*(Z(I,J,K)-Z(I,J,K+1))/(TOTABCKTOA(I,J,K)-TOTABCKTOA(I,J,K+1))
+                   exit
+                end if
+                K = K-1
+              end do
+!            end if
+
+          end do  ! JM
+        end do    ! IM
+
+      end if  ! ATB THRESH
+
+      if (associated(ZPBLATBGRAD)) then
+
+        ZPBLATBGRAD = MAPL_UNDEF
+        SIGNOISE = MAPL_UNDEF
+        do I = 1,IM
+          do J = 1,JM
+             temparray(:) = 0.
+             L = LM-2
+             do while (Z(I,J,L).lt.5000.) 
+                temparray(L) = -1.*(TOTABCKTOA(I,J,L)-TOTABCKTOA(I,J,L-1)) / (Z(I,J,L)-Z(I,J,L-1))
+!                temparray(L) = temparray(L) / SQRT( SUM( (TOTABCKTOA(I,J,L:LM)-SUM(TOTABCKTOA(I,J,L:LM))/(LM-L+1))**2/(LM-L+1)))
+                L = L - 1
+             end do
+             locmax = MAXLOC(temparray,1)
+             ZPBLATBGRAD(I,J) = Z(I,J,locmax)
+             SIGNOISE(I,J) = MAXVAL(temparray)
+!            temparray(LM-1) = SUM(TOTABCKTOA(I,J,LM-2:LM))/3.  ! avg ATB
+!            temparray(LM-1) = SQRT(SUM((TOTABCKTOA(I,J,LM-2:LM)-temparray(LM-1))**2)/3.)  ! std ATB
+!            temparray(LM-2) = SUM(TOTABCKTOA(I,J,LM-3:LM-1))/3.  ! avg ATB
+!            temparray(LM-2) = SQRT(SUM((TOTABCKTOA(I,J,LM-3:LM-1)-temparray(LM-2))**2)/3.)  ! std ATB
+!            do L = LM-2,3,-1  ! scan up 
+!               temparray(L-1) = SUM(TOTABCKTOA(I,J,L-2:L))/3.  ! avg ATB
+!               temparray(L-1) = SQRT(SUM((TOTABCKTOA(I,J,L-2:L)-temparray(L-1))**2)/3.)  ! std ATB
+
+!               if (Z(I,J,L) .gt. 5000.) exit  ! only PBLH<5km allowed
+               ! check if conditions for PBLH are satisfied, if not, continue scan
+
+               ! PBLH must be >250 m
+!               if (Z(I,J,L) .lt. 250) cycle
+
+               ! must be a local maximum in std dev
+!               if (temparray(L+1).gt.temparray(L) .or. temparray(L-1).gt.temparray(L)) cycle
+
+               ! local max must be colocated with maximum in ATB
+!               if (TOTABCKTOA(I,J,L-1).gt.TOTABCKTOA(I,J,L) .or. TOTABCKTOA(I,J,L+1).gt.TOTABCKTOA(I,J,L)) cycle
+
+               ! ensure strong SNR: check that local peak is >2x the mean of 5 level span, excluding center pt (my addition)
+!!               if (TOTABCKTOA(I,J,L) .lt. 2.*(SUM(TOTABCKTOA(I,J,L-2:L-1)+SUM(TOTABCKTOA(I,J,L+1:L+2)))/4. ) cycle
+
+               ! profiles with large signal attenuation due to clouds are assigned missing value
+               ! scan upwards from 750m above PBLH
+!!               if (large cloud or attenuation encountered) exit
+
+               ! if all above satisfied, define PBLH and exit loop
+!               ZPBLATBTOA(I,J) = Z(I,J,L)
+!               exit
+
+!            end do ! vertical loop
+          end do  ! JM
+        end do   ! IM
+
+      end if
+
+
 
       SELECT CASE(PBLHT_OPTION)
 

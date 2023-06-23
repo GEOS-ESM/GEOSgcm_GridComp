@@ -1068,6 +1068,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'TOTABCKTOA'/),             &
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = CHEM,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Radiation Imports
 !-------------------
 
