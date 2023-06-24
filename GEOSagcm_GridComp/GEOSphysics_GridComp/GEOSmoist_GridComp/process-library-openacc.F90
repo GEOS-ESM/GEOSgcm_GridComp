@@ -718,35 +718,63 @@ module GEOSmoist_Process_Library
     real, dimension(:,:,:),   intent(out) :: BUOY
     real, dimension(:,:),     intent(out) :: CAPE, INHB
 
-    integer :: L, LM
+    integer :: I, J, L, IM, JM, LM
 
     LM = size(T,3)
+    IM = size(T,1)
+    JM = size(T,2)
 
-    BUOY(:,:,LM) =  T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)
-
+!$acc parallel loop gang vector collapse(3)
     do L=LM-1,1,-1
-       BUOY(:,:,L) = BUOY(:,:,LM) - (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*QS(:,:,L))
-       BUOY(:,:,L) = MAPL_GRAV*BUOY(:,:,L) / ( (1.+ alhlbcp*DQS(:,:,L))*T(:,:,L) )
+       do J = 1,JM
+          do I = 1,IM
+             BUOY(I,J,L) = (T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)) - (T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*QS(I,J,L))
+             BUOY(I,J,L) = MAPL_GRAV*BUOY(I,J,L) / ( (1.+ alhlbcp*DQS(I,J,L))*T(I,J,L) )
+          enddo
+       enddo
     enddo
+!$acc end parallel loop
 
-    BUOY(:,:,LM) = 0.0
+!$acc parallel loop gang vector collapse(2)
+    do J = 1,JM
+       do I = 1,IM
+          BUOY(I,J,LM) = 0.0
+          CAPE(I,J) = 0.
+          INHB(I,J) = 0.
+       enddo
+    enddo
+!$acc end parallel loop
 
-    CAPE = 0.
-    INHB = 0.
-
+!$acc parallel loop gang vector collapse(3)
     do L=1,LM-1
-       where(BUOY(:,:,L)>0.)
-          CAPE = CAPE + BUOY(:,:,L)*DZ(:,:,L)
-       end where
-       where(BUOY(:,:,L)<0.)
-          INHB = INHB - BUOY(:,:,L)*DZ(:,:,L)
-       end where
-    end do
+       do J = 1, JM
+          do I = 1,IM
+             if(BUOY(I,J,L)>0.) then
+!$acc atomic update
+                CAPE(I,J) = CAPE(I,J) + BUOY(I,J,L)*DZ(I,J,L)
+!$acc end atomic
+             endif
 
-    where(CAPE <= 0.0)
-       CAPE=MAPL_UNDEF
-       INHB=MAPL_UNDEF
-    end where
+             if (BUOY(I,J,L)<0.) then
+!$acc atomic update
+                INHB(I,J) = INHB(I,J) - BUOY(I,J,L)*DZ(I,J,L)
+!$acc end atomic
+             endif
+          enddo
+       enddo
+    end do
+!$acc end parallel loop
+
+!$acc parallel loop gang vector collapse(2)
+    do J = 1,JM
+       do I = 1,IM
+          if(CAPE(I,J) <= 0.0) then
+             CAPE(I,J) = mapl_undef
+             INHB(I,J) = mapl_undef
+          endif
+       enddo
+    enddo
+!$acc end parallel loop
 
   end subroutine BUOYANCY
 
@@ -2274,40 +2302,37 @@ module GEOSmoist_Process_Library
     real, dimension(:,:,:),   intent(inout)  :: Q
     real, dimension(:,:,:),   intent(in)     :: MASS
     real, dimension(:,:),     intent(  out)  :: FILLQ
-    real, dimension(:,:), allocatable        :: TPW1, TPW2, TPWC
-    integer                                  :: IM,JM,LM, l
+    real                                     :: TPW1, TPW2, TPWC
+    integer                                  :: IM,JM,LM, l, i, j
 
     IM = SIZE( Q, 1 )
     JM = SIZE( Q, 2 )
     LM = SIZE( Q, 3 )
 
-    ALLOCATE(TPW1(IM, JM))
-    ALLOCATE(TPW2(IM, JM))
-    ALLOCATE(TPWC(IM, JM))
+!$acc parallel loop gang vector collapse(2) private(TPW2, TPWC,TPW1)
+    do j = 1,JM
+       do i = 1, IM
+          TPW2 = 0.0
+          TPWC = 0.0
+          TPW1 = 0.0
+          do l = 1,LM
+             TPW1 = TPW1 + Q(I,J,L)*MASS(I,J,L)
+             IF(Q(I,J,L) < 0.0) Q(I,J,L) = 0.0
+          enddo
 
-    TPW2 =0.0
-    TPWC= 0.0
-    TPW1 = SUM( Q*MASS, 3 )
+          do l = 1,LM
+             TPW2 = TPW2 + Q(I,J,L)*MASS(I,J,L)
+          enddo
+          if (TPW2 > 0.0) TPWC = (TPW2-TPW1)/TPW2
 
-    WHERE (Q < 0.0)
-       Q=0.0
-    END WHERE
+          do l = 1,LM
+             Q(I,J,L) = Q(I,J,L) * (1.0 - TPWC)
+          enddo
+          FILLQ(I,J) = TPW2-TPW1
+       enddo
+    enddo
+!$acc end parallel loop
 
-    TPW2 = SUM( Q*MASS, 3 )
-
-    WHERE (TPW2 > 0.0)
-       TPWC=(TPW2-TPW1)/TPW2
-    END WHERE
-
-    do l=1,LM
-       Q(:, :, l)= Q(:, :, l)*(1.0-TPWC) !reduce Q proportionally to the increase in TPW
-    end do
-
-    FILLQ = TPW2-TPW1
-
-    DEALLOCATE(TPW1)
-    DEALLOCATE(TPW2)
-    DEALLOCATE(TPWC)
   end subroutine FILLQ2ZERO
 
   subroutine FILLQ2ZERO1( Q, MASS, FILLQ  )

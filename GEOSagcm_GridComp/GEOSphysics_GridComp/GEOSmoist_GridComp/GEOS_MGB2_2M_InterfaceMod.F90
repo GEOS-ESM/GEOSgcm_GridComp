@@ -14,7 +14,6 @@ module GEOS_MGB2_2M_InterfaceMod
   use MAPL, r8 => MAPL_R8
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use Fillq2zeroMod, only: fillq2zero
   use cldwat2m_micro
   use aer_cloud
   use micro_mg3_0

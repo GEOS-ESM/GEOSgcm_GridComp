@@ -14,7 +14,6 @@ module GEOS_BACM_1M_InterfaceMod
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
-  use Fillq2zeroMod, only: fillq2zero
   use CLOUDNEW, only: CLDPARAMS, PROGNO_CLOUD
 
   implicit none
