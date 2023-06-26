@@ -47,13 +47,13 @@ module rmTinyCatchParaMod
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
 
-  logical,     public, save :: use_PEATMAP = .false.
-  logical,     public, save :: jpl_height  = .false.
-  character*8, public, save :: LAIBCS      = 'UNDEF'
-  character*6, public, save :: SOILBCS     = 'UNDEF'
-  character*6, public, save :: MODALB      = 'UNDEF'
-  character*8, public, save :: SNOWALB     = 'UNDEF'
-  REAL,        public, save :: GNU         = MAPL_UNDEF
+  logical,      public, save :: use_PEATMAP = .false.
+  logical,      public, save :: jpl_height  = .false.
+  character*8,  public, save :: LAIBCS      = 'UNDEF'
+  character*6,  public, save :: SOILBCS     = 'UNDEF'
+  character*6,  public, save :: MODALB      = 'UNDEF'
+  character*10, public, save :: SNOWALB     = 'UNDEF'
+  REAL,         public, save :: GNU         = MAPL_UNDEF
   character*400          :: MAKE_BCS_INPUT_DIR
 
   type :: mineral_perc

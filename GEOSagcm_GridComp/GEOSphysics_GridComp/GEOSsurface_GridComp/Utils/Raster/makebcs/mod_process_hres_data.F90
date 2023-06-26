@@ -3041,20 +3041,17 @@ END SUBROUTINE modis_scale_para_high
   implicit none
   type (regrid_map), intent (in) :: rmap
   integer,           intent (in) :: nc_data,nr_data 
-  integer                        :: n,N_tile,i,j,ncid,l,tindex1,pfaf1
+  integer                        :: n,N_tile,i,j,ncid,l  
   integer                        :: status,iLL,jLL,ix,jx
-  integer                        :: nx,ny,QSize,pix_count,imn,imx,jmn,jmx
+  integer                        :: nx,ny,pix_count  
   integer(kind=4), parameter     :: nc_10=1200,nr_10=1200
   character*200                  :: fname
   character*2                    :: VV,HH
   logical                        :: file_exists
-  REAL                           :: minlat,maxlat,minlon,maxlon
   real, parameter                :: dxy = 1.
-  real, allocatable,          dimension (:)   :: x,y,tile_lon, tile_lat
+  real, allocatable,          dimension (:)   :: x,y   
   real, allocatable,          dimension (:)   :: snw_alb, count_snow_alb
-  real, allocatable, target,  dimension (:,:) :: data_grid, stch_snw_alb
-  real,              pointer, dimension (:,:) :: QSub
-  real,              pointer, dimension (:,:) :: subset
+  real, allocatable, target,  dimension (:,:) :: stch_snw_alb
 
   ! For Gap filling
   ! ---------------
@@ -3064,24 +3061,13 @@ END SUBROUTINE modis_scale_para_high
   allocate (y(1:ny))
   FORALL (i = 1:nx) x(i) = -180. + dxy/2. + (i-1)*dxy 
   FORALL (i = 1:ny) y(i) =  -90. + dxy/2. + (i-1)*dxy 
-  allocate (data_grid (1 : nx, 1 : ny)) 
 
-  QSize = nint(dxy*nc_data/360.) ! # of columns on global grid
 
   ! Reading number of catchment-tiles from catchment.def file
   ! -------------------------------------------------------- 
   fname='clsm/catchment.def'
   open (10,file=fname,status='old',action='read',form='formatted')
   read(10,*) N_tile               ! # of tiles 
-  allocate (tile_lon(1:N_tile))  
-  allocate (tile_lat(1:N_tile))
-
-  do n = 1, N_tile                ! catchment.def provides min/max lat/lon. Find lat/lon of the center of a tile
-     read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-     tile_lon(n) = (minlon + maxlon)/2.
-     tile_lat(n) = (minlat + maxlat)/2.
-  end do
-
   close (10,status='keep')
 
   allocate(stch_snw_alb   (1:nc_10,1:nr_10)) ! allocate an array to hold 10x10deg snow albedo data 
@@ -3090,7 +3076,7 @@ END SUBROUTINE modis_scale_para_high
 
   snw_alb        = -9999.                    ! set all to missing, and reset counter
   count_snow_alb =     0.
-  data_grid      = -9999.
+!!!!!  data_grid      = -9999.
 
   do jx = 1,18 ! loop over 36x18 10x10deg files
      do ix = 1,36
@@ -3131,20 +3117,6 @@ END SUBROUTINE modis_scale_para_high
              enddo ! i-loop
           enddo ! j-loop
 
-          ! In order to reduce the time taken by the gap filling procedure,
-          ! creating a 1.-degree gridded dataset to use it for filling the gaps seems practical/manageble.
-          !-----------------------------------------------------------------------------------------------
-
-          ! populate global grid/map (e.g. 1x1deg) of snow albedo values to use it later to fill in the gaps
-          do j = ceiling(1.*jLL/QSize),ceiling(1.*jLL/QSize) -1 + nr_10/QSize    
-             do i = ceiling(1.*iLL/QSize),ceiling(1.*iLL/QSize) -1 + nc_10/QSize
-                ! take a subset of indecies
-                QSub  => stch_snw_alb((i-1)*QSize+2-iLL :i*QSize-iLL+1, (j-1)*QSize+2-jLL :j*QSize-jLL+1)
-                ! if the QSub got a .gt. zero value, get the mean (account only non-missing vlaues)
-                if(maxval (QSub) > 0) data_grid(i,j) = sum(QSub, QSub>0)/(max(1,count(QSub>0)))
-             enddo
-          enddo
-
           ! Close the file, freeing all resources.
           status=NF_CLOSE(ncid); VERIFY_(STATUS)
 
@@ -3155,42 +3127,12 @@ END SUBROUTINE modis_scale_para_high
   ! calculate mean value out form the sum and count (this is what I am after)
   where (count_snow_alb > 0.) snw_alb = snw_alb/count_snow_alb 
 
-  ! Filling gaps
-  !-------------
-  DO n =1,N_tile ! loop over all elements of the output array
-      if(count_snow_alb(n)==0.)  then ! if an element is zero, take action
+  ! check if there are any tiles with missing info on snow albedo. If so, stop!
+  if (count(count_snow_alb <= 0.) .gt. 0) then
+    print*, "Some tiles are missing info on Snow Albedo. STOP!"
+    stop
+  endif 
 
-        ! Get (i,j) where lat/lon of the tile falls in between two consecutive 
-        ! grids of global dxy (e.g. 1deg) grid. This to be the beggining i,j 
-        ! for subsetting the global grid when searching for a fill value
-        DO i = 1,nx - 1
-           if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
-        end do
-        DO i = 1,ny -1
-           if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
-        end do
-
-        l = 1
-        do ! loop till the exit command is hit
-           imx=ix + l  ! define i/j index limits for subset
-           imn=ix - l
-           jmn=jx - l
-           jmx=jx + l
-           imn=MAX(imn,1)
-           jmn=MAX(jmn,1)
-           imx=MIN(imx,nx)
-           jmx=MIN(jmx,ny)
-           subset => data_grid(imn: imx,jmn:jmx) ! define subset
-
-           if(maxval(subset) > 0.) then ! if subset has a valid value, use it
-              snw_alb (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
-              exit
-           endif
-           l = l + 1 ! if no solution, expand the search 
-           NULLIFY (subset)
-        end do
-      endif ! if count_snow_alb(n)==0.
-  end do ! n-loop 
 
   ! write snow albedo into clsm/catch_params.nc4
   ! ------------------
