@@ -3739,7 +3739,7 @@ module GEOS_SurfaceGridCompMod
     type(MAPL_LocStream), intent(IN) :: Stream
     integer, optional,    intent(OUT):: rc
 
-    type(T_Routing), pointer         :: LocalRoutings(:)
+    type(T_Routing), pointer         :: LocalRoutings(:) => NULL()
     integer, pointer :: karray(:)
     integer, pointer :: kdx(:)
     integer, pointer :: BlockSizes(:), displ(:)
@@ -3955,7 +3955,7 @@ module GEOS_SurfaceGridCompMod
          blocksizes, 1, MP_Integer, comm, status)
     _VERIFY(status)
     
-    ! not everybody has blocksizes(nDEs)
+    ! now everybody has blocksizes(nDEs)
 
     ntotal = sum(blocksizes) ! this should be the same as npairs
 
