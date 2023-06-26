@@ -46,7 +46,7 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
   integer :: PDFSHAPE
-  real    :: ANV_ICEFALL 
+  real    :: ANV_ICEFALL
   real    :: LS_ICEFALL
   real    :: FAC_RL
   real    :: MIN_RL
@@ -95,8 +95,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          default    = 1.0e-6,                                      &
          RESTART    = MAPL_RestartRequired,                        &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                        &
          SHORT_NAME = 'QLLS',                                            &
@@ -104,8 +104,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%QLLS),                             &
          DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                   RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                       &
          SHORT_NAME = 'QLCN',                                           &
@@ -113,8 +113,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                        &
          FRIENDLYTO = trim(FRIENDLIES%QLCN),                            &
          DIMS       = MAPL_DimsHorzVert,                                &
-         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLLS',                                      &
@@ -122,8 +122,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLLS),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'CLCN',                                      &
@@ -131,8 +131,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = '1',                                         &
          FRIENDLYTO = trim(FRIENDLIES%CLCN),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                     &
          SHORT_NAME = 'QILS',                                         &
@@ -140,8 +140,8 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                      &
          FRIENDLYTO = trim(FRIENDLIES%QILS),                          &
          DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,                RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                    &
          SHORT_NAME = 'QICN',                                        &
@@ -149,12 +149,12 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          UNITS      = 'kg kg-1',                                     &
          FRIENDLYTO = trim(FRIENDLIES%QICN),                         &
          DIMS       = MAPL_DimsHorzVert,                             &
-         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )  
-    VERIFY_(STATUS)                                                                          
+         VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME = 'QRAIN',                                     &
-         LONG_NAME  = 'mass_fraction_of_rain',                     & 
+         LONG_NAME  = 'mass_fraction_of_rain',                     &
          UNITS      = 'kg kg-1',                                   &
          FRIENDLYTO = trim(FRIENDLIES%QRAIN),                      &
          default    = 0.0,                                         &
@@ -184,9 +184,9 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
 
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
-         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &           
+         LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
          UNITS      = 'm-3',                                    &
-         RESTART    = MAPL_RestartSkip,                         &  
+         RESTART    = MAPL_RestartSkip,                         &
          DIMS       = MAPL_DimsHorzVert,                        &
          VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
@@ -214,6 +214,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
+    type(ESMF_VM) :: VM
+    integer :: comm
+
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
@@ -231,7 +234,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call gfdl_cloud_microphys_init()
+    call ESMF_VMGetCurrent(VM, _RC)
+    call ESMF_VMGet(VM, mpiCommunicator=comm, _RC)
+
+    call gfdl_cloud_microphys_init(comm)
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
     call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
@@ -260,7 +266,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 end subroutine GFDL_1M_Initialize
 
 subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -324,7 +330,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: IM,JM,LM
     integer :: I, J, L
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
+    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
 
     ! Get my internal MAPL_Generic state
@@ -389,7 +395,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
-     ! Edge variables 
+     ! Edge variables
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PLEmb(IM,JM,0:LM) )
      ! Layer variables
@@ -456,7 +462,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PRCP_SNOW,    'PRCP_SNOW'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PRCP_ICE,     'PRCP_ICE'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PRCP_GRAUPEL, 'PRCP_GRAUPEL' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    ! Exports to be filled 
+    ! Exports to be filled
     call MAPL_GetPointer(EXPORT, LS_PRCP,  'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, LS_SNR,   'LS_SNR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ICE,      'ICE'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -482,7 +488,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Lowe tropospheric stability and estimated inversion strength
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM ) 
+    KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
     call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
     if (associated(PTR2D)) then
       do J=1,JM
@@ -522,7 +528,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QRAIN = QRAIN + PTR3D*DT_MOIST
         endif
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) then 
+        if (associated(PTR3D)) then
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
        ! evap/subl/pdf
@@ -590,7 +596,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       PDFITERS(I,J,L), &
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
-                      .false.        , & 
+                      .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
            ! meltfrz new condensates
@@ -700,7 +706,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DUDTmic = 0.
           DVDTmic = 0.
           DTDTmic = 0.
-       ! Zero-out 3D Precipitation Fluxes 
+       ! Zero-out 3D Precipitation Fluxes
         ! Ice
          PFI_LS = 0.
         ! Liquid
@@ -732,7 +738,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                AREA, DT_MOIST, frland2D, CNV_FRC, SRF_TYPE, EIS, &
                                RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
-                               REV_LS, RSU_LS, & 
+                               REV_LS, RSU_LS, &
                              ! Output precipitates
                                PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
