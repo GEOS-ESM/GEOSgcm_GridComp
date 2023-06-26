@@ -3957,8 +3957,7 @@ module GEOS_SurfaceGridCompMod
     
     ! now everybody has blocksizes(nDEs)
 
-    ntotal = sum(blocksizes) ! this should be the same as npairs
-
+    ntotal = sum(blocksizes) ! should be same as # of paired sources and sinks (npairs)
     _ASSERT(ntotal==numRoutings, 'Number source/sinks does not match')
     allocate (karray(numRoutings), _STAT) !declare as target!!!
     karray = 0
