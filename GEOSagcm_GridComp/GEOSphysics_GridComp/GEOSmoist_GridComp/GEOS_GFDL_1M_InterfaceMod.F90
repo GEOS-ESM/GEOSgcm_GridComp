@@ -295,7 +295,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
     real, allocatable, dimension(:,:,:) :: TMP3D
-    real, allocatable, dimension(:,:)   :: frland2D
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable, dimension(:,:) :: KLCL
     ! Exports
@@ -417,7 +416,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( frland2D     (IM,JM) ) 
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
@@ -729,7 +727,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! Input fields
                                T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
                              ! constant inputs
-                               AREA, DT_MOIST, frland2D, CNV_FRC, SRF_TYPE, EIS, &
+                               AREA, DT_MOIST, FRLAND, CNV_FRC, SRF_TYPE, EIS, &
                                RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
                                REV_LS, RSU_LS, & 
@@ -804,11 +802,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
          call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
-         where (RAD_QI .le. 0.0)
-            CLDREFFI = MAPL_UNDEF
+         RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
+         RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
+         RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
+         RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
+         RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
+         where (QILS+QICN .le. 0.0)
+            CLDREFFI = 36.0e-6
          end where
-         where (RAD_QL .le. 0.0)
-            CLDREFFL = MAPL_UNDEF
+         where (QLLS+QLCN .le. 0.0)
+            CLDREFFL = 14.0e-6
          end where
 
          ! Update microphysics tendencies

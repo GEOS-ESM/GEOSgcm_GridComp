@@ -36,6 +36,7 @@ module GEOS_THOM_1M_InterfaceMod
          character(len=ESMF_MAXSTR) :: QRAIN
          character(len=ESMF_MAXSTR) :: QSNOW
          character(len=ESMF_MAXSTR) :: QGRAUPEL
+         character(len=ESMF_MAXSTR) :: NCPL                     
          character(len=ESMF_MAXSTR) :: NCPI
          character(len=ESMF_MAXSTR) :: NRAIN
   end type FRIENDLIES_TYPE
@@ -44,6 +45,7 @@ module GEOS_THOM_1M_InterfaceMod
   character(len=ESMF_MAXSTR)        :: COMP_NAME
 
   ! Local resource variables
+  real    :: DT_THOM
   real    :: TURNRHCRIT
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
@@ -86,6 +88,7 @@ subroutine THOM_1M_Setup (GC, CF, RC)
       FRIENDLIES%QRAIN    = "DYNAMICS:TURBULENCE"
       FRIENDLIES%QSNOW    = "DYNAMICS:TURBULENCE"
       FRIENDLIES%QGRAUPEL = "DYNAMICS:TURBULENCE"
+      FRIENDLIES%NCPL     = "DYNAMICS:TURBULENCE"                  
       FRIENDLIES%NCPI     = "DYNAMICS:TURBULENCE"
       FRIENDLIES%NRAIN    = "DYNAMICS:TURBULENCE"
 
@@ -187,6 +190,15 @@ subroutine THOM_1M_Setup (GC, CF, RC)
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='NCPL',                                       &
+         LONG_NAME  ='particle_number_for_liquid_cloud',           &
+         UNITS      ='kg-1',                                       &
+         FRIENDLYTO = trim(FRIENDLIES%NCPL),                       &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         DEFAULT = 50.0e6 ,                             __RC__  )
+
+    call MAPL_AddInternalSpec(GC,                                  &
          SHORT_NAME ='NCPI',                                       &
          LONG_NAME  ='particle_number_for_ice_cloud',              &
          UNITS      ='kg-1',                                       &
@@ -242,6 +254,8 @@ subroutine THOM_1M_Initialize (MAPL, RC)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, DT_THOM, Label="DT_THOM:",  default=300.0, RC=STATUS)
+    VERIFY_(STATUS) 
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -255,7 +269,7 @@ subroutine THOM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call thompson_init(USE_AEROSOL_NN, .false., MAPL_am_I_root() , 1, errmsg, STATUS)
+    call thompson_init(.false., USE_AEROSOL_NN, MAPL_am_I_root() , 1, errmsg, STATUS)
     _ASSERT( STATUS==0, errmsg )
     call WRITE_PARALLEL ("INITIALIZED THOM_1M microphysics in non-generic GC INIT")
 
@@ -301,7 +315,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
-    real, pointer, dimension(:,:,:) :: NCPI, NRAIN, NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: NCPL, NCPI, NRAIN, NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
@@ -347,12 +361,15 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, dimension(:,:,:), pointer :: qi   => null()
     real, dimension(:,:,:), pointer :: qs   => null()
     real, dimension(:,:,:), pointer :: qg   => null()
-    real, dimension(:,:,:), pointer :: ni   => null()
-    real, dimension(:,:,:), pointer :: nr   => null()
     real, dimension(:,:,:), pointer :: tt   => null()
     real, dimension(:,:,:), pointer :: pp   => null()
     real, dimension(:,:,:), pointer :: ww   => null()
     real, dimension(:,:,:), pointer :: dz   => null()
+    real, dimension(:,:,:), pointer :: nc   => null()
+    real, dimension(:,:,:), pointer :: ni   => null()
+    real, dimension(:,:,:), pointer :: nr   => null()
+    real, dimension(:,:,:), pointer :: nwfa => null()
+    real, dimension(:,:,:), pointer :: nifa => null()
     ! Thompson Pointers for extended diags
     real, dimension(:,:,:), allocatable, target  :: diag3d
     real, dimension(:,:,:), pointer :: prw_vcdc   => null()
@@ -450,6 +467,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPL,     'NCPL'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, NCPI,     'NCPI'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, NACTL,    'NACTL'   , RC=STATUS); VERIFY_(STATUS)
@@ -506,7 +524,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( TMP2D        (IM,JM) )
 
     ! INOUT Arrays
-    ALLOCATE ( inputs(IM*JM,LM,12) )
+    ALLOCATE ( inputs(IM*JM,LM,15) )
     inputs = 0.0
     qv => inputs(:,:,1:1)
     qc => inputs(:,:,2:2)
@@ -514,12 +532,15 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     qi => inputs(:,:,4:4)
     qs => inputs(:,:,5:5)
     qg => inputs(:,:,6:6)
-    ni => inputs(:,:,7:7)
-    nr => inputs(:,:,8:8)
-    tt => inputs(:,:,9:9)
-    pp => inputs(:,:,10:10)
-    ww => inputs(:,:,11:11)
-    dz => inputs(:,:,12:12)
+    tt => inputs(:,:,7:7)
+    pp => inputs(:,:,8:8)
+    ww => inputs(:,:,9:9)
+    dz => inputs(:,:,10:10)
+    nc => inputs(:,:,11:11)
+    ni => inputs(:,:,12:12)
+    nr => inputs(:,:,13:13)
+    nwfa => inputs(:,:,14:14)
+    nifa => inputs(:,:,15:15)
 
     ! Extended diagnostics
     ALLOCATE ( diag3d(IM*JM,LM,37) )
@@ -576,12 +597,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     iMASS    = 1.0/MASS
     U0       = U
     V0       = V
-    AIRDEN = 100.*PLmb/T/MAPL_RGAS
-    if (LHYDROSTATIC) then 
-      VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
-    else 
-      VVEL = W
-    endif
 
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -846,17 +861,21 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! Ice
          RAD_QI = QICN+QILS
         ! VAPOR
-         RAD_QV = Q
+         RAD_QV = Q/(1.0-Q)
         ! RAIN
          RAD_QR = QRAIN
         ! SNOW
          RAD_QS = QSNOW
         ! GRAUPEL
          RAD_QG = QGRAUPEL
-        ! Ensure we have 1st guess ice number where mass non-zero but no number.
-         if (all(NCPI  == 0.0)) NCPI  = make_IceNumber (RAD_QI*AIRDEN, T) / AIRDEN
-        ! Ensure we have 1st guess rain number where mass non-zero but no number.
-         if (all(NRAIN == 0.0)) NRAIN = make_RainNumber(RAD_QR*AIRDEN, T) / AIRDEN
+        ! Air Density
+         AIRDEN   = MAPL_EPSILON*100.*PLmb/(T*MAPL_RGAS*(Q+MAPL_EPSILON))
+        ! Vertical velocity
+         if (LHYDROSTATIC) then 
+           VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
+         else 
+           VVEL = W                
+         endif                  
         ! RESHAPE
          qv = RESHAPE(RAD_QV,(/IM*JM,LM,1/))
          qc = RESHAPE(RAD_QL,(/IM*JM,LM,1/))
@@ -864,17 +883,28 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          qi = RESHAPE(RAD_QI,(/IM*JM,LM,1/))
          qs = RESHAPE(RAD_QS,(/IM*JM,LM,1/))
          qg = RESHAPE(RAD_QG,(/IM*JM,LM,1/))
-         ni = RESHAPE(NCPI,(/IM*JM,LM,1/))
-         nr = RESHAPE(NRAIN,(/IM*JM,LM,1/))
          tt = RESHAPE(T,(/IM*JM,LM,1/))
          pp = RESHAPE(PLmb*100.0,(/IM*JM,LM,1/))
          ww = RESHAPE(VVEL,(/IM*JM,LM,1/))
          dz = RESHAPE(DELZ,(/IM*JM,LM,1/))
+        ! aerosols
+         nwfa = RESHAPE(NACTL/AIRDEN,(/IM*JM,LM,1/))
+         nifa = RESHAPE(NACTI/AIRDEN,(/IM*JM,LM,1/))
+        ! Ensure we have 1st guess ice number where mass non-zero but no number.
+         if (all(NCPL .eq. 0.0)) NCPL  = make_DropletNumber (RAD_QL*AIRDEN, NACTL) / AIRDEN
+         nc = RESHAPE(NCPL,(/IM*JM,LM,1/))
+        ! Ensure we have 1st guess ice number where mass non-zero but no number.
+         if (all(NCPI .eq. 0.0)) NCPI  = make_IceNumber (RAD_QI*AIRDEN, T) / AIRDEN
+         ni = RESHAPE(NCPI,(/IM*JM,LM,1/))
+        ! Ensure we have 1st guess rain number where mass non-zero but no number.
+         if (all(NRAIN .eq. 0.0)) NRAIN = make_RainNumber(RAD_QR*AIRDEN, T) / AIRDEN
+         nr = RESHAPE(NRAIN,(/IM*JM,LM,1/))
         ! Run the driver
-         call mp_gt_driver(qv=qv, qc=qc, qr=qr, qi=qi, qs=qs, qg=qg, ni=ni, nr=nr, &
-                            ! nc=nc, nwfa=nwfa, nifa=nifa, nwfa2d=nwfa2d, nifa2d=nifa2d,     &
-                              tt=tt, p=pp, w=ww, dz=dz, dt_in=DT_MOIST, dt_inner=min(150.0,DT_MOIST),  &
-                              sedi_semi=.FALSE., decfl=10, lsm=iLand2D,                  &
+         call mp_gt_driver(qv=qv, qc=qc, qr=qr, qi=qi, qs=qs, qg=qg, nc=nc, ni=ni, nr=nr, &
+                              nwfa=nwfa, nifa=nifa, &
+                            ! nwfa2d=nwfa2d, nifa2d=nifa2d,     &
+                              tt=tt, p=pp, w=ww, dz=dz, dt_in=DT_MOIST, dt_inner=min(DT_THOM,DT_MOIST),  &
+                              sedi_semi=.TRUE., decfl=10, lsm=iLand2D,                  &
                                  rainnc=PRCP_RAIN,      &
                                  snownc=PRCP_SNOW,      &
                                   icenc=PRCP_ICE,       &
@@ -916,15 +946,16 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                               errmsg=errmsg, errflg=STATUS)
           _ASSERT( STATUS==0, errmsg )
      ! RESHAPE
-         RAD_QV = RESHAPE(qv,(/IM,JM,LM/))
+         RAD_QV = RESHAPE(qv/(1.0+qv),(/IM,JM,LM/))
          RAD_QL = RESHAPE(qc,(/IM,JM,LM/))
          RAD_QR = RESHAPE(qr,(/IM,JM,LM/))
          RAD_QI = RESHAPE(qi,(/IM,JM,LM/))
          RAD_QS = RESHAPE(qs,(/IM,JM,LM/))
          RAD_QG = RESHAPE(qg,(/IM,JM,LM/))
-         NCPI   = RESHAPE(ni,(/IM,JM,LM/))
-         NRAIN  = RESHAPE(nr,(/IM,JM,LM/))
          T      = RESHAPE(tt,(/IM,JM,LM/))
+         NCPL   = RESHAPE(nc,(/IM,JM,LM/))*AIRDEN
+         NCPI   = RESHAPE(ni,(/IM,JM,LM/))*AIRDEN
+         NRAIN  = RESHAPE(nr,(/IM,JM,LM/))*AIRDEN
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm to kg m-2 s-1
@@ -938,8 +969,8 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ICE     = PRCP_ICE + PRCP_GRAUPEL
          FRZR    = 0.0
      ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
-       ! PFL_LS = PFL_LS/(MAPL_GRAV*DT_MOIST)
-       ! PFI_LS = PFI_LS/(MAPL_GRAV*DT_MOIST)
+         PFL_LS = PFL_LS/DT_MOIST
+         PFI_LS = PFI_LS/DT_MOIST
      ! Redistribute precipitation fluxes for chemistry
          TMP3D =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
          PFL_AN(:,:,1:LM) = PFL_LS(:,:,1:LM) * TMP3D
