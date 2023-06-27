@@ -18,7 +18,6 @@ PROGRAM mkEASETilesParam
       use EASE_conv
       use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
       use rmTinyCatchParaMod, only : RegridRaster, RegridRaster1, RegridRasterReal
-      use rmTinyCatchParaMod, only : MAKE_BCS_INPUT_DIR 
       use process_hres_data
       use MAPL_SortMod
       use MAPL_ConstantsMod
@@ -27,6 +26,9 @@ PROGRAM mkEASETilesParam
       use netcdf
       
       implicit none
+
+      character*512 :: MAKE_BCS_INPUT_DIR
+
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
       integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
       

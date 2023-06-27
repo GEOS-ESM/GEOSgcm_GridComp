@@ -41,13 +41,6 @@ module rmTinyCatchParaMod
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
 
-  ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  ! KEEP "public :: MAKE_BCS_INPUT_DIR" FOR NOW TO AVOID MODIFYING mkEASETilesParam.F90 AND mkLandRaster.F90 ON THIS BRANCH.
-  ! THE LATTER FILES ARE UNDERGOING MAJOR CLEANUP IN PR#763.
-  ! REMOVE THIS BLOCK AFTER PR#763 HAS BEEN MERGED
-  public :: MAKE_BCS_INPUT_DIR
-  ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
   ! The following variables define the details of the BCS version (data sources).

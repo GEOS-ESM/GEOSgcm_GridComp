@@ -7,7 +7,7 @@
     use MAPL_HashMod
     use process_hres_data
     use MAPL_SortMod
-    use rmTinyCatchParaMod, ONLY: SRTM_maxcat, MAKE_BCS_INPUT_DIR
+    use rmTinyCatchParaMod, ONLY: SRTM_maxcat
     use MAPL_Constants, only: PI=>MAPL_PI_R8
 ! Program to create a surface raster file at 2.5' that has
 ! the ocean divided with a regular lat-lon DE grid. Its inputs
@@ -17,6 +17,7 @@
 
     implicit none
 
+    character*512 :: MAKE_BCS_INPUT_DIR
 
     integer, parameter     :: InUNIT   = 20
     integer, parameter     :: nx0 = 8640
