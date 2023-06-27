@@ -665,7 +665,7 @@ integer :: n_threads=1
              if (size(maparc30%ij_index,1) /= 43200) then 
                 call create_mapping (nc,nr,43200,21600,maparc30,GridnameR)
              end if
-             call MODIS_snow_alb_tileid(43200,21600,maparc30) 
+             call MODIS_snow_alb_v2(43200,21600,maparc30) 
           else
              write (log_file,'(a)')'Unknown SNOWALB... stopping!'
              stop
