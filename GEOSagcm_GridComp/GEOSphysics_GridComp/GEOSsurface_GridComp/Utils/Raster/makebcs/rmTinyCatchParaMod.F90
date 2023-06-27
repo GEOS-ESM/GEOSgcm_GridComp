@@ -40,7 +40,13 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
+
+  ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  ! KEEP "public :: MAKE_BCS_INPUT_DIR" FOR NOW TO AVOID MODIFYING mkEASETilesParam.F90 AND mkLandRaster.F90 ON THIS BRANCH.
+  ! THE LATTER FILES ARE UNDERGOING MAJOR CLEANUP IN PR#763.
+  ! REMOVE THIS BLOCK AFTER PR#763 HAS BEEN MERGED
   public :: MAKE_BCS_INPUT_DIR
+  ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
@@ -54,7 +60,8 @@ module rmTinyCatchParaMod
   character*6,  public, save :: MODALB      = 'UNDEF'
   character*10, public, save :: SNOWALB     = 'UNDEF'
   REAL,         public, save :: GNU         = MAPL_UNDEF
-  character*400          :: MAKE_BCS_INPUT_DIR
+
+  character*512              :: MAKE_BCS_INPUT_DIR
 
   type :: mineral_perc
      real :: clay_perc

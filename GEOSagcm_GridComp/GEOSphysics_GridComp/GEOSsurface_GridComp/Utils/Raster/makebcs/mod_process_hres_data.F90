@@ -38,7 +38,7 @@ include 'netcdf.inc'
 private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
-public :: MODIS_snow_alb, MODIS_snow_alb_tileid 
+public :: MODIS_snow_alb, MODIS_snow_alb_v2 
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
 public :: histogram, create_mapping, esa2mosaic , esa2clm
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
@@ -52,6 +52,8 @@ real,    parameter :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
 integer, parameter :: N_GADM = 256 + 1, N_STATES = 50
 
 real,    parameter :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
+
+character*512      :: MAKE_BCS_INPUT_DIR
 
 type :: do_regrid
    integer                               :: NT
@@ -3027,138 +3029,193 @@ END SUBROUTINE modis_scale_para_high
 
   !----------------------------------------------------------------------  
 
-  SUBROUTINE MODIS_snow_alb_tileid (nc_data,nr_data,rmap)
-
-    !--- Implement Snow Albedo using Tile ID -------------------- 
-    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
-    !   grid to tile space and write into clsm/catch_params.nc4.
+  SUBROUTINE MODIS_snow_alb_v2( nc_data, nr_data, rmap )
+    
+    ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
+    !   to *land* tiles and write into clsm/catch_params.nc4.
     !
-    ! Assumes that input snow albedo on raster grid is backfilled
-    !   (i.e., does not contain no-data values).
+    ! Assumes that input snow albedo is backfilled (i.e., does not contain no-data values).
     !
-    ! Biljana Orescanin July 2022, SSAI@NASA
+    ! Snow albedo assigned to each tile is averaged over 30-arcsec MODIS grid cells associated
+    !   with the tile per the 30-arcsec raster file associated with the tile space.  
+    !   Unlike in subroutine MODIS_snow_alb_v2, the tile-average snow albedo computed here 
+    !   does not include snow albedo values from neighboring land tiles or water/landice tiles.
+    !
+    ! rmap is the precomputed mapping from a 30-arcsec raster file to the tile space.
+    !   The raster file used to compute rmap must be on the same 30-arcsec grid as the
+    !   MODIS input data.
+    !
+    ! Biljana Orescanin June 2023, SSAI@NASA
+    
+    implicit none
+    
+    integer(kind=4), parameter     :: nc_10=1200   ! # columns in 10deg-by-10deg MODIS input file
+    integer(kind=4), parameter     :: nr_10=1200   ! # rows    in 10deg-by-10deg MODIS input file
+    
+    type (regrid_map), intent (in) :: rmap
+    integer,           intent (in) :: nc_data,nr_data 
+    
+    integer                        :: nn, N_tile, ii, jj, ncid, iG, jG 
+    integer                        :: status, iLL, jLL, ix, jx
+    integer                        :: pix_count  
+    
+    character*200                  :: fname
+    character*2                    :: VV, HH
+    logical                        :: file_exists
+    
+    character*128                  :: Iam = "MODIS_snow_alb_v2"
+    
+    real, allocatable,          dimension (:)   :: snw_alb, count_snow_alb
+    real, allocatable, target,  dimension (:,:) :: stch_snw_alb
+    
+    ! ----------------------------------------------------------------------------
 
-  implicit none
-  type (regrid_map), intent (in) :: rmap
-  integer,           intent (in) :: nc_data,nr_data 
-  integer                        :: n,N_tile,i,j,ncid,l  
-  integer                        :: status,iLL,jLL,ix,jx
-  integer                        :: nx,ny,pix_count  
-  integer(kind=4), parameter     :: nc_10=1200,nr_10=1200
-  character*200                  :: fname
-  character*2                    :: VV,HH
-  logical                        :: file_exists
-  real, parameter                :: dxy = 1.
-  real, allocatable,          dimension (:)   :: x,y   
-  real, allocatable,          dimension (:)   :: snw_alb, count_snow_alb
-  real, allocatable, target,  dimension (:,:) :: stch_snw_alb
+    call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR ) 
 
-  ! For Gap filling
-  ! ---------------
-  nx = nint (360./dxy)
-  ny = nint (180./dxy)
-  allocate (x(1:nx))
-  allocate (y(1:ny))
-  FORALL (i = 1:nx) x(i) = -180. + dxy/2. + (i-1)*dxy 
-  FORALL (i = 1:ny) y(i) =  -90. + dxy/2. + (i-1)*dxy 
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    !
+    ! TO DO
+    !
+    ! ASSERT THAT rmap IS CONSISTENT WITH 30-arcsec GRID OF MODIS INPUTS
+    !
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    ! Read number of catchment-tiles (N_tile) from catchment.def file
 
-  ! Reading number of catchment-tiles from catchment.def file
-  ! -------------------------------------------------------- 
-  fname='clsm/catchment.def'
-  open (10,file=fname,status='old',action='read',form='formatted')
-  read(10,*) N_tile               ! # of tiles 
-  close (10,status='keep')
-
-  allocate(stch_snw_alb   (1:nc_10,1:nr_10)) ! allocate an array to hold 10x10deg snow albedo data 
-  allocate(snw_alb        (1:N_tile))        ! allocate arrays to hold counts and albedo in tile-space
-  allocate(count_snow_alb (1:N_tile))
-
-  snw_alb        = -9999.                    ! set all to missing, and reset counter
-  count_snow_alb =     0.
-!!!!!  data_grid      = -9999.
-
-  do jx = 1,18 ! loop over 36x18 10x10deg files
-     do ix = 1,36
-        write (vv,'(i2.2)')jx ! define strings to read in the file
-        write (hh,'(i2.2)')ix
-        fname = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
-
-        status = NF_OPEN (trim(fname),NF_NOWRITE, ncid) ! open file to read
-        if(status == 0) then ! if file exists, read it
-
-          ! calculate Lower Left (LL) index offests
-          iLL=(ix-1)*1200+1 ! iLL/jLL are the offsets of the (0,0) local element from the (0,0) global LL
-          jLL=(jx-1)*1200+1 ! element which has coordinate [-179.5,-89.5]
-
-          ! Read the data
-          status = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'Snow_Albedo'),(/1,1/),(/nc_10,nr_10/),stch_snw_alb); VERIFY_(STATUS)
-
-          do j = jLL,jLL + nr_10 -1  ! j is index in global space; apply the offset
-             do i = iLL, iLL + nc_10 -1 ! i is index in global space; apply the offset
-
-                ! the element has a valid (non-missing value) proceed to calculating mean albedo
-                if(stch_snw_alb(i-iLL +1 ,j - jLL +1) .gt. 0 .and. stch_snw_alb(i-iLL +1 ,j - jLL +1) .le. 1.0) then
-                   pix_count = rmap%ij_index(i,j) ! index of the current grid in the remapped space
-
-                   if (pix_count == 0) cycle           ! if this gridbox has no corresponding remapped value, skip it
-                   if(rmap%map(pix_count)%nt > 0) then ! if the # of tiles corresponding to this gridbox is gt 0, proceed with calculations
-                      do n = 1, rmap%map(pix_count)%nt ! Loop over all corresponding tiles 
-                        ! if first pass, set albedo to zero
-                        if(snw_alb(rmap%map(pix_count)%tid(n)) == -9999.) snw_alb(rmap%map(pix_count)%tid(n)) = 0.
-                        ! accumulate values and counts
-                        snw_alb(rmap%map(pix_count)%tid(n))   = snw_alb(rmap%map(pix_count)%tid(n)) + &
-                              stch_snw_alb(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
-                        count_snow_alb(rmap%map(pix_count)%tid(n)) = &
-                              count_snow_alb(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)
+    fname='clsm/catchment.def'
+    open (10,file=fname,status='old',action='read',form='formatted')
+    read (10,*) N_tile               ! # of tiles 
+    close(10,status='keep')
+    
+    allocate(stch_snw_alb   (1:nc_10,1:nr_10)) ! 10deg-by-10deg snow albedo data 
+    allocate(snw_alb        (1:N_tile))        ! snow albedo in tile space
+    allocate(count_snow_alb (1:N_tile))        ! count of MODIS grid cells contributing to tile-average snow albedo
+    
+    snw_alb        = -9999.                    ! set all to missing
+    count_snow_alb =     0.                    ! initialize counter (SHOULD THIS BE KIND REAL???)
+    
+    ! loop through the 36x18 10deg-by-10deg MODIS files
+    
+    do ix = 1,36
+       do jx = 1,18                        
+      
+          ! assemble file name and open file
+          
+          write (hh,'(i2.2)') ix
+          write (vv,'(i2.2)') jx
+          
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+          
+          status = NF_OPEN (trim(fname),NF_NOWRITE, ncid) ! open file to read
+          
+          if(status == 0) then ! if file exists, read snow albedo 
+             
+             status = NF_GET_VARA_REAL( ncid, NC_VarID(NCID,'Snow_Albedo'), (/1,1/), (/nc_10,nr_10/), stch_snw_alb); VERIFY_(STATUS)
+             
+             ! verify that input snow albedo has been back-filled *everywhere*, incl. water and landice
+             ! (i.e., stch_snw_alb must not contain no-data or unphysical values)
+             
+             if ( any(stch_snw_alb<0.) .or. any(stch_snw_alb)>1. ) then
+                
+                print *, 'ERROR: subroutine ', trim(Iam), '() : detected no-data or unphysical values in MODIS file ', trim(fname) 
+                print *, 'STOPPING.'
+                stop
+                
+             end if
+             
+             ! calculate Lower Left (LL) indices for the chunk of the global 30-arcsec grid that is stored in file (ix,jx)
+             !
+             ! NOTE: In similar subroutines for processing other data, iLL and jLL are stored in the nc4 file. 
+             
+             iLL=(ix-1)*nc_10+1 
+             jLL=(jx-1)*nr_10+1 
+             
+             ! loop through 30-arcsec grid cells in current 10deg-by-10deg chunk 
+             
+             do jj=1,nr_10 
+                do ii=1,nc_10
+                   
+                   iG = ii+iLL-1     ! i-index relative to *global* 30-arcsec grid
+                   jG = jj+jLL-1     ! j-index relative to *global* 30-arcsec grid
+                   
+                   pix_count = rmap%ij_index(iG,jG)             ! pix_count == ID/index of tile to which current 30-arcsec grid cell belongs [???]
+                   
+                   if (pix_count == 0) cycle                    ! if this MODIS grid cell has no corresponding remapped value, skip it
+                   
+                   if (rmap%map(pix_count)%nt > 0) then         ! if the # of tiles corresponding to this gridbox is gt 0, proceed with calculations
+                      
+                      do nn = 1,rmap%map(pix_count)%nt          ! loop through all corresponding tiles [???]
+                         
+                         ! if first pass, set albedo to zero
+                         ! [????] CAN THIS BE SKIPPED IF snw_alb IS INITIALIZED TO ZERO ABOVE?  
+                         !        BECAUSE MODIS DATA ARE BACKFILLED, THERE SHOULD NOT BE NO-DATA-VALUES FOR ANY TILE
+                         if (snw_alb(rmap%map(pix_count)%tid(nn)) == -9999.) snw_alb(rmap%map(pix_count)%tid(nn)) = 0.
+                         
+                         ! accumulate values and counts
+                         snw_alb(rmap%map(pix_count)%tid(nn)) =                                                                &
+                              snw_alb(rmap%map(pix_count)%tid(nn))        + stch_snw_alb(ii,jj)*rmap%map(pix_count)%count(nn)
+                         
+                         ! [???] rmap%map(pix_count)%count(nn) IS INTEGER; MAKE count_snow_alb INTEGER AFTER FIRST ASSERTING 0-DIFF FOR CURRENT CLEANUP
+                         count_snow_alb(rmap%map(pix_count)%tid(nn)) =                                                         &
+                              count_snow_alb(rmap%map(pix_count)%tid(nn)) + 1.*rmap%map(pix_count)%count(nn)
+                         
                       end do
-                   endif
-                 endif ! if not missing
-             enddo ! i-loop
-          enddo ! j-loop
 
-          ! Close the file, freeing all resources.
-          status=NF_CLOSE(ncid); VERIFY_(STATUS)
+                   endif ! if not missing
+                enddo    ! ii-loop
+             enddo       ! jj-loop
+             
+             ! Close the file, freeing all resources.
+             status=NF_CLOSE(ncid); VERIFY_(STATUS)
+             
+          endif
+       end do    ! jx-loop through 10deg-by-10deg files
+    end do       ! ix-loop through 10deg-by-10deg files
+    
+    ! finalize calculation of mean values
+    ! [???] NOTE: count_snw_alb SHOULD BE INTEGER --> CONVERT TO REAL
+    
+    ! because MODIS data are backfilled, should have count_snow_alb>0
+    
+    if ( any(count_snow_alb<=0.) ) then
+       
+       print *, 'ERROR: subroutine ', trim(Iam), '() : something wrong with count_snow_alb(:)'
+       print *, 'STOPPING.'
+       stop
+       
+    end if
+    
+    snw_alb = snw_alb/count_snow_alb    ! finalize calculation of tile-average snow albedo
+        
+    ! write snow albedo into clsm/catch_params.nc4
 
-        endif
-     end do ! ix-loop over 10x10deg files
-  end do ! jx-loop over 10x10deg files
-
-  ! calculate mean value out form the sum and count (this is what I am after)
-  where (count_snow_alb > 0.) snw_alb = snw_alb/count_snow_alb 
-
-  ! check if there are any tiles with missing info on snow albedo. If so, stop!
-  if (count(count_snow_alb <= 0.) .gt. 0) then
-    print*, "Some tiles are missing info on Snow Albedo. STOP!"
-    stop
-  endif 
-
-
-  ! write snow albedo into clsm/catch_params.nc4
-  ! ------------------
-  inquire(file='clsm/catch_params.nc4', exist=file_exists)
-
-  if(file_exists) then
-     status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
-     status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
-     STATUS = NF_CLOSE (NCID)                                                                ; VERIFY_(STATUS)
-  endif
-
-  deallocate (stch_snw_alb)  ! free memory
-  deallocate (count_snow_alb)
-  deallocate (snw_alb)
-
-  END SUBROUTINE MODIS_snow_alb_tileid
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
+    
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID)                                                                ; VERIFY_(STATUS)
+    endif
+    
+    deallocate(stch_snw_alb)  
+    deallocate(count_snow_alb)
+    deallocate(snw_alb)
+    
+  END SUBROUTINE MODIS_snow_alb_v2
   
-!----------------------------------------------------------------------  
+  !----------------------------------------------------------------------  
+  
+  SUBROUTINE MODIS_snow_alb( )
 
-  SUBROUTINE MODIS_snow_alb ( )
-
-    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
-    !   grid to tile space and write into clsm/catch_params.nc4.
+    ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
+    !   to land tiles and write into clsm/catch_params.nc4.
     !
-    ! Assumes that input snow albedo on raster grid is backfilled
-    !   (i.e., does not contain no-data values).
+    ! Assumes that input snow albedo is backfilled (i.e., does not contain no-data values).
+    !
+    ! Snow albedo assigned to each tile is average over 30-arcsec MODIS grid cells located
+    !   within the rectangle defined by the min/max lat/lon of tile; this can include MODIS grid 
+    !   cells located in neighboring land tiles and/or water/landice tiles.
+    !   See subroutine MODIS_snow_alb_v2() for a refined algorithm.
     !
     ! Biljana Orescanin July 2022, SSAI@NASA
 

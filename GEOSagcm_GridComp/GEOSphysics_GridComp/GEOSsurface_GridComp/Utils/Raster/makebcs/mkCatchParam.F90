@@ -5,9 +5,9 @@ PROGRAM mkCatchParam
 ! !ARGUMENTS:
 !
 !  Usage = "mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV "       
-!     -x: Size of longitude dimension of input raster. DEFAULT: 8640
-!     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
-!     -b: Position of the dateline in the first box. DEFAULT: DC 
+!     -x: Size of longitude dimension of input raster.            DEFAULT: 8640
+!     -y: Size of latitude dimension of input raster.             DEFAULT: 4320
+!     -b: Position of dateline w.r.t. first grid cell boundaries. DEFAULT: DC (dateline-on-center)
 !     -g: Gridname (name of the .til or .rst file without file extension)  
 !     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09)
 !     
