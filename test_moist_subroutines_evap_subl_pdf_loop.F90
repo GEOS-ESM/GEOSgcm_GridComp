@@ -290,8 +290,8 @@ module test_evap_subl_pdf_subroutines
         !$acc             QST3, CCI_EVAP_EFF, CCW_EVAP_EFF, &
         !$acc             PLEmb) &
         !$acc      copy(Q, QLLS, QLCN, QILS, QICN, T, CLLS, &
-        !$acc           CLCN, PDF_A, PDFITERS, WTHV2, WQL) &
-        !$acc      copyout(EVAPC,RHX, SUBLC)
+        !$acc           CLCN, PDF_A, WTHV2, WQL) &
+        !$acc      copyout(EVAPC,RHX, SUBLC, PDFITERS)
 
         call start_timing()
 
