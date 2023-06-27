@@ -1438,7 +1438,8 @@ module Process_Library_standalone
         F       , &
         NL      , &
         NI      , &
-        QS      )
+        QS      , &
+        EVAPC_C)
         !$acc routine seq
         real, intent(in   ) :: DT 
         real, intent(in   ) :: A_EFF
@@ -1450,6 +1451,7 @@ module Process_Library_standalone
         real, intent(inout) :: F
         real, intent(in   ) :: NL,NI
         real, intent(in   ) :: QS
+        real, intent(out  ) :: EVAPC_C
 
         real :: ES,RADIUS,K1,K2,QCm,EVAP,RHx,QC
 
@@ -1486,7 +1488,7 @@ module Process_Library_standalone
         end if
 
         RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1)
-        
+
         if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
             EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
             EVAP = MIN( EVAP , QL  )
@@ -1503,6 +1505,8 @@ module Process_Library_standalone
         QL = QL - EVAP
         TE = TE - alhlbcp*EVAP
 
+        EVAPC_C = EVAP
+
     end subroutine EVAP3
 
     subroutine SUBL3( &
@@ -1517,7 +1521,8 @@ module Process_Library_standalone
         F         , &
         NL        , &
         NI        , &
-        QS        )
+        QS        , &
+        SUBLC_C)
         !$acc routine seq
         real, intent(in   ) :: DT
         real, intent(in   ) :: A_EFF
@@ -1529,6 +1534,7 @@ module Process_Library_standalone
         real, intent(inout) :: F
         real, intent(in   ) :: NL,NI
         real, intent(in   ) :: QS
+        real, intent(out  ) :: SUBLC_C
 
         real :: ES,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC
 
@@ -1581,6 +1587,8 @@ module Process_Library_standalone
         QV = QV + SUBL
         QI = QI - SUBL
         TE = TE - alhsbcp*SUBL
+
+        SUBLC_C = SUBL
 
     end subroutine SUBL3
 
