@@ -119,61 +119,61 @@ module evap_subl_pdf_loop
                                     WQL(I,J,L)     , &
                                     .false.        , & 
                                     USE_BERGERON)
-                        ! RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-                        ! ! meltfrz new condensates
-                        ! call MELTFRZ ( DT_MOIST     , &
-                        !                CNV_FRC(I,J) , &
-                        !                SRF_TYPE(I,J), &
-                        !                T(I,J,L)     , &
-                        !                QLCN(I,J,L)  , &
-                        !                QICN(I,J,L) )
-                        ! call MELTFRZ ( DT_MOIST     , &
-                        !                CNV_FRC(I,J) , &
-                        !                SRF_TYPE(I,J), &
-                        !                T(I,J,L)     , &
-                        !                QLLS(I,J,L)  , &
-                        !                QILS(I,J,L) )
+                        RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+                        ! meltfrz new condensates
+                        call MELTFRZ ( DT_MOIST     , &
+                                       CNV_FRC(I,J) , &
+                                       SRF_TYPE(I,J), &
+                                       T(I,J,L)     , &
+                                       QLCN(I,J,L)  , &
+                                       QICN(I,J,L) )
+                        call MELTFRZ ( DT_MOIST     , &
+                                       CNV_FRC(I,J) , &
+                                       SRF_TYPE(I,J), &
+                                       T(I,J,L)     , &
+                                       QLLS(I,J,L)  , &
+                                       QILS(I,J,L) )
                     endif
                     ! evaporation for CN
-                    ! if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
-                    !     RHCRIT = 1.0
-                    !     EVAPC(I,J,L) = Q(I,J,L)
-                    !     call EVAP3 (         &
-                    !             DT_MOIST      , &
-                    !             CCW_EVAP_EFF  , &
-                    !             RHCRIT        , &
-                    !             PLmb(I,J,L)  , &
-                    !                T(I,J,L)  , &
-                    !                Q(I,J,L)  , &
-                    !             QLCN(I,J,L)  , &
-                    !             QICN(I,J,L)  , &
-                    !             CLCN(I,J,L)  , &
-                    !             NACTL(I,J,L)  , &
-                    !             NACTI(I,J,L)  , &
-                    !             QST3(I,J,L)  )
-                    !     EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-                    ! endif
-                    ! ! sublimation for CN
-                    ! if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-                    !     RHCRIT = 1.0 - ALPHA
-                    !     SUBLC(I,J,L) = Q(I,J,L)
-                    !     call SUBL3 (        &
-                    !             DT_MOIST      , &
-                    !             CCI_EVAP_EFF  , &
-                    !             RHCRIT        , &
-                    !             PLmb(I,J,L)  , &
-                    !                 T(I,J,L)  , &
-                    !                 Q(I,J,L)  , &
-                    !             QLCN(I,J,L)  , &
-                    !             QICN(I,J,L)  , &
-                    !             CLCN(I,J,L)  , &
-                    !             NACTL(I,J,L)  , &
-                    !             NACTI(I,J,L)  , &
-                    !             QST3(I,J,L)  )
-                    !     SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-                    ! endif
-                    ! ! cleanup clouds
-                    ! call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
+                    if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
+                        RHCRIT = 1.0
+                        EVAPC(I,J,L) = Q(I,J,L)
+                        call EVAP3 (         &
+                                DT_MOIST      , &
+                                CCW_EVAP_EFF  , &
+                                RHCRIT        , &
+                                PLmb(I,J,L)  , &
+                                   T(I,J,L)  , &
+                                   Q(I,J,L)  , &
+                                QLCN(I,J,L)  , &
+                                QICN(I,J,L)  , &
+                                CLCN(I,J,L)  , &
+                                NACTL(I,J,L)  , &
+                                NACTI(I,J,L)  , &
+                                QST3(I,J,L)  )
+                        EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
+                    endif
+                    ! sublimation for CN
+                    if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
+                        RHCRIT = 1.0 - ALPHA
+                        SUBLC(I,J,L) = Q(I,J,L)
+                        call SUBL3 (        &
+                                DT_MOIST      , &
+                                CCI_EVAP_EFF  , &
+                                RHCRIT        , &
+                                PLmb(I,J,L)  , &
+                                    T(I,J,L)  , &
+                                    Q(I,J,L)  , &
+                                QLCN(I,J,L)  , &
+                                QICN(I,J,L)  , &
+                                CLCN(I,J,L)  , &
+                                NACTL(I,J,L)  , &
+                                NACTI(I,J,L)  , &
+                                QST3(I,J,L)  )
+                        SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
+                    endif
+                    ! cleanup clouds
+                    call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
                 end do ! IM loop
             end do ! JM loop
         end do ! LM loop
