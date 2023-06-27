@@ -3115,7 +3115,7 @@ END SUBROUTINE modis_scale_para_high
              ! verify that input snow albedo has been back-filled *everywhere*, incl. water and landice
              ! (i.e., stch_snw_alb must not contain no-data or unphysical values)
              
-             if ( any(stch_snw_alb<0.) .or. any(stch_snw_alb)>1. ) then
+             if ( any(stch_snw_alb<0.) .or. any(stch_snw_alb>1.) ) then
                 
                 print *, 'ERROR: subroutine ', trim(Iam), '() : detected no-data or unphysical values in MODIS file ', trim(fname) 
                 print *, 'STOPPING.'
