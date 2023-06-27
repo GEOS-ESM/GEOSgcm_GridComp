@@ -33,7 +33,6 @@ PROGRAM mkEASETilesParam
   use EASE_conv,          only : EASE_extent, EASE_convert, EASE_inverse
   use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
   use rmTinyCatchParaMod, only : RegridRasterReal                  
-  use rmTinyCatchParaMod, only : MAKE_BCS_INPUT_DIR 
   use process_hres_data,  only : histogram
   use MAPL_SortMod
   use MAPL_ConstantsMod
@@ -109,7 +108,8 @@ PROGRAM mkEASETilesParam
   character(len=128)     :: usage1, usage2
   character(len=128)     :: Iam = "mkEASETilesParam"
   character(len=512)     :: fname_mask
-  
+  character(len=400)     :: MAKE_BCS_INPUT_DIR
+
   ! --------------------------------------------------------------------------------------
   
   call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR )
