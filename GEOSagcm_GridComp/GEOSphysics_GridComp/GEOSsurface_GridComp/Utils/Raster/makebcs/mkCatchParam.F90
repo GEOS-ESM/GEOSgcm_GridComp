@@ -48,8 +48,8 @@ PROGRAM mkCatchParam
   character(len=400), dimension (6) ::  Usage 
   character*128        ::  Grid2
   character*2          :: poles
-  character*128        :: GridnameR = ''        ! a.k.a. "gfile[r]" in mod_process_hres_data.F90
-  character*128        :: GridnameT = ''
+  character*128        :: fnameRst = ''        ! a.k.a. "gfile[r]" in mod_process_hres_data.F90
+  character*128        :: fnameTil = ''
   logical              :: file_exists, file_exists2, file_exists3, file_exists4
   logical              :: F25Tag = .false.
   logical              :: ease_grid=.false., redo_modis=.false.
@@ -105,7 +105,7 @@ integer :: n_threads=1
     USAGE(1) ="Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -v LBCSV                       "
     USAGE(2) ="     -x: Size of longitude dimension of input raster. DEFAULT: 8640              "
     USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320              "
-    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)        "
+    USAGE(4) ="     -g: Gridname  (name of the .til or .rst file *without* file extension)      "
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC  "
     USAGE(6) ="     -v  LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08 v09 )  "
 
@@ -185,11 +185,11 @@ integer :: n_threads=1
    endif
 
    if(index(Gridname,'Pfaf.notiny')/=0) then 
-      GridnameR='clsm/'//trim(Gridname)
-      GridnameT='clsm/'//trim(Gridname)
+      fnameRst='clsm/'//trim(Gridname)
+      fnameTil='clsm/'//trim(Gridname)
    else
-      GridnameR='rst/'//trim(Gridname)  
-      GridnameT='til/'//trim(Gridname)  
+      fnameRst='rst/'//trim(Gridname)  
+      fnameTil='til/'//trim(Gridname)  
     endif 
 
     if(use_PEATMAP)  PEATSOURCE   = 'PEATMAP'
@@ -211,7 +211,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'............ Begin CLSM parameter generation:...............'    
        write (log_file,'(a)')'                                               '
        write (log_file,'(a)')'CLSM parameters are being generated for the tile space :'
-       write (log_file,'(a)')'     ',trim(GridnameT)
+       write (log_file,'(a)')'     ',trim(fnameTil)
        write (log_file,'(a)')'                                               '
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'                                               '
@@ -240,7 +240,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             call catchment_def (nc,nr,regrid,dl,GridnameT,GridnameR) 
+             call catchment_def (nc,nr,regrid,dl,fnameTil,fnameRst) 
              write (log_file,'(a)')'         Done.'
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -267,7 +267,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'	 
-          call cti_stat_file (ease_grid,GridnameT, MaskFile)
+          call cti_stat_file (ease_grid,fnameTil, MaskFile)
           write (log_file,'(a)')'         Done.'
        else
           write (log_file,'(a)')'         Using existing file.'
@@ -285,7 +285,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             call ESA2MOSAIC (nc,nr,GridnameR)
+             call ESA2MOSAIC (nc,nr,fnameRst)
              write (log_file,'(a)')'         Done.'           
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -298,7 +298,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             call ESA2CLM (nc,nr,GridnameR)    
+             call ESA2CLM (nc,nr,fnameRst)    
              write (log_file,'(a)')'         Done.'           
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -313,7 +313,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,GridnameT,GridnameR)
+             call compute_mosaic_veg_types (nc,nr,ease_grid,regrid,fnameTil,fnameRst)
              write (log_file,'(a)')'         Done.'           
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -354,12 +354,12 @@ integer :: n_threads=1
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
              !allocate (mapgeoland2 (1:40320,1:20160))
-             call create_mapping (nc,nr,40320,20160,mapgeoland2, GridnameR)         
+             call create_mapping (nc,nr,40320,20160,mapgeoland2, fnameRst)         
              lai_name = 'GEOLAND2_10-DayClim/geoland2_' 
              if(trim(LAIBCS) == 'GEOLAND2') then
-                call hres_lai_no_gswp (40320,20160,mapgeoland2,GridnameR, lai_name) 
+                call hres_lai_no_gswp (40320,20160,mapgeoland2, lai_name) 
              else
-                call hres_lai_no_gswp (40320,20160,mapgeoland2,GridnameR, lai_name, merge=1) 
+                call hres_lai_no_gswp (40320,20160,mapgeoland2, lai_name, merge=1) 
              endif
              ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
              deallocate (mapgeoland2%map)
@@ -372,7 +372,7 @@ integer :: n_threads=1
        
        if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
           ! allocate (maparc30    (1:43200,1:21600))
-          call create_mapping (nc,nr,43200,21600,maparc30,    GridnameR)
+          call create_mapping (nc,nr,43200,21600,maparc30,    fnameRst)
        endif
        
        fname_tmp = 'clsm/green.dat'
@@ -381,13 +381,13 @@ integer :: n_threads=1
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           if (trim(LAIBCS) == 'GSWP2') then 
-             call process_gswp2_veg (nc,nr,regrid,'grnFrac',GridnameR)
+             call process_gswp2_veg (nc,nr,regrid,'grnFrac',fnameRst)
           else
              if (size(maparc30%ij_index,1) /= 43200) then 
                 ! allocate (maparc30    (1:43200,1:21600))
-                call create_mapping (nc,nr,43200,21600,maparc30,    GridnameR)
+                call create_mapping (nc,nr,43200,21600,maparc30,    fnameRst)
              endif
-             call hres_gswp2 (43200,21600, maparc30, GridnameR,'green') 
+             call hres_gswp2 (43200,21600, maparc30, 'green') 
           endif
           write (log_file,'(a)')'         Done.'
        else
@@ -401,41 +401,41 @@ integer :: n_threads=1
           write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
           redo_modis = .true.
           
-          if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',GridnameR) 
+          if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',fnameRst) 
           if (trim(LAIBCS) == 'GSWPH') then
              if (size(maparc30%ij_index,1) /= 43200) then 
                 ! allocate (maparc30    (1:43200,1:21600))
-                call create_mapping (nc,nr,43200,21600,maparc30,    GridnameR)
+                call create_mapping (nc,nr,43200,21600,maparc30,    fnameRst)
              endif
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
-             if (.not.file_exists) call hres_gswp2 (43200,21600, maparc30, GridnameR,'lai') 
+             if (.not.file_exists) call hres_gswp2 (43200,21600, maparc30, 'lai') 
           endif
           
           if (trim(LAIBCS) == 'MODIS') then
              lai_name = 'MODIS_8-DayClim/MODIS_'
-             call hres_lai_no_gswp (43200,21600,maparc30,GridnameR,lai_name) 
+             call hres_lai_no_gswp (43200,21600,maparc30,lai_name) 
           endif
           
           if (trim(LAIBCS) == 'MODGEO') then
              lai_name = 'MODIS_8-DayClim/MODIS_'
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
-             if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,GridnameR,lai_name, merge=1)  
+             if (.not.file_exists)call hres_lai_no_gswp (43200,21600,maparc30,lai_name, merge=1)  
              call merge_lai_data (MaskFile)
           endif
           
           if (trim(LAIBCS) == 'MODISV6') then
              lai_name = 'MCD15A2H.006/MODIS_'
-             call grid2tile_modis6 (86400,43200,nc,nr,GridnameR,lai_name)  
+             call grid2tile_modis6 (86400,43200,nc,nr,fnameRst,lai_name)  
           endif
 
           if (trim(LAIBCS) == 'GLASSA') then
              lai_name = 'GLASS-LAI/AVHRR.v4/GLASS01B02.V04.AYYYY'
-             call grid2tile_glass (nc,nr,GridnameR,lai_name)  
+             call grid2tile_glass (nc,nr,fnameRst,lai_name)  
           endif
 
           if (trim(LAIBCS) == 'GLASSM') then
              lai_name = 'GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY'
-             call grid2tile_glass (nc,nr,GridnameR,lai_name)  
+             call grid2tile_glass (nc,nr,fnameRst,lai_name)  
           endif
 
           write (log_file,'(a)')'         Done.'
@@ -448,7 +448,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
-          call gimms_clim_ndvi (nc,nr,GridnameR)
+          call gimms_clim_ndvi (nc,nr,fnameRst)
           write (log_file,'(a)')'         Done.'
        else
           write (log_file,'(a)')'         Using existing file.'
@@ -458,8 +458,8 @@ integer :: n_threads=1
        
        ! -------------------------------------------------
        
-       ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,GridnameT,GridnameR)
-       ! call modis_scale_para (ease_grid,GridnameT)
+       ! call modis_alb_on_tiles (nc,nr,ease_grid,regrid,fnameTil,fnameRst)
+       ! call modis_scale_para (ease_grid,fnameTil)
        ! NOTE: modis_alb_on_tiles uses monthly climatological raster data on 8640x4320 to produce 
        ! MODIS albedo on tile space. The subroutine was replaced with "modis_alb_on_tiles_high" that process
        ! MODIS1 data on native grid and produces 8/16-day MODIS Albedo climatology
@@ -475,13 +475,13 @@ integer :: n_threads=1
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
              if(F25Tag) then 
-                call create_mapping (nc,nr,21600,10800,maparc60,    GridnameR)
-                call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,GridnameR)
+                call create_mapping (nc,nr,21600,10800,maparc60,    fnameRst)
+                call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB)
                 deallocate (maparc60%map)
                 deallocate (maparc60%ij_index)
              else
                 !  This option is for legacy sets like Fortuna 2.1
-                call modis_alb_on_tiles (nc,nr,ease_grid,regrid,GridnameT,GridnameR)
+                call modis_alb_on_tiles (nc,nr,ease_grid,regrid,fnameTil,fnameRst)
              endif
              write (log_file,'(a)')'         Done.'
           else
@@ -497,7 +497,7 @@ integer :: n_threads=1
           inquire(file=trim(fname_tmp2), exist=file_exists2)          
           if ((.not.file_exists).or.(.not.file_exists2)) then
              write (log_file,'(a)')'         Creating files...'
-             call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB,GridnameR)
+             call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB)
              write (log_file,'(a)')'         Done.'
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -521,12 +521,12 @@ integer :: n_threads=1
        if ((redo_modis).or.(.not.file_exists).or.(.not.file_exists2)) then
           !   if(.not.F25Tag) then
           write (log_file,'(a)')'         Creating files... (resolution will be added to file name later)'
-          call modis_scale_para_high (ease_grid,MODALB,GridnameT)
+          call modis_scale_para_high (ease_grid,MODALB,fnameTil)
           !  else
           !     This option is for legacy sets like Fortuna 2.1
           !     inquire(file='clsm/modis_scale_factor.albvf.clim', exist=file_exists)
           !     if ((redo_modis).or.(.not.file_exists)) then
-          !        call modis_scale_para (ease_grid,GridnameT)
+          !        call modis_scale_para (ease_grid,fnameTil)
           !        call REFORMAT_VEGFILES
           !     endif
           !  endif
@@ -547,7 +547,7 @@ integer :: n_threads=1
        
        if(SOILBCS=='NGDC') then
           write (log_file,'(a)')'Creating (intermediate) NGDC soil types file...'
-          call create_soil_types_files (nc,nr,ease_grid,GridnameT,GridnameR)    
+          call create_soil_types_files (nc,nr,ease_grid,fnameTil,fnameRst)    
           write (log_file,'(a)')'         Done.'
           write (log_file,'(a)')' '
        endif
@@ -563,10 +563,10 @@ integer :: n_threads=1
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'
           if(SOILBCS=='NGDC')  then 
-             if(     F25Tag) call soil_para_high (nc,nr,regrid,GridnameR,F25Tag=F25Tag)
-             if(.not.F25Tag) call soil_para_high (nc,nr,regrid,GridnameR)
+             if(     F25Tag) call soil_para_high (nc,nr,regrid,fnameRst,F25Tag=F25Tag)
+             if(.not.F25Tag) call soil_para_high (nc,nr,regrid,fnameRst)
           endif
-          if(SOILBCS=='HWSD') call soil_para_hwsd (nc,nr,GridnameR)
+          if(SOILBCS=='HWSD') call soil_para_hwsd (nc,nr,fnameRst)
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a,a)')'         Using existing file.'
@@ -596,7 +596,7 @@ integer :: n_threads=1
        
        ! Commented out this call because 7.5-minute raster file is only used
        ! for plotting purposes
-       !  call make_75 (nc,nr,regrid,c_data,GridnameR)
+       !  call make_75 (nc,nr,regrid,c_data,fnameRst)
        !    write (log_file,'(a)')'Done creating 7.5 minute raster file ......................'
        write (log_file,'(a)')'NOTE: 7.5 minute raster file not created (only needed for diagnostic plotting).'
        write (log_file,'(a)')'      Uncomment associated lines in source to generate 7.5 minute raster file.'
@@ -609,7 +609,7 @@ integer :: n_threads=1
        inquire(file='clsm/CLM_veg_typs_fracs', exist=file_exists)
        if (file_exists) then
           write (log_file,'(a)')'         Creating file...'
-          call grid2tile_ndep_t2m_alb (nc,nr,GridnameR)  
+          call grid2tile_ndep_t2m_alb (nc,nr,fnameRst)  
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a)')'Skipping step for lack of matching veg types file.'
@@ -622,7 +622,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'
-          call CLM45_fixed_parameters (nc,nr,GridnameR)           
+          call CLM45_fixed_parameters (nc,nr,fnameRst)           
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a)')'         Using existing file.'
@@ -635,7 +635,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file... (resolution will be added to file name later)'
-          call CLM45_clim_parameters (nc,nr,GridnameR)   
+          call CLM45_clim_parameters (nc,nr,fnameRst)   
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a)')'         Using existing file.'
@@ -648,7 +648,7 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'
-          call map_country_codes (nc,nr,GridnameR)
+          call map_country_codes (nc,nr)
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a)')'         Using existing file.'
@@ -663,7 +663,7 @@ integer :: n_threads=1
              call MODIS_snow_alb ( )
           elseif (trim(SNOWALB)=='MODC061v2') then
              if (size(maparc30%ij_index,1) /= 43200) then 
-                call create_mapping (nc,nr,43200,21600,maparc30,GridnameR)
+                call create_mapping (nc,nr,43200,21600,maparc30,fnameRst)
              end if
              call MODIS_snow_alb_v2(43200,21600,maparc30) 
           else
@@ -675,7 +675,7 @@ integer :: n_threads=1
        endif
 
        !      inquire(file='clsm/irrig.dat', exist=file_exists)
-       !      if (.not.file_exists) call create_irrig_params (nc,nr,GridnameR)
+       !      if (.not.file_exists) call create_irrig_params (nc,nr,fnameRst)
        !      write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
        
        write (log_file,'(a)')'============================================================'
