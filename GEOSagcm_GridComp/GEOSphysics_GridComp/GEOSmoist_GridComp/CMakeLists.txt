@@ -1,7 +1,6 @@
 esma_set_this()
 
 set (srcs
-  Process_Library.F90
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
   GEOS_MGB2_2M_InterfaceMod.F90 micro_mg3_0.F90 micro_mg_utils.F90
@@ -15,6 +14,11 @@ set (srcs
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
+if (GPU_PHYSICS)
+  list (APPEND srcs process-library-openacc.F90)
+else ()
+  list (APPEND srcs Process_Library.F90)
+endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
    set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
@@ -38,6 +42,10 @@ get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
    )
+if (GPU_PHYSICS)
+  message(STATUS "Building GPU ports of Moist routines")
+  target_compile_options(${this} PRIVATE -fopenacc -foffload=nvptx-none)
+endif ()
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
 foreach ( file ${rc_files} )
