@@ -10,15 +10,14 @@ set (alldirs
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
   option(AQUAPLANET "Build for Aquaplanet simulation" OFF)
-  if (AQUAPLANET)
-    add_compile_definitions(AQUA_PLANET)
-  endif()
 
   esma_add_library (${this}
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
     SUBDIRS Shared
     DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu esmf)
+
+  target_compile_definitions (${this} PRIVATE $<$<BOOL:${AQUAPLANET}>:AQUA_PLANET>)
 
 else ()
 
