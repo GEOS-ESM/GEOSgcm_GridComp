@@ -9,7 +9,11 @@ set (alldirs
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
-  add_compile_definitions(AQUA_PLANET)
+  option(AQUAPLANET "Build for Aquaplanet simulation" OFF)
+  if (AQUAPLANET)
+    add_compile_definitions(AQUA_PLANET)
+  endif()
+
   esma_add_library (${this}
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
