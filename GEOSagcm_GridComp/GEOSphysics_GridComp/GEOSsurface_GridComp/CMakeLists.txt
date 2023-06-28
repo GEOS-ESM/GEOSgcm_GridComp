@@ -9,6 +9,7 @@ set (alldirs
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
+  add_compile_definitions(AQUA_PLANET)
   esma_add_library (${this}
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
