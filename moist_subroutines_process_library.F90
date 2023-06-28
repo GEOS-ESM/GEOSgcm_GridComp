@@ -1594,7 +1594,7 @@ module Process_Library_standalone
     end subroutine SUBL3
 
     function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
-
+!$acc routine seq
         REAL   , INTENT(IN) :: TE,PL,QC
         REAL   , INTENT(IN) :: NNL,NNI ! #/m^3
         INTEGER, INTENT(IN) :: ITYPE
