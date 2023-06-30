@@ -223,6 +223,8 @@ contains
                np = np + 1
                do nv = 1,num_veg ! defined veg loop
                   if(ityp(nc,nv,nz)==p) then
+
+                    if (fveg(nc,nv,nz)>1.e-4) then
                     
                     this_filter(1)%num_nourbanp = this_filter(1)%num_nourbanp + 1
                     this_filter(1)%nourbanp(this_filter(1)%num_nourbanp) = np
@@ -237,7 +239,7 @@ contains
                     endif
 
 
-                    if (fveg(nc,nv,nz)>1.e-4) then
+!                    if (fveg(nc,nv,nz)>1.e-4) then
 
                        this_filter(1)%num_exposedvegp = this_filter(1)%num_exposedvegp + 1
                        this_filter(1)%exposedvegp(this_filter(1)%num_exposedvegp) = np
