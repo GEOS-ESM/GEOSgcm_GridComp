@@ -162,6 +162,8 @@ contains
                    if (isnan(this%tsai_z_patch(np,n))) then
                       this%tsai_z_patch(np,n) = 0.
                    end if
+                   this%vcmaxcintsha_patch(np) = 1._r8
+                   this%vcmaxcintsun_patch(np) = 1._r8
                 end do
              end do !nv
           end do ! p
