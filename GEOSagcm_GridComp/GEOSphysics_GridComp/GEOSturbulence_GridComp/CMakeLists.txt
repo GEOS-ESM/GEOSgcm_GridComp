@@ -6,8 +6,6 @@ set (srcs
   shoc.F90
   edmf.F90
   scm_surface.F90
-  shocparams.F90
-  edmfparams.F90
   )
 
 esma_add_library (${this}

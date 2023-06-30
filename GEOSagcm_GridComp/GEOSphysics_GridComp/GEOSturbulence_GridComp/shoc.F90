@@ -23,13 +23,26 @@ module shoc
 
  use MAPL_SatVaporMod,  only: MAPL_EQsat
 
- use shocparams
-
  implicit none
+
+ type SHOCPARAMS_TYPE
+    integer :: LENOPT
+    integer :: BUOYOPT
+    real    :: PRNUM
+    real    :: LAMBDA
+    real    :: TSCALE
+    real    :: CKVAL
+    real    :: CEFAC
+    real    :: CESFAC
+    real    :: LENFAC1
+    real    :: LENFAC2
+    real    :: LENFAC3
+ endtype SHOCPARAMS_TYPE
+ type (SHOCPARAMS_TYPE) :: shocparams
 
  private
 
- public run_shoc, update_moments
+ public run_shoc, update_moments, shocparams
 
  contains
 
