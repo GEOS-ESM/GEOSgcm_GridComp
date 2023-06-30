@@ -1077,34 +1077,50 @@ contains
 !----------------------------------------------------------------------
 !
   SUBROUTINE HISTOGRAM (NLENS, NBINS, density, loc_val, x, BIN)
-
+    
+    ! intent:           in     in     out      inout    in in
+    
+    ! assemble histogram of x 
+    !
+    ! if optional input argument "bin" is not present, return only density    
+    !
+    ! NOTE: When the underlying data are integer (as, e.g., when histogram() is used 
+    !       in subroutine create_mapping()), the use of this subroutine and how it is
+    !       implemented is highly questionable. 
+    
     implicit none
+    
+    integer,                   intent(in)             :: NBINS    ! # bins
+    integer,                   intent(in)             :: NLENS    ! # data 
+    
+    real,    dimension(NLENS), intent(in)             :: x        ! data
+    integer, dimension(NBINS), intent(out)            :: density  ! hist value
+    real,    dimension(NBINS), intent(inout)          :: loc_val  ! lower boundary of bin
 
-    integer, intent (in) :: NBINS, NLENS
-    real,    intent (in) :: x (NLENS)
-    integer, intent (out):: density (NBINS)
-    real,    intent (inout) :: loc_val (NBINS)
-    real,    intent (in), optional :: bin
-    real :: xdum(NLENS), xl, xu, min_value
+    real,                      intent(in),   optional :: bin      ! bin size ("delta_x")
+    
+    ! --------------------------------------------------------------
+    
+    real    :: xdum(NLENS), xl, xu, min_value
     integer :: n
-
-    if(present (bin)) min_value =  real(floor(minval(x)))
-
-    DO N = 1, NBINS
-       if(present (bin)) then
+    
+    if (present(bin)) min_value = real(floor(minval(x)))
+    
+    DO N=1,NBINS
+       if(present(bin)) then
           xl = (N - 1)*BIN + min_value
           loc_val (n) = xl
           xu = xl + bin
           XDUM = 0.
-          where((x >= xl).and.(x < xu))XDUM = 1
+          where( (x>=xl) .and. (x<xu) ) XDUM = 1
        else
           XDUM = 0.
-          where(x == loc_val (n)) XDUM = 1
+          where( x==loc_val(n)        ) XDUM = 1  ! NOTE: == operator applied to REAL!?!?!?!?!?
        endif
-          density(n) = int(sum(XDUM))       
+       density(n) = int(sum(XDUM))       
     END DO
-
-END SUBROUTINE HISTOGRAM
+    
+  END SUBROUTINE HISTOGRAM
 
 !
 !----------------------------------------------------------------------
@@ -1133,7 +1149,7 @@ END SUBROUTINE HISTOGRAM
    integer, allocatable, dimension(:,:), target  :: tile_id
    integer,              dimension(:,:), pointer :: subset, iraster
 
-   real :: dx_data, dy_data, dx_geos, dy_geos, lon1, lon2, lat1, lat2
+   real :: dx_data, dy_data, dx_rst, dy_rst
 
    ! -------------------------------------------------------------------
    !
@@ -1162,8 +1178,8 @@ END SUBROUTINE HISTOGRAM
    dx_data = 360./real(nc_data)          ! science data
    dy_data = 180./real(nr_data)
    
-   dx_geos = 360./real(nc)               ! raster 
-   dy_geos = 180./real(nr)
+   dx_rst  = 360./real(nc)               ! raster (*.rst)
+   dy_rst  = 180./real(nr)
 
    if( (nc_data  >= nc) .and. (nr_data >= nr) ) then
       
@@ -1183,118 +1199,204 @@ END SUBROUTINE HISTOGRAM
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)   
       
-      ! now iraster contains tile_id on nc_data-by-nr_data grid
+      ! now iraster contains tile_id on nc_data-by-nr_data science data grid
       
       ! [??] WHY REMAP RASTER TO DATA?? SHOULDN'T DATA BE REMAPPED TO RASTER??
       !      THEN WE WOULDN'T NEED A CUSTOM rmap STRUCTURE FOR EACH SCIENCE DATASET
+      
+      ! count number of science data grid cells that contribute to *land* tiles (excl. lake, landice, ocean)
 
-      ! count number of (regridded) raster grid cells that contribute to *land* tiles (excl. lake, landice, ocean)
-      NPLUS = count(iraster >= 1 .and. iraster <= ncatch) 
+      NPLUS = count(iraster>=1 .and. iraster<=ncatch) 
       
       allocate( rmap%ij_index(1:nc_data, 1:nr_data), source = 0 )   ! allocate and initialize to 0
-      allocate( rmap%map(1:NPLUS) )     
-      rmap%map%NT = 0
+      allocate( rmap%map(     1:NPLUS             ))     
 
-      pix_count = 1         ! 1-dim indexing of 1:NPLUS raster grid cells that contribute to land tiles
-                            ! [??] WHY IS THIS CALLED pix_count??  
-      do j = 1,nr_data
-         do i =  1,nc_data
+      rmap%map%NT = 1  ! science data & raster resolutions are such that there is at most 1 unique tile ID per science data grid cell
+      
+      pix_count   = 0  ! 1-dim indexing of 1:NPLUS *science* *data* grid cells that contribute to land tiles
+                       ! [??] WHY IS THIS CALLED pix_count??  
+      
+      do j=1,nr_data
+         do i=1,nc_data
+
             if( (iraster(i,j)>=1) .and. (iraster(i,j)<=ncatch) ) then
-               ! raster grid cell (i,j) contributes to a land tile;
-               ! [??] data & raster resolutions are such that there is at most 1 tile ID per raster grid cell
-               rmap%map(pix_count)%NT       = 1
-               rmap%map(pix_count)%TID  (1) = iraster (i,j)     ! tile_id values in 1-dim array
-               rmap%map(pix_count)%count(1) = 1
-               rmap%ij_index(i,j)           = pix_count         ! 1-dim index on 2-dim array
-               pix_count = pix_count + 1
+               
+               ! science data grid cell (i,j) contributes to a land tile
+               
+               pix_count                    = pix_count + 1
+               rmap%ij_index(i,j)           = pix_count         ! 1-dim index for [land subset of] 2-dim array (science data grid)
+               
+               rmap%map(pix_count)%TID  (1) = iraster (i,j)     ! 1-dim array with tile_id values
+               rmap%map(pix_count)%count(1) = 1                 ! [??] MAYBE DO rmap%map%count=1 OUTSIDE OF THIS LOOP??
+
+               
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
-      ! verify pix_count = NPLUS+1
-      if (pix_count/=(NPLUS+1)) then
+      ! verify final value of pix_count after i,j loop
+      if (pix_count/=NPLUS) then
          print *, 'ERROR 1 in create_mapping(); stopping.'
          stop
       end if
       
    else
       
-      ! data to be remapped has coarser resolution than that of raster grid with tile_id
+      ! science data to be remapped has coarser resolution than that of raster grid with tile_id
+
+      ! count number of *original* raster grid cells that contribute to *land* tiles (excl. lake, landice, ocean)
       
-      NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
+      NPLUS = count(tile_id>=1 .and. tile_id<=ncatch)
+      
       allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
-      allocate (rmap%map (1:NPLUS))     
+      allocate (rmap%map(     1:NPLUS             ))     
+
       rmap%map%NT = 0
-      pix_count   = 1
-      do j = 1,nr_data
+
+      pix_count   = 1  ! 1-dim indexing of 1:NPLUS *science* *data* grid cells that contribute to land tiles
+                       ! [??] WHY IS THIS CALLED pix_count??
+      
+      ! loop through *science* data grid 
+      
+      do j=1,nr_data
          
-         lat1 = -90. + (j-1)*dy_data
-         lat2 = lat1 + dy_data
-         j1   = floor  ((-90. + (j-1)*dy_data + 90.)/dy_geos) + 1
-         j2   = ceiling((-90. + (j)*dy_data + 90.  )/dy_geos) 
+         ! block (i1:i2,j1:j2) of orig raster grid falls within science data grid cell (i,j)
+         !
+         ! NOTE: --> when ratio dy_data/dy_rst is not integer, all orig raster grid cells that 
+         !           fall partly within science data grid cell are included
          
-         do i =  1,nc_data
+         j1 = floor  ( ( (j-1)*dy_data )/dy_rst ) + 1       ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dy_data/dy_rst WITH SOMETHING LIKE nr_data/nr[+1] ???
+         j2 = ceiling( ( (j  )*dy_data )/dy_rst )           ! WARNING: mixed mode arithmetic!!!
+         
+         do i=1,nc_data
             
-            lon1 = -180. + (i-1)*dx_data
-            lon2 = lon1 + dx_data 
-            i1   = floor  ((-180. + (i-1)*dx_data + 180.)/dx_geos) + 1
-            i2   = ceiling((-180. + (i)*dx_data + 180.  )/dx_geos) 
+            i1 = floor  ( ( (i-1)*dx_data )/dx_rst) + 1     ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dx_data/dx_rst WITH SOMETHING LIKE nc_data/nc[+1] ???
+            i2 = ceiling( ( (i  )*dx_data )/dx_rst)         ! WARNING: mixed mode arithmetic!!!
             
-            if(j2 > j1 .or. i2 > i1)  then
-               subset => tile_id (i1:i2,j1:j2)
-               NPLUS = count(subset >= 1 .and. subset <= ncatch)
-               if(NPLUS > 0)  then
-                  allocate (loc_int (1:NPLUS))
-                  allocate (unq_mask(1:NPLUS))
-                  loc_int = pack(subset,mask = (subset >= 1 .and. subset <= ncatch))
-                  call MAPL_Sort (loc_int)
+            ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            ! a more sensible order of operations might be as follows:
+            !  
+            !   ! check if there is *land* in this science data grid cell
+            !
+            !   subset => tile_id(i1:i2,j1:j2)
+            !
+            !   ! WITHIN SUBSET, count number of *original* raster grid cells  that contribute 
+            !   !   to *land* tiles (excl. lake, landice, ocean)
+            !   
+            !   NPLUS = count(subset>=1 .and. subset<=ncatch)    ! [??] OVERWRITES NPLUS FROM ABOVE !?!?!?!?!
+            !   
+            !   if (NPLUS>0)  then
+            !
+            !     ! there is *land* in this science data grid cell
+            !
+            !     rmap%ij_index(i,j) = pix_count             ! 1-dim index for [land subset of] 2-dim array (science data grid)
+            !     pix_count          = pix_count + 1         ! [??] SWITCH ORDER WITH PREVIOUS LINE AND INIT pix_count TO ZERO ABOVE
+            !
+            !     if (j2>j1 .or. i2>i1)  then
+            !
+            !       etc...  [MAKE SURE TO REMOVE rmap%ij_index(i,j)=.. AND pix_count+=1 FROM CODE BELOW]
+            ! 
+            ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+            if (j2>j1 .or. i2>i1)  then
+               
+               subset => tile_id(i1:i2,j1:j2)
+               
+               ! WITHIN SUBSET, count number of *original* raster grid cells  that contribute 
+               !   to *land* tiles (excl. lake, landice, ocean)
+               
+               NPLUS = count(subset>=1 .and. subset<=ncatch)    ! [??] OVERWRITES NPLUS FROM ABOVE !?!?!?!?!
+               
+               if (NPLUS>0)  then
+                  
+                  ! determine unique *land* tile IDs within science data grid cell (i,j)
+                  
+                  ! Step (i): determine NBINS = unique *land* tile ID values within subset 
+                  
+                  allocate(loc_int (1:NPLUS))    ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??  NPLUS<=ceiling(dx_data/dx_rst)*ceiling(dy_data/dy_rst)
+                  allocate(unq_mask(1:NPLUS))    ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+                  loc_int = pack(subset, mask=(subset>=1 .and. subset<=ncatch))
+                  call MAPL_Sort(loc_int)
                   unq_mask = .true.
-                  do n = 2,NPLUS 
+                  do n=2,NPLUS 
                      unq_mask(n) = .not.(loc_int(n) == loc_int(n-1))
                   end do
                   NBINS = count(unq_mask)
                   
-                  allocate(loc_val (1:NBINS))
-                  allocate(density (1:NBINS))
-                  loc_val = 1.*pack(loc_int,mask =unq_mask)
-                  call histogram (size(subset,1)*size(subset,2), NBINS, density, loc_val, real(subset))   
+                  ! Step (ii): assemble histogram of unique *land* tile ID values
                   
-                  DO N =1,NBINS
-                     if(density(n) > 0) then 
-                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1
-                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then
-                           print *,'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
-                           print *,i,j,i1,i2,j1,j2
-                           print *,'NT',rmap%map(pix_count)%NT 
-                           print *,rmap%map(pix_count)%TID
-                           print *,rmap%map(pix_count)%count
+                  allocate(loc_val(1:NBINS))     ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??  NBINS<=N_tile_per_gridcell
+                  allocate(density(1:NBINS))     ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+                  loc_val = 1.*pack(loc_int,mask=unq_mask)     ! [??] WHY REAL WHEN HANDLING INTEGERS???
+                  
+                  call histogram( size(subset,1)*size(subset,2), NBINS, density, loc_val, real(subset) )   
+                  
+                  ! now "density(n)" contains the number of orig raster grid cells within the science
+                  !   data grid cell (i,j) that contribute to the tile with the tile ID in "loc_val(n)"
+                  
+                  DO N=1,NBINS
+                     
+                     if (density(n)>0) then 
+                        
+                        ! build up NT = # unique tile IDs within science grid cell (i,j) [a.k.a. (pix_count)]
+                        
+                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1   
+                        
+                        ! verify NT <= max allowed value (=N_tiles_per_cell)
+                        
+                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then  ! [??] WHY NOT CHECK NBINS<=N_tiles_per_gridcell OUTSIDE OF THIS LOOP????
+                           print *, 'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
+                           print *, i, j, i1, i2, j1, j2
+                           print *, 'NT   =', rmap%map(pix_count)%NT 
+                           print *, 'TID  =', rmap%map(pix_count)%TID
+                           print *, 'count=', rmap%map(pix_count)%count
                            stop
                         endif
-                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))
-                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)
+
+                        ! for NT-th unique tile ID within science data grid cell (i,j), record tile ID and count
+
+                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))  ! convert tile ID back to int!?!?!?
+                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)        
                         
-                     endif
-                  END DO
-                  rmap%ij_index(i,j) = pix_count
-                  pix_count = pix_count + 1
-                  deallocate (loc_val, density)
-                  deallocate (loc_int, unq_mask)
-               endif
+                     endif  ! if (density(n)>0)
+                     
+                  END DO    ! N=1,NBINS
+                  
+                  rmap%ij_index(i,j) = pix_count             ! 1-dim index for [land subset of] 2-dim array (science data grid)
+                  pix_count          = pix_count + 1
+
+                  deallocate (loc_val, density)              ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  deallocate (loc_int, unq_mask)             ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+               endif   ! if (NPLUS>0)
+               
                NULLIFY (subset)
+               
             else
-               if((tile_id (i1,j1) > 0).and.(tile_id(i1,j1).le.ncatch)) then
+               
+               if ( (tile_id (i1,j1)>=1) .and. (tile_id(i1,j1)<=ncatch) ) then
+                  
+                  ! only one unique *land* tile ID in science data grid cell (i,j)
+                  
                   rmap%map(pix_count)%NT       = 1
-                  rmap%map(pix_count)%TID(1)   = tile_id (i1,j1)
+                  rmap%map(pix_count)%TID(1)   = tile_id(i1,j1)
                   rmap%map(pix_count)%COUNT(1) = 1
-                  rmap%ij_index(i,j) = pix_count
-                  pix_count = pix_count + 1
+                  rmap%ij_index(i,j)           = pix_count
+                  pix_count                    = pix_count + 1
+
                endif
+               
             endif
-         end do
-      end do
-   end if
-      
+            
+         end do        ! i=1,nc_data
+      end do           ! j=1,nr_data
+
+   end if              ! relative resolution of (nc,nr) and (nc_data,nr_data)
+   
  END SUBROUTINE create_mapping
 
 !
