@@ -372,7 +372,7 @@
 !           going forward. 
 
 !  compute resistance with small delta ea
-
+ call photosyns_inst%TimeStepInit(bounds)
  eair_pert(:) = eair_clm(:) + dea
 
  call PhotosynthesisHydraulicStress ( bounds, filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
@@ -389,6 +389,7 @@
 
 !  compute resistance with small delta Tc
 
+ call photosyns_inst%TimeStepInit(bounds)
    temp_unpert =  temperature_inst%t_veg_patch
    temperature_inst%t_veg_patch = temperature_inst%t_veg_patch + dtc
    esat_tv_pert(:) = esat_tv_clm(:) + deldT_clm(:)*dtc 
@@ -406,6 +407,8 @@
   rssha_dt  = photosyns_inst%rssha_patch
 
 !  compute unperturbed resistance
+
+ call photosyns_inst%TimeStepInit(bounds)
 
    temperature_inst%t_veg_patch = temp_unpert ! reset canopy temperature to unperturbed value
 
