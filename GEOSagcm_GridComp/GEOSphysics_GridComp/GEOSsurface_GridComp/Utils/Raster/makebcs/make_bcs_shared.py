@@ -26,7 +26,7 @@ setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
 
 if( ! -d geometry ) then
-  mkdir -p geometry land til rst data/MOM5 data/MOM6 clsm/plots
+  mkdir -p geometry land/shared til rst data/MOM5 data/MOM6 clsm/plots
 endif
 """
 
@@ -86,6 +86,15 @@ mkdir -p {GRIDNAME}/geometry/{GRIDNAME}
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN {GRIDNAME}/geometry/{GRIDNAME}/.
 
 /bin/mv rst til {GRIDNAME}/geometry/{GRIDNAME}/.
+
+mkdir -p {GRIDNAME}/land/shared/
+
+if(-f {GRIDNAME}/land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
+    echo "CO2 file exists."
+else
+    /bin/cp {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4  {GRIDNAME}/land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
+    echo "File does not exist. CO2 file copied successfully."
+endif
 
 mkdir -p {GRIDNAME}/land/{GRIDNAME}/clsm
 
