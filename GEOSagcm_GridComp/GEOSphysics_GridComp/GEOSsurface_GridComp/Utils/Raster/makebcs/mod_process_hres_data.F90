@@ -1266,13 +1266,13 @@ contains
          ! NOTE: --> when ratio dy_data/dy_rst is not integer, all orig raster grid cells that 
          !           fall partly within science data grid cell are included
          
-         j1 = floor  ( ( (j-1)*dy_data )/dy_rst ) + 1       ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dy_data/dy_rst WITH SOMETHING LIKE nr_data/nr[+1] ???
-         j2 = ceiling( ( (j  )*dy_data )/dy_rst )           ! WARNING: mixed mode arithmetic!!!
+         j1 = floor  ( ( -90. + (j-1)*dy_data +90. )/dy_rst ) + 1       ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dy_data/dy_rst WITH SOMETHING LIKE nr_data/nr[+1] ???
+         j2 = ceiling( ( -90. + (j  )*dy_data +90. )/dy_rst )           ! WARNING: mixed mode arithmetic!!!
          
          do i=1,nc_data
             
-            i1 = floor  ( ( (i-1)*dx_data )/dx_rst) + 1     ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dx_data/dx_rst WITH SOMETHING LIKE nc_data/nc[+1] ???
-            i2 = ceiling( ( (i  )*dx_data )/dx_rst)         ! WARNING: mixed mode arithmetic!!!
+            i1 = floor  ( ( -180. + (i-1)*dx_data +180.)/dx_rst) + 1     ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dx_data/dx_rst WITH SOMETHING LIKE nc_data/nc[+1] ???
+            i2 = ceiling( ( -180. + (i  )*dx_data +180.)/dx_rst)         ! WARNING: mixed mode arithmetic!!!
             
             ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             ! a more sensible order of operations might be as follows:
@@ -3233,9 +3233,9 @@ END SUBROUTINE modis_scale_para_high
     
     ! loop through the 36x18 10deg-by-10deg MODIS files
     
-    do ix = 1,36
-       do jx = 1,18                        
-      
+    do jx = 1,18                        
+       do ix = 1,36
+          
           ! assemble file name and open file
           
           write (hh,'(i2.2)') ix

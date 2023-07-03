@@ -6692,7 +6692,8 @@ subroutine RegridRaster(Rin,Rout)
   Nx_out = size(Rout,1)
   Ny_out = size(Rout,2) 
   
-  if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
     
      ! avoid loop through output grid cells
 
@@ -6750,7 +6751,8 @@ subroutine RegridRaster1(Rin,Rout)
   Nx_out = size(Rout,1)
   Ny_out = size(Rout,2) 
   
-  if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
      
      Rout = Rin
      
@@ -6790,7 +6792,8 @@ subroutine RegridRaster2(Rin,Rout)
   Nx_out = size(Rout,1)
   Ny_out = size(Rout,2) 
   
-  if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
      
      Rout = Rin
      
@@ -6830,7 +6833,8 @@ subroutine RegridRasterReal(Rin,Rout)
   Nx_out = size(Rout,1)
   Ny_out = size(Rout,2) 
   
-  if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
      
      Rout = Rin
      
