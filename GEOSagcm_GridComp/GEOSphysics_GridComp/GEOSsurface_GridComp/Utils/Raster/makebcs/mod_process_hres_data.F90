@@ -1921,8 +1921,8 @@ END SUBROUTINE modis_scale_para_high
   integer, intent (in) :: nc_data,nr_data
   type (regrid_map), intent (in) :: rmap
   character*6 :: MA
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
-  integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
+  integer :: kk,nn,N_tiles,ii,jj,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
+  integer :: status,iLL,jLL,iG,jG,ix,jx,vid,nc_10,nr_10,n_tslices,t, &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
   character*200 :: fname,fout
   character*10 :: string
@@ -1936,69 +1936,88 @@ END SUBROUTINE modis_scale_para_high
   REAL :: sf
 
 !
-! Reading number of cathment-tiles from catchment.def file
+! Reading number of catchment-tiles from catchment.def file
 ! 
       fname='clsm/catchment.def' 
       open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
+      read(10,*) N_tiles
       close (10,status='keep')
 
+      ! get some common dimensions and attributes from one of the 36-by-18 MODIS files
+
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
+
       if(MA=='MODIS1') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H11V13.nc'
       if(MA=='MODIS2') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H11V13.nc'
+
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)   
+      !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)   
+      
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
       status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
+      
+      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)        ! nc_10 = # grid cells in long dir
+      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)        ! nr_10 = # grid cells in lat  dir
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)    ! # time slices
+
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
+      ! read variable #3 = MMDD = start month/day of time-averaging interval per MAPL_ReadForcing() convention
+      
       status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
       status = NF_CLOSE(ncid); VERIFY_(STATUS)
 
+      ! verify input nc_data and nr_data against global dimensions in nc4 file
+
       if(nc_data/=i_highd .or. nr_data/=j_highd) then
-         print *,'Inconsistent mapping and dimensions in modis_alb_on_tiles_high   -so stopping ...'
+         print *, 'Inconsistent mapping and dimensions in modis_alb_on_tiles_high   -so stopping ...'
          stop
       end if
+      
+      ! "wrap around" for mmdd
+      
+      mmdd(0)                             = mmdd(n_tslices)     
+      mmdd(n_tslices + 1)                 = mmdd(1)   
 
-      mmdd(0) = mmdd(n_tslices)
-      mmdd(n_tslices + 1)= mmdd(1)
+      ! assemble mmdd_next 
 
-      mmdd_next(0:n_tslices - 1) =  mmdd(1:n_tslices)
-      mmdd_next(n_tslices: n_tslices + 1) = mmdd (1:2)
+      mmdd_next(0:n_tslices - 1)          = mmdd(1:n_tslices)
+      mmdd_next(n_tslices: n_tslices + 1) = mmdd(1:2)
 
-
+      ! allocate arrays for gridded albedo data from one of the 36-by-18 MODIS files
+      
       allocate(net_data1 (1:nc_10,1:nr_10))
       allocate(net_data2 (1:nc_10,1:nr_10))       
+      
+      !
+      ! reading Albedo data
+      !
+      
+      if(MA == 'MODIS1') then 
+         open (31,file='clsm/AlbMap.WS.16-day.tile.0.3_0.7.dat',        &
+              form='unformatted',status='unknown',convert='little_endian')
+         open (32,file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat',        &
+              form='unformatted',status='unknown',convert='little_endian')
+      endif
+      
+      if(MA == 'MODIS2') then 
+         open (31,file='clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat',        &
+              form='unformatted',status='unknown',convert='little_endian')
+         open (32,file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat',        &
+              form='unformatted',status='unknown',convert='little_endian')
+      endif
+      
+      ! allocate data vectors in tile space
 
-       !
-       ! reading Albedo data
-       !
-
-       if(MA == 'MODIS1') then 
-          open (31,file='clsm/AlbMap.WS.16-day.tile.0.3_0.7.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-          open (32,file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-       endif
-
-       if(MA == 'MODIS2') then 
-          open (31,file='clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-          open (32,file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-       endif
-
-       allocate(vec_AlbVis(maxcat))
-       allocate(count_AlbVis(1:maxcat))    
-       allocate(vec_AlbNir(maxcat))
-       allocate(count_AlbNir(1:maxcat))    
-
-       do t =0,n_tslices+1
+      allocate(vec_AlbVis(  N_tiles  ))
+      allocate(count_AlbVis(1:N_tiles))    
+      allocate(vec_AlbNir(  N_tiles  ))
+      allocate(count_AlbNir(1:N_tiles))    
+      
+      do t =0,n_tslices+1
        
           time_slice = t
           yr = 1
@@ -2016,15 +2035,21 @@ END SUBROUTINE modis_scale_para_high
              endif
           endif
 
-          read(mmdd(t),'(i2.2,i2.2)') mn,dd
-          read(mmdd_next(t),'(i2.2,i2.2)') mn1,dd1
+          ! convert mmdd string to month (mn) and day (dd) integers
+          
+          read(mmdd(     t),'(i2.2,i2.2)') mn,  dd
+          read(mmdd_next(t),'(i2.2,i2.2)') mn1, dd1
 
           ! Reading, interpolating or aggregating on to catchment-tiles
           
-          vec_AlbVis   =0.
+          ! initialize data vectors in tile space
+
+          vec_AlbVis   = 0.
           count_AlbVis = 0.
-          vec_AlbNir   =0.
+          vec_AlbNir   = 0.
           count_AlbNir = 0. 
+
+          ! loop through 36-by-18 MODIS files
 
           do jx = 1,18	
              do ix = 1,36
@@ -2034,54 +2059,83 @@ END SUBROUTINE modis_scale_para_high
                 if(MA=='MODIS2') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
                 status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                 if(status == 0) then
+                   
+                   ! read attributes (global i,j indices of first grid cell in chunk of data in this MODIS file)
+                   
                    status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
                    status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
+                   !status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
+                   
+                   ! assume scale factor (sf) is same for Vis and NIR albedo
+                   
+                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)                                
+                   
+                   ! read chunk of MODIS data in file
+                   !
+                   !   variable #4 = net_data1 = Alb_0.3_0.7 = visible (Vis) albedo 
+                   !   variable #5 = net_data2 = Alb_0.7_5.0 = near-infrared (NIR) albedo
+                   
+                   status = NF_GET_VARA_INT (ncid,4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)  
+                   status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)  
 
-                   do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1
-                         pix_count = rmap%ij_index(i,j)
+                   ! loop through grid cells of this file's albedo science data and add into tile-space data vectors;
+                   ! keep count of how many (original) raster grid cells contribute (note that this integer count 
+                   ! does not allow for fractional coverage of raster grid cells by the science data value and 
+                   ! therefore is approximate)
+                   
+                   do jj=1,nr_10 
+                      do ii=1,nc_10
+                   
+                         iG = ii+iLL-1     ! i-index relative to *global* 30-arcsec grid
+                         jG = jj+jLL-1     ! j-index relative to *global* 30-arcsec grid
+
+                         pix_count = rmap%ij_index(iG,jG)
+
                          if (pix_count ==0) cycle
-                         if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
-                            
+
+                         if(net_data1(ii,jj) > 0) then
                             if(rmap%map(pix_count)%nt > 0) then
-                               do n = 1, rmap%map(pix_count)%nt
-                                  vec_AlbVis(rmap%map(pix_count)%tid(n))  = vec_AlbVis(rmap%map(pix_count)%tid(n)) +  &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
-                                  count_AlbVis(rmap%map(pix_count)%tid(n))= count_AlbVis(rmap%map(pix_count)%tid(n)) + &
-                                        1.*rmap%map(pix_count)%count(n)
+                               do kk = 1, rmap%map(pix_count)%nt
+                                  vec_AlbVis(rmap%map(pix_count)%tid(kk))  = vec_AlbVis(  rmap%map(pix_count)%tid(kk)) +  &
+                                       sf*net_data1(ii,jj)*rmap%map(pix_count)%count(kk) 
+                                  count_AlbVis(rmap%map(pix_count)%tid(kk))= count_AlbVis(rmap%map(pix_count)%tid(kk)) + &
+                                       1.*rmap%map(pix_count)%count(kk)
                                end do
                             endif
                          endif
-                         if(net_data2(i-iLL +1 ,j - jLL +1) > 0) then
+                         if(net_data2(ii,jj) > 0) then
                             if(rmap%map(pix_count)%nt > 0) then
-                               do n = 1, rmap%map(pix_count)%nt
-                                  vec_AlbNir(rmap%map(pix_count)%tid(n))  = vec_AlbNir(rmap%map(pix_count)%tid(n)) +  &
-                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
-                                  count_AlbNir(rmap%map(pix_count)%tid(n))= count_AlbNir(rmap%map(pix_count)%tid(n)) + &
-                                        1.*rmap%map(pix_count)%count(n)
+                               do kk = 1, rmap%map(pix_count)%nt
+                                  vec_AlbNir(rmap%map(pix_count)%tid(kk))  = vec_AlbNir(  rmap%map(pix_count)%tid(kk)) +  &
+                                       sf*net_data2(ii,jj)*rmap%map(pix_count)%count(kk) 
+                                  count_AlbNir(rmap%map(pix_count)%tid(kk))= count_AlbNir(rmap%map(pix_count)%tid(kk)) + &
+                                       1.*rmap%map(pix_count)%count(kk)
                                end do
                             endif
-                          endif
+                         endif
                       enddo
                    enddo
                    status = NF_CLOSE(ncid)
                 endif
              end do
           end do
-
-          DO n =1,maxcat
-             if(count_AlbVis(n)/=0.) vec_AlbVis(n)=vec_AlbVis(n)/count_AlbVis(n)
-             if(count_AlbNir(n)/=0.) vec_AlbNir(n)=vec_AlbNir(n)/count_AlbNir(n)
+          
+          ! finalize remapping
+          
+          DO nn =1,N_tiles
+             if(count_AlbVis(nn)/=0.) vec_AlbVis(nn)=vec_AlbVis(nn)/count_AlbVis(nn)
+             if(count_AlbNir(nn)/=0.) vec_AlbNir(nn)=vec_AlbNir(nn)/count_AlbNir(nn)
           END DO
-          write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
+
+          ! write to file (MAPL_ReadForcing convention)
+
+          write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,N_tiles,1/))
           write(31)  vec_AlbVis(:)
-          write(32) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
+          write(32) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,N_tiles,1/))
           write(32)  vec_AlbNir(:)
+
        end do
+
        close(31,status='keep')
        close(32,status='keep')
 
