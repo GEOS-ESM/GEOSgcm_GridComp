@@ -1226,10 +1226,9 @@ module moist_subroutines_cloud_microphys
         real, intent (inout), dimension (ktop:kbot) :: tz, qv, ql, qr, qi, qs, qg, qa
 
         real, intent (out), dimension (ktop:kbot) :: subl1
-
-        real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, tcp3, lhl, lhi
-        real, dimension (ktop:kbot) :: cvm, q_liq, q_sol, q_cond
         
+        real :: lcpk, icpk, tcpk, tcp3, lhl, lhi
+        real :: cvm, q_liq, q_sol, q_cond
         real :: fac_v2l, fac_l2v, fac_i2v
         
         real :: pidep, qi_crt
@@ -1267,19 +1266,24 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            q_liq (k) = ql (k) + qr (k)
-            q_sol (k) = qi (k) + qs (k) + qg (k)
-            cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
-            tcp3 (k) = lcpk (k) + icpk (k) * min (1., dim (tice, tz (k)) / (tice - t_wfr))
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            q_liq = ql (k) + qr (k)
+            q_sol = qi (k) + qs (k) + qg (k)
+            cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+            lcpk = lhl / cvm
+            icpk = lhi / cvm
+            tcpk = lcpk + icpk
+            tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
         enddo
         
         do k = ktop, kbot
-            
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            q_liq = ql (k) + qr (k)
+            q_sol = qi (k) + qs (k) + qg (k)
+            cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+
             rh_adj = 1. - h_var(k) - rh_inc
             rh_rain = max (0.35, rh_adj - rh_inr)
             
@@ -1295,9 +1299,9 @@ module moist_subroutines_cloud_microphys
                 sink = dim (qv (k), qvmin)
                 qv (k) = qv (k) - sink
                 qi (k) = qi (k) + sink
-                q_sol (k) = q_sol (k) + sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
+                q_sol = q_sol + sink
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) + sink * (lhl + lhi) / cvm
                 if (do_qa) qa (k) = 1. ! air fully saturated; 100 % cloud cover
                 cycle
             endif
@@ -1306,18 +1310,18 @@ module moist_subroutines_cloud_microphys
             ! update heat capacity and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
-            tcp3 (k) = lcpk (k) + icpk (k) * min (1., dim (tice, tz (k)) / (tice - t_wfr))
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            lcpk = lhl / cvm
+            icpk = lhi / cvm
+            tcpk = lcpk + icpk
+            tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
         
             ! -----------------------------------------------------------------------
             ! instant evaporation / sublimation of all clouds if rh < rh_adj -- > cloud free
             ! -----------------------------------------------------------------------
             qpz = qv (k) + ql (k) + qi (k)
-            tin = tz (k) - (lhl (k) * (ql (k) + qi (k)) + lhi (k) * qi (k)) / (c_air + &
+            tin = tz (k) - (lhl * (ql (k) + qi (k)) + lhi * qi (k)) / (c_air + &
                 qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
             if (tin > t_sub + 6.) then
                 rh = qpz / iqs1 (tin, den (k))
@@ -1339,23 +1343,23 @@ module moist_subroutines_cloud_microphys
                 dq0 = qsw - qv (k)
                 if (dq0 > qvmin) then
                     factor = min (1., fac_l2v * (10. * dq0 / qsw))
-                    evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+                    evap = min (ql (k), factor * ql(k) / (1. + tcp3 * dwsdt))
                 else
                     evap = 0.0
                 endif
                 qv (k) = qv (k) + evap
                 ql (k) = ql (k) - evap
-                q_liq (k) = q_liq (k) - evap
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+                q_liq = q_liq - evap
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) - evap * lhl / cvm
             endif
 
             ! -----------------------------------------------------------------------
             ! update heat capacity and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhi (k) = li00 + dc_ice * tz (k)
-            icpk (k) = lhi (k) / cvm (k)
+            lhi = li00 + dc_ice * tz (k)
+            icpk = lhi / cvm
         
             ! -----------------------------------------------------------------------
             ! enforce complete freezing below - t_wfr
@@ -1363,21 +1367,21 @@ module moist_subroutines_cloud_microphys
             
             dtmp = t_wfr - tz (k)
             if (dtmp > 0. .and. ql (k) > qcmin) then
-                sink = min (ql (k), fac_frz * dtmp / icpk (k))
+                sink = min (ql (k), fac_frz * dtmp / icpk)
                 ql (k) = ql (k) - sink
                 qi (k) = qi (k) + sink
-                q_liq (k) = q_liq (k) - sink
-                q_sol (k) = q_sol (k) + sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + sink * lhi (k) / cvm (k)
+                q_liq = q_liq - sink
+                q_sol = q_sol + sink
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) + sink * lhi / cvm
             endif
             
             ! -----------------------------------------------------------------------
             ! update heat capacity and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhi (k) = li00 + dc_ice * tz (k)
-            icpk (k) = lhi (k) / cvm (k)
+            lhi = li00 + dc_ice * tz (k)
+            icpk = lhi / cvm
             
             ! -----------------------------------------------------------------------
             ! bigg mechanism heterogeneous freezing on existing cloud nuclei
@@ -1385,24 +1389,24 @@ module moist_subroutines_cloud_microphys
             tc = tice - tz (k)
             if (do_bigg .and. ql (k) > qcmin .and. tc > 0.) then
                 sink = fac_frz * (100.0/rhor/ccn(k)) * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
-                sink = min (ql (k), tc / icpk (k), sink)
+                sink = min (ql (k), tc / icpk, sink)
                 ql (k) = ql (k) - sink
                 qi (k) = qi (k) + sink
-                q_liq (k) = q_liq (k) - sink
-                q_sol (k) = q_sol (k) + sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + sink * lhi (k) / cvm (k)
+                q_liq = q_liq - sink
+                q_sol = q_sol + sink
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) + sink * lhi / cvm
             endif ! significant ql existed
         
             ! -----------------------------------------------------------------------
             ! update capacity heat and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            lcpk = lhl / cvm
+            icpk = lhi / cvm
+            tcpk = lcpk + icpk
         
             ! -----------------------------------------------------------------------
             ! sublimation / deposition of LS ice
@@ -1411,7 +1415,7 @@ module moist_subroutines_cloud_microphys
             if (tz (k) < tice) then
                 qsi = iqs2 (tz (k), den (k), dqsdt)
                 dq = (qv (k) - qsi)
-                sink = min(qi(k), dq / (1. + tcpk (k) * dqsdt))
+                sink = min(qi(k), dq / (1. + tcpk * dqsdt))
                 if (qi (k) > qcmin) then
                     ! eq 9, hong et al. 2004, mwr
                     ! for a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
@@ -1426,7 +1430,7 @@ module moist_subroutines_cloud_microphys
                         tmp = tice - tz (k)
                     qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
                     qi_crt = max (qi_crt, 1.82e-6) * qi_lim * ifrac / den (k)
-                        sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
+                        sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk)
                 else ! ice -- > vapor
                     ! sublimation
                     if (do_subl) then
@@ -1438,20 +1442,20 @@ module moist_subroutines_cloud_microphys
                 endif
                 qv (k) = qv (k) - sink
                 qi (k) = qi (k) + sink
-                q_sol (k) = q_sol (k) + sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
+                q_sol = q_sol + sink
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) + sink * (lhl + lhi) / cvm
             endif
 
             ! -----------------------------------------------------------------------
             ! update capacity heat and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            lcpk = lhl / cvm
+            icpk = lhi / cvm
+            tcpk = lcpk + icpk
         
             ! -----------------------------------------------------------------------
             ! sublimation / deposition of snow
@@ -1463,7 +1467,7 @@ module moist_subroutines_cloud_microphys
                 qden = qs (k) * den (k)
                 tmp = exp (0.65625 * log (qden))
                 tsq = tz (k) * tz (k)
-                dq = (qsi - qv (k)) / (1. + tcpk (k) * dqsdt)
+                dq = (qsi - qv (k)) / (1. + tcpk * dqsdt)
                 pssub = cssub (1) * tsq * (cssub (2) * sqrt (qden) + cssub (3) * tmp * &
                     sqrt (denfac (k))) / (cssub (4) * tsq + cssub (5) * qsi * den (k))
                 pssub = (qsi - qv (k)) * dts * pssub
@@ -1474,25 +1478,25 @@ module moist_subroutines_cloud_microphys
                     if (tz (k) > tice) then
                         pssub = 0. ! no deposition
                     else
-                        pssub = max (fac_v2s * pssub, dq, (tz (k) - tice) / tcpk (k))
+                        pssub = max (fac_v2s * pssub, dq, (tz (k) - tice) / tcpk)
                     endif
                 endif
                 qs (k) = qs (k) - pssub
                 qv (k) = qv (k) + pssub
-                q_sol (k) = q_sol (k) - pssub
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) - pssub * (lhl (k) + lhi (k)) / cvm (k)
+                q_sol = q_sol - pssub
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) - pssub * (lhl + lhi) / cvm
             endif
             
             ! -----------------------------------------------------------------------
             ! update capacity heat and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
+            lhl = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            lcpk = lhl / cvm
+            icpk = lhi / cvm
+            tcpk = lcpk + icpk
         
             ! -----------------------------------------------------------------------
             ! simplified 2 - way grapuel sublimation - deposition mechanism
@@ -1500,14 +1504,14 @@ module moist_subroutines_cloud_microphys
             
             if (qg (k) > qpmin) then
                 qsi = iqs2 (tz (k), den (k), dqsdt)
-                dq = (qv (k) - qsi) / (1. + tcpk (k) * dqsdt)
+                dq = (qv (k) - qsi) / (1. + tcpk * dqsdt)
                 pgsub = (qv (k) / qsi - 1.) * qg (k)
                 if (pgsub > 0.) then ! deposition
                     if (tz (k) > tice) then
                         pgsub = 0. ! no deposition
                     else
                         pgsub = min (fac_v2g * pgsub, 0.2 * dq, ql (k) + qr (k), &
-                            (tice - tz (k)) / tcpk (k))
+                            (tice - tz (k)) / tcpk)
                     endif
                 else ! submilation
                     pgsub = max (fac_g2v * pgsub, dq) * min (1., dim (tz (k), t_sub) * 0.1)
@@ -1515,9 +1519,9 @@ module moist_subroutines_cloud_microphys
                 endif
                 qg (k) = qg (k) + pgsub
                 qv (k) = qv (k) - pgsub
-                q_sol (k) = q_sol (k) + pgsub
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + pgsub * (lhl (k) + lhi (k)) / cvm (k)
+                q_sol = q_sol + pgsub
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) + pgsub * (lhl + lhi) / cvm
             endif
         
 #ifdef USE_MIN_EVAP
@@ -1525,8 +1529,8 @@ module moist_subroutines_cloud_microphys
             ! update capacity heat and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lcpk (k) = lhl (k) / cvm (k)
+            lhl = lv00 + d0_vap * tz (k)
+            lcpk = lhl / cvm
             
             ! -----------------------------------------------------------------------
             ! * minimum evap of rain in dry environmental air
@@ -1534,12 +1538,12 @@ module moist_subroutines_cloud_microphys
             
             if (qr (k) > qpmin) then
                 qsw = wqs2 (tz (k), den (k), dqsdt)
-                sink = min (qr (k), dim (rh_rain * qsw, qv (k)) / (1. + lcpk (k) * dqsdt))
+                sink = min (qr (k), dim (rh_rain * qsw, qv (k)) / (1. + lcpk * dqsdt))
                 qv (k) = qv (k) + sink
                 qr (k) = qr (k) - sink
-                q_liq (k) = q_liq (k) - sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) - sink * lhl (k) / cvm (k)
+                q_liq = q_liq - sink
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) - sink * lhl / cvm
             endif
 #endif
         
@@ -1547,9 +1551,9 @@ module moist_subroutines_cloud_microphys
             ! update capacity heat and latend heat coefficient
             ! -----------------------------------------------------------------------
             
-            lhl (k) = lv00 + d0_vap * tz (k)
-            cvm (k) = c_air + (qv (k) + q_liq (k) + q_sol (k)) * c_vap
-            lcpk (k) = lhl (k) / cvm (k)
+            lhl = lv00 + d0_vap * tz (k)
+            cvm = c_air + (qv (k) + q_liq + q_sol) * c_vap
+            lcpk = lhl / cvm
         
             ! -----------------------------------------------------------------------
             ! compute cloud fraction
@@ -1560,23 +1564,23 @@ module moist_subroutines_cloud_microphys
             ! combine water species
             ! -----------------------------------------------------------------------
             if (preciprad) then
-                q_sol (k) = qi (k) + qs (k) + qg (k)
-                q_liq (k) = ql (k) + qr (k)
+                q_sol = qi (k) + qs (k) + qg (k)
+                q_liq = ql (k) + qr (k)
             else
-                q_sol (k) = qi (k)
-                q_liq (k) = ql (k)
+                q_sol = qi (k)
+                q_liq = ql (k)
             endif
-            q_cond (k) = q_liq (k) + q_sol (k)
+            q_cond = q_liq + q_sol
             
-            qpz = qv (k) + q_cond (k) ! qpz is conserved
+            qpz = qv (k) + q_cond ! qpz is conserved
         
             ! -----------------------------------------------------------------------
             ! use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
             ! -----------------------------------------------------------------------
             
-            tin = tz (k) - (lcpk (k) * q_cond (k) + icpk (k) * q_sol (k)) ! minimum temperature
-            ! tin = tz (k) - ((lv00 + d0_vap * tz (k)) * q_cond (k) + &
-            ! (li00 + dc_ice * tz (k)) * q_sol (k)) / (c_air + qpz * c_vap)
+            tin = tz (k) - (lcpk * q_cond + icpk * q_sol) ! minimum temperature
+            ! tin = tz (k) - ((lv00 + d0_vap * tz (k)) * q_cond + &
+            ! (li00 + dc_ice * tz (k)) * q_sol) / (c_air + qpz * c_vap)
             
             ! -----------------------------------------------------------------------
             ! determine saturated specific humidity
@@ -1592,8 +1596,8 @@ module moist_subroutines_cloud_microphys
                 ! mixed phase:
                 qsi = iqs1 (tin, den (k))
                 qsw = wqs1 (tin, den (k))
-                if (q_cond (k) > 3.e-6) then
-                    rqi = q_sol (k) / q_cond (k)
+                if (q_cond > 3.e-6) then
+                    rqi = q_sol / q_cond
                 else
                 ! WMP impose CALIPSO ice polynomial from 0 C to -40 C 
                     rqi = ice_fraction(tin,cnv_fraction,srf_type)
@@ -1625,7 +1629,7 @@ module moist_subroutines_cloud_microphys
                     ! top-hat
                     if(q_plus.le.qstar) then
                         ! little/no cloud cover 
-                    elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
+                    elseif (qstar < q_plus .and. q_cond > qc_crt) then
                         qa (k) = max(qcmin, min(1., qa (k) + (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
                     elseif (qstar .le. q_minus) then
                         qa (k) = 1.0 ! air fully saturated; 100 % cloud cover
