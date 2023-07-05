@@ -13,9 +13,9 @@ module test_cloud_microphys_subroutines
         DQVDTmic, DQVDTmic_ref, DQLDTmic, DQLDTmic_ref, DQRDTmic, DQRDTmic_ref, DQIDTmic, DQIDTmic_ref, &
         DQSDTmic, DQSDTmic_ref, DQGDTmic, DQGDTmic_ref, DQADTmic, DQADTmic_ref, DTDTmic, DTDTmic_ref, &
         W, W_ref, U, V, DUDTmic, DUDTmic_ref, DVDTmic, DVDTmic_ref, DZ, DP, NACTL, NACTI, &
-        REV_LS, REV_LS_ref, RSU_LS, RSU_LS_ref, PFL_LS, PFL_LS_ref, PFI_LS, PFI_LS_ref, T
+        REV_LS, REV_LS_ref, RSU_LS, RSU_LS_ref, PFL_LS, PFL_LS_ref, PFI_LS, PFI_LS_ref, T, RHCRIT3D
 
-    real, dimension(:,:), allocatable :: AREA, FRLAND, CNV_FRC, SRF_TYPE, PRCP_RAIN, PRCP_RAIN_ref, PRCP_SNOW, PRCP_SNOW_ref, &
+    real, dimension(:,:), allocatable :: AREA, frland2D, CNV_FRC, SRF_TYPE, EIS, PRCP_RAIN, PRCP_RAIN_ref, PRCP_SNOW, PRCP_SNOW_ref, &
     PRCP_ICE, PRCP_ICE_ref, PRCP_GRAUPEL, PRCP_GRAUPEL_ref
 
     real :: DT_MOIST, ANV_ICEFALL, LS_ICEFALL
@@ -52,6 +52,7 @@ module test_cloud_microphys_subroutines
         allocate(DQADTmic(IM, JM, LM))
         allocate(DQADTmic_ref(IM, JM, LM))
         allocate(DTDTmic(IM, JM, LM))
+        allocate(RHCRIT3D(IM, JM, LM))
         allocate(T(IM, JM, LM))
         allocate(W(IM, JM, LM))
         allocate(W_ref(IM, JM, LM))
@@ -64,9 +65,10 @@ module test_cloud_microphys_subroutines
         allocate(DZ(IM, JM, LM))
         allocate(DP(IM, JM, LM))
         allocate(AREA(IM, JM))
-        allocate(FRLAND(IM, JM))
+        allocate(frland2D(IM, JM))
         allocate(CNV_FRC(IM, JM))
         allocate(SRF_TYPE(IM, JM))
+        allocate(EIS(IM, JM))
         allocate(NACTL(IM, JM, LM))
         allocate(NACTI(IM, JM, LM))
         allocate(RAD_QI_ref(IM, JM, LM))
@@ -224,10 +226,10 @@ module test_cloud_microphys_subroutines
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': In DT_MOIST = ', DT_MOIST
         
-        open(newunit=fileID, file=trim(dirName) // '/FRLAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        read(fileID) FRLAND
+        open(newunit=fileID, file=trim(dirName) // '/frland2D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) frland2D
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': In FRLAND = ', FRLAND
+        ! write(*,*) 'Rank ', trim(rank_str),': In frland2D = ', frland2D
         
         open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) CNV_FRC
@@ -238,6 +240,16 @@ module test_cloud_microphys_subroutines
         read(fileID) SRF_TYPE
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': In SRF_TYPE = ', SRF_TYPE
+
+        open(newunit=fileID, file=trim(dirName) // '/EIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) EIS
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In EIS = ', EIS
+
+        open(newunit=fileID, file=trim(dirName) // '/RHCRIT3D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) RHCRIT3D
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In RHCRIT3D = ', RHCRIT3D
         
         open(newunit=fileID, file=trim(dirName) // '/ANV_ICEFALL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ANV_ICEFALL
@@ -264,16 +276,16 @@ module test_cloud_microphys_subroutines
         call start_timing()
 
         call gfdl_cloud_microphys_driver( &
-            ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
-            RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI)/1.e6, &
+            ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
+            RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
             ! Output tendencies
             DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
             DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
             ! Input fields
             T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
             ! constant inputs
-            AREA, DT_MOIST, FRLAND, CNV_FRC, SRF_TYPE, &
-            ANV_ICEFALL, LS_ICEFALL, &
+            AREA, DT_MOIST, frland2D, CNV_FRC, SRF_TYPE, EIS, &
+            RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
             ! Output rain re-evaporation and sublimation
             REV_LS, RSU_LS, & 
             ! Output precipitates
@@ -298,60 +310,70 @@ module test_cloud_microphys_subroutines
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': Out RAD_QS_ref = ', RAD_QS_ref
         
-        open(newunit=fileID, file=trim(dirName) // '/DTDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DTDTmic_ref
+        open(newunit=fileID, file=trim(dirName) // '/DQVDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQVDTmic_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DTDTmic_ref = ', DTDTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQVDTmic = ', DQVDTmic
+        
+        open(newunit=fileID, file=trim(dirName) // '/DQLDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQLDTmic_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQLDTmic = ', DQLDTmic
+        
+        open(newunit=fileID, file=trim(dirName) // '/DQRDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQRDTmic_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQRDTmic = ', DQRDTmic
+        
+        open(newunit=fileID, file=trim(dirName) // '/DQIDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQIDTmic_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQIDTmic = ', DQIDTmic
+        
+        open(newunit=fileID, file=trim(dirName) // '/DQSDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQSDTmic_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQSDTmic = ', DQSDTmic
+        
+        open(newunit=fileID, file=trim(dirName) // '/DQGDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQGDTmic_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQGDTmic = ', DQGDTmic
         
         open(newunit=fileID, file=trim(dirName) // '/DQADTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) DQADTmic_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQADTmic_ref = ', DQADTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': In DQADTmic = ', DQADTmic
         
-        open(newunit=fileID, file=trim(dirName) // '/DUDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DUDTmic_ref
+        open(newunit=fileID, file=trim(dirName) // '/DTDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DTDTmic_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DUDTmic_ref = ', DUDTmic_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/DVDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DVDTmic_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DVDTmic_ref = ', DVDTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': In DTDTmic = ', DTDTmic
         
         open(newunit=fileID, file=trim(dirName) // '/W_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) W_ref
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': Out W_ref = ', W_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/DQVDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQVDTmic_ref
+
+        open(newunit=fileID, file=trim(dirName) // '/DUDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DUDTmic_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQVDTmic_ref = ', DQVDTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': In DUDTmic = ', DUDTmic
         
-        open(newunit=fileID, file=trim(dirName) // '/DQLDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQLDTmic_ref
+        open(newunit=fileID, file=trim(dirName) // '/DVDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DVDTmic_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQLDTmic_ref = ', DQLDTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': In DVDTmic = ', sum(DVDTmic)
+
+        open(newunit=fileID, file=trim(dirName) // '/REV_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) REV_LS_ref
+        close(fileID)
+        ! write(*,*) 'Rank ', trim(rank_str),': Out REV_LS_ref = ', REV_LS_ref
         
-        open(newunit=fileID, file=trim(dirName) // '/DQRDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQRDTmic_ref
+        open(newunit=fileID, file=trim(dirName) // '/RSU_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RSU_LS_ref
         close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQRDTmic_ref = ', DQRDTmic_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/DQIDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQIDTmic_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQIDTmic_ref = ', DQIDTmic_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/DQSDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQSDTmic_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQSDTmic_ref = ', DQSDTmic_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/DQGDTmic_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) DQGDTmic_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out DQGDTmic_ref = ', DQGDTmic_ref
+        ! write(*,*) 'Rank ', trim(rank_str),': Out RSU_LS_ref = ', RSU_LS_ref
         
         open(newunit=fileID, file=trim(dirName) // '/PRCP_RAIN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) PRCP_RAIN_ref
@@ -382,16 +404,6 @@ module test_cloud_microphys_subroutines
         read(fileID) PFI_LS_ref
         close(fileID)
         ! write(*,*) 'Rank ', trim(rank_str),': Out PFI_LS_ref = ', PFI_LS_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/REV_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) REV_LS_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out REV_LS_ref = ', REV_LS_ref
-        
-        open(newunit=fileID, file=trim(dirName) // '/RSU_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
-        read(fileID) RSU_LS_ref
-        close(fileID)
-        ! write(*,*) 'Rank ', trim(rank_str),': Out RSU_LS_ref = ', RSU_LS_ref
 
         print*,'Compare sum(diff(RAD_QI)) = ',sum(RAD_QI_ref - RAD_QI)
         print*,'Compare sum(RAD_QI) = ',sum(RAD_QI)
@@ -400,26 +412,6 @@ module test_cloud_microphys_subroutines
         print*,'Compare sum(diff(RAD_QS)) = ',sum(RAD_QS_ref - RAD_QS)
         print*,'Compare sum(RAD_QS) = ',sum(RAD_QS)
         print*,'Compare sum(RAD_QS_ref) = ',sum(RAD_QS_ref)
-        print*,'***'
-        print*,'Compare sum(diff(DTDTmic)) = ',sum(DTDTmic_ref - DTDTmic)
-        print*,'Compare sum(DTDTmic) = ',sum(DTDTmic)
-        print*,'Compare sum(DTDTmic_ref) = ',sum(DTDTmic_ref)
-        print*,'***'
-        print*,'Compare sum(diff(DQADTmic)) = ',sum(DQADTmic_ref - DQADTmic)
-        print*,'Compare sum(DQADTmic) = ',sum(DQADTmic)
-        print*,'Compare sum(DQADTmic_ref) = ',sum(DQADTmic_ref)
-        print*,'***'
-        print*,'Compare sum(diff(DUDTmic)) = ',sum(DUDTmic_ref - DUDTmic)
-        print*,'Compare sum(DUDTmic) = ',sum(DUDTmic)
-        print*,'Compare sum(DUDTmic_ref) = ',sum(DUDTmic_ref)
-        print*,'***'
-        print*,'Compare sum(diff(DVDTmic)) = ',sum(DVDTmic_ref - DVDTmic)
-        print*,'Compare sum(DVDTmic) = ',sum(DVDTmic)
-        print*,'Compare sum(DVDTmic_ref) = ',sum(DVDTmic_ref)
-        print*,'***'
-        print*,'Compare sum(diff(W)) = ',sum(W_ref - W)
-        print*,'Compare sum(W) = ',sum(W)
-        print*,'Compare sum(W_ref) = ',sum(W_ref)
         print*,'***'
         print*,'Compare sum(diff(DQVDTmic)) = ',sum(DQVDTmic_ref - DQVDTmic)
         print*,'Compare sum(DQVDTmic) = ',sum(DQVDTmic)
@@ -445,72 +437,59 @@ module test_cloud_microphys_subroutines
         print*,'Compare sum(DQGDTmic) = ',sum(DQGDTmic)
         print*,'Compare sum(DQGDTmic_ref) = ',sum(DQGDTmic_ref)
         print*,'***'
-        print*,'*** Note : Small values of PRCP_* will differ between GPU and CPU ***'
-        print*,'Compare sum(diff(PRCP_RAIN)) = ',sum(PRCP_RAIN_ref - PRCP_RAIN)
-        print*,'Compare sum(PRCP_RAIN) = ',sum(PRCP_RAIN)
-        print*,'Compare sum(PRCP_RAIN_ref) = ',sum(PRCP_RAIN_ref)
-
-        ! open(newunit=fileID, file='./PRCP_RAIN_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PRCP_RAIN
-        ! close(fileID)
+        print*,'Compare sum(diff(DQADTmic)) = ',sum(DQADTmic_ref - DQADTmic)
+        print*,'Compare sum(DQADTmic) = ',sum(DQADTmic)
+        print*,'Compare sum(DQADTmic_ref) = ',sum(DQADTmic_ref)
         print*,'***'
-        print*,'Compare sum(diff(PRCP_SNOW)) = ',sum(PRCP_SNOW_ref - PRCP_SNOW)
-        print*,'Compare sum(PRCP_SNOW) = ',sum(PRCP_SNOW)
-        print*,'Compare sum(PRCP_SNOW_ref) = ',sum(PRCP_SNOW_ref)
-
-        ! open(newunit=fileID, file='./PRCP_SNOW_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PRCP_SNOW
-        ! close(fileID)
-
+        print*,'Compare sum(diff(DTDTmic)) = ',sum(DTDTmic_ref - DTDTmic)
+        print*,'Compare sum(DTDTmic) = ',sum(DTDTmic)
+        print*,'Compare sum(DTDTmic_ref) = ',sum(DTDTmic_ref)
         print*,'***'
-        print*,'Compare sum(diff(PRCP_ICE)) = ',sum(PRCP_ICE_ref - PRCP_ICE)
-        print*,'Compare sum(PRCP_ICE) = ',sum(PRCP_ICE)
-        print*,'Compare sum(PRCP_ICE_ref) = ',sum(PRCP_ICE_ref)
-
-        ! open(newunit=fileID, file='./PRCP_ICE_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PRCP_ICE
-        ! close(fileID)
+        print*,'Compare sum(diff(W)) = ',sum(W_ref - W)
+        print*,'Compare sum(W) = ',sum(W)
+        print*,'Compare sum(W_ref) = ',sum(W_ref)
         print*,'***'
-        print*,'Compare sum(diff(PRCP_GRAUPEL)) = ',sum(PRCP_GRAUPEL_ref - PRCP_GRAUPEL)
-        print*,'Compare sum(PRCP_GRAUPEL) = ',sum(PRCP_GRAUPEL)
-        print*,'Compare sum(PRCP_GRAUPEL_ref) = ',sum(PRCP_GRAUPEL_ref)
-
-        ! open(newunit=fileID, file='./PRCP_GRAUPEL_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PRCP_GRAUPEL
-        ! close(fileID)
-        print*,'*************'
-        print*,'Compare sum(diff(PFL_LS)) = ',sum(PFL_LS_ref - PFL_LS)
-        print*,'Compare sum(PFL_LS) = ',sum(PFL_LS)
-        print*,'Compare sum(PFL_LS_ref) = ',sum(PFL_LS_ref)
-
-        ! open(newunit=fileID, file='./PFL_LS_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PFL_LS
-        ! close(fileID)
+        print*,'Compare sum(diff(DUDTmic)) = ',sum(DUDTmic_ref - DUDTmic)
+        print*,'Compare sum(DUDTmic) = ',sum(DUDTmic)
+        print*,'Compare sum(DUDTmic_ref) = ',sum(DUDTmic_ref)
         print*,'***'
-        print*,'Compare sum(diff(PFI_LS)) = ',sum(PFI_LS_ref - PFI_LS)
-        print*,'Compare sum(PFI_LS) = ',sum(PFI_LS)
-        print*,'Compare sum(PFI_LS_ref) = ',sum(PFI_LS_ref)
-
-        ! open(newunit=fileID, file='./PFI_LS_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) PFL_LS
-        ! close(fileID)
+        print*,'Compare sum(diff(DVDTmic)) = ',sum(DVDTmic_ref - DVDTmic)
+        print*,'Compare sum(DVDTmic) = ',sum(DVDTmic)
+        print*,'Compare sum(DVDTmic_ref) = ',sum(DVDTmic_ref)
         print*,'***'
         print*,'Compare sum(diff(REV_LS)) = ',sum(REV_LS_ref - REV_LS)
         print*,'Compare sum(REV_LS) = ',sum(REV_LS)
         print*,'Compare sum(REV_LS_ref) = ',sum(REV_LS_ref)
-
-        ! open(newunit=fileID, file='./REV_LS_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) REV_LS
-        ! close(fileID)
         print*,'***'
         print*,'Compare sum(diff(RSU_LS)) = ',sum(RSU_LS_ref - RSU_LS)
         print*,'Compare sum(RSU_LS) = ',sum(RSU_LS)
         print*,'Compare sum(RSU_LS_ref) = ',sum(RSU_LS_ref)
-
-        ! open(newunit=fileID, file='./RSU_LS_COMP_' // trim(rank_str) // '.out', status='new', form='unformatted', action='write')
-        ! write(fileID) REV_LS
-        ! close(fileID)
         print*,'***'
+
+        print*,'*** Note : Small values of PRCP_* will differ between GPU and CPU ***'
+        print*,'Compare sum(diff(PRCP_RAIN)) = ',sum(PRCP_RAIN_ref - PRCP_RAIN)
+        print*,'Compare sum(PRCP_RAIN) = ',sum(PRCP_RAIN)
+        print*,'Compare sum(PRCP_RAIN_ref) = ',sum(PRCP_RAIN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_SNOW)) = ',sum(PRCP_SNOW_ref - PRCP_SNOW)
+        print*,'Compare sum(PRCP_SNOW) = ',sum(PRCP_SNOW)
+        print*,'Compare sum(PRCP_SNOW_ref) = ',sum(PRCP_SNOW_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_ICE)) = ',sum(PRCP_ICE_ref - PRCP_ICE)
+        print*,'Compare sum(PRCP_ICE) = ',sum(PRCP_ICE)
+        print*,'Compare sum(PRCP_ICE_ref) = ',sum(PRCP_ICE_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_GRAUPEL)) = ',sum(PRCP_GRAUPEL_ref - PRCP_GRAUPEL)
+        print*,'Compare sum(PRCP_GRAUPEL) = ',sum(PRCP_GRAUPEL)
+        print*,'Compare sum(PRCP_GRAUPEL_ref) = ',sum(PRCP_GRAUPEL_ref)
+        print*,'*************'
+        print*,'Compare sum(diff(PFL_LS)) = ',sum(PFL_LS_ref - PFL_LS)
+        print*,'Compare sum(PFL_LS) = ',sum(PFL_LS)
+        print*,'Compare sum(PFL_LS_ref) = ',sum(PFL_LS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PFI_LS)) = ',sum(PFI_LS_ref - PFI_LS)
+        print*,'Compare sum(PFI_LS) = ',sum(PFI_LS)
+        print*,'Compare sum(PFI_LS_ref) = ',sum(PFI_LS_ref)
 
         ! Encoding results for CI
         print*, '#CI#VAR|RAD_QI#DIFF|',sum(RAD_QI_ref - RAD_QI)
@@ -522,31 +501,6 @@ module test_cloud_microphys_subroutines
         print*, '#CI#VAR|RAD_QS#NEW|',sum(RAD_QS)
         print*, '#CI#VAR|RAD_QS#REF|',sum(RAD_QS_ref)
         print*, '#CI#VAR|RAD_QS#THRSH|',sum(RAD_QS_ref)*1.0e-9
-
-        print*, '#CI#VAR|DTDTmic#DIFF|',sum(DTDTmic_ref - DTDTmic)
-        print*, '#CI#VAR|DTDTmic#NEW|',sum(DTDTmic)
-        print*, '#CI#VAR|DTDTmic#REF|',sum(DTDTmic_ref)
-        print*, '#CI#VAR|DTDTmic#THRSH|',sum(DTDTmic_ref)*1.0e-9
-
-        print*, '#CI#VAR|DQADTmic#DIFF|',sum(DQADTmic_ref - DQADTmic)
-        print*, '#CI#VAR|DQADTmic#NEW|',sum(DQADTmic)
-        print*, '#CI#VAR|DQADTmic#REF|',sum(DQADTmic_ref)
-        print*, '#CI#VAR|DQADTmic#THRSH|',sum(DQADTmic_ref)*1.0e-9
-        
-        print*, '#CI#VAR|DUDTmic#DIFF|',sum(DUDTmic_ref - DUDTmic)
-        print*, '#CI#VAR|DUDTmic#NEW|',sum(DUDTmic)
-        print*, '#CI#VAR|DUDTmic#REF|',sum(DUDTmic_ref)
-        print*, '#CI#VAR|DUDTmic#THRSH|',sum(DUDTmic_ref)*1.0e-9
-
-        print*, '#CI#VAR|DVDTmic#DIFF|',sum(DVDTmic_ref - DVDTmic)
-        print*, '#CI#VAR|DVDTmic#NEW|',sum(DVDTmic)
-        print*, '#CI#VAR|DVDTmic#REF|',sum(DVDTmic_ref)
-        print*, '#CI#VAR|DVDTmic#THRSH|',sum(DVDTmic_ref)*1.0e-9
-
-        print*, '#CI#VAR|W#DIFF|',sum(W_ref - W)
-        print*, '#CI#VAR|W#NEW|',sum(W)
-        print*, '#CI#VAR|W#REF|',sum(W_ref)
-        print*, '#CI#VAR|W#THRSH|',sum(W_ref)*1.0e-9
 
         print*, '#CI#VAR|DQVDTmic#DIFF|',sum(DQVDTmic_ref - DQVDTmic)
         print*, '#CI#VAR|DQVDTmic#NEW|',sum(DQVDTmic)
@@ -572,6 +526,46 @@ module test_cloud_microphys_subroutines
         print*, '#CI#VAR|DQSDTmic#NEW|',sum(DQSDTmic)
         print*, '#CI#VAR|DQSDTmic#REF|',sum(DQSDTmic_ref)
         print*, '#CI#VAR|DQSDTmic#THRSH|',sum(DQSDTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|DQGDTmic#DIFF|',sum(DQGDTmic_ref - DQGDTmic)
+        print*, '#CI#VAR|DQGDTmic#NEW|',sum(DQGDTmic)
+        print*, '#CI#VAR|DQGDTmic#REF|',sum(DQGDTmic_ref)
+        print*, '#CI#VAR|DQGDTmic#THRSH|',sum(DQGDTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|DQADTmic#DIFF|',sum(DQADTmic_ref - DQADTmic)
+        print*, '#CI#VAR|DQADTmic#NEW|',sum(DQADTmic)
+        print*, '#CI#VAR|DQADTmic#REF|',sum(DQADTmic_ref)
+        print*, '#CI#VAR|DQADTmic#THRSH|',sum(DQADTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|DTDTmic#DIFF|',sum(DTDTmic_ref - DTDTmic)
+        print*, '#CI#VAR|DTDTmic#NEW|',sum(DTDTmic)
+        print*, '#CI#VAR|DTDTmic#REF|',sum(DTDTmic_ref)
+        print*, '#CI#VAR|DTDTmic#THRSH|',sum(DTDTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|W#DIFF|',sum(W_ref - W)
+        print*, '#CI#VAR|W#NEW|',sum(W)
+        print*, '#CI#VAR|W#REF|',sum(W_ref)
+        print*, '#CI#VAR|W#THRSH|',sum(W_ref)*1.0e-9
+        
+        print*, '#CI#VAR|DUDTmic#DIFF|',sum(DUDTmic_ref - DUDTmic)
+        print*, '#CI#VAR|DUDTmic#NEW|',sum(DUDTmic)
+        print*, '#CI#VAR|DUDTmic#REF|',sum(DUDTmic_ref)
+        print*, '#CI#VAR|DUDTmic#THRSH|',sum(DUDTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|DVDTmic#DIFF|',sum(DVDTmic_ref - DVDTmic)
+        print*, '#CI#VAR|DVDTmic#NEW|',sum(DVDTmic)
+        print*, '#CI#VAR|DVDTmic#REF|',sum(DVDTmic_ref)
+        print*, '#CI#VAR|DVDTmic#THRSH|',sum(DVDTmic_ref)*1.0e-9
+
+        print*, '#CI#VAR|REV_LS#DIFF|',sum(REV_LS_ref - REV_LS)
+        print*, '#CI#VAR|REV_LS#NEW|',sum(REV_LS)
+        print*, '#CI#VAR|REV_LS#REF|',sum(REV_LS_ref)
+        print*, '#CI#VAR|REV_LS#THRSH|',sum(REV_LS_ref)*1.0e-9
+
+        print*, '#CI#VAR|RSU_LS#DIFF|',sum(RSU_LS_ref - RSU_LS)
+        print*, '#CI#VAR|RSU_LS#NEW|',sum(RSU_LS)
+        print*, '#CI#VAR|RSU_LS#REF|',sum(RSU_LS_ref)
+        print*, '#CI#VAR|RSU_LS#THRSH|',sum(RSU_LS_ref)*1.0e-9
 
         print*, '#CI#VAR|PRCP_RAIN#DIFF|',sum(PRCP_RAIN_ref - PRCP_RAIN)
         print*, '#CI#VAR|PRCP_RAIN#NEW|',sum(PRCP_RAIN)
@@ -602,21 +596,6 @@ module test_cloud_microphys_subroutines
         print*, '#CI#VAR|PFI_LS#NEW|',sum(PFI_LS)
         print*, '#CI#VAR|PFI_LS#REF|',sum(PFI_LS_ref)
         print*, '#CI#VAR|PFI_LS#THRSH|',sum(PFI_LS_ref)*1.0e-9
-
-        print*, '#CI#VAR|REV_LS#DIFF|',sum(REV_LS_ref - REV_LS)
-        print*, '#CI#VAR|REV_LS#NEW|',sum(REV_LS)
-        print*, '#CI#VAR|REV_LS#REF|',sum(REV_LS_ref)
-        print*, '#CI#VAR|REV_LS#THRSH|',sum(REV_LS_ref)*1.0e-9
-
-        print*, '#CI#VAR|RSU_LS#DIFF|',sum(RSU_LS_ref - RSU_LS)
-        print*, '#CI#VAR|RSU_LS#NEW|',sum(RSU_LS)
-        print*, '#CI#VAR|RSU_LS#REF|',sum(RSU_LS_ref)
-        print*, '#CI#VAR|RSU_LS#THRSH|',sum(RSU_LS_ref)*1.0e-9
-
-        print*, '#CI#VAR|RSU_LS#DIFF|',sum(RSU_LS_ref - RSU_LS)
-        print*, '#CI#VAR|RSU_LS#NEW|',sum(RSU_LS)
-        print*, '#CI#VAR|RSU_LS#REF|',sum(RSU_LS_ref)
-        print*, '#CI#VAR|RSU_LS#THRSH|',sum(RSU_LS_ref)*1.0e-9
     end subroutine
 end module
 
