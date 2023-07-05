@@ -674,7 +674,7 @@ module moist_subroutines_cloud_microphys
         real :: dq, dq_p1
         
         integer :: k
-        
+
         if (z_var) then
             dm (1) = 0.
             
@@ -728,9 +728,10 @@ module moist_subroutines_cloud_microphys
     
         real, intent (in), dimension (ktop:kbot) :: h_var, ccn
         
-        real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, di, lhl, lhi
+        real, dimension (ktop:kbot) :: di
         real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
         
+        real :: icpk, tcpk, lhl, lhi
         real :: rdts, fac_g2v, fac_i2s, fac_imlt, fac_frz
         real :: tz, qv, ql, qr, qi, qs, qg, melt, ifrac, newqi, newql
         real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
@@ -759,11 +760,9 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            lhi (k) = li00 + dc_ice * tzk (k)
             q_liq (k) = qlk (k) + qrk (k)
             q_sol (k) = qik (k) + qsk (k) + qgk (k)
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            icpk (k) = lhi (k) / cvm (k)
         enddo
     
         ! -----------------------------------------------------------------------
@@ -775,13 +774,14 @@ module moist_subroutines_cloud_microphys
     
 
         do k = ktop, kbot
+            lhi = li00 + dc_ice * tzk (k)
             if (tzk (k) > tice .and. qik (k) > qcmin) then
-            
+                icpk = lhi / cvm (k)
                 ! -----------------------------------------------------------------------
                 ! pimlt: instant melting of cloud ice
                 ! -----------------------------------------------------------------------
                 
-                melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
+                melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk)
                 tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
 
                 ! new total condensate / old condensate 
@@ -794,7 +794,7 @@ module moist_subroutines_cloud_microphys
                 q_liq (k) = q_liq (k) + melt
                 q_sol (k) = q_sol (k) - melt
                 cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
+                tzk (k) = tzk (k) - melt * lhi / cvm (k)
 
             elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
 
@@ -817,7 +817,7 @@ module moist_subroutines_cloud_microphys
                 q_liq (k) = q_liq (k) - sink
                 q_sol (k) = q_sol (k) + sink
                 cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tzk (k) = tzk (k) + sink * lhi (k) / cvm (k)
+                tzk (k) = tzk (k) + sink * lhi / cvm (k)
                 
             endif
         enddo
@@ -831,17 +831,12 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-        
-        do k = ktop, kbot
-            lhl (k) = lv00 + d0_vap * tzk (k)
-            lhi (k) = li00 + dc_ice * tzk (k)
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
-            tcpk (k) = lcpk (k) + icpk (k)
-        enddo
     
         do k = ktop, kbot
-            
+            lhi = li00 + dc_ice * tzk (k)
+            lhl = lv00 + d0_vap * tzk (k)
+            icpk = lhi / cvm (k)
+            tcpk = lhl / cvm (k) + icpk
             ! -----------------------------------------------------------------------
             ! do nothing above p_min
             ! -----------------------------------------------------------------------
@@ -903,7 +898,7 @@ module moist_subroutines_cloud_microphys
                     
                     psmlt = max (0., smlt (tc, dqs0, qs * den (k), psacw, psacr, csmlt, &
                         den (k), denfac (k)))
-                    sink = min (qs, dts * (psmlt + pracs), tc / icpk (k))
+                    sink = min (qs, dts * (psmlt + pracs), tc / icpk)
                     qs = qs - sink
                     ! sjl, 20170321:
                     tmp = min (sink, dim (qs_mlt, ql)) ! max ql due to snow melt
@@ -919,7 +914,7 @@ module moist_subroutines_cloud_microphys
                     q_liq (k) = q_liq (k) + sink
                     q_sol (k) = q_sol (k) - sink
                     cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                    tz = tz - sink * lhi (k) / cvm (k)
+                    tz = tz - sink * lhi / cvm (k)
                     tc = tz - tice
                     
                 endif
@@ -928,8 +923,8 @@ module moist_subroutines_cloud_microphys
                 ! update capacity heat and latend heat coefficient
                 ! -----------------------------------------------------------------------
                 
-                lhi (k) = li00 + dc_ice * tz
-                icpk (k) = lhi (k) / cvm (k)
+                lhi = li00 + dc_ice * tz
+                icpk = lhi / cvm (k)
             
                 ! -----------------------------------------------------------------------
                 ! melting of graupel
@@ -960,13 +955,13 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     
                     pgmlt = dts * gmlt (tc, dqs0, qden, pgacw, pgacr, cgmlt, den (k))
-                    pgmlt = min (max (0., pgmlt), qg, tc / icpk (k))
+                    pgmlt = min (max (0., pgmlt), qg, tc / icpk)
                     qg = qg - pgmlt
                     qr = qr + pgmlt
                     q_liq (k) = q_liq (k) + pgmlt
                     q_sol (k) = q_sol (k) - pgmlt
                     cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                    tz = tz - pgmlt * lhi (k) / cvm (k)
+                    tz = tz - pgmlt * lhi / cvm (k)
                     
                 endif
             
@@ -1095,7 +1090,7 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     
                     sink = psacr + pgfr
-                    factor = min (sink, qr, - tc / icpk (k)) / max (sink, qpmin)
+                    factor = min (sink, qr, - tc / icpk) / max (sink, qpmin)
                     
                     psacr = factor * psacr
                     pgfr = factor * pgfr
@@ -1107,7 +1102,7 @@ module moist_subroutines_cloud_microphys
                     q_liq (k) = q_liq (k) - sink
                     q_sol (k) = q_sol (k) + sink
                     cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                    tz = tz + sink * lhi (k) / cvm (k)
+                    tz = tz + sink * lhi / cvm (k)
                     
                 endif
             
@@ -1115,8 +1110,8 @@ module moist_subroutines_cloud_microphys
                 ! update capacity heat and latend heat coefficient
                 ! -----------------------------------------------------------------------
                 
-                lhi (k) = li00 + dc_ice * tz
-                icpk (k) = lhi (k) / cvm (k)
+                lhi = li00 + dc_ice * tz
+                icpk = lhi / cvm (k)
                 
                 ! -----------------------------------------------------------------------
                 ! graupel production terms:
@@ -1175,7 +1170,7 @@ module moist_subroutines_cloud_microphys
                     endif
                 
                     sink = pgacr + pgacw
-                    factor = min (sink, dim (tice, tz) / icpk (k)) / max (sink, qpmin)
+                    factor = min (sink, dim (tice, tz) / icpk) / max (sink, qpmin)
                     pgacr = factor * pgacr
                     pgacw = factor * pgacw
                     
@@ -1186,7 +1181,7 @@ module moist_subroutines_cloud_microphys
                     q_liq (k) = q_liq (k) - sink
                     q_sol (k) = q_sol (k) + sink
                     cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                    tz = tz + sink * lhi (k) / cvm (k)
+                    tz = tz + sink * lhi / cvm (k)
                     
                 endif
                 
