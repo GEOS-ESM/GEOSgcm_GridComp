@@ -2006,13 +2006,11 @@ module moist_subroutines_cloud_microphys
         
         real, intent (out) :: precip
         
-        real, dimension (ktop:kbot) :: dz, qm, dd
-        
+        real, dimension (ktop:kbot) :: qm
+
         integer :: k
         
         do k = ktop, kbot
-            dz (k) = ze (k) - ze (k + 1)
-            dd (k) = dt * vt (k)
             q (k) = q (k) * dp (k)
         enddo
         
@@ -2020,9 +2018,9 @@ module moist_subroutines_cloud_microphys
         ! sedimentation: non - vectorizable loop
         ! -----------------------------------------------------------------------
         
-        qm (ktop) = q (ktop) / (dz (ktop) + dd (ktop))
+        qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
         do k = ktop + 1, kbot
-            qm (k) = (q (k) + dd (k - 1) * qm (k - 1)) / (dz (k) + dd (k))
+            qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
         enddo
         
         ! -----------------------------------------------------------------------
@@ -2030,7 +2028,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            qm (k) = qm (k) * dz (k)
+            qm (k) = qm (k) * (ze (k) - ze (k + 1))
         enddo
         
         ! -----------------------------------------------------------------------
