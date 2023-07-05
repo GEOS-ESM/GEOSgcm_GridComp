@@ -247,22 +247,24 @@ module moist_subroutines_cloud_microphys
     logical :: mono_prof = .true. !< perform terminal fall with mono ppm scheme
     logical :: mp_print = .false. !< cloud microphysics debugging printout
 
-!$acc declare create(missing_value, module_is_initialized, qsmith_tables_initialized, mod_name, &
-!$acc                grav, rdgas, rvgas, cp_air, hlv, hlf, pi, cp_vap, cv_air, cv_vap, c_ice, c_liq, &
-!$acc                eps, zvir, t_ice, table_ice, e00, dc_vap, dc_ice, hlv0, hlf0, lv0, li00, d2ice, li2, &
-!$acc                qpmin, qvmin, qcmin, vr_min, vf_min, dz_min, sfcrho, rhor, cracs, csacr, cgacr, cgacs, &
-!$acc                csacw, craci, csaci, cgacw, cgaci, cracw, acco, cssub, cgsub, crevp, cgfr, csmlt, cgmlt, &
-!$acc                es0, ces0, pie, rgrav, c_air, c_vap, lati, latv, lats, lat2, lcp, icp, tcp, &
-!$acc                d0_vap, lv00, icloud_f, irain_f, de_ice, sedi_transport, do_sedi_w, do_sedi_heat, &
-!$acc                prog_ccn, do_qa, preciprad, fix_negative, do_setup, p_nonhydro, table, table2, table3, &
-!$acc                tablew, des, des2, des3, desw, tables_are_initialized, dt_fr, p_min, cld_min, tice, log_10, &
-!$acc                tice0, t_wfr, t_min, t_sub, mp_time, rh_inc, rh_inr, rh_ins, tau_r2g, tau_smlt, tau_g2r,  &
-!$acc                tau_imlt, tau_i2s, tau_l2r, tau_v2l, tau_l2v, tau_i2v, tau_g2v, tau_v2g, tau_revp, tau_frz, &
-!$acc                dw_land, dw_ocean, ccn_o, ccn_l, rthresh, sat_adj0, qc_crt, qi_lim, ql_mlt, qs_mlt, ql_gen, &
-!$acc                qi_gen, ql0_max, qi0_max, qi0_crt, qr0_crt, qs0_crt, c_paut, c_psaci, c_piacr, c_cracw, &
-!$acc                c_pgacs, c_pgaci, alin, clin, const_vi, const_vs, const_vg, const_vr, vi_fac, vs_fac, &
-!$acc                vg_fac, vr_fac, vi_max, vs_max, vg_max, vr_max, fast_sat_adj, z_slope_liq, z_slope_ice, &
-!$acc                use_ccn, use_ppm, mono_prof, mp_print)
+!$acc declare create(missing_value, grav, rdgas, rvgas, cp_air, hlv, hlf, pi, cp_vap, cv_air, &
+!$acc               cv_vap, c_ice, c_liq, eps, zvir, t_ice, table_ice, e00, dc_vap, dc_ice, &
+!$acc               hlv0, hlf0, lv0, li00, d2ice, li2, qpmin, qvmin, qcmin, vr_min, vf_min, &
+!$acc               dz_min, sfcrho, rhor, rc, &
+!$acc               cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw, &
+!$acc               acco, cssub, cgsub, crevp, cgfr, csmlt, cgmlt, es0, ces0, pie, rgrav, &
+!$acc               c_air, c_vap, lati, latv, lats, lat2, lcp, icp, tcp, d0_vap, &
+!$acc               lv00, icloud_f, irain_f, de_ice, sedi_transport, do_sedi_w, do_sedi_heat, &
+!$acc               prog_ccn, do_bigg, do_evap, do_subl, do_qa, preciprad, fix_negative, do_setup, p_nonhydro, table, &
+!$acc               table2, table3, tablew, des, des2, des3, desw, dt_fr, p_min, cld_min, &
+!$acc               tice, log_10, tice0, t_wfr, t_min, t_sub, mp_time, rh_inc, rh_inr, rh_ins, &
+!$acc               tau_r2g, tau_smlt, tau_g2r, tau_imlt, tau_i2s, tau_l2r, tau_v2l, tau_l2v, &
+!$acc               tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_revp, tau_frz, dw_land, dw_ocean, ccn_o, &
+!$acc               ccn_l, rthreshu, rthreshs, sat_adj0, qc_crt, qi_lim, ql_mlt, qs_mlt, ql_gen, qi_gen, &
+!$acc               ql0_max, qi0_max, qi0_crt, qr0_crt, qs0_crt, c_paut, c_psaci, c_piacr, &
+!$acc               c_cracw, c_pgacs, c_pgaci, alin, clin, const_vi, const_vs, const_vg, const_vr, &
+!$acc               vi_fac, vs_fac, vg_fac, vr_fac, vi_max, vs_max, vg_max, vr_max, fast_sat_adj, &
+!$acc               z_slope_liq, z_slope_ice, use_ccn, use_ppm, mono_prof, mp_print)
 
     contains
 
@@ -4165,19 +4167,18 @@ module moist_subroutines_cloud_microphys
 
 !$acc update device(cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw, &
 !$acc               acco, cssub, cgsub, crevp, cgfr, csmlt, cgmlt, es0, ces0, pie, rgrav, &
-!$acc               fac_rc, c_air, c_vap, lati, latv, lats, lat2, lcp, icp, tcp, d0_vap, &
+!$acc               c_air, c_vap, lati, latv, lats, lat2, lcp, icp, tcp, d0_vap, &
 !$acc               lv00, icloud_f, irain_f, de_ice, sedi_transport, do_sedi_w, do_sedi_heat, &
-!$acc               prog_ccn, do_qa, preciprad, fix_negative, do_setup, p_nonhydro, table, &
+!$acc               prog_ccn, do_bigg, do_evap, do_subl, do_qa, preciprad, fix_negative, do_setup, p_nonhydro, table, &
 !$acc               table2, table3, tablew, des, des2, des3, desw, dt_fr, p_min, cld_min, &
-!$acc               tice, log_10, tice0, t_wfr, t_min, t_sub, mp_time, rh_inc, rh_inr, &
+!$acc               tice, log_10, tice0, t_wfr, t_min, t_sub, mp_time, rh_inc, rh_inr, rh_ins, &
 !$acc               tau_r2g, tau_smlt, tau_g2r, tau_imlt, tau_i2s, tau_l2r, tau_v2l, tau_l2v, &
-!$acc               tau_i2v, tau_g2v, tau_v2g, tau_revp, tau_frz, dw_land, dw_ocean, ccn_o, &
-!$acc               ccn_l, rthresh, sat_adj0, qc_crt, qi_lim, ql_mlt, qs_mlt, ql_gen, qi_gen, &
+!$acc               tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_revp, tau_frz, dw_land, dw_ocean, ccn_o, &
+!$acc               ccn_l, rthreshu, rthreshs, sat_adj0, qc_crt, qi_lim, ql_mlt, qs_mlt, ql_gen, qi_gen, &
 !$acc               ql0_max, qi0_max, qi0_crt, qr0_crt, qs0_crt, c_paut, c_psaci, c_piacr, &
 !$acc               c_cracw, c_pgacs, c_pgaci, alin, clin, const_vi, const_vs, const_vg, const_vr, &
 !$acc               vi_fac, vs_fac, vg_fac, vr_fac, vi_max, vs_max, vg_max, vr_max, fast_sat_adj, &
-!$acc               z_slope_liq, z_slope_ice, use_ccn, use_ppm, mono_prof, mp_print, do_bigg, &
-!$acc               do_evap, do_subl, tau_s2v, tau_v2s, rthreshu, rthreshs)
+!$acc               z_slope_liq, z_slope_ice, use_ccn, use_ppm, mono_prof, mp_print)
 
     end subroutine
 
