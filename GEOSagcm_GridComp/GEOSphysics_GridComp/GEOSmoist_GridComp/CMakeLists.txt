@@ -44,7 +44,8 @@ target_include_directories(${this} PRIVATE
    )
 if (GPU_PHYSICS)
   message(STATUS "Building GPU ports of Moist routines")
-  target_compile_options(${this} PRIVATE -fopenacc -foffload=nvptx-none)
+  set (CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${GEOS_Fortran_OpenACC_Flags}")
+  set (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${GEOS_Fortran_OpenACC_Flags}")
 endif ()
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
