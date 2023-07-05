@@ -560,9 +560,8 @@ module moist_subroutines_cloud_microphys
         real, intent (inout), dimension (ktop:kbot) :: tz, qv, qr, ql, qi, qs, qg, qa
 
         real, intent (inout), dimension (ktop:kbot) :: revap
-        
-        real, dimension (ktop:kbot) :: lhl, cvm, q_liq, q_sol, lcpk
-        
+
+        real :: lhl, cvm, q_liq, q_sol, lcpk  
         real :: dqv, qsat, dqsdt, evap, t2, qden, q_plus, q_minus, sink
         real :: qpz, dq, dqh, tin
         real :: fac_revp 
@@ -590,13 +589,13 @@ module moist_subroutines_cloud_microphys
                 ! define heat capacity and latent heat coefficient
                 ! -----------------------------------------------------------------------
                 
-                lhl (k) = lv00 + d0_vap * tz (k)
-                q_liq (k) = ql (k) + qr (k)
-                q_sol (k) = qi (k) + qs (k) + qg (k)
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                lcpk (k) = lhl (k) / cvm (k)
+                lhl = lv00 + d0_vap * tz (k)
+                q_liq = ql (k) + qr (k)
+                q_sol = qi (k) + qs (k) + qg (k)
+                cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                lcpk = lhl / cvm
                 
-                tin = tz (k) - lcpk (k) * ql (k) ! presence of clouds suppresses the rain evap
+                tin = tz (k) - lcpk * ql (k) ! presence of clouds suppresses the rain evap
                 qpz = qv (k) + ql (k)
                 qsat = wqs2 (tin, den (k), dqsdt)
                 dqh = max (ql (k), h_var(k) * max (qpz, qcmin))
@@ -628,12 +627,12 @@ module moist_subroutines_cloud_microphys
                     t2 = tin * tin
                     evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
                         exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (k))
-                    evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk (k) * dqsdt))
+                    evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk * dqsdt))
                     qr (k) = qr (k) - evap
                     qv (k) = qv (k) + evap
-                    q_liq (k) = q_liq (k) - evap
-                    cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                    tz (k) = tz (k) - evap * lhl (k) / cvm (k)
+                    q_liq = q_liq - evap
+                    cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                    tz (k) = tz (k) - evap * lhl / cvm
                     revap(k) = evap / dt
                 endif
                 
