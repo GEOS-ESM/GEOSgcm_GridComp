@@ -671,14 +671,11 @@ module moist_subroutines_cloud_microphys
         
         logical, intent (in) :: z_var
         
-        real :: dq (km)
+        real :: dq, dq_p1
         
         integer :: k
         
         if (z_var) then
-            do k = 2, km
-                dq (k) = 0.5 * (q (k) - q (k - 1))
-            enddo
             dm (1) = 0.
             
             ! -----------------------------------------------------------------------
@@ -686,10 +683,12 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             
             do k = 2, km - 1
-                dm (k) = 0.5 * min (abs (dq (k) + dq (k + 1)), 0.5 * q (k))
-                if (dq (k) * dq (k + 1) <= 0.) then
-                    if (dq (k) > 0.) then ! local max
-                        dm (k) = min (dm (k), dq (k), - dq (k + 1))
+                dq = 0.5 * (q (k) - q (k - 1))
+                dq_p1 = 0.5 * (q (k + 1) - q (k))
+                dm (k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (k))
+                if (dq * dq_p1 <= 0.) then
+                    if (dq > 0.) then ! local max
+                        dm (k) = min (dm (k), dq, - dq_p1)
                     else
                         dm (k) = 0.
                     endif
