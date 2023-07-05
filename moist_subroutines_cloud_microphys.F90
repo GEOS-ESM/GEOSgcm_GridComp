@@ -1662,9 +1662,11 @@ module moist_subroutines_cloud_microphys
         real :: factor, frac
         real :: tmp, precip, tc, sink
         
-        real, dimension (ktop:kbot) :: lcpk, icpk, cvm, q_liq, q_sol, lhl, lhi
+        real, dimension (ktop:kbot) :: icpk, cvm
         real, dimension (ktop:kbot) :: m1, dm
         
+        real :: q_liq, q_sol, lcpk, lhl, lhi
+
         real :: zs = 0.
         real :: fac_imlt
         
@@ -1680,13 +1682,13 @@ module moist_subroutines_cloud_microphys
         
         do k = ktop, kbot
             m1_sol (k) = 0.
-            lhl (k) = lv00 + d0_vap * tz (k)
-            lhi (k) = li00 + dc_ice * tz (k)
-            q_liq (k) = ql (k) + qr (k)
-            q_sol (k) = qi (k) + qs (k) + qg (k)
-            cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            lcpk (k) = lhl (k) / cvm (k)
-            icpk (k) = lhi (k) / cvm (k)
+            ! lhl (k) = lv00 + d0_vap * tz (k)
+            lhi = li00 + dc_ice * tz (k)
+            q_liq = ql (k) + qr (k)
+            q_sol = qi (k) + qs (k) + qg (k)
+            cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+            ! lcpk = lhl (k) / cvm (k)
+            icpk (k) = lhi / cvm (k)
         enddo
     
         ! -----------------------------------------------------------------------
@@ -1708,15 +1710,19 @@ module moist_subroutines_cloud_microphys
         do k = k0, kbot
             tc = tz (k) - tice
             if (qi (k) > qcmin .and. tc > 0.) then
+                q_liq = ql (k) + qr (k)
+                q_sol = qi (k) + qs (k) + qg (k)
+                lhi = li00 + dc_ice * tz (k)
+
                 sink = min (qi (k), fac_imlt * tc / icpk (k))
                 tmp = min (sink, dim (ql_mlt, ql (k)))
                 ql (k) = ql (k) + tmp
                 qr (k) = qr (k) + sink - tmp
                 qi (k) = qi (k) - sink
-                q_liq (k) = q_liq (k) + sink
-                q_sol (k) = q_sol (k) - sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) - sink * lhi (k) / cvm (k)
+                q_liq = q_liq + sink
+                q_sol = q_sol - sink
+                cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                tz (k) = tz (k) - sink * lhi / cvm (k)
                 tc = tz (k) - tice
             endif
         enddo
@@ -1743,8 +1749,8 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         do k = k0, kbot
-            lhi (k) = li00 + dc_ice * tz (k)
-            icpk (k) = lhi (k) / cvm (k)
+            lhi = li00 + dc_ice * tz (k)
+            icpk (k) = lhi / cvm (k)
         enddo
     
         ! -----------------------------------------------------------------------
