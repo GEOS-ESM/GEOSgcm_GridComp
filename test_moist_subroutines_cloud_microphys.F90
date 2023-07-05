@@ -86,10 +86,10 @@ module test_cloud_microphys_subroutines
         allocate(PRCP_ICE_ref(IM, JM))
         allocate(PRCP_GRAUPEL(IM, JM))
         allocate(PRCP_GRAUPEL_ref(IM, JM))
-        allocate(PFL_LS(IM, JM, LM+1))
-        allocate(PFL_LS_ref(IM, JM, LM+1))
-        allocate(PFI_LS(IM, JM, LM+1))
-        allocate(PFI_LS_ref(IM, JM, LM+1))
+        allocate(PFL_LS(IM, JM, 0:LM))
+        allocate(PFL_LS_ref(IM, JM, 0:LM))
+        allocate(PFI_LS(IM, JM, 0:LM))
+        allocate(PFI_LS_ref(IM, JM, 0:LM))
 
         open(newunit=fileID, file=trim(dirName) // '/RAD_QV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) RAD_QV
@@ -490,7 +490,8 @@ module test_cloud_microphys_subroutines
         print*,'Compare sum(diff(PFI_LS)) = ',sum(PFI_LS_ref - PFI_LS)
         print*,'Compare sum(PFI_LS) = ',sum(PFI_LS)
         print*,'Compare sum(PFI_LS_ref) = ',sum(PFI_LS_ref)
-
+        print*,'*************'
+        
         ! Encoding results for CI
         print*, '#CI#VAR|RAD_QI#DIFF|',sum(RAD_QI_ref - RAD_QI)
         print*, '#CI#VAR|RAD_QI#NEW|',sum(RAD_QI)
