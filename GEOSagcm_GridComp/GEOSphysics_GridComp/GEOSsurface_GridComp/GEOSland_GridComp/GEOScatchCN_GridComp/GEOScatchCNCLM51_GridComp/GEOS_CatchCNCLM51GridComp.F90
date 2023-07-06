@@ -6906,7 +6906,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        else
            first_cn = is_first_step(.false.)
        end if
-       print *, 'first_cn: ', first_cn
 
        ! fzeng: pass current date_time to the CN routines.
        call upd_curr_date_time( AGCM_YY, AGCM_MM, AGCM_DD, dofyr, &
