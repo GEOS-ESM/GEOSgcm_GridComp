@@ -416,6 +416,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! derived quantaties
     ! Derived States
+    call MAPL_TimerOn (MAPL,"----DerivedStates")
     PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
     PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
     DO L=0,LM
@@ -424,6 +425,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     TH       = T/PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+    call MAPL_TimerOff (MAPL,"----DerivedStates")
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -511,6 +513,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        TMP2D = AREA
     endif
 
+    call MAPL_TimerOn (MAPL,"----GF_GEOS5_Interface")
     IF (USE_GF2020==1) THEN
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
@@ -554,20 +557,28 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, PRFIL)
     ENDIF
+    call MAPL_TimerOff (MAPL,"----GF_GEOS5_Interface")
 
     ! add tendencies to the moist import state
+    call MAPL_TimerOn (MAPL,"----AddTendencies")
       U  = U  +  DUDT_DC*GF_DT
       V  = V  +  DVDT_DC*GF_DT
       Q  = Q  + DQVDT_DC*GF_DT
       T  = T  +  DTDT_DC*GF_DT
       TH = T/PK
+    call MAPL_TimerOff (MAPL,"----AddTendencies")
+
     ! update DeepCu QL/QI/CF tendencies
+    call MAPL_TimerOn (MAPL,"----UpdateDeepCuTendencies")
       fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
       TMP3D    = CNV_DQCDT/MASS
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
       DQADT_DC = CNV_MFD*SCLM_DEEP/MASS
+    call MAPL_TimerOff (MAPL,"----UpdateDeepCuTendencies")
+
     ! evap/subl and precip fluxes
+    call MAPL_TimerOn (MAPL,"----EvapSublPrecipFluxed")
       do L=1,LM
          !--- sublimation/evaporation tendencies (kg/kg/s)
            RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
@@ -576,14 +587,20 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
+    call MAPL_TimerOff (MAPL,"----EvapSublPrecipFluxed")
+
     ! add QI/QL/CL tendencies
+    call MAPL_TimerOn (MAPL,"----AddQiQlClTendencies")
       QLCN =         QLCN + DQLDT_DC*GF_DT
       QICN =         QICN + DQIDT_DC*GF_DT
       CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
+    call MAPL_TimerOff (MAPL,"----AddQiQlClTendencies")
+
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
     ! fix 'convective' cloud fraction 
+    call MAPL_TimerOn (MAPL,"----FixConvectiveCloudFraction")
       if (FIX_CNV_CLOUD) then
       ! fix convective cloud
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
@@ -610,6 +627,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QICN = 0.
       END WHERE
       endif
+    call MAPL_TimerOff (MAPL,"----FixConvectiveCloudFraction")
 
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT

@@ -676,6 +676,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT,  DUDT_micro,  'DUDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DVDT_micro,  'DVDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,  DTDT_micro,  'DTDT_micro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"-----PreMicrophysDriver")
     DQVDT_micro = Q
     DQLDT_micro = QLLS + QLCN
     DQIDT_micro = QILS + QICN
@@ -720,6 +721,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! GRAUPEL
          RAD_QG = QGRAUPEL
         ! Run the driver
+    call MAPL_TimerOff(MAPL,"-----PreMicrophysDriver")
+    call MAPL_TimerOn(MAPL,"-----MicrophysDriver")
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
@@ -740,6 +743,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, 1, LM)
+    call MAPL_TimerOff(MAPL,"-----MicrophysDriver")
+    call MAPL_TimerOn(MAPL,"-----PostMicrophysDriver")
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
          U = U + DUDTmic * DT_MOIST
@@ -822,6 +827,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           DUDT_micro = ( U          -  DUDT_micro) / DT_MOIST
           DVDT_micro = ( V          -  DVDT_micro) / DT_MOIST
           DTDT_micro = ( T          -  DTDT_micro) / DT_MOIST
+    call MAPL_TimerOff(MAPL,"-----PostMicrophysDriver")
         call MAPL_TimerOff(MAPL,"---CLDMICRO")
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)

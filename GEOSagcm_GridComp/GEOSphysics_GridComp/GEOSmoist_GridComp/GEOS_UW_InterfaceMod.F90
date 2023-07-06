@@ -265,6 +265,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( TMP2D  (IM,JM) )
 
     ! Derived States
+    call MAPL_TimerOn (MAPL,"----PreShallowConvection")
+    call MAPL_TimerOn (MAPL,"------DerivedStates")
     PKE      = (PLE/MAPL_P00)**(MAPL_KAPPA)
     PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
     PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
@@ -274,6 +276,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
+    call MAPL_TimerOff (MAPL,"----DerivedStates")
 
     ! Required Exports (connectivities to moist siblings)
     call MAPL_GetPointer(EXPORT, MFD_SC,     'MFD_SC'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -314,9 +317,11 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, QITOT, 'QITOT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     QLTOT = QLLS+QLCN
     QITOT = QILS+QICN
+    call MAPL_TimerOff (MAPL,"----PreShallowConvection")
  
       !  Call UW shallow convection
       !----------------------------------------------------------------
+    call MAPL_TimerOn (MAPL,"----ShallowConvection")
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
             U, V, Q, QLTOT, QITOT, T, TKE, KPBL_SC,       &
@@ -338,7 +343,9 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             XC_SC,                                        &
 #endif 
             USE_TRACER_TRANSP_UW)
+    call MAPL_TimerOff (MAPL,"----ShallowConvection")
 
+    call MAPL_TimerOn (MAPL,"----PostShallowConvection")
       !  Apply tendencies
       !--------------------------------------------------------------
         Q  = Q  + DQVDT_SC * UW_DT    ! note this adds to the convective
@@ -424,6 +431,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
+    call MAPL_TimerOff (MAPL,"----PostShallowConvection")
 
     call MAPL_TimerOff (MAPL,"--UW")
 
