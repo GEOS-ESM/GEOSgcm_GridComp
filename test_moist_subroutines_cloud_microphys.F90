@@ -273,14 +273,6 @@ module test_cloud_microphys_subroutines
 
         call update_microphys_constants(dirName, rank_str)
 
-!$acc data copyin(RAD_QV, RAD_QL, RAD_QR, RAD_QG, RAD_CF, NACTL, NACTI, &
-!$acc             DQADTmic, DTDTmic, T, U, V, &
-!$acc             DZ, DP, AREA, DT_MOIST, frland2D, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
-!$acc             LHYDROSTATIC, LPHYS_HYDROSTATIC) &
-!$acc      copyout(REV_LS, RSU_LS, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS)
-!$acc      copy(RAD_QI, RAD_QS,DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
-!$acc           W, DUDTmic, DVDTmic)
-
         call start_timing()
 
         call gfdl_cloud_microphys_driver( &
@@ -305,7 +297,6 @@ module test_cloud_microphys_subroutines
             1,IM, 1,JM, 1,LM, 1, LM)
 
         call end_timing()
-!$acc end data
         call print_timing()
 
         open(newunit=fileID, file=trim(dirName) // '/RAD_QI_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
