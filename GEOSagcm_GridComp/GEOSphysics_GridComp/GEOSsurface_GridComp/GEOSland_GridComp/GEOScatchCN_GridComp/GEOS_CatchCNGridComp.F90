@@ -56,7 +56,7 @@ subroutine SetServices ( GC, RC )
     type(CATCHCN_WRAP)             :: wrap
 
     character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF
+    type(ESMF_Config)                       :: SCF, CF
     integer                                 :: LSM_CHOICE
     character(len=ESMF_MAXSTR)              :: tmp
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
@@ -95,6 +95,13 @@ subroutine SetServices ( GC, RC )
 
     call ESMF_ConfigDestroy(SCF, _RC)
 
+    call MAPL_Get (MAPL, CF=CF, _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2, Label='ATM_CO2:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG, Label='RUN_IRRIG:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG, Label='PRESCRIBE_DVG:', _RC)
+    call MAPL_Set (MAPL, CF=CF, _RC)
+
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
     tmp = ''
@@ -112,11 +119,8 @@ subroutine SetServices ( GC, RC )
        _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")
     endif
 
-    call MAPL_Get(MAPL, GCS=gcs, rc=status)
-    VERIFY_(status)
-
     wrap%ptr =>CATCHCN_INTERNAL_STATE
-    call ESMF_UserCompSetInternalState(gcs(CATCHCN), 'CatchcnInternal', wrap, status)
+    call ESMF_UserCompSetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
@@ -1085,7 +1089,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (ESMF_GridComp        ), pointer   :: GCS(:)
-
+    type (CATCHCN_WRAP)                     :: wrap
     integer                                 :: I
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
@@ -1101,6 +1105,9 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
     VERIFY_(STATUS)
 
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
+    VERIFY_(status)
+
 ! Place the land tilegrid in the generic state of each child component
 !---------------------------------------------------------------------
     do I = 1, SIZE(GCS)
@@ -1108,6 +1115,8 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
        VERIFY_(STATUS)
+       call ESMF_UserCompSetInternalState(gcs(I), 'CatchcnInternal', wrap, status)
+       VERIFY_(status)
     end do
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)

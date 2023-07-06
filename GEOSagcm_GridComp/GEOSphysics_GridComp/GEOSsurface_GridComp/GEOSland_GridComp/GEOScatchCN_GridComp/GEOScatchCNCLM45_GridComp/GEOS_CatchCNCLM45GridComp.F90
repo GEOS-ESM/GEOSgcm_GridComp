@@ -196,9 +196,7 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(T_CATCHCN_STATE), pointer :: catchcn_internal
-    type(CATCHCN_WRAP) :: wrap
-    integer :: OFFLINE_MODE
+    integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
     integer :: RESTART
 
 ! Begin...
@@ -217,15 +215,14 @@ subroutine SetServices ( GC, RC )
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage where we are running Catch in the offline mode or not
 
-    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
-    VERIFY_(status)
-    catchcn_internal => wrap%ptr 
-    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE 
-  
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, _RC)
+    call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
+    call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
+    call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -427,7 +424,7 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (catchcn_internal%ATM_CO2 == 4) THEN
+    IF (ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
@@ -1851,7 +1848,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -1965,7 +1962,7 @@ subroutine SetServices ( GC, RC )
 
 ! IRRIGATION MODEL INTERNAL
 
-  IF (catchcn_internal%RUN_IRRIG /= 0) THEN
+  IF (RUN_IRRIG /= 0) THEN
 
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'fraction_of_irrigated_cropland',&
@@ -2063,7 +2060,7 @@ subroutine SetServices ( GC, RC )
 
   !  EXPORT STATE:
 
-  IF (catchcn_internal%RUN_IRRIG /= 0) THEN
+  IF (RUN_IRRIG /= 0) THEN
      call MAPL_AddExportSpec(GC                            ,&
           LONG_NAME          = 'irrigation_rate'           ,&
           UNITS              = 'kg m-2 s-1'                ,&
