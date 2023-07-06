@@ -2407,8 +2407,7 @@ module moist_subroutines_cloud_microphys
         real, parameter :: norms = 942477796.076938
         real, parameter :: normg = 5026548245.74367
         
-        real, dimension (ktop:kbot) :: qden, tc, rhof
-        
+        real :: tc, rhof
         real :: vi1, viCNV, viLSC, IWC
         real :: rBB, C0, C1, DIAM, lnP 
         integer :: k
@@ -2422,9 +2421,9 @@ module moist_subroutines_cloud_microphys
         ! much smaller than sfcrho over high mountains
         ! -----------------------------------------------------------------------
         
-        do k = ktop, kbot
-            rhof (k) = sqrt (min (10., sfcrho / den (k)))
-        enddo
+        ! do k = ktop, kbot
+        !     rhof (k) = sqrt (min (10., sfcrho / den (k)))
+        ! enddo
         
         ! -----------------------------------------------------------------------
         ! ice:
@@ -2438,14 +2437,14 @@ module moist_subroutines_cloud_microphys
                 if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                     vti (k) = vf_min
                 else
-                    tc (k) = tk (k) - tice ! deg C
+                    tc = tk (k) - tice ! deg C
                     IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
                     ! -----------------------------------------------------------------------
                     ! use deng and mace (2008, grl)
                     ! https://doi.org/10.1029/2008GL035054
                     ! -----------------------------------------------------------------------
-                    viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                    viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                    viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
+                    viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
                     ! -----------------------------------------------------------------------
                     ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
                     !                               ice clouds: Results from SPartICus'
@@ -2487,7 +2486,8 @@ module moist_subroutines_cloud_microphys
                 if (qs (k) < ths) then
                     vts (k) = vf_min
                 else
-                    vts (k) = vs_fac * vcons * rhof (k) * exp (0.0625 * log (qs (k) * den (k) / norms))
+                    rhof = sqrt (min (10., sfcrho / den (k)))
+                    vts (k) = vs_fac * vcons * rhof * exp (0.0625 * log (qs (k) * den (k) / norms))
                     vts (k) = min (vs_max, max (vf_min, vts (k)))
                 endif
             enddo
@@ -2504,7 +2504,8 @@ module moist_subroutines_cloud_microphys
                 if (qg (k) < thg) then
                     vtg (k) = vf_min
                 else
-                    vtg (k) = vg_fac * vcong * rhof (k) * sqrt (sqrt (sqrt (qg (k) * den (k) / normg)))
+                    rhof = sqrt (min (10., sfcrho / den (k)))
+                    vtg (k) = vg_fac * vcong * rhof * sqrt (sqrt (sqrt (qg (k) * den (k) / normg)))
                     vtg (k) = min (vg_max, max (vf_min, vtg (k)))
                 endif
             enddo
