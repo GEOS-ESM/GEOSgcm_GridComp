@@ -264,7 +264,7 @@ module moist_subroutines_cloud_microphys
 !$acc               ql0_max, qi0_max, qi0_crt, qr0_crt, qs0_crt, c_paut, c_psaci, c_piacr, &
 !$acc               c_cracw, c_pgacs, c_pgaci, alin, clin, const_vi, const_vs, const_vg, const_vr, &
 !$acc               vi_fac, vs_fac, vg_fac, vr_fac, vi_max, vs_max, vg_max, vr_max, fast_sat_adj, &
-!$acc               z_slope_liq, z_slope_ice, use_ccn, use_ppm, mono_prof, mp_print)
+!$acc               z_slope_liq, z_slope_ice, use_ccn, use_ppm, mono_prof, mp_print, tables_are_initialized)
 
     contains
 
@@ -355,7 +355,7 @@ module moist_subroutines_cloud_microphys
         
         real :: sink, dq, qc0, qc
         real :: fac_rc, qden
-        real :: zs = 0.
+        real :: zs
         real :: dt5
         
         integer :: k
@@ -367,6 +367,8 @@ module moist_subroutines_cloud_microphys
         real, parameter :: thr = 1.e-8
         
         logical :: no_fall
+
+        zs = 0.
     
         dt5 = 0.5 * dt
         
@@ -547,7 +549,7 @@ module moist_subroutines_cloud_microphys
     ! -----------------------------------------------------------------------
 
     subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        !$acc routine vector
+        !$acc routine seq
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -660,7 +662,7 @@ module moist_subroutines_cloud_microphys
     ! -----------------------------------------------------------------------
 
     subroutine linear_prof (km, q, dm, z_var, h_var)
-    !$acc routine vector
+    !$acc routine seq
         implicit none
     
         integer, intent (in) :: km
@@ -1212,7 +1214,7 @@ module moist_subroutines_cloud_microphys
 
     subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ql, qr, qi, qs, qg, qa, subl1, h_var, ccn, cnv_fraction, srf_type)
-    !$acc routine vector
+    !$acc routine seq
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -1667,13 +1669,15 @@ module moist_subroutines_cloud_microphys
         
         real :: q_liq, q_sol, lcpk, lhl, lhi
 
-        real :: zs = 0.
+        real :: zs
         real :: fac_imlt
         
         integer :: k, k0, m
         
         logical :: no_fall
     
+        zs = 0.
+
         fac_imlt = 1. - exp (- dtm / tau_imlt)
         
         ! -----------------------------------------------------------------------
@@ -1989,7 +1993,7 @@ module moist_subroutines_cloud_microphys
     ! =======================================================================
 
     subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
-    !$acc routine vector
+    !$acc routine seq
         implicit none
     
         integer, intent (in) :: ktop, kbot
