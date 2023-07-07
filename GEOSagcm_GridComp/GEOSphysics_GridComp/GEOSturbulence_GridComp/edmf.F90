@@ -305,7 +305,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! if CLASP enabled: mass flux is input
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
       !                    TKE at 2nd model level above threshold
-      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0)
+      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)

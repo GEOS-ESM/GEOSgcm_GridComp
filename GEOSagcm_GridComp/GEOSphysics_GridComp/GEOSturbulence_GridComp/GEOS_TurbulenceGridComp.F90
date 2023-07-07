@@ -220,7 +220,7 @@ contains
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer, optional                  :: RC  ! return code
 !EOP
-    integer                            :: DO_SHOC,NUMUP
+    integer                            :: DO_SHOC, NUMUP, SCM_SL
 !=============================================================================
 !
 ! ErrLog Variables
@@ -255,6 +255,9 @@ contains
 ! Get number of EDMF updrafts
 ! ----------------------------
     call ESMF_ConfigGetAttribute( CF, NUMUP, Label="EDMF_NUMUP:", default=10, RC=STATUS)
+
+
+    call ESMF_ConfigGetAttribute( CF, SCM_SL, Label="SCM_SL:", default=0, RC=STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -600,7 +603,7 @@ contains
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
-#ifdef USE_SCM_SURF
+if (SCM_SL /= 0) then
     call MAPL_AddImportSpec(GC,                                              &
        SHORT_NAME = 'SHOBS',                                                 &
        LONG_NAME  = 'observed_surface_sensible_heat_flux',                   &
@@ -618,7 +621,7 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
-#endif
+end if
 
 
 ! !EXPORT STATE:
@@ -2074,7 +2077,7 @@ contains
 !
 ! Start internal states for idealized SCM surface layer
 !
-#ifdef USE_SCM_SURF
+if (SCM_SL /= 0) then
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'cu_scm',                                    &
        LONG_NAME  = 'scm_surface_momentum_exchange_coefficient', &
@@ -2115,7 +2118,7 @@ contains
        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
-#endif
+end if
 !
 ! End internal states for idealized SCM surface layer
 !
@@ -2466,15 +2469,13 @@ contains
     real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
-    integer                             :: DO_SHOC
+    integer                             :: DO_SHOC, SCM_SL
     real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
 ! Idealized SCM surface layer variables
-#ifdef USE_SCM_SURF
     real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
-#endif
 
 ! Begin... 
 !---------
@@ -2545,16 +2546,17 @@ contains
     VERIFY_(STATUS)
 
 !----- Variables for idealized SCM surface layer ------
-#ifdef USE_SCM_SURF
-    call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', RC=STATUS)
-    VERIFY_(STATUS)
-#endif
+    call MAPL_GetResource (MAPL, SCM_SL, "SCM_SL:", default=0, RC=STATUS)
+    if (SCM_SL /= 0) then
+      call MAPL_GetPointer(INTERNAL, cu_scm,    'cu_scm', RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, ct_scm,    'ct_scm', RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, ssurf_scm, 'ssurf_scm', RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, qsurf_scm, 'qsurf_scm', RC=STATUS)
+      VERIFY_(STATUS)
+    end if
 
 ! Get pointers from internal state
 !---------------------------------
@@ -2852,7 +2854,6 @@ contains
      integer                             :: I,J,L,LOCK_ON,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
 
-#ifdef USE_SCM_SURF
      ! SCM idealized surface-layer parameters
      integer :: SCM_SL          ! 0:    use exchange coefficients from surface grid comp
                                 ! else: idealized surface layer specified in AGCM.rc
@@ -2877,7 +2878,6 @@ contains
                               ! else: idealized surface with prescribed cooling
      real    :: SCM_DTDT_SURF ! Surface heating rate (Ks-1)
      real, dimension(:,:),   pointer     :: SHOBS, LHOBS
-#endif
 
      ! mass-flux constants/parameters
      integer :: DOMF, NumUp, DOCLASP
@@ -3461,11 +3461,13 @@ contains
 !      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
     end if
 
-#ifdef USE_SCM_SURF
+    call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
+
+
+if (SCM_SL /= 0) then
     call MAPL_GetResource(MAPL, SCM_SURF,      'SCM_SURF:', DEFAULT=0 )
     call MAPL_GetResource(MAPL, SCM_DTDT_SURF, 'SCM_DTDT_SURF:', DEFAULT=0. )
 
-    call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
     call MAPL_GetResource(MAPL, SCM_SL_FLUX,   'SCM_SL_FLUX:', DEFAULT=0 )
     call MAPL_GetResource(MAPL, SCM_SH,        'SCM_SH:',      DEFAULT=0. )
     call MAPL_GetResource(MAPL, SCM_EVAP,      'SCM_EVAP:',    DEFAULT=0. )
@@ -3478,7 +3480,6 @@ contains
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.013215659785478 ) ! S11
 !    call MAPL_GetResource(MAPL, SCM_ZETA,      'SCM_ZETA:',    DEFAULT=-0.007700882024895 ) ! S12
 
-        if ( SCM_SL /= 0 ) then
        call MAPL_TimerOn(MAPL,"---SURFACE")
 
        call MAPL_GetPointer(IMPORT, SHOBS,'SHOBS', RC=STATUS)
@@ -3525,8 +3526,8 @@ contains
        evap  => evap_scm
 
        call MAPL_TimerOff(MAPL,"---SURFACE")
-    end if
-#endif
+end if
+
 
 
 
@@ -4744,12 +4745,10 @@ contains
    YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWV3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
 
    ! Add prescribed surface fluxes
-#ifdef USE_SCM_SURF
    if ( SCM_SL /= 0 .and. (SCM_SL_FLUX == 1 .or. SCM_SL_FLUX == 2) ) then
       YS(:,:,LM)  = YS(:,:,LM)  + DMI(:,:,LM)*SH(:,:)!/RHOE(:,:,LM)
       YQV(:,:,LM) = YQV(:,:,LM) + DMI(:,:,LM)*EVAP(:,:)!/RHOE(:,:,LM)
    end if
-#endif
 
       ! Add the topographic roughness term
       ! ----------------------------------
@@ -4941,32 +4940,33 @@ contains
     ! pointers to exports after diffuse
     real, dimension(:,:,:), pointer     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, QAFDIFFUSE
 
-#ifdef USE_SCM_SURF
     real, dimension(:,:),   pointer     :: SHOBS, LHOBS
 
     ! Get info for idealized SCM surface layer
     call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SCM_SL_FLUX, 'SCM_SL_FLUX:', default=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SCM_SH,   'SCM_SH:',   default=0., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SCM_EVAP, 'SCM_EVAP:', default=0., RC=STATUS)
-    VERIFY_(STATUS)
 
     ! Prescribed surface exchange coefficients
     if ( SCM_SL /= 0 ) then
+       call MAPL_GetResource(MAPL, SCM_SL_FLUX, 'SCM_SL_FLUX:', default=0, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, SCM_SH,   'SCM_SH:',   default=0., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, SCM_EVAP, 'SCM_EVAP:', default=0., RC=STATUS)
+       VERIFY_(STATUS)
+
        CU => cu_scm
        CT => ct_scm
        CQ => ct_scm
+
+       call MAPL_GetPointer(IMPORT, SHOBS,'SHOBS', RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, LHOBS,'LHOBS', RC=STATUS)
+       VERIFY_(STATUS)
+
     end if
 
-    call MAPL_GetPointer(IMPORT, SHOBS,'SHOBS', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, LHOBS,'LHOBS', RC=STATUS)
-    VERIFY_(STATUS)
 
-#endif
 
 ! Get the bundles containing the quantities to be diffused, 
 !     their tendencies, their surface values, their surface
@@ -5080,7 +5080,6 @@ contains
           VERIFY_(STATUS)
        end if
 
-#ifdef USE_SCM_SURF
        ! Add presribed fluxes
        if ( SCM_SL /= 0 .and. (SCM_SL_FLUX /= 1 .and. SCM_SL_FLUX /= 2) ) then
           if ( trim(name) == 'S' ) then
@@ -5090,7 +5089,6 @@ contains
              SG => qsurf_scm
           end if
        end if
-#endif
 
 ! Pick the right exchange coefficients
 !-------------------------------------
@@ -5174,7 +5172,6 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
 !---------------------------
 
        if(associated(SF)) then
-#ifdef USE_SCM_SURF
           if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
              if ( trim(name) == 'S' ) then
                 SF(:,:) = scm_sh
@@ -5194,13 +5191,6 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
                 SF = 0.0
              end if
           end if
-#else
-             if(size(SG)>0) then
-                SF = CX*(SG - SX(:,:,LM))
-             else
-                SF = 0.0
-             end if
-#endif
        end if
 
 ! Create tendencies
