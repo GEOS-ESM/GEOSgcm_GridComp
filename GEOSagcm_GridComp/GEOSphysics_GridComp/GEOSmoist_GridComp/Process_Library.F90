@@ -1627,8 +1627,9 @@ module GEOSmoist_Process_Library
           ENDIF
 
           ! this is qs evaluated at Tl
-          qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
-                + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
+!          qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
+!                + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
+          qs1 = GEOS_QSAT( tabs, pval )
 
           beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
 
