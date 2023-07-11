@@ -436,7 +436,7 @@ contains
         do np = 0,numpft  ! PFT index loop
            p = p + 1
              do nv = 1,num_veg ! defined veg loop
-                if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
+                if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
 
                   zlai(nc,nv,nz) = canopystate_inst%elai_patch(p)
                   zsai(nc,nv,nz) = canopystate_inst%esai_patch(p)

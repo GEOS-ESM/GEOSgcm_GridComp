@@ -1117,6 +1117,11 @@ contains
              do nv = 1,num_veg ! defined veg loop
                 if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
 
+                   this%gpp_patch(p)                   = 0._r8
+                   this%excess_cflux_patch(p)          = 0._r8
+                   this%leafc_to_litter_fun_patch(p)   = 0._r8
+                   this%plant_calloc_patch(p)          = 0._r8
+
                   ! "old" variables: CNCLM45 and before
                   this%annsum_npp_patch            (np) = cnpft(nc,nz,nv, 26)
                   this%prev_frootc_to_litter_patch (np) = cnpft(nc,nz,nv, 41)
