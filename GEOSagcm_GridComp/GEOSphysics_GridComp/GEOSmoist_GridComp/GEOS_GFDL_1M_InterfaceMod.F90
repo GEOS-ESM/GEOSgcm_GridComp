@@ -42,7 +42,7 @@ module GEOS_GFDL_1M_InterfaceMod
   character(len=ESMF_MAXSTR)        :: COMP_NAME
 
   ! Local resource variables
-  real    :: TURNRHCRIT
+  real    :: TURNRHCRIT, TURNRHCRIT_PARAM
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -240,16 +240,16 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call gfdl_cloud_microphys_init(comm)
     call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=140.e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, FAC_RL          , 'FAC_RL:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT_PARAM:', DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, PDFSHAPE,         'PDFSHAPE:',         DEFAULT= 1,      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ANV_ICEFALL,      'ANV_ICEFALL:',      DEFAULT= 0.8,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LS_ICEFALL,       'LS_ICEFALL:',       DEFAULT= 0.8,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, FAC_RI,           'FAC_RI:',           DEFAULT= 1.0,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RI,           'MIN_RI:',           DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAX_RI,           'MAX_RI:',           DEFAULT=140.e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, FAC_RL,           'FAC_RL:',           DEFAULT= 1.0,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RL,           'MIN_RL:',           DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MAX_RL,           'MAX_RL:',           DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
                                  CCW_EVAP_EFF = 4.e-3
                     if (do_evap) CCW_EVAP_EFF = 0.0 ! Evap done inside GFDL-MP
@@ -423,7 +423,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( frland2D     (IM,JM) ) 
+    ALLOCATE ( frland2D     (IM,JM) )
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
@@ -540,9 +540,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
            ! determine combined minrhcrit in stable/unstable regimes
              minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
-             if (turnrhcrit <= 0.0) then
+             if (TURNRHCRIT_PARAM <= 0.0) then
               ! determine the turn pressure using the LCL
                 turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+             else
+                turnrhcrit  = TURNRHCRIT_PARAM
              endif
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
@@ -558,12 +560,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
              endif
-           ! include grid cell area scaling and limit RHcrit to > 70% 
+           ! include grid cell area scaling and limit RHcrit to > 70%
              ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)*SQRT(SQRT(AREA(I,J)/1.e10)) ) )
            ! fill RHCRIT export
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Put condensates in touch with the PDF
-             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP 
+             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
              call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -861,12 +863,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                END DO ; END DO ; END DO
             endif
 
-            if (associated(DBZ_1KM)) then  
+            if (associated(DBZ_1KM)) then
                call cs_interpolator(1, IM, 1, JM, LM, TMP3D, 1000., ZLE0, DBZ_1KM, -20.)
             endif
-                   
+
             if (associated(DBZ_TOP)) then
-               DBZ_TOP=MAPL_UNDEF  
+               DBZ_TOP=MAPL_UNDEF
                DO J=1,JM ; DO I=1,IM
                   DO L=LM,1,-1
                      if (ZLE0(i,j,l) >= 25000.) continue
@@ -876,10 +878,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      endif
                   END DO
                END DO ; END DO
-            endif 
-                   
+            endif
+
             if (associated(DBZ_M10C)) then
-               DBZ_M10C=MAPL_UNDEF  
+               DBZ_M10C=MAPL_UNDEF
                DO J=1,JM ; DO I=1,IM
                   DO L=LM,1,-1
                      if (ZLE0(i,j,l) >= 25000.) continue
@@ -889,7 +891,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      endif
                   END DO
                END DO ; END DO
-            endif        
+            endif
 
         endif
 
