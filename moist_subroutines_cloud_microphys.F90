@@ -488,60 +488,60 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = revap
+        ! evap1 = revap
  
-        if (do_sedi_w) then
-            do k = ktop, kbot
-                dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-            enddo
-        endif
+        ! if (do_sedi_w) then
+        !     do k = ktop, kbot
+        !         dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+        !     enddo
+        ! endif
         
-        ! -----------------------------------------------------------------------
-        ! mass flux induced by falling rain
-        ! -----------------------------------------------------------------------
+        ! ! -----------------------------------------------------------------------
+        ! ! mass flux induced by falling rain
+        ! ! -----------------------------------------------------------------------
         
-        if (no_fall) then
-            r1 = 0.0
-        elseif (use_ppm) then
-            zt (ktop) = ze (ktop)
-            do k = ktop + 1, kbot
-                zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-            enddo
-            zt (kbot + 1) = zs - dt * vtr (kbot)
+        ! if (no_fall) then
+        !     r1 = 0.0
+        ! elseif (use_ppm) then
+        !     zt (ktop) = ze (ktop)
+        !     do k = ktop + 1, kbot
+        !         zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
+        !     enddo
+        !     zt (kbot + 1) = zs - dt * vtr (kbot)
             
-            do k = ktop, kbot
-                if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-            enddo
-            call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-        else
-            call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-        endif
+        !     do k = ktop, kbot
+        !         if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+        !     enddo
+        !     call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+        ! else
+        !     call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+        ! endif
         
-        ! -----------------------------------------------------------------------
-        ! vertical velocity transportation during sedimentation
-        ! -----------------------------------------------------------------------
+        ! ! -----------------------------------------------------------------------
+        ! ! vertical velocity transportation during sedimentation
+        ! ! -----------------------------------------------------------------------
         
-        if (do_sedi_w) then
-            w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-            do k = ktop + 1, kbot
-                w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-                     / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-            enddo
-        endif
+        ! if (do_sedi_w) then
+        !     w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+        !     do k = ktop + 1, kbot
+        !         w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
+        !              / (dm (k) + m1_rain (k - 1) - m1_rain (k))
+        !     enddo
+        ! endif
         
-        ! -----------------------------------------------------------------------
-        ! heat transportation during sedimentation
-        ! -----------------------------------------------------------------------
+        ! ! -----------------------------------------------------------------------
+        ! ! heat transportation during sedimentation
+        ! ! -----------------------------------------------------------------------
         
-        if (do_sedi_heat) &
-            call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+        ! if (do_sedi_heat) &
+        !     call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
         
-        ! -----------------------------------------------------------------------
-        ! evaporation and accretion of rain for the remaing 1 / 2 time step
-        ! -----------------------------------------------------------------------
+        ! ! -----------------------------------------------------------------------
+        ! ! evaporation and accretion of rain for the remaing 1 / 2 time step
+        ! ! -----------------------------------------------------------------------
 
-        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = evap1 + revap
+        ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+        ! evap1 = evap1 + revap
     end subroutine warm_rain
 
     ! -----------------------------------------------------------------------
@@ -638,9 +638,9 @@ module moist_subroutines_cloud_microphys
                     revap(k) = evap / dt
                 endif
                 
-                ! -----------------------------------------------------------------------
-                ! accretion: pracc
-                ! -----------------------------------------------------------------------
+                ! ! -----------------------------------------------------------------------
+                ! ! accretion: pracc
+                ! ! -----------------------------------------------------------------------
                 
                 if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
                     sink = dt * denfac (k) * cracw * exp (0.95 * log (qr (k) * den (k)))
@@ -2013,7 +2013,7 @@ module moist_subroutines_cloud_microphys
         real, dimension (ktop:kbot) :: qm
 
         integer :: k
-        
+
         do k = ktop, kbot
             q (k) = q (k) * dp (k)
         enddo
@@ -2030,7 +2030,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! qm is density at this stage
         ! -----------------------------------------------------------------------
-        
+
         do k = ktop, kbot
             qm (k) = qm (k) * (ze (k) - ze (k + 1))
         enddo
@@ -2048,7 +2048,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update:
         ! -----------------------------------------------------------------------
-        
+
         do k = ktop, kbot
             q (k) = qm (k) / dp (k)
         enddo
@@ -2963,21 +2963,37 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
                 
         cpaut = c_paut * 0.104 * grav / 1.717e-5
-!$acc data copyin(dts, rdt, cpaut)
+
+!$acc data copyin(dts, rdt, cpaut, anv_icefall, lsc_icefall) &
+!$acc      present(area1, land, cnv_fraction, srf_type, eis, &
+!$acc              rhcrit, uin, vin, delp, pt, dz, &
+!$acc              qv, qi, ql, qr, qs, qg, qa, qn, &
+!$acc              u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+!$acc              revap, isubl, rain, snow, ice, graupel, cond, w_var, &
+!$acc              vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+
+!$acc serial
+        do k = ktop, kbot
+            do j = js, je
+                do i = is, ie
+                    m2_rain(i,j,k) = 0.
+                    m2_sol(i,j,k) = 0.
+                    revap(i,j,k) = 0.
+                    isubl(i,j,k) = 0.
+                enddo
+            enddo
+        enddo
+!$acc end serial
+        
+
         ! -----------------------------------------------------------------------
         ! use local variables
         ! -----------------------------------------------------------------------
-!$acc parallel
-!$acc loop gang private(h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-!$acc                   vtiz, vtsz, vtgz, vtrz, dp0, dp1, dz0, dz1, &
-!$acc                   qv0, ql0, qr0, qi0, qs0, qg0, qa0, &
-!$acc                   t0, den, den0, tz, p1, denfac, &
-!$acc                   ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-!$acc                   u0, v0, u1, v1, w1) &
-!$acc      collapse(2)
+!$acc serial
+!$acc loop gang collapse(2)
         do j = js, je
             do i = is, ie
-!$acc loop vector private(omq)
+!!$acc loop seq
                 do k = ktop, kbot
                     
                     t0 (k) = pt (i, j, k)
@@ -3046,7 +3062,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             
                 if (do_sedi_w) then
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         w1 (k) = w (i, j, k)
                     enddo
@@ -3057,14 +3073,14 @@ module moist_subroutines_cloud_microphys
                 
                 ! ccn needs units #/m^3 
                 if (prog_ccn) then
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         ! qn has units # / m^3
                         ccn (k) = qn (i, j, k)
                         c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
                     enddo
                 else
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         ! qn has units # / m^3
                         ccn (k) = qn (i, j, k)
@@ -3080,11 +3096,11 @@ module moist_subroutines_cloud_microphys
                 if (fix_negative) &
                     call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
                 
-                m2_rain (i, j, :) = 0.
-                m2_sol (i, j, :) = 0.
-                revap (i, j, :) = 0.
-                isubl (i, j, :) = 0.
-!$acc loop seq private(r1, s1, g1, i1)
+                ! m2_rain (i, j, :) = 0.
+                ! m2_sol (i, j, :) = 0.
+                ! revap (i, j, :) = 0.
+                ! isubl (i, j, :) = 0.
+!!$acc loop seq
                 do n = 1, ntimes
                     
                     ! -----------------------------------------------------------------------
@@ -3092,14 +3108,14 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     
                     if (p_nonhydro) then
-!$acc loop vector
+!!$acc loop seq
                         do k = ktop, kbot
                             dz1 (k) = dz0 (k)
                             den (k) = den0 (k) ! dry air density remains the same
                             denfac (k) = sqrt (sfcrho / den (k))
                         enddo
                     else
-!$acc loop vector
+!!$acc loop vector
                         do k = ktop, kbot
                             dz1 (k) = dz0 (k) * tz (k) / t0 (k) ! hydrostatic balance
                             den (k) = den0 (k) * dz0 (k) / dz1 (k)
@@ -3139,7 +3155,7 @@ module moist_subroutines_cloud_microphys
                         r1, evap1, m1_rain, w1, h_var1d)
 
                     rain (i,j) = rain (i,j) + r1
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         revap (i,j,k) = revap (i,j,k) + evap1(k)
                         m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
@@ -3154,7 +3170,7 @@ module moist_subroutines_cloud_microphys
                     call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                         denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                         ccn, cnv_fraction(i,j), srf_type(i,j))
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         isubl (i,j,k) = isubl (i,j,k) + subl1(k)
                     enddo
@@ -3168,7 +3184,7 @@ module moist_subroutines_cloud_microphys
                 ! -----------------------------------------------------------------------
                 
                 if (sedi_transport) then
-!$acc loop seq
+!!$acc loop seq
                     do k = ktop + 1, kbot
                         u1 (k) = (dp0 (k) * u1 (k) + m1 (k - 1) * u1 (k - 1)) / (dp0 (k) + m1 (k - 1))
                         v1 (k) = (dp0 (k) * v1 (k) + m1 (k - 1) * v1 (k - 1)) / (dp0 (k) + m1 (k - 1))
@@ -3178,7 +3194,7 @@ module moist_subroutines_cloud_microphys
                 endif
             
                 if (do_sedi_w) then
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         w (i, j, k) = w1 (k)
                     enddo
@@ -3188,7 +3204,7 @@ module moist_subroutines_cloud_microphys
                 ! update moist air mass (actually hydrostatic pressure)
                 ! convert to dry mixing ratios
                 ! -----------------------------------------------------------------------
-!$acc loop vector private(omq, cvm)
+!!$acc loop seq private(omq, cvm)
                 do k = ktop, kbot
                     omq = dp1 (k) / dp0 (k)
                     qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
@@ -3205,7 +3221,7 @@ module moist_subroutines_cloud_microphys
                 ! update cloud fraction tendency
                 ! -----------------------------------------------------------------------
                 if (.not. do_qa) then
-!$acc loop vector
+!!$acc loop seq
                     do k = ktop, kbot
                         qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
                                 qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
@@ -3255,7 +3271,7 @@ module moist_subroutines_cloud_microphys
                 
             enddo
         enddo
-!$acc end parallel
+!$acc end serial
 !$acc end data
     end subroutine mpdrv
 
@@ -3354,6 +3370,8 @@ module moist_subroutines_cloud_microphys
         lcp = latv / cp_air
         icp = lati / cp_air
         tcp = (latv + lati) / cp_air
+!$acc update device(c_air, c_vap, p_nonhydro, d0_vap, lv00, do_sedi_w, latv, lati, &
+!$acc               lats, lat2, lcp, icp, tcp)
 
         ! tendency zero out for am moist processes should be done outside the driver
 
@@ -3390,7 +3408,7 @@ module moist_subroutines_cloud_microphys
 
 !$acc data copyin(uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
 !$acc             qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-!$acc             rhcrit) &
+!$acc             rhcrit, ntimes) &
 !$acc      copyout(m2_rain, m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
 !$acc              vt_i, qn2) &
 !$acc      copy(w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
@@ -3660,12 +3678,12 @@ module moist_subroutines_cloud_microphys
         open(newunit=fileID, file=trim(dirName) // '/c_air_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_air
         close(fileID)
-        ! print*, 'Rank ', trim(rank_str),': In sum(c_air) = ', sum(c_air)
+        ! print*, 'Rank ', trim(rank_str),': In c_air = ', c_air
 
         open(newunit=fileID, file=trim(dirName) // '/c_vap_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_vap
         close(fileID)
-        ! print*, 'Rank ', trim(rank_str),': In sum(c_vap) = ', sum(c_vap)
+        ! print*, 'Rank ', trim(rank_str),': In c_vap = ', c_vap
 
         open(newunit=fileID, file=trim(dirName) // '/lati_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) lati
