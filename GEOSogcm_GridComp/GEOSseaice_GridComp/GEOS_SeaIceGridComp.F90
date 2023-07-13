@@ -951,7 +951,8 @@ contains
     real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
 
     integer           :: PHASE
-
+    integer :: I,J
+    
 ! Get the component's name and set-up traceback handle.
 ! -----------------------------------------------------
 
@@ -1054,11 +1055,26 @@ contains
     call MAPL_TimerOff(STATE,"TOTAL")
     call MAPL_TimerOn (STATE,"--IceNudging")
 
+    DO J = 1, size(FId,2)
+       DO I = 1, size(FId,1)
+          if (any(fro8d(i,j,:) == MAPL_Undef) .or. &
+               FId(i,j) == MAPL_Undef) then
+             ! most like not an ocean point
+             FId(i,j) = 0.0
+             FRO8d(i,j,:) = 0.0
+          end if
+       END DO
+    END DO
     
     _ASSERT(DUAL_OCEAN, 'This method should only run in dual ocean mode')
 
     call MAPL_GetResource( STATE, HIN     , Label="SEA_ICE_NUDGING_HINEW:"    , DEFAULT=0.5, __RC__ )
     call MAPL_GetResource( STATE, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1  , __RC__ )
+
+!    if (any(fid < 0.0)) print *,'DEBUG FID min ',minval(fid)
+!    if (any(fid > 1.0)) print *,'DEBUG, FId miax ',maxval(FId)
+!    if (any(fro8d < 0.0)) print *,'DEBUG FRO8d min ',minval(fro8d)
+!    if (any(fro8d > 1.0)) print *,'DEBUG FRO8d max ',maxval(fro8d)
 
     if (PHASE == 3) then
  
@@ -1102,7 +1118,7 @@ contains
                            TAUAGEOd,      MPONDOd,        &
                            FId,           HIN,            &
                            NUM_ICE_CATEGORIES,            &
-                           DT,            0.0,            &
+                           DT,            1.0e-8,            &
                            NUM_ICE_LAYERS,                &
                            NUM_SNOW_LAYERS,               &
                            CAT_DIST,      DT)
