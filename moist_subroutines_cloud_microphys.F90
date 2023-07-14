@@ -2804,8 +2804,10 @@ module moist_subroutines_cloud_microphys
         
         real, intent (inout), dimension (ktop:kbot) :: pt, qv, ql, qr, qi, qs, qg
         
-        real, dimension (ktop:kbot) :: lcpk, icpk
+        !real, dimension (ktop:kbot) :: lcpk, icpk
         
+        real :: lcpk, icpk
+
         real :: dq, cvm
         
         integer :: k
@@ -2813,15 +2815,11 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latent heat coefficient
         ! -----------------------------------------------------------------------
-!$acc loop vector private(cvm)
+!$acc loop vector private(cvm, lcpk, icpk)
         do k = ktop, kbot
             cvm = c_air + qv (k) * c_vap + (qr (k) + ql (k)) * c_liq + (qi (k) + qs (k) + qg (k)) * c_ice
-            lcpk (k) = (lv00 + d0_vap * pt (k)) / cvm
-            icpk (k) = (li00 + dc_ice * pt (k)) / cvm
-        enddo
-!$acc loop vector
-        do k = ktop, kbot
-            
+            lcpk  = (lv00 + d0_vap * pt (k)) / cvm
+            icpk  = (li00 + dc_ice * pt (k)) / cvm
             ! -----------------------------------------------------------------------
             ! ice phase:
             ! -----------------------------------------------------------------------
@@ -2839,7 +2837,7 @@ module moist_subroutines_cloud_microphys
             ! if graupel < 0, borrow from rain
             if (qg (k) < 0.) then
                 qr (k) = qr (k) + qg (k)
-                pt (k) = pt (k) - qg (k) * icpk (k) ! heating
+                pt (k) = pt (k) - qg (k) * icpk ! heating
                 qg (k) = 0.
             endif
             
@@ -2855,7 +2853,7 @@ module moist_subroutines_cloud_microphys
             ! if cloud water < 0, borrow from water vapor
             if (ql (k) < 0.) then
                 qv (k) = qv (k) + ql (k)
-                pt (k) = pt (k) - ql (k) * lcpk (k) ! heating
+                pt (k) = pt (k) - ql (k) * lcpk ! heating
                 ql (k) = 0.
             endif
             
@@ -3017,7 +3015,7 @@ module moist_subroutines_cloud_microphys
         ! use local variables
         ! -----------------------------------------------------------------------
 !$acc parallel
-!$acc loop collapse(2) &
+!$acc loop gang collapse(2) &
 !$acc private(h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
 !$acc         vtiz, vtsz, vtgz, vtrz, dp0, dp1, dz0, dz1, &
 !$acc         qv0, ql0, qr0, qi0, qs0, qg0, qa0, &
