@@ -488,60 +488,60 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        ! evap1 = revap
+        evap1 = revap
  
-        ! if (do_sedi_w) then
-        !     do k = ktop, kbot
-        !         dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-        !     enddo
-        ! endif
+        if (do_sedi_w) then
+            do k = ktop, kbot
+                dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+            enddo
+        endif
         
-        ! ! -----------------------------------------------------------------------
-        ! ! mass flux induced by falling rain
-        ! ! -----------------------------------------------------------------------
+        ! -----------------------------------------------------------------------
+        ! mass flux induced by falling rain
+        ! -----------------------------------------------------------------------
         
-        ! if (no_fall) then
-        !     r1 = 0.0
-        ! elseif (use_ppm) then
-        !     zt (ktop) = ze (ktop)
-        !     do k = ktop + 1, kbot
-        !         zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-        !     enddo
-        !     zt (kbot + 1) = zs - dt * vtr (kbot)
+        if (no_fall) then
+            r1 = 0.0
+        elseif (use_ppm) then
+            zt (ktop) = ze (ktop)
+            do k = ktop + 1, kbot
+                zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
+            enddo
+            zt (kbot + 1) = zs - dt * vtr (kbot)
             
-        !     do k = ktop, kbot
-        !         if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-        !     enddo
-        !     call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-        ! else
-        !     call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-        ! endif
+            do k = ktop, kbot
+                if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+            enddo
+            call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+        else
+            call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+        endif
         
-        ! ! -----------------------------------------------------------------------
-        ! ! vertical velocity transportation during sedimentation
-        ! ! -----------------------------------------------------------------------
+        ! -----------------------------------------------------------------------
+        ! vertical velocity transportation during sedimentation
+        ! -----------------------------------------------------------------------
         
-        ! if (do_sedi_w) then
-        !     w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-        !     do k = ktop + 1, kbot
-        !         w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-        !              / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-        !     enddo
-        ! endif
+        if (do_sedi_w) then
+            w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+            do k = ktop + 1, kbot
+                w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
+                     / (dm (k) + m1_rain (k - 1) - m1_rain (k))
+            enddo
+        endif
         
-        ! ! -----------------------------------------------------------------------
-        ! ! heat transportation during sedimentation
-        ! ! -----------------------------------------------------------------------
+        ! -----------------------------------------------------------------------
+        ! heat transportation during sedimentation
+        ! -----------------------------------------------------------------------
         
-        ! if (do_sedi_heat) &
-        !     call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+        if (do_sedi_heat) &
+            call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
         
-        ! ! -----------------------------------------------------------------------
-        ! ! evaporation and accretion of rain for the remaing 1 / 2 time step
-        ! ! -----------------------------------------------------------------------
+        ! -----------------------------------------------------------------------
+        ! evaporation and accretion of rain for the remaing 1 / 2 time step
+        ! -----------------------------------------------------------------------
 
-        ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        ! evap1 = evap1 + revap
+        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+        evap1 = evap1 + revap
     end subroutine warm_rain
 
     ! -----------------------------------------------------------------------
