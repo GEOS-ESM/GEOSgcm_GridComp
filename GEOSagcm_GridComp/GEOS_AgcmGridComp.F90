@@ -1632,6 +1632,7 @@ contains
    logical :: isPresent
    real, allocatable, target :: zero(:,:,:)
 !   real, pointer :: zero(:,:,:) => null()
+   logical :: run_physics
 
 !=============================================================================
 
@@ -2483,8 +2484,11 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
 !   call SYSTEM_CLOCK(START_TIME)
     call MAPL_TimerOn (STATE,"PHYSICS"  )
-    call ESMF_GridCompRun(GCS(PHYS), importState=GIM(PHYS), exportState=GEX(PHYS), clock=CLOCK, PHASE=1, userRC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource( STATE, run_physics, "RUN_PHYSICS:", default=.false., _RC)
+    if(run_physics) then
+       call ESMF_GridCompRun(GCS(PHYS), importState=GIM(PHYS), exportState=GEX(PHYS), clock=CLOCK, PHASE=1, userRC=STATUS)
+       VERIFY_(STATUS)
+    end if
     call MAPL_TimerOff(STATE,"PHYSICS"  )
 !   call SYSTEM_CLOCK(END_TIME)
 !   PHY_TIME = END_TIME-START_TIME
