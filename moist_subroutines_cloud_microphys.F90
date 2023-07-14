@@ -328,7 +328,7 @@ module moist_subroutines_cloud_microphys
     subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         eis, &
         den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -404,7 +404,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! no subgrid varaibility
             ! -----------------------------------------------------------------------
-            
+!$acc loop vector private(qc0, qc, dq, sink)
             do k = ktop, kbot
                 qc0 = fac_rc * ccn (k)
                 if (tz (k) > t_wfr) then
@@ -426,7 +426,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
 
             call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-            
+!$acc loop vector private(qc0, qc, dq, sink)
             do k = ktop, kbot
                 qc0 = fac_rc * ccn (k)
                 if (tz (k) > t_wfr + dt_fr) then
@@ -466,6 +466,7 @@ module moist_subroutines_cloud_microphys
         elseif (const_vr) then
             vtr (:) = vr_fac ! ifs_2016: 4.0
         else
+!$acc loop vector private(qden)
             do k = ktop, kbot
                 qden = qr (k) * den (k)
                 if (qr (k) < thr) then
@@ -479,6 +480,7 @@ module moist_subroutines_cloud_microphys
         endif
         
         ze (kbot + 1) = zs
+!$acc loop seq
         do k = kbot, ktop, - 1
             ze (k) = ze (k + 1) - dz (k) ! dz < 0
         enddo
@@ -491,6 +493,7 @@ module moist_subroutines_cloud_microphys
         evap1 = revap
  
         if (do_sedi_w) then
+!$acc loop vector
             do k = ktop, kbot
                 dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
             enddo
@@ -504,11 +507,12 @@ module moist_subroutines_cloud_microphys
             r1 = 0.0
         elseif (use_ppm) then
             zt (ktop) = ze (ktop)
+!$acc loop vector
             do k = ktop + 1, kbot
                 zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
             enddo
             zt (kbot + 1) = zs - dt * vtr (kbot)
-            
+!$acc loop seq
             do k = ktop, kbot
                 if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
             enddo
@@ -523,6 +527,7 @@ module moist_subroutines_cloud_microphys
         
         if (do_sedi_w) then
             w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+!$acc loop vector
             do k = ktop + 1, kbot
                 w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
                      / (dm (k) + m1_rain (k - 1) - m1_rain (k))
@@ -662,7 +667,7 @@ module moist_subroutines_cloud_microphys
     ! -----------------------------------------------------------------------
 
     subroutine linear_prof (km, q, dm, z_var, h_var)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: km
@@ -683,7 +688,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! use twice the strength of the positive definiteness limiter (lin et al 1994)
             ! -----------------------------------------------------------------------
-            
+!$acc loop vector private(dq, dq_p1)
             do k = 2, km - 1
                 dq = 0.5 * (q (k) - q (k - 1))
                 dq_p1 = 0.5 * (q (k + 1) - q (k))
@@ -701,11 +706,12 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! impose a presumed background horizontal variability that is proportional to the value itself
             ! -----------------------------------------------------------------------
-            
+!$acc loop vector
             do k = 1, km
                 dm (k) = max (dm (k), qvmin, h_var(k) * q (k))
             enddo
         else
+!$acc loop vector
             do k = 1, km
                 dm (k) = max (qvmin, h_var(k) * q (k))
             enddo
@@ -715,7 +721,7 @@ module moist_subroutines_cloud_microphys
 
     subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
 
         integer, intent (in) :: ktop, kbot
@@ -760,7 +766,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
-        
+!$acc loop vector
         do k = ktop, kbot
             q_liq (k) = qlk (k) + qrk (k)
             q_sol (k) = qik (k) + qsk (k) + qgk (k)
@@ -773,8 +779,10 @@ module moist_subroutines_cloud_microphys
         ! sources of snow: cold rain, auto conversion + accretion (from cloud ice)
         ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
         ! -----------------------------------------------------------------------
-    
-
+!*****
+! Note : If 'sink' gets added as a private variable, the code will not verify
+!*****
+!$acc loop vector private(lhi, icpk, melt, tmp)
         do k = ktop, kbot
             lhi = li00 + dc_ice * tzk (k)
             if (tzk (k) > tice .and. qik (k) > qcmin) then
@@ -833,7 +841,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-    
+!$acc loop seq
         do k = ktop, kbot
             lhi = li00 + dc_ice * tzk (k)
             lhl = lv00 + d0_vap * tzk (k)
@@ -1267,17 +1275,17 @@ module moist_subroutines_cloud_microphys
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
         
-        do k = ktop, kbot
-            lhl = lv00 + d0_vap * tz (k)
-            lhi = li00 + dc_ice * tz (k)
-            q_liq = ql (k) + qr (k)
-            q_sol = qi (k) + qs (k) + qg (k)
-            cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-            lcpk = lhl / cvm
-            icpk = lhi / cvm
-            tcpk = lcpk + icpk
-            tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
-        enddo
+        ! do k = ktop, kbot
+        !     lhl = lv00 + d0_vap * tz (k)
+        !     lhi = li00 + dc_ice * tz (k)
+        !     q_liq = ql (k) + qr (k)
+        !     q_sol = qi (k) + qs (k) + qg (k)
+        !     cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+        !     lcpk = lhl / cvm
+        !     icpk = lhi / cvm
+        !     tcpk = lcpk + icpk
+        !     tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
+        ! enddo
         
         do k = ktop, kbot
             lhl = lv00 + d0_vap * tz (k)
@@ -1645,7 +1653,7 @@ module moist_subroutines_cloud_microphys
 
     subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
             den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -1683,7 +1691,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
-        
+!$acc loop vector private(lhi)
         do k = ktop, kbot
             m1_sol (k) = 0.
             ! lhl (k) = lv00 + d0_vap * tz (k)
@@ -1700,6 +1708,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         k0 = kbot
+!$acc loop seq
         do k = ktop, kbot - 1
             if (tz (k) > tice) then
                 k0 = k
@@ -1710,7 +1719,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! melting of cloud_ice (before fall) :
         ! -----------------------------------------------------------------------
-        
+!$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
         do k = k0, kbot
             tc = tz (k) - tice
             if (qi (k) > qcmin .and. tc > 0.) then
@@ -1742,6 +1751,7 @@ module moist_subroutines_cloud_microphys
         ! sjl, turn off melting of falling cloud ice, snow and graupel
         
         ze (kbot + 1) = zs
+!$acc loop seq
         do k = kbot, ktop, - 1
             ze (k) = ze (k + 1) - dz (k) ! dz < 0
         enddo
@@ -1751,7 +1761,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-        
+!$acc loop vector private(lhi)
         do k = k0, kbot
             lhi = li00 + dc_ice * tz (k)
             icpk (k) = lhi / cvm (k)
@@ -1766,19 +1776,21 @@ module moist_subroutines_cloud_microphys
         if (vi_fac < 1.e-5 .or. no_fall) then
             i1 = 0.
         else
-            
+!$acc loop vector
             do k = ktop + 1, kbot
                 zt (k) = ze (k) - dtm * (vti (k - 1) + vti (k))/2.0
             enddo
             zt (kbot + 1) = zs - dtm * vti (kbot)
-            
+!$acc loop seq
             do k = ktop, kbot
                 if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
             enddo
             
             if (k0 < kbot) then
+!$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qi (k) > qcmin) then
+!$acc loop seq
                         do m = k + 1, kbot
                             if (zt (k + 1) >= ze (m)) exit
                             if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
@@ -1796,6 +1808,7 @@ module moist_subroutines_cloud_microphys
             endif
             
             if (do_sedi_w) then
+!$acc loop vector
                 do k = ktop, kbot
                     dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
                 enddo
@@ -1809,6 +1822,7 @@ module moist_subroutines_cloud_microphys
             
             if (do_sedi_w) then
                 w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
+!$acc loop vector
                 do k = ktop + 1, kbot
                     w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
                         / (dm (k) + m1_sol (k - 1) - m1_sol (k))
@@ -1828,19 +1842,21 @@ module moist_subroutines_cloud_microphys
         if (no_fall) then
             s1 = 0.
         else
-            
+!$acc loop vector
             do k = ktop + 1, kbot
                 zt (k) = ze (k) - dtm * (vts (k - 1) + vts (k))/2.0
             enddo
             zt (kbot + 1) = zs - dtm * vts (kbot)
-            
+!$acc loop seq
             do k = ktop, kbot
                 if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
             enddo
             
             if (k0 < kbot) then
+!$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qs (k) > qpmin) then
+!$acc loop seq
                         do m = k + 1, kbot
                             if (zt (k + 1) >= ze (m)) exit
                             dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
@@ -1863,6 +1879,7 @@ module moist_subroutines_cloud_microphys
             endif
             
             if (do_sedi_w) then
+!$acc loop vector
                 do k = ktop, kbot
                     dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
                 enddo
@@ -1873,13 +1890,14 @@ module moist_subroutines_cloud_microphys
             else
                 call implicit_fall (dtm, ktop, kbot, ze, vts, dp, qs, s1, m1)
             endif
-            
+!$acc loop vector
             do k = ktop, kbot
                 m1_sol (k) = m1_sol (k) + m1 (k)
             enddo
             
             if (do_sedi_w) then
                 w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vts (ktop)) / (dm (ktop) - m1 (ktop))
+!$acc loop vector
                 do k = ktop + 1, kbot
                     w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vts (k - 1) + m1 (k) * vts (k)) &
                         / (dm (k) + m1 (k - 1) - m1 (k))
@@ -1897,19 +1915,21 @@ module moist_subroutines_cloud_microphys
         if (no_fall) then
             g1 = 0.
         else
-            
+!$acc loop vector
             do k = ktop + 1, kbot
                 zt (k) = ze (k) - dtm * (vtg (k - 1) + vtg (k))/2.0
             enddo
             zt (kbot + 1) = zs - dtm * vtg (kbot)
-            
+!$acc loop seq
             do k = ktop, kbot
                 if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
             enddo
             
             if (k0 < kbot) then
+!$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qg (k) > qpmin) then
+!$acc loop seq
                         do m = k + 1, kbot
                             if (zt (k + 1) >= ze (m)) exit
                             dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
@@ -1931,6 +1951,7 @@ module moist_subroutines_cloud_microphys
             endif
             
             if (do_sedi_w) then
+!$acc loop vector
                 do k = ktop, kbot
                     dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
                 enddo
@@ -1941,13 +1962,14 @@ module moist_subroutines_cloud_microphys
             else
                 call implicit_fall (dtm, ktop, kbot, ze, vtg, dp, qg, g1, m1)
             endif
-            
+!$acc loop vector 
             do k = ktop, kbot
                 m1_sol (k) = m1_sol (k) + m1 (k)
             enddo
             
             if (do_sedi_w) then
                 w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vtg (ktop)) / (dm (ktop) - m1 (ktop))
+!$acc loop vector
                 do k = ktop + 1, kbot
                     w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vtg (k - 1) + m1 (k) * vtg (k)) &
                         / (dm (k) + m1 (k - 1) - m1 (k))
@@ -1993,7 +2015,7 @@ module moist_subroutines_cloud_microphys
     ! =======================================================================
 
     subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -2013,7 +2035,7 @@ module moist_subroutines_cloud_microphys
         real, dimension (ktop:kbot) :: qm
 
         integer :: k
-
+!$acc loop vector
         do k = ktop, kbot
             q (k) = q (k) * dp (k)
         enddo
@@ -2023,6 +2045,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
+!$acc loop seq
         do k = ktop + 1, kbot
             qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
         enddo
@@ -2030,7 +2053,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! qm is density at this stage
         ! -----------------------------------------------------------------------
-
+!$acc loop vector
         do k = ktop, kbot
             qm (k) = qm (k) * (ze (k) - ze (k + 1))
         enddo
@@ -2040,6 +2063,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         m1 (ktop) = q (ktop) - qm (ktop)
+!$acc loop seq
         do k = ktop + 1, kbot
             m1 (k) = m1 (k - 1) + q (k) - qm (k)
         enddo
@@ -2048,7 +2072,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update:
         ! -----------------------------------------------------------------------
-
+!$acc loop vector
         do k = ktop, kbot
             q (k) = qm (k) / dp (k)
         enddo
@@ -2377,7 +2401,7 @@ module moist_subroutines_cloud_microphys
 
     subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                         den, qs, qi, qg, ql, tk, vts, vti, vtg)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
 
         integer, intent (in) :: ktop, kbot
@@ -2437,6 +2461,7 @@ module moist_subroutines_cloud_microphys
             vti (:) = vi_fac
         else
             vi1 = 0.01 * vi_fac
+!$acc loop vector private(IWC, viLSC, viCNV)
             do k = ktop, kbot
                 if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                     vti (k) = vf_min
@@ -2486,6 +2511,7 @@ module moist_subroutines_cloud_microphys
         if (const_vs) then
             vts (:) = vs_fac ! 1. ifs_2016
         else
+!$acc loop vector private(rhof)
             do k = ktop, kbot
                 if (qs (k) < ths) then
                     vts (k) = vf_min
@@ -2504,6 +2530,7 @@ module moist_subroutines_cloud_microphys
         if (const_vg) then
             vtg (:) = vg_fac ! 2.
         else
+!$acc loop vector private(rhof)
             do k = ktop, kbot
                 if (qg (k) < thg) then
                     vtg (k) = vf_min
@@ -2768,7 +2795,7 @@ module moist_subroutines_cloud_microphys
     end function iqs2
 
     subroutine neg_adj (ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -2786,13 +2813,13 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latent heat coefficient
         ! -----------------------------------------------------------------------
-        
+!$acc loop vector private(cvm)
         do k = ktop, kbot
             cvm = c_air + qv (k) * c_vap + (qr (k) + ql (k)) * c_liq + (qi (k) + qs (k) + qg (k)) * c_ice
             lcpk (k) = (lv00 + d0_vap * pt (k)) / cvm
             icpk (k) = (li00 + dc_ice * pt (k)) / cvm
         enddo
-        
+!$acc loop vector
         do k = ktop, kbot
             
             ! -----------------------------------------------------------------------
@@ -2837,7 +2864,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! fix water vapor; borrow from below
         ! -----------------------------------------------------------------------
-        
+!$acc loop seq
         do k = ktop, kbot - 1
             if (qv (k) < 0.) then
                 qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
@@ -2999,7 +3026,7 @@ module moist_subroutines_cloud_microphys
 !$acc         u0, v0, u1, v1, w1, r1, s1, i1, g1)
         do j = js, je
             do i = is, ie
-!$acc loop seq
+!$acc loop vector private(omq)
                 do k = ktop, kbot
                     
                     t0 (k) = pt (i, j, k)
@@ -3068,7 +3095,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             
                 if (do_sedi_w) then
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         w1 (k) = w (i, j, k)
                     enddo
@@ -3079,14 +3106,14 @@ module moist_subroutines_cloud_microphys
                 
                 ! ccn needs units #/m^3 
                 if (prog_ccn) then
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         ! qn has units # / m^3
                         ccn (k) = qn (i, j, k)
                         c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
                     enddo
                 else
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         ! qn has units # / m^3
                         ccn (k) = qn (i, j, k)
@@ -3114,14 +3141,14 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     
                     if (p_nonhydro) then
-!$acc loop seq
+!$acc loop vector
                         do k = ktop, kbot
                             dz1 (k) = dz0 (k)
                             den (k) = den0 (k) ! dry air density remains the same
                             denfac (k) = sqrt (sfcrho / den (k))
                         enddo
                     else
-!$acc loop seq
+!$acc loop vector
                         do k = ktop, kbot
                             dz1 (k) = dz0 (k) * tz (k) / t0 (k) ! hydrostatic balance
                             den (k) = den0 (k) * dz0 (k) / dz1 (k)
@@ -3161,7 +3188,7 @@ module moist_subroutines_cloud_microphys
                         r1, evap1, m1_rain, w1, h_var1d)
 
                     rain (i,j) = rain (i,j) + r1
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         revap (i,j,k) = revap (i,j,k) + evap1(k)
                         m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
@@ -3176,7 +3203,7 @@ module moist_subroutines_cloud_microphys
                     call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                         denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                         ccn, cnv_fraction(i,j), srf_type(i,j))
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         isubl (i,j,k) = isubl (i,j,k) + subl1(k)
                     enddo
@@ -3200,7 +3227,7 @@ module moist_subroutines_cloud_microphys
                 endif
             
                 if (do_sedi_w) then
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         w (i, j, k) = w1 (k)
                     enddo
@@ -3210,7 +3237,7 @@ module moist_subroutines_cloud_microphys
                 ! update moist air mass (actually hydrostatic pressure)
                 ! convert to dry mixing ratios
                 ! -----------------------------------------------------------------------
-!$acc loop seq private(omq, cvm)
+!$acc loop vector private(omq, cvm)
                 do k = ktop, kbot
                     omq = dp1 (k) / dp0 (k)
                     qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
@@ -3227,7 +3254,7 @@ module moist_subroutines_cloud_microphys
                 ! update cloud fraction tendency
                 ! -----------------------------------------------------------------------
                 if (.not. do_qa) then
-!$acc loop seq
+!$acc loop vector
                     do k = ktop, kbot
                         qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
                                 qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
