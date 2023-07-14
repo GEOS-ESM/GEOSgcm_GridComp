@@ -822,7 +822,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (associated(moist_qc3))  moist_qc3(IH,JH,KTS-1:KTE)  = moist_qc(KTE:KTS-1:-1)
 
 
-      DO K=KTS-1,KTE
+      DO K=KTS-1,KTE-1
         ! outputs - variables needed for solver
         aw3(IH,JH,K)   = s_aw(KTE+KTS-K-1)
         aws3(IH,JH,K)  = s_aws(KTE+KTS-K-1)
@@ -835,9 +835,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         mfwhl(IH,JH,K) = s_awhl(KTE+KTS-K-1)
         mfwqt(IH,JH,K) = s_awqt(KTE+KTS-K-1)
       ENDDO
-      awqv3(:,:,KTE) = 0.  ! surface flux 0
-      awql3(:,:,KTE) = 0.
-      awqi3(:,:,KTE) = 0.
+      mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
+      mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
+!      awqv3(:,:,KTE) = 0.  ! surface flux 0
+!      awql3(:,:,KTE) = 0.
+!      awqi3(:,:,KTE) = 0.
+!      aws3(:,:,KTE)  = 0.
+    
 
       ! buoyancy is defined on full levels
       DO k=kts,kte

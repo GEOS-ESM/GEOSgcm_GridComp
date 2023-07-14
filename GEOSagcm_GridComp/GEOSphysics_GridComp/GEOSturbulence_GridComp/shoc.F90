@@ -484,7 +484,7 @@ contains
                       / ( 0.5*( THV(:,:,1:nzm-1)+THV(:,:,2:nzm) ) * (DU**2) )
 
      if (SHOCPARAMS%PRNUM.lt.0.) then
-        where (RI.le.0. .or. tke_mf.gt.1e-4)
+        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-4)
           PRNUM = 0.9
         elsewhere
           ! He et al 2019
