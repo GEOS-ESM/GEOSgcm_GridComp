@@ -1,7 +1,5 @@
 !   $Id$
 
-#define USE_SCM_SURF 1
-
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -629,15 +627,6 @@ end if
 !
 ! mass-flux export states
 ! 
-!    call MAPL_AddExportSpec(GC,                                              &
-!       SHORT_NAME = 'EDMF_PLUMES_W'    ,                                     &
-!       LONG_NAME  = 'EDMF_updraft_velocities',                               &
-!       UNITS      = 'm s-1',                                                 &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationEdge,                                      &
-!       DATATYPE   = MAPL_BundleItem,                                         &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                &
        LONG_NAME      = 'Vertical_velocity_of_individual_EDMF_plumes',         &
@@ -1840,22 +1829,6 @@ end if
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
-!    call MAPL_AddExportSpec(GC,                                  &
-!       SHORT_NAME = 'LSHOC_CLR',                                 &
-!       LONG_NAME  = 'eddy_dissipation_length_from_SHOC_clearsky',&
-!       UNITS      = 'm',                                         &
-!       DIMS       = MAPL_DimsHorzVert,                           &
-!       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
-!    VERIFY_(STATUS)
-
-!    call MAPL_AddExportSpec(GC,                                  &
-!       SHORT_NAME = 'LSHOC_CLD',                                 &
-!       LONG_NAME  = 'eddy_dissipation_length_from_SHOC_incloud', &
-!       UNITS      = 'm',                                         &
-!       DIMS       = MAPL_DimsHorzVert,                           &
-!       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
-!    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'BRUNTSHOC',                                 &
        LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
@@ -2771,7 +2744,6 @@ end if
      type (ESMF_Field)                   :: FIELD
      type (ESMF_Array)                   :: ARRAY
      type (ESMF_FieldBundle)             :: TR
-!     type (ESMF_FieldBundle)             :: EDMF_PLUMES_W
 
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
@@ -2862,14 +2834,16 @@ end if
                                 ! 1: prescribed thermodynamic fluxes,
                                 !    along with roughness length roughness length and surface relative humidity
                                 !    momentum fluxes from surface layer theory
-                                ! 2: prescribed Monin-Obhkov length,
+                                ! 2: prescribed thermodynamic fluxes,
+                                !    based on SHOBS and LHOBS read from SCM forcing file
+                                ! 3: prescribed Monin-Obhkov length,
                                 !    along with roughness length and surface relative humidity,
                                 !    all fluxes from surface layer theory
                                 ! else: use prescribed surface exchange coefficients
      real    :: SCM_SH          ! prescribed surface sensible heat flux (Wm-1) (for SCM_SL_FLUX == 1)
      real    :: SCM_EVAP        ! prescribed surface latent heat flux (Wm-1) (for SCM_SL_FLUX == 1)
      real    :: SCM_Z0          ! surface roughness length (m)
-     real    :: SCM_ZETA        ! Monin-Obkhov length scale (m) (for SCM_SL_FLUX == 2)
+     real    :: SCM_ZETA        ! Monin-Obkhov length scale (m) (for SCM_SL_FLUX == 3)
      real    :: SCM_RH_SURF     ! Surface relative humidity
      real    :: SCM_TSURF       ! Sea surface temperature (K)
      
@@ -2911,7 +2885,6 @@ end if
      real,               dimension(IM,JM,LM+1) :: tmp3de
 
 ! variables associated with SHOC
-     real, dimension( IM, JM, 0:LM )     :: PRANDTLSHOC
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2, DOCANUTO
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
@@ -2934,9 +2907,6 @@ end if
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
-
-!     type (SHOCPARAMS_TYPE) :: SHOCPARAMS
-!     type (EDMFPARAMS_TYPE) :: EDMFPARAMS
 
      logical :: JASON_TRB
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AERTOT
@@ -3033,19 +3003,15 @@ end if
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,    trim(COMP_NAME)//"_SHC_PRNUM:",        default=-1.0, RC=STATUS)
-!       call MAPL_GetResource (MAPL, SHOCPARAMS%BRUNTMIN, trim(COMP_NAME)//"_SHC_BRUNTMIN:",     default=1e-7, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
-!       call MAPL_GetResource (MAPL, SHOCPARAMS%VONK,     trim(COMP_NAME)//"_SHC_VONK:",         default=0.4,  RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.1,  RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=1.0,  RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
-!       call MAPL_GetResource (MAPL, SHOCPARAMS%CLDLEN,   trim(COMP_NAME)//"_SHC_DO_CLDLEN:",    default=0.,   RC=STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=3,    RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=4.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=1.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=2.0,  RC=STATUS)       
-!       call MAPL_GetResource (MAPL, SHOCPARAMS%KRADFAC,  trim(COMP_NAME)//"_SHC_KRADFAC:",      default=0.0,  RC=STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
      end if
 
@@ -3274,10 +3240,6 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT, LSHOC_CLR,'LSHOC_CLR', RC=STATUS)
-!     VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT, LSHOC_CLD,'LSHOC_CLD', RC=STATUS)
-!     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, BRUNTSHOC, 'BRUNTSHOC', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', RC=STATUS)
@@ -3548,8 +3510,6 @@ end if
     mfwsl  = 0.0
     mftke  = 0.0
 
-!    call ESMF_StateGet(EXPORT, 'EDMF_PLUMES_W', EDMF_PLUMES_W, RC=STATUS); VERIFY_(STATUS)
-
     IF(DoMF /= 0) then
 
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,      &
@@ -3701,34 +3661,6 @@ end if
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-!        RI = 0.0
-!        DZ = MINTHICK
-!        DZ(:,:,1:LM-1) = (Z(:,:,1:LM-1) - Z(:,:,2:LM))
-!        TM(:,:,1:LM-1) = (THV(:,:,1:LM-1) + THV(:,:,2:LM))*0.5
-!        DTM(:,:,1:LM-1) = (THV(:,:,1:LM-1) - THV(:,:,2:LM))
-!        DU(:,:,1:LM-1) = (U(:,:,1:LM-1) - U(:,:,2:LM))**2 + &
-!                         (V(:,:,1:LM-1) - V(:,:,2:LM))**2
-
-!        DZ =  max(DZ, MINTHICK)
-!        DU(:,:,1:LM-1) = sqrt(DU(:,:,1:LM-1))/DZ
-
-!        RI(:,:,1:LM-1) = MAPL_GRAV*(DTM(:,:,1:LM-1)/DZ(:,:,1:LM-1))/(TM(:,:,1:LM-1)*( max(DU(:,:,1:LM-1), MINSHEAR)**2))
-
-!        if (SHOCPARAMS%PRNUM.lt.0.) then
-!           where (RI.le.0. .or. (edmfdrya+edmfmoista).gt.1e-3)
-!             PRANDTLSHOC = 0.9
-!!           elsewhere
-             ! He et al 2019
-!             tmp3de = RI*(1.+6.*RI)
-!             PRANDTLSHOC = (0.9+4.*tmp3de*SQRT(1.-SHOCPARAMS%PRNUM*8.*tmp3de/3.))/(1.+4.*tmp3de)
-             ! Han and Bretherton 2019
-!             PRANDTLSHOC = 0.9+2.1*MIN(10.,RI) ! limit RI to avoid instability
-!           end where
-!        else
-!           PRANDTLSHOC = SHOCPARAMS%PRNUM
-!        end if
-!        if (associated(SHOCPRNUM)) SHOCPRNUM = PRANDTLSHOC
-       
         call RUN_SHOC( IM, JM, LM, LM+1, DT, &
                        !== Inputs ==
                        PLO(:,:,1:LM),         &
@@ -4920,7 +4852,7 @@ end if
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
-    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
+!    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
@@ -5095,7 +5027,6 @@ end if
 
 if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
      (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
-!     (trim(name) /= 'QLCN') .and. (trim(name) /= 'QICN') .and. &
      (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
     
 
@@ -5140,16 +5071,6 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
-! elseif (trim(name)=='QLCN') then
-!          CX => CQ
-!          DX => DKQQ
-!          AK => AKQQ; BK => BKQQ; CK => CKQQ
-!          SX=S+YQL
-! elseif (trim(name)=='QICN') then
-!          CX => CQ
-!          DX => DKQQ
-!          AK => AKQQ; BK => BKQQ; CK => CKQQ
-!          SX=S+YQI
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKUU
@@ -5400,7 +5321,6 @@ end subroutine RUN1
       real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, MFWSL, &
                                              MFWQT, TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
                                              SLFLXMF, QTFLXMF, MFAW
-!      real, dimension(:,:,:), pointer     :: QVCORRECT
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
