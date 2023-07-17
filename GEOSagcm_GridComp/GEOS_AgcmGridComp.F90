@@ -191,7 +191,7 @@ contains
         RST = MAPL_RestartSkip
     end if
 
-    call MAPL_GetResource(MAPL, SCM_SL, Label="SCM_SL:", default=0, RC=STATUS)
+    call MAPL_GetResource(MAPL, SCM_SL, Label="SCM_SL:", default=0, _RC)
 
 
     call MAPL_GetResource(MAPL, ReplayMode, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
