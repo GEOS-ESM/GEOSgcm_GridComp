@@ -3455,15 +3455,13 @@ if (SCM_SL /= 0) then
           evap_scm(:,:) = scm_evap/MAPL_ALHL
        elseif ( SCM_SL_FLUX == 2 ) then
           sh_scm(:,:)   = shobs
-          evap_scm(:,:) = lhobs/mapl_alhl
-          print *,'TurbGC: sh_scm = ',sh_scm
-          print *,'TurbGC: evap_scm = ',evap_scm
+          evap_scm(:,:) = lhobs/MAPL_ALHL
        elseif ( SCM_SL_FLUX == 3 ) then
           zeta_scm(:,:) = scm_zeta
        end if
 
        call surface(IM, JM, LM, &                                         ! in
-                    SCM_SL_FLUX, SCM_TSURF, SCM_RH_SURF, SCM_DTDT_SURF, & ! in
+                    SCM_SURF, SCM_TSURF, SCM_RH_SURF, SCM_DTDT_SURF, & ! in
                     dt, ple, &                                            ! in
                     ssurf_scm, &                                          ! inout
                     qsurf_scm)                                            ! out
@@ -3478,12 +3476,12 @@ if (SCM_SL /= 0) then
        cu => cu_scm
        ct => ct_scm
        cq => ct_scm
-!       ustar_scm = 0.3! sqrt(CM*UU/RHOS)
+       ustar_scm = 0.3! sqrt(CM*UU/RHOS)
        
 !       bstar_scm = (MAPL_GRAV/(RHOS*sqrt(CM*max(UU,1.e-30)/RHOS))) *  &
 !                   (CT*(TH-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ*(QH-QA))
        
-       ustar => ustar_scm
+!       ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
 
@@ -4895,7 +4893,6 @@ end if
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, LHOBS,'LHOBS', RC=STATUS)
        VERIFY_(STATUS)
-
     end if
 
 
@@ -5947,13 +5944,13 @@ end subroutine RUN1
          tmp3d(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*tmp3d(:,:,1:LM-1)
          tmp3d(:,:,LM) = tmp3d(:,:,LM-1)
          tmp3d(:,:,0) = 0.0
-!         if (associated(QTFLXMF)) then
-!            QTFLXMF(:,:,1:LM-1) = QTFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*QT(:,:,1:LM-1)
-!            QTFLXMF(:,:,LM) = QTFLXMF(:,:,LM-1)
-!            QTFLXMF(:,:,0) = 0.
-!         end if
+         if (associated(QTFLXMF)) then
+            QTFLXMF(:,:,1:LM-1) = QTFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*QT(:,:,1:LM-1)
+            QTFLXMF(:,:,LM) = QTFLXMF(:,:,LM-1)
+            QTFLXMF(:,:,0) = 0.
+         end if
          if (associated(QTFLXTRB)) QTFLXTRB = tmp3d + QTFLXMF
-         if (associated(WQT)) WQT = 0.5*( tmp3d(:,:,1:LM)+tmp3d(:,:,0:LM-1))! + QTFLXMF(:,:,1:LM)+QTFLXMF(:,:,0:LM-1) ) 
+         if (associated(WQT)) WQT = 0.5*( tmp3d(:,:,1:LM)+tmp3d(:,:,0:LM-1) + QTFLXMF(:,:,1:LM)+QTFLXMF(:,:,0:LM-1) ) 
       end if
       if (associated(SLFLXTRB).or.associated(WSL)) then
          tmp3d(:,:,1:LM-1) = (SL(:,:,1:LM-1)-SL(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
