@@ -2461,7 +2461,7 @@ module moist_subroutines_cloud_microphys
             vti (:) = vi_fac
         else
             vi1 = 0.01 * vi_fac
-!$acc loop vector private(IWC, viLSC, viCNV)
+!$acc loop vector private(tc, IWC, viLSC, viCNV)
             do k = ktop, kbot
                 if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                     vti (k) = vf_min
@@ -3127,10 +3127,6 @@ module moist_subroutines_cloud_microphys
                 if (fix_negative) &
                     call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
                 
-                ! m2_rain (i, j, :) = 0.
-                ! m2_sol (i, j, :) = 0.
-                ! revap (i, j, :) = 0.
-                ! isubl (i, j, :) = 0.
 !$acc loop seq
                 do n = 1, ntimes
                     
