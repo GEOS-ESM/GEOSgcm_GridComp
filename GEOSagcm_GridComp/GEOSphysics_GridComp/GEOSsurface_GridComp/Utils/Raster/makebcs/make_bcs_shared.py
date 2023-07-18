@@ -9,7 +9,7 @@ def get_script_head() :
 #SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
 #SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
 #SBATCH --account={account}
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
 #SBATCH --constraint=sky|cas
