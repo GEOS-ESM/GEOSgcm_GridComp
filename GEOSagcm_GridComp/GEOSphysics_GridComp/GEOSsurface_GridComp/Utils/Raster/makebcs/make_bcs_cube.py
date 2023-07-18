@@ -3,10 +3,16 @@
 # source install/bin/g5_modules
 
 import os
+import glob
 from make_bcs_questionary import *
 from make_bcs_shared import * 
 
 cube_template = """
+
+echo "-----------------------------" 
+echo "make_bcs_cube start date/time" 
+echo `date` 
+echo "-----------------------------" 
 
 if ( {STEP1} == True ) then
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
@@ -82,6 +88,11 @@ if( {CUBED_SPHERE_OCEAN} == True ) then
    endif
 endif
 
+echo "-----------------------------" 
+echo "make_bcs_cube end date/time" 
+echo `date` 
+echo "-----------------------------" 
+
 """
 def make_bcs_cube(config):
 
@@ -128,9 +139,15 @@ def make_bcs_cube(config):
   log_dir     = expdir+'/'+tmp_dir+'/logs/'+ GRIDNAME
   bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
 
-  if os.path.exists(bcjob):
-    print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
-    return
+  if glob.glob(os.path.join(expdir, '**', GRIDNAME+'.j'), recursive=True):
+       print("-----------------------------------------------------------------")
+       print("                 Abort:                                          ")
+       print(" This BCS run will create resolution dir already present:        ")
+       print(expdir, 'has this grid', GRIDNAME)
+       print(" Please delete run dir and same resolution BCS files and resubmit")
+       print("-----------------------------------------------------------------")
+       exit()
+
 
   os.makedirs(scratch_dir)
   if not os.path.exists(log_dir):

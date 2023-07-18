@@ -3,10 +3,16 @@
 # source install/bin/g5_modules
 
 import os
+import glob
 from make_bcs_questionary import *
 from make_bcs_shared  import *
 
 ease_template = """
+
+echo "-----------------------------"
+echo "make_bcs_ease start date/time"
+echo `date`
+echo "-----------------------------"  
 
 setenv OMP_NUM_THREADS 1
 bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
@@ -16,6 +22,11 @@ setenv OMP_NUM_THREADS {NCPUS}
 bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 chmod 755 bin/create_README.csh
 bin/create_README.csh
+
+echo "---------------------------"
+echo "make_bcs_ease end date/time"
+echo `date`
+echo "---------------------------"  
 
 """
 
@@ -32,17 +43,23 @@ def make_bcs_ease(config):
 
   resolution = config['resolution']
 
-  gridname  = grid_type+'_'+ resolution
+  GRIDNAME  = grid_type+'_'+ resolution
   now     = datetime.now()
   tmp_dir = now.strftime("%Y%m%d%H%M%S") 
   tmp_dir = f"{resolution}_{tmp_dir}"
   expdir  = config['expdir']
-  scratch_dir = expdir+ tmp_dir+'/'+gridname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/' + gridname
-  job_script       = scratch_dir+'/'+gridname+'.j'
-  if os.path.exists(job_script):
-    print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
-    return
+  scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
+  job_script       = scratch_dir+'/'+GRIDNAME+'.j'
+
+  if glob.glob(os.path.join(expdir, '**', GRIDNAME+'.j'), recursive=True):
+       print("-----------------------------------------------------------------")
+       print("                 Abort:                                          ")
+       print(" This BCS run will create resolution dir already present:        ")
+       print(expdir, 'has this grid', GRIDNAME)
+       print(" Please delete run dir and same resolution BCS files and resubmit")
+       print("-----------------------------------------------------------------")
+       exit()
 
   os.makedirs(scratch_dir)
   if not os.path.exists(log_dir):
@@ -59,8 +76,8 @@ def make_bcs_ease(config):
            account = account, \
            EXPDIR = config['expdir'], \
            TMP_DIR = tmp_dir, \
-           GRIDNAME  = gridname, \
-           GRIDNAME2 = gridname, \
+           GRIDNAME  = GRIDNAME, \
+           GRIDNAME2 = GRIDNAME, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            IM = ims, \

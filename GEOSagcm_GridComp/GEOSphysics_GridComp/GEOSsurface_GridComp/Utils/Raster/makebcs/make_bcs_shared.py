@@ -9,7 +9,7 @@ def get_script_head() :
 #SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
 #SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
 #SBATCH --account={account}
-#SBATCH --time=12:00:00
+#SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
 #SBATCH --constraint=sky|cas
@@ -36,7 +36,7 @@ def get_change_til_file(grid_type):
 
        script = """
 
-cd {GRIDNAME}/geometry/{GRIDNAME}/
+cd geometry/{GRIDNAME}/
 /bin/rm -f sedfile
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
@@ -55,14 +55,14 @@ sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
 endif
-cd ../../../
+cd ../../
 
 """
 
   if grid_type == "Lat-Lon" :
 
      script = """
-cd {GRIDNAME}/geometry/{GRIDNAME}/
+cd geometry/{GRIDNAME}/
 /bin/rm -f sedfile
 cat > sedfile << EOF
 s/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g
@@ -71,7 +71,7 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-cd ../../../
+cd ../../
 
 """
   return script
@@ -80,32 +80,32 @@ def get_script_mv(grid_type):
 
    mv_template = """
 
-mkdir -p {GRIDNAME}/geometry/{GRIDNAME}
-/bin/mv {GRIDNAME}.j {GRIDNAME}/geometry/{GRIDNAME}/.
-/bin/cp til/{GRIDNAME}{RS}.til {GRIDNAME}/geometry/{GRIDNAME}/.
-if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN {GRIDNAME}/geometry/{GRIDNAME}/.
+mkdir -p geometry/{GRIDNAME}
+/bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
+if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
-/bin/mv rst til {GRIDNAME}/geometry/{GRIDNAME}/.
+/bin/mv rst til geometry/{GRIDNAME}/.
 
-mkdir -p {GRIDNAME}/land/shared/
+mkdir -p land/shared/
 
-if(-f {GRIDNAME}/land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
+if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2 file exists."
 else
-    /bin/cp {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4  {GRIDNAME}/land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
+    /bin/cp {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4  land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
     echo "File does not exist. CO2 file copied successfully."
 endif
 
-mkdir -p {GRIDNAME}/land/{GRIDNAME}/clsm
+mkdir -p land/{GRIDNAME}/clsm
 
-/bin/mv clsm/irrig.dat   {GRIDNAME}/land/{GRIDNAME}/irrigation_{RC}.dat
-/bin/mv clsm/vegdyn.data {GRIDNAME}/land/{GRIDNAME}/vegdyn_{RC}.dat
-/bin/mv clsm/nirdf.dat   {GRIDNAME}/land/{GRIDNAME}/nirdf_{RC}.dat
-/bin/mv clsm/visdf.dat   {GRIDNAME}/land/{GRIDNAME}/visdf_{RC}.dat
-/bin/mv clsm/lai.dat     {GRIDNAME}/land/{GRIDNAME}/lai_clim_{RC}.data
-/bin/mv clsm/green.dat   {GRIDNAME}/land/{GRIDNAME}/green_clim_{RC}.data
-/bin/mv clsm/lnfm.dat    {GRIDNAME}/land/{GRIDNAME}/lnfm_clim_{RC}.data
-/bin/mv clsm/ndvi.dat    {GRIDNAME}/land/{GRIDNAME}/ndvi_clim_{RC}.data
+/bin/mv clsm/irrig.dat   land/{GRIDNAME}/irrigation_{RC}.dat
+/bin/mv clsm/vegdyn.data land/{GRIDNAME}/vegdyn_{RC}.dat
+/bin/mv clsm/nirdf.dat   land/{GRIDNAME}/nirdf_{RC}.dat
+/bin/mv clsm/visdf.dat   land/{GRIDNAME}/visdf_{RC}.dat
+/bin/mv clsm/lai.dat     land/{GRIDNAME}/lai_clim_{RC}.data
+/bin/mv clsm/green.dat   land/{GRIDNAME}/green_clim_{RC}.data
+/bin/mv clsm/lnfm.dat    land/{GRIDNAME}/lnfm_clim_{RC}.data
+/bin/mv clsm/ndvi.dat    land/{GRIDNAME}/ndvi_clim_{RC}.data
 
 /bin/mv clsm/ar.new \\
         clsm/bf.dat \\
@@ -131,15 +131,28 @@ mkdir -p {GRIDNAME}/land/{GRIDNAME}/clsm
         clsm/catch_params.nc4 \\
         clsm/catchcn_params.nc4 \\
         clsm/country_and_state_code.data \\
-        {GRIDNAME}/land/{GRIDNAME}/clsm/
+        land/{GRIDNAME}/clsm/
 
-/bin/mv ../logs   {GRIDNAME}/.
-/bin/mv clsm/mkCatchParam.log {GRIDNAME}/logs/{GRIDNAME}/mkCatchParam.log
 """ 
    mv_template = mv_template + get_change_til_file(grid_type)
    mv_template = mv_template + """
-mv {GRIDNAME} ../../
-cd ../../
+
+/bin/mv clsm/mkCatchParam.log ../logs/{GRIDNAME}/mkCatchParam.log
+if( ! -d ../../geometry ) then
+  mkdir -p ../../geometry ../../land ../../logs
+  chmod 755 -R geometry land logs
+endif
+/bin/mv geometry/{GRIDNAME} ../../geometry/.
+/bin/mv land/{GRIDNAME} ../../land/.
+if( ! -d ../../land/shared ) then
+    mkdir -p ../../land/shared
+    chmod 755 -R ../../land/shared
+endif
+  /bin/mv land/shared/CO2_MonthlyMean_DiurnalCycle.nc4 ../../land/shared/.
+cd ..
+/bin/mv logs/{GRIDNAME} ../logs/.
+cd ../
+chmod 755 -R geometry land logs
 /bin/rm -r {TMP_DIR}
 """
 
