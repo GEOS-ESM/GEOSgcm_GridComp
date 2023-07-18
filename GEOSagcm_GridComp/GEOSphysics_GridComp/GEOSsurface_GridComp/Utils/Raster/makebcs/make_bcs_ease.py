@@ -53,12 +53,12 @@ def make_bcs_ease(config):
   job_script       = scratch_dir+'/'+GRIDNAME+'.j'
 
   if glob.glob(os.path.join(expdir, '**', GRIDNAME+'.j'), recursive=True):
-       print("-----------------------------------------------------------------")
-       print("                 Abort:                                          ")
-       print(" This BCS run will create resolution dir already present:        ")
-       print(expdir, 'has this grid', GRIDNAME)
-       print(" Please delete run dir and same resolution BCS files and resubmit")
-       print("-----------------------------------------------------------------")
+       print("-------------------------------------------------------------------")
+       print("                 Abort:                                            ")
+       print(" This BCS run is configured to create output that already exists:  ")
+       print(expdir, ' has this grid ', GRIDNAME)
+       print(" Please delete run dir and same resolution BCS files and resubmit. ")
+       print("-------------------------------------------------------------------")
        exit()
 
   os.makedirs(scratch_dir)

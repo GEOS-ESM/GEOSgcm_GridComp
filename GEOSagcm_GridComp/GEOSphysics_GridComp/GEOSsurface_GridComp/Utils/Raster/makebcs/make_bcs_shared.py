@@ -87,15 +87,6 @@ if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/
 
 /bin/mv rst til geometry/{GRIDNAME}/.
 
-mkdir -p land/shared/
-
-if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
-    echo "CO2 file exists."
-else
-    /bin/cp {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4  land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
-    echo "File does not exist. CO2 file copied successfully."
-endif
-
 mkdir -p land/{GRIDNAME}/clsm
 
 /bin/mv clsm/irrig.dat   land/{GRIDNAME}/irrigation_{RC}.dat
@@ -138,22 +129,33 @@ mkdir -p land/{GRIDNAME}/clsm
    mv_template = mv_template + """
 
 /bin/mv clsm/mkCatchParam.log ../logs/{GRIDNAME}/mkCatchParam.log
-if( ! -d ../../geometry ) then
-  mkdir -p ../../geometry ../../land ../../logs
-  chmod 755 -R geometry land logs
-endif
+
+# move output into final directory tree (layout as of July 2023)
+
+mkdir -p ../../geometry ../../land/shared ../../logs
+
+/bin/mv ../logs/{GRIDNAME}  ../../logs/.
+
 /bin/mv geometry/{GRIDNAME} ../../geometry/.
-/bin/mv land/{GRIDNAME} ../../land/.
-if( ! -d ../../land/shared ) then
-    mkdir -p ../../land/shared
-    chmod 755 -R ../../land/shared
-endif
-  /bin/mv land/shared/CO2_MonthlyMean_DiurnalCycle.nc4 ../../land/shared/.
-cd ..
-/bin/mv logs/{GRIDNAME} ../logs/.
-cd ../
-chmod 755 -R geometry land logs
+/bin/mv land/{GRIDNAME}     ../../land/.
+
 /bin/rm -r {TMP_DIR}
+
+# if necessary, copy of CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
+
+cd ../..
+
+if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
+    echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
+else
+    /bin/cp -p {MAKE_BCS_INPUT_DIR}/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4 land/shared/CO2_MonthlyMean_DiurnalCycle.nc4
+    echo "Successfully copied CO2_MonthlyMean_DiurnalCycle.nc4 to bcs dir."
+endif
+
+# adjust permissions
+
+chmod 755 -R geometry land logs
+
 """
 
    return mv_template

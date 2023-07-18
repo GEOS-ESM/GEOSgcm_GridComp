@@ -96,12 +96,12 @@ def make_bcs_latlon(config):
   log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
 
   if glob.glob(os.path.join(expdir, '**', GRIDNAME+'.j'), recursive=True):
-       print("-----------------------------------------------------------------")
-       print("                 Abort:                                          ")
-       print(" This BCS run will create resolution dir already present:        ")
-       print(expdir, 'has this grid', GRIDNAME)
-       print(" Please delete run dir and same resolution BCS files and resubmit")
-       print("-----------------------------------------------------------------")
+       print("-------------------------------------------------------------------")
+       print("                 Abort:                                            ")
+       print(" This BCS run is configured to create output that already exists:  ")
+       print(expdir, ' has this grid ', GRIDNAME)
+       print(" Please delete run dir and same resolution BCS files and resubmit. ")
+       print("-------------------------------------------------------------------")
        exit()
 
   os.makedirs(scratch_dir)
