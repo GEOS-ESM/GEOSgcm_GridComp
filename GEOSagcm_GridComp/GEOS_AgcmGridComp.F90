@@ -33,6 +33,9 @@ module GEOS_AgcmGridCompMod
   use ESMF
   use MAPL
   use GEOS_TopoGetMod
+!!!! >>>>>>>>>>>>>>>>  OVP
+  use OVP,                       only:  OVP_init, OVP_end_of_timestep_hms, OVP_mask, OVP_apply_mask
+!!!! <<<<<<<<<<<<<<<<  OVP
 
   use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
   use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
@@ -45,6 +48,15 @@ module GEOS_AgcmGridCompMod
 
   implicit none
   private
+
+!!!! >>>>>>>>>>>>>>>>  OVP
+  INTEGER, SAVE, ALLOCATABLE :: MASK_10AM(:,:)
+  INTEGER, SAVE, ALLOCATABLE :: MASK_2PM(:,:)
+  INTEGER, SAVE              :: OVP_FIRST_HMS   ! End of the first timestep in each 24-hr period
+  INTEGER, SAVE              :: OVP_RUN_DT
+  INTEGER, SAVE              :: OVP_GC_DT
+  INTEGER, SAVE              :: OVP_MASK_DT
+!!!! <<<<<<<<<<<<<<<<  OVP
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -166,6 +178,10 @@ contains
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run       , RC=STATUS )
     VERIFY_(STATUS)
+!!!! >>>>>>>>>>>>>>>>  OVP
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=STATUS )
+    VERIFY_(STATUS)
+!!!! <<<<<<<<<<<<<<<<  OVP
 
 ! Get the configuration from the component
 !-----------------------------------------
@@ -676,6 +692,207 @@ contains
                                                                RC=STATUS  )
     VERIFY_(STATUS)
 
+!!!! >>>>>>>>>>>>>>>>  OVP
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP10_T',                                   &
+        LONG_NAME          = 'air_temperature_10am_local',                &
+        UNITS              = 'K',                                         &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_T',                                   &
+        LONG_NAME          = 'air_temperature_2pm_local',                 &
+        UNITS              = 'K',                                         &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP10_PL',                                  &
+        LONG_NAME          = 'mid_level_pressure_10am_local',             &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_PL',                                  &
+        LONG_NAME          = 'mid_level_pressure_2pm_local',              &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP10_PLE',                                 &
+        LONG_NAME          = 'edge_pressure_10am_local',                  &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationEdge,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_PLE',                                 &
+        LONG_NAME          = 'edge_pressure_2pm_local',                   &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationEdge,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP10_QV_VMR',                              &
+        LONG_NAME          = 'water_vapor_10am_local',                    &
+        UNITS              = 'mol mol-1',                                 &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_QV_VMR',                              &
+        LONG_NAME          = 'water_vapor_2pm_local',                     &
+        UNITS              = 'mol mol-1',                                 &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                                      &
+        SHORT_NAME         = 'OVP10_QLTOT',                                          &
+        LONG_NAME          = 'mass_fraction_of_cloud_liquid_water_10am_local',       &
+        UNITS              = 'kg kg-1',                                              &
+        DIMS               = MAPL_DimsHorzVert,                                      &
+        VLOCATION          = MAPL_VLocationCenter,                                   &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                                      &
+        SHORT_NAME         = 'OVP14_QLTOT',                                          &
+        LONG_NAME          = 'mass_fraction_of_cloud_liquid_water_2pm_local',        &
+        UNITS              = 'kg kg-1',                                              &
+        DIMS               = MAPL_DimsHorzVert,                                      &
+        VLOCATION          = MAPL_VLocationCenter,                                   &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+  CALL MAPL_AddExportSpec(GC,                                             &
+        SHORT_NAME         = 'OVP10_PS',                                  &
+        LONG_NAME          = 'surface_pressure_10am_local',               &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_PS',                                  &
+        LONG_NAME          = 'surface_pressure_2pm_local',                &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+  CALL MAPL_AddExportSpec(GC,                                             &
+        SHORT_NAME         = 'OVP10_PPBL',                                &
+        LONG_NAME          = 'pbltop_pressure_10am_local',                &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_PPBL',                                &
+        LONG_NAME          = 'pbltop_pressure_2pm_local',                 &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+  CALL MAPL_AddExportSpec(GC,                                             &
+        SHORT_NAME         = 'OVP10_TROPP',                               &
+        LONG_NAME          = 'tropopause_pressure_10am_local',            &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_TROPP',                               &
+        LONG_NAME          = 'tropopause_pressure_2pm_local',             &
+        UNITS              = 'Pa',                                        &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+  CALL MAPL_AddExportSpec(GC,                                             &
+        SHORT_NAME         = 'OVP10_U10',                                 &
+        LONG_NAME          = 'eastward_10m_wind_speed_10am_local',        &
+        UNITS              = 'm s-1',                                     &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_U10',                                 &
+        LONG_NAME          = 'eastward_10m_wind_speed_2pm_local',         &
+        UNITS              = 'm s-1',                                     &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+ CALL MAPL_AddExportSpec(GC,                                              &
+        SHORT_NAME         = 'OVP10_V10',                                 &
+        LONG_NAME          = 'northward_10m_wind_speed_10am_local',       &
+        UNITS              = 'm s-1',                                     &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_V10',                                 &
+        LONG_NAME          = 'northward_10m_wind_speed_2pm_local',        &
+        UNITS              = 'm s-1',                                     &
+        DIMS               = MAPL_DimsHorzOnly,                           &
+        VLOCATION          = MAPL_VLocationNone,                          &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+  CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP10_EPV',                                 &
+        LONG_NAME          = 'ertels_potential_vorticity_10am_local',     &
+        UNITS              = 'K m+2 kg-1 s-1',                            &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    CALL MAPL_AddExportSpec(GC,                                           &
+        SHORT_NAME         = 'OVP14_EPV',                                 &
+        LONG_NAME          = 'ertels_potential_vorticity_2pm_local',      &
+        UNITS              = 'K m+2 kg-1 s-1',                            &
+        DIMS               = MAPL_DimsHorzVert,                           &
+        VLOCATION          = MAPL_VLocationCenter,                        &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
+!!!! <<<<<<<<<<<<<<<<  OVP
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
@@ -1103,6 +1320,10 @@ contains
    character(len=ESMF_MAXSTR)          :: STRING
    character(len=ESMF_MAXSTR)          :: rplMode
 
+!!!! >>>>>>>>>>>>>>>>  OVP
+   real(ESMF_KIND_R4), pointer, dimension(:,:)  :: LONS
+!!!! <<<<<<<<<<<<<<<<  OVP
+
 ! =============================================================================
 
 ! Begin... 
@@ -1326,6 +1547,24 @@ contains
    VERIFY_(STATUS)
    call ESMF_AlarmRingerOn(Alarm4D, rc=status)
    VERIFY_(STATUS)
+
+!!!! >>>>>>>>>>>>>>>>  OVP
+
+!   Set up Overpass Masks
+!   --------------------
+
+    CALL OVP_init ( GC, "AGCM_DT:", LONS, OVP_RUN_DT, OVP_GC_DT, __RC__ ) !  Get LONS, timesteps
+
+    ! In this case we update the Exports at every timestep:
+    OVP_MASK_DT = OVP_RUN_DT
+
+    OVP_FIRST_HMS = OVP_end_of_timestep_hms( CLOCK, OVP_MASK_DT )
+    IF(MAPL_AM_I_ROOT()) PRINT*,'AGCM FIRST_HMS =',OVP_FIRST_HMS
+
+    CALL OVP_mask ( LONS=LONS, DELTA_TIME=OVP_MASK_DT, OVERPASS_HOUR=10, MASK=MASK_10AM )
+    CALL OVP_mask ( LONS=LONS, DELTA_TIME=OVP_MASK_DT, OVERPASS_HOUR=14, MASK=MASK_2PM  )
+
+!!!! <<<<<<<<<<<<<<<<  OVP
 
     call MAPL_TimerOff(STATE,"TOTAL")
     call MAPL_TimerOff(STATE,"INITIALIZE")
@@ -1552,6 +1791,20 @@ contains
    integer       :: START_TIME, END_TIME, DYN_TIME, PHY_TIME
    integer       :: COUNT_MAX, COUNT_RATE
    real(kind=8)  :: CRI
+
+!!!! >>>>>>>>>>>>>>>>  OVP
+
+   REAL, POINTER, DIMENSION(:,:)       :: DATA_FOR_OVP_2D => NULL()
+   REAL, POINTER, DIMENSION(:,:)       :: OVP10_OUTPUT_2D => NULL()
+   REAL, POINTER, DIMENSION(:,:)       :: OVP14_OUTPUT_2D => NULL()
+
+   REAL, POINTER, DIMENSION(:,:,:)     :: DATA_FOR_OVP_3D => NULL()
+   REAL, POINTER, DIMENSION(:,:,:)     :: OVP10_OUTPUT_3D => NULL()
+   REAL, POINTER, DIMENSION(:,:,:)     :: OVP14_OUTPUT_3D => NULL()
+
+   INTEGER                             :: CURRENT_HMS  ! store time of day as hhmmss
+
+!!!! <<<<<<<<<<<<<<<<  OVP
 
 !ALT: for memory leak testing
    logical :: isPresent
@@ -2722,6 +2975,121 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
            endif
         enddo
     endif
+
+!!!! >>>>>>>>>>>>>>>>  OVP
+
+! Fill the Export test field
+!   call MAPL_GetPointer(EXPORT, mask2d,   'MASK_2PM',                 rc=STATUS)
+!   VERIFY_(STATUS)
+!   mask2d = MASK_2PM
+
+   CURRENT_HMS = OVP_end_of_timestep_hms( CLOCK, OVP_RUN_DT )
+!  IF(MAPL_AM_I_ROOT()) PRINT*,'AGCM CURRENT_HMS =',CURRENT_HMS
+
+! T overpass
+
+   CALL MAPL_GetPointer(GEX(SDYN), DATA_FOR_OVP_3D,         'T', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_T', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_T', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+
+! PL overpass
+
+   CALL MAPL_GetPointer(GEX(SDYN), DATA_FOR_OVP_3D,         'PL', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_PL', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_PL', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+
+
+! PLE overpass
+
+   CALL MAPL_GetPointer(GEX(SDYN), DATA_FOR_OVP_3D,         'PLE', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_PLE', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_PLE', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.TRUE., __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.TRUE., __RC__ )
+
+
+! QV_VMR overpass
+
+   CALL MAPL_GetPointer(EXPORT,    DATA_FOR_OVP_3D,              'Q', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_QV_VMR', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_QV_VMR', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., &
+                        SCALE=(MAPL_AIRMW/MAPL_H2OMW), __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., &
+                        SCALE=(MAPL_AIRMW/MAPL_H2OMW), __RC__ )
+
+! QLTOT overpass
+
+   CALL MAPL_GetPointer(EXPORT,    DATA_FOR_OVP_3D,         'QLTOT', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_QLTOT', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_QLTOT', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+
+! PS overpass
+
+   CALL MAPL_GetPointer(GEX(SDYN), DATA_FOR_OVP_2D,         'PS', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_2D,   'OVP10_PS', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_2D,   'OVP14_PS', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP10_OUTPUT_2D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP14_OUTPUT_2D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+
+! PPBL overpass
+
+   CALL MAPL_GetPointer(GEX(PHYS), DATA_FOR_OVP_2D,         'PPBL', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_2D,   'OVP10_PPBL', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_2D,   'OVP14_PPBL', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP10_OUTPUT_2D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP14_OUTPUT_2D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+
+! TROPP overpass blended tropopause TROPP3
+
+   CALL MAPL_GetPointer(EXPORT,    DATA_FOR_OVP_2D, 'TROPP_BLENDED', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_2D,   'OVP10_TROPP', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_2D,   'OVP14_TROPP', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP10_OUTPUT_2D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP14_OUTPUT_2D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+
+! U10M overpass
+
+   CALL MAPL_GetPointer(GEX(PHYS), DATA_FOR_OVP_2D,        'U10M', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_2D,   'OVP10_U10', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_2D,   'OVP14_U10', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP10_OUTPUT_2D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP14_OUTPUT_2D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+
+! V10M overpass
+
+   CALL MAPL_GetPointer(GEX(PHYS), DATA_FOR_OVP_2D,        'V10M', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_2D,   'OVP10_V10', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_2D,   'OVP14_V10', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP10_OUTPUT_2D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_2D, OVP14_OUTPUT_2D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, __RC__ )
+
+! EPV overpass
+
+   CALL MAPL_GetPointer(GEX(SDYN), DATA_FOR_OVP_3D,         'EPV', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP10_OUTPUT_3D,   'OVP10_EPV', __RC__)
+   CALL MAPL_GetPointer(EXPORT,    OVP14_OUTPUT_3D,   'OVP14_EPV', __RC__)
+
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP10_OUTPUT_3D, MASK_10AM, OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+   CALL OVP_apply_mask( DATA_FOR_OVP_3D, OVP14_OUTPUT_3D, MASK_2PM,  OVP_FIRST_HMS, CURRENT_HMS, K_EDGES=.FALSE., __RC__ )
+
+!!!! <<<<<<<<<<<<<<<<  OVP
 
 ! Done
 !-----
@@ -4404,6 +4772,61 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
    end subroutine dfi_coeffs
 
   end subroutine Run
+
+!!!! >>>>>>>>>>>>>>>>  OVP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!BOP
+
+! !IROUTINE: Finalize
+
+! !DESCRIPTION: Cleans-up through MAPL\_GenericFinalize and
+!   deallocates memory from the Private Internal state. 
+!   Fashioned after Finalize in DynCore_GridCompMod.F90
+!
+! !INTERFACE:
+
+subroutine Finalize(gc, import, export, clock, rc)
+
+! !ARGUMENTS:
+
+    type (ESMF_GridComp), intent(inout) :: gc
+    type (ESMF_State),    intent(inout) :: import
+    type (ESMF_State),    intent(inout) :: export
+    type (ESMF_Clock),    intent(inout) :: clock
+    integer, optional,    intent(  out) :: rc
+
+!EOP
+
+! Local variables
+!   type (DYN_wrap) :: wrap
+!   type (DynState), pointer  :: STATE
+
+    character(len=ESMF_MAXSTR)        :: IAm
+    character(len=ESMF_MAXSTR)        :: COMP_NAME
+    integer                           :: status
+
+!   type (MAPL_MetaComp),     pointer :: MAPL 
+    type (ESMF_Config)                :: cf
+
+
+! BEGIN
+
+    Iam = "Finalize"
+    call ESMF_GridCompGet( GC, name=COMP_NAME, config=cf, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam = trim(COMP_NAME) // Iam
+
+    DEALLOCATE( MASK_10AM, MASK_2PM, STAT=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GenericFinalize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+    VERIFY_(STATUS)
+
+  RETURN_(ESMF_SUCCESS)
+
+end subroutine FINALIZE
+!!!! <<<<<<<<<<<<<<<<  OVP
 
   function  my_nearest_time(TimeLeft, TimeRight, TimeNow, RC) result(TimeNearest)
   type(ESMF_Time),   intent(IN)  :: TimeLeft

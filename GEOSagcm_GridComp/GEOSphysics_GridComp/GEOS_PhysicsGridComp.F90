@@ -1041,6 +1041,12 @@ contains
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'PPBL',                                      &
+         CHILD_ID = TURBL,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
                                                                                                                              
 !EOS
 
