@@ -85,14 +85,7 @@ def make_bcs_latlon(config):
   bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
   log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
 
-  if glob.glob(os.path.join(expdir, '**', GRIDNAME+'.j'), recursive=True):
-       print("-------------------------------------------------------------------")
-       print("                 Abort:                                            ")
-       print(" This BCS run is configured to create output that already exists:  ")
-       print(expdir, ' has this grid ', GRIDNAME)
-       print(" Please delete run dir and same resolution BCS files and resubmit. ")
-       print("-------------------------------------------------------------------")
-       exit()
+  check_script(expdir, GRIDNAME+'.j')
 
   os.makedirs(scratch_dir)
   if not os.path.exists(log_dir):

@@ -164,9 +164,20 @@ endif
 
 # adjust permissions
 
-chmod 755 -R geometry land logs
+chmod +rX -R geometry land logs
 
 """
 
    return mv_template
+
+def check_script(expdir, script):
+
+  if glob.glob(os.path.join(expdir, '**', script), recursive=True):
+       print("-------------------------------------------------------------------")
+       print("                 Abort:                                            ")
+       print(" This BCS run is configured to create output that already exists:  ")
+       print(expdir, ' has this grid ', script)
+       print(" Please delete run dir and same resolution BCS files and resubmit. ")
+       print("-------------------------------------------------------------------")
+       exit()
 
