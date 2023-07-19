@@ -120,7 +120,7 @@ module shoc
 
 ! SHOC tunable parameters
   real :: lambda
-  real, parameter :: min_tke = 1e-6  ! Minumum TKE value, m**2/s**2
+  real, parameter :: min_tke = 1e-4  ! Minumum TKE value, m**2/s**2
   real, parameter :: max_tke = 10.    ! Maximum TKE value, m**2/s**2
 
 ! Maximum turbulent eddy length scale, m
@@ -300,8 +300,8 @@ module shoc
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
 
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
-  if (associated(prnum_inv))    prnum_inv(:,:,1:nz)     = prnum(:,:,nz:1:-1)
-  if (associated(ri_inv))       ri_inv(:,:,1:nz)        = ri(:,:,nz:1:-1)
+  if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
+  if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
 
 !========================================!
 
@@ -428,11 +428,12 @@ contains
     ! Below averages TKE from adjacent levels and subtracts TKE diagnosed from EDMF updrafts
     ! to estimate an environmental TKE on edge. Isotropy from adjacent levels is similarly
     ! averaged, and product of edge isotropy and environmental TKE provides diffusivity.
-    wrk = 0.5 * ck
+!    wrk = ck
     do k=2,nzm
       do j=1,ny
         do i=1,nx
-          wrk1 = wrk / (prnum(i,j,k) + prnum(i,j,k-1))
+!          wrk1 = wrk / (prnum(i,j,k) + prnum(i,j,k-1))
+          wrk1 = ck / prnum(i,j,k)
 
 !          tkh(i,j,k) = 0.5*( smixt(i,j,k)*sqrt(tke(i,j,k)) &      ! alternate form
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
@@ -440,10 +441,10 @@ contains
           tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
           if (brunt(i,j,k).gt.2e-4) then
             tkh(i,j,k) = wrk1*min(isotropy(i,j,k),isotropy(i,j,k-1))    &
-                       * 4.*(tke_env)             ! remove MF TKE
+                       * 1.*(tke_env)             ! remove MF TKE
           else
-            tkh(i,j,k) = wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
-                       * 2.*(tke_env)             ! remove MF TKE
+            tkh(i,j,k) = 0.5*wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
+                         *(tke_env)             ! remove MF TKE
 !                            * (tke(i,j,k)+tke(i,j,k-1)) ! use total TKE
           end if
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
@@ -484,7 +485,7 @@ contains
                       / ( 0.5*( THV(:,:,1:nzm-1)+THV(:,:,2:nzm) ) * (DU**2) )
 
      if (SHOCPARAMS%PRNUM.lt.0.) then
-        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-4)
+        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-6)
           PRNUM = 0.9
         elsewhere
           ! He et al 2019
@@ -657,7 +658,12 @@ contains
         do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk))
           kk = kk+1
         end do
-        l_mix(i,j) = max(min(zl(i,j,kk-1)+(zl(i,j,kk-1)-zl(i,j,kk-2))*(thv(i,j,3)+0.4-thv(i,j,kk-1))/(thv(i,j,kk-1)-thv(i,j,kk-2)),1000.),100.)
+        dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
+        if (abs(dum) .gt. 1e-3) then
+          l_mix(i,j) = max(min(zl(i,j,kk-1)+(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,1200.),100.)
+        else
+          l_mix(i,j) = max(min(zl(i,j,kk-1),1200.),100.)
+        end if
 
 
 !        tep = tabs(i,j,1)
@@ -868,6 +874,7 @@ contains
 
                  ! Kludgey adjustment to increase StCu by reducing L3 at cloud top
                  if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. (cld_sgs(i,j,k).gt.0.2.or.cld_sgs(i,j,k-1).gt.0.2) .and. brunt(i,j,k+1).gt.2e-4) then
+!                 if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. cld_sgs(i,j,k).gt.0.2  .and. brunt(i,j,k).gt.2e-4) then
                     smixt3(i,j,k) = (0.25+(1-0.25)*(zl(i,j,k)-200.)/1500.)*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
                  else
                     smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))

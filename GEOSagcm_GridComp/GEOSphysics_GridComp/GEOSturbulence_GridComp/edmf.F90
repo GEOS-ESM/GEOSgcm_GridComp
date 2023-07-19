@@ -606,9 +606,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
         ! Near-surface CFL: To prevent instability, rescale updraft velocities
         ! if mass flux exceeds MFLIMFAC times the layer mass
-        if (ZW(k)<200.) then
+        if (ZW(k)<300.) then
           mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-          factor = (1.+(MFPARAMS%MFLIMFAC-1.)*(ZW(k)/200.))*dp(K)/(mf*MAPL_GRAV*dt)
+          factor = (1.+(MFPARAMS%MFLIMFAC-1.)*(ZW(k)/300.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
           if (factor .lt. 1.0) then
              UPW(k,:) = UPW(k,:)*factor
         !                  print *,'rescaling UPW by factor: ',factor

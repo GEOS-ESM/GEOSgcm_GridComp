@@ -2267,7 +2267,7 @@ end if
        SHORT_NAME = 'TKESHOC',                                   &
        LONG_NAME  = 'turbulent_kinetic_energy_from_SHOC',        &
        UNITS      = 'm+2 s-2',                                   &
-       DEFAULT    = 0.0,                                         &
+       DEFAULT    = 1e-4,                                         &
        FRIENDLYTO = FRIENDLIES_SHOC,                             &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
@@ -3476,12 +3476,11 @@ if (SCM_SL /= 0) then
        cu => cu_scm
        ct => ct_scm
        cq => ct_scm
-       ustar_scm = 0.3! sqrt(CM*UU/RHOS)
-       
+!       ustar_scm = 0.3! sqrt(CM*UU/RHOS)      
 !       bstar_scm = (MAPL_GRAV/(RHOS*sqrt(CM*max(UU,1.e-30)/RHOS))) *  &
 !                   (CT*(TH-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ*(QH-QA))
        
-!       ustar => ustar_scm
+       ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
 
