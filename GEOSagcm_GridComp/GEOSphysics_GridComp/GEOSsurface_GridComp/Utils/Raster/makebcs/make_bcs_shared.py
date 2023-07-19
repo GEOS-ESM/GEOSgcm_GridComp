@@ -152,9 +152,13 @@ echo "-----------------------------"
 /bin/mv geometry/{GRIDNAME} ../../geometry/.
 /bin/mv land/{GRIDNAME}     ../../land/.
 
-# if necessary, copy of CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
+# cd out of and clean up the temporary directory
 
 cd ../..
+
+/bin/rm -r {TMP_DIR}
+
+# if necessary, copy resolution-independent CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
 
 if(-f land/shared/CO2_MonthlyMean_DiurnalCycle.nc4) then
     echo "CO2_MonthlyMean_DiurnalCycle.nc4 already present in bcs dir."
@@ -167,7 +171,6 @@ endif
 
 chmod +rX -R geometry land logs
 
-/bin/rm -r {TMP_DIR}
 """
 
    return mv_template
