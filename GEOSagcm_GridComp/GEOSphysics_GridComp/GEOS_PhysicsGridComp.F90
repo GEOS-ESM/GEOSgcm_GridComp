@@ -2092,7 +2092,7 @@ contains
    real, allocatable, dimension(:,:,:) :: TFORQS
    real, allocatable, dimension(:,:)   :: qs,pmean
 
-   logical :: isPresent
+   logical :: isPresent, SCM_NO_RAD
    real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
@@ -2137,6 +2137,9 @@ contains
 
     call MAPL_TimerOn(STATE,"TOTAL")
     call MAPL_TimerOn(STATE,"RUN")
+
+    call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
@@ -2763,12 +2766,20 @@ contains
             VERIFY_(STATUS)
        endif
 
-       TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
-           + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
-           + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
-           + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
-           + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-           + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       if (SCM_NO_RAD) then
+          TOT = STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       else
+          TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
+              + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       end if
 
        IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))
