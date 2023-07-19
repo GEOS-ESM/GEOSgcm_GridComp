@@ -4341,7 +4341,7 @@ contains
      ! ----------------------- !
 
      umf_out(i,0:k0)             = umf(0:k0)
-     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
+     umf_out(i,0:kinv-1)         = umf(kinv-1)*zifc0(0:kinv-1)/zifc0(kinv-1)
 
 !     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
      dcm_out(i,:k0)              = dcm(:k0)
