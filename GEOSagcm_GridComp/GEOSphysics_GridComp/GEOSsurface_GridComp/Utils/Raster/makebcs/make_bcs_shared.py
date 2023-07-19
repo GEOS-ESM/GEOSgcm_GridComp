@@ -152,8 +152,6 @@ echo "-----------------------------"
 /bin/mv geometry/{GRIDNAME} ../../geometry/.
 /bin/mv land/{GRIDNAME}     ../../land/.
 
-/bin/rm -r {TMP_DIR}
-
 # if necessary, copy of CO2 file from MAKE_BCS_INPUT_DIR to bcs dir 
 
 cd ../..
