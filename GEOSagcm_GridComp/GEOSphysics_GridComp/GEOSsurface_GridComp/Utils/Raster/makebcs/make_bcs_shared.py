@@ -166,6 +166,7 @@ endif
 
 chmod +rX -R geometry land logs
 
+/bin/rm -r {TMP_DIR}
 """
 
    return mv_template
