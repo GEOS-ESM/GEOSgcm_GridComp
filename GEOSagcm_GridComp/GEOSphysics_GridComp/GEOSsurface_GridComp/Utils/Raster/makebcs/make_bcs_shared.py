@@ -2,6 +2,9 @@
 #
 # source install/bin/g5_modules
 
+import os
+import glob
+
 def get_script_head() :
 
    return  """#!/bin/csh -x

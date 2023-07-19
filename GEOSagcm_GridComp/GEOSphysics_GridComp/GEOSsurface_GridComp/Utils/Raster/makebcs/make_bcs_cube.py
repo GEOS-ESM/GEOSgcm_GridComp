@@ -3,7 +3,6 @@
 # source install/bin/g5_modules
 
 import os
-import glob
 from make_bcs_questionary import *
 from make_bcs_shared import * 
 
