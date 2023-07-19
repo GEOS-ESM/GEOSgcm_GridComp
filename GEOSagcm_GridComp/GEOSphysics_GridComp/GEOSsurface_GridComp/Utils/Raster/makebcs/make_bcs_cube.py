@@ -9,11 +9,6 @@ from make_bcs_shared import *
 
 cube_template = """
 
-echo "-----------------------------" 
-echo "make_bcs_cube start date/time" 
-echo `date` 
-echo "-----------------------------" 
-
 if ( {STEP1} == True ) then
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
@@ -87,11 +82,6 @@ if( {CUBED_SPHERE_OCEAN} == True ) then
       bin/create_README.csh
    endif
 endif
-
-echo "-----------------------------" 
-echo "make_bcs_cube end date/time" 
-echo `date` 
-echo "-----------------------------" 
 
 """
 def make_bcs_cube(config):

@@ -9,11 +9,6 @@ from make_bcs_shared  import *
 
 ease_template = """
 
-echo "-----------------------------"
-echo "make_bcs_ease start date/time"
-echo `date`
-echo "-----------------------------"  
-
 setenv OMP_NUM_THREADS 1
 bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
 setenv OMP_NUM_THREADS 1
@@ -22,11 +17,6 @@ setenv OMP_NUM_THREADS {NCPUS}
 bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 chmod 755 bin/create_README.csh
 bin/create_README.csh
-
-echo "---------------------------"
-echo "make_bcs_ease end date/time"
-echo `date`
-echo "---------------------------"  
 
 """
 

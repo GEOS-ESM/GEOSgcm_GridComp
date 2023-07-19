@@ -14,6 +14,11 @@ def get_script_head() :
 #SBATCH --job-name={GRIDNAME2}.j
 #SBATCH --constraint=sky|cas
 
+echo "-----------------------------" 
+echo "make_bcs starts date/time" 
+echo `date` 
+echo "-----------------------------" 
+
 cd {SCRATCH_DIR}
 
 if( ! -d bin ) then
@@ -133,6 +138,11 @@ mkdir -p land/{GRIDNAME}/clsm
 # move output into final directory tree (layout as of July 2023)
 
 mkdir -p ../../geometry ../../land/shared ../../logs
+
+echo "-----------------------------" 
+echo "make_bcs ends date/time" 
+echo `date` 
+echo "-----------------------------" 
 
 /bin/mv ../logs/{GRIDNAME}  ../../logs/.
 

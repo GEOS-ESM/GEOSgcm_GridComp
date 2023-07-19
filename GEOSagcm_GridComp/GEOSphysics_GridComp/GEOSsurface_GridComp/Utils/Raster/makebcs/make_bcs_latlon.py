@@ -10,11 +10,6 @@ from make_bcs_shared import *
 
 latlon_template = """
 
-echo "-------------------------------"
-echo "make_bcs_latlon start date/time"
-echo `date`
-echo "-------------------------------"
-
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/360x200 data/MOM5/360x200
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/720x410 data/MOM5/720x410
 ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM5/1440x1080 data/MOM5/1440x1080
@@ -55,11 +50,6 @@ if( {TRIPOL_OCEAN} == True ) then
     chmod 755 bin/create_README.csh
     bin/create_README.csh    
 endif
-
-echo "-----------------------------"
-echo "make_bcs_latlon end date/time"
-echo `date`
-echo "-----------------------------"
 
 """
 
