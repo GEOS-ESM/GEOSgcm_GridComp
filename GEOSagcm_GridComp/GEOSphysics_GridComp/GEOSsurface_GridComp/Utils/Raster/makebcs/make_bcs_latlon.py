@@ -81,8 +81,8 @@ def make_bcs_latlon(config):
   tmp_dir=f"{resolution}_{orslv}_{tmp_dir}"
   expdir = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
-  bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
   log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
+  bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
 
   check_script(expdir, GRIDNAME+'.j')
 

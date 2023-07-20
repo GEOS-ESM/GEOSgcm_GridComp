@@ -39,7 +39,7 @@ def make_bcs_ease(config):
   expdir  = config['expdir']
   scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
   log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
-  job_script       = scratch_dir+'/'+GRIDNAME+'.j'
+  bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
 
   check_script(expdir, GRIDNAME+'.j')
 
@@ -74,7 +74,7 @@ def make_bcs_ease(config):
            SCRATCH_DIR = scratch_dir, \
            NCPUS = config['NCPUS'])
 
-  ease_job = open(job_script,'wt')
+  ease_job = open(bcjob,'wt')
   ease_job.write(script_string)
   ease_job.close()
 
@@ -85,13 +85,13 @@ def make_bcs_ease(config):
      if ( not ntasks):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
-        subprocess.call(['chmod', '755', job_script])
-        log_name = job_script +'.log'
-        print(job_script+  '  1>' + log_name  + '  2>&1')
-        os.system(job_script + ' 1>' + log_name+ ' 2>&1')
+        subprocess.call(['chmod', '755', bcjob])
+        log_name = bcjob +'.log'
+        print(bcjob+  '  1>' + log_name  + '  2>&1')
+        os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
-    print("sbatch " + job_script +"\n")
-    subprocess.call(['sbatch', job_script])
+    print("sbatch " + bcjob +"\n")
+    subprocess.call(['sbatch', bcjob])
 
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
