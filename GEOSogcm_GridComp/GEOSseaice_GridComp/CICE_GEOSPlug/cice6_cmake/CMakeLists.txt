@@ -8,9 +8,6 @@ esma_set_this (OVERRIDE cice6)
 # 3. find cicecore/cicedynB/ -not -path "*cicedynB/infrastructure*" -print | grep .F90
 # 4. find cicecore/cicedynB/infrastructure/ -not -path "*comm/serial*" -not -path "*io/io_pio2*" -not -path "*io/io_binary*" -print | grep .F90
 #
-# 1. find src/ -print | grep .F90 | sort -d
-# 2. ls -1 pkg/CVMix-src/src/*0 ; ls -1 pkg/CVMix-src/src/drivers/*0 ; ls -1 pkg/CVMix-src/src/shared/*0 ; ls -1 pkg/GSW-Fortran/modules/*0 ; ls -1 pkg/GSW-Fortran/toolbox/*0
-#
 list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_aerosol.F90
    icepack/columnphysics/icepack_age.F90
