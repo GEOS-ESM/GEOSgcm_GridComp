@@ -979,7 +979,7 @@
          ESTLQU = QSATLQU0(TMINLQU)
 
          UTBL = UT
-
+!$acc update device(ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE)
        end subroutine ESINIT
 
       subroutine ESINIT_v2
