@@ -5,7 +5,7 @@ module GEOS_Giga_InterOpMod
    implicit none
    private
 
-   public :: initGigaGridLatLonField3d
+!   public :: initGigaGridLatLonField3d
    public :: initMetGEOSDistributedData
    public :: updateFields
    public :: rk4a_advance
@@ -19,14 +19,14 @@ module GEOS_Giga_InterOpMod
 
    interface
 
-     function initGigaGridLatLonField3d(nlons, nlats, nzs, lons_ptr, lats_ptr, levs_ptr, name_ptr,  &
-                                        units_ptr,ctime_ptr) result (field_ptr) bind(C, name="initGigaGridLatLonField3D")
-       import :: c_int, c_ptr
-       implicit none
-       integer(c_int), intent(in), value :: nlons, nlats, nzs
-       type(c_ptr), intent(in), value    :: lons_ptr, lats_ptr, levs_ptr, name_ptr, units_ptr, ctime_ptr
-       type(c_ptr) :: field_ptr
-     end function
+!     function initGigaGridLatLonField3d(nlons, nlats, nzs, lons_ptr, lats_ptr, levs_ptr, name_ptr,  &
+!                                        units_ptr,ctime_ptr) result (field_ptr) bind(C, name="initGigaGridLatLonField3D")
+!       import :: c_int, c_ptr
+!       implicit none
+!       integer(c_int), intent(in), value :: nlons, nlats, nzs
+!       type(c_ptr), intent(in), value    :: lons_ptr, lats_ptr, levs_ptr, name_ptr, units_ptr, ctime_ptr
+!       type(c_ptr) :: field_ptr
+!     end function
 
      function initMetGEOSDistributedData(comm, ijToRank, Ig, Jg,lev, nlon_local, nlat_local, nzs, lons_ptr, lats_ptr, eta_ptr, ctime_ptr) result (metdata_ptr) bind(C, name="initGigaGridDistributedData")
        import :: c_int, c_ptr
