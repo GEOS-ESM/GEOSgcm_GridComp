@@ -128,9 +128,7 @@ def make_bcs_cube(config):
   log_dir     = expdir+'/'+tmp_dir+'/logs/'+ GRIDNAME
   bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
 
-  if os.path.exists(bcjob):
-    print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
-    return
+  check_script(expdir, GRIDNAME+'.j')
 
   os.makedirs(scratch_dir)
   if not os.path.exists(log_dir):
