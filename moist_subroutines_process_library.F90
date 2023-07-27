@@ -146,23 +146,23 @@ module Process_Library_standalone
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 0)
 
-!!$acc kernels
+!$acc kernels
         where (MLCAPE.le.0.)
             MLCAPE = MAPL_UNDEF
             MLCIN  = MAPL_UNDEF
         end where
-!!$acc end kernels
+!$acc end kernels
     end if
 
     ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
-!!$acc kernels
+!$acc kernels
         MUCAPE = 0.
         MUCIN  = 0.
         BYNCY = MAPL_UNDEF
         LFC = MAPL_UNDEF
         LNB = MAPL_UNDEF
-!!$acc end kernels
+!$acc end kernels
 
         ! do I = 1,IM
         !     do J = 1,JM
@@ -186,19 +186,19 @@ module Process_Library_standalone
                             tmp1, tmp2, BYNCY, LFC, LNB, &
                             Lev0, PS, T, Q, MUCAPE, MUCIN, 1)
 
-!!$acc kernels
+!$acc kernels
         where (MUCAPE.le.0.)
             MUCAPE = MAPL_UNDEF
             MUCIN  = MAPL_UNDEF
         end where
-!!$acc end kernels
+!$acc end kernels
     end if
 
     ! Surface-based calculation
-!!$acc kernels
+!$acc kernels
     MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
     Qp   = Q(:,:,LM)
-!!$acc end kernels
+!$acc end kernels
     
 ! parcel specific humidity
     ! do I = 1,IM
@@ -213,12 +213,12 @@ module Process_Library_standalone
         MSEp, Qp, Tve, QS, DQS,       &
         SBCAPE, SBCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 2)
 
-!!$acc kernels
+!$acc kernels
     where (SBCAPE.le.0.)
         SBCAPE = MAPL_UNDEF
         SBCIN  = MAPL_UNDEF
     end where
-!!$acc end kernels
+!$acc end kernels
 !$acc end data
     end subroutine BUOYANCY2
 
@@ -431,7 +431,7 @@ module Process_Library_standalone
             enddo
 !$acc end parallel
         else
-            LM = size(ZLO,3)
+            LM = size(Tve,3)
 !$acc parallel loop gang vector collapse(2) &
 !$acc          private(aboveLNB, aboveLFC, Qpnew, &
 !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC)
@@ -440,8 +440,8 @@ module Process_Library_standalone
 !$acc loop seq
                     do LL = LM, 1, -1
                         if(PS(I,J) - PLO(I,J,LL) .gt. 255.) exit
-                        MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
-                        Qp(I,J)   = Q(I,J,L)
+                        MSEp(I,J) = T(I,J,LL) + gravbcp*ZLO(I,J,LL) + alhlbcp*Q(I,J,LL)
+                        Qp(I,J)   = Q(I,J,LL)
                         aboveLNB = .false.
                         aboveLFC = .false.
                     

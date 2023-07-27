@@ -538,7 +538,7 @@
 
        if(FIRST) then
           FIRST = .false.
-          call ESINIT
+         !  call ESINIT
          !  call LOGGER_INIT
        end if
 
@@ -941,7 +941,7 @@
 ! !=======================================================================================
 
         subroutine ESINIT
-!$acc routine seq
+!!$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa
