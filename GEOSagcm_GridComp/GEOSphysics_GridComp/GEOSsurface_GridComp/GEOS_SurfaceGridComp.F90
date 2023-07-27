@@ -3308,7 +3308,9 @@ module GEOS_SurfaceGridCompMod
 ! the children; but our children do not talk to each other, only to us
 ! --------------------------------------------------------------------
 
-    call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+   ! call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+    call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                   CHILD_IDS=[OCEAN],  RC=STATUS  )
     VERIFY_(STATUS)
 #ifndef AQUA_PLANET
     call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
