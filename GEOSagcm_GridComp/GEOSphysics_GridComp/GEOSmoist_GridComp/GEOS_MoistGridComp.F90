@@ -311,9 +311,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'EDMF_FRC',                                       &
-            LONG_NAME  = 'Mass_Flux_Fractional_Area',                 &
-            UNITS      = '1',                                         &
+            SHORT_NAME = 'SL2',                                       &
+            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
+            UNITS      = 'K+2',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -322,9 +322,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'SL2',                                       &
-            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
-            UNITS      = 'K+2',                                       &
+            SHORT_NAME = 'PDF_A',                                     &
+            LONG_NAME  = 'ADG_PDF_first_plume_fractional_area',       &
+            UNITS      = '1',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -720,15 +720,6 @@ contains
        LONG_NAME  = 'HYSTPDF_iterations',                                    &
        UNITS      = '1',                                                     &
        SHORT_NAME = 'PDFITERS',                                              &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'PDF_A',                                                 &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )

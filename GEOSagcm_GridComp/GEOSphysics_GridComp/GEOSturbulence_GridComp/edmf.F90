@@ -117,6 +117,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     moist_v3,                      &
                     moist_qc3,                     &
                     entx,                          &
+                    mfdepth,                       &
                     edmf_plumes_w,                 &
                     edmf_plumes_thl,               &
                     edmf_plumes_qt )
@@ -169,6 +170,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
 
   ! Diagnostic outputs
+   REAL, DIMENSION(:,:), POINTER   :: mfdepth
    REAL, DIMENSION(:,:,:), POINTER :: dry_w3,   moist_w3,   &
                                       dry_qt3,  moist_qt3,  &
                                       dry_thl3, moist_thl3, &
@@ -305,7 +307,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! if CLASP enabled: mass flux is input
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
       !                    TKE at 2nd model level above threshold
-      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0)      &
+      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)
@@ -332,6 +334,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
         L0 = max(min(ztop,3000.),500.) / mfparams%L0fac
+        if (associated(mfdepth)) mfdepth(IH,JH) = ztop
 
         ! Reduce L0 over ocean where LTS is large to encourage StCu formation
         lts =  0.0
@@ -499,6 +502,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
 !          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
+          if (UPQT(kts-1,I).le.0.) then
+             UPQT(kts-1,I) = QT(kts)
+             print *,'EDMF: Warning! Corrected negative UPQT!'
+          end if
         end if
 
       ENDDO
@@ -773,7 +780,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                          + mapl_alhs*( UPQI(K,I) - QII(K) )
           end if
           ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
-          s_aws(k)  = s_aws(K)+UPA(K,i)*UPW(K,i)*tmp
+          s_aws(k)  = s_aws(K)+UPA(K,i)*UPW(K,i)*tmp ! for trisolver
           s_ahl2(k) = s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_ahl3(k) = s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
           s_awhl(k) = s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
@@ -822,6 +829,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (associated(moist_qc3))  moist_qc3(IH,JH,KTS-1:KTE)  = moist_qc(KTE:KTS-1:-1)
 
 
+      ! Note values were initialized to zero above
       DO K=KTS-1,KTE-1
         ! outputs - variables needed for solver
         aw3(IH,JH,K)   = s_aw(KTE+KTS-K-1)
@@ -837,10 +845,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ENDDO
       mfwhl(IH,JH,KTE) = s_awhl(KTS-1)
       mfwqt(IH,JH,KTE) = s_awqt(KTS-1)
-!      awqv3(:,:,KTE) = 0.  ! surface flux 0
-!      awql3(:,:,KTE) = 0.
-!      awqi3(:,:,KTE) = 0.
-!      aws3(:,:,KTE)  = 0.
+
     
 
       ! buoyancy is defined on full levels
@@ -912,7 +917,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
     ! compare Tv env vs parcel
     if ( t2*(1.+MAPL_VIREPS*q(k)) .ge. tep*(1.+MAPL_VIREPS*qp)+0.1 ) then
-      ztop = min(3000.,max(1000.,0.5*(z2+z1)))
+      ztop = 0.5*(z2+z1)
       exit
     end if
 

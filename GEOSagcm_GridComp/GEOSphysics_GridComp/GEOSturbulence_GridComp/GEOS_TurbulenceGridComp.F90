@@ -675,7 +675,7 @@ end if
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                    RC=STATUS  )
     VERIFY_(STATUS)    
-    
+
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_moist_updraft_fractional_area',                    &
        UNITS      = '1',                                                     &
@@ -990,6 +990,15 @@ end if
        SHORT_NAME = 'EDMF_ENTR',                                             &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_plume_depth_for_entrainment',                      &
+       UNITS      = 'm',                                                     &
+       SHORT_NAME = 'EDMF_DEPTH',                                            &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -1794,7 +1803,7 @@ end if
        LONG_NAME  = 'return_to_isotropy_timescale',              &
        UNITS      = 's',                                         &
        DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
@@ -1803,6 +1812,14 @@ end if
        UNITS      = 'm',                                         &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'LMIX',                                      &
+       LONG_NAME  = 'mixed_layer_depth_from_SHOC',               &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
@@ -2263,6 +2280,17 @@ end if
       FRIENDLIES_SHOC = 'DYNAMICS:TURBULENCE'
     endif
 
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'ADG_PDF_first_plume_fractional_area',                   &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PDF_A',                                                 &
+       DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = FRIENDLIES_SHOC,                                         &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                   RC=STATUS  )
+    VERIFY_(STATUS)    
+
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKESHOC',                                   &
        LONG_NAME  = 'turbulent_kinetic_energy_from_SHOC',        &
@@ -2443,7 +2471,7 @@ end if
 
 ! SHOC-related variables
     integer                             :: DO_SHOC, SCM_SL
-    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC
+    real, dimension(:,:,:), pointer     :: TKESHOC,TKH,QT2,QT3,WTHV2,WQT_DC,PDF_A
 
     real, dimension(:,:), pointer   :: EVAP, SH
 
@@ -2576,6 +2604,8 @@ end if
     call MAPL_GetPointer(INTERNAL, QT3,    'QT3',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QT2,    'QT2',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, PDF_A,  'PDF_A',     RC=STATUS)
     VERIFY_(STATUS)
 
 !
@@ -2781,11 +2811,12 @@ end if
      real, dimension(:,:,:), pointer     :: AKQODT, CKQODT
      real, dimension(:,:,:), pointer     :: AKVODT, CKVODT
 
-    real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
-                                           LSHOC1,LSHOC2,LSHOC3, & 
-                                           SHOCPRNUM,&
-                                           TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
-                                           SL2, SL3, W2, W3, WQT, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
+     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
+                                            LSHOC1,LSHOC2,LSHOC3, & 
+                                            SHOCPRNUM,&
+                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
+                                            SL2, SL3, W2, W3, WQT, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
+     real, dimension(:,:), pointer       :: LMIX, edmf_depth
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -2888,7 +2919,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2, DOCANUTO
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            QT3_TSCALE
+                                            QT3_TSCALE, AFRC_TSCALE
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3002,26 +3033,27 @@ end if
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,    trim(COMP_NAME)//"_SHC_PRNUM:",        default=-1.0, RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",       default=0.04, RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",       default=400., RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,    trim(COMP_NAME)//"_SHC_CK:",           default=0.1,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,    trim(COMP_NAME)//"_SHC_CEFAC:",        default=1.0,  RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,   trim(COMP_NAME)//"_SHC_CESFAC:",       default=4.,   RC=STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,   trim(COMP_NAME)//"_SHC_LENOPT:",       default=3,    RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1,  trim(COMP_NAME)//"_SHC_LENFAC1:",      default=4.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2,  trim(COMP_NAME)//"_SHC_LENFAC2:",      default=1.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3,  trim(COMP_NAME)//"_SHC_LENFAC3:",      default=2.0,  RC=STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT,  trim(COMP_NAME)//"_SHC_BUOY_OPTION:",  default=2,    RC=STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-1.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.04, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=4.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
-     call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, DOPROGQT2, 'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SL2TUNE,   'SL2TUNE:',    DEFAULT = 3.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2TUNE,   'QT2TUNE:',    DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, SLQT2TUNE, 'SLQT2TUNE:',  DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 2400.0, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, DOCANUTO,  'DOCANUTO:',   DEFAULT = 0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 3.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 2400.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, AFRC_TSCALE,'AFRC_TSCALE:',DEFAULT = 1800.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3214,6 +3246,8 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_entx,      'EDMF_ENTR',  RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  mfaw,           'MFAW',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  slflxmf,        'SLFLXMF',  RC=STATUS)
@@ -3235,6 +3269,8 @@ end if
      call MAPL_GetPointer(EXPORT, LSHOC,   'LSHOC',    RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1',   RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, LMIX,    'LMIX',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2',   RC=STATUS)
      VERIFY_(STATUS)
@@ -3568,6 +3604,7 @@ end if
                     edmf_moist_v,             &
                     edmf_moist_qc,            &
                     edmf_entx,                &
+                    edmf_depth,               &
                     EDMF_PLUMES_W,            &
                     EDMF_PLUMES_THL,          &
                     EDMF_PLUMES_QT )
@@ -3648,12 +3685,10 @@ end if
 !
 !!!=================================================================
 
-      ISOTROPY = 600.   ! set default isotropy timescale,
-                        ! will be overwritten
-
       if ( DO_SHOC /= 0 ) then
 
         LOCK_ON = 0
+        ISOTROPY = 600.
 
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -3676,6 +3711,7 @@ end if
                        WTHV2(:,:,1:LM),       &
                        BUOYF(:,:,1:LM),       &
                        MFTKE(:,:,0:LM),       &
+                       ZPBL(:,:),             &
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
                        TKH(:,:,1:LM),         &
@@ -3687,6 +3723,7 @@ end if
                        TKEBUOY,               &
                        TKESHEAR,              &
                        LSHOC,                 &
+                       LMIX,                  &
                        LSHOC1,                &
                        LSHOC2,                &
                        LSHOC3,                &
@@ -4197,7 +4234,8 @@ end if
                           MFWSL,          &
                           MFSLQT,         &
                           WQT_DC,         &
-                          qt2,            &  ! inout
+                          PDF_A,          &  ! inout
+                          qt2,            &
                           qt3,            &
                           sl2,            &  ! out
                           sl3,            &
@@ -4209,12 +4247,13 @@ end if
                           slqt,           &
                           qt2diag,        &
                           sl2diag,        &
-                          slqtdiag,        &
+                          slqtdiag,       &
                           doprogqt2,      &  ! tuning parameters
                           sl2tune,        &
                           qt2tune,        &
                           slqt2tune,      &
                           qt3_tscale,     &
+                          afrc_tscale,    &
                           docanuto )
        end if
 
@@ -5685,9 +5724,9 @@ end subroutine RUN1
          else
             RETURN_(ESMF_FAILURE)
          end if
-         if( trim(NAME)=='QV' .or. trim(NAME)=='QLLS' ) then
-            DKX => DKQQ
-         end if
+!         if( trim(NAME)=='QV' .or. trim(NAME)=='QLLS' ) then
+!            DKX => DKQQ
+!         end if
 
 ! Update diffused quantity
 !-------------------------
@@ -5898,8 +5937,9 @@ end subroutine RUN1
          end if
 
        if( name=='Q' .or. name=='QLLS'  .or. name=='QLCN'  .or. &
-                          name=='QILS'  .or. name=='QICN'  .or. &
-                          name=='QRAIN' .or. name=='QSNOW' .or. name=='QGRAUPEL') then
+                          name=='QILS'  .or. name=='QICN' ) then
+!                          name=='QILS'  .or. name=='QICN'  .or. &
+!                          name=='QRAIN' .or. name=='QSNOW' .or. name=='QGRAUPEL') then
           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
        endif
 

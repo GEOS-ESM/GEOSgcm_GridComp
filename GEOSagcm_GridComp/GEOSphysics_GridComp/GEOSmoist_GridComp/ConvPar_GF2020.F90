@@ -849,6 +849,7 @@ CONTAINS
                 !---only updraft
                 CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + zup5d(i,j,flip(k),IENS)
 
+                ! deep convective total water flux. assumes .033 fractional area.
                 qsatup = MAPL_EQsat(tup5d(i,j,flip(k),IENS),press(flip(k),i,j),dtqw) + clwup5d(i,j,flip(k),IENS)/0.033
                 WQT_DC (i,j,k) = WQT_DC (i,j,k) + zup5d(i,j,flip(k),IENS)*(qsatup - rvap(flip(k),i,j))
 

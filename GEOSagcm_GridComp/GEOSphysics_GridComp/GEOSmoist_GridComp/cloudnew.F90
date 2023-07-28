@@ -400,7 +400,6 @@ contains
          EXNP_dev         , &
          FRLAND_dev       , &
          KH_dev           , &
-         mf_frc_dev       , &
 !         wqtfac_dev       , &
 !         whlfac_dev       , &
          wqt_dev          , &
@@ -521,7 +520,6 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: EXNP_dev    ! PK
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
       real, intent(in   ), dimension(IRUN,0:LM) :: KH_dev      ! KH
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_frc_dev  !
 !      real, intent(in   ), dimension(IRUN,  LM) :: wqtfac_dev  !
 !      real, intent(in   ), dimension(IRUN,  LM) :: whlfac_dev  !
       real, intent(in   ), dimension(IRUN,  LM) :: wqt_dev  !
@@ -1052,7 +1050,6 @@ contains
                   w2_dev(I,K),         &
                   qt3_dev(I,K),        &
                   hl3_dev(I,K),        &
-                  mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDFITERS_dev(I,K),   &
 #ifdef PDFDIAG
@@ -1102,7 +1099,6 @@ contains
                   w2_dev(I,K),         &
                   qt3_dev(I,K),        &
                   hl3_dev(I,K),        &
-                  mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDFITERS_dev(I,K),   &
 #ifdef PDFDIAG
@@ -1871,7 +1867,6 @@ contains
          W2          , &
          MFQT3       , &
          MFHL3       , &
-         MF_FRC      , &
          PDF_A,      &  ! can remove these after development
          PDFITERS,   &
 #ifdef PDFDIAG
@@ -1898,7 +1893,7 @@ contains
       integer, intent(in) :: pdfshape
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,PDF_A
       real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
-      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MFQT3,MFHL3
 #ifdef PDFDIAG
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
                              PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
@@ -1998,6 +1993,7 @@ contains
             HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
 
            call partition_dblgss(DT/nmax,           &
+                                 fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
@@ -2015,7 +2011,6 @@ contains
                                  W2,           &
                                  MFQT3,        &
                                  MFHL3,        &
-                                 MF_FRC,       &
                                  PDF_A,        &
 #ifdef PDFDIAG
                                  PDF_SIGW1,    &

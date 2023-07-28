@@ -1289,7 +1289,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
-                         'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
+                         'TKE          ', 'TKESHOC      ', 'PDF_A        ',     &
                          'SL2          ', 'SL3          ', 'W2           ',     &
                          'W3           ', 'SLQT         ', 'WQT          ',     &
                          'WSL          ', 'QT2          ', 'QT3          '/),    &
