@@ -333,7 +333,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       if (mfparams%ET == 2 ) then
         pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
         call calc_mf_depth(kts,kte,t3(IH,JH,:),zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
-        L0 = max(min(ztop,3000.),500.) / mfparams%L0fac
+        L0 = max(min(ztop,2500.),500.) / mfparams%L0fac
         if (associated(mfdepth)) mfdepth(IH,JH) = ztop
 
         ! Reduce L0 over ocean where LTS is large to encourage StCu formation
@@ -489,7 +489,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPA(kts-1,I)=MFAREA(IH,JH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
-          UPA(kts-1,I)=MIN(1.5,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
+          UPA(kts-1,I)=MIN(1.0,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
         end if
 
         UPU(kts-1,I)=U(kts)
@@ -502,10 +502,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
 !          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
-          if (UPQT(kts-1,I).le.0.) then
-             UPQT(kts-1,I) = QT(kts)
-             print *,'EDMF: Warning! Corrected negative UPQT!'
-          end if
         end if
 
       ENDDO

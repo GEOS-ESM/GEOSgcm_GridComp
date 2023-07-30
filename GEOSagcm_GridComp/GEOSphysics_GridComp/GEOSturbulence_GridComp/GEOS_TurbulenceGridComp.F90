@@ -5351,7 +5351,7 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: DSG, SF, SDF, SRFDIS
       real, dimension(:,:  ), pointer     :: HGTLM5, LM50M
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
-      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKQQ, DKX, EKV, FKV
+      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKSS, DKUU, DKQQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
       real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, MFWSL, &
                                              MFWQT, TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
@@ -5480,6 +5480,10 @@ end subroutine RUN1
       call MAPL_GetPointer(INTERNAL, DKQ,   'DKQ',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, DKQQ,  'DKQQ',  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DKSS,  'DKSS',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DKUU,  'DKUU',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, EKV,   'EKV',   RC=STATUS)
       VERIFY_(STATUS)
@@ -5724,9 +5728,15 @@ end subroutine RUN1
          else
             RETURN_(ESMF_FAILURE)
          end if
-!         if( trim(NAME)=='QV' .or. trim(NAME)=='QLLS' ) then
-!            DKX => DKQQ
-!         end if
+         if( trim(NAME)=='QV' ) then
+            DKX => DKQQ
+         end if
+         if( trim(NAME)=='S') then
+            DKX => DKSS
+         end if
+         if( trim(NAME)=='U' .or. trim(NAME)=='V' ) then
+            DKX => DKUU
+         end if
 
 ! Update diffused quantity
 !-------------------------

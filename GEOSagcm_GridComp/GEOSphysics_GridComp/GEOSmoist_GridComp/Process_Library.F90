@@ -1829,7 +1829,6 @@ module GEOSmoist_Process_Library
          W2          , &
          MFQT3       , &
          MFHL3       , &
-!         MF_FRC      , &
          PDF_A       , &  ! can remove these after development
          PDFITERS    , &
 #ifdef PDFDIAG
@@ -1910,7 +1909,7 @@ module GEOSmoist_Process_Library
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         if (PDFSHAPE.lt.5) DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
@@ -1954,7 +1953,6 @@ module GEOSmoist_Process_Library
                                  W2,           &
                                  MFQT3,        &
                                  MFHL3,        &
-!                                 MF_FRC,       &
                                  PDF_A,        &
 #ifdef PDFDIAG
                                  PDF_SIGW1,    &
@@ -2007,10 +2005,12 @@ module GEOSmoist_Process_Library
          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
          if(PDFSHAPE.eq.1) then 
             QCn = QCp +     (QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
-         elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
+         elseif(PDFSHAPE.eq.2) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2 of top-hat.
             QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
+         elseif(PDFSHAPE.eq.5) then
+            QCn = QCp + 0.5*(QCn-QCp)
          endif
 
          if ( CLCN > 0. ) then
