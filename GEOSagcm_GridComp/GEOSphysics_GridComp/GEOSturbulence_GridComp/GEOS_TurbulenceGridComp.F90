@@ -3669,7 +3669,7 @@ end if
       if (associated(edmf_slqt))      edmf_slqt     = mfslqt
       if (associated(edmf_wsl))       edmf_wsl      = mfwsl
       if (associated(edmf_tke))       edmf_tke      = mftke
-      if (associated(EDMF_FRC)        EDMF_FRC = 0.
+      if (associated(EDMF_FRC))       EDMF_FRC = 0.
      
    ENDIF
 
