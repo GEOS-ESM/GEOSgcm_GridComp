@@ -146,15 +146,25 @@ module Process_Library_standalone
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 0)
 
-!$acc kernels
-        where (MLCAPE.le.0.)
-            MLCAPE = MAPL_UNDEF
-            MLCIN  = MAPL_UNDEF
-        end where
-!$acc end kernels
+! !$acc kernels
+!         where (MLCAPE.le.0.)
+!             MLCAPE = MAPL_UNDEF
+!             MLCIN  = MAPL_UNDEF
+!         end where
+! !$acc end kernels
+!$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1,IM
+                if(MLCAPE(I,J).le.0) then
+                    MLCAPE(I,J) = mapl_undef
+                    MLCIN(I,J) = mapl_undef
+                endif
+            enddo
+        enddo
+!$acc end parallel
     end if
 
-    ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
+    ! ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
 !$acc kernels
         MUCAPE = 0.
@@ -186,12 +196,22 @@ module Process_Library_standalone
                             tmp1, tmp2, BYNCY, LFC, LNB, &
                             Lev0, PS, T, Q, MUCAPE, MUCIN, 1)
 
-!$acc kernels
-        where (MUCAPE.le.0.)
-            MUCAPE = MAPL_UNDEF
-            MUCIN  = MAPL_UNDEF
-        end where
-!$acc end kernels
+! !$acc kernels
+!         where (MUCAPE.le.0.)
+!             MUCAPE = MAPL_UNDEF
+!             MUCIN  = MAPL_UNDEF
+!         end where
+! !$acc end kernels
+!$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1,IM
+                if(MLCAPE(I,J).le.0) then
+                    MLCAPE(I,J) = mapl_undef
+                    MLCIN(I,J) = mapl_undef
+                endif
+            enddo
+        enddo
+!$acc end parallel
     end if
 
     ! Surface-based calculation
@@ -213,12 +233,22 @@ module Process_Library_standalone
         MSEp, Qp, Tve, QS, DQS,       &
         SBCAPE, SBCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 2)
 
-!$acc kernels
-    where (SBCAPE.le.0.)
-        SBCAPE = MAPL_UNDEF
-        SBCIN  = MAPL_UNDEF
-    end where
-!$acc end kernels
+! !$acc kernels
+!     where (SBCAPE.le.0.)
+!         SBCAPE = MAPL_UNDEF
+!         SBCIN  = MAPL_UNDEF
+!     end where
+! !$acc end kernels
+ !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1,IM
+                if(SBCAPE(I,J).le.0) then
+                    SBCAPE(I,J) = mapl_undef
+                    SBCIN(I,J) = mapl_undef
+                endif
+            enddo
+        enddo
+!$acc end parallel       
 !$acc end data
     end subroutine BUOYANCY2
 

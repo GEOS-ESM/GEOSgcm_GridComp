@@ -129,7 +129,7 @@ module test_process_library_subroutines
 !$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb, MLCAPE, MUCAPE, &
 !$acc             MLCIN, MUCIN) &
 !$acc      copyout(BYNCY) &
-!$acc      copy(SBCIN, SBCAPE, LFC, LNB)
+!$acc      copyin(SBCIN, SBCAPE, LFC, LNB)
 
         ! This is to initialize arrays in GEOS_UtilsMod ahead of time
         call ESINIT_v2
@@ -149,37 +149,37 @@ module test_process_library_subroutines
         print*,'sum(BYNCY - BYNCY_comp) = ', sum(BYNCY - BYNCY_comp)
         print*,'sum(BYNCY) = ', sum(BYNCY)
 
-        open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".out", &
-            status='old', form="unformatted", action="read")
-        read(fileID) SBCAPE_comp
-        close(fileID)
+        ! open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".out", &
+        !     status='old', form="unformatted", action="read")
+        ! read(fileID) SBCAPE_comp
+        ! close(fileID)
 
-        print*,'sum(SBCAPE - SBCAPE_comp) = ', sum(SBCAPE - SBCAPE_comp)
-        print*,'sum(SBCAPE) = ', sum(SBCAPE)
+        ! print*,'sum(SBCAPE - SBCAPE_comp) = ', sum(SBCAPE - SBCAPE_comp)
+        ! print*,'sum(SBCAPE) = ', sum(SBCAPE)
 
-        open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".out", &
-            status='old', form="unformatted", action="read")
-        read(fileID) SBCIN_comp
-        close(fileID)
+        ! open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".out", &
+        !     status='old', form="unformatted", action="read")
+        ! read(fileID) SBCIN_comp
+        ! close(fileID)
 
-        print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
-        print*,'sum(SBCIN) = ', sum(SBCIN)
+        ! print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
+        ! print*,'sum(SBCIN) = ', sum(SBCIN)
 
-        open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".out", &
-            status='old', form="unformatted", action="read")
-        read(fileID) LFC_comp
-        close(fileID)
+        ! open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".out", &
+        !     status='old', form="unformatted", action="read")
+        ! read(fileID) LFC_comp
+        ! close(fileID)
 
-        print*,'sum(LFC - LFC_comp) = ', sum(LFC - LFC_comp)
-        print*,'sum(LFC) = ', sum(LFC)
+        ! print*,'sum(LFC - LFC_comp) = ', sum(LFC - LFC_comp)
+        ! print*,'sum(LFC) = ', sum(LFC)
 
-        open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".out", &
-            status='old', form="unformatted", action="read")
-        read(fileID) LNB_comp
-        close(fileID)
+        ! open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".out", &
+        !     status='old', form="unformatted", action="read")
+        ! read(fileID) LNB_comp
+        ! close(fileID)
 
-        print*,'sum(LNB - LNB_comp) = ', sum(LNB - LNB_comp)
-        print*,'sum(LNB) = ', sum(LNB)
+        ! print*,'sum(LNB - LNB_comp) = ', sum(LNB - LNB_comp)
+        ! print*,'sum(LNB) = ', sum(LNB)
         
         
     end subroutine
