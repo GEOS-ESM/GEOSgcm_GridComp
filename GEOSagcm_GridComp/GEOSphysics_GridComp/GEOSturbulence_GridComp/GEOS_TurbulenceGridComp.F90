@@ -3543,7 +3543,7 @@ end if
     mfwsl  = 0.0
     mftke  = 0.0
 
-    IF(DoMF /= 0) then
+    IF(DOMF /= 0) then
 
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,      &
                     !== Inputs ==
@@ -3626,7 +3626,8 @@ end if
       if (associated(edmf_slqt))      edmf_slqt = mfslqt
       if (associated(edmf_wsl))       edmf_wsl = mfwsl
       if (associated(edmf_tke))       edmf_tke = mftke
-      EDMF_FRC = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
+      if (associated(EDMF_FRC))       EDMF_FRC = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) &
+                                                    + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
 
     ELSE            ! if there is no mass-flux
       ae3   = 1.0
@@ -3668,8 +3669,7 @@ end if
       if (associated(edmf_slqt))      edmf_slqt     = mfslqt
       if (associated(edmf_wsl))       edmf_wsl      = mfwsl
       if (associated(edmf_tke))       edmf_tke      = mftke
-     
-      EDMF_FRC = 0.
+      if (associated(EDMF_FRC)        EDMF_FRC = 0.
      
    ENDIF
 
