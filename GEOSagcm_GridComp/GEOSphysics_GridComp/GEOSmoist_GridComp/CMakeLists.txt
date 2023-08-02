@@ -9,18 +9,17 @@ set (srcs
   GEOS_GFDL_1M_InterfaceMod.F90 gfdl_cloud_microphys.F90
   GEOS_GF_InterfaceMod.F90 ConvPar_GF_GEOS5.F90 ConvPar_GF2020.F90 ConvPar_GF_Shared.F90 module_gate.F90
   GEOS_UW_InterfaceMod.F90 uwshcu.F90
+  aer_actv_single_moment.F90
   GEOS_MoistGridComp.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
 if (GPU_PHYSICS)
   list (APPEND srcs
-    openacc/Process_Library.F90
-    openacc/aer_actv_single_moment.F90)
+    openacc/Process_Library.F90)
 else ()
   list (APPEND srcs
-    Process_Library.F90
-    aer_actv_single_moment.F90)
+    Process_Library.F90)
 endif ()
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
