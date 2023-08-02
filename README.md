@@ -1,1 +1,1 @@
-# OpenACC Port of buoyancy routine in Moist Physics
+# OpenACC Port of buoyancy2 routine in Moist Physics
