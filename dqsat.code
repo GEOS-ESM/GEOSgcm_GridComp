@@ -1,0 +1,131 @@
+! $Id$
+
+
+
+#undef WHERE
+#undef ELSEWHERE
+#undef ENDWHERE
+
+#ifdef SCALAR
+#define WHERE(A)  if(A) then
+#define ELSEWHERE else
+#define ENDWHERE  endif
+#else
+#define WHERE     where
+#define ELSEWHERE elsewhere
+#define ENDWHERE  endwhere
+#endif      
+
+
+      real       C1, C2, C3, C4, C5, C6
+      parameter (C1= B1   )
+      parameter (C2= B2*2.)
+      parameter (C3= B3*3.)
+      parameter (C4= B4*4.)
+      parameter (C5= B5*5.)
+      parameter (C6= B6*6.)
+
+      real       CI1, CI2, CI3, CI4, CI5, CI6
+      parameter (CI1= BI1   )
+      parameter (CI2= BI2*2.)
+      parameter (CI3= BI3*3.)
+      parameter (CI4= BI4*4.)
+      parameter (CI5= BI5*5.)
+      parameter (CI6= BI6*6.)
+      
+      real       D11, D12, D13, D14, D15, D16
+      parameter (D11= S11   )
+      parameter (D12= S12*2.)
+      parameter (D13= S13*3.)
+      parameter (D14= S14*4.)
+      parameter (D15= S15*5.)
+      parameter (D16= S16*6.)
+
+      real       D21, D22, D23, D24, D25, D26
+      parameter (D21= S21   )
+      parameter (D22= S22*2.)
+      parameter (D23= S23*3.)
+      parameter (D24= S24*4.)
+      parameter (D25= S25*5.)
+      parameter (D26= S26*6.)
+
+      real :: URAMP
+
+      T   = max(min(TL-ZEROC,TMAX),TMIN)
+      
+      if(present(RAMP)) then
+         URAMP = -RAMP
+      else
+         URAMP = TMIX
+      end if
+      
+      WHERE(T.lt.TSTARR1)
+       QX = (T*(T*(T*(T*(T*(T*S16+S15)+S14)+S13)+S12)+S11)+S10)
+       DQX = (T*(T*(T*(T*(T*D16+D15)+D14)+D13)+D12)+D11)
+      ENDWHERE
+     
+      WHERE(T.ge.TSTARR1.and.T.lt.TSTARR2)
+       W = (TSTARR2 - T)/(TSTARR2-TSTARR1)
+       QX =     W *(T*(T*(T*(T*(T*(T*S16+S15)+S14)+S13)+S12)+S11)+S10) &
+          + (1.-W)*(T*(T*(T*(T*(T*(T*S26+S25)+S24)+S23)+S22)+S21)+S20)
+       DQX =     W *(T*(T*(T*(T*(T*D16+D15)+D14)+D13)+D12)+D11)   &
+           + (1.-W)*(T*(T*(T*(T*(T*D26+D25)+D24)+D23)+D22)+D21)
+      ENDWHERE
+     
+      WHERE(T.ge.TSTARR2.and.T.lt.TSTARR3)
+       QX = (T*(T*(T*(T*(T*(T*S26+S25)+S24)+S23)+S22)+S21)+S20)
+       DQX = (T*(T*(T*(T*(T*D26+D25)+D24)+D23)+D22)+D21)
+      ENDWHERE
+     
+      WHERE(T.ge.TSTARR3.and.T.lt.TSTARR4)
+       W = (TSTARR4 - T)/(TSTARR4-TSTARR3)
+       QX =     W *(T*(T*(T*(T*(T*(T*S26+S25)+S24)+S23)+S22)+S21)+S20) &
+          + (1.-W)*(T*(T*(T*(T*(T*(T*BI6+BI5)+BI4)+BI3)+BI2)+BI1)+BI0)
+       DQX =     W *(T*(T*(T*(T*(T*D26+D25)+D24)+D23)+D22)+D21)   &
+           + (1.-W)*(T*(T*(T*(T*(T*CI6+CI5)+CI4)+CI3)+CI2)+CI1)
+      ENDWHERE
+     
+      WHERE(T.ge.TSTARR4.and.T.le.0.)
+       QX = (T*(T*(T*(T*(T*(T*BI6+BI5)+BI4)+BI3)+BI2)+BI1)+BI0)
+       DQX = (T*(T*(T*(T*(T*CI6+CI5)+CI4)+CI3)+CI2)+CI1)
+      ENDWHERE
+
+      if(URAMP < 0.0) then
+         WHERE(T.GE.URAMP.AND.T.LE.0.)
+            W = (URAMP - T)/URAMP
+            QX =       W *(T*(T*(T*(T*(T*(T*B6+B5)+B4)+B3)+B2)+B1)+B0)        &
+                 + (1.-W)*QX
+            DQX =      W *(T*(T*(T*(T*(T*C6+C5)+C4)+C3)+C2)+C1)   &
+                 + (1.-W)*DQX
+         ENDWHERE
+      end if
+
+      WHERE(T.gt.0.)
+       QX = (T*(T*(T*(T*(T*(T*B6+B5)+B4)+B3)+B2)+B1)+B0)
+       DQX = (T*(T*(T*(T*(T*C6+C5)+C4)+C3)+C2)+C1)
+      ENDWHERE
+
+      if(present(PASCALS)) then
+         if(PASCALS) then
+            QX  = QX  * 100.
+            DQX = DQX * 100.
+         end if
+      end if
+
+      D = (PL - ERFAC*QX)
+
+      if(present(QSAT)) then
+         WHERE(D.le.0.)
+            QSAT = MAX_MIXING_RATIO
+         ELSEWHERE
+            QSAT = min(QX / D,MAX_MIXING_RATIO)
+         ENDWHERE
+      end if
+
+      WHERE(D.le.0.)
+       DQSAT = 0.0
+      ELSEWHERE
+       DQSAT = DQX * PL / (D*D)
+      ENDWHERE
+
+      return
