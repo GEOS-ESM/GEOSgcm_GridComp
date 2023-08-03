@@ -127,6 +127,8 @@ module gfdl2_cloud_microphys_mod
 
   real, parameter :: rc = (4. / 3.) * pi * rhor
 
+  integer, parameter :: QSMITH_TABLE_LENGTH = 2621
+
   real :: cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw !< constants for accretions
   real :: acco (3, 4) !< constants for accretions
   real :: cssub (5), cgsub (5), crevp (5), cgfr (2), csmlt (5), cgmlt (5)
@@ -745,11 +747,11 @@ contains
     ! use local variables
     ! -----------------------------------------------------------------------
     !$acc parallel
-    !$acc loop gang collapse(2) &
-    !$acc private(h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, vtiz, vtsz, vtgz, &
-    !$acc         vtrz, dp0, dp1, dz0, dz1, qv0, ql0, qr0, qi0, qs0, qg0, qa0, &
-    !$acc         t0, den, den0, tz, p1, denfac, ccn, c_praut, m1_rain, m1_sol, &
-    !$acc         m1, evap1, subl1, u0, v0, u1, v1, w1, r1, s1, i1, g1)
+    !$acc loop gang collapse(2)
+    !!$acc private(h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, vtiz, vtsz, vtgz, &
+    !!$acc         vtrz, dp0, dp1, dz0, dz1, qv0, ql0, qr0, qi0, qs0, qg0, qa0, &
+    !!$acc         t0, den, den0, tz, p1, denfac, ccn, c_praut, m1_rain, m1_sol, &
+    !!$acc         m1, evap1, subl1, u0, v0, u1, v1, w1, r1, s1, i1, g1)
     do j = js, je
        do i = is, ie
           !$acc loop vector private(omq)
@@ -2466,7 +2468,8 @@ contains
 
     integer :: k, k0, m
 
-    logical :: no_fall, flag
+    logical :: no_fall
+    logical :: exit_flag ! working around the GNU OpenACC's dislike of `exit` in loops
 
     zs = 0.
     fac_imlt = 1. - exp (- dtm / tau_imlt)
@@ -2491,17 +2494,13 @@ contains
     ! -----------------------------------------------------------------------
 
     k0 = kbot
-    ! pchakrab: using flag to work around the issue that
-    ! GNU OpenACC does not like exit statements in its loops
-    flag = .false.
+    exit_flag = .true.
     !$acc loop seq
     do k = ktop, kbot - 1
-       if (.not. flag) then
-          if (tz (k) > tice) then
-             k0 = k
-             flag = .true.
-          end if
-       endif
+       if (tz (k) > tice .and. exit_flag) then
+          k0 = k
+          exit_flag = .false.
+       end if
     enddo
 
     ! -----------------------------------------------------------------------
@@ -2578,11 +2577,11 @@ contains
           !$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qi (k) > qcmin) then
+                exit_flag = .true.
                 !$acc loop seq
                 do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m)) exit
-
-                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                   if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
                       dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vr_min, vti (k)) * tau_imlt))
                       sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
                       tmp = min (sink, dim (ql_mlt, ql (m)))
@@ -2645,23 +2644,26 @@ contains
           !$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qs (k) > qpmin) then
+                exit_flag = .true.
                 !$acc loop seq
                 do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m)) exit
-                   dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
-                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                      dtime = min (1.0, dtime / tau_smlt)
-                      sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                      tz (m) = tz (m) - sink * icpk (m)
-                      qs (k) = qs (k) - sink * dp (m) / dp (k)
-                      if (zt (k) < zs) then
-                         r1 = r1 + sink * dp (m) ! precip as rain
-                      else
-                         ! qr source here will fall next time step (therefore, can evap)
-                         qr (m) = qr (m) + sink
-                      endif
+                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                   if (exit_flag) then
+                      dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
+                      if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                         dtime = min (1.0, dtime / tau_smlt)
+                         sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+                         tz (m) = tz (m) - sink * icpk (m)
+                         qs (k) = qs (k) - sink * dp (m) / dp (k)
+                         if (zt (k) < zs) then
+                            r1 = r1 + sink * dp (m) ! precip as rain
+                         else
+                            ! qr source here will fall next time step (therefore, can evap)
+                            qr (m) = qr (m) + sink
+                         endif
+                      end if
                    endif
-                   if (qs (k) < qpmin) exit
+                   if (qs (k) < qpmin .and. exit_flag) exit_flag = .false.
                 enddo
              endif
           enddo
@@ -2718,22 +2720,25 @@ contains
           !$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qg (k) > qpmin) then
+                exit_flag = .true.
                 !$acc loop seq
                 do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m)) exit
-                   dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
-                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                      dtime = min (1., dtime / tau_g2r)
-                      sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                      tz (m) = tz (m) - sink * icpk (m)
-                      qg (k) = qg (k) - sink * dp (m) / dp (k)
-                      if (zt (k) < zs) then
-                         r1 = r1 + sink * dp (m)
-                      else
-                         qr (m) = qr (m) + sink
+                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                   if (exit_flag) then
+                      dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
+                      if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                         dtime = min (1., dtime / tau_g2r)
+                         sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+                         tz (m) = tz (m) - sink * icpk (m)
+                         qg (k) = qg (k) - sink * dp (m) / dp (k)
+                         if (zt (k) < zs) then
+                            r1 = r1 + sink * dp (m)
+                         else
+                            qr (m) = qr (m) + sink
+                         endif
                       endif
-                   endif
-                   if (qg (k) < qpmin) exit
+                   end if
+                   if (qg (k) < qpmin .and. exit_flag) exit_flag = .false.
                 enddo
              endif
           enddo
@@ -3629,7 +3634,21 @@ contains
 
     rgrav = 1. / grav
 
-    if (.not. qsmith_tables_initialized) call qsmith_init
+    if (.not. qsmith_tables_initialized) then
+
+       allocate (table (QSMITH_TABLE_LENGTH))
+       allocate (table2 (QSMITH_TABLE_LENGTH))
+       allocate (table3 (QSMITH_TABLE_LENGTH))
+       allocate (tablew (QSMITH_TABLE_LENGTH))
+       allocate (des (QSMITH_TABLE_LENGTH))
+       allocate (des2 (QSMITH_TABLE_LENGTH))
+       allocate (des3 (QSMITH_TABLE_LENGTH))
+       allocate (desw (QSMITH_TABLE_LENGTH))
+
+       call qsmith_init
+       !$acc update device(des, des2, des3, desw, tables_are_initialized)
+
+    end if
 
     qsmith_tables_initialized = .true.
 
@@ -3716,8 +3735,7 @@ contains
   subroutine qsmith_init
 
     implicit none
-
-    integer, parameter :: length = 2621
+    !$acc routine seq
 
     integer :: i
 
@@ -3734,34 +3752,23 @@ contains
 
        ! generate es table (dt = 0.1 deg. c)
 
-       allocate (table (length))
-       allocate (table2 (length))
-       allocate (table3 (length))
-       allocate (tablew (length))
-       allocate (des (length))
-       allocate (des2 (length))
-       allocate (des3 (length))
-       allocate (desw (length))
+       call qs_table (QSMITH_TABLE_LENGTH)
+       call qs_table2 (QSMITH_TABLE_LENGTH)
+       call qs_table3 (QSMITH_TABLE_LENGTH)
+       call qs_tablew (QSMITH_TABLE_LENGTH)
 
-       call qs_table (length)
-       call qs_table2 (length)
-       call qs_table3 (length)
-       call qs_tablew (length)
-
-       do i = 1, length - 1
+       do i = 1, QSMITH_TABLE_LENGTH - 1
           des (i) = max (0., table (i + 1) - table (i))
           des2 (i) = max (0., table2 (i + 1) - table2 (i))
           des3 (i) = max (0., table3 (i + 1) - table3 (i))
           desw (i) = max (0., tablew (i + 1) - tablew (i))
        enddo
-       des (length) = des (length - 1)
-       des2 (length) = des2 (length - 1)
-       des3 (length) = des3 (length - 1)
-       desw (length) = desw (length - 1)
+       des (QSMITH_TABLE_LENGTH) = des (QSMITH_TABLE_LENGTH - 1)
+       des2 (QSMITH_TABLE_LENGTH) = des2 (QSMITH_TABLE_LENGTH - 1)
+       des3 (QSMITH_TABLE_LENGTH) = des3 (QSMITH_TABLE_LENGTH - 1)
+       desw (QSMITH_TABLE_LENGTH) = desw (QSMITH_TABLE_LENGTH - 1)
 
        tables_are_initialized = .true.
-
-       !$acc update device(des, des2, des3, desw)
 
     endif
 
@@ -4199,6 +4206,7 @@ contains
   subroutine qs_tablew (n)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4231,6 +4239,7 @@ contains
   subroutine qs_table2 (n)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4281,6 +4290,7 @@ contains
   subroutine qs_table3 (n)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4369,6 +4379,7 @@ contains
   subroutine qs_table (n)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: n
 
