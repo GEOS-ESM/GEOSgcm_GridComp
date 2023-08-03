@@ -107,8 +107,12 @@ module GEOSmoist_Process_Library
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-  
- 
+
+!!$acc declare create(aT_ICE_ALL, aT_ICE_MAX, aICEFRPWR, iT_ICE_ALL, iT_ICE_MAX, iICEFRPWR, &
+!!$acc                lT_ICE_ALL, lT_ICE_MAX, lICEFRPWR, oT_ICE_ALL, oT_ICE_MAX, oICEFRPWR, &
+!!$acc                EPSILON, K_COND, DIFFU, taufrz, dQCmax, RHO_W, Ldiss, Lk, Lbe, Lbx, RHO_I, &
+!!$acc                cpbgrav, gravbcp, alhlbcp, alhfbcp, alhsbcp, mapl_undef)
+
   contains
 
   subroutine CNV_Tracers_Init(TR, RC)
@@ -236,6 +240,7 @@ module GEOSmoist_Process_Library
   end function ICE_FRACTION_1D
 
   function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+!$acc routine seq
       real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
       real             :: ICEFRCT
       real             :: tc, ptc
