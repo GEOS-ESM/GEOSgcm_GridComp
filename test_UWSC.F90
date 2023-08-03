@@ -4,12 +4,12 @@ program test_UWSC
 
     implicit none
 
-    integer   :: IM, JM, LM, num_args, USE_TRACER_TRANSP_UW
+    integer   :: IM, JM, LM, num_args, USE_TRACER_TRANSP_UW, fileID
     real      :: UW_DT
     real :: start, end
 
     real, dimension(:,:,:), allocatable :: PL, ZL0, PK, PLE, ZLE0, PKE, DP
-    real, dimension(:,:,:), allocatable :: U, V, Q,, QLTOT, QITOT, T, TKE
+    real, dimension(:,:,:), allocatable :: U, V, Q, QLTOT, QITOT, T, TKE
     real, dimension(:,:),   allocatable :: KPBL_SC, SH, EVAP, CNPCPRATE, FRLAND, CUSH, CUSH_ref
 
     real, dimension(:,:,:), allocatable :: UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC
@@ -27,8 +27,6 @@ program test_UWSC
     real, dimension(:,:,:), allocatable :: SC_NDROP_ref, SC_NICE_ref, QTFLX_SC_ref, SLFLX_SC_ref
     real, dimension(:,:,:), allocatable :: UFLX_SC_ref, VFLX_SC_ref
     real, dimension(:,:),   allocatable :: TPERT_SC_ref, QPERT_SC_ref
-
-    type(shlwparam_type) :: shlwparams_obj
 
     character *100 :: BUFFER, dirName, rank_str
 
@@ -71,7 +69,7 @@ program test_UWSC
     allocate(FRLAND(IM, JM))
     allocate(CUSH(IM, JM))
 
-    allocate(UNF_SC(IM, JM, 0:LM))
+    allocate(UMF_SC(IM, JM, 0:LM))
     allocate(DCM_SC(IM, JM, LM))
     allocate(DQVDT_SC(IM, JM, LM))
     allocate(DQLDT_SC(IM, JM, LM))
@@ -98,7 +96,7 @@ program test_UWSC
     allocate(VFLX_SC(IM, JM, 0:LM))
 
     allocate(CUSH_ref(IM, JM))
-    allocate(UNF_SC_ref(IM, JM, 0:LM))
+    allocate(UMF_SC_ref(IM, JM, 0:LM))
     allocate(DCM_SC_ref(IM, JM, LM))
     allocate(DQVDT_SC_ref(IM, JM, LM))
     allocate(DQLDT_SC_ref(IM, JM, LM))
@@ -390,9 +388,5 @@ program test_UWSC
     close(fileID)
     write(*, *) 'done.'
     write(*, '(a, f10.4, a)') 'Time taken: ', end-start, 's.'
-    
-    write(*,*) "cush Difference Sum = ", sum(cush - cush_test)
-    write(*,*) "tr0_inv Difference Sum = ", sum(tr0_inv - tr0_inv_test)
-    write(*,*) "umf_inv Difference Sum = ", sum(umf_inv - umf_inv_test)
 
 end program

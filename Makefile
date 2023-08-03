@@ -1,12 +1,10 @@
 programName = run_UWSC
-sourceName = test_UWSC.F90
-sourceName2 =test_UWSC.o
 
 FC = nvfortran
 OPT = -O3 -Mfunc32 -Kieee #-acc=gpu -gpu=flushz #NVIDIA compiler options
 #OPT = -O3 -fopenmp # Gfortran compiler options
 #OPT = -O3 -qopenmp -fp-model source -fimf-archi-consistency=true# Ifort compiler options
-OBJ = SHLWPARAMS.o MAPL_Constants.o GEOS_Utilities.o uwshcu.o $(sourceName2)
+OBJ = MAPL_Constants.o GEOS_Utilities.o moist_subroutines_process_library.o uwshcu.o test_UWSC.o 
 
 %.o : %.F90
 	$(FC) -c -o $@ $^ $(OPT) $(INC)

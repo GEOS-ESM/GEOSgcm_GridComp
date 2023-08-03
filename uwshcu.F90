@@ -14,6 +14,7 @@ module uwshcu
                                 MAPL_AIRMW, MAPL_RVAP , &
                                 MAPL_PI, r8 => MAPL_R8
 
+   use ieee_arithmetic
    implicit none
 
    type SHLWPARAM_TYPE
@@ -63,6 +64,8 @@ module uwshcu
    real, parameter :: rovcp = MAPL_RGAS/MAPL_CP     ! Gas constant over specific heat
 
    real, parameter :: mintracer = tiny(1.)
+
+   real, parameter :: MAPL_UNDEF = 1.0e15
 contains
 
    real function exnerfn(pressure)
@@ -294,7 +297,7 @@ contains
 !        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,:))))
         cnvtrmax(i) = min(1e-5,max(0.,cnvtr(i)))
         if (frland(i)>0.5) cnvtrmax(i) = 0.
-        if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
+        if (ieee_is_nan(cnvtrmax(i))) cnvtrmax(i) = 0.
       end do
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
@@ -1200,7 +1203,7 @@ contains
                exit_conden(i) = 1.0
                id_exit = .true.
                if (scverbose) then
-                  call write_parallel('------- UW ShCu: Exit, conden')
+                  ! call write_parallel('------- UW ShCu: Exit, conden')
                end if
                go to 333
             end if
@@ -1215,7 +1218,7 @@ contains
                  exit_conden(i) = 1.0
                  id_exit = .true.
                  if (scverbose) then
-                   call write_parallel('------- UW ShCu: Exit, conden')
+                   ! call write_parallel('------- UW ShCu: Exit, conden')
                  end if
                  go to 333
               end if
@@ -1412,14 +1415,14 @@ contains
               exit_kinv1(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: Exit, kinv<=1')
+                ! call write_parallel('------- UW ShCu: Exit, kinv<=1')
               end if
               go to 333
            endif
            if( kinv .ge. k0/4 ) then        
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: Exit, kinv>k0/4')
+                ! call write_parallel('------- UW ShCu: Exit, kinv>k0/4')
               end if
               go to 333
            endif
@@ -1571,7 +1574,7 @@ contains
             exit_klclk0(i) = 1.
             id_exit = .true.
             if (scverbose) then
-              call write_parallel('------- UW ShCu: exit, plcl<600mb')
+              ! call write_parallel('------- UW ShCu: exit, plcl<600mb')
             end if
             go to 333
          endif
@@ -1726,7 +1729,7 @@ contains
        if( klfc .ge. k0 ) then
            klfc = k0
            if (scverbose) then
-             call write_parallel('------ UWShCu: klfc >= k0')
+             ! call write_parallel('------ UWShCu: klfc >= k0')
            end if
            exit_klfck0(i) = 1.
            id_exit = .true.
@@ -1958,7 +1961,7 @@ contains
 
                ind_delcin(i) = 1.             
                if (scverbose) then
-                 call write_parallel('------ UWShCu: del_CIN<0')
+                 ! call write_parallel('------ UWShCu: del_CIN<0')
                end if
 
                ! --------------------------------------------------------- !
@@ -2160,7 +2163,7 @@ contains
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
-              call write_parallel('mu >= 3')
+              ! call write_parallel('mu >= 3')
             end if
             id_exit = .true.
             go to 333
@@ -2180,7 +2183,7 @@ contains
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
             mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
             if( mu .gt. mumin2 ) then
-                 call write_parallel('Critical error in mu calculation in UW_ShCu')
+               !   call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
             endif
             mu = max(mu,mumin2)
@@ -2214,7 +2217,7 @@ contains
          wtw = winv * winv - 2. * cinlcl * rbuoy
          if( wtw .le. 0. ) then
             if (scverbose) then
-              call write_parallel('wlcl < 0 at the LCL')
+              ! call write_parallel('wlcl < 0 at the LCL')
             end if
             exit_wtw(i) = 1.
             id_exit = .true.
@@ -2225,7 +2228,7 @@ contains
          wrel = wlcl
          if( ufrclcl .le. 0.0001 ) then
             if (scverbose) then
-              call write_parallel( 'ufrclcl <= 0.0001' ) 
+              ! call write_parallel( 'ufrclcl <= 0.0001' ) 
             end if
             exit_ufrc(i) = 1.
             id_exit = .true.
@@ -2271,7 +2274,7 @@ contains
             exit_conden(i) = 1.
             id_exit = .true.
             if (scverbose) then
-              call write_parallel('------- UW ShCu: exit, conden')
+              ! call write_parallel('------- UW ShCu: exit, conden')
             end if
             go to 333
          endif
@@ -2492,7 +2495,7 @@ contains
                exit_conden(i) = 1.
                id_exit = .true.
                if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
+                 ! call write_parallel('------- UW ShCu: exit, conden')
                end if
                go to 333
             end if
@@ -2507,7 +2510,7 @@ contains
                exit_conden(i) = 1.
                id_exit = .true.
                if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
+                 ! call write_parallel('------- UW ShCu: exit, conden')
                end if
                go to 333
             end if
@@ -2531,7 +2534,7 @@ contains
                exit_conden(i) = 1.
                id_exit = .true.
                if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
+                 ! call write_parallel('------- UW ShCu: exit, conden')
                end if
                go to 333
             end if
@@ -2597,7 +2600,7 @@ contains
                   exit_conden(i) = 1.
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               end if
@@ -2748,7 +2751,7 @@ contains
               exit_conden(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: exit, conden')
+                ! call write_parallel('------- UW ShCu: exit, conden')
               end if
               go to 333
             end if
@@ -2788,7 +2791,7 @@ contains
                exit_conden(i) = 1.
                id_exit = .true.
                if (scverbose) then
-                 call write_parallel('------- UW ShCu: exit, conden')
+                 ! call write_parallel('------- UW ShCu: exit, conden')
                end if
                go to 333
             end if  
@@ -2906,7 +2909,7 @@ contains
               exit_wu(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: exited, wu>100')
+                ! call write_parallel('------- UW ShCu: exited, wu>100')
               end if
               go to 333
             endif
@@ -3014,7 +3017,7 @@ contains
                elseif( xc1 .gt. 0. .and. xc2 .gt. 0. ) then
                    ppen = -dp0(kpen)
                    if (scverbose) then
-                     call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
+                     ! call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
                    end if
                else
                    ppen = min( xc1, xc2 )
@@ -3023,7 +3026,7 @@ contains
            else
                ppen = -dp0(kpen)
                if (scverbose) then
-                 call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
+               !   call write_parallel('Warning : UW-Cumulus penetrates up to kpen interface')
                end if
            endif       
          else 
@@ -3056,7 +3059,7 @@ contains
            exit_conden(i) = 1.
            id_exit = .true.
            if (scverbose) then
-             call write_parallel('------- UW ShCu: exit, conden')
+             ! call write_parallel('------- UW ShCu: exit, conden')
            end if
            go to 333
          end if
@@ -3116,7 +3119,7 @@ contains
          cldhgt = pifc0(kpen-1) + ppen
          if( forcedCu ) then
            if (scverbose) then
-             call write_parallel( 'forcedCu - did not overcome initial buoyancy barrier')
+             ! call write_parallel( 'forcedCu - did not overcome initial buoyancy barrier')
            end if
            exit_cufilter(i) = 1.
            id_exit = .true.
@@ -3619,7 +3622,7 @@ contains
            if( id_check .eq. 1 ) then
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: exit, conden L3302')
+                ! call write_parallel('------- UW ShCu: exit, conden L3302')
               end if
               go to 333
            endif
@@ -3773,7 +3776,7 @@ contains
                   exit_conden(i) = 1.
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               endif
@@ -3784,7 +3787,7 @@ contains
                   exit_conden(i) = 1.
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               end if
@@ -3796,7 +3799,7 @@ contains
                   exit_conden(i) = 1.
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               end if
@@ -3810,7 +3813,7 @@ contains
                   exit_conden(i) = 1.
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               end if
@@ -3861,7 +3864,7 @@ contains
               if( id_check .eq. 1 ) then
                   id_exit = .true.
                   if (scverbose) then
-                    call write_parallel('------- UW ShCu: exit, conden')
+                    ! call write_parallel('------- UW ShCu: exit, conden')
                   end if
                   go to 333
               endif
@@ -4078,7 +4081,7 @@ contains
            exit_conden(i) = 1.
            id_exit = .true.
            if (scverbose) then
-             call write_parallel('------- UW ShCu: exit, conden')
+             ! call write_parallel('------- UW ShCu: exit, conden')
            end if
            go to 333
        end if
@@ -4108,7 +4111,7 @@ contains
               exit_conden(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: exit, conden')
+                ! call write_parallel('------- UW ShCu: exit, conden')
               end if
               go to 333
           end if
@@ -4308,7 +4311,7 @@ contains
                  exit_conden(i) = 1.
                  id_exit = .true.
                  if (scverbose) then
-                   call write_parallel('------- UW ShCu: exit, conden')
+                   ! call write_parallel('------- UW ShCu: exit, conden')
                  end if
                  go to 333
              end if
@@ -4322,7 +4325,7 @@ contains
                  exit_conden(i) = 1.
                  id_exit = .true.
                  if (scverbose) then
-                   call write_parallel('------- UW ShCu: exit, conden')
+                   ! call write_parallel('------- UW ShCu: exit, conden')
                  end if
                  go to 333
              end if
@@ -4460,7 +4463,7 @@ contains
 
          exit_uwcu(i) = 1.
          if (scverbose) then
-           call write_parallel('------- UW ShCu: Exited!')
+           ! call write_parallel('------- UW ShCu: Exited!')
          end if
 
      ! --------------------------------------------------------------------- !
@@ -4633,7 +4636,7 @@ contains
       rhi      = qt/qs
       if( rhi .le. 0.01_r8 ) then
    !        if (scverbose) then
-            call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
+            ! call write_parallel('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
    !        end if
          qsinvert = psmin
          return
