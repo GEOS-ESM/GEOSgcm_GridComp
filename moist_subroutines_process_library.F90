@@ -89,14 +89,14 @@ module Process_Library_standalone
     do J = 1,JM
         do I = 1,IM
             MSEp(I,J) = 0.
-            Qp = 0.
+            Qp(I,J) = 0.
         enddo
     enddo
 !$acc end parallel
 
     ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
-        ! BYNCY = MAPL_UNDEF
+        
 !$acc parallel loop gang vector collapse(3)
         do L = 1,LM
             do J = 1, JM
@@ -106,8 +106,7 @@ module Process_Library_standalone
             enddo
         enddo
 !$acc end parallel
-        ! tmp1 = 0.
-        ! Lev0 = LM
+
 !$acc parallel loop gang vector collapse(2)
         do J = 1,JM
             do I = 1,IM
@@ -134,24 +133,10 @@ module Process_Library_standalone
         end where
 !$acc end kernels
 
-        ! do I = 1,IM
-        !     do J = 1,JM
-        !         call RETURN_CAPE_CIN( ZLO(I,J,1:Lev0(I,J)), PLO(I,J,1:Lev0(I,J)), DZ(I,J,1:Lev0(I,J)),      & 
-        !                         MSEp(I,J), Qp(I,J), Tve(I,J,1:Lev0(I,J)), QS(I,J,1:Lev0(I,J)), DQS(I,J,1:Lev0(I,J)),       &
-        !                         MLCAPE(I,J), MLCIN(I,J), BYNCY(I,J,1:Lev0(I,J)), LFC(I,J), LNB(I,J) )
-        !     end do
-        ! end do
-
         call RETURN_CAPE_CIN_v2(ZLO, PLO, DZ,      & 
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 0)
 
-! !$acc kernels
-!         where (MLCAPE.le.0.)
-!             MLCAPE = MAPL_UNDEF
-!             MLCIN  = MAPL_UNDEF
-!         end where
-! !$acc end kernels
 !$acc parallel loop gang vector collapse(2)
         do J = 1, JM
             do I = 1,IM
@@ -174,34 +159,11 @@ module Process_Library_standalone
         LNB = MAPL_UNDEF
 !$acc end kernels
 
-        ! do I = 1,IM
-        !     do J = 1,JM
-        !         do L = LM,1,-1
-        !             if (PS(I,J)-PLO(I,J,L).gt.255.) exit
-        !             MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
-        !             Qp(I,J)   = Q(I,J,L)
-        !             call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
-        !                                 MSEp(I,J), Qp(I,J), Tve(I,J,1:L), QS(I,J,1:L), DQS(I,J,1:L),       &
-        !                                 tmp1(I,J), tmp2(I,J), BYNCY(I,J,1:L), LFC(I,J), LNB(I,J) )
-        !             if (tmp1(I,J) .gt. MUCAPE(I,J)) then
-        !                 MUCAPE(I,J) = tmp1(I,J)
-        !                 MUCIN(I,J)  = tmp2(I,J)
-        !             end if
-        !         end do
-        !     end do
-        ! end do
-
         call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ,      & 
                             MSEp, Qp, Tve, QS, DQS,       &
                             tmp1, tmp2, BYNCY, LFC, LNB, &
                             Lev0, PS, T, Q, MUCAPE, MUCIN, 1)
 
-! !$acc kernels
-!         where (MUCAPE.le.0.)
-!             MUCAPE = MAPL_UNDEF
-!             MUCIN  = MAPL_UNDEF
-!         end where
-! !$acc end kernels
 !$acc parallel loop gang vector collapse(2)
         do J = 1, JM
             do I = 1,IM
@@ -221,24 +183,11 @@ module Process_Library_standalone
 !$acc end kernels
     
 ! parcel specific humidity
-    ! do I = 1,IM
-    !     do J = 1,JM
-    !         call RETURN_CAPE_CIN( ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:),      & 
-    !                         MSEp(I,J), Qp(I,J), Tve(I,J,:), QS(I,J,:), DQS(I,J,:),       &
-    !                         SBCAPE(I,J), SBCIN(I,J), BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
-    !     end do
-    ! end do
 
     call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ,      & 
         MSEp, Qp, Tve, QS, DQS,       &
         SBCAPE, SBCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 2)
 
-! !$acc kernels
-!     where (SBCAPE.le.0.)
-!         SBCAPE = MAPL_UNDEF
-!         SBCIN  = MAPL_UNDEF
-!     end where
-! !$acc end kernels
  !$acc parallel loop gang vector collapse(2)
         do J = 1, JM
             do I = 1,IM
@@ -464,7 +413,7 @@ module Process_Library_standalone
             LM = size(Tve,3)
 !$acc parallel loop gang vector collapse(2) &
 !$acc          private(aboveLNB, aboveLFC, Qpnew, &
-!$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC)
+!$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, LL)
             do J = 1,IM
                 do I = 1, IM
 !$acc loop seq
