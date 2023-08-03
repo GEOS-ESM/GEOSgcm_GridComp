@@ -1682,7 +1682,7 @@ module moist_subroutines_cloud_microphys
         
         integer :: k, k0, m
         
-        logical :: no_fall
+        logical :: no_fall, exit_flag
     
         zs = 0.
 
@@ -1708,11 +1708,12 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         k0 = kbot
+        exit_flag = .true.
 !$acc loop seq
         do k = ktop, kbot - 1
-            if (tz (k) > tice) then
+            if (tz (k) > tice .and. exit_flag) then
                 k0 = k
-                exit
+                exit_flag = .false.
             endif
         enddo
     
@@ -1790,10 +1791,11 @@ module moist_subroutines_cloud_microphys
 !$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qi (k) > qcmin) then
+                        exit_flag = .true.
 !$acc loop seq
                         do m = k + 1, kbot
-                            if (zt (k + 1) >= ze (m)) exit
-                            if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                            if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                            if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
                                 dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vr_min, vti (k)) * tau_imlt))
                                 sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
                                 tmp = min (sink, dim (ql_mlt, ql (m)))
@@ -1856,23 +1858,26 @@ module moist_subroutines_cloud_microphys
 !$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qs (k) > qpmin) then
+                        exit_flag = .true.
 !$acc loop seq
                         do m = k + 1, kbot
-                            if (zt (k + 1) >= ze (m)) exit
-                            dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
-                            if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                                dtime = min (1.0, dtime / tau_smlt)
-                                sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                                tz (m) = tz (m) - sink * icpk (m)
-                                qs (k) = qs (k) - sink * dp (m) / dp (k)
-                                if (zt (k) < zs) then
-                                    r1 = r1 + sink * dp (m) ! precip as rain
-                                else
-                                    ! qr source here will fall next time step (therefore, can evap)
-                                    qr (m) = qr (m) + sink
+                            if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                            if(exit_flag) then
+                                dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
+                                if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                                    dtime = min (1.0, dtime / tau_smlt)
+                                    sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+                                    tz (m) = tz (m) - sink * icpk (m)
+                                    qs (k) = qs (k) - sink * dp (m) / dp (k)
+                                    if (zt (k) < zs) then
+                                        r1 = r1 + sink * dp (m) ! precip as rain
+                                    else
+                                        ! qr source here will fall next time step (therefore, can evap)
+                                        qr (m) = qr (m) + sink
+                                    endif
                                 endif
                             endif
-                            if (qs (k) < qpmin) exit
+                            if (qs (k) < qpmin .and. exit_flag) exit_flag = .false.
                         enddo
                     endif
                 enddo
@@ -1929,22 +1934,25 @@ module moist_subroutines_cloud_microphys
 !$acc loop seq
                 do k = kbot - 1, k0, - 1
                     if (qg (k) > qpmin) then
+                        exit_flag = .true.
 !$acc loop seq
                         do m = k + 1, kbot
-                            if (zt (k + 1) >= ze (m)) exit
-                            dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
-                            if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                                dtime = min (1., dtime / tau_g2r)
-                                sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                                tz (m) = tz (m) - sink * icpk (m)
-                                qg (k) = qg (k) - sink * dp (m) / dp (k)
-                                if (zt (k) < zs) then
-                                    r1 = r1 + sink * dp (m)
-                                else
-                                    qr (m) = qr (m) + sink
+                            if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+                            if(exit_flag) then
+                                dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
+                                if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+                                    dtime = min (1., dtime / tau_g2r)
+                                    sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+                                    tz (m) = tz (m) - sink * icpk (m)
+                                    qg (k) = qg (k) - sink * dp (m) / dp (k)
+                                    if (zt (k) < zs) then
+                                        r1 = r1 + sink * dp (m)
+                                    else
+                                        qr (m) = qr (m) + sink
+                                    endif
                                 endif
                             endif
-                            if (qg (k) < qpmin) exit
+                            if (qg (k) < qpmin .and. exit_flag) exit_flag = .false.
                         enddo
                     endif
                 enddo
@@ -2000,7 +2008,7 @@ module moist_subroutines_cloud_microphys
         no_fall = .true.
         
         do k = ktop, kbot
-            if (q (k) > qpmin) then
+            if (q (k) > qpmin .and. no_fall) then
                 no_fall = .false.
                 exit
             endif
