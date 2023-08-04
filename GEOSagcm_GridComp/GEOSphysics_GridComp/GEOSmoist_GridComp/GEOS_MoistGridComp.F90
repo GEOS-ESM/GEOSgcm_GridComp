@@ -141,16 +141,16 @@ contains
 
     ! Set the state variable specs.
     ! -----------------------------
-    call ESMF_ConfigGetAttribute( CF, DT,       Label="RUN_DT:",                              RC=STATUS)
+    call MAPL_GetResource( CF, DT,       Label="RUN_DT:",                              RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
+    call MAPL_GetResource( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
+    call MAPL_GetResource( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
     VERIFY_(STATUS)
 
     ! Inititialize deep convective parameterizations (Options: RAS, GF or NONE)
     !----------------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', default="GF", RC=STATUS)
+    call MAPL_GetResource( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', default="GF", RC=STATUS)
     VERIFY_(STATUS)
     LCONVPAR = adjustl(CONVPAR_OPTION)=="RAS" .or. &
                adjustl(CONVPAR_OPTION)=="GF" .or. &
@@ -159,7 +159,7 @@ contains
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
     !----------------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, SHALLOW_OPTION, Label="SHALLOW_OPTION:",  default="UW", RC=STATUS)
+    call MAPL_GetResource( CF, SHALLOW_OPTION, Label="SHALLOW_OPTION:",  default="UW", RC=STATUS)
     VERIFY_(STATUS)
     LSHALLOW = adjustl(SHALLOW_OPTION)=="UW" .or. &
                adjustl(SHALLOW_OPTION)=="NONE"
@@ -167,21 +167,21 @@ contains
 
     ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
     !--------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
+    call MAPL_GetResource( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
                adjustl(CLDMICR_OPTION)=="GFDL_1M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-    call ESMF_ConfigGetAttribute( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
     if (trim(GF_ENV_SETTING)=='DYNAMICS') then
        pdfRestartSkip = MAPL_RestartOptional
     else
        pdfRestartSkip = MAPL_RestartSkip
     endif
 
-    call ESMF_ConfigGetAttribute( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
     if (PDFSHAPE.eq.5) then
        gfEnvRestartSkip = MAPL_RestartOptional
     else

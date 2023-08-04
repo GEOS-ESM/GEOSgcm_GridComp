@@ -54,7 +54,7 @@ subroutine GF_Setup (GC, CF, RC)
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-    call ESMF_ConfigGetAttribute( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
+    call MAPL_GetResource( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
     if (CONVECTION_TRACER == 1) then
        FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
     else
@@ -96,7 +96,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)           
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     MOIST_DT = DT_R8
     call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
 
@@ -104,7 +104,7 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
     call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
     call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
-    
+
     GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
                                    Name         = 'GF_RunAlarm',&
                                    RingInterval = ringInterval, &
@@ -182,12 +182,12 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
-      if (AUTOCONV == 1) then 
+      if (AUTOCONV == 1) then
          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      else        
+      else
          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
@@ -247,12 +247,12 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
     ENDIF
- 
+
 end subroutine GF_Initialize
 
 
 subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -301,8 +301,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
     real,    allocatable, dimension(:,:,:) :: TH
     real,    allocatable, dimension(:,:,:) :: REVSU, PRFIL
-    integer, allocatable, dimension(:,:)   :: SEEDINI   
-    real,    allocatable, dimension(:,:)   :: SEEDCNV 
+    integer, allocatable, dimension(:,:)   :: SEEDINI
+    real,    allocatable, dimension(:,:)   :: SEEDCNV
     real,    allocatable, dimension(:,:,:) :: TMP3D
     real,    allocatable, dimension(:,:)   :: TMP2D
 
@@ -396,7 +396,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
-     ! Edge variables 
+     ! Edge variables
     ALLOCATE ( ZLE0 (IM,JM,0:LM) )
     ALLOCATE ( PRFIL(IM,JM,0:LM) )
      ! Layer variables
@@ -502,7 +502,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           TMP2D =  AREA
        endwhere
     else if (GF_MIN_AREA < 0) then
-       where (AREA > ABS(GF_MIN_AREA)) 
+       where (AREA > ABS(GF_MIN_AREA))
           TMP2D = AREA*CNV_FRC + ABS(GF_MIN_AREA)*(1.0-CNV_FRC)
        elsewhere
           TMP2D =  AREA
@@ -544,7 +544,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, T2M, Q2M      &
-                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &  
+                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &
                                  ,KPBL ,CNV_FRC, SRF_TYPE                           &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
@@ -583,7 +583,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
-    ! fix 'convective' cloud fraction 
+    ! fix 'convective' cloud fraction
       if (FIX_CNV_CLOUD) then
       ! fix convective cloud
       TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
