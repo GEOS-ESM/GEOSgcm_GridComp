@@ -85,6 +85,16 @@ module GEOSmoist_Process_Library
       real, pointer              :: Q(:,:,:) => null()
       real                       :: fscav = 0.0
       real                       :: Vect_Hcts(4)
+      real                       :: KcScal(3)
+      real                       :: convfaci2g
+      real                       :: retfactor
+      real                       :: liq_and_gas
+      real                       :: online_cldliq
+      real                       :: online_vud
+      real                       :: ftemp_threshold
+      logical                    :: use_gcc_washout 
+      logical                    :: use_gocart
+      logical                    :: is_wetdep  
       character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
       character(len=ESMF_MAXSTR) :: CNAME ! Component Name
   end type CNV_Tracer_Type
@@ -119,6 +129,7 @@ module GEOSmoist_Process_Library
     integer :: TotalTracers, FriendlyTracers
     logical :: isPresent, isFriendly
     integer :: ind, N, F
+    real    :: rtmp
     character(len=ESMF_MAXSTR), pointer, dimension(:) :: QNAMES
     character(len=ESMF_MAXSTR) :: QNAME, STR_CNV_TRACER
 
@@ -161,13 +172,6 @@ module GEOSmoist_Process_Library
                if(isPresent) then
                   call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS); VERIFY_(STATUS)
                end if
-               ! Get items for the wet removal parameterization for gases based on the Henry's Law
-               !-------------------------------------------------------------------------------------
-               CNV_Tracers(F)%Vect_Hcts(:)=-99.
-               call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
-               if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
-               end if
                ! Get component and tracer names
                !-------------------------------------------------------------------------------------
                ind= index(QNAME, '::')
@@ -175,6 +179,74 @@ module GEOSmoist_Process_Library
                   CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
                   CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
                end if
+               ! Get items for the wet removal parameterization for gases based on the Henry's Law
+               !-------------------------------------------------------------------------------------
+               CNV_Tracers(F)%Vect_Hcts(:)=-99.
+               call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
+               if (isPresent) then
+                  call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
+               end if
+               ! Additional items, needed for GEOS-Chem washout parameterization 
+               !-------------------------------------------------------------------------------------
+               ! Defaults
+               CNV_Tracers(F)%is_wetdep       = .FALSE.
+               CNV_Tracers(F)%use_gcc_washout = .FALSE.
+               CNV_Tracers(F)%KcScal(:)       = 1.0 
+               CNV_Tracers(F)%retfactor       = 1.0 
+               CNV_Tracers(F)%liq_and_gas     = 0.0 
+               CNV_Tracers(F)%convfaci2g      = 0.0 
+               CNV_Tracers(F)%online_cldliq   = 0.0 
+               CNV_Tracers(F)%online_vud      = 1.0 
+               CNV_Tracers(F)%use_gocart      = .FALSE. 
+               CNV_Tracers(F)%ftemp_threshold = -999.0 
+               ! Check if GEOS-Chem washout should be used. Assume this is the case if Kc scale factors are 
+               ! present 
+               call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
+               CNV_Tracers(F)%use_gcc_washout = isPresent 
+               ! If using GEOS-Chem parameterization, retrieve all necessary parameter
+               if ( CNV_Tracers(F)%use_gcc_washout ) then
+                  ! KC scale factors 
+                  call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
+                  if (isPresent) then
+                     call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", CNV_Tracers(F)%KcScal, RC=STATUS); VERIFY_(STATUS) 
+                  end if
+                  ! is this a wetdep species? 
+                  call ESMF_AttributeGet(FIELD, "IsWetDep", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
+                  if (isPresent) then
+                     call ESMF_AttributeGet(FIELD, "IsWetDep", rtmp, RC=STATUS); VERIFY_(STATUS) 
+                     CNV_Tracers(F)%is_wetdep = ( rtmp == 1.0 ) 
+                  end if
+                  ! Gas-phase washout parameter for GEOS-Chem
+                  call ESMF_AttributeGet (FIELD, "RetentionFactor",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD, "RetentionFactor", CNV_Tracers(F)%retfactor, RC=STATUS); VERIFY_(STATUS)
+                  endif
+                  call ESMF_AttributeGet (FIELD, "LiqAndGas",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD, "LiqAndGas", CNV_Tracers(F)%liq_and_gas, RC=STATUS); VERIFY_(STATUS)
+                  endif
+                  call ESMF_AttributeGet (FIELD, "ConvFacI2G",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD, "ConvFacI2G", CNV_Tracers(F)%convfaci2g, RC=STATUS); VERIFY_(STATUS)
+                  endif
+                  call ESMF_AttributeGet (FIELD, "OnlineCLDLIQ",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD, "OnlineCLDLIQ", CNV_Tracers(F)%online_cldliq, RC=STATUS); VERIFY_(STATUS)
+                  endif
+                  call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD,"OnlineVUD", CNV_Tracers(F)%online_vud, RC=STATUS); VERIFY_(STATUS)
+                  endif
+                  call ESMF_AttributeGet (FIELD,"UseGOCART",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD,"UseGOCART", rtmp, RC=STATUS); VERIFY_(STATUS)
+                     CNV_Tracers(F)%use_gocart = ( rtmp == 1.0 ) 
+                  endif
+                  call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+                  if (isPresent) then
+                     call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold", CNV_Tracers(F)%ftemp_threshold, RC=STATUS); VERIFY_(STATUS)
+                  endif
+               end if ! use_gcc_washout
                ! Get pointer to friendly tracers
                !-----------------------------------------
                call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
@@ -193,6 +265,37 @@ module GEOSmoist_Process_Library
 101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
 102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
 103            FORMAT(a,' is transported by Moist')
+               ! Additional information for GEOS-Chem washout species 
+               !-----------------------------------------------------
+               if (CNV_Tracers(F)%use_gcc_washout .and. CNV_Tracers(F)%is_wetdep) then
+                   STR_CNV_TRACER = TRIM(QNAME)//": will use GEOS-Chem washout formulation"
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,104) TRIM(QNAME), CNV_Tracers(F)%KcScal
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,105) TRIM(QNAME), CNV_Tracers(F)%retfactor
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,106) TRIM(QNAME), CNV_Tracers(F)%liq_and_gas
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,107) TRIM(QNAME), CNV_Tracers(F)%convfaci2g
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,108) TRIM(QNAME), CNV_Tracers(F)%online_cldliq
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   WRITE(STR_CNV_TRACER,109) TRIM(QNAME), CNV_Tracers(F)%online_vud
+                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   if (CNV_Tracers(F)%use_gocart)then
+                       STR_CNV_TRACER = TRIM(QNAME)//": will treat like GOCART aerosol"
+                       call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                       WRITE(STR_CNV_TRACER,110) TRIM(QNAME), CNV_Tracers(F)%ftemp_threshold
+                       call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+                   endif
+               endif
+104            FORMAT(a,' KcScaleFactors:',3(1x,es9.2))
+105            FORMAT(a,' RetentionFactor:',1(1x,es9.2))
+106            FORMAT(a,' Liq_and_gas:',1(1x,es9.2))
+107            FORMAT(a,' ConvFacI2G:',1(1x,es9.2))
+108            FORMAT(a,' online_cldliq:',1(1x,es9.2))
+109            FORMAT(a,' online_vud:',1(1x,es9.2))
+110            FORMAT(a,' ftemp_threshold:',1(1x,es9.2))
             end if
          end if
       enddo
