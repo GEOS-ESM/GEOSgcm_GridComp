@@ -195,18 +195,14 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                           endif
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
                           if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0 
+                          ! calculate soluble fraction and apply to tracer
+                          fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
+                          pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
  
                        ! Original formulation
                        else
-                          kc_scaled  = kc
-                          this_w_upd = w_upd
-                          ftemp      = factor_temp(ispc,i,k)
+                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                        endif
-
-                       !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
-                       fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
-                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
- 
                     endif
 
                     !--formulation 3 - orignal GF conv_par
@@ -245,19 +241,17 @@ loopk:      do k=k22(i)+1,ktop(i)+1
                              kc_scaled, l2g )
                           this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), CNV_Tracers(ispc)%online_vud )
                           ! if it's not a wetdep species, force kc_scaled to 0. This ensures no washout
-                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0 
+                          if ( .not. CNV_Tracers(ispc)%is_wetdep ) kc_scaled = 0.0
+                          ! calculate soluble fraction and apply to tracer
+                          fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
+                          pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
                        !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
                        else
                           fliq       = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
-                          kc_scaled  = kc * fliq
-                          this_w_upd = w_upd
+                          !---   aqueous-phase concentration in rain water
+                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
                        endif
-
-                       !---   aqueous-phase concentration in rain water
-                       !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
-                       fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
-                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
                     endif
 
