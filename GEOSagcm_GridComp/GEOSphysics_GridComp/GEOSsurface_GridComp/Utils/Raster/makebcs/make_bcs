@@ -1403,7 +1403,6 @@ if( $grid == ease ) then
   set             BCNAME = ${EASEVERSION}_${HRCODE}
   set             BCDIR  = $EXPDIR/$OUTDIR/$BCNAME.scratch
   set             BCJOB  = $BCDIR/$BCNAME.j
-  set             THISGRID = ${EASEVERSION}-${HRCODE}
 
   set nfiles = `find $EXPDIR -maxdepth 5 -name ${BCNAME}".j" | wc -l`  
   if( $nfiles >= 1 ) then
@@ -1444,17 +1443,6 @@ cd data
 cd ../
 limit stacksize unlimited
 
-#if ( $EASEVERSION == EASEv2 ) then
-   ## This section was used to make Irrigated Tiles
-   ##if(${HRCODE} == M09 | ${HRCODE} == M36) then 
-   ##    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-   ##    bin/mkEASETilesParam.x -ease_label ${HRCODE} -pfaf_til T
-   ##    bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
-   ##    bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
-   ##    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
-   ##endif
-#endif
-
 setenv MASKFILE ${MASKFILE}
 setenv OMP_NUM_THREADS 1
 bin/mkEASETilesParam.x -ease_label ${BCNAME} 
@@ -1468,7 +1456,6 @@ bin/create_README.csh
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/${EASEVERSION}_${HRCODE}_${RS}.til clsm.${IM}x${JM}
-##/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
    /bin/mv irrig.dat irrigation_${RS}_DE.dat
@@ -1549,7 +1536,6 @@ mkdir -p $BCNAME/land/${EASEVERSION}_${HRCODE}
 
 #mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
 #bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t ${EASEVERSION}_${HRCODE}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
-#/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.TIL IRRIG/$BCNAME/.
 _EOF_
 
 
