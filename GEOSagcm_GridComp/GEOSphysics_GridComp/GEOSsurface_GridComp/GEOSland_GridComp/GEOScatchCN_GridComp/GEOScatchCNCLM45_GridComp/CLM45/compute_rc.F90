@@ -563,6 +563,7 @@
 ! !REVISION HISTORY:
 
 ! !USES:
+   use MAPL
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
    use clmtype
    use clm_varcon  , only : rgas, tfrz
@@ -571,7 +572,7 @@
    use pftvarcon   , only : nsoybean, nsoybeanirrig, npcropmin
 !#if (defined CN)
    use CNAllocationMod, only : CNAllocation_Carbon_only
-   use pso_params_mod_landshared
+   use pso_params
    use compute_rc_functions, only: pft_clm_to_pso
    use read_env, only : read_env_data
 !#endif
@@ -763,16 +764,23 @@
    real(r8):: fs                                  ! fluorescnce yield at Fs
 
    integer:: iulog = 6
-   integer:: this_ens  ! current ensemble number for running PSO optimization
-   integer:: pso_choice  ! whether or not we are running a PSO optimization
+   integer:: this_particle  ! current ensemble number for running PSO optimization
+   integer:: g1_ef_choice
    logical:: pso_alloc_stat
    integer:: num_params
    integer:: fake_num_ensemble
    integer:: reason
    integer:: pso_pft
-   real    :: pso_val, map_val_tile, offline_const, offline_int
+   real   :: pso_val, offline_const, offline_int
+   real   :: pso_intercept, pso_slope
+   real,dimension(1) :: map_val_tile
+   real :: map_val_tile_real
    logical:: pso_exists
    character (len = 100):: met_tag_map
+   integer :: EXP_ID
+   integer :: STATUS
+   integer :: this_tile
+   integer, dimension(1) :: this_map_idx
 
 
 !------------------------------------------------------------------------------
@@ -893,20 +901,20 @@
       end if
 
       ! C3 and C4 dependent parameters
-      pso_choice = 1
-      if (pso_choice == 0) then
+      g1_ef_choice = 0
+      if (g1_ef_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8
             theta_cj(p) = 0.98_r8
             bbbopt(p) = 10000._r8
-            mbbopt(p) = 9._r8
+            mbbopt(p) = 4
          else
             qe(p) = 0.05_r8
             theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
-            mbbopt(p) = 4._r8
+            mbbopt(p) = 4
          endif
-      elseif (pso_choice == 1) then
+      elseif (g1_ef_choice == 1) then
          if (c3flag(p)) then
             qe(p) = 0._r8
             theta_cj(p) = 0.98_r8
@@ -917,55 +925,47 @@
             bbbopt(p) = 40000._r8
          end if
           
-         pso_alloc_stat =  allocated(pso_params%param_vals)
-         if (pso_alloc_stat == .false.) then
-            met_tag_map = '/discover/nobackup/trobinet/misc_and_testing/create_env_data/map_tile.nc4'
-            met_tag_map = trim(met_tag_map)
-            call read_env_data(met_tag_map)
-            num_params = 5
-            if (pso_alloc_stat == .false.) then
-               allocate(pso_params%param_vals(num_params, pso_params%total_ens))
-            endif
-            inquire(FILE='/discover/nobackup/trobinet/exps/GEOSldas_CN45_PSO_quick/run/position_vals.csv',EXIST = pso_exists) 
-            if (pso_exists == .true.) then
-                open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_quick/run/position_vals.csv',IOSTAT = reason)
-                read(8, *,IOSTAT = reason) pso_params%param_vals
-                close(8)
-            else
-                pso_params%param_vals = 1._r8
-            endif
-         endif
-         this_ens = pso_params%ens_num
+         this_particle = pso_vals%particle_num + 1
+         this_tile = pso_vals%local_tile_nums(p)
+         this_map_idx = findloc(pso_vals%all_tile_nums,VALUE=this_tile)
+         map_val_tile = pso_vals%map_vals(this_map_idx)
+         map_val_tile_real = map_val_tile(1)
+
+         !!!!! UNCOMMENT BELOW FOR PFT-BASED PSO OPTIMIZATION !!!!!!
          call pft_clm_to_pso(ityp(p, nv), pso_pft)
-         pso_val = pso_params%param_vals(pso_pft, this_ens)
+         pso_val = pso_vals%param_vals(pso_pft, this_particle)
          offline_const = 0.025
          offline_int = -0.163747
-         map_val_tile = pso_params%map_vals(p)
-         mbbopt(p) = pso_val*(offline_int + map_val_tile*offline_const)
-         if (this_ens == 1) then
+         mbbopt(p) = pso_val*(offline_int + map_val_tile_real*offline_const)
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         !!!!! UNCOMMENT BELOW FOR C1 C2 BASED PSO OPTIMIZATION !!!!!
+         !pso_intercept = pso_vals%param_vals(1,this_particle)
+         !pso_slope = pso_vals%param_vals(2,this_particle)
+         !mbbopt(p) = pso_intercept + pso_slope*map_val_tile_real
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         if (mbbopt(p) < 0.5) then
             mbbopt(p) = 0.5
-         else
-            mbbopt(p) = 8
-         if (mbbopt(p) < 0) then
-            mbbopt(p) = 0
          endif
          if (p == 1 .and. nv == 1) then
             !write(*,*) 'pso_pft'
             !write(*,*) pso_pft
-            !write(*,*) 'this_ens'
-            !write(*,*) this_ens
-            !write(*,*) 'pso_params%param_vals'
-            !write(*,*) pso_params%param_vals
+            !write(*,*) 'this_particle'
+            !write(*,*) this_particle
+            !write(*,*) 'pso_vals%param_vals'
+            !write(*,*) pso_vals%param_vals
             !write(*,*) 'pso_val'
             !write(*,*) pso_val
-            !continue
+            !write(*,*) 'mbbopt(p)'
+            !write(*,*) mbbopt(p)
+            continue
          endif
       endif
       ! Soil water stress applied to Ball-Berry parameters
 
       bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
       mbb(p) = mbbopt(p)
-
       ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
       !
       !       kc25 = 404.9 umol/mol
@@ -1317,7 +1317,7 @@
       end do       ! canopy layer loop
      end if        ! vegetated or not if branch
    end do          ! tile loop
-
+   
    !==============================================================================!
    ! Canopy photosynthesis and stomatal conductance
    !==============================================================================!
@@ -1433,6 +1433,7 @@
    !!USES
    use MAPL_ConstantsMod, ONLY: r8 => MAPL_R4
    use clmtype
+   use pso_params
    
    !
    !!ARGUMENTS:
@@ -1486,6 +1487,7 @@
    real(r8):: Da                   ! used in VPD calculation according to FATES numberical implementation of Medlyn 
    real(r8):: svp                  ! saturation vapor pressure
    real(r8):: t_veg_C              ! vegitation temperature in Celcius
+   integer :: this_particle
 
    ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
    fnps = 0.15_r8
@@ -1565,23 +1567,66 @@
    else if (stomatal_model_choice == 1)then
     !calculate g1 from environmental filtering (here refered to as mbb, in line with original CLM45 terminology)
     !for EF, use mean annual temperature, mean annual precipitation, and Precip/PET (How to import these into the model????)
-
     !mbb = 4.1  ! TWR TESTING G1 ESTIMATE FROM Li 2022
     cs = cair-1.4_r8/gb_mol*an*forc_pbot  ! divide by gb_mol because 1/gb_mol = rb, an is net photynthesis, forc_pbot is atoms. pressure (pa)
     cs = max(cs, 1.e-06_r8)  ! make sure cs is greater than 1e-06
     !aquad = cs
     aquad = 1.0_r8
     !bquad = cs*(gb_mol-bbb) - mbb*an*forc_pbot
-    d = (1.6_r8*an)*(cs/forc_pbot)
+    d = (1.6_r8*an)/(cs/forc_pbot)
     t_veg_C = t_veg-273.15  ! convert canopy temp from K to C
     svp = 610.78*exp(t_veg_C/((t_veg_C+238.3)*17.2694))  ! calculate saturated vapor pressure
     Da = svp * (1 - (rh_can/100))  ! this is VPD
-    Da = max(Da, 50000._r8)  ! constraint on VPD
-    bquad = -(2._r8 * (bbb*btran+d) + (((mbb*d)**2)/(gb_mol*Da)))
+    Da = min(Da, 5000._r8)  ! constraint on VPD
+    bquad = -(2._r8 * (bbb*btran+d) + (((mbb**2)*(d)**2)/(gb_mol*Da)))
     !cquad = -gb_mol*(cs*bbb+mbb*an*forc_pbot*rh_can)
     cquad = (bbb*btran)**2 + (2._r8*bbb*btran+d*(1 - (mbb**2/Da))) * d
     call quadratic (aquad, bquad, cquad, r1, r2)
     gs_mol = max(r1, r2)
+    
+    this_particle = pso_vals%particle_num
+    !write(*,*) 'inside medlyn'
+    !write(*,*) 'this_particle'
+    !write(*,*) this_particle
+    !write(*,*) 'mbb'
+    !write(*,*) mbb
+    !write(*,*) 'aquad'
+    !write(*,*) aquad
+    !write(*,*) ' '
+    !write(*,*) 'rh_can'
+    !write(*,*) rh_can
+    !write(*,*) 't_veg'
+    !write(*,*) t_veg
+    !write(*,*) 'an'
+    !write(*,*) an
+    !write(*,*) 'cs'
+    !write(*,*) cs
+    !write(*,*) 'forc_pbot'
+    !write(*,*) forc_pbot
+    !write(*,*) ' '
+    !write(*,*) 'bbb'
+    !write(*,*) bbb
+    !write(*,*) 'btran'
+    !write(*,*) btran
+    !write(*,*) 'd'
+    !write(*,*) d
+    !write(*,*) 'gb_mol'
+    !write(*,*) gb_mol
+    !write(*,*) 'Da'
+    !write(*,*) Da
+    !write(*,*) ' '
+    !write(*,*) 'bquad'
+    !write(*,*) bquad
+    !write(*,*) ' '
+    !write(*,*) 'cquad'
+    !write(*,*) cquad
+    !write(*,*) ' ' 
+    !write(*,*) 'r1'
+    !write(*,*) r1
+    !write(*,*) 'r2'
+    !write(*,*) r2
+    !write(*,*) 'gs_mol'
+    !write(*,*) gs_mol
     ! Derive new estimate for ci
     fval = ci-cair+an*forc_pbot * (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
    endif

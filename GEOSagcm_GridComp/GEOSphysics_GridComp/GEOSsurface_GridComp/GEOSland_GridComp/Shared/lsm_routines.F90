@@ -286,24 +286,35 @@ CONTAINS
 
          if(.not.UFW4RO) then
 
+            ! total precip equals combination of all throughfall
             PTOTAL=THRUL(N) + THRUC(N)
 
             IF (POROS(N) < PEATCLSM_POROS_THRESHOLD) THEN
                ! Non-peatland
+               ! fraction where runoff can occur is the fraction of pixel in area 1 (AR1)
                frun=AR1(N)
+               ! potential runoff is total precip times this fraction
                srun0=PTOTAL*frun
 
                !**** Comment out this line in order to allow moisture
                !**** to infiltrate soil:
                !       if(tp1(n) .lt. 0.) srun0=ptotal
 
+               ! Total precip over whole pixel minus potential runoff =  potential non-runoff
+               ! max surface water minus surface excess water = amount available for inflitration
+               ! therefore, this statement says:
+               ! if potential infiltration is greater than the amount of infiltration that can occur
+               ! then the amount of runoff will be the remaining water than cannot infiltrate
                if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
                     srun0=ptotal-(srfmx(n)-srfexc(n))
 
                if (srun0 .gt. ptotal) srun0=ptotal
-
+                
+               ! runoff is previously calc. runoff plus this runoff
                RUNSRF(N)=RUNSRF(N)+srun0
+               ! infiltration is precipitation that isn't runoff
                QIN=PTOTAL-srun0
+               ! excess surface water pool is updated
                SRFEXC(N)=SRFEXC(N)+QIN
             ELSE
                ! Peatland

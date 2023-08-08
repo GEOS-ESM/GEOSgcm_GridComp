@@ -67,7 +67,7 @@ module GEOS_CatchCNCLM45GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
-  use pso_params_mod_landshared
+  use pso_params, only: pso_vals
 
 implicit none
 private
@@ -5152,9 +5152,39 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     ! temporary variables for use with PSO optimization
     ! -------------------------------------------------
-    integer :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_int, pso_choice
-    integer :: start_string, comp_len 
+    integer :: NUM_LDAS_ENSEMBLE
+    integer :: ens_id_width
+    integer :: ens_int
+    integer :: pso_choice
+    integer :: start_string
+    integer :: comp_len
+    integer :: ens
+    integer :: ksat_ef_choice
+    integer :: num_params
+    integer :: this_particle
+    integer :: this_tile
+    integer :: reason
+    integer, dimension(1) :: this_env_idx
+    real :: lai_val_tile_real
+    real :: sand_val_tile_real
+    real :: k0_val_tile_real
+    real :: alpha
+    real :: beta
+    real :: const_1
+    real :: const_2
+    real :: sand_exp
+    real :: ks_max
+    real, dimension(1) :: lai_val_tile
+    real, dimension(1) :: sand_val_tile
+    real, dimension(1) :: k0_val_tile
+    logical :: tile_alloc_stat
+    logical :: pso_exists
     character(len=4) :: ens_str
+    character(len=100) :: precip_fname
+    character(len=100) :: lai_fname
+    character(len=100) :: sand_fname
+    character(len=100) :: k0_fname
+
     ! Variables for FPAR
             ! --------------------------
                 real   , allocatable, dimension (:,:)      :: parzone
@@ -6538,6 +6568,100 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! baseflow
 ! --------
+
+      ! we need to use the PSO to do load our EF of Ksat and g1
+      ! set your PSO choice
+      pso_choice = 0
+      ksat_ef_choice = 0
+      ! if we are running the PSO
+      if (pso_choice == 1) then
+          ! this first section on getting the ensemble number is outdated
+          ! this is because we now run each particle as a single-ensembel
+          ! job
+          ! keeping this in case we revert to running a single job with each
+          ! particle as an ensemble.
+          ! get the number of ensembles that we are running
+          call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+          VERIFY_(STATUS)
+          ! get the width of the ensemble ID
+          call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+          VERIFY_(STATUS)
+          ! get the ensemble label
+          call MAPL_GetResource ( MAPL, ens_str, Label="EXP_ID:", DEFAULT="wrong",RC=STATUS)
+          VERIFY_(STATUS)
+          ! turn the ens_str into ens, an integer
+          read(ens_str,*,iostat=STATUS) ens
+          ! set the number of ensembles that we are running
+          pso_vals%particle_num = ens
+          ! check whether we have already allocated pso_vals values
+          ! use local_tile_nums as a proxy for this
+          tile_alloc_stat = allocated(pso_vals%local_tile_nums)
+          ! if not allocated, do that here
+          if (tile_alloc_stat == .false.) then
+              ! MANUALLY ASSIGN the number of parameters and particles
+              ! this needs to match what is told the model during setup
+              num_params = 10
+              pso_vals%total_ens = 10
+              ! allocate and assign the tiles that are running on this cpu
+              allocate(pso_vals%local_tile_nums(size(CAT_ID)))
+              pso_vals%local_tile_nums = CAT_ID
+              ! load the maps for precip and lai
+              ! start with precip
+              precip_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_precip.nc4'
+              precip_fname = trim(precip_fname)
+              call read_env_data(precip_fname)
+              ! and now do for lai
+              lai_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_lai.nc4'
+              lai_fname = trim(lai_fname)
+              call read_env_data(lai_fname)
+              ! read the sand fraction values
+              sand_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_sand_perc.nc4'
+              sand_fname = trim(sand_fname)
+              call read_env_data(sand_fname)
+              ! read the k0 values
+              k0_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_ksat.nc4'
+              k0_fname = trim(k0_fname)
+              call read_env_data(k0_fname)
+              ! allocate our parameter values and get their values
+              allocate(pso_vals%param_vals(num_params,pso_vals%total_ens))
+              ! make sure that the pso vals file has been created
+              ! otherwise abort
+              inquire(FILE='/discover/nobackup/troinet/exps/GEOSldas_CN45_pso_g1_ksat/position_vals.csv',EXIST=pso_exists)
+              if (pso_exists == .false. ) then
+                  write(*,*) 'position_vals.csv must exist to run pso! Please fix and restart!'
+              endif
+              ! read the current PSO vals
+              open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_pso_g1_ksat/position_vals.csv',IOSTAT = reason)
+              read(8, *,IOSTAT = reason) pso_vals%param_vals
+              close(8)
+          endif
+          ! get our ensemble number
+          this_particle = pso_vals%particle_num + 1
+          ! get our tile number
+          this_tile = pso_vals%local_tile_nums(n)
+          ! get the index for the environmental covariate
+          this_env_idx = findloc(pso_vals%all_tile_nums,VALUE=this_tile)
+          ! get the lai
+          lai_val_tile = pso_vals%lai_vals(this_env_idx)
+          lai_val_tile_real = lai_val_tile(1)
+          ! get the sand fraction
+          sand_val_tile = pso_vals%sand_vals(this_env_idx)
+          sand_val_tile_real = lai_val_tile(1)
+          ! get the k0 value
+          k0_val_tile = pso_vals%k0_vals(this_env_idx)
+          k0_val_tile_real = k0_val_tile(1)
+          ! get the pso parameter values
+          alpha = pso_vals%param_vals(6,this_particle)
+          beta = pso_vals%param_vals(7,this_particle)
+          const_1 = pso_vals%param_vals(8,this_particle)
+          const_2 = pso_vals%param_vals(9,this_particle)
+          sand_exp = pso_vals%param_vals(10,this_particle)
+          ks_max = k0_val_tile_real*(10**(const_1 - const_2*(sand_val_tile_real**(sand_exp))))
+          if ( ksat_ef_choice == 1 ) then
+              cond(n) = ks_max - ((ks_max - k0_val_tile_real)/(1 + ((lai_val_tile_real/alpha)**beta)))
+          endif
+      endif
+
       bflow(n) = (1.-frice)*1000.* &
     	    cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
       IF(catdef(n) >= cdcr1(n)) bflow(n) = 0.
@@ -6749,29 +6873,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       end do  
       
           
-      call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-      VERIFY_(STATUS)
-      pso_choice = 1
-      if (NUM_LDAS_ENSEMBLE >1) then
-          !tmp = COMP_NAME(start_string:18)
-          if (pso_choice == 1) then
-              ens_str = COMP_NAME(15:18)
-              read(ens_str,*,iostat=STATUS) ens_int
-              pso_params%ens_num = ens_int + 1
-              pso_params%total_ens = NUM_LDAS_ENSEMBLE
-          endif
-      else
-          if (pso_choice == 1) then
-              pso_params%ens_num = 1
-              pso_params%total_ens = 1
-              !write(*,*) 'pso_params%ens_num'
-              !write(*,*) pso_params%ens_num
-              !write(*,*) 'pso_params%total_ens'
-              !write(*,*) pso_params%total_ens
-          endif
-      endif
 
       call compute_rc(ntiles,nveg,TCx,QAx,T2M10D,TA,PS,ZTH,DRPAR,DFPAR,     &
                       albdir,albdif,elaz,esaz,ityz,fvez,btran,fwet,         &
