@@ -1003,7 +1003,7 @@
          !  print*,'Here'
             call ESINIT
             !call LOGGER_INIT
-!$acc update device(FIRST, ESTBLX(:), ESTFRZ, ESTLQU, ESTBLW(:), ESTBLE, UTBL)
+!$acc update device(FIRST, ESTBLX(:), ESTFRZ, ESTLQU, ESTBLW(:), ESTBLE(:), UTBL)
          end if
 
       end subroutine
