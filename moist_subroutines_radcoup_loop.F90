@@ -28,6 +28,10 @@ module radcoup_loop
 
         integer :: I, J, L
 
+        ! This calls ESINIT so that subsequent calls to GEOS_QSAT do not result in
+        ! a race condition.
+        call call_ESINIT
+
 !$acc parallel loop gang vector collapse(3)
         do L = 1, LM
             do J = 1, JM

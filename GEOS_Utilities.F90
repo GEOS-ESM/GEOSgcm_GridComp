@@ -33,6 +33,8 @@
   public GEOS_Qsat
   public GEOS_DQsat
 
+  public call_ESINIT
+
 !   public GEOS_TRILU
 !   public GEOS_TRISOLVE
 
@@ -953,20 +955,20 @@
 
 !=======================================================================================
 
-        subroutine ESINIT
+      subroutine ESINIT
 !$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa
  
-          integer :: I
-          real    :: T
-          logical :: UT
+         integer :: I
+         real    :: T
+         logical :: UT
 
-          UT = UTBL
-          UTBL=.false.
+         UT = UTBL
+         UTBL=.false.
 
-          do I=1,TABLESIZE
+         do I=1,TABLESIZE
 
             T = (I-1)*DELTA_T + TMINTBL
 
@@ -993,7 +995,18 @@
 
          UTBL = UT
 
-       end subroutine ESINIT
+      end subroutine ESINIT
+
+      subroutine call_ESINIT
+         if(FIRST) then
+            FIRST = .false.
+         !  print*,'Here'
+            call ESINIT
+            !call LOGGER_INIT
+!$acc update device(FIRST, ESTBLX(:), ESTFRZ, ESTLQU, ESTBLW(:), ESTBLE, UTBL)
+         end if
+
+      end subroutine
 
       !  subroutine LOGGER_INIT
 
