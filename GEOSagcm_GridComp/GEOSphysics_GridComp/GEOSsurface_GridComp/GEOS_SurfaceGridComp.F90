@@ -207,7 +207,7 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE
+    INTEGER                                 :: LSM_CHOICE, DO_CICE_THERMO
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF        ! info from Surface Config File 
 
@@ -3308,10 +3308,19 @@ module GEOS_SurfaceGridCompMod
 ! the children; but our children do not talk to each other, only to us
 ! --------------------------------------------------------------------
 
-   ! call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
-    call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
-                                   CHILD_IDS=[OCEAN],  RC=STATUS  )
-    VERIFY_(STATUS)
+    ! Note; SURFSTATE is only connected between AGCM and OGCM if USE_CICE_Thermo is set
+    ! to 2. Otherwise it is not and indeed, SURFSTATE does not seem to exist. As such,
+    ! we use the old TerminateImport of all of ocean for less than 2
+
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, _RC)
+    if (DO_CICE_THERMO == 2) then
+       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                      CHILD_IDS=[OCEAN],  RC=STATUS  )
+       VERIFY_(STATUS)
+    else
+       call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 #ifndef AQUA_PLANET
     call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
     VERIFY_(STATUS)
