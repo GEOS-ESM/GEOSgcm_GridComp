@@ -175,6 +175,61 @@ chmod +rX -R geometry land logs
 
    return mv_template
 
+def get_convert_yaml():
+  yaml_template = """
+land/{GRIDNAME}/irrigation_{RC}.dat:
+   output_file: land/{GRIDNAME}/irrigation_{RC}.nc4
+   clim: True
+   var: irrigation
+   units: 1
+   long_name: irrigation_fraction
+   grid_type: tile
+  
+land/{GRIDNAME}/nirdf_{RC}.dat
+   output_file: land/{GRIDNAME}/nirdf_{RC}.nc4
+   clim: True
+   var: nirdf
+   units: 1
+   long_name: nirdf
+   grid_type: tile
+land/{GRIDNAME}/visdf_{RC}.dat
+   output_file: land/{GRIDNAME}/visdf_clim_{RC}.nc4
+   clim: True
+   var: visdf
+   units: 1
+   long_name: visdf
+   grid_type: tile
+land/{GRIDNAME}/lai_clim_{RC}.data
+   output_file: land/{GRIDNAME}/lai_clim_{RC}.nc4
+   clim: True
+   var: lai
+   units: 1
+   long_name: leaf_area_index
+   grid_type: tile
+land/{GRIDNAME}/green_clim_{RC}.data
+   output_file: land/{GRIDNAME}/green_clim_{RC}.nc4
+   clim: True
+   var: grn
+   units: 1
+   long_name: greenness_fraction 
+   grid_type: tile
+land/{GRIDNAME}/lnfm_clim_{RC}.data
+   output_file: land/{GRIDNAME}/lnfm_clim_{RC}.nc4
+   clim: True
+   var: lnfm
+   units: 1
+   long_name: lnfm
+   grid_type: tile
+land/{GRIDNAME}/ndvi_clim_{RC}.data
+   output_file: land/{GRIDNAME}/ndvi_clim_{RC}.nc4
+   clim: True
+   var: ndvi
+   units: 1
+   long_name: normalized_difference_vegetation_index
+   grid_type: tile
+"""
+  return yaml_template
+
 def check_script(expdir, script):
 
   if glob.glob(os.path.join(expdir, '**', script), recursive=True):
