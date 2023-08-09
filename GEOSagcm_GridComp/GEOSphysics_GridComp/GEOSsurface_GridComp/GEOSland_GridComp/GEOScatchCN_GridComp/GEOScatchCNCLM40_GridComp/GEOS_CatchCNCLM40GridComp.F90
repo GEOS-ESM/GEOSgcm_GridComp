@@ -197,6 +197,9 @@ subroutine SetServices ( GC, RC )
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, PRESCRIBE_DVG, N_CONST_LAND4SNWALB
     integer :: RESTART
+    type(T_CATCHCN_STATE), pointer :: catchcn_internal
+    class(T_CATCHCN_STATE), pointer :: statePtr
+    type(CATCHCN_WRAP) :: wrap
 
 ! Begin...
 ! --------
@@ -208,6 +211,10 @@ subroutine SetServices ( GC, RC )
     call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
+
+    allocate(catchcn_internal, stat=status)
+    VERIFY_(status)
+    statePtr => catchcn_internal
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
@@ -1374,6 +1381,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -4579,6 +4599,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -6658,11 +6679,27 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ALBVF(:) = ALBVF(:)*fveg1(:) + ALBVF_tmp(:)*fveg2(:)
     ALBNF(:) = ALBNF(:)*fveg1(:) + ALBNF_tmp(:)*fveg2(:)
     
+    if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+           
+       ! use MODIS-derived snow albedo from bcs (via Catch restart)
+       ! 
+       ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+       ! (checks for unphysical values should be in the make_bcs package)
+       
+      call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+
+      SNOVR = SNOWALB
+      SNONR = SNOWALB
+      SNOVF = SNOWALB
+      SNONF = SNOWALB
+
+    endif
+
     SNOVR(:) = SNOVR(:)*fveg1(:) + SNOVR_tmp(:)*fveg2(:)
     SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
     SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
     SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
-    
+
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
     ! --------------------------------------------------------------------------
@@ -7319,6 +7356,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR_tmp, SNONR_tmp, SNOVF_tmp, SNONF_tmp, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR ) 
 
+
         ALBVR(:) = ALBVR(:)*fveg1(:) + ALBVR_tmp(:)*fveg2(:)
         ALBNR(:) = ALBNR(:)*fveg1(:) + ALBNR_tmp(:)*fveg2(:)
         ALBVF(:) = ALBVF(:)*fveg1(:) + ALBVF_tmp(:)*fveg2(:)
@@ -7328,6 +7366,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
         SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
         SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
+
+        if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           !  
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+        
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+           
+        endif
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW

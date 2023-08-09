@@ -84,13 +84,12 @@ contains
     select type (statePtr)
     type is (T_CATCHCN_STATE) ! CATCHCN
        
-       _ASSERT( statePtr%SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")
-       
        call MAPL_GetResource( SCF, statePtr%DTCN,             label='DTCN:',                DEFAULT=5400.,         __RC__ )
        call MAPL_GetResource( SCF, statePtr%ATM_CO2,          label='ATM_CO2:',             DEFAULT=2,             __RC__ )
        call MAPL_GetResource( SCF, statePtr%PRESCRIBE_DVG,    label='PRESCRIBE_DVG:',       DEFAULT=0,             __RC__ )
        call MAPL_GetResource( SCF, statePtr%CO2,              label='CO2:',                 DEFAULT=350.e-6,       __RC__ )
        call MAPL_GetResource( SCF, statePtr%CO2_YEAR_IN,      label='CO2_YEAR:',            DEFAULT=-9999,         __RC__ )
+       call MAPL_GetResource( SCF, statePtr%SNOW_ALBEDO_INFO, label='SNOW_ALBEDO_INFO:',    DEFAULT=0,             __RC__ )
        
     end select
 
