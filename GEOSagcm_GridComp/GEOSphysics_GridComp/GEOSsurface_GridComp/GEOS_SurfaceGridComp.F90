@@ -7288,7 +7288,6 @@ module GEOS_SurfaceGridCompMod
 
        ! Create discharge at exit tiles by routing runoff
 
-<<<<<<< HEAD
        if (DO_DATAATM /= 0) then
           call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
           call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
@@ -7303,11 +7302,6 @@ module GEOS_SurfaceGridCompMod
           VERIFY_(STATUS)
        end if
 
-=======
-       call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
-       VERIFY_(STATUS)
-       
->>>>>>> develop
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
        !  that used "corrected" precips.
