@@ -135,6 +135,11 @@ mkdir -p land/{GRIDNAME}/clsm
 """ 
    mv_template = mv_template + get_change_til_file(grid_type)
    mv_template = mv_template + """
+#
+# convert bin to nc4
+#
+
+bin/binary_forcing_converter.py bin2nc4.yaml
 
 /bin/mv clsm/mkCatchParam.log ../logs/{GRIDNAME}/mkCatchParam.log
 
@@ -175,7 +180,7 @@ chmod +rX -R geometry land logs
 
    return mv_template
 
-def get_convert_yaml():
+def get_script_yaml():
   yaml_template = """
 land/{GRIDNAME}/irrigation_{RC}.dat:
    output_file: land/{GRIDNAME}/irrigation_{RC}.nc4
@@ -192,6 +197,7 @@ land/{GRIDNAME}/nirdf_{RC}.dat
    units: 1
    long_name: nirdf
    grid_type: tile
+
 land/{GRIDNAME}/visdf_{RC}.dat
    output_file: land/{GRIDNAME}/visdf_clim_{RC}.nc4
    clim: True
@@ -199,6 +205,7 @@ land/{GRIDNAME}/visdf_{RC}.dat
    units: 1
    long_name: visdf
    grid_type: tile
+
 land/{GRIDNAME}/lai_clim_{RC}.data
    output_file: land/{GRIDNAME}/lai_clim_{RC}.nc4
    clim: True
@@ -206,6 +213,7 @@ land/{GRIDNAME}/lai_clim_{RC}.data
    units: 1
    long_name: leaf_area_index
    grid_type: tile
+
 land/{GRIDNAME}/green_clim_{RC}.data
    output_file: land/{GRIDNAME}/green_clim_{RC}.nc4
    clim: True
@@ -213,6 +221,7 @@ land/{GRIDNAME}/green_clim_{RC}.data
    units: 1
    long_name: greenness_fraction 
    grid_type: tile
+
 land/{GRIDNAME}/lnfm_clim_{RC}.data
    output_file: land/{GRIDNAME}/lnfm_clim_{RC}.nc4
    clim: True
@@ -220,6 +229,7 @@ land/{GRIDNAME}/lnfm_clim_{RC}.data
    units: 1
    long_name: lnfm
    grid_type: tile
+
 land/{GRIDNAME}/ndvi_clim_{RC}.data
    output_file: land/{GRIDNAME}/ndvi_clim_{RC}.nc4
    clim: True

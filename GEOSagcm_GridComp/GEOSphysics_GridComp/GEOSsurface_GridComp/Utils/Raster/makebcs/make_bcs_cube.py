@@ -127,6 +127,7 @@ def make_bcs_cube(config):
   scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
   log_dir     = expdir+'/'+tmp_dir+'/logs/'+ GRIDNAME
   bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
+  bin2nc4_yaml= scratch_dir+'/'+'bin2nc4.yaml'
 
   check_script(expdir, GRIDNAME+'.j')
 
@@ -225,6 +226,14 @@ def make_bcs_cube(config):
      cube_job = open(bcjob+'-2','wt')
      cube_job.write(script_string)
      cube_job.close()
+
+  bin2nc4_template = get_script_yaml()
+  bin2nc4_string   = bin2nc4_template.format(\
+       GRIDNAME  = GRIDNAME, \
+       RC = RC)
+  bin2nc4 = open(bin2nc4_yaml, 'wt')
+  bin2nc4.write(bin2nc4_string)
+  bin2nc4.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :
