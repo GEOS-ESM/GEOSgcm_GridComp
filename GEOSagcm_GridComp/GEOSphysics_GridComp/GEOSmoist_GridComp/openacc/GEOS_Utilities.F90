@@ -10,7 +10,7 @@
 ! !USES:
 
   use MAPL_ConstantsMod
-  use pFlogger
+  ! use pFlogger
   use ieee_arithmetic
 
 ! #include "qsatlqu.code"
@@ -34,8 +34,8 @@
   public GEOS_Qsat
   public GEOS_DQsat
 
-  public GEOS_TRILU
-  public GEOS_TRISOLVE
+  ! public GEOS_TRILU
+  ! public GEOS_TRISOLVE
 
 !EOP
 
@@ -67,17 +67,17 @@
      module procedure QSAT3
   end interface
 
-  interface GEOS_TRILU
-     module procedure GEOS_TRILU1
-     module procedure GEOS_TRILU2
-     module procedure GEOS_TRILU3
-  end interface
+  ! interface GEOS_TRILU
+  !    module procedure GEOS_TRILU1
+  !    module procedure GEOS_TRILU2
+  !    module procedure GEOS_TRILU3
+  ! end interface
 
-  interface GEOS_TRISOLVE
-     module procedure GEOS_TRISOLVE1
-     module procedure GEOS_TRISOLVE2
-     module procedure GEOS_TRISOLVE3
-  end interface
+  ! interface GEOS_TRISOLVE
+  !    module procedure GEOS_TRISOLVE1
+  !    module procedure GEOS_TRISOLVE2
+  !    module procedure GEOS_TRISOLVE3
+  ! end interface
 
 
       real,    parameter :: ESFAC = MAPL_H2OMW/MAPL_AIRMW
@@ -155,8 +155,8 @@
 
       !$acc declare create(UTBL, FIRST, ESTBLX, ESTFRZ, ESTLQU, ESTBLE, ESTBLW, TMINLQU, TMINICE, TYPE)
 
-      class(Logger), pointer :: lgr
-      logical :: debugIsEnabled
+      ! class(Logger), pointer :: lgr
+      ! logical :: debugIsEnabled
 
   contains
 
@@ -247,6 +247,7 @@
        end function QSATLQU0
 
        function QSATLQU1(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:)
          real, optional,    intent(IN) :: PL(:)
          real, optional,    intent(OUT):: DQ(:)
@@ -271,6 +272,7 @@
        end function QSATLQU1
 
        function QSATLQU2(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:,:)
          real, optional,    intent(IN) :: PL(:,:)
          real, optional,    intent(OUT):: DQ(:,:)
@@ -297,6 +299,7 @@
        end function QSATLQU2
 
        function QSATLQU3(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:,:,:)
          real, optional,    intent(IN) :: PL(:,:,:)
          real, optional,    intent(OUT):: DQ(:,:,:)
@@ -352,6 +355,7 @@
        end function QSATICE0
 
        function QSATICE1(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:)
          real, optional,    intent(IN) :: PL(:)
          real, optional,    intent(OUT):: DQ(:)
@@ -376,6 +380,7 @@
        end function QSATICE1
 
        function QSATICE2(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:,:)
          real, optional,    intent(IN) :: PL(:,:)
          real, optional,    intent(OUT):: DQ(:,:)
@@ -402,6 +407,7 @@
        end function QSATICE2
 
        function QSATICE3(TL,PL,DQ) result(QS)
+         !$acc routine seq
          real,              intent(IN) :: TL(:,:,:)
          real, optional,    intent(IN) :: PL(:,:,:)
          real, optional,    intent(OUT):: DQ(:,:,:)
@@ -601,6 +607,7 @@
   end function QSAT0
 
     function QSAT1(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:), PL(:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -608,10 +615,10 @@
       real :: QSAT(size(TL,1))
       integer :: I
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT1: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT1: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT1: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT1: PL contains NaN')
+      ! end if
 
       do I=1,SIZE(TL,1)
          if (present(DQSAT)) then
@@ -623,6 +630,7 @@
     end function QSAT1
 
     function QSAT2(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:,:), PL(:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -630,10 +638,10 @@
       real :: QSAT(size(TL,1),size(TL,2))
       integer :: I, J
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT2: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT2: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT2: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT2: PL contains NaN')
+      ! end if
 
       do J=1,SIZE(TL,2)
          do I=1,SIZE(TL,1)
@@ -647,6 +655,7 @@
     end function QSAT2
 
     function QSAT3(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:,:,:), PL(:,:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -654,10 +663,10 @@
       real :: QSAT(size(TL,1),size(TL,2),size(TL,3))
       integer :: I, J, K
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT3: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT3: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT3: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT3: PL contains NaN')
+      ! end if
 
       do K=1,SIZE(TL,3)
          do J=1,SIZE(TL,2)
@@ -726,6 +735,7 @@
 
     
     function DQSAT0(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
+      !$acc routine seq
       real,   intent(IN) :: TL, PL
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -734,10 +744,10 @@
       real    :: URAMP, TT, DD, DQQ, QQ, TI, DQI, QI, PP
       integer :: IT
 
-      if (debugIsEnabled) then
-         if (ieee_is_nan(TL)) call lgr%warning('DQSAT0: TL contains NaN')
-         if (ieee_is_nan(PL)) call lgr%warning('DQSAT0: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (ieee_is_nan(TL)) call lgr%warning('DQSAT0: TL contains NaN')
+      !    if (ieee_is_nan(PL)) call lgr%warning('DQSAT0: PL contains NaN')
+      ! end if
 
       if(present(RAMP)) then
          URAMP = -abs(RAMP)
@@ -760,7 +770,7 @@
          if(FIRST) then
             FIRST = .false.
             call ESINIT_
-            call LOGGER_INIT
+            ! call LOGGER_INIT
          end if
 
          if    (TL<=TMINTBL) then
@@ -795,7 +805,7 @@
 
          if(FIRST) then
             FIRST = .false.
-            call LOGGER_INIT
+            ! call LOGGER_INIT
          end if
 
          TI = TL - ZEROC
@@ -819,6 +829,7 @@
     end function DQSAT0
         
     function DQSAT1(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:), PL(:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -826,10 +837,10 @@
       real :: DQSAT(size(TL,1))
       integer :: I
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT1: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT1: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT1: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT1: PL contains NaN')
+      ! end if
 
       do I=1,SIZE(TL,1)
          if (present(QSAT)) then
@@ -841,6 +852,7 @@
     end function DQSAT1
 
     function DQSAT2(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:,:), PL(:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -848,10 +860,10 @@
       real :: DQSAT(size(TL,1),size(TL,2))
       integer :: I, J
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT2: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT2: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT2: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT2: PL contains NaN')
+      ! end if
 
       do J=1,SIZE(TL,2)
          do I=1,SIZE(TL,1)
@@ -865,6 +877,7 @@
     end function DQSAT2
 
     function DQSAT3(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
+      !$acc routine seq
       real,              intent(IN) :: TL(:,:,:), PL(:,:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -872,10 +885,10 @@
       real :: DQSAT(size(TL,1),size(TL,2),size(TL,3))
       integer :: I, J, K
 
-      if (debugIsEnabled) then
-         if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT3: TL contains NaN')
-         if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT3: PL contains NaN')
-      end if
+      ! if (debugIsEnabled) then
+      !    if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT3: TL contains NaN')
+      !    if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT3: PL contains NaN')
+      ! end if
 
       do K=1,SIZE(TL,3)
          do J=1,SIZE(TL,2)
@@ -899,6 +912,7 @@
 ! !INTERFACE:
 
        subroutine GEOS_QsatSet(USETABLE,FORMULATION)
+         !$acc routine seq
          logical, optional, intent(IN) :: USETABLE
          integer, optional, intent(IN) :: FORMULATION
 
@@ -935,7 +949,7 @@
 
          if(UTBL) then
             call ESINIT_
-            call LOGGER_INIT
+            ! call LOGGER_INIT
          end if
 
          return
@@ -990,18 +1004,19 @@
          if(FIRST) then
             FIRST = .false.
             call ESINIT_
-!$acc update device(FIRST, ESTBLX(:), ESTFRZ, ESTLQU, ESTBLW(:), ESTBLE(:), UTBL)
+            ! call LOGGER_INIT
+            !$acc update device(UTBL, FIRST, ESTBLX(:), ESTFRZ, ESTLQU, ESTBLE(:), ESTBLW(:), TMINLQU, TMINICE, TYPE)
          end if
        end subroutine ESINIT
 
-       subroutine LOGGER_INIT
+       ! subroutine LOGGER_INIT
 
-          implicit none
+       !    implicit none
 
-          lgr => logging%get_logger('SHARED.GMAOSHARED.GEOSSHARED.QSAT')
-          debugIsEnabled = lgr%isEnabledFor(DEBUG)
+       !    lgr => logging%get_logger('SHARED.GMAOSHARED.GEOSSHARED.QSAT')
+       !    debugIsEnabled = lgr%isEnabledFor(DEBUG)
 
-       end subroutine LOGGER_INIT
+       ! end subroutine LOGGER_INIT
 
 
 
