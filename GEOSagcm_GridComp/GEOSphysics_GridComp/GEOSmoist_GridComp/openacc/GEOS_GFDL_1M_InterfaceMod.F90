@@ -12,7 +12,7 @@ module GEOS_GFDL_1M_InterfaceMod
 
   use ESMF
   use MAPL
-  use GEOS_UtilsMod
+  use GEOS_Utils_ACC_Mod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
@@ -421,6 +421,9 @@ contains
     ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
+    ! Call ESINIT so that subsequent calls to GEOS_QSAT/GEOS_DQSAT do not result in a race cond
+    call ESINIT
+    
     ! Derived States
     PLEmb    =  PLE*.01
     PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -788,9 +791,6 @@ contains
     QGRAUPEL = RAD_QG
 
     ! Radiation Coupling
-
-    ! ! Call ESINIT so that subsequent calls to GEOS_QSAT do not result in a race cond
-    ! call ESINITpub
 
     !$acc parallel loop gang vector collapse(3)
     do L = 1, LM
