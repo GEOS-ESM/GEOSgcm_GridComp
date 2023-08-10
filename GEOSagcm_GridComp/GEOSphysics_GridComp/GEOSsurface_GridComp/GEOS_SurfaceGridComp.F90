@@ -7137,7 +7137,7 @@ module GEOS_SurfaceGridCompMod
 
 !ALT    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
 !ALT    call MKTILE(DISCHARGE,DISCHARGETILE,NT,RC=STATUS); VERIFY_(STATUS)
-    if (associated(SURF_INTERNAL_STATE%LocalRoutings) .or. DO_DATAATM /=0) then ! routing file exists or we run DataAtm
+    if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATAATM /=0) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -7298,7 +7298,7 @@ module GEOS_SurfaceGridCompMod
           DISCHARGETILE = RUNOFFTILE 
     
        else
-          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
