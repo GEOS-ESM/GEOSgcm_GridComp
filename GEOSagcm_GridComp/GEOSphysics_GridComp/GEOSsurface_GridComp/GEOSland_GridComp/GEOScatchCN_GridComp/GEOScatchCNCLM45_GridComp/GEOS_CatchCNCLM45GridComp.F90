@@ -197,10 +197,7 @@ subroutine SetServices ( GC, RC )
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
-    integer :: RESTART
-    type(T_CATCHCN_STATE), pointer :: catchcn_internal
-    class(T_CATCHCN_STATE), pointer :: statePtr
-    type(CATCHCN_WRAP) :: wrap
+    integer :: RESTART, SNOW_ALBEDO_INFO
 
 ! Begin...
 ! --------
@@ -212,11 +209,6 @@ subroutine SetServices ( GC, RC )
     call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
-
-    allocate(catchcn_internal, stat=status)
-    VERIFY_(status)
-    statePtr => catchcn_internal
-
 
 ! pchakrab: Read CATCHMENT_OFFLINE from resource file and save
 ! it in the private internal state of the GridComp. It is a little
@@ -231,6 +223,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
     call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
     call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
+    call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,   Label="SNOW_ALBEDO_INFO:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -1387,7 +1380,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-    if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+    if (SNOW_ALBEDO_INFO == 1) then
     call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'effective_snow_albedo'               ,&
        UNITS              = '1'                         ,&
