@@ -459,6 +459,7 @@ module GEOSmoist_Process_Library
    end subroutine SUBL3
 
    function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
+     !$acc routine seq
 
        REAL   , INTENT(IN) :: TE,PL,QC
        REAL   , INTENT(IN) :: NNL,NNI ! #/m^3
@@ -804,6 +805,7 @@ module GEOSmoist_Process_Library
          RAD_RI,          & 
          FAC_RL, MIN_RL, MAX_RL, &
          FAC_RI, MIN_RI, MAX_RI)
+     !$acc routine seq
 
       real, intent(in ) :: TE
       real, intent(in ) :: PL
@@ -892,6 +894,7 @@ module GEOSmoist_Process_Library
          QLA,&
          QIA,&
          AF  )
+      !$acc routine seq
 
       real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA
 
