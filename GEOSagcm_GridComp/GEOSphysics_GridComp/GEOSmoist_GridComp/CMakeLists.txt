@@ -49,8 +49,9 @@ target_include_directories(${this} PRIVATE
    )
 if (GPU_PHYSICS)
   message(STATUS "Building GPU ports of Moist routines")
-  set (CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${GEOS_Fortran_OpenACC_Flags}")
-  set (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${GEOS_Fortran_OpenACC_Flags}")
+  # We need the SHELL prefix to get around the error where the flags are quoted as in
+  # gfortran: error: unrecognized command-line option '-fopenacc -foffload=nvptx-none’
+  target_compile_options(${this} PRIVATE SHELL:${GEOS_Fortran_OpenACC_Flags})
 endif ()
 
 file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc *.yaml)
