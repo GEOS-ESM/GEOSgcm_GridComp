@@ -8304,7 +8304,7 @@ module GEOS_SurfaceGridCompMod
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
     end if
 
-    if (DO_DATAATM) then
+    if (DO_DATAATM /= 0) then
        ! dataAtm operates only on "saltwater" tiles. 
        ! we need to handle grid boxes withot any ocean
        ! and avoid division by 0
