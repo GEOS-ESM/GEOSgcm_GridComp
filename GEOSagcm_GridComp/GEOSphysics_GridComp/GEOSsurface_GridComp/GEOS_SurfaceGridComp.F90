@@ -2,7 +2,6 @@
 !  $Id$
 
 #include "MAPL_Generic.h"
-#define DEBUG_DATAATM
 
 !=============================================================================
 module GEOS_SurfaceGridCompMod
@@ -3151,35 +3150,6 @@ module GEOS_SurfaceGridCompMod
          VLOCATION  = MAPL_VLocationNone, __RC__)
   end if
 
-#ifdef DEBUG_DATAATM
-    call MAPL_AddExportSpec(GC,                              &
-        SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
-        UNITS              = 'W m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                              &
-        SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
-        UNITS              = 'W m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                              &
-        SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
-        UNITS              = 'W m-2 K-1',                         &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
-#endif
-
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -5917,15 +5887,6 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , ALW     , 'ALW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , BLW     , 'BLW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DTSDT   , 'DTSDT' ,   RC=STATUS); VERIFY_(STATUS)
-
-#ifdef DEBUG_DATAATM
-    call MAPL_GetPointer(EXPORT, tmp, 'LWDNSRF', __RC__)
-    if (associated(tmp)) tmp=lwdnsrf
-    call MAPL_GetPointer(EXPORT, tmp, 'ALW', __RC__)
-    if (associated(tmp)) tmp=alw
-    call MAPL_GetPointer(EXPORT, tmp, 'BLW', __RC__)
-    if (associated(tmp)) tmp=blw
-#endif
 
 ! Horizontal dimensions needed to allocate local arrays
 !------------------------------------------------------
