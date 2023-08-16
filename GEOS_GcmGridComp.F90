@@ -597,14 +597,6 @@ contains
       call OBIO_TerminateImports(DO_DATAATM, RC)
     end if
 
-!    if(DO_DATAATM /= 0) then
-!        call MAPL_TerminateImport    ( GC,   &
-!             SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
-!             'VI     ','TAUXBOT','TAUYBOT'/),         &
-!             CHILD      = AGCM,           &
-!             _RC)
-!    endif
-
     if (DO_CICE_THERMO == 1) then  
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
@@ -1258,11 +1250,7 @@ contains
 ! Create XFORMs
 !--------------
 
-!    if(DO_DATAATM/=0) then
-!       skinname = 'DATAATM'
-!    else
-       skinname = 'SALTWATER'
-!    endif
+   skinname = 'SALTWATER'
 
    call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
         default=0, rc=status)
