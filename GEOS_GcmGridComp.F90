@@ -179,8 +179,10 @@ contains
 
     if (DO_CICE_THERMO /= 0) then
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , _RC)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     _RC)
-    else
+       if (DO_CICE_THERMO == 1) then
+          call ESMF_ConfigGetAttribute(CF,  NUM_ICE_LAYERS, Label="CICE_N_ICE_LAYERS:"     , _RC)
+       endif  
+    else 
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1
     endif
@@ -542,6 +544,17 @@ contains
        VERIFY_(STATUS)
     endif
 
+  
+    if (DO_CICE_THERMO == 2) then  
+       call MAPL_AddConnectivity ( GC,                              &
+            SHORT_NAME  = (/'SURFSTATE'/),                          &
+            DST_ID = AGCM,                                          &
+            SRC_ID = OGCM,                                          &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
+
+
 ! Next vars are explicitly connected through exchange grid transforms Run
 !-------------------------------------------------------------------------
 
@@ -550,14 +563,14 @@ contains
             SHORT_NAME = [character(len=7) ::                       &
                          'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
                          'OUSTAR3','PS     ',                       &
-                         'HI     ','TI     ','SI     ' ,            &
+                         'TI     ','SI     ' ,                      &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
-                         'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
-                         'FHOCN', 'PEN_OCN'],                       &
+                         'SNOW', 'RAIN', 'PEN_OCN'],                &
             CHILD      = OGCM,                                      &
             _RC)
+
     else
        call MAPL_TerminateImport    ( GC,                           &
             SHORT_NAME = [character(len=7) ::                       &
@@ -572,6 +585,14 @@ contains
             _RC)
     endif
 
+    if (DO_CICE_THERMO <= 1) then  
+      call MAPL_TerminateImport    ( GC,   &
+           SHORT_NAME = [character(len=5) :: &
+                        'HI', 'FRESH', 'FSALT', 'FHOCN'],          &
+           CHILD      = OGCM,                                      &
+           _RC)
+    endif 
+
     if (DO_OBIO/=0) then
       call OBIO_TerminateImports(DO_DATAATM, RC)
     end if
@@ -584,7 +605,7 @@ contains
              _RC)
     endif
 
-    if (DO_CICE_THERMO /= 0) then
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
                          'FRACICE', 'VOLICE ', 'VOLSNO ',              &
@@ -1264,6 +1285,47 @@ contains
                                     NAME='XFORM_O2A', &
                                     RC=STATUS )
    VERIFY_(STATUS)
+   !========CICE CALLBACK RELATED======
+   block
+     type WRAP_X
+        type (MAPL_LocStreamXform), pointer :: PTR => null()
+     end type WRAP_X
+     type WRAP_L
+        type (MAPL_LocStream), pointer :: PTR => null()
+     end type WRAP_L
+
+     type (MAPL_LocStreamXform), pointer :: xform_type
+     type (MAPL_LocStream), pointer :: locstream_type
+     type(WRAP_X) :: wrap_xform
+     type(WRAP_L) :: wrap_locstream
+
+     allocate( xform_type, stat=status )
+     VERIFY_(STATUS)
+     xform_type = gcm_internal_state%xform_a2o
+     wrap_xform%ptr => xform_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_A2O', &
+          wrap_xform,status )
+     VERIFY_(STATUS)
+
+     ! this (i.e. second) allocation is intentional and not a memory leak
+     !===================================================================
+     allocate( xform_type, stat=status )
+     VERIFY_(STATUS)
+     xform_type = gcm_internal_state%xform_o2a
+     wrap_xform%ptr => xform_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_XFORM_O2A', &
+          wrap_xform,status )
+     VERIFY_(STATUS)
+
+     allocate( locstream_type, stat=status )
+     VERIFY_(STATUS)
+     locstream_type = exchO
+     wrap_locstream%ptr => locstream_type
+     call ESMF_UserCompSetInternalState ( GC, 'GCM_LOCSTREAM_OCEAN', &
+          wrap_locstream,status )
+     VERIFY_(STATUS)
+   end block
+   !===================================
    end if
 
 ! This part has some explicit hierarchy built in...
@@ -1284,9 +1346,16 @@ contains
         'OUSTAR3  ', 'PS       ',                          &
         'AO_LWFLX', 'AO_SHFLX', 'AO_QFLUX',                &
         'AO_SNOW', 'AO_RAIN', 'AO_DRNIR', 'AO_DFNIR',      &
-        'FRESH', 'FSALT','FHOCN', 'PEN_OCN'],              &
+        'PEN_OCN'],              &
         RC=STATUS)
    VERIFY_(STATUS)
+
+   if (DO_CICE_THERMO <= 1) then  
+      call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+        [ character(len=8) :: &
+        'FRESH', 'FSALT','FHOCN'],                     &
+        _RC)
+   endif
 
    if (DO_CICE_THERMO /= 0) then
       call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
@@ -1313,8 +1382,10 @@ contains
       if (seaIceT_extData) then
         call AllocateExports(GEX(OGCM), (/'SEAICETHICKNESS '/), _RC)
       endif
+   else if(DO_CICE_THERMO == 1) then
+      call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), _RC)
    else
-      call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), RC=STATUS)
+      call AllocateExports_UGD(GEX(OGCM), (/'FRACICE '/), _RC)
    end if
 
    call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
@@ -1957,10 +2028,12 @@ contains
 !------------------------------------------
        if (.not. seaIceT_extData) then
          call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' ,_RC)
-         call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', _RC)
          call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', _RC)
+         if (DO_CICE_THERMO <= 1) then  
+            call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', _RC)
+         endif
        endif
-       if (DO_CICE_THERMO /= 0) then
+       if (DO_CICE_THERMO == 1) then  
           call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR',    _RC)
           call MAPL_CopyFriendliness(GIM(OGCM),'VOLICE',expSKIN,'VOLICE', _RC)
           call MAPL_CopyFriendliness(GIM(OGCM),'VOLSNO',expSKIN,'VOLSNO', _RC)
@@ -1973,7 +2046,9 @@ contains
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
        if (.not. seaIceT_extData) then
-         call DO_A2O(GIM(OGCM),'HI'     ,expSKIN,'HSKINI' , _RC)
+         if (DO_CICE_THERMO <= 1) then  
+            call DO_A2O(GIM(OGCM),'HI'  ,expSKIN,'HSKINI' , _RC)
+         endif
          call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , _RC)
        endif
        if (DO_CICE_THERMO == 0) then
@@ -1982,7 +2057,7 @@ contains
          endif
        endif
 
-       if (DO_CICE_THERMO /= 0) then
+       if (DO_CICE_THERMO == 1) then
           call DO_A2O_SUBTILES_R4R4(GIM(OGCM),'TI'     , SUBINDEXO, &
                expSKIN  ,'TSKINI' , SUBINDEXO, _RC)
           call DO_A2O_SUBTILES_R4R8(GIM(OGCM),'FRACICE', SUBINDEXO, &
@@ -2044,12 +2119,11 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'DFNIR',expSKIN,'AO_DFNIR', RC=STATUS)
        VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO <= 1) then  
+           call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , _RC)
+           call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , _RC)
+           call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , _RC)
+       endif
        call DO_A2O(GIM(OGCM),'PEN_OCN',expSKIN,'PEN_OCN', RC=STATUS)
        VERIFY_(STATUS)
 
@@ -2079,17 +2153,19 @@ contains
          if (.not. seaIceT_extData) then
            call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , _RC)
          endif
+       else
+         call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
+                                   GIM(OGCM), 'TI'         , SUBINDEXO, _RC)
        endif
 
        if (.not. seaIceT_extData) then
-         call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , _RC)
+         if (DO_CICE_THERMO <= 1) then
+            call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , _RC)
+         endif 
          call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , _RC)
        endif
 
-       if (DO_CICE_THERMO /= 0) then
-          call DO_O2A_SUBTILES_R4R4(expSKIN  , 'TSKINI'     , SUBINDEXO,  &
-               GIM(OGCM), 'TI'         , SUBINDEXO, RC=STATUS)
-          VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then
           call DO_O2A_SUBTILES_R8R4(expSKIN  , 'FR'         , SUBINDEXA,  &
                GIM(OGCM), 'FRACICE'    , SUBINDEXO, RC=STATUS)
           VERIFY_(STATUS)
@@ -2124,9 +2200,12 @@ contains
           if (seaIceT_extData) then
             call DO_O2A(impSKIN, 'SEAICETHICKNESS'  , GEX(OGCM), 'SEAICETHICKNESS', _RC)
           endif
-       else
+       elseif (DO_CICE_THERMO == 1) then
           call DO_O2A(impSKIN, 'TAUXBOT'  , GEX(OGCM), 'TAUXIBOT', _RC)
           call DO_O2A(impSKIN, 'TAUYBOT'  , GEX(OGCM), 'TAUYIBOT', _RC)
+       else
+          call DO_O2A_SUBTILES_R4R4(impSKIN,   'FRACICE'  ,   SUBINDEXO,    &
+                                    GEX(OGCM), 'FRACICE'  ,   SUBINDEXO,  _RC)
        end if
 
        call DO_O2A(impSKIN, 'UI'       , GEX(OGCM), 'UI'    , _RC)
