@@ -192,7 +192,12 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "select",
             "name": "grid_type",
             "message": "Select grid types: \n ",
-            "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
+            "choices": [ \
+                    "Cubed-Sphere", \
+                    "Stretched_Cubed-Sphere", \
+                    "Lat-Lon", \
+                    "EASEv2", \
+                    "EASEv1"],
         },
 
        {
@@ -201,6 +206,24 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "message": "Select lat-lon resolution (multiple choices): \n ",
             "choices": ["b -- 2   deg $144x91$", "c -- 1   deg $288x181$", "d -- 1/2 deg $576x361$","e -- 1/4 deg $1152x721$"],
             "when": lambda x: "Lat-Lon" == x['grid_type'],
+        },
+
+       {
+            "type": "checkbox",
+            "name": "Stretched_Cubed-Sphere",
+            "message": f'''Choose Stretched_Cubed-Sphere grid option:
+                 Name            Stretch Factor                Lat                     Lon              Resolution Choices
+               ----------       -----------------      ------------------       ------------------   ---------------------
+                SG001                   2.5                    39.5                    98.35           c270, c540, c1080 and c2160
+                SG002                   3.0                    39.5                    98.35           c1536       \n ''',
+
+            "choices": [ \
+                 "c270  -- 1/3  deg ( 37   km)", \
+                 "c540  -- 1/6  deg ( 18   km)", \
+                 "c1080 -- 1/12 deg (  9   km)", \
+                 "c1536 -- 1/16 deg (  7   km)", \
+                 "c2160 -- 1/12 deg (  4   km)"],
+            "when": lambda x:  "Stretched_Cubed-Sphere" == x['grid_type'],
         },
 
        {
@@ -238,6 +261,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "M36  -- 36km   $963x408$"],
             "when": lambda x: "EASEv1" ==  x['grid_type'] ,
         },
+
        {
             "type": "checkbox",
             "name": "EASEv2",
@@ -266,11 +290,21 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
-            "when": lambda x:  "Cubed-Sphere" == x['grid_type'],
+            "when": lambda x:  "Stretched_Cubed-Sphere" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
+          # "when": lambda x:  x['grid_type'] in ["Cubed-Sphere", "Stretched_Cubed-Sphere"],
         },
+
    ]
    answers = questionary.prompt(questions)
-   if "Cubed-Sphere" != answers['grid_type'] : answers['Ocean'] = ['O1  $360x180$']
+
+  # # List of excluded grid types
+   excluded_grid_types = ["Cubed-Sphere", "Stretched_Cubed-Sphere"]
+
+   # Check if the grid_type is not in the list of excluded options and modify the 'Ocean' key
+   if answers['grid_type'] not in excluded_grid_types:
+     answers['Ocean'] = ['O1  $360x180$']
+
+   # Split the 'bcs_version' value by spaces and keep only the first part
    answers['bcs_version'] = answers['bcs_version'].split()[0]
 
    path_q  = [
@@ -313,6 +347,15 @@ def ask_questions(default_grid="Cubed-Sphere"):
       im[short_res] = i
       jm[short_res] = 6*i
    answers['Cubed-Sphere'] = res 
+
+   res = []
+   for x in answers.get('Stretched_Cubed-Sphere',[]):
+      short_res = x.split()[0]
+      res = res + [short_res]
+      i = int(short_res[1:])
+      im[short_res] = i
+      jm[short_res] = 6*i
+   answers['Stretched_Cubed-Sphere'] = res 
 
    answers['im'] = im
    answers['jm'] = jm

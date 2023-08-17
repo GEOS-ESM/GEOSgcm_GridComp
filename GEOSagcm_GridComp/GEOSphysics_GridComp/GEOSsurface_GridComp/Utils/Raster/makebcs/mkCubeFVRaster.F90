@@ -36,13 +36,17 @@
     logical              :: Verb=.false.
     character*128        :: Usage="mkCubeFVraster -x RX -y RY -z -h -v -g GN ncells" 
     character*128        :: Iam ="mkCubeFVraster"
+    type(stretch) :: stg
+    logical :: tlon=.false.
+    logical :: tlat=.false.
+    logical :: tfac=.false.
 
 ! Process Arguments
 !------------------
 
     I = command_argument_count()
 
-    if(I < 1 .or. I > 10) then
+    if(I < 1 .or. I > 16) then
        print *, Usage
        call exit(66)
     end if
@@ -62,6 +66,15 @@
        end if
 
        select case (opt)
+       case ('X')			      
+          read(arg,'(F)') stg%target_lon
+          tlon = .true.
+       case ('Y')    
+          read(arg,'(F)') stg%target_lat		      
+          tlat = .true.    
+       case ('F')      
+          read(arg,'(F)') stg%stretch_factor		      
+          tfac = .true.
        case ('x')
           read(arg,'(i6)') nc
        case ('y')
@@ -91,8 +104,11 @@
     allocate(xs(ncells+1,(ncells+1)*6), ys(ncells+1,(ncells+1)*6),stat=STATUS)
     VERIFY_(STATUS)
 
-
-    call Get_CubedSphere_Grid(ncells+1, (ncells+1)*6, xs, ys, 0, .true.)
+    if (tlon .and. tlat .and. tfac) then
+       call Get_CubedSphere_Grid(ncells+1, (ncells+1)*6, xs, ys, 0, stg=stg)
+    else
+       call Get_CubedSphere_Grid(ncells+1, (ncells+1)*6, xs, ys, 0, .true.)
+    end if
 
     print *, 'Finished Cube Grid.'
 
