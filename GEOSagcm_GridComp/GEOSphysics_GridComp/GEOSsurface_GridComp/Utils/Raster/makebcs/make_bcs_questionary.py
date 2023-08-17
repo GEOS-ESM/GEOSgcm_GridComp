@@ -214,8 +214,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "message": f'''Choose Stretched_Cubed-Sphere grid option:
                  Name            Stretch Factor                Lat                     Lon              Resolution Choices
                ----------       -----------------      ------------------       ------------------   ---------------------
-                SG001                   2.5                    39.5                    98.35           c270, c540, c1080 and c2160
-                SG002                   3.0                    39.5                    98.35           c1536       \n ''',
+                SG001                   2.5                    39.5                   - 98.35           c270, c540, c1080 and c2160
+                SG002                   3.0                    39.5                   - 98.35           c1536       \n ''',
 
             "choices": [ \
                  "c270  -- 1/3  deg ( 37   km)", \
