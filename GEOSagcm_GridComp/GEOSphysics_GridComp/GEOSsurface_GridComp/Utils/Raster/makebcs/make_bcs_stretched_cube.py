@@ -117,9 +117,9 @@ def make_bcs_stretched_cube(config):
   POLENAME = config['POLENAME']
   SKIPLAND = config['skipland']
   if resolution in ['c270', 'c540', 'c1080', 'c2160'] :
-      GRIDNAME   = 'CF'+NC+'x6C_SG001_'+DATENAME+IMO+'x'+POLENAME+JMO
+      GRIDNAME   = 'CF'+NC+'x6C-SG001_'+DATENAME+IMO+'x'+POLENAME+JMO
   if resolution in ['c1536'] :
-      GRIDNAME   = 'CF'+NC+'x6C_SG002_'+DATENAME+IMO+'x'+POLENAME+JMO
+      GRIDNAME   = 'CF'+NC+'x6C-SG002_'+DATENAME+IMO+'x'+POLENAME+JMO
 
   if config['CUBED_SPHERE_OCEAN'] :
     DATENAME = 'CF'
@@ -127,9 +127,9 @@ def make_bcs_stretched_cube(config):
     IMO = NC
     JMO = '6C'
     if resolution in ['c270', 'c540', 'c1080', 'c2160'] :
-        GRIDNAME   =  'CF'+ NC+'x6_SG001_CF'+NC+'x6C' 
+        GRIDNAME   =  'CF'+ NC+'x6-SG001_CF'+NC+'x6C' 
     if resolution in ['c1536'] :
-        GRIDNAME   =  'CF'+ NC+'x6_SG002_CF'+NC+'x6C' 
+        GRIDNAME   =  'CF'+ NC+'x6-SG002_CF'+NC+'x6C' 
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
