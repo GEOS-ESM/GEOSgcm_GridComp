@@ -523,12 +523,12 @@ set  MOM_VERSION = UNDEF
 if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM5
-    set     DATENAME = TPM5 
+    set     DATENAME = M5TP 
     set     POLENAME = 
-else if ( $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+else if ( $orslv == T1MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM6
-    set     DATENAME = TPM6
+    set     DATENAME = M6TP
     set     POLENAME = 
 endif
 if( $orslv == CS ) set CUBED_SPHERE_OCEAN = TRUE

@@ -45,7 +45,7 @@ endif
 
 if( {TRIPOL_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
-      bin/mkMOMAquaRaster.x -x {NX} -y {NY}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
+      bin/mkMOMAquaRaster.x -x {NX} -y {NY} -g ${DATENAME}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
       /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
       /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
       bin/FillMomGrid.x -f 0 -g Pfafstetter-M {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
@@ -112,6 +112,8 @@ def make_bcs_cube(config):
   POLENAME = config['POLENAME']
   GRIDNAME = 'CF'+NC+'x6C_'+DATENAME+IMO+'x'+POLENAME+JMO
   SKIPLAND = config['skipland']
+  if config['TRIPOL_OCEAN'] :
+    GRIDNAME ='CF'+NC+'x6C_'+DATENAME+'-'+IMO+'x'+POLENAME+JMO
 
   if config['CUBED_SPHERE_OCEAN'] :
     GRIDNAME =  'CF'+ NC+'x6_CF'+NC+'x6C'
@@ -119,6 +121,7 @@ def make_bcs_cube(config):
     POLENAME = ''
     IMO = NC
     JMO = '6C'
+
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
