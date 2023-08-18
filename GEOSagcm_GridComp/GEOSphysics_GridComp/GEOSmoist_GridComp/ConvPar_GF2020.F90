@@ -24,7 +24,8 @@ USE GEOSmoist_Process_Library, only : sigma, ICE_FRACTION, make_DropletNumber, m
         ,use_rebcb, vert_discr, satur_calc, clev_grid, apply_sub_mp        &
         ,sgs_w_timescale, lightning_diag, tau_ocea_cp,  tau_land_cp        &
         ,autoconv, bc_meth,overshoot,use_wetbulb                           &
-        ,c1,c0_deep, qrc_crit,lambau_deep,lambau_shdn,c0_mid               &
+        ,c1,c0_deep, qrc_crit,qrc_crit_lnd,qrc_crit_ocn                    &
+        ,lambau_deep,lambau_shdn,c0_mid                                    &
         ,cum_max_edt_land  ,cum_max_edt_ocean, cum_hei_down_land           &
         ,cum_hei_down_ocean,cum_hei_updf_land, cum_hei_updf_ocean          &
         ,use_momentum_transp,cum_entr_rate                                 &
@@ -6092,7 +6093,7 @@ ENDIF !- end of section for atmospheric composition
             endif
 
             IF (autoconv == 1 ) then
-                min_liq  = qrc_crit * ( xland(i)*1. + (1.-xland(i))*0.7 )
+                min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
                 cx0     = (c1d(i,k)+c0)*DZ
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
                 pw (i,k)= cx0*max(0.,qrc(i,k) - min_liq)! units kg[rain]/kg[air]

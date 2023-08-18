@@ -3113,12 +3113,16 @@ contains
        call MAPL_GetResource (MAPL, HGT_SURFACE,                    "HGT_SURFACE:",  default=0.0,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=0.0,     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, JASON_TRB,                      "JASON_TRB:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, HGT_SURFACE,                    "HGT_SURFACE:",  default=50.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,       RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=5000.0,  RC=STATUS); VERIFY_(STATUS)
+     endif
+
+     if (JASON_TRB) then
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
+     else                 
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,    RC=STATUS); VERIFY_(STATUS)
      endif
 
@@ -3133,7 +3137,11 @@ contains
      call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
+     if (JASON_TRB) then
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=30.0,         RC=STATUS); VERIFY_(STATUS)
+     else
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.0,         RC=STATUS); VERIFY_(STATUS)
+     endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
@@ -3151,6 +3159,11 @@ contains
      call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
+     if (JASON_TRB) then
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
+     else  
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
+     endif
      call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
@@ -4390,7 +4403,7 @@ contains
           TKE = 1e-6 ! https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/594#issuecomment-1171360993
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5)  *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5)  *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
             (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
             (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)

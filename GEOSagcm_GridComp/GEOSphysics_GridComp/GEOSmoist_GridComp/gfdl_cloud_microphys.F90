@@ -1291,11 +1291,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
-           !! area and timescale efficiency on revap
-           !                       AREA_LS_PRC_K = 0.0
-           !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-           !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-            fac_revp = 1. - exp (- dt / tau_revp)
+            ! area and timescale efficiency on revap
+                                   AREA_LS_PRC_K = 0.0
+            if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+            fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+           !fac_revp = 1. - exp (- dt / tau_revp)
             
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient
