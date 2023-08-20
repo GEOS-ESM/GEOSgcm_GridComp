@@ -107,13 +107,13 @@ def get_configs_from_answers(answers):
         if orslv in['T2','T3','T4']:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM5'
-           DATENAME = 'M5TP'
+           DATENAME = ''
            POLENAME = ''
            OCEAN_VERSION='M5TP'
         if 'MOM6' in orslv:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM6'
-           DATENAME = 'M6TP'
+           DATENAME = ''
            POLENAME = ''
            OCEAN_VERSION='M6TP'
         if  orslv == 'CS' :
