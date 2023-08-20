@@ -523,13 +523,13 @@ set  MOM_VERSION = UNDEF
 if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM5
-    set     DATENAME = M5TP 
-    set     POLENAME = 
+    set     DATENAME = TM
+    set     POLENAME = TM
 else if ( $orslv == T1MOM6 | $orslv == T3MOM6 | $orslv == T4MOM6 ) then
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM6
-    set     DATENAME = M6TP
-    set     POLENAME = 
+    set     DATENAME = TM
+    set     POLENAME = TM
 endif
 if( $orslv == CS ) set CUBED_SPHERE_OCEAN = TRUE
 
@@ -842,7 +842,7 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/create_README.csh
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x $NX -y $NY -g ${DATENAME} data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x $NX -y $NY  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
@@ -1040,7 +1040,7 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY} -g ${DATENAME} data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
@@ -1256,7 +1256,7 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY} -g ${DATENAME} data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
     bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
