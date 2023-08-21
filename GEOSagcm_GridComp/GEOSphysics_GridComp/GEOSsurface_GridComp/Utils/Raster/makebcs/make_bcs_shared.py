@@ -54,8 +54,7 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-elseif
-if( {TRIPOL_OCEAN} == True ) then
+elseif( {TRIPOL_OCEAN} == True ) then
 cat > sedfile << EOF
 s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
 s/{OCEAN_VERSION}-{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
