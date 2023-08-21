@@ -98,7 +98,7 @@ def get_configs_from_answers(answers):
         CUBED_SPHERE_OCEAN = False
         DATENAME = 'DE'
         POLENAME = 'PE'
-        OCEAN_VERSION='M5TP'
+        OCEAN_VERSION='UNDEF'
         MOM_VERSION = 'UNDEF'
         if orslv in['O2','O3','O1']:
            LATLON_OCEAN = True

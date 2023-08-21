@@ -115,7 +115,7 @@ def make_bcs_cube(config):
   SKIPLAND = config['skipland']
 
   if config['CUBED_SPHERE_OCEAN'] :
-    GRIDNAME =  'CF'+ NC+'x6_CF'+NC+'x6C'
+    GRIDNAME =  'CF'+ NC+'x6C_CF'+NC+'x6C'
     DATENAME = 'CF'
     POLENAME = ''
     IMO = NC
