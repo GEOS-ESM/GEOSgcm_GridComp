@@ -265,7 +265,7 @@
 
       REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, targetthick, &
              wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
-      REAL, DIMENSION(N_SNOW) :: FICES,EXCS                                        !lca
+      REAL, DIMENSION(N_SNOW) :: FICES                                        !lca
 
       REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
 
