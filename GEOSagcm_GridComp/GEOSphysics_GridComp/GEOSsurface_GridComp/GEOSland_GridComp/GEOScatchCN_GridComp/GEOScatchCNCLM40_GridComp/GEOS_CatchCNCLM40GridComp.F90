@@ -6672,6 +6672,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ALBNR(:) = ALBNR(:)*fveg1(:) + ALBNR_tmp(:)*fveg2(:)
     ALBVF(:) = ALBVF(:)*fveg1(:) + ALBVF_tmp(:)*fveg2(:)
     ALBNF(:) = ALBNF(:)*fveg1(:) + ALBNF_tmp(:)*fveg2(:)
+
+    SNOVR(:) = SNOVR(:)*fveg1(:) + SNOVR_tmp(:)*fveg2(:)
+    SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
+    SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
+    SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
     
     if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
            
@@ -6688,11 +6693,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       SNONF = SNOWALB
 
     endif
-
-    SNOVR(:) = SNOVR(:)*fveg1(:) + SNOVR_tmp(:)*fveg2(:)
-    SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
-    SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
-    SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
 
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
