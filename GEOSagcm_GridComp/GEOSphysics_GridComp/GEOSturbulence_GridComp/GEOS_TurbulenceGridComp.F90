@@ -1817,6 +1817,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'mixed_layer_depth_from_gradients',                      &
+       SHORT_NAME = 'ZPBLMIX',                                               &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'mixed_layer_depth_info_flags',                          &
+       SHORT_NAME = 'MIXFLAG',                                               &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'ATB_signal_to_noise',                                   &
        SHORT_NAME = 'SIGNOISE',                                              &
        UNITS      = 'm',                                                     &
@@ -2951,6 +2969,8 @@ contains
      real, dimension(:,:  ), pointer     :: ZPBLATBTHRESH => null()
      real, dimension(:,:  ), pointer     :: ZPBLATBGRAD => null()
      real, dimension(:,:  ), pointer     :: SIGNOISE => null()
+     real, dimension(:,:  ), pointer     :: ZPBLMIX => null()
+     real, dimension(:,:  ), pointer     :: MIXFLAG => null()
      real, dimension(:,:  ), pointer     :: KPBL => null()
      real, dimension(:,:  ), pointer     :: KPBL_SC => null()
      real, dimension(:,:  ), pointer     :: ZPBL_SC => null()                
@@ -3014,7 +3034,7 @@ contains
      real                                :: PCEFF_SURF, VSCALE_SURF, PERTOPT_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
      real                                :: SMTH_HGT
-     real                                :: tmp1
+     real                                :: tmp1,tmp2
      real,           dimension(IM,JM,LM) :: dum3d,tmp3d,WVP
      integer                             :: I,J,L,LOCK_ON,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
@@ -3094,7 +3114,7 @@ contains
 
      real    :: lambdadiss
 
-     integer :: locmax
+     integer :: locmax,locmax2
      real    :: maxkh,minlval
      real, dimension(IM,JM) :: thetavs,thetavh,uv2h,kpbltc,kpbl2,kpbl10p
      real    :: maxdthvdz,dthvdz
@@ -3276,6 +3296,10 @@ contains
      call MAPL_GetPointer(EXPORT,    ZPBLATBGRAD,  'ZPBLATBGRAD',     RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    SIGNOISE,  'SIGNOISE',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    ZPBLMIX,  'ZPBLMIX',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,    MIXFLAG,  'MIXFLAG',     RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   LWCRT,   'LWCRT', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -4715,50 +4739,66 @@ contains
         do I = 1,IM
           do J = 1,JM
              temparray(:) = 0.
-             L = LM-2
+             L = LM
              do while (Z(I,J,L).lt.5000.) 
                 temparray(L) = -1.*(TOTABCKTOA(I,J,L)-TOTABCKTOA(I,J,L-1)) / (Z(I,J,L)-Z(I,J,L-1))
-!                temparray(L) = temparray(L) / SQRT( SUM( (TOTABCKTOA(I,J,L:LM)-SUM(TOTABCKTOA(I,J,L:LM))/(LM-L+1))**2/(LM-L+1)))
                 L = L - 1
              end do
              locmax = MAXLOC(temparray,1)
-             ZPBLATBGRAD(I,J) = Z(I,J,locmax)
-             SIGNOISE(I,J) = MAXVAL(temparray)
-!            temparray(LM-1) = SUM(TOTABCKTOA(I,J,LM-2:LM))/3.  ! avg ATB
-!            temparray(LM-1) = SQRT(SUM((TOTABCKTOA(I,J,LM-2:LM)-temparray(LM-1))**2)/3.)  ! std ATB
-!            temparray(LM-2) = SUM(TOTABCKTOA(I,J,LM-3:LM-1))/3.  ! avg ATB
-!            temparray(LM-2) = SQRT(SUM((TOTABCKTOA(I,J,LM-3:LM-1)-temparray(LM-2))**2)/3.)  ! std ATB
-!            do L = LM-2,3,-1  ! scan up 
-!               temparray(L-1) = SUM(TOTABCKTOA(I,J,L-2:L))/3.  ! avg ATB
-!               temparray(L-1) = SQRT(SUM((TOTABCKTOA(I,J,L-2:L)-temparray(L-1))**2)/3.)  ! std ATB
+             ZPBLATBGRAD(I,J) = ZL0(I,J,locmax-1)  ! use edge height btwn TOA values
 
-!               if (Z(I,J,L) .gt. 5000.) exit  ! only PBLH<5km allowed
-               ! check if conditions for PBLH are satisfied, if not, continue scan
-
-               ! PBLH must be >250 m
-!               if (Z(I,J,L) .lt. 250) cycle
-
-               ! must be a local maximum in std dev
-!               if (temparray(L+1).gt.temparray(L) .or. temparray(L-1).gt.temparray(L)) cycle
-
-               ! local max must be colocated with maximum in ATB
-!               if (TOTABCKTOA(I,J,L-1).gt.TOTABCKTOA(I,J,L) .or. TOTABCKTOA(I,J,L+1).gt.TOTABCKTOA(I,J,L)) cycle
-
-               ! ensure strong SNR: check that local peak is >2x the mean of 5 level span, excluding center pt (my addition)
-!!               if (TOTABCKTOA(I,J,L) .lt. 2.*(SUM(TOTABCKTOA(I,J,L-2:L-1)+SUM(TOTABCKTOA(I,J,L+1:L+2)))/4. ) cycle
-
-               ! profiles with large signal attenuation due to clouds are assigned missing value
-               ! scan upwards from 750m above PBLH
-!!               if (large cloud or attenuation encountered) exit
-
-               ! if all above satisfied, define PBLH and exit loop
-!               ZPBLATBTOA(I,J) = Z(I,J,L)
-!               exit
-
-!            end do ! vertical loop
+             ! "signal to noise" ratio: the local gradient vs the mean absolute value of local gradients below ZPBL 
+             SIGNOISE(I,J) = MAXVAL(temparray) * (LM-locmax) / SUM(ABS(temparray(locmax+1:LM)))
           end do  ! JM
         end do   ! IM
 
+      end if
+
+      ! Mixed layer depth 
+      !
+      if (associated(ZPBLMIX)) then
+        ZPBLMIX = MAPL_UNDEF
+!        SIGNOISE = MAPL_UNDEF
+        do I = 1,IM
+          do J = 1,JM
+             ! find lev where THV+4
+             K = LM-1
+             do while ( THV(I,J,K).lt.THV(I,J,LM)+4. .and. Z(I,J,K).lt.5000. )
+                K = K-1
+             end do
+
+             temparray(:) = 0.
+             do L = LM,K,-1
+               temparray(L) = (QT(I,J,L)-QT(I,J,L-1)) / (Z(I,J,L)-Z(I,J,L-1))          
+             end do
+
+             locmax = MINLOC(temparray,1)
+             tmp1 = MINVAL(temparray,1) * Z(I,J,locmax) / (QT(I,J,locmax)-QT(I,J,LM))
+
+             temparray(:) = 0.
+             do L = LM,K,-1
+               temparray(L) = (THL(I,J,L)-THL(I,J,L-1)) / (Z(I,J,L)-Z(I,J,L-1))
+             end do
+
+             locmax2 = MAXLOC(temparray,1)
+             tmp2 = MAXVAL(temparray,1) * Z(I,J,locmax) / (THL(I,J,locmax)-THL(I,J,LM))
+ 
+             if (locmax.eq.locmax2) then  ! if adjacent or same level
+                MIXFLAG(I,J) = 0
+                ZPBLMIX(I,J) = Z(I,J,locmax)
+             else if (abs(locmax-locmax2).lt.2.) then  ! if adjacent or same level
+                ZPBLMIX(I,J) = 0.5*(Z(I,J,locmax)+Z(I,J,locmax2))
+                MIXFLAG(I,J) = 1
+             else if (tmp2.lt.tmp1) then     ! if qt signoise better
+                ZPBLMIX(I,J) = Z(I,J,locmax)
+                MIXFLAG(I,J) = 2
+             else                            ! if sl signoise better
+                ZPBLMIX(I,J) = Z(I,J,locmax2)
+                MIXFLAG(I,J) = 3
+             end if   
+
+          end do ! JM
+        end do ! IM
       end if
 
 
