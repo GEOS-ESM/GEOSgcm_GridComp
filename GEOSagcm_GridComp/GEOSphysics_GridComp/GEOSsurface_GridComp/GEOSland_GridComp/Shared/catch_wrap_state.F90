@@ -89,7 +89,6 @@ contains
        call MAPL_GetResource( SCF, statePtr%PRESCRIBE_DVG,    label='PRESCRIBE_DVG:',       DEFAULT=0,             __RC__ )
        call MAPL_GetResource( SCF, statePtr%CO2,              label='CO2:',                 DEFAULT=350.e-6,       __RC__ )
        call MAPL_GetResource( SCF, statePtr%CO2_YEAR_IN,      label='CO2_YEAR:',            DEFAULT=-9999,         __RC__ )
-       call MAPL_GetResource( SCF, statePtr%SNOW_ALBEDO_INFO, label='SNOW_ALBEDO_INFO:',    DEFAULT=0,             __RC__ )
        
     end select
 
