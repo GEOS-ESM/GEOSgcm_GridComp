@@ -1269,9 +1269,10 @@ module GEOSmoist_Process_Library
 ! the Appendix A of Pete Bogenschutz's dissertation.                     !
 !------------------------------------------------------------------------!
  subroutine partition_dblgss( dt,           &  ! IN
-                              tabs,         &  ! INOUT
+                              fQi,          &
+                              tabs,         &  
                               qwv,          &
-                              qc,           &
+                              qc,           &  ! OUT
 !                              qi,           &
                               omega,        &  ! IN
                               zl,           &
@@ -1289,7 +1290,7 @@ module GEOSmoist_Process_Library
                               w_sec,        &
                               qt3,          &
                               hl3,          &
-                              mffrc,        &
+!                              mffrc,        &
                               PDF_A,        &  ! INOUT
 #ifdef PDFDIAG
                               PDF_SIGW1,    &  ! OUT - diagnostic only
@@ -1322,6 +1323,7 @@ module GEOSmoist_Process_Library
                               MAPL_H2OMW, MAPL_AIRMW
  use MAPL_SatVaporMod,  only: MAPL_EQsat
 
+   real, intent(in   )  :: fQi         ! ice fraction
    real, intent(in   )  :: DT          ! timestep [s]
    real, intent(in   )  :: tabs        ! absolute temperature [K]
    real, intent(in   )  :: qwv         ! specific humidity [kg kg-1]
@@ -1342,10 +1344,10 @@ module GEOSmoist_Process_Library
    real, intent(in   )  :: qt3         ! 3rd moment qt from mass flux
    real, intent(in   )  :: hl3         ! 3rd moment hl from mass flux
    real, intent(in   )  :: w_sec       ! 2nd moment vertical velocity [m2 s-2]
-   real, intent(in   )  :: mffrc       ! total EDMF updraft fraction
+!   real, intent(in   )  :: mffrc       ! total EDMF updraft fraction
 !   real, intent(inout)  :: qi         ! ice condensate [kg kg-1]
    real, intent(  out)  :: cld_sgs     ! cloud fraction
-   real, intent(inout)  ::    PDF_A           ! fractional area of 1st gaussian
+   real, intent(in   )  ::    PDF_A           ! fractional area of 1st gaussian
 #ifdef PDFDIAG
    real, intent(  out)  ::    PDF_SIGW1,    & ! std dev w of 1st gaussian [m s-1]
                               PDF_SIGW2,    & ! std dev w of 2nd gaussian
@@ -1406,7 +1408,7 @@ module GEOSmoist_Process_Library
    real, parameter :: epsv=MAPL_H2OMW/MAPL_AIRMW
 
    real, parameter :: use_aterm_memory = 1.
-   real, parameter :: tauskew = 3600. 
+   real, parameter :: tauskew = 2400. 
 
 ! define conserved variables
    gamaz = gocp * zl
@@ -1451,30 +1453,32 @@ module GEOSmoist_Process_Library
 
 !          aterm = pdf_a
 
-         if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
-          aterm = pdf_a
+!         if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
+!          aterm = pdf_a
 
-          if (mffrc>=1e-3) then                ! if active updraft this timestep
-            if (aterm<0.5) then                ! if distribution is skewed (recent updrafts)
-              aterm = max(mffrc,aterm*max(1.-DT/tauskew,0.0))
-            else                               ! if distribution unskewed
-              aterm = mffrc
-            end if
-          else                                 ! if no active updraft
-            if (aterm.lt.0.5 .and. aterm.gt.1e-3) then  ! but there is residual skewness
-              aterm = aterm*max(1.-DT/tauskew,0.0)
-            else
-              aterm = 0.5
-            end if
-          end if
+!           pdf_a = min(0.5,max(0.,(pdf_a+mffrc)/(1.+DT/tauskew)))
+!          if (mffrc>=1e-3) then                ! if active updraft this timestep
+!            if (pdf_a>1e-3) then                ! if distribution is skewed (recent updrafts)
+!              pdf_a = (pdf_a+mffrc)/(1.+DT/tauskew) !max(mffrc,aterm*max(1.-DT/tauskew,0.0))
+!            else                               ! if distribution unskewed
+!              pdf_a = mffrc
+!            end if
+!          else                                 ! if no active updraft
+!            if (pdf_a.gt.1e-3) then            ! but there is residual skewness
+!              pdf_a = pdf_a*max(1.-DT/tauskew,0.0)
+!            else
+!              pdf_a = 0.0
+!            end if
+!          end if
+!         else  ! don't use memory in aterm and qt skewness
+!           pdf_a = max(0.,min(0.5,mffrc))
+!         end if
 
-         else  ! don't use memory in aterm and qt skewness
-
-           aterm = mffrc
-           aterm = max(1e-3,min(0.99,aterm))
-           if (mffrc.le.1e-3) aterm = 0.5
+         if (pdf_a>1e-3) then
+           aterm = pdf_a
+         else
+           aterm = 0.5
          end if
-
          onema = 1.0 - aterm
 
 
@@ -1656,7 +1660,7 @@ module GEOSmoist_Process_Library
 
 !=== Assign PDF diagnostics ===!
 
-          pdf_a = aterm
+!          pdf_a = aterm
 
 #ifdef PDFDIAG
           pdf_th1 = thl1_1
@@ -1707,6 +1711,8 @@ module GEOSmoist_Process_Library
 
 ! Now compute qs
 
+! I assume that temperature difference is small between plumes, and 
+! om1=om2=ice_fraction() from hystpdf
           esval1_1 = 0.
           esval1_2 = 0.
           esval2_1 = 0.
@@ -1725,13 +1731,14 @@ module GEOSmoist_Process_Library
           ELSE
             esval1_1 = MAPL_EQsat(Tl1_1)
             esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            om1      = max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))
+            om1      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))  ! may be inconsistent with hystpdf ice fraction
             lstarn1  = lcond + (1.-om1)*lfus
           ENDIF
 
           ! this is qs evaluated at Tl
           qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
                 + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
+!          qs1 = GEOS_QSAT( Tl1_1, pval*0.01 )
 
           beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
 
@@ -1751,12 +1758,13 @@ module GEOSmoist_Process_Library
             ELSE
               esval1_2 = MAPL_EQsat(Tl1_2)
               esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-              om2      = max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
+              om2      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
               lstarn2  = lcond + (1.-om2)*lfus
             ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
                   + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
+!            qs2 = GEOS_QSAT( Tl1_2, pval*0.01 )
 
             beta2 = (lstarn2*lstarn2*onebrvcp) / (Tl1_2*Tl1_2)              ! A.18
 
@@ -1826,29 +1834,29 @@ module GEOSmoist_Process_Library
 ! finally, compute the SGS cloud fraction
           diag_frac = aterm*C1 + onema*C2
 
-          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
-          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
+!          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
+!          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
 
           qn1 = min(qn1,qw1_1)
           qn2 = min(qn2,qw1_2)
 
-          ql1 = qn1*om1
-          ql2 = qn2*om2
+!          ql1 = qn1*om1
+!          ql2 = qn2*om2
 
-          qi1 = qn1 - ql1
-          qi2 = qn2 - ql2
+!          qi1 = qn1 - ql1
+!          qi2 = qn2 - ql2
 
-          diag_qn = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
-          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-          diag_qi = diag_qn - diag_ql
+          qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
+!          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
+!          diag_qi = diag_qn - diag_ql
 
 !!! temporary
 !          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
 
 
 ! Update temperature variable based on diagnosed cloud properties
-          om1         = max(0.,min(1.,(tabs-tbgmin)*a_bg))
-          lstarn1     = lcond + (1.-om1)*lfus
+!          om1         = 1.-fQi !max(0.,min(1.,(tabs-tbgmin)*a_bg))
+!          lstarn1     = lcond + (1.-om1)*lfus
 !          tabs = thl_first - gamaz + fac_cond*(diag_ql) &
 !                            + fac_sub *(diag_qi) !&
                     !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
@@ -1856,7 +1864,7 @@ module GEOSmoist_Process_Library
 
 
 
-         qc      = diag_ql + diag_qi
+!         qc      = diag_ql + diag_qi
 !         qi      = diag_qi
 !         qwv     = total_water - diag_qn
          cld_sgs = diag_frac
@@ -1924,7 +1932,6 @@ module GEOSmoist_Process_Library
          W2          , &
          MFQT3       , &
          MFHL3       , &
-         MF_FRC      , &
          PDF_A       , &  ! can remove these after development
          PDFITERS    , &
 #ifdef PDFDIAG
@@ -1953,7 +1960,7 @@ module GEOSmoist_Process_Library
       integer, intent(in) :: PDFSHAPE
       real, intent(inout) :: TE,QV,QLLS,QILS,CLLS,QLCN,QICN,CLCN,PDF_A
       real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
-      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MF_FRC,MFQT3,MFHL3
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MFQT3,MFHL3
 #ifdef PDFDIAG
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
                              PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
@@ -2005,7 +2012,7 @@ module GEOSmoist_Process_Library
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         if (PDFSHAPE.lt.5) DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
@@ -2031,6 +2038,7 @@ module GEOSmoist_Process_Library
            HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
            call partition_dblgss(DT/nmax,      &
+                                 fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
@@ -2048,7 +2056,6 @@ module GEOSmoist_Process_Library
                                  W2,           &
                                  MFQT3,        &
                                  MFHL3,        &
-                                 MF_FRC,       &
                                  PDF_A,        &
 #ifdef PDFDIAG
                                  PDF_SIGW1,    &
@@ -2101,10 +2108,12 @@ module GEOSmoist_Process_Library
          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
          if(PDFSHAPE.eq.1) then 
             QCn = QCp +     (QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
-         elseif(PDFSHAPE.eq.2 .or. PDFSHAPE.eq.5) then
+         elseif(PDFSHAPE.eq.2) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2 of top-hat.
             QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
+         elseif(PDFSHAPE.eq.5) then
+            QCn = QCp + 0.5*(QCn-QCp)
          endif
 
          if ( CLCN > 0. ) then
