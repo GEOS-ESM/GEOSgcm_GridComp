@@ -6397,7 +6397,8 @@ end subroutine RUN1
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
                   wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  wsp = SQRT(MIN(wsp/25.0,1.0))*MAX(25.0,wsp) ! enhance winds below 25 m/s
+                 !wsp = SQRT(MIN(wsp/30.0,1.0))*MAX(30.0,wsp) ! enhance winds below 30 m/s
+                  wsp = SQRT(SIN(MAPL_PI*0.5*MIN(wsp/30.0,1.0)))*MAX(30.0,wsp) ! enhance winds below 30 m/s
                   FKV_temp = Z(I,J,L)/Hefold
                   FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                   FKV_temp = CBl*(FKV_temp/Hefold)*wsp
