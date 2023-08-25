@@ -231,8 +231,8 @@ module gfdl2_cloud_microphys_mod
     real :: ccn_o = 90. !< ccn over ocean (cm^ - 3)
     real :: ccn_l = 270. !< ccn over land (cm^ - 3)
     
-    real :: rthreshu =  7.0e-6 !< critical cloud drop radius (micro m)
-    real :: rthreshs = 10.0e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshu =  3.5e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshs =  7.0e-6 !< critical cloud drop radius (micro m)
     
     real :: sat_adj0 = 0.90 !< adjustment factor (0: no, 1: full) during fast_sat_adj
     
@@ -770,8 +770,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
-        ! slow autoconversion in stable regimes
-        cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
       
         ! 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr 
         onemsig = 1.0 - sigma(sqrt(area1(i))) 
@@ -1059,7 +1057,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, dimension (ktop:kbot) :: dl, dm, revap, isubl, qadum
     real, dimension (ktop:kbot + 1) :: ze, zt
     
-    real :: sink, dq, qc0, qc
+    real :: sink, dq, qc
     real :: fac_rc, qden
     real :: zs = 0.
     real :: dt5
@@ -1100,7 +1098,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ql = ql/qadum
     qi = qi/qadum
 
-    fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
+    fac_rc = min(1.0,eis/15.0)**2 ! Estimated inversion strength determine stable regime
     fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
  
     if (irain_f /= 0) then
@@ -1111,13 +1109,12 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         
         do k = ktop, kbot
             if (qadum(k) > onemsig) then
-            qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr) then
-                qc = qc0 / den (k)
+                qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    sink = min(ql0_max, ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
@@ -1130,18 +1127,16 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         ! with subgrid variability
         ! -----------------------------------------------------------------------
-
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-        
+
         do k = ktop, kbot
             if (qadum(k) > onemsig) then
-            qc0 = fac_rc * ccn (k)
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
                 ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
                 ! --------------------------------------------------------------------
-                qc = qc0 / den (k)
+                qc = fac_rc * ccn (k) / den (k)
                 dq = 0.5 * (ql (k) + dl (k) - qc)
                 ! --------------------------------------------------------------------
                 ! dq = dl if qc == q_minus = ql - dl
@@ -1152,7 +1147,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    sink = min(ql0_max, ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
