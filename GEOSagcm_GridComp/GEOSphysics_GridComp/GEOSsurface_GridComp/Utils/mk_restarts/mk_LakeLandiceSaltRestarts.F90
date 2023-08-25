@@ -102,11 +102,12 @@ program mk_LakeLandiceSaltRestarts
 
      call MAPL_IOCountNonDimVars(InCfg,nVars)
      variables => InCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
+        call var_iter%next() 
 
-        vname => var_iter%key()
-        myVariable => var_iter%value()
+        vname => var_iter%first()
+        myVariable => var_iter%second()
         var_dimensions => myVariable%get_dimensions()
         dataType = myVariable%get_type()
 
@@ -178,7 +179,6 @@ program mk_LakeLandiceSaltRestarts
 
         end if
        
-        call var_iter%next() 
      enddo
 
      call OutFmt%close()

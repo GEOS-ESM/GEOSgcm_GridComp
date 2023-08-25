@@ -144,22 +144,23 @@ program SaltImpConverter
      status = NF_DEF_DIM(FOutID, 'time'   , 1 , TimID)
 
      variables => InIntCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
-        var_name => var_iter%key()
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
+        call var_iter%next()
+        var_name => var_iter%first()
         if(var_name(1:6) == 'TSKINW') & 
            call MAPL_VarRead(InIntFmt,var_name,TW, __RC__)
         if(var_name(1:6) == 'SSKINW') & 
            call MAPL_VarRead(InIntFmt,var_name,SW, __RC__)
-        call var_iter%next()
      enddo   
 
      variables => InImpCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
+        call var_iter%next()
  
-        var_name => var_iter%key()
-        myVariable => var_iter%value()
+        var_name => var_iter%first()
+        myVariable => var_iter%second()
         var_dimensions => myVariable%get_dimensions()
         ndims = var_dimensions%size()      
         if (ndims == 1) then
@@ -175,7 +176,7 @@ program SaltImpConverter
            write(*,*)"Import States are all TileOnly:, ",trim(var_name), " is not?"
            stop
         endif
-        call var_iter%next()
+
      enddo
 
      vname = "SS_FOUND"
@@ -192,11 +193,13 @@ program SaltImpConverter
      
      
      variables => InImpCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
-        var_name => var_iter%key()
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
+        call var_iter%next()
+
+        var_name => var_iter%first()
         write(*,*)"Writing ",trim(var_name)
-        myVariable => var_iter%value()
+        myVariable => var_iter%second()
         var_dimensions => myVariable%get_dimensions()
         ndims = var_dimensions%size()      
         write(*,*)"Writing ",trim(var_name)
@@ -213,7 +216,6 @@ program SaltImpConverter
            write(*,*)"Import States are all TileOnly:, ",trim(vname), " is not?"
            stop
         endif
-        call var_iter%next()
      enddo
      vname = "SS_FOUND"
      STATUS = NF_INQ_VARID (FoutID, trim(VNAME) ,VarID)

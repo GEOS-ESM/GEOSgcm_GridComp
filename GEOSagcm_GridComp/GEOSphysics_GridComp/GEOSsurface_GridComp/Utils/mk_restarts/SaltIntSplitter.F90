@@ -138,11 +138,12 @@ program SaltIntSplitter
  !########################################
 
      variables => InCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
+        call var_iter%next()   
  
-        var_name => var_iter%key()
-        myVariable => var_iter%value()
+        var_name => var_iter%first()
+        myVariable => var_iter%second()
         var_dimensions => myVariable%get_dimensions()
         ndims = var_dimensions%size()
         dataType = myVariable%get_type()
@@ -177,7 +178,6 @@ program SaltIntSplitter
            call iceCfg%add_variable(var_name, myVariable)
            call waterCfg%add_variable(var_name, myVariable)
         endif
-        call var_iter%next()   
      enddo
 
 !####################
@@ -191,11 +191,11 @@ program SaltIntSplitter
      call IceFmt%write(IceCfg,rc=rc)
 
      variables => InCfg%get_variables()
-     var_iter = variables%begin()
-     do while (var_iter /= variables%end())
+     var_iter = variables%ftn_begin()
+     do while (var_iter /= variables%ftn_end())
  
-        var_name => var_iter%key()
-        myVariable => var_iter%value()
+        var_name => var_iter%first()
+        myVariable => var_iter%second()
         var_dimensions => myVariable%get_dimensions()
         ndims = var_dimensions%size()
         dataType = myVariable%get_type()

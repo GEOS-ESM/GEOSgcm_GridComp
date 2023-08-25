@@ -1022,11 +1022,12 @@ contains
     end do
 
     variables => InCfg%get_variables()
-    var_iter = variables%begin()
-    do while (var_iter /= variables%end())
+    var_iter = variables%ftn_begin()
+    do while (var_iter /= variables%ftn_end())
+       call var_iter%next()
 
-       vname => var_iter%key()     
-       var => var_iter%value()
+       vname => var_iter%first()     
+       var => var_iter%second()
        var_dimensions => var%get_dimensions()
       
        ndims = var_dimensions%size()
@@ -1062,7 +1063,6 @@ contains
           
        end if
 
-       call var_iter%next()
     enddo
  
     deallocate (var1, var2, tile_id)
