@@ -4346,21 +4346,6 @@ end if
          ZPBLHTKE = MAPL_UNDEF
       end if ! ZPBLHTKE
 
-      if (associated(TKE)) then         ! Reminder: TKE is on model edges
-        if (DO_SHOC /= 0) then
-          TKE = TKESHOC
-        else
-          TKE = MAPL_UNDEF
-          do L = 1,LM-1
-            TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
-            (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
-            (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
-            TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
-          enddo
-        end if
-      end if ! TKE
-
       ! RI local diagnostic for pbl height thresh 0.
       if (associated(ZPBLRI)) then
          ZPBLRI = MAPL_UNDEF
