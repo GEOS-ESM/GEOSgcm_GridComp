@@ -886,9 +886,9 @@ contains
 ! -----------------
       call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
+                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = CEILING(20.0*sigma)
+                                   NCAR_HR_CF = CEILING(5.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
