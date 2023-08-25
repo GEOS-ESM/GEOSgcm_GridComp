@@ -1965,6 +1965,8 @@ contains
                ! --------------------------------------------------------- !
 
                umf_out(i,0:k0)         = umf_s(0:k0)
+               umf_out(i,0:kinv-1)     = umf_s(kinv-1)*zifc0(0:kinv-1)/zifc0(kinv-1)
+
                dcm_out(i,:k0)          = dcm_s(:k0)
                qvten_out(i,:k0)        = qvten_s(:k0)
                qlten_out(i,:k0)        = qlten_s(:k0)  
@@ -4341,8 +4343,7 @@ contains
      ! ----------------------- !
 
      umf_out(i,0:k0)             = umf(0:k0)
-     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
-
+     umf_out(i,0:kinv-1)         = umf(kinv-1)*zifc0(0:kinv-1)/zifc0(kinv-1)
 !     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
      dcm_out(i,:k0)              = dcm(:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv

@@ -36,7 +36,7 @@ module GEOS_GcmGridCompMod
   integer            :: NUM_ICE_LAYERS
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: DO_CICE_THERMO
-  integer            :: DO_DATAATM
+  integer            :: DO_DATA_ATM4OCN
   integer            :: DO_OBIO
   integer            :: DO_DATASEA
   logical            :: seaIceT_extData
@@ -188,7 +188,7 @@ contains
     endif
 
     call MAPL_GetResource ( MAPL, DO_OBIO,     Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, _RC)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,  Label="USE_DATAATM:" ,        DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATAATM:" ,        DEFAULT=0, _RC)
     call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, _RC)
     call MAPL_GetResource ( MAPL, seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
@@ -225,7 +225,7 @@ contains
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
 
-    if(DO_DATAATM/=0) then
+    if(DO_DATA_ATM4OCN/=0) then
        AGCM = MAPL_AddChild(GC, NAME='DATAATM', SS=DATAATM_SetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
@@ -354,7 +354,7 @@ contains
 
 ! Export for IAU and/or Analysis purposes
 ! ---------------------------------------
-    if(DO_DATAATM==0) then
+    if(DO_DATA_ATM4OCN==0) then
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'AK',       &
             CHILD_ID = AGCM,         &
@@ -512,7 +512,7 @@ contains
        VERIFY_(STATUS)
     endif
 
-    if(DO_DATAATM==0) then
+    if(DO_DATA_ATM4OCN==0) then
        call MAPL_AddConnectivity ( GC,                              &
             SHORT_NAME  = (/'PHIS  ','AK    ','BK    ','U     ','V     ','TV    ','PS    ','DELP  ','O3PPMV', 'TS    ','AREA  '/),       &
             DST_ID = AIAU,                                          &
@@ -594,16 +594,8 @@ contains
     endif 
 
     if (DO_OBIO/=0) then
-      call OBIO_TerminateImports(DO_DATAATM, RC)
+      call OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
     end if
-
-    if(DO_DATAATM /= 0) then
-        call MAPL_TerminateImport    ( GC,   &
-             SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
-             'VI     ','TAUXBOT','TAUYBOT'/),         &
-             CHILD      = AGCM,           &
-             _RC)
-    endif
 
     if (DO_CICE_THERMO == 1) then  
        call MAPL_TerminateImport    ( GC,   &
@@ -698,9 +690,9 @@ contains
          _RETURN(_SUCCESS)
       end subroutine history_setservice
 
-      subroutine OBIO_TerminateImports(DO_DATAATM, RC)
+      subroutine OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
 
-        integer,                    intent(IN   ) ::  DO_DATAATM
+        integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
         integer, optional,          intent(  OUT) ::  RC
 
         character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
@@ -739,7 +731,7 @@ contains
          VERIFY_(STATUS)
         enddo
 
-        if(DO_DATAATM==0) then
+        if(DO_DATA_ATM4OCN==0) then
           call MAPL_TerminateImport    ( GC,                         &
                SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),     &
                CHILD      = OGCM,                                    &
@@ -928,7 +920,7 @@ contains
     VERIFY_(STATUS)
     call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
     VERIFY_(STATUS)
-    if(DO_DATAATM==0) then
+    if(DO_DATA_ATM4OCN==0) then
        call ESMF_GridCompSet(GCS(AIAU),  grid=agrid, rc=status)
        VERIFY_(STATUS)
        call ESMF_GridCompSet(GCS(ADFI),  grid=agrid, rc=status)
@@ -1258,11 +1250,7 @@ contains
 ! Create XFORMs
 !--------------
 
-    if(DO_DATAATM/=0) then
-       skinname = 'DATAATM'
-    else
-       skinname = 'SALTWATER'
-    endif
+   skinname = 'SALTWATER'
 
    call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
         default=0, rc=status)
@@ -1369,7 +1357,7 @@ contains
    VERIFY_(STATUS)
 
    if(DO_OBIO/=0) then
-     call AllocateExports_OBIO(DO_DATAATM, RC)
+     call AllocateExports_OBIO(DO_DATA_ATM4OCN, RC)
    endif
 
    call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
@@ -1484,9 +1472,9 @@ contains
 
    end subroutine AllocateExports_UGD
 
-   subroutine AllocateExports_OBIO(DO_DATAATM, RC)
+   subroutine AllocateExports_OBIO(DO_DATA_ATM4OCN, RC)
 
-     integer,                    intent(IN   ) ::  DO_DATAATM
+     integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
      integer, optional,          intent(  OUT) ::  RC
 
      integer                                   :: STATUS
@@ -1524,7 +1512,7 @@ contains
                        RC=STATUS)
      VERIFY_(STATUS)
 
-     if(DO_DATAATM==0) then
+     if(DO_DATA_ATM4OCN==0) then
         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
              (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &
              RC=STATUS )
@@ -1662,9 +1650,9 @@ contains
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
     VERIFY_(STATUS)
 
-    ! Check for Default DO_DATAATM=0 (FALSE) mode
+    ! Check for Default DO_DATA_ATM4OCN=0 (FALSE) mode
     ! -------------------------------------------
-    if(DO_DATAATM==0) then
+    if(DO_DATA_ATM4OCN==0) then
 
        call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
        VERIFY_(STATUS)
@@ -1940,7 +1928,7 @@ contains
     !--------------------
 
     call MAPL_TimerOn(MAPL,"--ATMOSPHERE"  )
-    if(DO_DATAATM/=0) then
+    if(DO_DATA_ATM4OCN/=0) then
       call MAPL_TimerOn(MAPL,"DATAATM"     )
     else
       call MAPL_TimerOn(MAPL,"AGCM"        )
@@ -1949,14 +1937,14 @@ contains
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
 
-    if(DO_DATAATM/=0) then
+    if(DO_DATA_ATM4OCN/=0) then
       call MAPL_TimerOff(MAPL,"DATAATM"     )
     else
       call MAPL_TimerOff(MAPL,"AGCM"        )
     endif
     call MAPL_TimerOff(MAPL,"--ATMOSPHERE"  )
 
-    if(DO_DATAATM==0) then
+    if(DO_DATA_ATM4OCN==0) then
        ! Accumulate for digital filter
        ! -----------------------------
        call ESMF_GridCompRun ( GCS(ADFI), importState=GIM(ADFI), exportState=GEX(ADFI), clock=clock, userRC=status )
@@ -2128,7 +2116,7 @@ contains
        VERIFY_(STATUS)
 
        if(DO_OBIO/=0) then
-          call OBIO_A2O(DO_DATAATM, RC)
+          call OBIO_A2O(DO_DATA_ATM4OCN, RC)
        endif
        call MAPL_TimerOff(MAPL,"--A2O"  )
 
@@ -2225,9 +2213,9 @@ contains
      RETURN_(ESMF_SUCCESS)
    end subroutine RUN_OCEAN
 
-   subroutine OBIO_A2O(DO_DATAATM, RC)
+   subroutine OBIO_A2O(DO_DATA_ATM4OCN, RC)
 
-     integer,                    intent(IN   ) ::  DO_DATAATM
+     integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
      integer, optional,          intent(  OUT) ::  RC
 
      integer                                   :: STATUS
@@ -2270,7 +2258,7 @@ contains
      call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
      VERIFY_(STATUS)
 
-     if(DO_DATAATM==0) then
+     if(DO_DATA_ATM4OCN==0) then
        call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
        VERIFY_(STATUS)
        call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)

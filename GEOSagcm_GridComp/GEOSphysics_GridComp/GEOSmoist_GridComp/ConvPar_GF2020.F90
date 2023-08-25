@@ -183,7 +183,7 @@ CONTAINS
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
                                ,DQDT_GF,DTDT_GF,DUDT_GF,DVDT_GF                   &
                                ,MUPDP,MUPSH,MUPMD,MDNDP                           &
-                               ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
+                               ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,REVSU, PRFIL                                      &
@@ -222,7 +222,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(INOUT):: CNV_TR
 
-    REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC
+    REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: CNV_MFC, WQT_DC
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: CNV_MF0 , CNV_PRC3 , CNV_MFD , CNV_DQCDT,  &
                                                       CNV_UPDF, CNV_CVW  , CNV_QC  , ENTLAM
@@ -352,7 +352,9 @@ CONTAINS
     INTEGER, PARAMETER :: itest=1!3
     REAL :: RL, RI, disp_factor,x1,x2
     INTEGER :: mtp
+    real :: dtqw,qsatup
 
+   WQT_DC = 0.0
    CNV_MFC = 0.0
    CNV_MF0 = 0.0
    CNV_PRC3 = 0.0
@@ -846,6 +848,10 @@ CONTAINS
 
                 !---only updraft
                 CNV_MFC (i,j,k) = CNV_MFC (i,j,k) + zup5d(i,j,flip(k),IENS)
+
+                ! deep convective total water flux. assumes .033 fractional area.
+                qsatup = MAPL_EQsat(tup5d(i,j,flip(k),IENS),press(flip(k),i,j),dtqw) + clwup5d(i,j,flip(k),IENS)/0.033
+                WQT_DC (i,j,k) = WQT_DC (i,j,k) + zup5d(i,j,flip(k),IENS)*(qsatup - rvap(flip(k),i,j))
 
                 if(zup5d(i,j,flip(k),IENS) > 1.0e-6) then
                    !-'entrainment parameter',  UNITS     ='m-1',
