@@ -166,7 +166,7 @@
          call ESINIT
          !call LOGGER_INIT
       end if
-      !$acc update device(FIRST, UTBL, ESTFRZ, ESTLQU, UTBL, ESTBLW, ESTBLE, ESTBLX)
+      !$acc update device(FIRST, UTBL, ESTFRZ, ESTLQU, ESTBLW, ESTBLE, ESTBLX)
 
   end subroutine
 

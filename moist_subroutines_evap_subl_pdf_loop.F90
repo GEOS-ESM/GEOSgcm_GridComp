@@ -187,7 +187,7 @@ module evap_subl_pdf_loop
                 end do ! IM loop
             end do ! JM loop
         end do ! LM loop
-        !$acc end parallel
+        !$acc end parallel loop
     end subroutine
 
 end module

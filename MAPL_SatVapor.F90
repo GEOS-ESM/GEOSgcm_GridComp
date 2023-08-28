@@ -263,8 +263,8 @@ contains
     endif
 
     if(TYPE/=Starr .and. TYPE/=GOFFGRATCH .and. TYPE/=MurphyKoop) then
-       print *, 'Bad argument to MAPL_EQsatSET: FORMULATION=',TYPE
-       print *, 'Must be one of: ', Starr, GOFFGRATCH, MurphyKoop
+       !print *, 'Bad argument to MAPL_EQsatSET: FORMULATION=',TYPE
+       !print *, 'Must be one of: ', Starr, GOFFGRATCH, MurphyKoop
        stop 999
     end if
 
