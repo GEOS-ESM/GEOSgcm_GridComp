@@ -115,6 +115,8 @@ def get_configs_from_answers(answers):
            POLENAME = 'TM'
         if  orslv == 'CS' :
            CUBED_SPHERE_OCEAN = True
+           DATENAME = 'CF'
+           POLENAME = ''
      
         config = {}
 

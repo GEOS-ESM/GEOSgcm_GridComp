@@ -76,14 +76,14 @@ cd geometry/{GRIDNAME}/
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
+s/CF{NC}x6C-{SG}/PE{nc}x{nc6}-CF/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
 else
 cat > sedfile << EOF
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
+s/CF{NC}x6C-{SG}/PE{nc}x{nc6}-CF/g
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file

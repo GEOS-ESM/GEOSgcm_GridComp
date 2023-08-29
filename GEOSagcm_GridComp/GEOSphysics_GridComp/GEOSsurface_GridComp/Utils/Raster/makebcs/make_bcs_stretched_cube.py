@@ -16,12 +16,12 @@ if ( {STEP1} == True ) then
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
-  if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
+  if( -e CF{NC}x6C-{SG}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C-{SG}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
 endif 
 
 if ( {STEP1} == True ) then
-  bin/mkCubeFVRaster.x -x {NX} -y {NY} {STRETCH} {NC} >/dev/null 
+  bin/mkCubeFVRaster.x -x {NX} -y {NY} -s {SG} {STRETCH} {NC} >/dev/null 
   bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
 endif
 
@@ -30,14 +30,14 @@ if( {LATLON_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
       bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
       bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C DE{IMO}xPE{JMO}-Pfafstetter
+      bin/CombineRasters.x -t {NT} CF{NC}x6C-{SG} DE{IMO}xPE{JMO}-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -52,15 +52,15 @@ if( {TRIPOL_OCEAN} == True ) then
       /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
       /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
       bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-      bin/mk_runofftbl.x CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/CombineRasters.x -t {NT} CF{NC}x6C-{SG} {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/mk_runofftbl.x CF{NC}x6C-{SG}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -68,15 +68,16 @@ endif
 
 if( {CUBED_SPHERE_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
+      bin/mkCubeFVRaster.x -x {NX} -y {NY} {STRETCH} {NC} >/dev/null 
       bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C CF{NC}x6C-Pfafstetter
+      bin/CombineRasters.x -t {NT} -s {SG} CF{NC}x6C CF{NC}x6C-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_CF{NC}x6C-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv} 
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C-{SG}_CF{NC}x6C-Pfafstetter -v {lbcsv} 
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -116,20 +117,18 @@ def make_bcs_stretched_cube(config):
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
   SKIPLAND = config['skipland']
+      
   if resolution in ['c270', 'c540', 'c1080', 'c2160'] :
-      GRIDNAME   = 'CF'+NC+'x6C-SG001_'+DATENAME+IMO+'x'+POLENAME+JMO
+      SG   = 'SG001'
   if resolution in ['c1536'] :
-      GRIDNAME   = 'CF'+NC+'x6C-SG002_'+DATENAME+IMO+'x'+POLENAME+JMO
+      SG   = 'SG002'
+
+  GRIDNAME = 'CF'+NC+'x6C-'+SG+'_'+DATENAME+IMO+'x'+POLENAME+JMO
 
   if config['CUBED_SPHERE_OCEAN'] :
-    DATENAME = 'CF'
-    POLENAME = ''
     IMO = NC
     JMO = '6C'
-    if resolution in ['c270', 'c540', 'c1080', 'c2160'] :
-        GRIDNAME   =  'CF'+ NC+'x6-SG001_CF'+NC+'x6C' 
-    if resolution in ['c1536'] :
-        GRIDNAME   =  'CF'+ NC+'x6-SG002_CF'+NC+'x6C' 
+    GRIDNAME   =  'CF'+ NC+'x6C-'+SG+'_CF'+NC+'x6C' 
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
@@ -154,7 +153,7 @@ def make_bcs_stretched_cube(config):
      STEP2 = False
      script_template = get_script_head() + stretched_cube_template 
 
-  script_string = script_template.format(\
+  stretched_script_string = script_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            TMP_DIR = tmp_dir, \
@@ -187,11 +186,12 @@ def make_bcs_stretched_cube(config):
            NT = config['NT'], \
            RS = '-Pfafstetter',\
            RC = RC,\
+           SG = SG,\
            STRETCH = STRETCH, \
            NCPUS = config['NCPUS'])
 
   stretched_cube_job = open(bcjob,'wt')
-  stretched_cube_job.write(script_string)
+  stretched_cube_job.write(stretched_script_string)
   stretched_cube_job.close()
 
   if resolution in ['c1080' ,'c1536', 'c2160'] :
@@ -199,7 +199,7 @@ def make_bcs_stretched_cube(config):
      STEP2 = True
      GRIDNAME2 = GRIDNAME+'-2'
      script_template = get_script_head() + stretched_cube_template + get_script_mv(config['grid_type'])
-     script_string = script_template.format(\
+     stretched_script_string = script_template.format(\
            account = account, \
            EXPDIR = config['expdir'], \
            TMP_DIR = tmp_dir, \
@@ -231,12 +231,13 @@ def make_bcs_stretched_cube(config):
            NY = config['NY'], \
            NT = config['NT'], \
            RC = RC,\
+           SG = SG,\
            STRETCH = STRETCH, \
            RS = '-Pfafstetter',\
            NCPUS = config['NCPUS'])
 
      stretched_cube_job = open(bcjob+'-2','wt')
-     stretched_cube_job.write(script_string)
+     stretched_cube_job.write(stretched_script_string)
      stretched_cube_job.close()
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
@@ -265,7 +266,7 @@ def make_bcs_stretched_cube(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  #print(script_string)
+  #print(stretched_script_string)
 
 if __name__ == "__main__":
 

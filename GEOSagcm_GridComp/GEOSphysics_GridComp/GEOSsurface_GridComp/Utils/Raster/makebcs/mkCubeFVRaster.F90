@@ -23,7 +23,7 @@
     implicit none
 
     integer              :: NC = 8640, NR = 4320
-    character*128        :: ARG, GridName=''
+    character*128        :: ARG, SG, GridName=''
     character*1          :: opt
     integer              :: ncells !  Cells on edges of cubed faces
     integer              :: I, J, N, status, command_argument_count, nxt
@@ -31,10 +31,12 @@
     real*8               :: dx, dy
     real*8,  allocatable :: xs(:,:), ys(:,:), xv(:,:,:), yv(:,:,:)
     integer              :: RasterUnit=20, GridUnit=30
+    logical              :: g_case=.false.
+    logical              :: s_case=.false.
     logical              :: dozip=.false.
     logical              :: Here=.false.
     logical              :: Verb=.false.
-    character*128        :: Usage="mkCubeFVraster -x RX -y RY -z -h -v -g GN ncells" 
+    character*128        :: Usage="mkCubeFVraster -x RX -y RY -z -h -v -g GN -s SG ncells" 
     character*128        :: Iam ="mkCubeFVraster"
     type(stretch) :: stg
     logical :: tlon=.false.
@@ -66,14 +68,14 @@
        end if
 
        select case (opt)
-       case ('X')			      
-          read(arg,'(F)') stg%target_lon
+      case ('X')
+          read(arg,'(F12.4)') stg%target_lon
           tlon = .true.
        case ('Y')    
-          read(arg,'(F)') stg%target_lat		      
-          tlat = .true.    
-       case ('F')      
-          read(arg,'(F)') stg%stretch_factor		      
+          read(arg,'(F12.4)') stg%target_lat
+          tlat = .true.
+       case ('F') 
+          read(arg,'(F12.4)') stg%stretch_factor
           tfac = .true.
        case ('x')
           read(arg,'(i6)') nc
@@ -85,8 +87,12 @@
           Verb = .true.
        case ('h')
           Here = .true.
+       case ('s')
+          SG = trim(arg)
+          s_case=.true.
        case ('g')
           GridName = trim(arg)
+          g_case=.true. 
        case default
           print *, Usage
           call exit(1)
@@ -100,7 +106,6 @@
 
 ! Allocate and define the Cell vertices
 !--------------------------------------
-
     allocate(xs(ncells+1,(ncells+1)*6), ys(ncells+1,(ncells+1)*6),stat=STATUS)
     VERIFY_(STATUS)
 
@@ -143,8 +148,11 @@
 
 ! Set the GridName
 !-----------------
-
     if(trim(GridName)=='') write(GridName,'(A,I4.4,A)') 'CF',ncells,'x6C'
+
+    if (not(g_case) .and. s_case) then
+        write(GridName,'(A2,I4.4,A4,A5)') 'CF',ncells,'x6C-',trim(SG)
+    endif
 
     if(DoZip) GridName = trim(Gridname)//'.gz'
 
