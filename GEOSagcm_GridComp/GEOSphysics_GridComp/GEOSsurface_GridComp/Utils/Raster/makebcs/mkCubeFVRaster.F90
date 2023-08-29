@@ -150,7 +150,7 @@
 !-----------------
     if(trim(GridName)=='') write(GridName,'(A,I4.4,A)') 'CF',ncells,'x6C'
 
-    if (not(g_case) .and. s_case) then
+    if (.not.(g_case) .and. s_case) then
         write(GridName,'(A2,I4.4,A4,A5)') 'CF',ncells,'x6C-',trim(SG)
     endif
 
