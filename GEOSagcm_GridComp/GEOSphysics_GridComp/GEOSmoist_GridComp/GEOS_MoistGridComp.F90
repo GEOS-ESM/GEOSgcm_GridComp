@@ -267,7 +267,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
-         SHORT_NAME = 'WHL',                                                   &
+         SHORT_NAME = 'WSL',                                                   &
          LONG_NAME  = 'Liquid_water_static_energy_flux',                       &
          UNITS      = 'K m s-1',                                               &
          DIMS       = MAPL_DimsHorzVert,                                       &
@@ -300,7 +300,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL3',                                       &
+            SHORT_NAME = 'SL3',                                       &
             LONG_NAME  = 'third_moment_of_liquid_water_static_energy',    &
             UNITS      = 'K+3',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -311,9 +311,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'EDMF_FRC',                                       &
-            LONG_NAME  = 'Mass_Flux_Fractional_Area',                 &
-            UNITS      = '1',                                         &
+            SHORT_NAME = 'SL2',                                       &
+            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
+            UNITS      = 'K+2',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -322,9 +322,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL2',                                       &
-            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
-            UNITS      = 'K+2',                                       &
+            SHORT_NAME = 'PDF_A',                                     &
+            LONG_NAME  = 'ADG_PDF_first_plume_fractional_area',       &
+            UNITS      = '1',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -355,7 +355,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HLQT',                                      &
+            SHORT_NAME = 'SLQT',                                      &
             LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity', &
             UNITS      = 'K',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -725,15 +725,6 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'PDF_A',                                                 &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
 #ifdef PDFDIAG
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_vertical_velocity_standard_deviation_first_plume', &
@@ -870,6 +861,15 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 #endif
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'WQT_DC',                                                &
+       LONG_NAME  = 'Total_water_flux_from_deep_convection',                 &
+       UNITS      = 'kg kg-1 m s-1',                                         &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &
