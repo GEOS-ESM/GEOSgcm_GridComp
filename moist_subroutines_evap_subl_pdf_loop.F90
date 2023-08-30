@@ -41,15 +41,37 @@ module evap_subl_pdf_loop
         real, dimension(:,:,:), intent(OUT)   ::  WTHV2, WQL, PDFITERS, SUBLC, RHX, EVAPC
 
         ! Local variables
-        integer :: I, J, L, II, JJ
+        integer :: I, J, L
         real    :: facEIS, minrhcrit
         real    :: ALPHA, RHCRIT, EVAPC_C, SUBLC_C
+        integer :: turnrhcrit_I, turnrhcrit_J
+        logical :: compute_turnrhcrit
 
         call update_ESTBLX_to_GPU
 
+        compute_turnrhcrit = .true.
+
+        if (turnrhcrit <= 0.0) then
+        ! Compute indices for turnrhcrit outside of evap/subl/pdf loop region
+            check : do J = 1, JM
+                do I = 1, IM
+                    turnrhcrit = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                    if(turnrhcrit > 0.0) then
+                        turnrhcrit_I = I
+                        turnrhcrit_J = J
+                        exit check
+                    endif
+                enddo
+            enddo check
+        else
+            compute_turnrhcrit = .false.
+        endif
+
         ! evap/subl/pdf
-        !$acc parallel loop gang vector collapse(3) private(facEIS, minrhcrit, RHCRIT, &
-        !$acc                                               EVAPC_C, SUBLC_C, ALPHA, I, J, L, II, JJ)
+        !$acc parallel loop gang vector collapse(3) &
+        !$acc          private(facEIS, minrhcrit, RHCRIT, EVAPC_C, SUBLC_C, ALPHA, turnrhcrit) &
+        !$acc          copyin(turnrhcrit_I, turnrhcrit_J, compute_turnrhcrit, dt_moist, dw_land, &
+        !$acc                 dw_ocean, CCW_EVAP_EFF, USE_BERGERON, pdfshape, do_qa, cci_evap_eff)
         do L=1,LM
             do J=1,JM
                 do I=1,IM
@@ -57,13 +79,18 @@ module evap_subl_pdf_loop
                     facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
                     ! determine combined minrhcrit in stable/unstable regimes
                     minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
-                    if (turnrhcrit <= 0.0) then
-                        check : do JJ = 1, J
-                            do II = 1, I
-                                turnrhcrit  = PLmb(II, JJ, KLCL(II,JJ)) - 250.0 ! 250mb above the LCL
-                                if (turnrhcrit > 0.0) exit check 
-                            enddo
-                        enddo check
+                    if(compute_turnrhcrit) then
+                        if(J .lt. turnrhcrit_I) then
+                            turnrhcrit = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                        else
+                            if(I .lt. turnrhcrit_I) then
+                                turnrhcrit = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+                            else
+                                turnrhcrit = PLmb(turnrhcrit_I, & 
+                                                turnrhcrit_J, &
+                                                KLCL(turnrhcrit_I,turnrhcrit_J)) - 250.0 ! 250mb above the LCL
+                            endif
+                        endif
                     endif
                     ! Use Slingo-Ritter (1985) formulation for critical relative humidity
                     RHCRIT = 1.0
