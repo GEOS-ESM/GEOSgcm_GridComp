@@ -67,7 +67,7 @@ cd ../../
 
 """
 
-  if grid_type == "Stretched_Cubed-Sphere" :
+  if grid_type == "Stretched_Cube-Sphere" :
 
        script = """
 
