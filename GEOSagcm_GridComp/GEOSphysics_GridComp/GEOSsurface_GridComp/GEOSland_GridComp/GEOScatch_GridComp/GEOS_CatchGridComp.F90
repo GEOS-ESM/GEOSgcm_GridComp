@@ -5311,13 +5311,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     InCfg=InFmt%read(rc=status)
                     VERIFY_(status)
                     variables => InCfg%get_variables()
-                    var_iter = variables%begin()
+                    var_iter = variables%ftn_begin()
                     
                     allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
                     allocate(local_tmp_incr(NTILES), source = 0.0)
                     
-                    do while (var_iter/=variables%end())
-                       vname => var_iter%key()
+                    do while (var_iter/=variables%ftn_end())
+                       call var_iter%next()
+
+                       vname => var_iter%first()
                        if (MAPL_AM_I_Root(VM)) then
                           call MAPL_VarRead ( InFmt,trim(vname), global_tmp_incr)
                        endif
@@ -5350,7 +5352,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        if ( trim(vname) == "SNDZN2_INCR" )   sndzn2_incr  = local_tmp_incr
                        if ( trim(vname) == "SNDZN3_INCR" )   sndzn3_incr  = local_tmp_incr
                        
-                       call var_iter%next()
                     enddo 
                     
                     call inFmt%close()

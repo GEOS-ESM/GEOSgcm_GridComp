@@ -606,29 +606,29 @@ contains
        call MAPL_IOCountNonDimVars(InCfg,nvars)
 
        variables => InCfg%get_variables()
-       var_iter = variables%begin()
+       var_iter = variables%ftn_begin()
        i = 0
-       do while (var_iter /= variables%end())
+       do while (var_iter /= variables%ftn_end())
+          call var_iter%next()
 
-          var_name => var_iter%key()
+          var_name => var_iter%first()
           i=i+1
           do j=1,29
              if ( trim(var_name) == trim(names(j)) ) written(i) = .true.
           enddo
           if (trim(var_name) == "OLD_ITY" ) written(i) = .true.
 
-          call var_iter%next()
-
        enddo
 
        variables => InCfg%get_variables()
-       var_iter = variables%begin()
+       var_iter = variables%ftn_begin()
        n=0
        allocate(var1(NTILES_IN))
-       do while (var_iter /= variables%end())
+       do while (var_iter /= variables%ftn_end())
+          call var_iter%next()
 
-          var_name => var_iter%key()
-          myVariable => var_iter%value()
+          var_name => var_iter%first()
+          myVariable => var_iter%second()
 
           if (.not.InCfg%is_coordinate_variable(var_name)) then
 
@@ -667,7 +667,6 @@ contains
 
              end if
           end if
-          call var_iter%next()
 
        enddo
 

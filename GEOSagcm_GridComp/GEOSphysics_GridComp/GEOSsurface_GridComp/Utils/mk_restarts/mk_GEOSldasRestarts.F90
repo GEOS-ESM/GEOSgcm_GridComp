@@ -1037,11 +1037,12 @@ contains
        endif
 
        variables => meta_data%get_variables()
-       var_iter = variables%begin()
-       do while (var_iter /= variables%end())
+       var_iter = variables%ftn_begin()
+       do while (var_iter /= variables%ftn_end())
+          call var_iter%next()
 
-          vname => var_iter%key()
-          var => var_iter%value()
+          vname => var_iter%first()
+          var => var_iter%second()
           var_dimensions => var%get_dimensions()
 
           ndims = var_dimensions%size()
@@ -1105,7 +1106,6 @@ contains
              enddo
 
           end if
-          call var_iter%next()
        enddo
 
        call InFmt%close()
