@@ -162,7 +162,7 @@
                      TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE ,                   &
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC)
+                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, mltwtr, preout, FICESOUT, EXCSOUT)              !lca mltwtr, pre
 
       IMPLICIT NONE
 
@@ -229,14 +229,15 @@
                      FSW_CHANGE
 
       
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC
-
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC    
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: mltwtr     !lca
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: preout         !lca
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: EACC_0 
 
       REAL, INTENT(OUT), DIMENSION(NCH, N_Constit), OPTIONAL :: RMELT	
-
+     REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH), OPTIONAL :: FICESOUT,EXCSOUT !lca
 ! -----------------------------------------------------------
 !     LOCAL VARIABLES
 
@@ -262,8 +263,9 @@
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
 
-      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices, targetthick, &
+      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, targetthick, &
              wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
+      REAL, DIMENSION(N_SNOW) :: FICES                                        !lca
 
       REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
 
@@ -284,7 +286,7 @@
               EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
               EVAPXS,SHFLUXXS,phi,rho_fs,WSS,sumdepth,                         &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
-              mltwtr, wesnbot, dtss
+              mltwtr_, wesnbot, dtss       !lca
 
 
 
@@ -881,7 +883,14 @@
                    TOTDEP1 (K) = 0.
                    ENDDO
              endif
-          enddo 
+         if(present(FICESOUT)) then !lca
+            FICES(i) = FICESOUT(i,n) !lca
+            EXCS(i)  = EXCSOUT(i,n)  !lca
+          else                       !lca
+            FICES(i) = 0.0           !lca 
+            EXCS(i)  = 0.0           !lca
+         endif
+       enddo 
 
 !     TPSN1 is used as input here, contradicts "declaration" as output only.
 !     EnKF has been using tpsn1 as part of state vector, which should fix this.
@@ -926,10 +935,12 @@
                    areasc,areasc0,pre,fhgnd,                                   &
                    EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
                    sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
-                   wesnperc, wesndens, wesnrepar, mltwtr,                      &
-                   excs, drho0, wesnbot, tksno, dtss,                          &
+                   wesnperc, wesndens, wesnrepar, mltwtr_,                      &
+                   excs, drho0, wesnbot, tksno, dtss,                          & !lca
                    maxsndepth,  rhofs, targetthick )
 
+        if (present(mltwtr) ) mltwtr(N) = mltwtr_    !lca
+        if (present(preout)    ) preout(N)    = pre       !lca
         LH_SNOW(N)=areasc*EVSN*ALHS
         SH_SNOW(N)=areasc*SHFLS
         LWUP_SNOW(N)=areasc*HUPS
@@ -967,7 +978,16 @@
 		RMELT (N,K) = RMELT1(K)
                 ENDDO
              endif
-          enddo 
+         if(present(ficesout)) then    !lca
+           FICESOUT(i,n) = FICES(i) !lca
+         endif                      !lca
+         if(present(excsout)) then !lca
+           EXCSOUT(i,n) = EXCS(i)  !lca
+         endif                     !lca
+
+      enddo 
+
+
  
         traincx(n)= trainc(n)*(1.-areasc) 
         trainlx(n)= trainl(n)*(1.-areasc)
