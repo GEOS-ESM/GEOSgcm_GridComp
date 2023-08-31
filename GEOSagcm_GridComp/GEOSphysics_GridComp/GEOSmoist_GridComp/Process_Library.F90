@@ -1737,11 +1737,11 @@ module GEOSmoist_Process_Library
           qn1 = min(qn1,qw1_1)
           qn2 = min(qn2,qw1_2)
 
-!          ql1 = qn1*om1
-!          ql2 = qn2*om2
+          ql1 = qn1*om1
+          ql2 = qn2*om2
 
-!          qi1 = qn1 - ql1
-!          qi2 = qn2 - ql2
+          qi1 = qn1 - ql1
+          qi2 = qn2 - ql2
 
           qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
 !          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)

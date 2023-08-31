@@ -3040,9 +3040,9 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=4.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=6.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=4.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=6.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
@@ -3442,7 +3442,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%ICE_RAMP,  "EDMF_ICE_RAMP:",      default=-40.0, RC=STATUS )
       call MAPL_GetResource (MAPL, MFPARAMS%ENTRAIN,   "EDMF_ENTRAIN:",       default=0,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=0,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
 
       ! Future options
@@ -3516,7 +3516,7 @@ if (SCM_SL /= 0) then
 !       bstar_scm = (MAPL_GRAV/(RHOS*sqrt(CM*max(UU,1.e-30)/RHOS))) *  &
 !                   (CT*(TH-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ*(QH-QA))
        
-       ustar => ustar_scm
+!       ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
 
@@ -5993,7 +5993,7 @@ end subroutine RUN1
          tmp3d(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*tmp3d(:,:,1:LM-1)
          tmp3d(:,:,LM) = tmp3d(:,:,LM-1)
          tmp3d(:,:,0) = 0.0
-         if (associated(QTFLXMF)) then
+         if (associated(QTFLXMF).and.MFPARAMS%IMPLICIT.eq.1) then
             QTFLXMF(:,:,1:LM-1) = QTFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*QT(:,:,1:LM-1)
             QTFLXMF(:,:,LM) = QTFLXMF(:,:,LM-1)
             QTFLXMF(:,:,0) = 0.
@@ -6006,9 +6006,9 @@ end subroutine RUN1
          tmp3d(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*tmp3d(:,:,1:LM-1)
          tmp3d(:,:,LM) = tmp3d(:,:,LM-1)
          tmp3d(:,:,0) = 0.0
-         if (associated(SLFLXMF)) then
+         if (associated(SLFLXMF).and.MFPARAMS%IMPLICIT.eq.1) then
             SLFLXMF(:,:,1:LM-1) = SLFLXMF(:,:,1:LM-1)-MFAW(:,:,1:LM-1)*SL(:,:,1:LM-1)/MAPL_CP
-            SLFLXMF(:,:,LM) = 0.
+            SLFLXMF(:,:,LM) = SLFLXMF(:,:,LM-1)
             SLFLXMF(:,:,0) = 0.
          end if
          if (associated(SLFLXTRB)) SLFLXTRB = tmp3d/MAPL_CP + SLFLXMF
