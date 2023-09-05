@@ -92,9 +92,9 @@ def make_bcs_cube(config):
   if 'install/bin' not in bin_dir:
     print(" please run this program in installed bin directory")
     return
-
   grid_type  = config['grid_type']
-  if 'Stretched_CS' not in grid_type or "Cubed" not in grid_type:
+  print(grid_type)
+  if grid_type not in ["Stretched_CS", "Cubed-Sphere"] :
      print('This should be cubed-sphere grid')
      return
 
@@ -289,6 +289,6 @@ if __name__ == "__main__":
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if 'Stretched_CS' in config['grid_type'] or 'Cubed' in config['grid_type']:
+      if grid_type in ["Stretched_CS", "Cubed-Sphere"] :
          make_bcs_cube(config)
 
