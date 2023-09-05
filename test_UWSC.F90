@@ -1,12 +1,13 @@
 program test_UWSC
 
     use uwshcu
-
+    use tracer_module
     implicit none
 
     integer   :: IM, JM, LM, num_args, USE_TRACER_TRANSP_UW, fileID
     real      :: UW_DT
-    real :: start, end
+    integer(kind=8) :: t_start, t_end
+    real(kind=8) :: rate
 
     real, dimension(:,:,:), allocatable :: PL, ZL0, PK, PLE, ZLE0, PKE, DP
     real, dimension(:,:,:), allocatable :: U, V, Q, QLTOT, QITOT, T, TKE
@@ -29,6 +30,8 @@ program test_UWSC
     real, dimension(:,:),   allocatable :: TPERT_SC_ref, QPERT_SC_ref
 
     character *100 :: BUFFER, dirName, rank_str
+
+    num_args = command_argument_count()
 
     if(num_args.ne.2) then
         print*, 'Missing arguments : <executable> <data directory> <trim(rank_str)>'
@@ -121,6 +124,118 @@ program test_UWSC
     allocate(SLFLX_SC_ref(IM, JM, 0:LM))
     allocate(UFLX_SC_ref(IM, JM, 0:LM))
     allocate(VFLX_SC_ref(IM, JM, 0:LM))
+
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_niter_xc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%niter_xc
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_iter_cin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%iter_cin
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_use_CINcin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%use_CINcin
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_use_self_detrain_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%use_self_detrain
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_use_momenflx_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%use_momenflx
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_use_cumpenent_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%use_cumpenent
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_scverbose_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%scverbose
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_windsrcavg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%windsrcavg
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rpen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rpen
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rle_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rle
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rkm_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rkm
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_mixscale_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%mixscale
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_detrhgt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%detrhgt
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rkfre_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rkfre
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rmaxfrac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rmaxfrac
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_mumin1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%mumin1
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rbuoy_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rbuoy
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rdrag_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rdrag
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_epsvarw_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%epsvarw
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_PGFc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%PGFc
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_criqc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%criqc
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_frc_rasn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%frc_rasn
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_kevp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%kevp
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_rdrop_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%rdrop
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_thlsrc_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%thlsrc_fac
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_qtsrc_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%qtsrc_fac
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_qtsrchgt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%qtsrchgt
+    close(fileID)
+    
+    open(newunit=fileID, file=trim(dirName) // '/SHLWPARAMS_cridist_opt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SHLWPARAMS%cridist_opt
+    close(fileID)
 
     open(newunit=fileID, file=trim(dirName) // '/UW_DT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
     read(fileID) UW_DT
@@ -232,6 +347,8 @@ program test_UWSC
     close(fileID)
     ! print*, 'Rank ', trim(rank_str),': In size(CUSH) = ', size(CUSH)
 
+    call read_tracers(IM, JM, LM, dirName, rank_str)
+
     write(*,*) 'Calling compute_uwshcu_inv...'
 !$acc data copyin(pmid0_inv,zmid0_inv,exnmid0_inv,pifc0_inv,zifc0_inv,&
 !$acc      exnifc0_inv,dp0_inv,u0_inv,v0_inv,qv0_inv,ql0_inv,qi0_inv,&
@@ -240,24 +357,7 @@ program test_UWSC
 !$acc      copyout(umf_inv,qvten_inv,qlten_inv,qiten_inv,thten_inv,uten_inv,&
 !$acc      vten_inv,qrten_inv,qsten_inv,cufrc_inv,fer_inv,fdr_inv, &
 !$acc      qldet_inv,qidet_inv,qlsub_inv,qisub_inv,ndrop_inv,nice_inv)
-    call cpu_time(start)
-!     call compute_uwshcu_inv(idim, k0, ncnst, dt, &
-!     pmid0_inv, zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, dp0_inv, &
-!     u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv, th0_inv, tke_inv, kpbl_inv, &
-!     thlsrc_pert, &
-!     cush, tr0_inv, &
-!     umf_inv, qvten_inv, qlten_inv, qiten_inv, &
-!     thten_inv, uten_inv, vten_inv, qrten_inv, &
-!     qsten_inv, cufrc_inv, fer_inv, fdr_inv, &
-!     qldet_inv, qidet_inv, qlsub_inv, qisub_inv, &
-!     ndrop_inv, nice_inv, &
-! #ifdef UWDIAG
-!          qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY
-!          cnt_inv, cnb_inv, cin, plcl, plfc, pinv, prel, pbup,       &
-!          wlcl, qtsrc, thlsrc, thvlsrc, tkeavg, cldtop, wu_inv,      &
-!          qtu_inv, thlu_inv, thvu_inv, uu_inv, vu_inv, xc_inv,       &
-! #endif
-!     dotransport, shlwparams_obj)
+    call system_clock(t_start,rate)
 
     call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
@@ -280,7 +380,7 @@ program test_UWSC
             XC_SC,                                        &
 #endif 
             USE_TRACER_TRANSP_UW)
-    call cpu_time(end)
+    call system_clock(t_end)
 !$acc end data
 
     open(newunit=fileID, file=trim(dirName) // '/CUSH_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
@@ -386,7 +486,111 @@ program test_UWSC
     open(newunit=fileID, file=trim(dirName) // '/VFLX_SC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
     read(fileID) VFLX_SC_ref
     close(fileID)
-    write(*, *) 'done.'
-    write(*, '(a, f10.4, a)') 'Time taken: ', end-start, 's.'
+    
+    print*, 'sum(CUSH - CUSH_ref) = ', sum(CUSH - CUSH_ref)
+    print*, 'sum(CUSH) = ', sum(CUSH)
+    print*, 'sum(CUSH_ref) = ', sum(CUSH_ref)
+    
+    print*, 'sum(UMF_SC - UMF_SC_ref) = ', sum(UMF_SC - UMF_SC_ref)
+    print*, 'sum(UMF_SC) = ', sum(UMF_SC)
+    print*, 'sum(UMF_SC_ref) = ', sum(UMF_SC_ref)
+    
+    print*, 'sum(DCM_SC - DCM_SC_ref) = ', sum(DCM_SC - DCM_SC_ref)
+    print*, 'sum(DCM_SC) = ', sum(DCM_SC)
+    print*, 'sum(DCM_SC_ref) = ', sum(DCM_SC_ref)
+    
+    print*, 'sum(DQVDT_SC - DQVDT_SC_ref) = ', sum(DQVDT_SC - DQVDT_SC_ref)
+    print*, 'sum(DQVDT_SC) = ', sum(DQVDT_SC)
+    print*, 'sum(DQVDT_SC_ref) = ', sum(DQVDT_SC_ref)
+    
+    print*, 'sum(DQLDT_SC - DQLDT_SC_ref) = ', sum(DQLDT_SC - DQLDT_SC_ref)
+    print*, 'sum(DQLDT_SC) = ', sum(DQLDT_SC)
+    print*, 'sum(DQLDT_SC_ref) = ', sum(DQLDT_SC_ref)
+    
+    print*, 'sum(DQIDT_SC - DQIDT_SC_ref) = ', sum(DQIDT_SC - DQIDT_SC_ref)
+    print*, 'sum(DQIDT_SC) = ', sum(DQIDT_SC)
+    print*, 'sum(DQIDT_SC_ref) = ', sum(DQIDT_SC_ref)
+    
+    print*, 'sum(DTDT_SC - DTDT_SC_ref) = ', sum(DTDT_SC - DTDT_SC_ref)
+    print*, 'sum(DTDT_SC) = ', sum(DTDT_SC)
+    print*, 'sum(DTDT_SC_ref) = ', sum(DTDT_SC_ref)
+    
+    print*, 'sum(DUDT_SC - DUDT_SC_ref) = ', sum(DUDT_SC - DUDT_SC_ref)
+    print*, 'sum(DUDT_SC) = ', sum(DUDT_SC)
+    print*, 'sum(DUDT_SC_ref) = ', sum(DUDT_SC_ref)
+    
+    print*, 'sum(DVDT_SC - DVDT_SC_ref) = ', sum(DVDT_SC - DVDT_SC_ref)
+    print*, 'sum(DVDT_SC) = ', sum(DVDT_SC)
+    print*, 'sum(DVDT_SC_ref) = ', sum(DVDT_SC_ref)
+    
+    print*, 'sum(DQRDT_SC - DQRDT_SC_ref) = ', sum(DQRDT_SC - DQRDT_SC_ref)
+    print*, 'sum(DQRDT_SC) = ', sum(DQRDT_SC)
+    print*, 'sum(DQRDT_SC_ref) = ', sum(DQRDT_SC_ref)
+    
+    print*, 'sum(DQSDT_SC - DQSDT_SC_ref) = ', sum(DQSDT_SC - DQSDT_SC_ref)
+    print*, 'sum(DQSDT_SC) = ', sum(DQSDT_SC)
+    print*, 'sum(DQSDT_SC_ref) = ', sum(DQSDT_SC_ref)
+    
+    print*, 'sum(CUFRC_SC - CUFRC_SC_ref) = ', sum(CUFRC_SC - CUFRC_SC_ref)
+    print*, 'sum(CUFRC_SC) = ', sum(CUFRC_SC)
+    print*, 'sum(CUFRC_SC_ref) = ', sum(CUFRC_SC_ref)
+    
+    print*, 'sum(ENTR_SC - ENTR_SC_ref) = ', sum(ENTR_SC - ENTR_SC_ref)
+    print*, 'sum(ENTR_SC) = ', sum(ENTR_SC)
+    print*, 'sum(ENTR_SC_ref) = ', sum(ENTR_SC_ref)
+    
+    print*, 'sum(DETR_SC - DETR_SC_ref) = ', sum(DETR_SC - DETR_SC_ref)
+    print*, 'sum(DETR_SC) = ', sum(DETR_SC)
+    print*, 'sum(DETR_SC_ref) = ', sum(DETR_SC_ref)
+    
+    print*, 'sum(QLDET_SC - QLDET_SC_ref) = ', sum(QLDET_SC - QLDET_SC_ref)
+    print*, 'sum(QLDET_SC) = ', sum(QLDET_SC)
+    print*, 'sum(QLDET_SC_ref) = ', sum(QLDET_SC_ref)
+    
+    print*, 'sum(QIDET_SC - QIDET_SC_ref) = ', sum(QIDET_SC - QIDET_SC_ref)
+    print*, 'sum(QIDET_SC) = ', sum(QIDET_SC)
+    print*, 'sum(QIDET_SC_ref) = ', sum(QIDET_SC_ref)
+    
+    print*, 'sum(QLSUB_SC - QLSUB_SC_ref) = ', sum(QLSUB_SC - QLSUB_SC_ref)
+    print*, 'sum(QLSUB_SC) = ', sum(QLSUB_SC)
+    print*, 'sum(QLSUB_SC_ref) = ', sum(QLSUB_SC_ref)
+    
+    print*, 'sum(QISUB_SC - QISUB_SC_ref) = ', sum(QISUB_SC - QISUB_SC_ref)
+    print*, 'sum(QISUB_SC) = ', sum(QISUB_SC)
+    print*, 'sum(QISUB_SC_ref) = ', sum(QISUB_SC_ref)
+    
+    print*, 'sum(SC_NDROP - SC_NDROP_ref) = ', sum(SC_NDROP - SC_NDROP_ref)
+    print*, 'sum(SC_NDROP) = ', sum(SC_NDROP)
+    print*, 'sum(SC_NDROP_ref) = ', sum(SC_NDROP_ref)
+    
+    print*, 'sum(SC_NICE - SC_NICE_ref) = ', sum(SC_NICE - SC_NICE_ref)
+    print*, 'sum(SC_NICE) = ', sum(SC_NICE)
+    print*, 'sum(SC_NICE_ref) = ', sum(SC_NICE_ref)
+    
+    print*, 'sum(TPERT_SC - TPERT_SC_ref) = ', sum(TPERT_SC - TPERT_SC_ref)
+    print*, 'sum(TPERT_SC) = ', sum(TPERT_SC)
+    print*, 'sum(TPERT_SC_ref) = ', sum(TPERT_SC_ref)
+    
+    print*, 'sum(QPERT_SC - QPERT_SC_ref) = ', sum(QPERT_SC - QPERT_SC_ref)
+    print*, 'sum(QPERT_SC) = ', sum(QPERT_SC)
+    print*, 'sum(QPERT_SC_ref) = ', sum(QPERT_SC_ref)
+    
+    print*, 'sum(QTFLX_SC - QTFLX_SC_ref) = ', sum(QTFLX_SC - QTFLX_SC_ref)
+    print*, 'sum(QTFLX_SC) = ', sum(QTFLX_SC)
+    print*, 'sum(QTFLX_SC_ref) = ', sum(QTFLX_SC_ref)
+    
+    print*, 'sum(SLFLX_SC - SLFLX_SC_ref) = ', sum(SLFLX_SC - SLFLX_SC_ref)
+    print*, 'sum(SLFLX_SC) = ', sum(SLFLX_SC)
+    print*, 'sum(SLFLX_SC_ref) = ', sum(SLFLX_SC_ref)
+    
+    print*, 'sum(UFLX_SC - UFLX_SC_ref) = ', sum(UFLX_SC - UFLX_SC_ref)
+    print*, 'sum(UFLX_SC) = ', sum(UFLX_SC)
+    print*, 'sum(UFLX_SC_ref) = ', sum(UFLX_SC_ref)
+    
+    print*, 'sum(VFLX_SC - VFLX_SC_ref) = ', sum(VFLX_SC - VFLX_SC_ref)
+    print*, 'sum(VFLX_SC) = ', sum(VFLX_SC)
+    print*, 'sum(VFLX_SC_ref) = ', sum(VFLX_SC_ref)
+
+    print*,'Elapsed Time = ', (t_end - t_start)/rate
 
 end program
