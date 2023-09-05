@@ -9,7 +9,7 @@ module GEOSmoist_Process_Library
 
   use ESMF
   use MAPL
-  use GEOS_Utils_ACC_Mod
+  use GEOS_UtilsMod
   use Aer_Actv_Single_Moment
   use aer_cloud
 
