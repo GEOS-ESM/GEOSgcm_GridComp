@@ -1727,7 +1727,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC,                    &       !!lca not sure if right
     LONG_NAME          = 'runoff_from_snow_base'     ,&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'preout'                       ,&
+    SHORT_NAME         = 'PREOUT'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -1745,7 +1745,7 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC,                    &       !!lca not sure if right
     LONG_NAME          = 'total_meltwater_production_rate'     ,&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'mltwtr'                       ,&
+    SHORT_NAME         = 'MLTWTR'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -4440,8 +4440,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,EXCS1, 'EXCS1' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
         call MAPL_GetPointer(EXPORT,EXCS2, 'EXCS2' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
         call MAPL_GetPointer(EXPORT,EXCS3, 'EXCS3' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca         
-        call MAPL_GetPointer(EXPORT,preout, 'preout' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,mltwtr, 'mltwtr' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
+        call MAPL_GetPointer(EXPORT,PREOUT, 'PREOUT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
+        call MAPL_GetPointer(EXPORT,MLTWTR, 'MLTWTR' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
         !call MAPL_GetPointer(EXPORT,excs,  'excs'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
         call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
