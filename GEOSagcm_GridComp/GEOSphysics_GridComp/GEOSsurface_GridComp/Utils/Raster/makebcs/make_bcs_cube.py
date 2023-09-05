@@ -16,12 +16,12 @@ if ( {STEP1} == True ) then
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/540x458 data/MOM6/540x458
   ln -s {MAKE_BCS_INPUT_DIR}/ocean/MOM6/1440x1080 data/MOM6/1440x1080
 
-  if( -e CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
+  if( -e CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout ) /bin/rm -f CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}.stdout
 
 endif 
 
 if ( {STEP1} == True ) then
-  bin/mkCubeFVRaster.x -x {NX} -y {NY} {NC} >/dev/null 
+  bin/mkCubeFVRaster.x -x {NX} -y {NY} {SGPARAM} {STRETCH} {NC} >/dev/null 
   bin/mkLandRaster.x -x {NX} -y {NY} -v -t {NT}
 endif
 
@@ -30,14 +30,14 @@ if( {LATLON_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
       bin/mkLatLonRaster.x -x {NX} -y {NY} -b DE -p PE -t 0 {IMO} {JMO} >/dev/null
       bin/CombineRasters.x -f 0 -t {NT} DE{IMO}xPE{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C DE{IMO}xPE{JMO}-Pfafstetter
+      bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} DE{IMO}xPE{JMO}-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
+      if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -52,15 +52,15 @@ if( {TRIPOL_OCEAN} == True ) then
       /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
       /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
       bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-      bin/mk_runofftbl.x CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/CombineRasters.x -t {NT} CF{NC}x6C{SGNAME} {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/mk_runofftbl.x CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -68,15 +68,18 @@ endif
 
 if( {CUBED_SPHERE_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
+      if ( {IS_STRETCHED} == True ) then
+         bin/mkCubeFVRaster.x -x {NX} -y {NY} {STRETCH} {NC} >/dev/null 
+      endif
       bin/CombineRasters.x -f 0 -t {NT} CF{NC}x6C Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C CF{NC}x6C-Pfafstetter
+      bin/CombineRasters.x -t {NT} {SGPARAM} CF{NC}x6C CF{NC}x6C-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_CF{NC}x6C-Pfafstetter -v {lbcsv} 
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C{SGNAME}_CF{NC}x6C-Pfafstetter -v {lbcsv} 
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -91,8 +94,8 @@ def make_bcs_cube(config):
     return
 
   grid_type  = config['grid_type']
-  if 'Cubed' not in grid_type :
-     print('This is not a Cubed-Sphere grid')
+  if 'Stretched_CS' not in grid_type or "Cubed" not in grid_type:
+     print('This should be cubed-sphere grid')
      return
 
   resolution = config['resolution']
@@ -108,17 +111,34 @@ def make_bcs_cube(config):
   nc6 = nc*6
   RC = str(nc)+'x'+str(nc6)
 
+  IS_STRETCHED = False
+  STRETCH = ""
+  SG = ""
+  SGNAME = ""
+  SGPARAM = ""
+  if 'Stretched_CS' in grid_type:
+     IS_STRETCHED = True
+     if resolution in ['c270','c540','c1080', 'c2160'] :
+        STRETCH  = '-F 2.5 -X -98.35 -Y 39.5' 
+        SG   = 'SG001'
+     if resolution in ['c1536'] :
+        STRETCH  = '-F 3.0 -X -98.35 -Y 39.5'
+        SG   = 'SG002'
+     SGNAME = '-'+SG
+     SGPARAM = '-s ' + SG
+
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
-  GRIDNAME = 'CF'+NC+'x6C_'+DATENAME+IMO+'x'+POLENAME+JMO
   SKIPLAND = config['skipland']
+      
+  GRIDNAME = 'CF'+NC+'x6C'+SGNAME+'_'+DATENAME+IMO+'x'+POLENAME+JMO
 
   if config['CUBED_SPHERE_OCEAN'] :
-    GRIDNAME =  'CF'+ NC+'x6C_CF'+NC+'x6C'
     DATENAME = 'CF'
     POLENAME = ''
     IMO = NC
     JMO = '6C'
+    GRIDNAME   =  'CF'+ NC+'x6C'+SGNAME+'_CF'+NC+'x6C' 
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
@@ -138,7 +158,7 @@ def make_bcs_cube(config):
   STEP2 = True
   GRIDNAME2 = GRIDNAME
   script_template = get_script_head() + cube_template + get_script_mv(config['grid_type'])
-  if resolution in ['c2880', 'c3072', 'c5760'] :
+  if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
      STEP1 = True
      STEP2 = False
      script_template = get_script_head() + cube_template 
@@ -176,13 +196,18 @@ def make_bcs_cube(config):
            NT = config['NT'], \
            RS = '-Pfafstetter',\
            RC = RC,\
+           SG = SG,\
+           STRETCH = STRETCH, \
+           SGNAME  = SGNAME, \
+           SGPARAM = SGPARAM, \
+           IS_STRETCHED = IS_STRETCHED, \
            NCPUS = config['NCPUS'])
 
   cube_job = open(bcjob,'wt')
   cube_job.write(script_string)
   cube_job.close()
 
-  if resolution in ['c2880', 'c3072', 'c5760'] :
+  if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
      STEP1 = False
      STEP2 = True
      GRIDNAME2 = GRIDNAME+'-2'
@@ -219,6 +244,11 @@ def make_bcs_cube(config):
            NY = config['NY'], \
            NT = config['NT'], \
            RC = RC,\
+           SG = SG,\
+           STRETCH = STRETCH, \
+           SGNAME  = SGNAME, \
+           SGPARAM = SGPARAM, \
+           IS_STRETCHED = IS_STRETCHED, \
            RS = '-Pfafstetter',\
            NCPUS = config['NCPUS'])
 
@@ -228,7 +258,7 @@ def make_bcs_cube(config):
 
   interactive = os.getenv('SLURM_JOB_ID', default = None)
   if ( interactive ) :
-     if resolution in ['c2880', 'c3072', 'c5760'] :
+     if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
         exit("resolution is too high for interactive mode")
      print('interactive mode\n')
      ntasks = os.getenv('SLURM_NTASKS', default = None)
@@ -244,7 +274,7 @@ def make_bcs_cube(config):
     out = subprocess.check_output(['sbatch', bcjob])
     jobid = str(int(out.split()[3]))
     print( "Submitted batch job " + jobid)
-    if resolution in ['c2880', 'c3072', 'c5760']:
+    if resolution in ['c1080' ,'c1536', 'c2160', 'c2880', 'c3072','c5760'] :
       print("sbatch " + bcjob+'-2' + " depending on " + bcjob + "\n")
       subprocess.call(['sbatch', '--dependency=afterok:'+jobid, bcjob+'-2'])
       print()
@@ -252,13 +282,13 @@ def make_bcs_cube(config):
   print( "cd " + bin_dir)
   os.chdir(bin_dir)
  
-  #print(script_string)
+  #print(stretched_script_string)
 
 if __name__ == "__main__":
 
    answers = ask_questions()
    configs = get_configs_from_answers(answers)
    for config in configs:
-      if 'Cubed-Sphere' in config['grid_type']:
+      if 'Stretched_CS' in config['grid_type'] or 'Cubed' in config['grid_type']:
          make_bcs_cube(config)
 
