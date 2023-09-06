@@ -31,6 +31,8 @@ program test_UWSC
 
     character *100 :: BUFFER, dirName, rank_str
 
+    logical :: print_compare = .true.
+
     num_args = command_argument_count()
 
     if(num_args.ne.2) then
@@ -486,111 +488,114 @@ program test_UWSC
     open(newunit=fileID, file=trim(dirName) // '/VFLX_SC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
     read(fileID) VFLX_SC_ref
     close(fileID)
-    
-    print*, 'DIFF : sum(CUSH - CUSH_ref) = ', sum(CUSH - CUSH_ref)
-    print*, 'sum(CUSH) = ', sum(CUSH)
-    print*, 'sum(CUSH_ref) = ', sum(CUSH_ref)
-    
-    print*, 'DIFF : sum(UMF_SC - UMF_SC_ref) = ', sum(UMF_SC - UMF_SC_ref)
-    print*, 'sum(UMF_SC) = ', sum(UMF_SC)
-    print*, 'sum(UMF_SC_ref) = ', sum(UMF_SC_ref)
-    
-    print*, 'DIFF : sum(DCM_SC - DCM_SC_ref) = ', sum(DCM_SC - DCM_SC_ref)
-    print*, 'sum(DCM_SC) = ', sum(DCM_SC)
-    print*, 'sum(DCM_SC_ref) = ', sum(DCM_SC_ref)
-    
-    print*, 'DIFF : sum(DQVDT_SC - DQVDT_SC_ref) = ', sum(DQVDT_SC - DQVDT_SC_ref)
-    print*, 'sum(DQVDT_SC) = ', sum(DQVDT_SC)
-    print*, 'sum(DQVDT_SC_ref) = ', sum(DQVDT_SC_ref)
-    
-    print*, 'DIFF : sum(DQLDT_SC - DQLDT_SC_ref) = ', sum(DQLDT_SC - DQLDT_SC_ref)
-    print*, 'sum(DQLDT_SC) = ', sum(DQLDT_SC)
-    print*, 'sum(DQLDT_SC_ref) = ', sum(DQLDT_SC_ref)
-    
-    print*, 'DIFF : sum(DQIDT_SC - DQIDT_SC_ref) = ', sum(DQIDT_SC - DQIDT_SC_ref)
-    print*, 'sum(DQIDT_SC) = ', sum(DQIDT_SC)
-    print*, 'sum(DQIDT_SC_ref) = ', sum(DQIDT_SC_ref)
-    
-    print*, 'DIFF : sum(DTDT_SC - DTDT_SC_ref) = ', sum(DTDT_SC - DTDT_SC_ref)
-    print*, 'sum(DTDT_SC) = ', sum(DTDT_SC)
-    print*, 'sum(DTDT_SC_ref) = ', sum(DTDT_SC_ref)
-    
-    print*, 'DIFF : sum(DUDT_SC - DUDT_SC_ref) = ', sum(DUDT_SC - DUDT_SC_ref)
-    print*, 'sum(DUDT_SC) = ', sum(DUDT_SC)
-    print*, 'sum(DUDT_SC_ref) = ', sum(DUDT_SC_ref)
-    
-    print*, 'DIFF : sum(DVDT_SC - DVDT_SC_ref) = ', sum(DVDT_SC - DVDT_SC_ref)
-    print*, 'sum(DVDT_SC) = ', sum(DVDT_SC)
-    print*, 'sum(DVDT_SC_ref) = ', sum(DVDT_SC_ref)
-    
-    print*, 'DIFF : sum(DQRDT_SC - DQRDT_SC_ref) = ', sum(DQRDT_SC - DQRDT_SC_ref)
-    print*, 'sum(DQRDT_SC) = ', sum(DQRDT_SC)
-    print*, 'sum(DQRDT_SC_ref) = ', sum(DQRDT_SC_ref)
-    
-    print*, 'DIFF : sum(DQSDT_SC - DQSDT_SC_ref) = ', sum(DQSDT_SC - DQSDT_SC_ref)
-    print*, 'sum(DQSDT_SC) = ', sum(DQSDT_SC)
-    print*, 'sum(DQSDT_SC_ref) = ', sum(DQSDT_SC_ref)
-    
-    print*, 'DIFF : sum(CUFRC_SC - CUFRC_SC_ref) = ', sum(CUFRC_SC - CUFRC_SC_ref)
-    print*, 'sum(CUFRC_SC) = ', sum(CUFRC_SC)
-    print*, 'sum(CUFRC_SC_ref) = ', sum(CUFRC_SC_ref)
-    
-    print*, 'DIFF : sum(ENTR_SC - ENTR_SC_ref) = ', sum(ENTR_SC - ENTR_SC_ref)
-    print*, 'sum(ENTR_SC) = ', sum(ENTR_SC)
-    print*, 'sum(ENTR_SC_ref) = ', sum(ENTR_SC_ref)
-    
-    print*, 'DIFF : sum(DETR_SC - DETR_SC_ref) = ', sum(DETR_SC - DETR_SC_ref)
-    print*, 'sum(DETR_SC) = ', sum(DETR_SC)
-    print*, 'sum(DETR_SC_ref) = ', sum(DETR_SC_ref)
-    
-    print*, 'DIFF : sum(QLDET_SC - QLDET_SC_ref) = ', sum(QLDET_SC - QLDET_SC_ref)
-    print*, 'sum(QLDET_SC) = ', sum(QLDET_SC)
-    print*, 'sum(QLDET_SC_ref) = ', sum(QLDET_SC_ref)
-    
-    print*, 'DIFF : sum(QIDET_SC - QIDET_SC_ref) = ', sum(QIDET_SC - QIDET_SC_ref)
-    print*, 'sum(QIDET_SC) = ', sum(QIDET_SC)
-    print*, 'sum(QIDET_SC_ref) = ', sum(QIDET_SC_ref)
-    
-    print*, 'DIFF : sum(QLSUB_SC - QLSUB_SC_ref) = ', sum(QLSUB_SC - QLSUB_SC_ref)
-    print*, 'sum(QLSUB_SC) = ', sum(QLSUB_SC)
-    print*, 'sum(QLSUB_SC_ref) = ', sum(QLSUB_SC_ref)
-    
-    print*, 'DIFF : sum(QISUB_SC - QISUB_SC_ref) = ', sum(QISUB_SC - QISUB_SC_ref)
-    print*, 'sum(QISUB_SC) = ', sum(QISUB_SC)
-    print*, 'sum(QISUB_SC_ref) = ', sum(QISUB_SC_ref)
-    
-    print*, 'DIFF : sum(SC_NDROP - SC_NDROP_ref) = ', sum(SC_NDROP - SC_NDROP_ref)
-    print*, 'sum(SC_NDROP) = ', sum(SC_NDROP)
-    print*, 'sum(SC_NDROP_ref) = ', sum(SC_NDROP_ref)
-    
-    print*, 'DIFF : sum(SC_NICE - SC_NICE_ref) = ', sum(SC_NICE - SC_NICE_ref)
-    print*, 'sum(SC_NICE) = ', sum(SC_NICE)
-    print*, 'sum(SC_NICE_ref) = ', sum(SC_NICE_ref)
-    
-    print*, 'DIFF : sum(TPERT_SC - TPERT_SC_ref) = ', sum(TPERT_SC - TPERT_SC_ref)
-    print*, 'sum(TPERT_SC) = ', sum(TPERT_SC)
-    print*, 'sum(TPERT_SC_ref) = ', sum(TPERT_SC_ref)
-    
-    print*, 'DIFF : sum(QPERT_SC - QPERT_SC_ref) = ', sum(QPERT_SC - QPERT_SC_ref)
-    print*, 'sum(QPERT_SC) = ', sum(QPERT_SC)
-    print*, 'sum(QPERT_SC_ref) = ', sum(QPERT_SC_ref)
-    
-    print*, 'DIFF : sum(QTFLX_SC - QTFLX_SC_ref) = ', sum(QTFLX_SC - QTFLX_SC_ref)
-    print*, 'sum(QTFLX_SC) = ', sum(QTFLX_SC)
-    print*, 'sum(QTFLX_SC_ref) = ', sum(QTFLX_SC_ref)
-    
-    print*, 'DIFF : sum(SLFLX_SC - SLFLX_SC_ref) = ', sum(SLFLX_SC - SLFLX_SC_ref)
-    print*, 'sum(SLFLX_SC) = ', sum(SLFLX_SC)
-    print*, 'sum(SLFLX_SC_ref) = ', sum(SLFLX_SC_ref)
-    
-    print*, 'DIFF : sum(UFLX_SC - UFLX_SC_ref) = ', sum(UFLX_SC - UFLX_SC_ref)
-    print*, 'sum(UFLX_SC) = ', sum(UFLX_SC)
-    print*, 'sum(UFLX_SC_ref) = ', sum(UFLX_SC_ref)
-    
-    print*, 'DIFF : sum(VFLX_SC - VFLX_SC_ref) = ', sum(VFLX_SC - VFLX_SC_ref)
-    print*, 'sum(VFLX_SC) = ', sum(VFLX_SC)
-    print*, 'sum(VFLX_SC_ref) = ', sum(VFLX_SC_ref)
 
+    if(print_compare.eq..true.) then
+    
+        print*, 'DIFF : sum(CUSH - CUSH_ref) = ', sum(CUSH - CUSH_ref)
+        print*, 'sum(CUSH) = ', sum(CUSH)
+        print*, 'sum(CUSH_ref) = ', sum(CUSH_ref)
+        
+        print*, 'DIFF : sum(UMF_SC - UMF_SC_ref) = ', sum(UMF_SC - UMF_SC_ref)
+        print*, 'sum(UMF_SC) = ', sum(UMF_SC)
+        print*, 'sum(UMF_SC_ref) = ', sum(UMF_SC_ref)
+        
+        print*, 'DIFF : sum(DCM_SC - DCM_SC_ref) = ', sum(DCM_SC - DCM_SC_ref)
+        print*, 'sum(DCM_SC) = ', sum(DCM_SC)
+        print*, 'sum(DCM_SC_ref) = ', sum(DCM_SC_ref)
+        
+        print*, 'DIFF : sum(DQVDT_SC - DQVDT_SC_ref) = ', sum(DQVDT_SC - DQVDT_SC_ref)
+        print*, 'sum(DQVDT_SC) = ', sum(DQVDT_SC)
+        print*, 'sum(DQVDT_SC_ref) = ', sum(DQVDT_SC_ref)
+        
+        print*, 'DIFF : sum(DQLDT_SC - DQLDT_SC_ref) = ', sum(DQLDT_SC - DQLDT_SC_ref)
+        print*, 'sum(DQLDT_SC) = ', sum(DQLDT_SC)
+        print*, 'sum(DQLDT_SC_ref) = ', sum(DQLDT_SC_ref)
+        
+        print*, 'DIFF : sum(DQIDT_SC - DQIDT_SC_ref) = ', sum(DQIDT_SC - DQIDT_SC_ref)
+        print*, 'sum(DQIDT_SC) = ', sum(DQIDT_SC)
+        print*, 'sum(DQIDT_SC_ref) = ', sum(DQIDT_SC_ref)
+        
+        print*, 'DIFF : sum(DTDT_SC - DTDT_SC_ref) = ', sum(DTDT_SC - DTDT_SC_ref)
+        print*, 'sum(DTDT_SC) = ', sum(DTDT_SC)
+        print*, 'sum(DTDT_SC_ref) = ', sum(DTDT_SC_ref)
+        
+        print*, 'DIFF : sum(DUDT_SC - DUDT_SC_ref) = ', sum(DUDT_SC - DUDT_SC_ref)
+        print*, 'sum(DUDT_SC) = ', sum(DUDT_SC)
+        print*, 'sum(DUDT_SC_ref) = ', sum(DUDT_SC_ref)
+        
+        print*, 'DIFF : sum(DVDT_SC - DVDT_SC_ref) = ', sum(DVDT_SC - DVDT_SC_ref)
+        print*, 'sum(DVDT_SC) = ', sum(DVDT_SC)
+        print*, 'sum(DVDT_SC_ref) = ', sum(DVDT_SC_ref)
+        
+        print*, 'DIFF : sum(DQRDT_SC - DQRDT_SC_ref) = ', sum(DQRDT_SC - DQRDT_SC_ref)
+        print*, 'sum(DQRDT_SC) = ', sum(DQRDT_SC)
+        print*, 'sum(DQRDT_SC_ref) = ', sum(DQRDT_SC_ref)
+        
+        print*, 'DIFF : sum(DQSDT_SC - DQSDT_SC_ref) = ', sum(DQSDT_SC - DQSDT_SC_ref)
+        print*, 'sum(DQSDT_SC) = ', sum(DQSDT_SC)
+        print*, 'sum(DQSDT_SC_ref) = ', sum(DQSDT_SC_ref)
+        
+        print*, 'DIFF : sum(CUFRC_SC - CUFRC_SC_ref) = ', sum(CUFRC_SC - CUFRC_SC_ref)
+        print*, 'sum(CUFRC_SC) = ', sum(CUFRC_SC)
+        print*, 'sum(CUFRC_SC_ref) = ', sum(CUFRC_SC_ref)
+        
+        print*, 'DIFF : sum(ENTR_SC - ENTR_SC_ref) = ', sum(ENTR_SC - ENTR_SC_ref)
+        print*, 'sum(ENTR_SC) = ', sum(ENTR_SC)
+        print*, 'sum(ENTR_SC_ref) = ', sum(ENTR_SC_ref)
+        
+        print*, 'DIFF : sum(DETR_SC - DETR_SC_ref) = ', sum(DETR_SC - DETR_SC_ref)
+        print*, 'sum(DETR_SC) = ', sum(DETR_SC)
+        print*, 'sum(DETR_SC_ref) = ', sum(DETR_SC_ref)
+        
+        print*, 'DIFF : sum(QLDET_SC - QLDET_SC_ref) = ', sum(QLDET_SC - QLDET_SC_ref)
+        print*, 'sum(QLDET_SC) = ', sum(QLDET_SC)
+        print*, 'sum(QLDET_SC_ref) = ', sum(QLDET_SC_ref)
+        
+        print*, 'DIFF : sum(QIDET_SC - QIDET_SC_ref) = ', sum(QIDET_SC - QIDET_SC_ref)
+        print*, 'sum(QIDET_SC) = ', sum(QIDET_SC)
+        print*, 'sum(QIDET_SC_ref) = ', sum(QIDET_SC_ref)
+        
+        print*, 'DIFF : sum(QLSUB_SC - QLSUB_SC_ref) = ', sum(QLSUB_SC - QLSUB_SC_ref)
+        print*, 'sum(QLSUB_SC) = ', sum(QLSUB_SC)
+        print*, 'sum(QLSUB_SC_ref) = ', sum(QLSUB_SC_ref)
+        
+        print*, 'DIFF : sum(QISUB_SC - QISUB_SC_ref) = ', sum(QISUB_SC - QISUB_SC_ref)
+        print*, 'sum(QISUB_SC) = ', sum(QISUB_SC)
+        print*, 'sum(QISUB_SC_ref) = ', sum(QISUB_SC_ref)
+        
+        print*, 'DIFF : sum(SC_NDROP - SC_NDROP_ref) = ', sum(SC_NDROP - SC_NDROP_ref)
+        print*, 'sum(SC_NDROP) = ', sum(SC_NDROP)
+        print*, 'sum(SC_NDROP_ref) = ', sum(SC_NDROP_ref)
+        
+        print*, 'DIFF : sum(SC_NICE - SC_NICE_ref) = ', sum(SC_NICE - SC_NICE_ref)
+        print*, 'sum(SC_NICE) = ', sum(SC_NICE)
+        print*, 'sum(SC_NICE_ref) = ', sum(SC_NICE_ref)
+        
+        print*, 'DIFF : sum(TPERT_SC - TPERT_SC_ref) = ', sum(TPERT_SC - TPERT_SC_ref)
+        print*, 'sum(TPERT_SC) = ', sum(TPERT_SC)
+        print*, 'sum(TPERT_SC_ref) = ', sum(TPERT_SC_ref)
+        
+        print*, 'DIFF : sum(QPERT_SC - QPERT_SC_ref) = ', sum(QPERT_SC - QPERT_SC_ref)
+        print*, 'sum(QPERT_SC) = ', sum(QPERT_SC)
+        print*, 'sum(QPERT_SC_ref) = ', sum(QPERT_SC_ref)
+        
+        print*, 'DIFF : sum(QTFLX_SC - QTFLX_SC_ref) = ', sum(QTFLX_SC - QTFLX_SC_ref)
+        print*, 'sum(QTFLX_SC) = ', sum(QTFLX_SC)
+        print*, 'sum(QTFLX_SC_ref) = ', sum(QTFLX_SC_ref)
+        
+        print*, 'DIFF : sum(SLFLX_SC - SLFLX_SC_ref) = ', sum(SLFLX_SC - SLFLX_SC_ref)
+        print*, 'sum(SLFLX_SC) = ', sum(SLFLX_SC)
+        print*, 'sum(SLFLX_SC_ref) = ', sum(SLFLX_SC_ref)
+        
+        print*, 'DIFF : sum(UFLX_SC - UFLX_SC_ref) = ', sum(UFLX_SC - UFLX_SC_ref)
+        print*, 'sum(UFLX_SC) = ', sum(UFLX_SC)
+        print*, 'sum(UFLX_SC_ref) = ', sum(UFLX_SC_ref)
+        
+        print*, 'DIFF : sum(VFLX_SC - VFLX_SC_ref) = ', sum(VFLX_SC - VFLX_SC_ref)
+        print*, 'sum(VFLX_SC) = ', sum(VFLX_SC)
+        print*, 'sum(VFLX_SC_ref) = ', sum(VFLX_SC_ref)
+
+    endif
     print*,'Elapsed Time = ', (t_end - t_start)/rate
 
 end program
