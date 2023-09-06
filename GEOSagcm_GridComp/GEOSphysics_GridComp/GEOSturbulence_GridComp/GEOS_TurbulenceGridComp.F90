@@ -3041,7 +3041,7 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=6.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=4.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=1.5,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=6.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
@@ -3049,9 +3049,9 @@ end if
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 3.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 6.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 2400.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 1800.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AFRC_TSCALE,'AFRC_TSCALE:',DEFAULT = 1800.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
 
@@ -3416,9 +3416,9 @@ end if
 
     if ( DOMF /= 0 ) then
       ! number of updrafts
-      call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=20,    RC=STATUS)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.3,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       !
       call MAPL_GetResource (MAPL, MFPARAMS%ENTWFAC,   "EDMF_ENTWFAC:",       default=0.333, RC=STATUS)  
@@ -3435,7 +3435,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
       call MAPL_GetResource (MAPL, MFPARAMS%L0fac,     "EDMF_L0FAC:",         default=10.,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=3.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%MFLIMFAC,  "EDMF_MFLIMFAC:",      default=2.5,   RC=STATUS)
      ! factor to multiply the eddy-diffusivity with
       call MAPL_GetResource (MAPL, MFPARAMS%EDfac,     "EDMF_EDFAC:",         default=1.,    RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DOCLASP,   "EDMF_DOCLASP:",       default=0,     RC=STATUS)

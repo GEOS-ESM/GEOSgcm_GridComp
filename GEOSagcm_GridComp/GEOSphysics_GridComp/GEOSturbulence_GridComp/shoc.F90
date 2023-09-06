@@ -665,17 +665,18 @@ contains
 !           l_inf(i,j) = 100.
 !         endif
 
-        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.4 K
+        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.3 K
         ! Interpolate for final height based on gradient
+        ! Ignore single isolated levels
         kk = 4
-        do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk))
+        do while (thv(i,j,3)+0.3 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.3 .gt. thv(i,j,kk+1))
           kk = kk+1
         end do
         dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
         if (abs(dum) .gt. 1e-3) then
-          l_mix(i,j) = min(max(zl(i,j,kk-1)+(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.),1200.)
+          l_mix(i,j) = max(zl(i,j,kk-1)+(thv(i,j,3)+0.3-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
         else
-          l_mix(i,j) = min(max(zl(i,j,kk-1),100.),1200.)
+          l_mix(i,j) = max(zl(i,j,kk-1),100.)
         end if
 
 
@@ -917,12 +918,12 @@ contains
 !                 l_mix(i,j) = 0.1*l_mix(i,j)
 
 !                 if (zl(i,j,k).lt.zpbl(i,j)) then
-!!                 if (zl(i,j,k).lt.l_mix(i,j)) then
+                 if (zl(i,j,k).lt.l_mix(i,j)) then
 !                   smixt2(i,j,k) = sqrt(0.1*zpbl(i,j)*400.*tkes)*shocparams%LENFAC2
-!!                   smixt2(i,j,k) = sqrt(min(1200.,l_mix(i,j))*400.*tkes)*shocparams%LENFAC2
-!                 else
+                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*shocparams%LENFAC2
+                 else
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
-!                 end if
+                 end if
 
                  ! Kludgey adjustment to increase StCu by reducing L3 at cloud top
 !                 if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. (cld_sgs(i,j,k).gt.0.2.or.cld_sgs(i,j,k-1).gt.0.2) .and. brunt(i,j,k+1).gt.2e-4) then
@@ -1198,7 +1199,14 @@ contains
 
 
     ! Update PDF_A
-    pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
+    if (AFRC_TSCALE.gt.0.) then
+      pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
+    else
+      pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
+    end if
+    where (mffrc.gt.pdf_a)
+      pdf_a = mffrc
+    end where
     pdf_a = min(0.5,max(0.,pdf_a))
 
 
