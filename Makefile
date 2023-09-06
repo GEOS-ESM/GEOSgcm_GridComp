@@ -1,4 +1,4 @@
-programName = run_UWSC
+programName = TEST_MOIST 
 
 FC = ifort
 #OPT = -O3 -Mfunc32 -Kieee #-acc=gpu -gpu=flushz #NVIDIA compiler options
