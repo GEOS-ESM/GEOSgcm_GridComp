@@ -1004,8 +1004,11 @@ contains
 
    ! Timer variables
 
-      integer(kind=8) :: t_start, t_end
+      integer(kind=8) :: t_start, t_end, t_start_loop, t_end_loop
       real(kind=8) :: rate 
+
+      print*, '****** compute_uwshcu : Initialization ******'
+      call system_clock(t_start, rate)
 
    ! ------------------------ !
    ! Assign parameter values  !
@@ -1051,9 +1054,6 @@ contains
       ixcldliq = 2
       ixnumliq = 3
       ixnumice = 4
-
-      print*, '****** compute_uwshcu : Initialization ******'
-      call system_clock(t_start, rate)
 
    ! ------------------------------------------------------- !
    ! Initialize output variables defined for all grid points !
@@ -3841,95 +3841,95 @@ contains
                         ! call write_parallel('------- UW ShCu: exit, conden')
                      end if
                      go to 333
-               end if
-               qlu_mid = 0.5 * ( qlubelow + qlj ) * ( -ppen )        /( pifc0(k-1) - pifc0(k) )
-               qiu_mid = 0.5 * ( qiubelow + qij ) * ( -ppen )        /( pifc0(k-1) - pifc0(k) )
-               qlu_top = qlj
-               qiu_top = qij
-            else
-               call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
-               if( id_check .eq. 1 ) then
-                     exit_conden(i) = 1.
+                  end if
+                  qlu_mid = 0.5 * ( qlubelow + qlj ) * ( -ppen )        /( pifc0(k-1) - pifc0(k) )
+                  qiu_mid = 0.5 * ( qiubelow + qij ) * ( -ppen )        /( pifc0(k-1) - pifc0(k) )
+                  qlu_top = qlj
+                  qiu_top = qij
+               else
+                  call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+                  if( id_check .eq. 1 ) then
+                        exit_conden(i) = 1.
+                        id_exit = .true.
+                        if (scverbose) then
+                        ! call write_parallel('------- UW ShCu: exit, conden')
+                        end if
+                        go to 333
+                  end if
+                  qlu_mid = 0.5 * ( qlubelow + qlj )
+                  qiu_mid = 0.5 * ( qiubelow + qij )
+               endif
+               qlubelow = qlj       
+               qiubelow = qij
+
+               ! 1. Non-precipitating portion of expelled condensate
+
+               qc_l(k) = ( 1. - frc_rasn ) * dwten(k) ! [ kg/kg/s ]
+               qc_i(k) = ( 1. - frc_rasn ) * diten(k) ! [ kg/kg/s ]
+
+               ! 2. Detrained Condensate
+
+               if( k .le. kbup ) then 
+                  qc_l(k) = qc_l(k) + g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qlu_mid ! [ kg/kg/s ]
+                  qc_i(k) = qc_i(k) + g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qiu_mid ! [ kg/kg/s ]
+                  qc_lm   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * ql0(k)  
+                  qc_im   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qi0(k)
+            ! Below 'nc_lm', 'nc_im' should be used only when frc_rasn = 1.
+!              nc_lm   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumliq)  
+!              nc_im   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumice)
+               else
+                  qc_lm   = 0.
+                  qc_im   = 0.
+                  nc_lm   = 0.
+                  nc_im   = 0.
+               endif
+
+               ! 3. Detached Updraft 
+
+               if( k .eq. kbup ) then
+                  qc_l(k) = qc_l(k) + g * umf(k) * qlj     / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+                  qc_i(k) = qc_i(k) + g * umf(k) * qij     / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+                  qc_lm   = qc_lm   - g * umf(k) * ql0(k)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+                  qc_im   = qc_im   - g * umf(k) * qi0(k)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+   !              nc_lm   = nc_lm   - g * umf(k) * tr0(k,ixnumliq)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+   !              nc_im   = nc_im   - g * umf(k) * tr0(k,ixnumice)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+               endif 
+
+            ! 4. Cumulative Penetrative entrainment detrained in the 'kbup' layer
+            !    Explicitly compute the properties detrained penetrative entrained airs in k = kbup layer.
+
+               if( k .eq. kbup ) then
+                  call conden(pmid0(k),thlu_emf(k),qtu_emf(k),thj,qvj,ql_emf_kbup,qi_emf_kbup,qse,id_check)
+                  if( id_check .eq. 1 ) then
                      id_exit = .true.
                      if (scverbose) then
                      ! call write_parallel('------- UW ShCu: exit, conden')
                      end if
                      go to 333
-               end if
-               qlu_mid = 0.5 * ( qlubelow + qlj )
-               qiu_mid = 0.5 * ( qiubelow + qij )
-            endif
-            qlubelow = qlj       
-            qiubelow = qij
-
-            ! 1. Non-precipitating portion of expelled condensate
-
-            qc_l(k) = ( 1. - frc_rasn ) * dwten(k) ! [ kg/kg/s ]
-            qc_i(k) = ( 1. - frc_rasn ) * diten(k) ! [ kg/kg/s ]
-
-            ! 2. Detrained Condensate
-
-            if( k .le. kbup ) then 
-               qc_l(k) = qc_l(k) + g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qlu_mid ! [ kg/kg/s ]
-               qc_i(k) = qc_i(k) + g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qiu_mid ! [ kg/kg/s ]
-               qc_lm   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * ql0(k)  
-               qc_im   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * qi0(k)
-            ! Below 'nc_lm', 'nc_im' should be used only when frc_rasn = 1.
-!              nc_lm   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumliq)  
-!              nc_im   =         - g * 0.5 * ( umf(k-1) + umf(k) ) * fdr(k) * tr0(k,ixnumice)
-            else
-               qc_lm   = 0.
-               qc_im   = 0.
-               nc_lm   = 0.
-               nc_im   = 0.
-            endif
-
-            ! 3. Detached Updraft 
-
-            if( k .eq. kbup ) then
-               qc_l(k) = qc_l(k) + g * umf(k) * qlj     / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-               qc_i(k) = qc_i(k) + g * umf(k) * qij     / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-               qc_lm   = qc_lm   - g * umf(k) * ql0(k)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-               qc_im   = qc_im   - g * umf(k) * qi0(k)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-   !              nc_lm   = nc_lm   - g * umf(k) * tr0(k,ixnumliq)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-   !              nc_im   = nc_im   - g * umf(k) * tr0(k,ixnumice)  / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-            endif 
-
-            ! 4. Cumulative Penetrative entrainment detrained in the 'kbup' layer
-            !    Explicitly compute the properties detrained penetrative entrained airs in k = kbup layer.
-
-            if( k .eq. kbup ) then
-               call conden(pmid0(k),thlu_emf(k),qtu_emf(k),thj,qvj,ql_emf_kbup,qi_emf_kbup,qse,id_check)
-               if( id_check .eq. 1 ) then
-                  id_exit = .true.
-                  if (scverbose) then
-                  ! call write_parallel('------- UW ShCu: exit, conden')
-                  end if
-                  go to 333
-               endif
-               if( ql_emf_kbup .gt. 0. ) then
+                  endif
+                  if( ql_emf_kbup .gt. 0. ) then
 !                  nl_emf_kbup = tru_emf(k,ixnumliq)
-               else
-                  nl_emf_kbup = 0.
-               endif
-               if( qi_emf_kbup .gt. 0. ) then
+                  else
+                     nl_emf_kbup = 0.
+                  endif
+                  if( qi_emf_kbup .gt. 0. ) then
    !                  ni_emf_kbup = tru_emf(k,ixnumice)
-               else
-                  ni_emf_kbup = 0.
-               endif
-               qc_lm   = qc_lm   - g * emf(k) * ( ql_emf_kbup - ql0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-               qc_im   = qc_im   - g * emf(k) * ( qi_emf_kbup - qi0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-!              nc_lm   = nc_lm   - g * emf(k) * ( nl_emf_kbup - tr0(k,ixnumliq) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-!              nc_im   = nc_im   - g * emf(k) * ( ni_emf_kbup - tr0(k,ixnumice) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
-            endif 
+                  else
+                     ni_emf_kbup = 0.
+                  endif
+                  qc_lm   = qc_lm   - g * emf(k) * ( ql_emf_kbup - ql0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+                  qc_im   = qc_im   - g * emf(k) * ( qi_emf_kbup - qi0(k) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+   !              nc_lm   = nc_lm   - g * emf(k) * ( nl_emf_kbup - tr0(k,ixnumliq) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+   !              nc_im   = nc_im   - g * emf(k) * ( ni_emf_kbup - tr0(k,ixnumice) ) / ( pifc0(k-1) - pifc0(k) ) ! [ kg/kg/s ]
+               endif 
 
-            qlten_det(k)   = qc_l(k) + qc_lm
-            qiten_det(k)   = qc_i(k) + qc_im
+               qlten_det(k)   = qc_l(k) + qc_lm
+               qiten_det(k)   = qc_i(k) + qc_im
 
-            ! --------------------------------------------------------------------------------- !
-            ! 'qlten(k)','qiten(k)','qvten(k)','sten(k)'                                        !
-            !                                                                                   !
-            ! --------------------------------------------------------------------------------- ! 
+               ! --------------------------------------------------------------------------------- !
+               ! 'qlten(k)','qiten(k)','qvten(k)','sten(k)'                                        !
+               !                                                                                   !
+               ! --------------------------------------------------------------------------------- ! 
 
 !           if( use_expconten ) then
 !             if( use_unicondet ) then
@@ -3952,53 +3952,53 @@ contains
 !              qiten(k) = diten(k) + ( qtten(k) - dwten(k) - diten(k) ) * ( qi0(k) / qt0(k) )
 !           endif
 
-            ! ----------------------------------------------------------------- !
-            ! If combined sinks would result in negative liquid/ice, rescale    ! 
-            ! such that liquid/ice is zero.                                     !
-	         ! 
-            ! ----------------------------------------------------------------- !
+               ! ----------------------------------------------------------------- !
+               ! If combined sinks would result in negative liquid/ice, rescale    ! 
+               ! such that liquid/ice is zero.                                     !
+               ! 
+               ! ----------------------------------------------------------------- !
 
-            if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
-               totsink = qc_lm+qlten_sink(k)
-               if (totsink.ne.0.) then
-                  qc_lm = -(ql0(k)/dt) * qc_lm/totsink
-                  qlten_sink(k) = -(ql0(k)/dt) * qlten_sink(k)/totsink
-                  qlten_det(k) = qc_l(k) + qc_lm
+               if ( ((qc_lm+qlten_sink(k))*dt+ql0(k)).lt.0. ) then
+                  totsink = qc_lm+qlten_sink(k)
+                  if (totsink.ne.0.) then
+                     qc_lm = -(ql0(k)/dt) * qc_lm/totsink
+                     qlten_sink(k) = -(ql0(k)/dt) * qlten_sink(k)/totsink
+                     qlten_det(k) = qc_l(k) + qc_lm
+                  end if
                end if
-            end if
-            if ( ((qc_im+qiten_sink(k))*dt+qi0(k)).lt.0. ) then
-               totsink = qc_im+qiten_sink(k)
-               if (totsink.ne.0.) then
-                  qc_im = -(qi0(k)/dt) * qc_im/totsink
-                  qiten_sink(k) = -(qi0(k)/dt) * qiten_sink(k)/totsink
-                  qiten_det(k) = qc_i(k) + qc_im
+               if ( ((qc_im+qiten_sink(k))*dt+qi0(k)).lt.0. ) then
+                  totsink = qc_im+qiten_sink(k)
+                  if (totsink.ne.0.) then
+                     qc_im = -(qi0(k)/dt) * qc_im/totsink
+                     qiten_sink(k) = -(qi0(k)/dt) * qiten_sink(k)/totsink
+                     qiten_det(k) = qc_i(k) + qc_im
+                  end if
                end if
-            end if
 
-            qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
-            qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
+               qlten(k) = qrten(k) + qlten_sink(k) + qlten_det(k)
+               qiten(k) = qsten(k) + qiten_sink(k) + qiten_det(k)
 
-            qvten(k) = qtten(k) - qlten(k) - qiten(k)
-            sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+               qvten(k) = qtten(k) - qlten(k) - qiten(k)
+               sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
 
 !           qldet(k) = qc_l(k)
 !           qidet(k) = qc_i(k)
-            qc(k)  =  qc_l(k) +  qc_i(k)   
+               qc(k)  =  qc_l(k) +  qc_i(k)   
 
 
-            qlten(k) = qlten(k) - qrten(k)
-            qiten(k) = qiten(k) - qsten(k)
-            qtten(k) = qlten(k) + qiten(k) + qvten(k)
+               qlten(k) = qlten(k) - qrten(k)
+               qiten(k) = qiten(k) - qsten(k)
+               qtten(k) = qlten(k) + qiten(k) + qvten(k)
 !           if( ( qv0(k) + qvten(k)*dt ) .lt. 0.0 .or. &
 !              ( ql0(k) + qlten(k)*dt ) .lt. 0.0 .or. &
 !              ( qi0(k) + qiten(k)*dt ) .lt. 0.0 ) then
 !               limit_negcon(i) = 1.
 !           end if
-            slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)
-            slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
-            sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+               slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)
+               slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
+               sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
 
-         end do
+            end do
 
 
          ! ---------------------------------------------------------------- !
@@ -4037,25 +4037,25 @@ contains
          !                in combination with the original computation of qlten, qiten. However,
          !                if we use new 'qlten,qiten', there is no problem.
 
-         qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
-         ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
-         qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
-         s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
-         call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
-              dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
-         qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
-         slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
+            qv0_star(:k0) = qv0(:k0) + qvten(:k0) * dt
+            ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
+            qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
+            s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
+            call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
+               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
+            qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
+            slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
 
-         ! --------------------- !
-         ! Tendencies of tracers !
-         ! --------------------- !
+            ! --------------------- !
+            ! Tendencies of tracers !
+            ! --------------------- !
 
-         if (dotransport.eq.1) then
-            do m = 1, ncnst
+            if (dotransport.eq.1) then
+               do m = 1, ncnst
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
 
-               trmin = 0. !qmin(m)
+                  trmin = 0. !qmin(m)
 !#ifdef MODAL_AERO
 !           do mm = 1, ntot_amode
 !             if( m .eq. numptr_amode(mm) ) then
@@ -4065,87 +4065,57 @@ contains
 !           enddo
 !        55 continue
 !#endif 
-               trflx_d(0:k0) = 0.
-               trflx_u(0:k0) = 0.           
-               do k = 1, k0-1
+                  trflx_d(0:k0) = 0.
+                  trflx_u(0:k0) = 0.           
+                  do k = 1, k0-1
+!             if( cnst_get_type_byind(m) .eq. 'wet' ) then
+                     pdelx = dp0(k)
+!             else
+!                 pdelx = dpdry0(k)
+!             endif
+                     km1 = k - 1
+                     dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
+                     trflx_d(k) = min( 0., dum )
+                  enddo
+                  do k = k0, 2, -1
+!             if( cnst_get_type_byind(m) .eq. 'wet' ) then
+                     pdelx = dp0(k)
+!             else
+!                 pdelx = dpdry0(k)
+!             endif
+                     km1 = k - 1
+                     dum = ( tr0(k,m) - trmin ) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
+                                                                  trflx_d(km1) - trflx_d(k) - trflx_u(k) 
+                     trflx_u(km1) = max( 0., -dum ) 
+                  enddo
+                  do k = 1, k0
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                   pdelx = dp0(k)
 !             else
 !                 pdelx = dpdry0(k)
 !             endif
-                  km1 = k - 1
-                  dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
-                  trflx_d(k) = min( 0., dum )
-               enddo
-               do k = k0, 2, -1
-!             if( cnst_get_type_byind(m) .eq. 'wet' ) then
-                  pdelx = dp0(k)
-!             else
-!                 pdelx = dpdry0(k)
-!             endif
-                  km1 = k - 1
-                  dum = ( tr0(k,m) - trmin ) * pdelx / g / dt + trflx(km1,m) - trflx(k,m) + &
-                                                               trflx_d(km1) - trflx_d(k) - trflx_u(k) 
-                  trflx_u(km1) = max( 0., -dum ) 
-               enddo
-               do k = 1, k0
-!             if( cnst_get_type_byind(m) .eq. 'wet' ) then
-                  pdelx = dp0(k)
-!             else
-!                 pdelx = dpdry0(k)
-!             endif
-                  km1 = k - 1
+                     km1 = k - 1
            ! Check : I should re-check whether '_u', '_d' are correctly ordered in 
            !         the below tendency computation.
-                  trten(k,m) = ( trflx(km1,m) - trflx(k,m) + & 
-                                 trflx_d(km1) - trflx_d(k) + &
-                                 trflx_u(km1) - trflx_u(k) ) * g / pdelx
-               enddo
+                     trten(k,m) = ( trflx(km1,m) - trflx(k,m) + & 
+                                    trflx_d(km1) - trflx_d(k) + &
+                                    trflx_u(km1) - trflx_u(k) ) * g / pdelx
+                  enddo
 
 !         endif
 
-            enddo
-         endif
-
-         ! ---------------------------------------------------------------- !
-         ! Cumpute default diagnostic outputs                               !
-         ! Note that since 'qtu(krel-1:kpen-1)' & 'thlu(krel-1:kpen-1)' has !
-         ! been adjusted after detraining cloud condensate into environment ! 
-         ! during cumulus updraft motion,  below calculations will  exactly !
-         ! reproduce in-cloud properties as shown in the output analysis.   !
-         ! ---------------------------------------------------------------- ! 
- 
-         call conden(prel,thlu(krel-1),qtu(krel-1),thj,qvj,qlj,qij,qse,id_check)
-         if( id_check .eq. 1 ) then
-            exit_conden(i) = 1.
-            id_exit = .true.
-            if (scverbose) then
-               ! call write_parallel('------- UW ShCu: exit, conden')
-            end if
-            go to 333
-         end if
-         qcubelow = qlj + qij
-         qlubelow = qlj       
-         qiubelow = qij       
-         rcwp     = 0.
-         rlwp     = 0.
-         riwp     = 0.
-
-         ! --------------------------------------------------------------------- !
-         ! In the below calculations, I explicitly considered cloud base ( LCL ) !
-         ! and cloud top height ( pifc0(kpen-1) + ppen )                           !
-         ! ----------------------------------------------------------------------! 
-         do k = krel, kpen ! This is a layer index
-            ! ------------------------------------------------------------------ ! 
-            ! Calculate cumulus condensate at the upper interface of each layer. !
-            ! Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top' !
-            ! which explicitly considered zero or non-zero 'fer(kpen)'.          !
-            ! ------------------------------------------------------------------ ! 
-            if( k .eq. kpen ) then 
-               call conden(pifc0(k-1)+ppen,thlu_top,qtu_top,thj,qvj,qlj,qij,qse,id_check)
-            else
-               call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+               enddo
             endif
+
+            ! ---------------------------------------------------------------- !
+            ! Cumpute default diagnostic outputs                               !
+            ! Note that since 'qtu(krel-1:kpen-1)' & 'thlu(krel-1:kpen-1)' has !
+            ! been adjusted after detraining cloud condensate into environment ! 
+            ! during cumulus updraft motion,  below calculations will  exactly !
+            ! reproduce in-cloud properties as shown in the output analysis.   !
+            ! ---------------------------------------------------------------- ! 
+ 
+            call conden(prel,thlu(krel-1),qtu(krel-1),thj,qvj,qlj,qij,qse,id_check)
             if( id_check .eq. 1 ) then
                exit_conden(i) = 1.
                id_exit = .true.
@@ -4154,458 +4124,491 @@ contains
                end if
                go to 333
             end if
-            ! ---------------------------------------------------------------- !
-            ! Calculate in-cloud mean LWC ( qlu(k) ), IWC ( qiu(k) ),  & layer !
-            ! mean cumulus fraction ( cufrc(k) ),  vertically-integrated layer !
-            ! mean LWP and IWP. Expel some of in-cloud condensate at the upper !
-            ! interface if it is largr than criqc. Note cumulus cloud fraction !
-            ! is assumed to be twice of core updraft fractional area. Thus LWP !
-            ! and IWP will be twice of actual value coming from our scheme.    !
-            ! ---------------------------------------------------------------- !
-            qcu(k)   = 0.5 * ( qcubelow + qlj + qij )
-            qlu(k)   = 0.5 * ( qlubelow + qlj )
-            qiu(k)   = 0.5 * ( qiubelow + qij )
-            cufrc(k) = ( ufrc(k-1) + ufrc(k) )
-            if( k .eq. krel ) then
-               cufrc(k) = ( ufrclcl + ufrc(k) )*( prel - pifc0(k) )/( pifc0(k-1) - pifc0(k) )
-            else if( k .eq. kpen ) then
-               cufrc(k) = ( ufrc(k-1) + 0. )*( -ppen )        /( pifc0(k-1) - pifc0(k) )
-               if( (qlj + qij) .gt. criqc ) then           
-                  qcu(k) = 0.5 * ( qcubelow + criqc )
-                  qlu(k) = 0.5 * ( qlubelow + criqc * qlj / ( qlj + qij ) )
-                  qiu(k) = 0.5 * ( qiubelow + criqc * qij / ( qlj + qij ) )
-               endif
-            endif  
-            rcwp = rcwp + ( qlu(k) + qiu(k) ) * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
-            rlwp = rlwp +   qlu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
-            riwp = riwp +   qiu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
             qcubelow = qlj + qij
-            qlubelow = qlj
-            qiubelow = qij
-         end do
-         ! ------------------------------------ !      
-         ! Cloud top and base interface indices !
-         ! ------------------------------------ !
-         cnt = real( kpen )
-         cnb = real( krel - 1 )
+            qlubelow = qlj       
+            qiubelow = qij       
+            rcwp     = 0.
+            rlwp     = 0.
+            riwp     = 0.
 
-         ! ------------------------------------------------------------------------- !
-         ! End of formal calculation. Below blocks are for implicit CIN calculations ! 
-         ! with re-initialization and save variables at iter_cin = 1.             !
-         ! ------------------------------------------------------------------------- !
-         
-         ! --------------------------------------------------------------- !
-         ! Adjust the original input profiles for implicit CIN calculation !
-         ! --------------------------------------------------------------- !
+            ! --------------------------------------------------------------------- !
+            ! In the below calculations, I explicitly considered cloud base ( LCL ) !
+            ! and cloud top height ( pifc0(kpen-1) + ppen )                           !
+            ! ----------------------------------------------------------------------! 
+            do k = krel, kpen ! This is a layer index
+               ! ------------------------------------------------------------------ ! 
+               ! Calculate cumulus condensate at the upper interface of each layer. !
+               ! Note 'ppen < 0' and at 'k=kpen' layer, I used 'thlu_top'&'qtu_top' !
+               ! which explicitly considered zero or non-zero 'fer(kpen)'.          !
+               ! ------------------------------------------------------------------ ! 
+               if( k .eq. kpen ) then 
+                  call conden(pifc0(k-1)+ppen,thlu_top,qtu_top,thj,qvj,qlj,qij,qse,id_check)
+               else
+                  call conden(pifc0(k),thlu(k),qtu(k),thj,qvj,qlj,qij,qse,id_check)
+               endif
+               if( id_check .eq. 1 ) then
+                  exit_conden(i) = 1.
+                  id_exit = .true.
+                  if (scverbose) then
+                     ! call write_parallel('------- UW ShCu: exit, conden')
+                  end if
+                  go to 333
+               end if
+               ! ---------------------------------------------------------------- !
+               ! Calculate in-cloud mean LWC ( qlu(k) ), IWC ( qiu(k) ),  & layer !
+               ! mean cumulus fraction ( cufrc(k) ),  vertically-integrated layer !
+               ! mean LWP and IWP. Expel some of in-cloud condensate at the upper !
+               ! interface if it is largr than criqc. Note cumulus cloud fraction !
+               ! is assumed to be twice of core updraft fractional area. Thus LWP !
+               ! and IWP will be twice of actual value coming from our scheme.    !
+               ! ---------------------------------------------------------------- !
+               qcu(k)   = 0.5 * ( qcubelow + qlj + qij )
+               qlu(k)   = 0.5 * ( qlubelow + qlj )
+               qiu(k)   = 0.5 * ( qiubelow + qij )
+               cufrc(k) = ( ufrc(k-1) + ufrc(k) )
+               if( k .eq. krel ) then
+                  cufrc(k) = ( ufrclcl + ufrc(k) )*( prel - pifc0(k) )/( pifc0(k-1) - pifc0(k) )
+               else if( k .eq. kpen ) then
+                  cufrc(k) = ( ufrc(k-1) + 0. )*( -ppen )        /( pifc0(k-1) - pifc0(k) )
+                  if( (qlj + qij) .gt. criqc ) then           
+                     qcu(k) = 0.5 * ( qcubelow + criqc )
+                     qlu(k) = 0.5 * ( qlubelow + criqc * qlj / ( qlj + qij ) )
+                     qiu(k) = 0.5 * ( qiubelow + criqc * qij / ( qlj + qij ) )
+                  endif
+               endif  
+               rcwp = rcwp + ( qlu(k) + qiu(k) ) * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
+               rlwp = rlwp +   qlu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
+               riwp = riwp +   qiu(k)            * ( pifc0(k-1) - pifc0(k) ) / g * cufrc(k)
+               qcubelow = qlj + qij
+               qlubelow = qlj
+               qiubelow = qij
+            end do
+            ! ------------------------------------ !      
+            ! Cloud top and base interface indices !
+            ! ------------------------------------ !
+            cnt = real( kpen )
+            cnb = real( krel - 1 )
 
-         if( iter .ne. iter_cin ) then 
+            ! ------------------------------------------------------------------------- !
+            ! End of formal calculation. Below blocks are for implicit CIN calculations ! 
+            ! with re-initialization and save variables at iter_cin = 1.             !
+            ! ------------------------------------------------------------------------- !
+            
+            ! --------------------------------------------------------------- !
+            ! Adjust the original input profiles for implicit CIN calculation !
+            ! --------------------------------------------------------------- !
 
-            ! ------------------------------------------------------------------- !
-            ! Save the output from "iter_cin = 1"                                 !
-            ! These output will be writed-out if "iter_cin = 1" was not performed !
-            ! for some reasons.                                                   !
-            ! ------------------------------------------------------------------- !
+            if( iter .ne. iter_cin ) then 
 
-            qv0_s(:k0)           = qv0(:k0) + qvten(:k0) * dt
-            ql0_s(:k0)           = ql0(:k0) + qlten(:k0) * dt
-            qi0_s(:k0)           = qi0(:k0) + qiten(:k0) * dt
-            s0_s(:k0)            = s0(:k0)  +  sten(:k0) * dt 
-            u0_s(:k0)            = u0(:k0)  +  uten(:k0) * dt
-            v0_s(:k0)            = v0(:k0)  +  vten(:k0) * dt 
+               ! ------------------------------------------------------------------- !
+               ! Save the output from "iter_cin = 1"                                 !
+               ! These output will be writed-out if "iter_cin = 1" was not performed !
+               ! for some reasons.                                                   !
+               ! ------------------------------------------------------------------- !
+
+               qv0_s(:k0)           = qv0(:k0) + qvten(:k0) * dt
+               ql0_s(:k0)           = ql0(:k0) + qlten(:k0) * dt
+               qi0_s(:k0)           = qi0(:k0) + qiten(:k0) * dt
+               s0_s(:k0)            = s0(:k0)  +  sten(:k0) * dt 
+               u0_s(:k0)            = u0(:k0)  +  uten(:k0) * dt
+               v0_s(:k0)            = v0(:k0)  +  vten(:k0) * dt 
 !           qt0_s(:k0)           = qv0_s(:k0) + ql0_s(:k0) + qi0_s(:k0)
-            t0_s(:k0)            = t0(:k0)  +  sten(:k0) * dt / cp
-            if (dotransport.eq.1) then
-               do m = 1, ncnst
-                  tr0_s(:k0,m)       = tr0(:k0,m) + trten(:k0,m) * dt
-               enddo
-            endif
+               t0_s(:k0)            = t0(:k0)  +  sten(:k0) * dt / cp
+               if (dotransport.eq.1) then
+                  do m = 1, ncnst
+                     tr0_s(:k0,m)       = tr0(:k0,m) + trten(:k0,m) * dt
+                  enddo
+               endif
 
-            umf_s(0:k0)          = umf(0:k0)
-            dcm_s(:k0)           = dcm(:k0)
-            qvten_s(:k0)         = qvten(:k0)
-            qlten_s(:k0)         = qlten(:k0)  
-            qiten_s(:k0)         = qiten(:k0)
-            sten_s(:k0)          = sten(:k0)
-            uten_s(:k0)          = uten(:k0)  
-            vten_s(:k0)          = vten(:k0)
-            qrten_s(:k0)         = qrten(:k0)
-            qsten_s(:k0)         = qsten(:k0)  
-            cush_s               = cush
-            cufrc_s(:k0)         = cufrc(:k0)  
-            slflx_s(0:k0)        = slflx(0:k0)  
-            qtflx_s(0:k0)        = qtflx(0:k0)  
-            uflx_s(0:k0)         = uflx(0:k0)  
-            vflx_s(0:k0)         = vflx(0:k0)  
-            qcu_s(:k0)           = qcu(:k0)  
-            qlu_s(:k0)           = qlu(:k0)  
-            qiu_s(:k0)           = qiu(:k0)  
-            fer_s(:k0)           = fer(:k0)  
-            fdr_s(:k0)           = fdr(:k0)  
-            xc_s(:k0)            = xco(:k0)
-            cin_s                 = cin
-            cinlcl_s              = cinlcl
-            cbmf_s                = cbmf
-            qc_s(:k0)            = qc(:k0)
-            qldet_s(:k0)         = qlten_det(:k0)
-            qidet_s(:k0)         = qiten_det(:k0)
-            qlsub_s(:k0)         = qlten_sink(:k0)
-            qisub_s(:k0)         = qiten_sink(:k0)
+               umf_s(0:k0)          = umf(0:k0)
+               dcm_s(:k0)           = dcm(:k0)
+               qvten_s(:k0)         = qvten(:k0)
+               qlten_s(:k0)         = qlten(:k0)  
+               qiten_s(:k0)         = qiten(:k0)
+               sten_s(:k0)          = sten(:k0)
+               uten_s(:k0)          = uten(:k0)  
+               vten_s(:k0)          = vten(:k0)
+               qrten_s(:k0)         = qrten(:k0)
+               qsten_s(:k0)         = qsten(:k0)  
+               cush_s               = cush
+               cufrc_s(:k0)         = cufrc(:k0)  
+               slflx_s(0:k0)        = slflx(0:k0)  
+               qtflx_s(0:k0)        = qtflx(0:k0)  
+               uflx_s(0:k0)         = uflx(0:k0)  
+               vflx_s(0:k0)         = vflx(0:k0)  
+               qcu_s(:k0)           = qcu(:k0)  
+               qlu_s(:k0)           = qlu(:k0)  
+               qiu_s(:k0)           = qiu(:k0)  
+               fer_s(:k0)           = fer(:k0)  
+               fdr_s(:k0)           = fdr(:k0)  
+               xc_s(:k0)            = xco(:k0)
+               cin_s                 = cin
+               cinlcl_s              = cinlcl
+               cbmf_s                = cbmf
+               qc_s(:k0)            = qc(:k0)
+               qldet_s(:k0)         = qlten_det(:k0)
+               qidet_s(:k0)         = qiten_det(:k0)
+               qlsub_s(:k0)         = qlten_sink(:k0)
+               qisub_s(:k0)         = qiten_sink(:k0)
 
 !           slten_s(:k0)         = slten(:k0)
-            ufrc_s(0:k0)         = ufrc(0:k0) 
+               ufrc_s(0:k0)         = ufrc(0:k0) 
 
 
 #ifdef UWDIAG         
-            cnt_s                = cnt
-            cnb_s                = cnb
-            qtten_s(:k0)         = qtten(:k0)
-            ufrcinvbase_s        = ufrcinvbase
-            ufrclcl_s            = ufrclcl 
-            winvbase_s           = winvbase
-            wlcl_s               = wlcl
-            plcl_s               = plcl
-            pinv_s               = pifc0(kinv-1)
-            plfc_s               = plfc        
-            prel_s               = prel        
-            pbup_s               = pifc0(kbup)
-            ppen_s               = pifc0(kpen-1) + ppen        
-            qtsrc_s              = qtsrc
-            thlsrc_s             = thlsrc
-            thvlsrc_s            = thvlsrc
-            emfkbup_s            = emf(kbup)
-            cbmflimit_s          = cbmflimit
-            tkeavg_s             = tkeavg
-            zinv_s               = zifc0(kinv-1)
-            rcwp_s               = rcwp
-            rlwp_s               = rlwp
-            riwp_s               = riwp
-            wu_s(0:k0)           = wu(0:k0)
-            qtu_s(0:k0)          = qtu(0:k0)
-            thlu_s(0:k0)         = thlu(0:k0)
-            thvu_s(0:k0)         = thvu(0:k0)
-            uu_s(0:k0)           = uu(0:k0)
-            vu_s(0:k0)           = vu(0:k0)
-            qtu_emf_s(0:k0)      = qtu_emf(0:k0)
-            thlu_emf_s(0:k0)     = thlu_emf(0:k0)
-            uu_emf_s(0:k0)       = uu_emf(0:k0)
-            vu_emf_s(0:k0)       = vu_emf(0:k0)
-            uemf_s(0:k0)         = uemf(0:k0)
+               cnt_s                = cnt
+               cnb_s                = cnb
+               qtten_s(:k0)         = qtten(:k0)
+               ufrcinvbase_s        = ufrcinvbase
+               ufrclcl_s            = ufrclcl 
+               winvbase_s           = winvbase
+               wlcl_s               = wlcl
+               plcl_s               = plcl
+               pinv_s               = pifc0(kinv-1)
+               plfc_s               = plfc        
+               prel_s               = prel        
+               pbup_s               = pifc0(kbup)
+               ppen_s               = pifc0(kpen-1) + ppen        
+               qtsrc_s              = qtsrc
+               thlsrc_s             = thlsrc
+               thvlsrc_s            = thvlsrc
+               emfkbup_s            = emf(kbup)
+               cbmflimit_s          = cbmflimit
+               tkeavg_s             = tkeavg
+               zinv_s               = zifc0(kinv-1)
+               rcwp_s               = rcwp
+               rlwp_s               = rlwp
+               riwp_s               = riwp
+               wu_s(0:k0)           = wu(0:k0)
+               qtu_s(0:k0)          = qtu(0:k0)
+               thlu_s(0:k0)         = thlu(0:k0)
+               thvu_s(0:k0)         = thvu(0:k0)
+               uu_s(0:k0)           = uu(0:k0)
+               vu_s(0:k0)           = vu(0:k0)
+               qtu_emf_s(0:k0)      = qtu_emf(0:k0)
+               thlu_emf_s(0:k0)     = thlu_emf(0:k0)
+               uu_emf_s(0:k0)       = uu_emf(0:k0)
+               vu_emf_s(0:k0)       = vu_emf(0:k0)
+               uemf_s(0:k0)         = uemf(0:k0)
 
-            dwten_s(:k0)         = dwten(:k0)
-            diten_s(:k0)         = diten(:k0)
+               dwten_s(:k0)         = dwten(:k0)
+               diten_s(:k0)         = diten(:k0)
 
-            excessu_arr_s(:k0)   = excessu_arr(:k0)
-            excess0_arr_s(:k0)   = excess0_arr(:k0)
-            xc_arr_s(:k0)        = xc_arr(:k0)
-            aquad_arr_s(:k0)     = aquad_arr(:k0)
-            bquad_arr_s(:k0)     = bquad_arr(:k0)
-            cquad_arr_s(:k0)     = cquad_arr(:k0)
-            bogbot_arr_s(:k0)    = bogbot_arr(:k0)
-            bogtop_arr_s(:k0)    = bogtop_arr(:k0)
+               excessu_arr_s(:k0)   = excessu_arr(:k0)
+               excess0_arr_s(:k0)   = excess0_arr(:k0)
+               xc_arr_s(:k0)        = xc_arr(:k0)
+               aquad_arr_s(:k0)     = aquad_arr(:k0)
+               bquad_arr_s(:k0)     = bquad_arr(:k0)
+               cquad_arr_s(:k0)     = cquad_arr(:k0)
+               bogbot_arr_s(:k0)    = bogbot_arr(:k0)
+               bogtop_arr_s(:k0)    = bogtop_arr(:k0)
 
-            if (dotransport.eq.1) then
-               do m = 1, ncnst
-                  trten_s(:k0,m)    = trten(:k0,m)
-                  trflx_s(0:k0,m)   = trflx(0:k0,m)
-                  tru_s(0:k0,m)     = tru(0:k0,m)
-                  tru_emf_s(0:k0,m) = tru_emf(0:k0,m)
-               enddo
-            endif
+               if (dotransport.eq.1) then
+                  do m = 1, ncnst
+                     trten_s(:k0,m)    = trten(:k0,m)
+                     trflx_s(0:k0,m)   = trflx(0:k0,m)
+                     tru_s(0:k0,m)     = tru(0:k0,m)
+                     tru_emf_s(0:k0,m) = tru_emf(0:k0,m)
+                  enddo
+               endif
 #endif
 
 
 
-            ! ----------------------------------------------------------------------------- ! 
-            ! Recalculate environmental variables for new cin calculation at "iter_cin = 2" ! 
-            ! using the updated state variables. Perform only for variables necessary  for  !
-            ! the new cin calculation.                                                      !
-            ! ----------------------------------------------------------------------------- !
-          
-            qv0(:k0)   = qv0_s(:k0)
-            ql0(:k0)   = ql0_s(:k0)
-            qi0(:k0)   = qi0_s(:k0)
-            s0(:k0)    = s0_s(:k0)
-            t0(:k0)    = t0_s(:k0)
-         
-            qt0(:k0)   = (qv0(:k0) + ql0(:k0) + qi0(:k0))
-            thl0(:k0)  = (t0(:k0) - xlv*ql0(:k0)/cp - xls*qi0(:k0)/cp)/exnmid0(:k0)
-            thvl0(:k0) = (1. + zvir*qt0(:k0))*thl0(:k0)
-
-            ssthl0      = slope(k0,thl0,pmid0) ! Dimension of ssthl0(:k0) is implicit
-            ssqt0       = slope(k0,qt0 ,pmid0)
-            ssu0        = slope(k0,u0  ,pmid0)
-            ssv0        = slope(k0,v0  ,pmid0)
-            if (dotransport.eq.1) then
-               do m = 1, ncnst
-                  sstr0(:k0,m) = slope(k0,tr0(:k0,m),pmid0)
-               enddo
-            endif
-
-            do k = 1, k0
-
-               thl0bot = thl0(k) + ssthl0(k) * ( pifc0(k-1) - pmid0(k) )
-               qt0bot  = qt0(k)  + ssqt0(k)  * ( pifc0(k-1) - pmid0(k) )
-               call conden(pifc0(k-1),thl0bot,qt0bot,thj,qvj,qlj,qij,qse,id_check)
-               if( id_check .eq. 1 ) then
-                  exit_conden(i) = 1.
-                  id_exit = .true.
-                  if (scverbose) then
-                     ! call write_parallel('------- UW ShCu: exit, conden')
-                  end if
-                  go to 333
-               end if
-               thv0bot(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
-               thvl0bot(k) = thl0bot * ( 1. + zvir*qt0bot )
+               ! ----------------------------------------------------------------------------- ! 
+               ! Recalculate environmental variables for new cin calculation at "iter_cin = 2" ! 
+               ! using the updated state variables. Perform only for variables necessary  for  !
+               ! the new cin calculation.                                                      !
+               ! ----------------------------------------------------------------------------- !
             
-               thl0top = thl0(k) + ssthl0(k) * ( pifc0(k) - pmid0(k) )
-               qt0top  =  qt0(k) + ssqt0(k)  * ( pifc0(k) - pmid0(k) )
-               call conden(pifc0(k),thl0top,qt0top,thj,qvj,qlj,qij,qse,id_check)
-               if( id_check .eq. 1 ) then
-                  exit_conden(i) = 1.
-                  id_exit = .true.
-                  if (scverbose) then
-                     ! call write_parallel('------- UW ShCu: exit, conden')
+               qv0(:k0)   = qv0_s(:k0)
+               ql0(:k0)   = ql0_s(:k0)
+               qi0(:k0)   = qi0_s(:k0)
+               s0(:k0)    = s0_s(:k0)
+               t0(:k0)    = t0_s(:k0)
+         
+               qt0(:k0)   = (qv0(:k0) + ql0(:k0) + qi0(:k0))
+               thl0(:k0)  = (t0(:k0) - xlv*ql0(:k0)/cp - xls*qi0(:k0)/cp)/exnmid0(:k0)
+               thvl0(:k0) = (1. + zvir*qt0(:k0))*thl0(:k0)
+
+               ssthl0      = slope(k0,thl0,pmid0) ! Dimension of ssthl0(:k0) is implicit
+               ssqt0       = slope(k0,qt0 ,pmid0)
+               ssu0        = slope(k0,u0  ,pmid0)
+               ssv0        = slope(k0,v0  ,pmid0)
+               if (dotransport.eq.1) then
+                  do m = 1, ncnst
+                     sstr0(:k0,m) = slope(k0,tr0(:k0,m),pmid0)
+                  enddo
+               endif
+
+               do k = 1, k0
+
+                  thl0bot = thl0(k) + ssthl0(k) * ( pifc0(k-1) - pmid0(k) )
+                  qt0bot  = qt0(k)  + ssqt0(k)  * ( pifc0(k-1) - pmid0(k) )
+                  call conden(pifc0(k-1),thl0bot,qt0bot,thj,qvj,qlj,qij,qse,id_check)
+                  if( id_check .eq. 1 ) then
+                     exit_conden(i) = 1.
+                     id_exit = .true.
+                     if (scverbose) then
+                        ! call write_parallel('------- UW ShCu: exit, conden')
+                     end if
+                     go to 333
                   end if
-                  go to 333
-               end if
-               thv0top(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
-               thvl0top(k) = thl0top * ( 1. + zvir*qt0top )
+                  thv0bot(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
+                  thvl0bot(k) = thl0bot * ( 1. + zvir*qt0bot )
+               
+                  thl0top = thl0(k) + ssthl0(k) * ( pifc0(k) - pmid0(k) )
+                  qt0top  =  qt0(k) + ssqt0(k)  * ( pifc0(k) - pmid0(k) )
+                  call conden(pifc0(k),thl0top,qt0top,thj,qvj,qlj,qij,qse,id_check)
+                  if( id_check .eq. 1 ) then
+                     exit_conden(i) = 1.
+                     id_exit = .true.
+                     if (scverbose) then
+                        ! call write_parallel('------- UW ShCu: exit, conden')
+                     end if
+                     go to 333
+                  end if
+                  thv0top(k)  = thj * ( 1. + zvir*qvj - qlj - qij )
+                  thvl0top(k) = thl0top * ( 1. + zvir*qt0top )
 
-            end do
+               end do
 
-         endif               ! End of 'if(iter .ne. iter_cin)' if sentence. 
+            endif               ! End of 'if(iter .ne. iter_cin)' if sentence. 
 
-      end do  ! iter loop
+         end do  ! iter loop
 
 
 
-      ! ----------------------- !
-      ! Update Output Variables !
-      ! ----------------------- !
+         ! ----------------------- !
+         ! Update Output Variables !
+         ! ----------------------- !
 
-      umf_out(i,0:k0)             = umf(0:k0)
-      umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
+         umf_out(i,0:k0)             = umf(0:k0)
+         umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
 
 !     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
-      dcm_out(i,:k0)              = dcm(:k0)
+         dcm_out(i,:k0)              = dcm(:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv
-      qvten_out(i,:k0)            = qvten(:k0)
-      qlten_out(i,:k0)            = qlten(:k0)
-      qiten_out(i,:k0)            = qiten(:k0)
-      sten_out(i,:k0)             = sten(:k0)
-      uten_out(i,:k0)             = uten(:k0)
-      vten_out(i,:k0)             = vten(:k0)
-      qrten_out(i,:k0)            = qrten(:k0)
-      qsten_out(i,:k0)            = qsten(:k0)
-      cufrc_out(i,:k0)            = cufrc(:k0)
-      cush_inout(i)               = cush
-      qldet_out(i,:k0)            = qlten_det(:k0)
-      qidet_out(i,:k0)            = qiten_det(:k0)
-      qlsub_out(i,:k0)            = qlten_sink(:k0)
-      qisub_out(i,:k0)            = qiten_sink(:k0)
-      ndrop_out(i,:k0)            = qlten_det(:k0)/(4188.787*rdrop**3)
+         qvten_out(i,:k0)            = qvten(:k0)
+         qlten_out(i,:k0)            = qlten(:k0)
+         qiten_out(i,:k0)            = qiten(:k0)
+         sten_out(i,:k0)             = sten(:k0)
+         uten_out(i,:k0)             = uten(:k0)
+         vten_out(i,:k0)             = vten(:k0)
+         qrten_out(i,:k0)            = qrten(:k0)
+         qsten_out(i,:k0)            = qsten(:k0)
+         cufrc_out(i,:k0)            = cufrc(:k0)
+         cush_inout(i)               = cush
+         qldet_out(i,:k0)            = qlten_det(:k0)
+         qidet_out(i,:k0)            = qiten_det(:k0)
+         qlsub_out(i,:k0)            = qlten_sink(:k0)
+         qisub_out(i,:k0)            = qiten_sink(:k0)
+         ndrop_out(i,:k0)            = qlten_det(:k0)/(4188.787*rdrop**3)
 !     ndrop_out(i,:k0)            = qlten_det(:k0)/(4.19e-12) !(1.15e-11) ! /drop mass
-      nice_out(i,:k0)             = qiten_det(:k0)/(3.0e-10) ! /crystal mass
-      qtflx_out(i,0:k0)           = qtflx(0:k0)
-      slflx_out(i,0:k0)           = slflx(0:k0)
-      uflx_out(i,0:k0)            = uflx(0:k0)
-      vflx_out(i,0:k0)            = vflx(0:k0)
+         nice_out(i,:k0)             = qiten_det(:k0)/(3.0e-10) ! /crystal mass
+         qtflx_out(i,0:k0)           = qtflx(0:k0)
+         slflx_out(i,0:k0)           = slflx(0:k0)
+         uflx_out(i,0:k0)            = uflx(0:k0)
+         vflx_out(i,0:k0)            = vflx(0:k0)
 
-      if (dotransport.eq.1) then
-         do m = 1, ncnst
-            tr0_inout(i,:k0,m)      = tr0_inout(i,:k0,m) + trten(:k0,m) * dt
-         enddo
-      endif
+         if (dotransport.eq.1) then
+            do m = 1, ncnst
+               tr0_inout(i,:k0,m)      = tr0_inout(i,:k0,m) + trten(:k0,m) * dt
+            enddo
+         endif
   
      ! ------------------------------------------------- !
      ! Below are specific diagnostic output for detailed !
      ! analysis of cumulus scheme                        !
      ! ------------------------------------------------- !
 
-      fer_out(i,1:kpen)          = fer(:kpen)  
-      fdr_out(i,1:kpen)          = fdr(:kpen)  
+         fer_out(i,1:kpen)          = fer(:kpen)  
+         fdr_out(i,1:kpen)          = fdr(:kpen)  
 
 #ifdef UWDIAG
-      cldhgt_out(i)               = cldhgt
-      cbmf_out(i)                 = cbmf
-      cnt_out(i)                  = cnt
-      cnb_out(i)                  = cnb
-      qcu_out(i,:k0)              = qcu(:k0)
-      qlu_out(i,:k0)              = qlu(:k0)
-      qiu_out(i,:k0)              = qiu(:k0)
-      qc_out(i,:k0)               = qc(:k0)
-      xc_out(i,1:k0)           = xco(:k0)
-      cinh_out(i)              = cin
-      cinlclh_out(i)           = cinlcl
+         cldhgt_out(i)               = cldhgt
+         cbmf_out(i)                 = cbmf
+         cnt_out(i)                  = cnt
+         cnb_out(i)                  = cnb
+         qcu_out(i,:k0)              = qcu(:k0)
+         qlu_out(i,:k0)              = qlu(:k0)
+         qiu_out(i,:k0)              = qiu(:k0)
+         qc_out(i,:k0)               = qc(:k0)
+         xc_out(i,1:k0)           = xco(:k0)
+         cinh_out(i)              = cin
+         cinlclh_out(i)           = cinlcl
 !     qtten_out(i,1:k0)        = qtten(:k0)
 !     slten_out(i,1:k0)        = slten(:k0)
 !     ufrc_out(i,0:k0)         = ufrc(0:k0)
 !     uflx_out(i,0:k0)         = uflx(0:k0)  
 !     vflx_out(i,0:k0)         = vflx(0:k0)  
      
-      ufrcinvbase_out(i)           = ufrcinvbase
-      ufrclcl_out(i)               = ufrclcl 
-      winvbase_out(i)              = winvbase
-      wlcl_out(i)                  = wlcl
-      plcl_out(i)                  = plcl
-      pinv_out(i)                  = pifc0(kinv-1)
-      plfc_out(i)                  = plfc    
-      prel_out(i)                  = prel    
-      pbup_out(i)                  = pifc0(kbup)        
-      ppen_out(i)                  = pifc0(kpen-1) + ppen            
-      qtsrc_out(i)                 = qtsrc
-      thlsrc_out(i)                = thlsrc
-      thvlsrc_out(i)               = thvlsrc
-      emfkbup_out(i)               = emf(kbup)
-      cbmflimit_out(i)             = cbmflimit
-      tkeavg_out(i)                = tkeavg
-      zinv_out(i)                  = zifc0(kinv-1)
-      rcwp_out(i)                  = rcwp
-      rlwp_out(i)                  = rlwp
-      riwp_out(i)                  = riwp
+         ufrcinvbase_out(i)           = ufrcinvbase
+         ufrclcl_out(i)               = ufrclcl 
+         winvbase_out(i)              = winvbase
+         wlcl_out(i)                  = wlcl
+         plcl_out(i)                  = plcl
+         pinv_out(i)                  = pifc0(kinv-1)
+         plfc_out(i)                  = plfc    
+         prel_out(i)                  = prel    
+         pbup_out(i)                  = pifc0(kbup)        
+         ppen_out(i)                  = pifc0(kpen-1) + ppen            
+         qtsrc_out(i)                 = qtsrc
+         thlsrc_out(i)                = thlsrc
+         thvlsrc_out(i)               = thvlsrc
+         emfkbup_out(i)               = emf(kbup)
+         cbmflimit_out(i)             = cbmflimit
+         tkeavg_out(i)                = tkeavg
+         zinv_out(i)                  = zifc0(kinv-1)
+         rcwp_out(i)                  = rcwp
+         rlwp_out(i)                  = rlwp
+         riwp_out(i)                  = riwp
 
-      wu_out(i,0:k0)           = wu(0:k0)
-      qtu_out(i,0:k0)          = qtu(0:k0)
-      thlu_out(i,0:k0)         = thlu(0:k0)
-      thvu_out(i,0:k0)         = thvu(0:k0)
-      uu_out(i,0:k0)           = uu(0:k0)
-      vu_out(i,0:k0)           = vu(0:k0)
-      qtu_emf_out(i,0:k0)      = qtu_emf(0:k0)
-      thlu_emf_out(i,0:k0)     = thlu_emf(0:k0)
-      uu_emf_out(i,0:k0)       = uu_emf(0:k0)
-      vu_emf_out(i,0:k0)       = vu_emf(0:k0)
-      uemf_out(i,0:k0)         = uemf(0:k0)
+         wu_out(i,0:k0)           = wu(0:k0)
+         qtu_out(i,0:k0)          = qtu(0:k0)
+         thlu_out(i,0:k0)         = thlu(0:k0)
+         thvu_out(i,0:k0)         = thvu(0:k0)
+         uu_out(i,0:k0)           = uu(0:k0)
+         vu_out(i,0:k0)           = vu(0:k0)
+         qtu_emf_out(i,0:k0)      = qtu_emf(0:k0)
+         thlu_emf_out(i,0:k0)     = thlu_emf(0:k0)
+         uu_emf_out(i,0:k0)       = uu_emf(0:k0)
+         vu_emf_out(i,0:k0)       = vu_emf(0:k0)
+         uemf_out(i,0:k0)         = uemf(0:k0)
 
-      dwten_out(i,1:k0)        = dwten(:k0)
-      diten_out(i,1:k0)        = diten(:k0)
+         dwten_out(i,1:k0)        = dwten(:k0)
+         diten_out(i,1:k0)        = diten(:k0)
 
-      excessu_arr_out(i,1:k0)  = excessu_arr(:k0)
-      excess0_arr_out(i,1:k0)  = excess0_arr(:k0)
-      xc_arr_out(i,1:k0)       = xc_arr(:k0)
-      aquad_arr_out(i,1:k0)    = aquad_arr(:k0)
-      bquad_arr_out(i,1:k0)    = bquad_arr(:k0)
-      cquad_arr_out(i,1:k0)    = cquad_arr(:k0)
-      bogbot_arr_out(i,1:k0)   = bogbot_arr(:k0)
-      bogtop_arr_out(i,1:k0)   = bogtop_arr(:k0)
+         excessu_arr_out(i,1:k0)  = excessu_arr(:k0)
+         excess0_arr_out(i,1:k0)  = excess0_arr(:k0)
+         xc_arr_out(i,1:k0)       = xc_arr(:k0)
+         aquad_arr_out(i,1:k0)    = aquad_arr(:k0)
+         bquad_arr_out(i,1:k0)    = bquad_arr(:k0)
+         cquad_arr_out(i,1:k0)    = cquad_arr(:k0)
+         bogbot_arr_out(i,1:k0)   = bogbot_arr(:k0)
+         bogtop_arr_out(i,1:k0)   = bogtop_arr(:k0)
 
-      if (dotransport.eq.1) then
-         do m = 1, ncnst
-         trten_out(i,:k0,m)    = trten(:k0,m)
-         trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
-         tru_out(i,0:k0,m)     = tru(0:k0,m)
-         tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
-         enddo
-      endif
+         if (dotransport.eq.1) then
+            do m = 1, ncnst
+            trten_out(i,:k0,m)    = trten(:k0,m)
+            trflx_out(i,0:k0,m)   = trflx(0:k0,m)  
+            tru_out(i,0:k0,m)     = tru(0:k0,m)
+            tru_emf_out(i,0:k0,m) = tru_emf(0:k0,m)
+            enddo
+         endif
 #endif
 
-333   if (id_exit) then
+333      if (id_exit) then
 
-         exit_uwcu(i) = 1.
-         if (scverbose) then
-            ! call write_parallel('------- UW ShCu: Exited!')
-         end if
+            exit_uwcu(i) = 1.
+            if (scverbose) then
+               ! call write_parallel('------- UW ShCu: Exited!')
+            end if
 
-     ! --------------------------------------------------------------------- !
-     ! Initialize output variables when cumulus convection was not performed.!
-     ! --------------------------------------------------------------------- !
+            ! --------------------------------------------------------------------- !
+            ! Initialize output variables when cumulus convection was not performed.!
+            ! --------------------------------------------------------------------- !
      
-         umf_out(i,0:k0)             = 0.   
-         dcm_out(i,:k0)              = 0.   
-         qvten_out(i,:k0)            = 0.
-         qlten_out(i,:k0)            = 0.
-         qiten_out(i,:k0)            = 0.
-         sten_out(i,:k0)             = 0.
-         uten_out(i,:k0)             = 0.
-         vten_out(i,:k0)             = 0.
-         qrten_out(i,:k0)            = 0.
-         qsten_out(i,:k0)            = 0.
-         cufrc_out(i,:k0)            = 0.
-         cush_inout(i)               = -1.
-         qldet_out(i,:k0)            = 0.
-         qidet_out(i,:k0)            = 0.
-         qtflx_out(i,0:k0)           = 0.
-         slflx_out(i,0:k0)           = 0.
-         uflx_out(i,0:k0)            = 0.
-         vflx_out(i,0:k0)            = 0.
+            umf_out(i,0:k0)             = 0.   
+            dcm_out(i,:k0)              = 0.   
+            qvten_out(i,:k0)            = 0.
+            qlten_out(i,:k0)            = 0.
+            qiten_out(i,:k0)            = 0.
+            sten_out(i,:k0)             = 0.
+            uten_out(i,:k0)             = 0.
+            vten_out(i,:k0)             = 0.
+            qrten_out(i,:k0)            = 0.
+            qsten_out(i,:k0)            = 0.
+            cufrc_out(i,:k0)            = 0.
+            cush_inout(i)               = -1.
+            qldet_out(i,:k0)            = 0.
+            qidet_out(i,:k0)            = 0.
+            qtflx_out(i,0:k0)           = 0.
+            slflx_out(i,0:k0)           = 0.
+            uflx_out(i,0:k0)            = 0.
+            vflx_out(i,0:k0)            = 0.
 
-         fer_out(i,1:k0)             = MAPL_UNDEF
-         fdr_out(i,1:k0)             = MAPL_UNDEF
+            fer_out(i,1:k0)             = MAPL_UNDEF
+            fdr_out(i,1:k0)             = MAPL_UNDEF
 
 #ifdef UWDIAG
-         cbmf_out(i)                 = 0.   
-         cnt_out(i)                  = 1.
-         cnb_out(i)                  = real(k0)
-         qcu_out(i,:k0)              = 0.
-         qlu_out(i,:k0)              = 0.
-         qiu_out(i,:k0)              = 0.
-         qc_out(i,:k0)               = 0.
-         xc_out(i,1:k0)              = MAPL_UNDEF
-         cinh_out(i)                 = cin 
-         cinlclh_out(i)              = cinlcl
+            cbmf_out(i)                 = 0.   
+            cnt_out(i)                  = 1.
+            cnb_out(i)                  = real(k0)
+            qcu_out(i,:k0)              = 0.
+            qlu_out(i,:k0)              = 0.
+            qiu_out(i,:k0)              = 0.
+            qc_out(i,:k0)               = 0.
+            xc_out(i,1:k0)              = MAPL_UNDEF
+            cinh_out(i)                 = cin 
+            cinlclh_out(i)              = cinlcl
 !     qtten_out(i,k0:1:-1)        = 0.
 !     slten_out(i,k0:1:-1)        = 0.
 !     ufrc_out(i,k0:0:-1)         = 0.
 !     uflx_out(i,k0:0:-1)         = 0.  
 !     vflx_out(i,k0:0:-1)         = 0.  
 
-         ufrcinvbase_out(i)           = 0. 
-         ufrclcl_out(i)               = 0. 
-         winvbase_out(i)              = 0.    
-         wlcl_out(i)                  = MAPL_UNDEF    
-         plcl_out(i)                  = MAPL_UNDEF
-         pinv_out(i)                  = MAPL_UNDEF
-         prel_out(i)                  = MAPL_UNDEF
-         plfc_out(i)                  = MAPL_UNDEF
-         pbup_out(i)                  = MAPL_UNDEF
-         ppen_out(i)                  = MAPL_UNDEF
-         qtsrc_out(i)                 = MAPL_UNDEF 
-         thlsrc_out(i)                = MAPL_UNDEF    
-         thvlsrc_out(i)               = MAPL_UNDEF
-         emfkbup_out(i)               = 0.
-         cbmflimit_out(i)             = 0.    
-         tkeavg_out(i)                = tkeavg    
-         zinv_out(i)                  = 0.    
-         rcwp_out(i)                  = 0.    
-         rlwp_out(i)                  = 0.    
-         riwp_out(i)                  = 0.    
+            ufrcinvbase_out(i)           = 0. 
+            ufrclcl_out(i)               = 0. 
+            winvbase_out(i)              = 0.    
+            wlcl_out(i)                  = MAPL_UNDEF    
+            plcl_out(i)                  = MAPL_UNDEF
+            pinv_out(i)                  = MAPL_UNDEF
+            prel_out(i)                  = MAPL_UNDEF
+            plfc_out(i)                  = MAPL_UNDEF
+            pbup_out(i)                  = MAPL_UNDEF
+            ppen_out(i)                  = MAPL_UNDEF
+            qtsrc_out(i)                 = MAPL_UNDEF 
+            thlsrc_out(i)                = MAPL_UNDEF    
+            thvlsrc_out(i)               = MAPL_UNDEF
+            emfkbup_out(i)               = 0.
+            cbmflimit_out(i)             = 0.    
+            tkeavg_out(i)                = tkeavg    
+            zinv_out(i)                  = 0.    
+            rcwp_out(i)                  = 0.    
+            rlwp_out(i)                  = 0.    
+            riwp_out(i)                  = 0.    
 
-         wu_out(i,k0:0:-1)           = MAPL_UNDEF
-         qtu_out(i,k0:0:-1)          = MAPL_UNDEF
-         thlu_out(i,k0:0:-1)         = MAPL_UNDEF 
-         thvu_out(i,k0:0:-1)         = MAPL_UNDEF 
-         uu_out(i,k0:0:-1)           = MAPL_UNDEF
-         vu_out(i,k0:0:-1)           = MAPL_UNDEF
-         qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEF
-         thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEF         
-         uu_emf_out(i,k0:0:-1)       = MAPL_UNDEF  
-         vu_emf_out(i,k0:0:-1)       = MAPL_UNDEF
-         uemf_out(i,k0:0:-1)         = MAPL_UNDEF
-         
-         dwten_out(i,k0:1:-1)        = 0.    
-         diten_out(i,k0:1:-1)        = 0.    
+            wu_out(i,k0:0:-1)           = MAPL_UNDEF
+            qtu_out(i,k0:0:-1)          = MAPL_UNDEF
+            thlu_out(i,k0:0:-1)         = MAPL_UNDEF 
+            thvu_out(i,k0:0:-1)         = MAPL_UNDEF 
+            uu_out(i,k0:0:-1)           = MAPL_UNDEF
+            vu_out(i,k0:0:-1)           = MAPL_UNDEF
+            qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEF
+            thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEF         
+            uu_emf_out(i,k0:0:-1)       = MAPL_UNDEF  
+            vu_emf_out(i,k0:0:-1)       = MAPL_UNDEF
+            uemf_out(i,k0:0:-1)         = MAPL_UNDEF
+            
+            dwten_out(i,k0:1:-1)        = 0.    
+            diten_out(i,k0:1:-1)        = 0.    
 
-         excessu_arr_out(i,k0:1:-1)  = 0.    
-         excess0_arr_out(i,k0:1:-1)  = 0.    
-         xc_arr_out(i,k0:1:-1)       = 0.    
-         aquad_arr_out(i,k0:1:-1)    = 0.    
-         bquad_arr_out(i,k0:1:-1)    = 0.    
-         cquad_arr_out(i,k0:1:-1)    = 0.    
-         bogbot_arr_out(i,k0:1:-1)   = 0.    
-         bogtop_arr_out(i,k0:1:-1)   = 0.    
+            excessu_arr_out(i,k0:1:-1)  = 0.    
+            excess0_arr_out(i,k0:1:-1)  = 0.    
+            xc_arr_out(i,k0:1:-1)       = 0.    
+            aquad_arr_out(i,k0:1:-1)    = 0.    
+            bquad_arr_out(i,k0:1:-1)    = 0.    
+            cquad_arr_out(i,k0:1:-1)    = 0.    
+            bogbot_arr_out(i,k0:1:-1)   = 0.    
+            bogtop_arr_out(i,k0:1:-1)   = 0.    
 
-         if (dotransport.eq.1) then
-            do m = 1, ncnst
-               trten_out(i,:k0,m)       = 0.
-               trflx_out(i,k0:0:-1,m)   = 0.  
-               tru_out(i,k0:0:-1,m)     = 0.
-               tru_emf_out(i,k0:0:-1,m) = 0.
-            enddo
-         endif
+            if (dotransport.eq.1) then
+               do m = 1, ncnst
+                  trten_out(i,:k0,m)       = 0.
+                  trflx_out(i,k0:0:-1,m)   = 0.  
+                  tru_out(i,k0:0:-1,m)     = 0.
+                  tru_emf_out(i,k0:0:-1,m) = 0.
+               enddo
+            endif
 #endif
 
          end if
 
       end do ! column i loop
+      call system_clock(t_end)
+
+      print*,'****** compute_uwshcu : Column Loop Eclipsed Time = ', (t_end - t_start) / rate
 
       return
 
