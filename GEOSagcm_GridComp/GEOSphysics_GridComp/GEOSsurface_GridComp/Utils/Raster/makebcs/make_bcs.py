@@ -11,7 +11,6 @@ from make_bcs_questionary import *
 from make_bcs_ease import *
 from make_bcs_latlon import *
 from make_bcs_cube import *
-from make_bcs_stretched_cube import *
 
 # Define the argument parser
 def parse_args():
@@ -76,9 +75,7 @@ def main():
          make_bcs_ease(config)    
       if 'Lat-Lon' in config['grid_type']:
          make_bcs_latlon(config)    
-      if 'Stretched_Cube-Sphere' in config['grid_type']:
-         make_bcs_stretched_cube(config)    
-      if 'Cubed-Sphere' in config['grid_type']:
+      if 'Cubed-Sphere' in config['grid_type'] or 'Stretched_CS' in config['grid_type']:
          make_bcs_cube(config)    
 
 if __name__ == '__main__' :

@@ -196,7 +196,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "message": "Select grid types: \n ",
             "choices": [ \
                     "Cubed-Sphere", \
-                    "Stretched_Cube-Sphere", \
+                    "Stretched_CS", \
                     "Lat-Lon", \
                     "EASEv2", \
                     "EASEv1"],
@@ -212,8 +212,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
 
        {
             "type": "checkbox",
-            "name": "Stretched_Cube-Sphere",
-            "message": f'''Choose Stretched_Cube-Sphere grid option:
+            "name": "Stretched_CS",
+            "message": f'''Choose Stretched Cube-Sphere grid option:
                Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Choices
                -----  --------------  ---------  ---------  ------------------------
                SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
@@ -225,7 +225,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c1080 -- 1/12 deg (  9   km)", \
                  "c1536 -- 1/16 deg (  7   km)", \
                  "c2160 -- 1/12 deg (  4   km)"],
-            "when": lambda x:  "Stretched_Cube-Sphere" == x['grid_type'],
+            "when": lambda x:  "Stretched_CS" == x['grid_type'],
         },
 
        {
@@ -292,14 +292,14 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
-            "when": lambda x:  "Stretched_Cube-Sphere" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
+            "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
         },
 
    ]
    answers = questionary.prompt(questions)
 
   # # List of excluded grid types
-   excluded_grid_types = ["Cubed-Sphere", "Stretched_Cube-Sphere"]
+   excluded_grid_types = ["Cubed-Sphere", "Stretched_CS"]
 
    # Check if the grid_type is not in the list of excluded options and modify the 'Ocean' key
    if answers['grid_type'] not in excluded_grid_types:
@@ -350,13 +350,13 @@ def ask_questions(default_grid="Cubed-Sphere"):
    answers['Cubed-Sphere'] = res 
 
    res = []
-   for x in answers.get('Stretched_Cube-Sphere',[]):
+   for x in answers.get('Stretched_CS',[]):
       short_res = x.split()[0]
       res = res + [short_res]
       i = int(short_res[1:])
       im[short_res] = i
       jm[short_res] = 6*i
-   answers['Stretched_Cube-Sphere'] = res 
+   answers['Stretched_CS'] = res 
 
    answers['im'] = im
    answers['jm'] = jm
