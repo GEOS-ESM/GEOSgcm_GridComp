@@ -151,7 +151,7 @@
 
       real, save :: TMINLQU    =  ZEROC - 40.0
       real, save :: TMINICE    =  ZEROC + TMINSTR
-!$acc declare create(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
+!!$acc declare create(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
 
       !class(Logger), pointer :: lgr
       !logical :: debugIsEnabled
@@ -220,7 +220,7 @@
 
 
        function QSATLQU0(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ
@@ -244,7 +244,7 @@
        end function QSATLQU0
 
        function QSATLQU1(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:)
          real, optional,    intent(IN) :: PL(:)
          real, optional,    intent(OUT):: DQ(:)
@@ -269,7 +269,7 @@
        end function QSATLQU1
 
        function QSATLQU2(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:,:)
          real, optional,    intent(IN) :: PL(:,:)
          real, optional,    intent(OUT):: DQ(:,:)
@@ -296,7 +296,7 @@
        end function QSATLQU2
 
        function QSATLQU3(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:,:,:)
          real, optional,    intent(IN) :: PL(:,:,:)
          real, optional,    intent(OUT):: DQ(:,:,:)
@@ -328,7 +328,7 @@
 
 
        function QSATICE0(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ
@@ -352,7 +352,7 @@
        end function QSATICE0
 
        function QSATICE1(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:)
          real, optional,    intent(IN) :: PL(:)
          real, optional,    intent(OUT):: DQ(:)
@@ -377,7 +377,7 @@
        end function QSATICE1
 
        function QSATICE2(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:,:)
          real, optional,    intent(IN) :: PL(:,:)
          real, optional,    intent(OUT):: DQ(:,:)
@@ -404,7 +404,7 @@
        end function QSATICE2
 
        function QSATICE3(TL,PL,DQ) result(QS)
-!$acc routine seq
+!!$acc routine seq
          real,              intent(IN) :: TL(:,:,:)
          real, optional,    intent(IN) :: PL(:,:,:)
          real, optional,    intent(OUT):: DQ(:,:,:)
@@ -508,7 +508,7 @@
     
        
   function QSAT0(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
-!$acc routine seq
+!!$acc routine seq
     real,   intent(IN) :: TL, PL
     logical, optional, intent(IN) :: PASCALS
     real,    optional, intent(IN) :: RAMP
@@ -603,7 +603,7 @@
   end function QSAT0
 
     function QSAT1(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:), PL(:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -626,7 +626,7 @@
     end function QSAT1
 
     function QSAT2(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:,:), PL(:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -651,7 +651,7 @@
     end function QSAT2
 
     function QSAT3(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:,:,:), PL(:,:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -731,7 +731,7 @@
 
     
     function DQSAT0(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
-!$acc routine seq
+!!$acc routine seq
       real,   intent(IN) :: TL, PL
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -825,7 +825,7 @@
     end function DQSAT0
         
     function DQSAT1(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:), PL(:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -848,7 +848,7 @@
     end function DQSAT1
 
     function DQSAT2(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:,:), PL(:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -873,7 +873,7 @@
     end function DQSAT2
 
     function DQSAT3(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
-!$acc routine seq
+!!$acc routine seq
       real,              intent(IN) :: TL(:,:,:), PL(:,:,:)
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -908,7 +908,7 @@
 ! !INTERFACE:
 
        subroutine GEOS_QsatSet(USETABLE,FORMULATION)
-!$acc routine seq
+!!$acc routine seq
          logical, optional, intent(IN) :: USETABLE
          integer, optional, intent(IN) :: FORMULATION
 
@@ -954,7 +954,7 @@
 !=======================================================================================
 
         subroutine ESINIT
-!$acc routine seq
+!!$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa

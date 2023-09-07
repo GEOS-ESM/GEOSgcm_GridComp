@@ -1055,10 +1055,22 @@ contains
       ixnumliq = 3
       ixnumice = 4
 
+!$acc data create(exit_ufrc,exit_wtw,exit_drycore,exit_wu,exit_cufilter,&
+!$acc             exit_rei,exit_kinv1,exit_klfck0,exit_klclk0,exit_uwcu,exit_conden,&
+!$acc             limit_cinlcl,limit_cin,ind_delcin,limit_rei,limit_shcu,limit_negcon,&
+!$acc             limit_ufrc,limit_ppen,limit_emf,limit_cbmf) &
+!$acc      copy(tr0_inout, cush_inout) &
+!$acc      copyin(pifc0_in,zifc0_in,exnifc0_in,pmid0_in,zmid0_in,exnmid0_in,dp0_in,u0_in,v0_in,qv0_in, &
+!$acc            ql0_in,qi0_in,th0_in,tke_in,shfx,evap,cnvtr,kpbl_in) &
+!$acc      copyout(tpert_out,qpert_out,qtflx_out,slflx_out,uflx_out,vflx_out,umf_out,dcm_out,qvten_out,qlten_out, &
+!$acc              qiten_out,sten_out,uten_out,vten_out,qrten_out,qsten_out,cufrc_out,fer_out,fdr_out,qldet_out, &
+!$acc              qidet_out,qlsub_out,qisub_out,ndrop_out,nice_out)
+
    ! ------------------------------------------------------- !
    ! Initialize output variables defined for all grid points !
    ! ------------------------------------------------------- !
-
+      call system_clock(t_start, rate)
+!$acc kernels
       umf_out(:idim,0:k0)          = 0.0
       dcm_out(:idim,:k0)           = 0.0
       cufrc_out(:idim,:k0)         = 0.0
@@ -1167,10 +1179,11 @@ contains
       limit_rei(:idim)             = 0.0
 
       ind_delcin(:idim)            = 0.0
-
-
+!$acc end kernels
       call system_clock(t_end)
       print*,'------ Eclipsed Time : ', (t_end - t_start) / rate
+!$acc end data
+
 
       print*,'****** compute_uwshcu : Column Loop ******'
       call system_clock(t_start, rate)
@@ -1183,24 +1196,44 @@ contains
 
          id_exit = .false.
 
-         pifc0(0:k0)     = pifc0_in(i,0:k0)
-         zifc0(0:k0)     = zifc0_in(i,0:k0)
-         pmid0(:k0)      = pmid0_in(i,:k0)
-         zmid0(:k0)      = zmid0_in(i,:k0)
-         dp0(:k0)        = dp0_in(i,:k0)
-         u0(:k0)         = u0_in(i,:k0)
-         v0(:k0)         = v0_in(i,:k0)
-         qv0(:k0)        = qv0_in(i,:k0)
-         ql0(:k0)        = ql0_in(i,:k0)
-         qi0(:k0)        = qi0_in(i,:k0)
-         tke(1:k0)       = tke_in(i,1:k0)
+         do k = 1,k0
+            pifc0(k)     = pifc0_in(i,k)
+            zifc0(k)     = zifc0_in(i,k)
+            pmid0(k)      = pmid0_in(i,k)
+            zmid0(k)      = zmid0_in(i,k)
+            dp0(k)        = dp0_in(i,k)
+            u0(k)         = u0_in(i,k)
+            v0(k)         = v0_in(i,k)
+            qv0(k)        = qv0_in(i,k)
+            ql0(k)        = ql0_in(i,k)
+            qi0(k)        = qi0_in(i,k)
+            tke(k)       = tke_in(i,k)
+         enddo
+         pifc0(0)     = pifc0_in(i,0)
+         zifc0(0)     = zifc0_in(i,0)
+         ! pifc0(0:k0)     = pifc0_in(i,0:k0)
+         ! zifc0(0:k0)     = zifc0_in(i,0:k0)
+         ! pmid0(:k0)      = pmid0_in(i,:k0)
+         ! zmid0(:k0)      = zmid0_in(i,:k0)
+         ! dp0(:k0)        = dp0_in(i,:k0)
+         ! u0(:k0)         = u0_in(i,:k0)
+         ! v0(:k0)         = v0_in(i,:k0)
+         ! qv0(:k0)        = qv0_in(i,:k0)
+         ! ql0(:k0)        = ql0_in(i,:k0)
+         ! qi0(:k0)        = qi0_in(i,:k0)
+         ! tke(1:k0)       = tke_in(i,1:k0)
 !         pblh            = pblh_in(i)
          cush            = cush_inout(i)
 
          if (dotransport.eq.1) then
             do m = 1,ncnst   ! loop over tracers
-               tr0(:k0,m) = tr0_inout(i,:k0,m)
-            end do
+               do k = 1,k0
+                  tr0(k,m) = tr0_inout(i,k,m)
+               end do
+            enddo
+            ! do m = 1,ncnst   ! loop over tracers
+            !    tr0(:k0,m) = tr0_inout(i,:k0,m)
+            ! end do
          endif
 
          !------------------------------------------------------!
@@ -1210,13 +1243,24 @@ contains
 
          ! Compute internal environmental variables
 
-         exnmid0(:k0) = exnmid0_in(i,:k0)
-         exnifc0(:k0) = exnifc0_in(i,:k0)
-         t0(:k0)      = th0_in(i,:k0) * exnmid0(:k0)
-         s0(:k0)      = g*zmid0(:k0) + cp*t0(:k0)
-         qt0(:k0)     = qv0(:k0) + ql0(:k0) + qi0(:k0)
-         thl0(:k0)    = ( t0(:k0) - xlv*ql0(:k0)/cp - xls*qi0(:k0)/cp ) / exnmid0(:k0)
-         thvl0(:k0)   = ( 1. + zvir*qt0(:k0) )*thl0(:k0)
+         do k = 1,k0
+            exnmid0(k) = exnmid0_in(i,k)
+            exnifc0(k) = exnifc0_in(i,k)
+            t0(k)      = th0_in(i,k) * exnmid0(k)
+            s0(k)      = g*zmid0(k) + cp*t0(k)
+            qt0(k)     = qv0(k) + ql0(k) + qi0(k)
+            thl0(k)    = ( t0(k) - xlv*ql0(k)/cp - xls*qi0(k)/cp ) / exnmid0(k)
+            thvl0(k)   = ( 1. + zvir*qt0(k) )*thl0(k)
+         enddo
+         exnifc0(0) = exnifc0_in(i,0)
+
+         ! exnmid0(:k0) = exnmid0_in(i,:k0)
+         ! exnifc0(:k0) = exnifc0_in(i,:k0)
+         ! t0(:k0)      = th0_in(i,:k0) * exnmid0(:k0)
+         ! s0(:k0)      = g*zmid0(:k0) + cp*t0(:k0)
+         ! qt0(:k0)     = qv0(:k0) + ql0(:k0) + qi0(:k0)
+         ! thl0(:k0)    = ( t0(:k0) - xlv*ql0(:k0)/cp - xls*qi0(:k0)/cp ) / exnmid0(:k0)
+         ! thvl0(:k0)   = ( 1. + zvir*qt0(:k0) )*thl0(:k0)
 
 
          ! Compute slopes of environmental variables in each layer
@@ -1384,11 +1428,23 @@ contains
 
          if (dotransport.eq.1) then
             do m = 1, ncnst
-               trflx(0:k0,m)   = 0.0
-               trten(:k0,m)    = 0.0
-               tru(0:k0,m)     = 0.0
-               tru_emf(0:k0,m) = 0.0
+               do k = 0,k0
+                  trflx(k,m)   = 0.0
+                  tru(k,m)     = 0.0
+                  tru_emf(k,m) = 0.0
+               enddo
             enddo
+            do m = 1, ncnst
+               do k = 1,k0
+                  trten(k,m)    = 0.0
+               enddo
+            enddo
+            ! do m = 1, ncnst
+            !    trflx(0:k0,m)   = 0.0
+            !    trten(:k0,m)    = 0.0
+            !    tru(0:k0,m)     = 0.0
+            !    tru_emf(0:k0,m) = 0.0
+            ! enddo
          endif
 
 
@@ -1882,28 +1938,53 @@ contains
                      enddo
                   end if
 
-                  qv0(:k0)            = qv0_o(:k0)
-                  ql0(:k0)            = ql0_o(:k0)
-                  qi0(:k0)            = qi0_o(:k0)
-                  t0(:k0)             = t0_o(:k0)
-                  s0(:k0)             = s0_o(:k0)
-                  u0(:k0)             = u0_o(:k0)
-                  v0(:k0)             = v0_o(:k0)
-                  qt0(:k0)            = qt0_o(:k0)
-                  thl0(:k0)           = thl0_o(:k0)
-                  thvl0(:k0)          = thvl0_o(:k0)
-                  ssthl0(:k0)         = ssthl0_o(:k0)
-                  ssqt0(:k0)          = ssqt0_o(:k0)
-                  thv0bot(:k0)        = thv0bot_o(:k0)
-                  thv0top(:k0)        = thv0top_o(:k0)
-                  thvl0bot(:k0)       = thvl0bot_o(:k0)
-                  thvl0top(:k0)       = thvl0top_o(:k0)
-                  ssu0(:k0)           = ssu0_o(:k0) 
-                  ssv0(:k0)           = ssv0_o(:k0) 
+                  do k = 1, k0
+                     qv0(k)            = qv0_o(k)
+                     ql0(k)            = ql0_o(k)
+                     qi0(k)            = qi0_o(k)
+                     t0(k)             = t0_o(k)
+                     s0(k)             = s0_o(k)
+                     u0(k)             = u0_o(k)
+                     v0(k)             = v0_o(k)
+                     qt0(k)            = qt0_o(k)
+                     thl0(k)           = thl0_o(k)
+                     thvl0(k)          = thvl0_o(k)
+                     ssthl0(k)         = ssthl0_o(k)
+                     ssqt0(k)          = ssqt0_o(k)
+                     thv0bot(k)        = thv0bot_o(k)
+                     thv0top(k)        = thv0top_o(k)
+                     thvl0bot(k)       = thvl0bot_o(k)
+                     thvl0top(k)       = thvl0top_o(k)
+                     ssu0(k)           = ssu0_o(k) 
+                     ssv0(k)           = ssv0_o(k) 
+                  enddo
+
+                  ! qv0(:k0)            = qv0_o(:k0)
+                  ! ql0(:k0)            = ql0_o(:k0)
+                  ! qi0(:k0)            = qi0_o(:k0)
+                  ! t0(:k0)             = t0_o(:k0)
+                  ! s0(:k0)             = s0_o(:k0)
+                  ! u0(:k0)             = u0_o(:k0)
+                  ! v0(:k0)             = v0_o(:k0)
+                  ! qt0(:k0)            = qt0_o(:k0)
+                  ! thl0(:k0)           = thl0_o(:k0)
+                  ! thvl0(:k0)          = thvl0_o(:k0)
+                  ! ssthl0(:k0)         = ssthl0_o(:k0)
+                  ! ssqt0(:k0)          = ssqt0_o(:k0)
+                  ! thv0bot(:k0)        = thv0bot_o(:k0)
+                  ! thv0top(:k0)        = thv0top_o(:k0)
+                  ! thvl0bot(:k0)       = thvl0bot_o(:k0)
+                  ! thvl0top(:k0)       = thvl0top_o(:k0)
+                  ! ssu0(:k0)           = ssu0_o(:k0) 
+                  ! ssv0(:k0)           = ssv0_o(:k0) 
                   if (dotransport.eq.1) then
                      do m = 1, ncnst
-                        tr0(:k0,m)   = tr0_o(:k0,m)
-                        sstr0(:k0,m) = sstr0_o(:k0,m)
+                        do k = 1,k0
+                           tr0(k,m)   = tr0_o(k,m)
+                           sstr0(k,m) = sstr0_o(k,m)
+                        enddo
+                        ! tr0(:k0,m)   = tr0_o(:k0,m)
+                        ! sstr0(:k0,m) = sstr0_o(:k0,m)
                      enddo
                   end if
 
@@ -1912,61 +1993,134 @@ contains
                   ! in association with cumulus convection.                !
                   ! ------------------------------------------------------ ! 
 
-                  umf(0:k0)          = 0.0
-                  dcm(:k0)           = 0.0
-                  emf(0:k0)          = 0.0
-                  slflx(0:k0)        = 0.0
-                  qtflx(0:k0)        = 0.0
-                  uflx(0:k0)         = 0.0
-                  vflx(0:k0)         = 0.0
-                  qvten(:k0)         = 0.0
-                  qlten(:k0)         = 0.0
-                  qiten(:k0)         = 0.0
-                  sten(:k0)          = 0.0
-                  uten(:k0)          = 0.0
-                  vten(:k0)          = 0.0
-                  qrten(:k0)         = 0.0
-                  qsten(:k0)         = 0.0
-                  dwten(:k0)         = 0.0
-                  diten(:k0)         = 0.0
-                  cufrc(:k0)         = 0.0
-                  qcu(:k0)           = 0.0
-                  qlu(:k0)           = 0.0
-                  qiu(:k0)           = 0.0
-                  fer(:k0)           = 0.0
-                  fdr(:k0)           = 0.0
-                  xco(:k0)           = 0.0
-                  qc(:k0)            = 0.0
-!               qldet(:k0)         = 0.0
-!               qidet(:k0)         = 0.0
-                  qlten_sub          = 0.0
-                  qiten_sub          = 0.0
-                  qc_l(:k0)          = 0.0
-                  qc_i(:k0)          = 0.0
-                  cbmf               = 0.0
-                  cnt                = k0
-                  cnb                = 0.0
-                  qtten(:k0)         = 0.0
-                  slten(:k0)         = 0.0
-                  ufrc(0:k0)         = 0.0
+                  do k = 1,k0
+                     umf(k)          = 0.0
+                     dcm(k)           = 0.0
+                     emf(k)          = 0.0
+                     slflx(k)        = 0.0
+                     qtflx(k)        = 0.0
+                     uflx(k)         = 0.0
+                     vflx(k)         = 0.0
+                     qvten(k)         = 0.0
+                     qlten(k)         = 0.0
+                     qiten(k)         = 0.0
+                     sten(k)          = 0.0
+                     uten(k)          = 0.0
+                     vten(k)          = 0.0
+                     qrten(k)         = 0.0
+                     qsten(k)         = 0.0
+                     dwten(k)         = 0.0
+                     diten(k)         = 0.0
+                     cufrc(k)         = 0.0
+                     qcu(k)           = 0.0
+                     qlu(k)           = 0.0
+                     qiu(k)           = 0.0
+                     fer(k)           = 0.0
+                     fdr(k)           = 0.0
+                     xco(k)           = 0.0
+                     qc(k)            = 0.0
+                     qc_l(k)          = 0.0
+                     qc_i(k)          = 0.0
+                     qtten(k)         = 0.0
+                     slten(k)         = 0.0
+                     ufrc(k)         = 0.0
 
-                  thlu(0:k0)         = MAPL_UNDEF
-                  qtu(0:k0)          = MAPL_UNDEF
-                  uu(0:k0)           = MAPL_UNDEF
-                  vu(0:k0)           = MAPL_UNDEF
-                  wu(0:k0)           = MAPL_UNDEF
-                  thvu(0:k0)         = MAPL_UNDEF
-                  thlu_emf(0:k0)     = MAPL_UNDEF
-                  qtu_emf(0:k0)      = MAPL_UNDEF
-                  uu_emf(0:k0)       = MAPL_UNDEF
-                  vu_emf(0:k0)       = MAPL_UNDEF
+                     thlu(k)         = MAPL_UNDEF
+                     qtu(k)          = MAPL_UNDEF
+                     uu(k)           = MAPL_UNDEF
+                     vu(k)           = MAPL_UNDEF
+                     wu(k)           = MAPL_UNDEF
+                     thvu(k)         = MAPL_UNDEF
+                     thlu_emf(k)     = MAPL_UNDEF
+                     qtu_emf(k)      = MAPL_UNDEF
+                     uu_emf(k)       = MAPL_UNDEF
+                     vu_emf(k)       = MAPL_UNDEF
+                  enddo
+
+                  umf(0)          = 0.0
+                  slflx(0)        = 0.0
+                  qtflx(0)        = 0.0
+                  uflx(0)         = 0.0
+                  vflx(0)         = 0.0
+                  ufrc(0)         = 0.0
+
+                  thlu(0)         = MAPL_UNDEF
+                  qtu(0)          = MAPL_UNDEF
+                  uu(0)           = MAPL_UNDEF
+                  vu(0)           = MAPL_UNDEF
+                  wu(0)           = MAPL_UNDEF
+                  thvu(0)         = MAPL_UNDEF
+                  thlu_emf(0)     = MAPL_UNDEF
+                  qtu_emf(0)      = MAPL_UNDEF
+                  uu_emf(0)       = MAPL_UNDEF
+                  vu_emf(0)       = MAPL_UNDEF
+
+!                   umf(0:k0)          = 0.0
+!                   dcm(:k0)           = 0.0
+!                   emf(0:k0)          = 0.0
+!                   slflx(0:k0)        = 0.0
+!                   qtflx(0:k0)        = 0.0
+!                   uflx(0:k0)         = 0.0
+!                   vflx(0:k0)         = 0.0
+!                   qvten(:k0)         = 0.0
+!                   qlten(:k0)         = 0.0
+!                   qiten(:k0)         = 0.0
+!                   sten(:k0)          = 0.0
+!                   uten(:k0)          = 0.0
+!                   vten(:k0)          = 0.0
+!                   qrten(:k0)         = 0.0
+!                   qsten(:k0)         = 0.0
+!                   dwten(:k0)         = 0.0
+!                   diten(:k0)         = 0.0
+!                   cufrc(:k0)         = 0.0
+!                   qcu(:k0)           = 0.0
+!                   qlu(:k0)           = 0.0
+!                   qiu(:k0)           = 0.0
+!                   fer(:k0)           = 0.0
+!                   fdr(:k0)           = 0.0
+!                   xco(:k0)           = 0.0
+!                   qc(:k0)            = 0.0
+! !               qldet(:k0)         = 0.0
+! !               qidet(:k0)         = 0.0
+!                   qlten_sub          = 0.0
+!                   qiten_sub          = 0.0
+!                   qc_l(:k0)          = 0.0
+!                   qc_i(:k0)          = 0.0
+!                   cbmf               = 0.0
+!                   cnt                = k0
+!                   cnb                = 0.0
+!                   qtten(:k0)         = 0.0
+!                   slten(:k0)         = 0.0
+!                   ufrc(0:k0)         = 0.0
+
+!                   thlu(0:k0)         = MAPL_UNDEF
+!                   qtu(0:k0)          = MAPL_UNDEF
+!                   uu(0:k0)           = MAPL_UNDEF
+!                   vu(0:k0)           = MAPL_UNDEF
+!                   wu(0:k0)           = MAPL_UNDEF
+!                   thvu(0:k0)         = MAPL_UNDEF
+!                   thlu_emf(0:k0)     = MAPL_UNDEF
+!                   qtu_emf(0:k0)      = MAPL_UNDEF
+!                   uu_emf(0:k0)       = MAPL_UNDEF
+!                   vu_emf(0:k0)       = MAPL_UNDEF
                
                   if (dotransport.eq.1) then
                      do m = 1, ncnst
-                        trflx(0:k0,m)   = 0.0
-                        trten(:k0,m)    = 0.0
-                        tru(0:k0,m)     = 0.0
-                        tru_emf(0:k0,m) = 0.0
+                        do k = 1,k0
+                           trflx(k,m)   = 0.0
+                           trten(k,m)    = 0.0
+                           tru(k,m)     = 0.0
+                           tru_emf(k,m) = 0.0
+                        enddo
+
+                        trflx(0,m)   = 0.0
+                        tru(0,m)     = 0.0
+                        tru_emf(0,m) = 0.0
+
+                        ! trflx(0:k0,m)   = 0.0
+                        ! trten(:k0,m)    = 0.0
+                        ! tru(0:k0,m)     = 0.0
+                        ! tru_emf(0:k0,m) = 0.0
                      enddo
                   end if
 

@@ -352,13 +352,13 @@ program test_UWSC
     call read_tracers(IM, JM, LM, dirName, rank_str)
 
     write(*,*) 'Calling compute_uwshcu_inv...'
-!$acc data copyin(pmid0_inv,zmid0_inv,exnmid0_inv,pifc0_inv,zifc0_inv,&
-!$acc      exnifc0_inv,dp0_inv,u0_inv,v0_inv,qv0_inv,ql0_inv,qi0_inv,&
-!$acc      th0_inv,tke_inv,kpbl_inv)&
-!$acc      copy(cush,tr0_inv) &
-!$acc      copyout(umf_inv,qvten_inv,qlten_inv,qiten_inv,thten_inv,uten_inv,&
-!$acc      vten_inv,qrten_inv,qsten_inv,cufrc_inv,fer_inv,fdr_inv, &
-!$acc      qldet_inv,qidet_inv,qlsub_inv,qisub_inv,ndrop_inv,nice_inv)
+!!$acc data copyin(pmid0_inv,zmid0_inv,exnmid0_inv,pifc0_inv,zifc0_inv,&
+!!$acc      exnifc0_inv,dp0_inv,u0_inv,v0_inv,qv0_inv,ql0_inv,qi0_inv,&
+!!$acc      th0_inv,tke_inv,kpbl_inv)&
+!!$acc      copy(cush,tr0_inv) &
+!!$acc      copyout(umf_inv,qvten_inv,qlten_inv,qiten_inv,thten_inv,uten_inv,&
+!!$acc      vten_inv,qrten_inv,qsten_inv,cufrc_inv,fer_inv,fdr_inv, &
+!!$acc      qldet_inv,qidet_inv,qlsub_inv,qisub_inv,ndrop_inv,nice_inv)
     call system_clock(t_start,rate)
 
     call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
@@ -383,7 +383,7 @@ program test_UWSC
 #endif 
             USE_TRACER_TRANSP_UW)
     call system_clock(t_end)
-!$acc end data
+!!$acc end data
 
     open(newunit=fileID, file=trim(dirName) // '/CUSH_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
     read(fileID) CUSH_ref
