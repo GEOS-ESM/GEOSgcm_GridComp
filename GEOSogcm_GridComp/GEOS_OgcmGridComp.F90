@@ -809,6 +809,7 @@ contains
      else ! MOM6
        call MAPL_AddConnectivity ( GC,  &
             SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+                            'UWC     ','VWC     ',                         &
                             'FRESH   ','FSALT   ', 'FHOCN   ', 'AICE    '/), &
             DST_ID = OCEAN,             &
             SRC_ID = SEAICE,            &
