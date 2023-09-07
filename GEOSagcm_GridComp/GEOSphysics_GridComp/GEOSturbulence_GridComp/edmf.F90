@@ -81,7 +81,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     frland,                        &
                     pblh2,                         &
                     ! CLASP inputs for surface heterogeneity
-     !              mfsrcthl, mfsrcqt, mfw, mfarea, &
+                   mfsrcthl, mfsrcqt, mfw, mfarea, &
                     ! outputs - variables needed for solver
                     ae3,                           &
                     aw3,                           &
@@ -216,7 +216,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    REAL,DIMENSION(KTS-1:KTE) :: exfh,tmp1d
    REAL,DIMENSION(KTS-1:KTE) :: rhoe
 
-   REAL :: L0,ztop,tmp,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
+   REAL :: L0,ztop,tmp,tmp2,ltm,MFsrf,QTsrfF,THVsrfF,mft,mfthvt,mf,factor,lts
    INTEGER, DIMENSION(2) :: seedmf,the_seed
 
    LOGICAL :: calc_avg_diag
@@ -307,7 +307,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! if CLASP enabled: mass flux is input
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
       !                    TKE at 2nd model level above threshold
-      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
+!      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
+      IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)
@@ -464,7 +465,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       !
       wstar=max(wstarmin,(mapl_grav*wthv*pblh/300.)**(1./3.))  ! convective velocity scale
       qstar=max(0.,wqt)/wstar
-      thstar=max(0.01,wthv)/wstar
+      thstar=max(0.,wthl)/wstar
 
       sigmaW=MFPARAMS%AlphaW*wstar
       sigmaQT=MFPARAMS%AlphaQT*qstar
@@ -499,8 +500,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPQT(kts-1,I)=QT(kts)+MFSRCQT(IH,JH,I)
           UPTHV(kts-1,I)=THV(kts)+MFSRCTHL(IH,JH,I)
         else
-          UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
-!          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+!          UPQT(kts-1,I)=QT(kts)-(-1.**I)*0.32*UPW(kts-1,I)*sigmaQT/sigmaW
+          UPQT(kts-1,I)=QT(kts)+0.32*UPW(kts-1,I)*sigmaQT/sigmaW
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
         end if
 
@@ -609,14 +610,23 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
         ! Near-surface CFL: To prevent instability, rescale updraft velocities
         ! if mass flux exceeds MFLIMFAC times the layer mass
-        if (ZW(k)<300.) then
-          mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
-          factor = (1.+(MFPARAMS%MFLIMFAC-1.)*(ZW(k)/300.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
-          if (factor .lt. 1.0) then
-             UPW(k,:) = UPW(k,:)*factor
-        !                  print *,'rescaling UPW by factor: ',factor
-          end if
-        end if
+!        if (ZW(k)<300.) then
+!          mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
+!          factor = (2.+(MFPARAMS%MFLIMFAC-2.)*(ZW(k)/300.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
+!          if (factor .lt. 1.0) then
+!             UPW(k,:) = UPW(k,:)*factor
+!        !                  print *,'rescaling UPW by factor: ',factor
+!          end if
+!        end if
+
+!        if (ZW(k)<100.) then
+!          mf = SUM(RHOE(k)*UPA(k,:)*UPW(k,:))
+!          factor = (1.5+(MFPARAMS%MFLIMFAC-1.5)*(ZW(k)/100.))*dp(K)/(1e-8+mf*MAPL_GRAV*dt)
+!          if (factor .lt. 1.0) then
+!             UPW(k,:) = UPW(k,:)*factor
+!        !                  print *,'rescaling UPW by factor: ',factor
+!          end if
+!        end if
 
       ! loop over vertical
       ENDDO vertint
@@ -646,6 +656,20 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ENDDO
       ! if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
       UPA = factor*UPA
+
+  ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
+  ! Prevents instability due to MF without KH
+      K = KTS
+      tmp = 0.
+      tmp2 = 0.
+      DO WHILE (ZW(K).lt.70. .and. K.lt.KTE)
+         tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
+         tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
+!         UPW(K,:) = UPW(K,:)*exp(-(100.-ZW(K))**2/1e4)
+         K = K+1
+      END DO
+      if (tmp.gt.0.5*tmp2) UPA = UPA*(0.5*tmp2/tmp)
+
 
       DO k=KTS,KTE
         edmfmf(IH,JH,KTE-k+KTS-1) = rhoe(K)*SUM(upa(K,:)*upw(K,:))

@@ -59,7 +59,8 @@ module shoc
                  tkesbshear_inv,                                 &  ! out
                  smixt_inv, lmix_out, smixt1_inv,                &  ! out
                  smixt2_inv,smixt3_inv,                          &  ! out
-                 bruntmst_inv, ri_inv, prnum_inv,                &  ! out
+!                 bruntmst_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
+                 bruntmst_inv, ri_inv, prnum_inv,  &  ! out
                  shocparams )
 
 
@@ -117,6 +118,7 @@ module shoc
   real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
   real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
   real, dimension(:,:,:), pointer :: bruntmst_inv ! moist Brunt vaisala frequency
+!  real, dimension(:,:,:), pointer :: bruntedg_inv ! Brunt vaisala frequency on edges
   real, dimension(:,:,:), pointer :: ri_inv
   real, dimension(:,:,:), pointer :: prnum_inv
 
@@ -183,14 +185,14 @@ module shoc
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth
   real, dimension(nx,ny,nz)  :: brunt_edge
 
-  real, dimension(nx,ny)     :: l_inf, l_mix, zcb, l_par!, denom, numer, cldarr
+  real, dimension(nx,ny)     :: l_inf, l_mix, zcb!, l_par!, denom, numer, cldarr
 
-  real lstarn,    depth,    omn,      betdz,    bbb,        &
+  real lstarn,    depth,    omn,      betdz, betdze,    bbb,        &
        term,      qsatt,    dqsat,    thedz,    conv_var,   &
        tkes,      pval,     pkap,     thlsec,   qwsec,      &
        qwthlsec,  wqwsec,   wthlsec,  dum,      sm,         &
        prespot,   wrk,      wrk1,     wrk2,     wrk3,       &
-       tkeavg,    dtqw,     dtqi
+       tkeavg,    dtqw,     dtqi,     l_par
 
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
 
@@ -303,7 +305,8 @@ module shoc
   if (associated(smixt2_inv))   smixt2_inv(:,:,1:nzm)   = smixt2(:,:,nzm:1:-1)
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
 
-  if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt_edge(:,:,nzm:1:-1)
+!  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
+  if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
   if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
   if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
 
@@ -317,7 +320,7 @@ contains
 ! This subroutine solves the TKE equation,
 ! Heavily based on SAM's tke_full.f90 by Marat Khairoutdinov
 
-    real grd,betdz,Cek,Cee,lstarn, bbb, omn, omp,qsatt,dqsat, smix,         &
+    real grd,betdz,betdze,Cek,Cee,lstarn, bbb, omn, omp,qsatt,dqsat, smix,         &
          buoy_sgs,a_prod_sh,a_prod_bu,a_diss,a_prod_bu_debug, buoy_sgs_debug, &
          wrk, wrk1, wtke, wtk2, rdtn, tke_env
     integer i,j,k,ku,kd,itr
@@ -385,7 +388,7 @@ contains
           Cee = Cek* (pt19 + pt51*smix/grd)
 
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
-          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.1)    ! TKE shear production term
+          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.0001)    ! TKE shear production term
 
 ! Semi-implicitly integrate TKE equation forward in time
           wtke = tke(i,j,k)
@@ -495,7 +498,7 @@ contains
 
      if (SHOCPARAMS%PRNUM.lt.0.) then
 !        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-6)
-        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.0.01)
+        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-4)
           PRNUM = 0.9
         elsewhere
           ! He et al 2019
@@ -619,7 +622,8 @@ contains
           endif
           betdz = bet(i,j,k) / thedz
 
-          brunt_edge(i,j,k) = (2.*ggr/(thv(i,j,k)+thv(i,j,kb)))*(thv(i,j,k)-thv(i,j,kb))/adzi(i,j,k)  !g/thv/dz *(thv-thv)
+
+!          brunt_edge(i,j,k) = (2.*ggr/(thv(i,j,k)+thv(i,j,kb)))*(thv(i,j,k)-thv(i,j,kb))/adzi(i,j,k)  !g/thv/dz *(thv-thv)
 
 ! Reinitialize the mixing length related arrays to zero
           smixt(i,j,k)    = 1.0   ! shoc_mod module variable smixt
@@ -641,8 +645,7 @@ contains
         enddo
       enddo
     enddo
-
-
+!    brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
 
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
     do j=1,ny
@@ -662,17 +665,18 @@ contains
 !           l_inf(i,j) = 100.
 !         endif
 
-        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.4 K
+        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.3 K
         ! Interpolate for final height based on gradient
+        ! Ignore single isolated levels
         kk = 4
-        do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk))
+        do while (thv(i,j,3)+0.3 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.3 .gt. thv(i,j,kk+1))
           kk = kk+1
         end do
         dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
         if (abs(dum) .gt. 1e-3) then
-          l_mix(i,j) = min(max(zl(i,j,kk-1)+(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.),1200.)
+          l_mix(i,j) = max(zl(i,j,kk-1)+(thv(i,j,3)+0.3-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
         else
-          l_mix(i,j) = min(max(zl(i,j,kk-1),100.),1200.)
+          l_mix(i,j) = max(zl(i,j,kk-1),100.)
         end if
 
 
@@ -709,11 +713,12 @@ contains
             kb = nzm-1
             kc = nzm
             thedz = adzi(i,j,k)
+            betdze = 0.5*(bet(i,j,k)-bet(i,j,kb)) / adzi(i,j,k)
           else
             thedz = (adzi(i,j,kc)+adzi(i,j,k)) !  = (z(k+1)-z(k-1))
+            betdze = 0.5*(bet(i,j,k)-bet(i,j,kb)) / adzi(i,j,k)
           endif
           betdz = bet(i,j,k) / thedz
-
 
 
 ! Compute local Brunt-Vaisalla frequency
@@ -753,6 +758,16 @@ contains
                           + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
                           + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
 
+             bbb = 0.5*(bbb + (1. + epsv*qsatt-wrk-qpl(i,j,k-1)-qpi(i,j,k-1)                &
+                 + 1.61*tabs(i,j,k-1)*dqsat) / (1.+lstarn*dqsat) )
+             if (k.gt.1) then
+             brunt_edge(i,j,k) = 0.5*(cld_sgs(i,j,k)+cld_sgs(i,j,k-1))*betdz*(bbb*(hl(i,j,k)-hl(i,j,k-1))               &
+                          + (bbb*lstarn - (1.+lstarn*dqsat)*tabs(i,j,k))     &
+                          * (total_water(i,j,k)-total_water(i,j,k-1))        &
+                          + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(i,j,k))*(qpl(i,j,k)-qpl(i,j,k-1))  &
+                          + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs(i,j,k))*(qpi(i,j,k)-qpi(i,j,k-1)) )
+             end if
+
 ! Find outside-of-cloud Brunt-Vaisalla frequency
 ! Only unsaturated air, rain and snow contribute to virt. pot. temp.
 ! liquid/ice moist static energy divided by cp?
@@ -762,6 +777,14 @@ contains
                           + epsv*tabs(i,j,k)*(total_water(i,j,kc)-total_water(i,j,kb)) &
                           + (bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))       &
                           + (bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+
+             bbb = 0.5*(bbb + 1. + epsv*qv(i,j,k-1) - qpl(i,j,k-1) - qpi(i,j,k-1))
+             if (k.gt.1) then
+             brunt_edge(i,j,k) = brunt_edge(i,j,k) + (1.-0.5*(cld_sgs(i,j,k)+cld_sgs(i,j,k-1)))*betdz*( bbb*(hl(i,j,k)-hl(i,j,k-1))                        &
+                          + epsv*tabs(i,j,k)*(total_water(i,j,k)-total_water(i,j,k-1)) &
+                          + (bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,k)-qpl(i,j,k-1))       &
+                          + (bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,k)-qpi(i,j,k-1)) )
+             end if
 
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
@@ -776,15 +799,18 @@ contains
 
         end do
       end do
+      brunt_edge(:,:,1) = brunt_edge(:,:,2)
+      brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
 
 
 !         brunt_dry = max( bruntmin, brunt_dry )
 
          brunt_smooth = brunt
          brunt_smooth(:,:,nzm) = brunt(:,:,nzm-1)
-         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))   ! use avg of lowest 3 levs
-         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
-         brunt_smooth(:,:,3) = brunt_smooth(:,:,1)
+         brunt_smooth(:,:,1) = brunt(:,:,1)
+!         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))   ! use avg of lowest 3 levs
+!         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
+!         brunt_smooth(:,:,3) = brunt_smooth(:,:,1)
          do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
 !            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
 !            where (brunt(:,:,kk+1).lt.1e-4)
@@ -878,10 +904,23 @@ contains
                  smixt1(i,j,k) = vonk*zl(i,j,k)*exp(MIN(1000.,zl(i,j,k))**2/4e4)*shocparams%LENFAC1
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1
 
-                 if (zl(i,j,k).lt.min(1200.,zpbl(i,j))) then
-!                 if (zl(i,j,k).lt.l_mix(i,j)) then
-                   smixt2(i,j,k) = sqrt(min(1200.,zpbl(i,j))*400.*tkes)*shocparams%LENFAC2
-!                   smixt2(i,j,k) = sqrt(min(1200.,l_mix(i,j))*400.*tkes)*shocparams%LENFAC2
+!                 l_mix(i,j) = 0.
+!                 kinv = k
+!                 do while (tke(i,j,kinv).gt.0.02) 
+!                    l_mix(i,j) = l_mix(i,j) + adzl(i,j,kinv)
+!                    kinv = kinv+1
+!                 end do
+!                 kinv = k-1
+!                 do while (tke(i,j,kinv).gt.0.02) 
+!                    l_mix(i,j) = l_mix(i,j) + adzl(i,j,kinv) 
+!                    kinv = kinv-1
+!                 end do
+!                 l_mix(i,j) = 0.1*l_mix(i,j)
+
+!                 if (zl(i,j,k).lt.zpbl(i,j)) then
+                 if (zl(i,j,k).lt.l_mix(i,j)) then
+!                   smixt2(i,j,k) = sqrt(0.1*zpbl(i,j)*400.*tkes)*shocparams%LENFAC2
+                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*shocparams%LENFAC2
                  else
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
                  end if
@@ -906,7 +945,7 @@ contains
                  else if (shocparams%LENOPT .eq. 2) then  ! Geometric average
                     smixt(i,j,k) = min(max_eddy_length_scale, 3./(1./smixt1(i,j,k)+1./smixt2(i,j,k)+1./smixt3(i,j,k)) )
                  else if (shocparams%LENOPT .eq. 3) then  ! SHOC classic approach
-                    smixt(i,j,k) = min(max_eddy_length_scale, 3./SQRT(1./smixt1(i,j,k)**2+1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2) )
+                    smixt(i,j,k) = min(max_eddy_length_scale, SQRT(3.)/SQRT(1./smixt1(i,j,k)**2+1./smixt2(i,j,k)**2+1./smixt3(i,j,k)**2) )
                  end if
            else if (shocparams%LENOPT .eq. 4) then  ! JPL Length scale (Suselj et al 2012)
               wrk2 = 1.0/(400.*tkes)
@@ -920,8 +959,13 @@ contains
 
            ! Enforce minimum and maximum length scales
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
-           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(zl(i,j,nzm)-zl(i,j,k))/zl(i,j,nzm),smixt(i,j,k)))
-
+           if (zl(i,j,k) .lt. 5000.) then
+             smixt(i,j,k) = max(wrk, smixt(i,j,k))
+           else if (zl(i,j,k) .lt. 9500) then
+             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
+           else
+             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*0.1,smixt(i,j,k)))
+           end if
         end do
       end do
     end do
@@ -1155,7 +1199,14 @@ contains
 
 
     ! Update PDF_A
-    pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
+    if (AFRC_TSCALE.gt.0.) then
+      pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
+    else
+      pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
+    end if
+    where (mffrc.gt.pdf_a)
+      pdf_a = mffrc
+    end where
     pdf_a = min(0.5,max(0.,pdf_a))
 
 

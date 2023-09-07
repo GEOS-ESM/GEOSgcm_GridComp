@@ -1722,18 +1722,18 @@ module GEOSmoist_Process_Library
 
 ! Partition based on temperature for the first plume
 
-          IF (Tl1_1 >= tbgmax) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1)
-            lstarn1  = lcond
-          ELSE IF (Tl1_1 < tbgmin) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            lstarn1  = lsub
-          ELSE
+!          IF (Tl1_1 >= tbgmax) THEN
+!            esval1_1 = MAPL_EQsat(Tl1_1)
+!            lstarn1  = lcond
+!          ELSE IF (Tl1_1 < tbgmin) THEN
+!            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
+!            lstarn1  = lsub
+!          ELSE
             esval1_1 = MAPL_EQsat(Tl1_1)
             esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            om1      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))  ! may be inconsistent with hystpdf ice fraction
+            om1      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))  ! may be inconsistent with hystpdf ice fraction
             lstarn1  = lcond + (1.-om1)*lfus
-          ENDIF
+!          ENDIF
 
           ! this is qs evaluated at Tl
           qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
@@ -1749,18 +1749,18 @@ module GEOSmoist_Process_Library
             beta2 = beta1
           ELSE
 
-            IF (Tl1_2 < tbgmin) THEN
-              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-              lstarn2  = lsub
-            ELSE IF (Tl1_2 >= tbgmax) THEN
-              esval1_2 = MAPL_EQsat(Tl1_2)
-              lstarn2  = lcond
-            ELSE
+!            IF (Tl1_2 < tbgmin) THEN
+!              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
+!              lstarn2  = lsub
+!            ELSE IF (Tl1_2 >= tbgmax) THEN
+!              esval1_2 = MAPL_EQsat(Tl1_2)
+!              lstarn2  = lcond
+!            ELSE
               esval1_2 = MAPL_EQsat(Tl1_2)
               esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-              om2      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
+              om2      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
               lstarn2  = lcond + (1.-om2)*lfus
-            ENDIF
+!            ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
                   + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
@@ -1840,11 +1840,11 @@ module GEOSmoist_Process_Library
           qn1 = min(qn1,qw1_1)
           qn2 = min(qn2,qw1_2)
 
-!          ql1 = qn1*om1
-!          ql2 = qn2*om2
+          ql1 = qn1*om1
+          ql2 = qn2*om2
 
-!          qi1 = qn1 - ql1
-!          qi2 = qn2 - ql2
+          qi1 = qn1 - ql1
+          qi2 = qn2 - ql2
 
           qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
 !          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)

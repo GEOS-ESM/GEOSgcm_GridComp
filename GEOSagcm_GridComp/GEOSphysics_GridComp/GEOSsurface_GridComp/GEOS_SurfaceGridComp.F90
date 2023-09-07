@@ -885,6 +885,114 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'MFW',                           &
+        LONG_NAME          = 'mass_flux_initial_vertical_velocity',&
+        UNITS              = 'm s-1',                             &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'MFAREA',                           &
+        LONG_NAME          = 'mass_flux_initial_area_fraction',&
+        UNITS              = '1',                           &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'MFQTSRC',                           &
+        LONG_NAME          = 'mass_flux_source_humidity_perturbation',&
+        UNITS              = 'kg kg-1',                           &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'MFTHSRC',                           &
+        LONG_NAME          = 'mass_flux_source_temperature_perturbation',&
+        UNITS              = 'K',                                 &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'PRTILE',                           &
+        LONG_NAME          = 'precipitation_on_tiles',           &
+        UNITS              = 'mm s-1',                           &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'QTILE',                           &
+        LONG_NAME          = 'surface_humidity_on_tiles',&
+        UNITS              = 'kg kg-1',                           &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'TTILE',                           &
+        LONG_NAME          = 'surface_temperature_on_tiles',&
+        UNITS              = 'K',                           &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'Q2SRF',                             &
+        LONG_NAME          = 'surface_humidity_variance',         &
+        UNITS              = 'kg2 kg-2',                          &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'T2SRF',                            &
+        LONG_NAME          = 'surface_temperature_variance',      &
+        UNITS              = 'K2',                                &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                                  &
+        SHORT_NAME         = 'TQSRF',                             &
+        LONG_NAME          = 'surface_temperature_humidity_covariance',   &
+        UNITS              = 'K kg kg-1',                          &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'SHTILE',                            &
+        LONG_NAME          = 'surface_heat_flux_on_tiles',        &
+        UNITS              = 'K m-2 s-1',                         &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'EVTILE',                            &
+        LONG_NAME          = 'surface_evaporation_on_tiles',      &
+        UNITS              = 'kg m-2 s-1',                        &
+        DIMS               = MAPL_DimsHorzVert,                   &
+        VLOCATION          = MAPL_VLocationCenter,                &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'USTAR',                             &
         LONG_NAME          = 'surface_velocity_scale',            &
         UNITS              = 'm s-1',                             &
@@ -1044,6 +1152,15 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSURF'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_temperature_of_land_incl_snow',&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TPSURFTILE'                ,&
+    DIMS               = MAPL_DimsHorzVert           ,&
+    VLOCATION          = MAPL_VLocationCenter        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -4157,6 +4274,18 @@ module GEOS_SurfaceGridCompMod
 
 ! Pointers to gridded exports
 
+    real, pointer, dimension(:,:,:) :: MFTHSRC=> NULL()
+    real, pointer, dimension(:,:,:) :: MFQTSRC=> NULL()
+    real, pointer, dimension(:,:,:) :: MFW=> NULL()
+    real, pointer, dimension(:,:,:) :: MFAREA=> NULL()
+    real, pointer, dimension(:,:,:) :: QTILE=> NULL()
+    real, pointer, dimension(:,:,:) :: TTILE=> NULL()
+    real, pointer, dimension(:,:,:) :: SHTILE=> NULL()
+    real, pointer, dimension(:,:,:) :: EVTILE=> NULL()
+
+    real, pointer, dimension(:,:) :: Q2SRF  => NULL()
+    real, pointer, dimension(:,:) :: T2SRF  => NULL()
+    real, pointer, dimension(:,:) :: TQSRF  => NULL()
     real, pointer, dimension(:,:) :: RI     => NULL()
     real, pointer, dimension(:,:) :: RE     => NULL()
     real, pointer, dimension(:,:) :: QDWL   => NULL()
@@ -4250,6 +4379,14 @@ module GEOS_SurfaceGridCompMod
     logical    :: UseInterp
 
     integer    :: IM, JM, YEAR, MONTH, DAY, HR, SE, MN
+
+    real, allocatable :: SH_TILE(:), EVAP_TILE(:), BUOY_TILE(:)
+    real NumUp, TV, wstar, f1, f2, hetfac, qhtileavg, thtileavg
+    real wmin,wmax,wlv,wtv,AlphaW,sigmaW,X
+    integer doCLASP
+    integer NumUpI, imax, cnt, NPOSB, J, N, NI
+
+!    real, allocatable :: MFQTSRC(:,:,:), MFTHSRC(:,:,:)
 
 !=============================================================================
 
@@ -4370,6 +4507,19 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
 ! These are computed by SURFACE in grid space and have no tile versions
+
+    call MAPL_GetPointer(EXPORT  , MFTHSRC, 'MFTHSRC',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MFQTSRC, 'MFQTSRC',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MFW, 'MFW',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MFAREA,  'MFAREA',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TTILE, 'TTILE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , QTILE, 'QTILE', ALLOC=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SHTILE, 'SHTILE', ALLOC=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , EVTILE, 'EVTILE', ALLOC=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT  , Q2SRF, 'Q2SRF', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , T2SRF, 'T2SRF', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TQSRF, 'TQSRF', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , SH    , 'SHAT'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , QDWL  , 'QDWL'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -4641,6 +4791,257 @@ module GEOS_SurfaceGridCompMod
 ! Effective surface values on atmos grid. These and the ceoffs
 !   are forced exports because run2 needs them.
 !-------------------------------------------------------------
+
+!!! npa temporary SCM-only code!
+!    print *,'CTTILE=',CTTILE
+!    print *,'THTILE=',THTILE
+!    print *,'TH=',TH
+
+!=====================================================================
+
+     IM = size(PS,1)
+     JM = size(PS,2)
+
+!     allocate(MFQTSRC(IM,JM,NT),STAT=STATUS)
+!     VERIFY_(STATUS)
+!     allocate(MFTHSRC(IM,JM,NT),STAT=STATUS)
+!     VERIFY_(STATUS)
+
+!    call MAPL_GetResource( MAPL, NumUp, 'EDMF_NumUp:', default=10, RC=STATUS)
+    call MAPL_GetResource( MAPL, doCLASP, 'DOCLASP:', default=0, RC=STATUS)
+    call MAPL_GetResource( MAPL, hetfac,  'CLASP_HETFAC:', default=0.5, RC=STATUS)
+
+    NumUp = 10.
+    NumUpI = INT(NumUp)
+
+    MFQTSRC(:,:,:) = -999.
+    MFTHSRC(:,:,:) = -999.
+    MFW(:,:,:) = -999.
+    MFAREA(:,:,:) = -999.
+!    print *,'filling with -999'
+    TTILE(:,:,:) = -999.
+    QTILE(:,:,:) = -999.
+    SHTILE(:,:,:) = -999.
+    EVTILE(:,:,:) = -999.
+
+!    print *,'assigning tile values'
+!    QTILE(1,1,1:NT) = QHTILE
+!    TTILE(1,1,1:NT) = THTILE
+if (DOCLASP/=0.) then
+    do I = 1,IM
+      do J = 1,JM
+ !        do N = 1,NT
+         QTILE(I,J,1:NT) = QHTILE
+         TTILE(I,J,1:NT) = THTILE
+         T2SRF(I,J) = SUM(THTILE)/NT
+         Q2SRF(I,J) = SUM(QHTILE)/NT
+ !        print *,'tavg = ',T2SRF
+ !        print *,'qavg = ',Q2SRF
+         TQSRF(I,J) = SUM( (THTILE-T2SRF(I,J))*(QHTILE-Q2SRF(I,J)) ) / NT
+!         print *,'tqsrf=',TQSRF
+         T2SRF(I,J) = SUM( (THTILE-T2SRF(I,J))**2 ) / NT
+         Q2SRF(I,J) = SUM( (QHTILE-Q2SRF(I,J))**2 ) / NT
+
+!         print *,'TA = ',TA(I,J)
+!         print *,'QA = ',QA(I,J)
+!        end do
+      end do
+    end do
+!    print *,'tile values assigned.'
+
+    allocate(SH_TILE(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(EVAP_TILE(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(BUOY_TILE(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+
+    do I = 1,IM
+      do J = 1,JM
+
+         ! Estimate of tile-based sensible heat and evaporation fluxes
+         SH_TILE = CTTILE*(THTILE-TA(I,J)-(MAPL_GRAV/MAPL_CP)*DZ(I,J))
+         EVAP_TILE = CQTILE*(QHTILE-QA(I,J))
+
+         SHTILE(I,J,1:NT) = SH_TILE
+         EVTILE(I,J,1:NT) = EVAP_TILE
+
+      end do
+    end do
+end if ! DOCLASP condition
+
+    alphaW = 0.572
+
+    if (doCLASP/=0) then
+
+    do I = 1,IM
+      do J = 1,JM
+
+         ! Virtual temp and buoyancy flux
+         TV = TA(I,J) * ( 1.0 + MAPL_VIREPS*QA(I,J) )
+         BUOY_TILE(:) = SH_TILE + MAPL_EPSILON*TV*EVAP_TILE
+!         print *,'BUOY_TILE=',BUOY_TILE
+
+         ! Number of tiles with positive bouyancy flux
+         NPOSB = COUNT(BUOY_TILE .gt. 0.0)
+!         if (NPOSB.ge.5) NPOSB = NPOSB-1 !CEILING(FLOAT(NPOSB)/2.)
+         if (NPOSB.ge.8) NPOSB = NPOSB-1
+
+!         print *,'NumUpI=',NumUpI
+!         print *,'NPOSB=',NPOSB
+
+         THTILEAVG = SUM(THTILE)/NT
+         QHTILEAVG = SUM(QHTILE)/NT
+
+         ! If there are at least NumUp tiles with positive buoyancy flux,
+         ! we want to identify the NumUp tiles with largest flux
+
+         if (NPOSB.ge.NumUpI) then
+
+            ! calc source properties using top NumUp buoyant tiles
+            ! assuming 50m surface layer.
+            ! cycle through tiles ranked by buoyancy flux
+!            print *,'NPOSB>=NumUpI: cycling through tiles...'
+            do N = 1,NumUpI
+               imax = 1
+               do NI = 2,NT
+                 if (BUOY_TILE(NI).gt.BUOY_TILE(imax)) imax = NI
+               end do
+!               imax = maxloc( BUOY_TILE ) ! tile index with current max buoyancy
+
+               ! velocity scale at tile with max buoyancy
+!               wstar=max(0.1,((MAPL_GRAV/TA(I,J))*BUOY_TILE(imax)*500.0)**(1./3.))
+               wstar=max(1e-3,((MAPL_GRAV/300.)*BUOY_TILE(imax)*500.0)**(1./3.))
+
+               sigmaW = AlphaW*wstar 
+               wmin=sigmaW
+               wmax=3.*sigmaW
+               wlv=wmin
+               wtv=wmax
+
+!               MFW(I,J,N)=min(0.5*(wlv+wtv), 5.)
+               MFW(I,J,N)=min(wmin, 5.)
+               MFAREA(I,J,N)=(0.5*ERF(wtv/(sqrt(2.)*AlphaW*wstar))-0.5*ERF(wlv/(sqrt(2.)*AlphaW*wstar)))/NumUpI
+               MFAREA(I,J,N) = MFAREA(I,J,N)*(FLOAT(NPOSB)/NT)/0.9
+!               MFAREA(I,J,N) = 0.12/NumUp
+
+               ! QT and TH source perturbations for updrafts
+               MFQTSRC(I,J,N) = 0.32*(MFW(I,J,N)/sigmaW)*2.89*EVAP_TILE(imax)/wstar &
+                                + hetfac*(QHTILE(imax)-QHTILEAVG)
+               MFTHSRC(I,J,N) = 0.58*(MFW(I,J,N)/sigmaW)*2.89*SH_TILE(imax)/wstar &
+                                + hetfac*(THTILE(imax)-THTILEAVG)
+
+               ! Limit magnitude of perturbation
+               MFQTSRC(I,J,N) = min(0.2*QA(I,J),max(-0.2*QA(I,J),MFQTSRC(I,J,N))) 
+               MFTHSRC(I,J,N) = min(2.0,max(-2.0,MFTHSRC(I,J,N))) 
+!               MFQTSRC(I,J,N) = max(0.,EVAP_TILE(imax)) / wstar
+!               MFTHSRC(I,J,N) = min(1.5,max(0.,SH_TILE(imax)) / wstar)
+
+               ! set maximum buoyancy to 0, to identify next largest
+               BUOY_TILE(imax) = 0.
+            end do
+
+         else if (NPOSB.gt.0) then   ! if there are fewer than NumUp positive Bflux tiles
+
+!            print *,'NPOSB>0: cycling through tiles...'
+
+            f1 = FLOOR( NumUp / NPOSB )  ! baseline number of updrafts per tile
+            f2 = MOD( NumUpI, NPOSB)    ! number of tiles with an extra updraft
+            cnt = 0
+!            print *,'f1=',f1,'  f2=',f2
+            do N = 1,NPOSB
+               imax = 1
+               do NI = 2,NT
+                 if (BUOY_TILE(NI).gt.BUOY_TILE(imax)) imax = NI
+               end do
+!               imax = maxloc( BUOY_TILE ) ! tile index with current max buoyancy
+
+               ! velocity scale at tile with max buoyancy
+!               wstar=max(0.1,((MAPL_GRAV/TA(I,J))*BUOY_TILE(imax)*500.0)**(1./3.))
+               wstar=max(1e-3,((MAPL_GRAV/300.)*BUOY_TILE(imax)*500.0)**(1./3.))
+!               print *,'  wstar=',wstar
+
+               sigmaW = AlphaW*wstar 
+               wmin=sigmaW
+               wmax=3.*sigmaW
+
+               if (N.le.f2) then
+                  do X = 1,f1+1
+
+                     wlv=wmin+(wmax-wmin)/(real(f1+1))*(real(X)-1.)
+                     wtv=wmin+(wmax-wmin)/(real(f1+1))*real(X)
+
+!                     MFW(I,J,cnt+X)=min(0.5*(wlv+wtv), 5.)
+                     MFW(I,J,cnt+X)=min(wmin, 5.)
+                     MFAREA(I,J,cnt+X)=(0.5*ERF(wtv/(sqrt(2.)*AlphaW*wstar))-0.5*ERF(wlv/(sqrt(2.)*AlphaW*wstar)))/NPOSB
+                     MFAREA(I,J,cnt+X) = MFAREA(I,J,cnt+X)*(FLOAT(NPOSB)/NT)/0.9
+!                     MFAREA(I,J,cnt+X) = 0.12/NumUp
+
+                     MFQTSRC(I,J,cnt+X) = 0.32*(MFW(I,J,cnt+X)/sigmaW)*2.89*EVAP_TILE(imax)/wstar &
+                                   + hetfac*(QHTILE(imax)-QHTILEAVG)
+                     MFTHSRC(I,J,cnt+X) = 0.58*(MFW(I,J,cnt+X)/sigmaW)*2.89*SH_TILE(imax)/wstar &
+                                   + hetfac*(THTILE(imax)-THTILEAVG)
+
+                     ! Limit magnitude of perturbation
+                     MFQTSRC(I,J,cnt+X) = min(0.2*QA(I,J),max(-0.2*QA(I,J),MFQTSRC(I,J,cnt+X))) 
+                     MFTHSRC(I,J,cnt+X) = min(2.0,max(-2.0,MFTHSRC(I,J,cnt+X))) 
+                  end do
+
+!                  MFQTSRC(I,J,cnt:cnt+f1) = max(0.,EVAP_TILE(imax)) / wstar + hetfac*(QHTILE(N)-QHTILEAVG)
+!                  MFTHSRC(I,J,cnt:cnt+f1) = min(1.5,max(0.,SH_TILE(imax)) / wstar) + hetfac*(THTILE(N)-THTILEAVG)
+!                  MFW(I,J,cnt:cnt+f1) = wstar
+                  cnt = cnt+f1+1
+               else
+
+                  do X = 1,f1
+
+                      wlv=wmin+(wmax-wmin)/(real(f1))*(real(X)-1.)
+                      wtv=wmin+(wmax-wmin)/(real(f1))*real(X)
+
+                      MFW(I,J,cnt+X)=min(0.5*(wlv+wtv), 5.)
+                      MFAREA(I,J,cnt+X)=(0.5*ERF(wtv/(sqrt(2.)*AlphaW*wstar))-0.5*ERF(wlv/(sqrt(2.)*AlphaW*wstar)))/NPOSB
+                      MFAREA(I,J,cnt+X) = MFAREA(I,J,cnt+X)*(FLOAT(NPOSB)/NT)/0.9
+!                      MFAREA(I,J,cnt+X) = 0.12/NumUp
+
+                      MFQTSRC(I,J,cnt+X) = 0.32*(MFW(I,J,cnt+X)/sigmaW)*2.89*EVAP_TILE(imax)/wstar &
+                                    + hetfac*(QHTILE(imax)-QHTILEAVG)
+                      MFTHSRC(I,J,cnt+X) = 0.58*(MFW(I,J,cnt+X)/sigmaW)*2.89*SH_TILE(imax)/wstar &
+                                    + hetfac*(THTILE(imax)-THTILEAVG)
+
+                      ! Limit magnitude of perturbation
+                      MFQTSRC(I,J,cnt+X) = min(0.2*QA(I,J),max(-0.2*QA(I,J),MFQTSRC(I,J,cnt+X))) 
+                      MFTHSRC(I,J,cnt+X) = min(2.0,max(-2.0,MFTHSRC(I,J,cnt+X))) 
+                  end do
+
+!                  MFQTSRC(I,J,cnt:cnt+f1-1) = max(0.,EVAP_TILE(imax)) / wstar + hetfac*(QHTILE(N)-QHTILEAVG)
+!                  MFTHSRC(I,J,cnt:cnt+f1-1) = min(1.5,max(0.,SH_TILE(imax)) / wstar) + hetfac*(THTILE(N)-THTILEAVG)
+!                  MFW(I,J,cnt:cnt+f1-1) = wstar
+                  cnt = cnt+f1
+               end if
+
+               BUOY_TILE(imax) = 0.
+            end do
+
+         end if  ! NPOSB conditional
+
+      end do  ! JM loop
+    end do  ! IM loop
+
+!    print *,'MFQTSRC=',MFQTSRC(:,:,1:NUMUPI)
+!    print *,'MFTHSRC=',MFTHSRC(:,:,1:NUMUPI)
+!    print *,'MFW=',MFW(:,:,1:NUMUPI)
+!    print *,'MFAREA=',MFAREA(:,:,1:NUMUPI)
+
+    deallocate(BUOY_TILE)
+    deallocate(SH_TILE)
+    deallocate(EVAP_TILE)
+
+!    else
+!      Q2SRF = 0.
+!      T2SRF = 0.
+    end if ! doCLASP/=0
+!=====================================================================
+
 
     THTILE = THTILE*CTTILE
     QHTILE = QHTILE*CQTILE
@@ -5186,6 +5587,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Pointers to exports
 
+    real, pointer, dimension(:,:,:) :: PRTILE=> NULL()
+    real, pointer, dimension(:,:,:) :: TPSURFTILEx=> NULL()
     real, pointer, dimension(:,:) :: LST       => NULL()
     real, pointer, dimension(:,:) :: FRI       => NULL()
     real, pointer, dimension(:,:) :: EMISS     => NULL()
@@ -6427,6 +6830,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , TAUTW   , 'TAUTW'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , ZETA_W  , 'ZETA_W' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TWMTF,    'TWMTF'  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TPSURFTILEx, 'TPSURFTILE',  RC=STATUS); VERIFY_(STATUS)
 
 
 ! if we are running Louis sfc layer, get these exports from the gridded Louis fluxes
@@ -8385,6 +8789,10 @@ module GEOS_SurfaceGridCompMod
           where ( LWI==0 .and. TS<271.40            ) LWI = 2.0  ! Ice
       endif
 
+
+! Fill Tile-level diags - TEMPORARY
+
+     if (associated(TPSURFTILEx)) TPSURFTILEx(1,1,1:NT) = TPSURFTILE
 
 ! Fill WET1 over non-land points
 !-------------------------------
