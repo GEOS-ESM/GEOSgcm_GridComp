@@ -220,7 +220,7 @@
 
 
        function QSATLQU0(TL,PL,DQ) result(QS)
-!!$acc routine seq
+!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ
@@ -328,7 +328,7 @@
 
 
        function QSATICE0(TL,PL,DQ) result(QS)
-!!$acc routine seq
+!$acc routine seq
          real,              intent(IN) :: TL
          real, optional,    intent(IN) :: PL
          real, optional,    intent(OUT):: DQ

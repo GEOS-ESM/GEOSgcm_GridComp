@@ -1208,8 +1208,8 @@ contains
 !$acc                 qisub_s,umf_s,slflx_s,qtflx_s,ufrc_s,uflx_s,vflx_s,tr0_s,trten_s,trflx_s, &
 !$acc                 qv0_o,ql0_o,qi0_o,t0_o,s0_o,u0_o,v0_o,qt0_o,thl0_o,thvl0_o, &
 !$acc                 thv0bot_o,thv0top_o,thvl0bot_o,thvl0top_o,ssthl0_o,ssqt0_o,ssu0_o,ssv0_o,tr0_o,trten_o, &
-!$acc                 sstr0_o,trflx_o,trsrc_o, id_exit, &
-!$acc                 cush, tscaleh, tkeavg, qtavg, uavg, vavg, kinv, &
+!$acc                 sstr0_o,trflx_o,trsrc_o, id_exit, thl0bot, thl0top, qt0bot, qt0top, id_check,&
+!$acc                 thj, qvj, qlj, qij, qse, cush, tscaleh, tkeavg, qtavg, uavg, vavg, kinv, &
 !$acc                 dpsum, thvlmin, thvlavg, k, zrho, buoyflx, delzg, wstar, qtsrc, &
 !$acc                 thvlsrc, thlsrc, usrc, vsrc, plcl, klcl, thl0lcl, qt0lcl, thv0lcl, &
 !$acc                 cin, cinlcl, cbmf, cnt, cnb, ufrcinvbase, ufrclcl, winvbase, wlcl, &
@@ -1263,7 +1263,7 @@ contains
          cush            = cush_inout(i)
 
          if (dotransport.eq.1) then
-!$acc loop vector
+!$acc loop vector collapse(2)
             do m = 1,ncnst   ! loop over tracers
                do k = 1,k0
                   tr0(k,m) = tr0_inout(i,k,m)
@@ -1315,8 +1315,7 @@ contains
          end if
 
          ! Compute thv0 and thvl0 at top/bottom interfaces in each layer
-!$acc loop seq private(thl0bot, qt0bot, thj, qvj, qlj, qij, qse, id_check, &
-!$acc                  thl0top, qt0top)
+!$acc loop seq
          do k = 1,k0
 
             thl0bot = thl0(k) + ssthl0(k)*(pifc0(k-1) - pmid0(k))
@@ -1393,12 +1392,26 @@ contains
          ! ---------------------------------------------- !
 
          umf(0:k0)          = 0.0
-         dcm(:k0)           = 0.0
          emf(0:k0)          = 0.0
          slflx(0:k0)        = 0.0
          qtflx(0:k0)        = 0.0
          uflx(0:k0)         = 0.0
          vflx(0:k0)         = 0.0
+         ufrc(0:k0)         = 0.0  
+         uemf(0:k0)         = 0.0
+
+         thlu(0:k0)         = MAPL_UNDEF
+         qtu(0:k0)          = MAPL_UNDEF
+         uu(0:k0)           = MAPL_UNDEF
+         vu(0:k0)           = MAPL_UNDEF
+         wu(0:k0)           = MAPL_UNDEF
+         thvu(0:k0)         = MAPL_UNDEF
+         thlu_emf(0:k0)     = MAPL_UNDEF
+         qtu_emf(0:k0)      = MAPL_UNDEF
+         uu_emf(0:k0)       = MAPL_UNDEF
+         vu_emf(0:k0)       = MAPL_UNDEF
+
+         dcm(:k0)           = 0.0
          qvten(:k0)         = 0.0
          qlten(:k0)         = 0.0
          qiten(:k0)         = 0.0
@@ -1416,31 +1429,24 @@ contains
          fer(:k0)           = 0.0
          fdr(:k0)           = 0.0
          xco(:k0)           = 0.0
-         cin                = 0.0
-         cinlcl             = 0.0
-         cbmf               = 0.0
          qc(:k0)            = 0.0
 !      qldet(:k0)         = 0.0
 !      qidet(:k0)         = 0.0
          qc_l(:k0)          = 0.0
          qc_i(:k0)          = 0.0
+         qtten(:k0)         = 0.0
+         slten(:k0)         = 0.0  
+         comsub(:k0)        = 0.0
+         qlten_sink(:k0)    = 0.0
+         qiten_sink(:k0)    = 0.0
+         qlten_det(:k0)     = 0.0
+         qiten_det(:k0)     = 0.0 
+          
+         cin                = 0.0
+         cinlcl             = 0.0
+         cbmf               = 0.0
          cnt                = real(k0)
          cnb                = 0.0
-         qtten(:k0)         = 0.0
-         slten(:k0)         = 0.0   
-         ufrc(0:k0)         = 0.0  
-
-         thlu(0:k0)         = MAPL_UNDEF
-         qtu(0:k0)          = MAPL_UNDEF
-         uu(0:k0)           = MAPL_UNDEF
-         vu(0:k0)           = MAPL_UNDEF
-         wu(0:k0)           = MAPL_UNDEF
-         thvu(0:k0)         = MAPL_UNDEF
-         thlu_emf(0:k0)     = MAPL_UNDEF
-         qtu_emf(0:k0)      = MAPL_UNDEF
-         uu_emf(0:k0)       = MAPL_UNDEF
-         vu_emf(0:k0)       = MAPL_UNDEF
-         
          ufrcinvbase         = 0.0
          ufrclcl             = 0.0
          winvbase            = 0.0
@@ -1458,12 +1464,6 @@ contains
          bogtop_arr(:k0)    = 0.0
 #endif
 
-         uemf(0:k0)         = 0.0
-         comsub(:k0)        = 0.0
-         qlten_sink(:k0)    = 0.0
-         qiten_sink(:k0)    = 0.0
-         qlten_det(:k0)     = 0.0
-         qiten_det(:k0)     = 0.0 
 !      nlten_sink(:k0)    = 0.0
 !      niten_sink(:k0)    = 0.0 
 
@@ -1501,7 +1501,7 @@ contains
          ! iterative cin calculation, because cumulus convection induces non-zero fluxes !
          ! even at interfaces below PBL top height through 'fluxbelowinv' subroutine.    !
          ! ----------------------------------------------------------------------------- !
-
+!$acc loop seq
          do iter = 1, iter_cin
 
             ! ---------------------------------------------------------------------- ! 
@@ -1700,6 +1700,7 @@ contains
             end if
 
             plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
+!$acc loop seq
             do k = 0, k0
                if( pifc0(k) .lt. plcl ) then
                   klcl = k
@@ -1901,7 +1902,7 @@ contains
                vsrc_o      = vsrc     
                thv0lcl_o   = thv0lcl  
                if (dotransport.eq.1) then
-!$acc loop seq
+!$acc loop vector
                   do m = 1, ncnst
                      trsrc_o(m) = trsrc(m)
                   enddo
@@ -1985,7 +1986,7 @@ contains
                         trsrc(m) = trsrc_o(m)
                      enddo
                   end if
-
+!$acc loop vector
                   do k = 1, k0
                      qv0(k)            = qv0_o(k)
                      ql0(k)            = ql0_o(k)
@@ -2041,7 +2042,7 @@ contains
                   ! Initialize all fluxes, tendencies, and other variables ! 
                   ! in association with cumulus convection.                !
                   ! ------------------------------------------------------ ! 
-
+!$acc loop vector
                   do k = 1,k0
                      umf(k)          = 0.0
                      dcm(k)           = 0.0
@@ -2241,6 +2242,7 @@ contains
                   cnt_out(i)              = cnt_s
                   cnb_out(i)              = cnb_s
                   if (dotransport.eq.1) then
+!$acc loop vector
                      do m = 1, ncnst
                         trten_out(i,:k0,m)   = trten_s(:k0,m)
                      enddo  
@@ -3205,6 +3207,7 @@ contains
                ue      = u0(k+1)
                ve      = v0(k+1) 
                if (dotransport.eq.1) then
+!$acc loop vector
                   do m = 1, ncnst
                      tre(m)  = tr0(k+1,m)
                   enddo
@@ -3436,7 +3439,7 @@ contains
             ! Calculate entrainment mass flux and conservative scalars of entraining !
             ! free air at interfaces of 'kbup <= k < kpen - 1'                       !
             ! ---------------------------------------------------------------------- !
-
+!$acc loop vector
             do k = 0, k0
                thlu_emf(k) = thlu(k)
                qtu_emf(k)  = qtu(k)
@@ -3448,7 +3451,7 @@ contains
                   enddo
                endif
             end do
-
+!$acc loop seq
             do k = kpen - 1, kbup, -1  ! Here, 'k' is an interface index at which
                                     ! penetrative entrainment fluxes are calculated. 
                                     
@@ -3489,6 +3492,7 @@ contains
                   uu_emf(k)   = u0(kpen)   + ssu0(kpen)   * ( pifc0(k) - pmid0(kpen) )     
                   vu_emf(k)   = v0(kpen)   + ssv0(kpen)   * ( pifc0(k) - pmid0(kpen) )   
                   if (dotransport.eq.1) then
+!$acc loop vector
                      do m = 1, ncnst
                         tru_emf(k,m)  = tr0(kpen,m)  + sstr0(kpen,m)  * ( pifc0(k) - pmid0(kpen) )
                      enddo
@@ -3524,6 +3528,7 @@ contains
                         uu_emf(k)   =   u0(k+1)
                         vu_emf(k)   =   v0(k+1)
                         if (dotransport.eq.1) then
+!$acc loop vector
                            do m = 1, ncnst
                               tru_emf(k,m)  =  tr0(k+1,m)
                            enddo
@@ -3540,6 +3545,7 @@ contains
                      uu_emf(k)   =   u0(k+1)
                      vu_emf(k)   =   v0(k+1)
                      if (dotransport.eq.1) then
+!$acc loop vector
                         do m = 1, ncnst
                            tru_emf(k,m)  =  tr0(k+1,m)
                         enddo
@@ -3818,6 +3824,7 @@ contains
             ! -------------------------------------------------------- !
          
             uemf(0:k0)         = 0.
+!$acc loop vector
             do k = 0, kinv - 2  ! Assume linear updraft mass flux within the PBL.
                uemf(k) = cbmf * ( pifc0(0) - pifc0(k) ) / ( pifc0(0) - pifc0(kinv-1) ) 
             end do
@@ -3826,10 +3833,11 @@ contains
             uemf(kbup:kpen-1)   = emf(kbup:kpen-1) ! Only use penetrative entrainment flux consistently.
 
             comsub(1:k0) = 0.
+!$acc loop vector
             do k = 1, kpen
                comsub(k)  = 0.5 * ( uemf(k) + uemf(k-1) )  ! comsub defined on interfaces 
             end do     
-
+!$acc loop seq
             do k = 1, kpen
                if( comsub(k) .ge. 0. ) then
                   if( k .eq. k0 ) then
@@ -3891,7 +3899,7 @@ contains
             ! ----------------- !
             ! Momentum tendency !
             ! ----------------- !
-       
+!$acc loop vector private(km1)
             do k = 1, kpen
                km1 = k - 1 
                uten(k) = ( uflx(km1) - uflx(k) ) * g / dp0(k)
@@ -3907,15 +3915,15 @@ contains
          ! enddo
             end do  
 
-         ! ----------------------------------------------------------------- !
-         ! Tendencies of thermodynamic variables.                            ! 
-         ! This part requires a careful treatment of bulk cloud microphysics.!
-         ! Relocations of 'precipitable condensates' either into the surface ! 
-         ! or into the tendency of 'krel' layer will be performed just after !
-         ! finishing the below 'do-loop'.                                    !        
-         ! ----------------------------------------------------------------- !
+            ! ----------------------------------------------------------------- !
+            ! Tendencies of thermodynamic variables.                            ! 
+            ! This part requires a careful treatment of bulk cloud microphysics.!
+            ! Relocations of 'precipitable condensates' either into the surface ! 
+            ! or into the tendency of 'krel' layer will be performed just after !
+            ! finishing the below 'do-loop'.                                    !        
+            ! ----------------------------------------------------------------- !
        
-
+!$acc loop seq
             do k = 1, kpen
 
                km1 = k - 1
@@ -4260,6 +4268,7 @@ contains
             ! --------------------- !
 
             if (dotransport.eq.1) then
+!$acc loop seq
                do m = 1, ncnst
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
@@ -4275,7 +4284,8 @@ contains
 !        55 continue
 !#endif 
                   trflx_d(0:k0) = 0.
-                  trflx_u(0:k0) = 0.           
+                  trflx_u(0:k0) = 0.
+!$acc loop seq           
                   do k = 1, k0-1
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                      pdelx = dp0(k)
@@ -4286,6 +4296,7 @@ contains
                      dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
                      trflx_d(k) = min( 0., dum )
                   enddo
+!$acc loop seq
                   do k = k0, 2, -1
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                      pdelx = dp0(k)
@@ -4297,9 +4308,10 @@ contains
                                                                   trflx_d(km1) - trflx_d(k) - trflx_u(k) 
                      trflx_u(km1) = max( 0., -dum ) 
                   enddo
+!$acc loop seq
                   do k = 1, k0
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
-                  pdelx = dp0(k)
+                     pdelx = dp0(k)
 !             else
 !                 pdelx = dpdry0(k)
 !             endif
@@ -4344,6 +4356,7 @@ contains
             ! In the below calculations, I explicitly considered cloud base ( LCL ) !
             ! and cloud top height ( pifc0(kpen-1) + ppen )                           !
             ! ----------------------------------------------------------------------! 
+!$acc loop seq
             do k = krel, kpen ! This is a layer index
                ! ------------------------------------------------------------------ ! 
                ! Calculate cumulus condensate at the upper interface of each layer. !
@@ -4424,6 +4437,7 @@ contains
 !           qt0_s(:k0)           = qv0_s(:k0) + ql0_s(:k0) + qi0_s(:k0)
                t0_s(:k0)            = t0(:k0)  +  sten(:k0) * dt / cp
                if (dotransport.eq.1) then
+!$acc loop vector
                   do m = 1, ncnst
                      tr0_s(:k0,m)       = tr0(:k0,m) + trten(:k0,m) * dt
                   enddo
@@ -4513,6 +4527,7 @@ contains
                bogtop_arr_s(:k0)    = bogtop_arr(:k0)
 
                if (dotransport.eq.1) then
+!$acc loop vector
                   do m = 1, ncnst
                      trten_s(:k0,m)    = trten(:k0,m)
                      trflx_s(0:k0,m)   = trflx(0:k0,m)
@@ -4545,11 +4560,12 @@ contains
                ssu0        = slope(k0,u0  ,pmid0)
                ssv0        = slope(k0,v0  ,pmid0)
                if (dotransport.eq.1) then
-                  do m = 1, ncnst
-                     sstr0(:k0,m) = slope(k0,tr0(:k0,m),pmid0)
-                  enddo
+                  ! do m = 1, ncnst
+                  !    sstr0(:k0,m) = slope(k0,tr0(:k0,m),pmid0)
+                  ! enddo
+                  call slope1(k0, ncnst, tr0, pmid0, sstr0)
                endif
-
+!$acc loop seq
                do k = 1, k0
 
                   thl0bot = thl0(k) + ssthl0(k) * ( pifc0(k-1) - pmid0(k) )
@@ -4621,6 +4637,7 @@ contains
          vflx_out(i,0:k0)            = vflx(0:k0)
 
          if (dotransport.eq.1) then
+!$acc loop vector
             do m = 1, ncnst
                tr0_inout(i,:k0,m)      = tr0_inout(i,:k0,m) + trten(:k0,m) * dt
             enddo
@@ -4880,6 +4897,7 @@ contains
    end subroutine slope1
 
    function qsinvert(qt,thl,ps_in)
+   !$acc routine seq
       ! ----------------------------------------------------------------- !
       ! Function calculating saturation pressure ps (or pLCL) from qt and !
       ! thl ( liquid potential temperature,  NOT liquid virtual potential ! 
@@ -4971,6 +4989,7 @@ contains
    end function qsinvert
 
    real function compute_alpha(del_CIN,ke)
+!$acc routine seq
    ! ------------------------------------------------ !
    ! Subroutine to compute proportionality factor for !
    ! implicit CIN calculation.                        !   
@@ -5021,6 +5040,7 @@ contains
  
  
    real function compute_ppen(wtwb,D,bogbot,bogtop,rho0j,dpen)
+!$acc routine seq
    ! ----------------------------------------------------------- !
    ! Subroutine to compute critical 'ppen[Pa]<0' ( pressure dis. !
    ! from 'pifc0(kpen-1)' to the cumulus top where cumulus updraft !
@@ -5078,6 +5098,7 @@ contains
  
  
    subroutine fluxbelowinv(cbmf,ps0,mkx,kinv,dt,xsrc,xmean,xtopin,xbotin,xflx)   
+   !$acc routine seq
    ! ------------------------------------------------------------------------- !
    ! Subroutine to calculate turbulent fluxes at and below 'kinv-1' interfaces.!
    ! Check in the main program such that input 'cbmf' should not be zero.      !  
@@ -5147,6 +5168,7 @@ contains
  
  
    subroutine positive_moisture_single( xlv, xls, mkx, dt, qvmin, qlmin, qimin, dp, qv, ql, qi, s, qvten, qlten, qiten, sten )
+   !$acc routine seq
    ! ------------------------------------------------------------------------------- !
    ! If any 'ql < qlmin, qi < qimin, qv < qvmin' are developed in any layer,         !
    ! force them to be larger than minimum value by (1) condensating water vapor      !
@@ -5280,6 +5302,7 @@ contains
  
  
    subroutine roots(a,b,c,r1,r2,status)
+   !$acc routine seq
    ! --------------------------------------------------------- !
    ! Subroutine to solve the second order polynomial equation. !
    ! I should check this subroutine later.                     !
@@ -5324,6 +5347,7 @@ contains
  
  
    subroutine getbuoy(pbot,thv0bot,ptop,thv0top,thvubot,thvutop,plfc,cin)
+   !$acc routine seq
    ! ----------------------------------------------------------- !
    ! Subroutine to calculate integrated CIN [ J/kg = m2/s2 ] and !
    ! 'cinlcl, plfc' if any. Assume 'thv' is linear in each layer !
@@ -5356,6 +5380,7 @@ contains
    end subroutine getbuoy
  
    function single_cin(pbot,thv0bot,ptop,thv0top,thvubot,thvutop)
+!$acc routine seq
       ! ------------------------------------------------------- !
       ! Function to calculate a single layer CIN by summing all ! 
       ! positive and negative CIN.                              !
