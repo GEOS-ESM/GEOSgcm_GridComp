@@ -151,7 +151,7 @@
 
       real, save :: TMINLQU    =  ZEROC - 40.0
       real, save :: TMINICE    =  ZEROC + TMINSTR
-!!$acc declare create(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
+!$acc declare create(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
 
       !class(Logger), pointer :: lgr
       !logical :: debugIsEnabled
@@ -508,7 +508,7 @@
     
        
   function QSAT0(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
-!!$acc routine seq
+!$acc routine seq
     real,   intent(IN) :: TL, PL
     logical, optional, intent(IN) :: PASCALS
     real,    optional, intent(IN) :: RAMP
@@ -731,7 +731,7 @@
 
     
     function DQSAT0(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
-!!$acc routine seq
+!$acc routine seq
       real,   intent(IN) :: TL, PL
       logical, optional, intent(IN) :: PASCALS
       real,    optional, intent(IN) :: RAMP
@@ -954,7 +954,7 @@
 !=======================================================================================
 
         subroutine ESINIT
-!!$acc routine seq
+!$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa
