@@ -809,12 +809,16 @@ contains
      else ! MOM6
        call MAPL_AddConnectivity ( GC,  &
             SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-                            'UWC     ','VWC     ',                         &
                             'FRESH   ','FSALT   ', 'FHOCN   ', 'AICE    '/), &
             DST_ID = OCEAN,             &
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddConnectivity ( GC,   &
+          SHORT_NAME  = (/'UWC','VWC'/), &
+          SRC_ID = OCEAN,                &
+          DST_ID = SEAICE,               &
+          _RC)
      endif
   end if
 
