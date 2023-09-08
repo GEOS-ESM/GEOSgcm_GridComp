@@ -97,6 +97,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     mfqt3,                         &
                     mfhl3,                         &
                     mfwqt,                         &
+                    mfqt2,                         &
+                    mfhl2,                         &
                     mfhlqt,                        &
                     mfwhl,                         &
                     mftke,                         &
@@ -165,7 +167,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                              mfwqt,    &
                                                              mftke
 
-   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
+   REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,mfqt2,mfhl2,&
                                                         mfhlqt
 
 
@@ -233,10 +235,14 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
        PBLHmin=100.
 
    ! temporary, set
-   mfsrcthl = -999.
-   mfsrcqt  = -999.
-   mfw      = -999.
-   mfarea   = -999.
+   if (MFPARAMS%DOCLASP==0) then
+     mfsrcthl = -999.
+     mfsrcqt  = -999.
+     mfw      = -999.
+     mfarea   = -999.
+   end if
+
+!   print *,'EDMF: mfsrcqt=',mfsrcqt
 
    tmp1d(:) = 1e-3
 
@@ -284,8 +290,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    mfwhl =0.
    mftke =0.
    edmfmf=0.
-   !      mfqt2 =0.
-   !      mfhl2 =0.
+   mfqt2 =0.
+   mfhl2 =0.
 
    if (associated(entx)) entx = mapl_undef
 
@@ -680,9 +686,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! all variables, except Areas are now multipled by the area
       !
 
-      if (associated(EDMF_PLUMES_W))   EDMF_PLUMES_W(IH,JH,KTS-1:KTE,:)   = upw(KTE:KTS-1:-1,:)
-      if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
-      if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
 
       dry_a     = 0.
       moist_a   = 0.
@@ -876,9 +879,20 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
         mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         mfhlqt(IH,JH,K) = 0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
-  !      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
-  !      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
+        mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
+        mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       ENDDO
+
+
+      where (UPA.eq.0.)
+        UPW   = MAPL_UNDEF
+        UPTHL = MAPL_UNDEF
+        UPQT  = MAPL_UNDEF
+      end where
+      if (associated(EDMF_PLUMES_W))   EDMF_PLUMES_W(IH,JH,KTS-1:KTE,:)   = upw(KTE:KTS-1:-1,:)
+      if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
+      if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
+
 
     END IF   !  IF ( wthv > 0.0 )
 
@@ -900,7 +914,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
   real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,wstar,qstar,thstar,sigmaQT,sigmaTH
   integer  :: k
 
-   wstar=max(0.1,(mapl_grav/300.*wthv*1e3)**(1./3.))  ! convective velocity scale
+   wstar=max(0.1,(mapl_grav/300.*max(0.,wthv)*1e3)**(1./3.))  ! convective velocity scale
    qstar=max(0.,wqt)/wstar
    thstar=max(0.,wthv)/wstar
 

@@ -803,23 +803,23 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'EDMF_updraft_contribution_to_total_water_variance',     &
-!       UNITS      = 'kg2 kg-2',                                              &
-!       SHORT_NAME = 'EDMF_QT2'    ,                                          &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_updraft_contribution_to_total_water_variance',     &
+       UNITS      = 'kg2 kg-2',                                              &
+       SHORT_NAME = 'EDMF_QT2'    ,                                          &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
 
-!    call MAPL_AddExportSpec(GC,                                              &
-!       LONG_NAME  = 'Liquid_static_energy_variance_diagnosed_from_updrafts', &
-!       UNITS      = 'K2',                                                    &
-!       SHORT_NAME = 'EDMF_SL2'    ,                                          &
-!       DIMS       = MAPL_DimsHorzVert,                                       &
-!       VLOCATION  = MAPL_VLocationCenter,                                    &
-!                                                                  RC=STATUS  )
-!    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'Liquid_static_energy_variance_diagnosed_from_updrafts', &
+       UNITS      = 'K2',                                                    &
+       SHORT_NAME = 'EDMF_SL2'    ,                                          &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'Liquid_static_energy_flux_from_updrafts',               &
@@ -2825,7 +2825,7 @@ end if
                                             edmf_dry_u,edmf_moist_u,  &
                                             edmf_dry_v,edmf_moist_v,  &
                                             edmf_moist_qc,edmf_buoyf,edmf_mfx, &
-                                            edmf_w2, & !edmf_qt2, edmf_sl2, & 
+                                            edmf_w2, edmf_qt2, edmf_sl2, & 
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke, slflxmf, &
@@ -3170,14 +3170,20 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,    ZLES,    'ZLES',               RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_W, 'EDMF_PLUMES_W', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_QT, 'EDMF_PLUMES_QT', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, EDMF_PLUMES_THL, 'EDMF_PLUMES_THL', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  edmf_sl2,  'EDMF_SL2', RC=STATUS)
-!     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_sl2,  'EDMF_SL2', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_slqt, 'EDMF_SLQT', RC=STATUS)
      VERIFY_(STATUS)
-!     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'EDMF_QT2', RC=STATUS)
-!     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'EDMF_QT2', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w2,   'EDMF_W2', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w3,   'EDMF_W3', RC=STATUS)
@@ -3545,6 +3551,8 @@ end if
 
     IF(DOMF /= 0) then
 
+!      print *,'TurbGC: MFW='
+
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,      &
                     !== Inputs ==
                     PHIS,                     &
@@ -3582,8 +3590,8 @@ end if
                     mfqt3,                    &
                     mfsl3,                    &
                     mfwqt,                    &
-!                    mfqt2,                    &
-!                    mfsl2,                    &
+                    mfqt2,                    &
+                    mfsl2,                    &
                     mfslqt,                   &
                     mfwsl,                    &
                     !== Outputs for SHOC ==
@@ -3616,8 +3624,8 @@ end if
       if (associated(mfaw))           mfaw = edmf_mf/rhoe
       if (associated(slflxmf))        slflxmf = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
       if (associated(qtflxmf))        qtflxmf = awqv3+awql3+awqi3
-!      if (associated(edmf_sl2))       edmf_sl2 = mfsl2 
-!      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
+      if (associated(edmf_sl2))       edmf_sl2 = mfsl2 
+      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
       if (associated(edmf_w2))        edmf_w2 = mfw2
       if (associated(edmf_w3))        edmf_w3 = mfw3
       if (associated(edmf_qt3))       edmf_qt3 = mfqt3

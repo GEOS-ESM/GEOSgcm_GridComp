@@ -85,6 +85,7 @@ module GEOS_SurfaceGridCompMod
   integer ::     LANDICE
   integer ::       OCEAN 
   integer ::        LAND 
+  integer ::     HPRECIP
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
@@ -99,6 +100,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+  logical :: DO_HETER_PRECIP
   logical :: DO_FIRE_DANGER
   integer :: DO_DATA_ATM4OCN
 
@@ -110,6 +112,7 @@ module GEOS_SurfaceGridCompMod
 !
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
+  character(len=ESMF_MAXSTR) :: SharedObj
 
   type T_Routing
      integer :: srcTileID, dstTileID,     &
@@ -920,14 +923,23 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME         = 'PRTILE',                           &
-        LONG_NAME          = 'precipitation_on_tiles',           &
-        UNITS              = 'mm s-1',                           &
-        DIMS               = MAPL_DimsHorzVert,                   &
-        VLOCATION          = MAPL_VLocationCenter,                &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+!     call MAPL_AddExportSpec(GC,                             &
+!        SHORT_NAME         = 'PRTILE',                           &
+!        LONG_NAME          = 'precipitation_on_tiles',           &
+!        UNITS              = 'mm s-1',                           &
+!        DIMS               = MAPL_DimsHorzVert,                   &
+!        VLOCATION          = MAPL_VLocationCenter,                &
+!                                                       RC=STATUS  )
+!     VERIFY_(STATUS)
+
+!  call MAPL_AddExportSpec(GC,                    &
+!    SHORT_NAME         = 'WGTTILE',                   &
+!    LONG_NAME          = 'precipitation_weight_on_tiles',    &
+!    UNITS              = '1',                         &
+!    DIMS               = MAPL_DimsHorzVert,           &
+!    VLOCATION          = MAPL_VLocationCenter,        &
+!                                           RC=STATUS  )
+!  VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'QTILE',                           &
@@ -1159,6 +1171,33 @@ module GEOS_SurfaceGridCompMod
     LONG_NAME          = 'surface_temperature_of_land_incl_snow',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSURFTILE'                ,&
+    DIMS               = MAPL_DimsHorzVert           ,&
+    VLOCATION          = MAPL_VLocationCenter        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'tile_surface_soil_wetness',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'WET1TILE'                ,&
+    DIMS               = MAPL_DimsHorzVert           ,&
+    VLOCATION          = MAPL_VLocationCenter        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_sensible_heat_flux_on_tiles',&
+    UNITS              = 'W m-2'                         ,&
+    SHORT_NAME         = 'SHLANDTILE'                ,&
+    DIMS               = MAPL_DimsHorzVert           ,&
+    VLOCATION          = MAPL_VLocationCenter        ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'surface_latent_heat_flux_on_tiles',&
+    UNITS              = 'W m-2'                         ,&
+    SHORT_NAME         = 'LHLANDTILE'                ,&
     DIMS               = MAPL_DimsHorzVert           ,&
     VLOCATION          = MAPL_VLocationCenter        ,&
                                            RC=STATUS  ) 
@@ -3420,6 +3459,16 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 #endif
 
+    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
+    if (DO_HETER_PRECIP) then
+       !ALT replace MOM with HPRECIP
+!       HPRECIP = MAPL_AddChild(GC, NAME='HPRECIP', SS=HetPrSetServices, RC=STATUS)
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so", __RC__ )
+       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+    else
+       HPRECIP = 0
+    end if
+
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
@@ -3428,7 +3477,12 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_Get(MAPL, GCNAMES = GCNames, RC=STATUS)
     VERIFY_(STATUS)
-    _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    if (.not. do_heter_precip) then
+       _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    else
+       _ASSERT(NUM_CHILDREN == size(GCNames)-1,'needs informative message')
+    end if
+!    _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
 
     CHILD_MASK(OCEAN  ) = MAPL_OCEAN
 #ifndef AQUA_PLANET
@@ -3692,6 +3746,15 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
     end do
+
+    if (DO_HETER_PRECIP) then
+       I = HPRECIP
+       call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+       VERIFY_(STATUS)
+    end if
+
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
 ! Call Initialize for every Child
@@ -4808,16 +4871,10 @@ module GEOS_SurfaceGridCompMod
 !     VERIFY_(STATUS)
 
 !    call MAPL_GetResource( MAPL, NumUp, 'EDMF_NumUp:', default=10, RC=STATUS)
-    call MAPL_GetResource( MAPL, doCLASP, 'DOCLASP:', default=0, RC=STATUS)
+    call MAPL_GetResource( MAPL, doCLASP, 'EDMF_DOCLASP:', default=0, RC=STATUS)
     call MAPL_GetResource( MAPL, hetfac,  'CLASP_HETFAC:', default=0.5, RC=STATUS)
 
-    NumUp = 10.
-    NumUpI = INT(NumUp)
 
-    MFQTSRC(:,:,:) = -999.
-    MFTHSRC(:,:,:) = -999.
-    MFW(:,:,:) = -999.
-    MFAREA(:,:,:) = -999.
 !    print *,'filling with -999'
     TTILE(:,:,:) = -999.
     QTILE(:,:,:) = -999.
@@ -4827,7 +4884,7 @@ module GEOS_SurfaceGridCompMod
 !    print *,'assigning tile values'
 !    QTILE(1,1,1:NT) = QHTILE
 !    TTILE(1,1,1:NT) = THTILE
-if (DOCLASP/=0.) then
+!if (DOCLASP/=0.) then
     do I = 1,IM
       do J = 1,JM
  !        do N = 1,NT
@@ -4835,8 +4892,8 @@ if (DOCLASP/=0.) then
          TTILE(I,J,1:NT) = THTILE
          T2SRF(I,J) = SUM(THTILE)/NT
          Q2SRF(I,J) = SUM(QHTILE)/NT
- !        print *,'tavg = ',T2SRF
- !        print *,'qavg = ',Q2SRF
+!         print *,'tavg = ',T2SRF
+!         print *,'qavg = ',Q2SRF
          TQSRF(I,J) = SUM( (THTILE-T2SRF(I,J))*(QHTILE-Q2SRF(I,J)) ) / NT
 !         print *,'tqsrf=',TQSRF
          T2SRF(I,J) = SUM( (THTILE-T2SRF(I,J))**2 ) / NT
@@ -4868,11 +4925,22 @@ if (DOCLASP/=0.) then
 
       end do
     end do
-end if ! DOCLASP condition
+!end if ! DOCLASP condition
 
-    alphaW = 0.572
+!   print *,'SHTILE=',SHTILE(:,:,1:NT)
+!   print *,'EVTILE=',EVTILE(:,:,1:NT)
+
 
     if (doCLASP/=0) then
+
+    NumUp = 10.
+    NumUpI = INT(NumUp)
+    alphaW = 0.572
+
+    MFQTSRC(:,:,:) = -999.
+    MFTHSRC(:,:,:) = -999.
+    MFW(:,:,:) = -999.
+    MFAREA(:,:,:) = -999.
 
     do I = 1,IM
       do J = 1,JM
@@ -4948,7 +5016,7 @@ end if ! DOCLASP condition
             f1 = FLOOR( NumUp / NPOSB )  ! baseline number of updrafts per tile
             f2 = MOD( NumUpI, NPOSB)    ! number of tiles with an extra updraft
             cnt = 0
-!            print *,'f1=',f1,'  f2=',f2
+!            print *,'upd per tile=',f1,'  tiles w/extra=',f2
             do N = 1,NPOSB
                imax = 1
                do NI = 2,NT
@@ -5587,8 +5655,10 @@ end if ! DOCLASP condition
 
 ! Pointers to exports
 
-    real, pointer, dimension(:,:,:) :: PRTILE=> NULL()
+!    real, pointer, dimension(:,:,:) :: PRTILE=> NULL()
+!    real, pointer, dimension(:,:,:) :: WGTTILE=> NULL()
     real, pointer, dimension(:,:,:) :: TPSURFTILEx=> NULL()
+    real, pointer, dimension(:,:,:) :: WET1TILEx=> NULL()
     real, pointer, dimension(:,:) :: LST       => NULL()
     real, pointer, dimension(:,:) :: FRI       => NULL()
     real, pointer, dimension(:,:) :: EMISS     => NULL()
@@ -6214,6 +6284,8 @@ end if ! DOCLASP condition
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
     
+    real, pointer :: het_precip_fac(:) => NULL()
+
 !=============================================================================
 
 ! Begin... 
@@ -6831,6 +6903,9 @@ end if ! DOCLASP condition
     call MAPL_GetPointer(EXPORT  , ZETA_W  , 'ZETA_W' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TWMTF,    'TWMTF'  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TPSURFTILEx, 'TPSURFTILE',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WET1TILEx, 'WET1TILE',  RC=STATUS); VERIFY_(STATUS)
+!    call MAPL_GetPointer(EXPORT  , WGTTILE, , 'WGTTILE' , RC=STATUS); VERIFY_(STATUS)
+!    call MAPL_GetPointer(EXPORT  , PRTILE, , 'PRTILE' , RC=STATUS); VERIFY_(STATUS)
 
 
 ! if we are running Louis sfc layer, get these exports from the gridded Louis fluxes
@@ -7295,6 +7370,26 @@ end if ! DOCLASP condition
     call MAPL_LocStreamTransform( LOCSTREAM, ALWTILE  , ALW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
+
+    if(do_heter_precip) then
+       I = HPRECIP
+       call ESMF_GridCompRun(GCS(I), &
+            importState=GIM(I), exportState=GEX(I), &
+            clock=CLOCK, userRC=STATUS )
+       VERIFY_(STATUS)
+       !get export WEIGHT, i.e. the heterogeneous precipitation factor
+       call MAPL_GetPointer(GEX(I), het_precip_fac, 'WEIGHT', RC=status)
+       VERIFY_(STATUS)
+       !apply weight to the 5 precips
+       pcutile = pcutile * het_precip_fac
+       plstile = plstile * het_precip_fac
+       snofltile = snofltile * het_precip_fac
+       icefltile = icefltile * het_precip_fac
+       frzrfltile = frzrfltile * het_precip_fac
+!       if (associated(wgttile).and.IM.eq.1) wgttile(1,1,1:NT) = het_precip_fac
+    end if
+!    if (associated(prtile).and.IM.eq.1) prtile(1,1,1:NT) = pcutile+plstile+snofltile+icefltile+frzrfltile
+
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
@@ -8793,6 +8888,7 @@ end if ! DOCLASP condition
 ! Fill Tile-level diags - TEMPORARY
 
      if (associated(TPSURFTILEx)) TPSURFTILEx(1,1,1:NT) = TPSURFTILE
+     if (associated(WET1TILEx)) WET1TILEx(1,1,1:NT) = WET1TILE
 
 ! Fill WET1 over non-land points
 !-------------------------------
