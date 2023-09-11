@@ -99,6 +99,7 @@ def get_configs_from_answers(answers):
         DATENAME = 'DE'
         POLENAME = 'PE'
         MOM_VERSION = 'UNDEF'
+        SG= 'UNDEF'
         if orslv in['O2','O3','O1']:
            LATLON_OCEAN = True
            DATENAME = 'DE'
@@ -144,6 +145,9 @@ def get_configs_from_answers(answers):
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
         config ['NCPUS'] = 20
+
+        for x in answers.get('Stretched_CS',[]):
+            config ['SG'] = answers['SG']
 
 
         configs = configs + [config]
@@ -212,13 +216,19 @@ def ask_questions(default_grid="Cubed-Sphere"):
 
        {
             "type": "checkbox",
-            "name": "Stretched_CS",
-            "message": f'''Choose Stretched Cubed-Sphere (Stretched_CS) grid option:
+            "name": "SG",
+            "message": f'''Choose Stretched Cube-Sphere grid option:
                Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Choices
                -----  --------------  ---------  ---------  ------------------------
                SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
                SG002      3.0            39.5      -98.35   c1536                    \n ''',
-
+            "choices": ["SG001", "SG002"],
+            "when": lambda x: "Stretched_CS" == x['grid_type'],
+        },
+       {
+            "type": "checkbox",
+            "name": "Stretched_CS",
+            "message": "Select Stretched_CS  resolution (multiple choices): \n ",
             "choices": [ \
                  "c270  -- 1/3  deg ( 37   km)", \
                  "c540  -- 1/6  deg ( 18   km)", \
@@ -351,6 +361,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
 
    res = []
    for x in answers.get('Stretched_CS',[]):
+      SG       = answers['SG']
       short_res = x.split()[0]
       res = res + [short_res]
       i = int(short_res[1:])

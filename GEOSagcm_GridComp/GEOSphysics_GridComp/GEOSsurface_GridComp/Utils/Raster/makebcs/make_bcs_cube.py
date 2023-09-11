@@ -95,7 +95,7 @@ def make_bcs_cube(config):
   grid_type  = config['grid_type']
   
   if grid_type not in ["Stretched_CS", "Cubed-Sphere"] :
-     print('This should be a Cubed-Sphere or Stretched Cubed-Sphere (Stretched_CS) grid')
+     print('This should be cubed-sphere grid')
      return
 
   resolution = config['resolution']
@@ -118,14 +118,14 @@ def make_bcs_cube(config):
   SGPARAM = ""
   if 'Stretched_CS' in grid_type:
      IS_STRETCHED = True
-     if resolution in ['c270','c540','c1080', 'c2160'] :
+     SG       = config['SG']
+     if SG == ['SG001'] :
         STRETCH  = '-F 2.5 -X -98.35 -Y 39.5' 
-        SG   = 'SG001'
-     if resolution in ['c1536'] :
+     if SG == ['SG002'] :
         STRETCH  = '-F 3.0 -X -98.35 -Y 39.5'
-        SG   = 'SG002'
-     SGNAME = '-'+SG
-     SGPARAM = '-s ' + SG
+     SGNAME = '-'+''.join(SG)
+     SGPARAM = '-s '+''.join(SG)
+
 
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
