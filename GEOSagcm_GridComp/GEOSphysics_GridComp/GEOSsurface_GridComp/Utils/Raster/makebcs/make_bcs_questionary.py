@@ -215,9 +215,9 @@ def ask_questions(default_grid="Cubed-Sphere"):
         },
 
        {
-            "type": "checkbox",
+            "type": "select",
             "name": "SG",
-            "message": f'''Choose Stretched Cubed-Sphere (Stretched_CS) grid option:
+            "message": f'''Select Stretched Cubed-Sphere (Stretched_CS) grid option:
                Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Choices
                -----  --------------  ---------  ---------  ------------------------
                SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
