@@ -95,7 +95,7 @@ def make_bcs_cube(config):
   grid_type  = config['grid_type']
   
   if grid_type not in ["Stretched_CS", "Cubed-Sphere"] :
-     print('This should be cubed-sphere grid')
+     print('This should be a Cubed-Sphere or Stretched Cubed-Sphere (Stretched_CS) grid')
      return
 
   resolution = config['resolution']
