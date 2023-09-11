@@ -1,7 +1,7 @@
 module GEOSmoist_Process_Library
 
     use MAPL_ConstantsMod
-    use GEOS_UtilsMod
+    ! use GEOS_UtilsMod
 
     implicit none
 

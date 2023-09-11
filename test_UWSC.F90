@@ -489,7 +489,7 @@ program test_UWSC
     read(fileID) VFLX_SC_ref
     close(fileID)
 
-    if(print_compare.eq..true.) then
+    if(print_compare.eqv..true.) then
     
         print*, 'DIFF : sum(CUSH - CUSH_ref) = ', sum(CUSH - CUSH_ref)
         print*, 'sum(CUSH) = ', sum(CUSH)

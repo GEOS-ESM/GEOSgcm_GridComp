@@ -5,7 +5,7 @@ module uwshcu
   !  use GEOS_Mod, only: write_parallel
   !  use MAPL,     only: MAPL_UNDEF
 
-   use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
+   use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT, exec_ESINIT
    use GEOSmoist_Process_Library
    use MAPL_ConstantsMod, only: MAPL_TICE , MAPL_CP   , &
                                 MAPL_GRAV , MAPL_ALHS , &
@@ -69,7 +69,7 @@ module uwshcu
 contains
 
    real function exnerfn(pressure)
-!$acc routine seq
+!!$acc routine seq
       real, intent(in)              :: pressure   ! in Pa
       exnerfn = (pressure/p00)**rovcp
       return
@@ -1055,6 +1055,8 @@ contains
       ixnumliq = 3
       ixnumice = 4
 
+      call exec_ESINIT()
+
 !$acc data create(exit_ufrc,exit_wtw,exit_drycore,exit_wu,exit_cufilter,&
 !$acc             exit_rei,exit_kinv1,exit_klfck0,exit_klclk0,exit_uwcu,exit_conden,&
 !$acc             limit_cinlcl,limit_cin,ind_delcin,limit_rei,limit_shcu,limit_negcon,&
@@ -1182,7 +1184,7 @@ contains
 !$acc end kernels
       call system_clock(t_end)
       print*,'------ Eclipsed Time : ', (t_end - t_start) / rate
-!$acc end data
+!!$acc end data
 
 
       print*,'****** compute_uwshcu : Column Loop ******'
@@ -1192,47 +1194,47 @@ contains
    !   Start column loop
    !========================
 
-!$acc parallel loop gang &
-!$acc                 private(pifc0,zifc0,pmid0,zmid0,dp0,u0,v0,tke,qv0,ql0, &
-!$acc                 qi0,tr0,t0,s0,qt0,thl0,thvl0,ssqt0,ssthl0,ssu0, &
-!$acc                 ssv0,thv0bot,thv0top,thvl0bot,thvl0top,exnmid0,exnifc0,sstr0,qv0_star,ql0_star, &
-!$acc                 qi0_star,s0_star,umf,emf,dcm,qvten,qlten,qiten,sten,uten, &
-!$acc                 vten,qrten,qsten,slflx,qtflx,uflx,vflx,cufrc,qcu,qlu, &
-!$acc                 qiu,dwten,diten,fer,fdr,xco,uf,vf,qc,qlten_det, &
-!$acc                 qiten_det,qc_l,qc_i,qtten,slten,ufrc,trten,trflx,trflx_d,trflx_u, &
-!$acc                 uemf,comsub,qlten_sink,qiten_sink,wu,thlu,qtu,uu,vu,thvu, &
-!$acc                 rei,tru,thlu_emf,qtu_emf,uu_emf,vu_emf,tru_emf,trsrc,tre,xflx, &
-!$acc                 dcm_s,qv0_s,ql0_s,qi0_s,s0_s ,u0_s ,v0_s,t0_s ,qvten_s, &
-!$acc                 qlten_s,qiten_s,qrten_s,qsten_s,sten_s,uten_s,vten_s,cufrc_s,qcu_s,qlu_s, &
-!$acc                 qiu_s,fer_s,fdr_s,xc_s,qc_s,qtten_s,slten_s,qldet_s,qidet_s,qlsub_s, &
-!$acc                 qisub_s,umf_s,slflx_s,qtflx_s,ufrc_s,uflx_s,vflx_s,tr0_s,trten_s,trflx_s, &
-!$acc                 qv0_o,ql0_o,qi0_o,t0_o,s0_o,u0_o,v0_o,qt0_o,thl0_o,thvl0_o, &
-!$acc                 thv0bot_o,thv0top_o,thvl0bot_o,thvl0top_o,ssthl0_o,ssqt0_o,ssu0_o,ssv0_o,tr0_o,trten_o, &
-!$acc                 sstr0_o,trflx_o,trsrc_o, id_exit, thl0bot, thl0top, qt0bot, qt0top, id_check,&
-!$acc                 thj, qvj, qlj, qij, qse, cush, tscaleh, tkeavg, qtavg, uavg, vavg, kinv, &
-!$acc                 dpsum, thvlmin, thvlavg, k, zrho, buoyflx, delzg, wstar, qtsrc, &
-!$acc                 thvlsrc, thlsrc, usrc, vsrc, plcl, klcl, thl0lcl, qt0lcl, thv0lcl, &
-!$acc                 cin, cinlcl, cbmf, cnt, cnb, ufrcinvbase, ufrclcl, winvbase, wlcl, &
-!$acc                 emfkbup, cbmflimit, plfc, klfc, thvubot, thvutop, cin_i, cinlcl_i, &
-!$acc                 ke, kinv_o, klcl_o, klfc_o, plcl_o, plfc_o, tkeavg_o, thvlmin_o, qtsrc_o, &
-!$acc                 thvlsrc_o, usrc_o, vsrc_o, thv0lcl_o, cin_f, cinlcl_f, del_CIN, alpha, &
-!$acc                 krel, prel, thv0rel, wcrit, sigmaw, mu, rho0inv, mumin0, mulcl, mulclstar, &
-!$acc                 mumin2, winv, ufrcinv, wtw, wrel, winvbase, uplus, vplus, pe, qsat_pe, &
-!$acc                 dpe, exne, thvebot, thle, qte, ue, ve, scaleh, iter_scaleh, kbup, kpen, &
-!$acc                 km1, thlue, qtue, wue, wtwb, thv0j, rhomid0j, qsat_arg, qs, excess0, &
-!$acc                 exql, exqi, thvj, tj, excessu, cridis, xsat, xc, aquad, bquad, cquad, &
-!$acc                 thlxsat, qtxsat, thv_x0, thv_x1, x_cu, x_en, ee2, ud2, bogbot, bogtop,&
-!$acc                 delbog, drage, expfac, autodet, rhoifc0j, ppen, thlu_top, qtu_top, &
-!$acc                 forcedCu, xsrc, xmean, xtop, xbot, kp1, thlten_sub, qtten_sub, qlten_sub, &
-!$acc                 qiten_sub, nlten_sub, niten_sub, thl_prog, qt_prog, qlu_mid, qiu_mid, &
-!$acc                 qlubelow, qiubelow, qlu_top, qiu_top, qc_lm, qc_im, nc_lm, nc_im, totsink, &
-!$acc                 trmin, pdelx, dum, qcubelow, rcwp, rlwp, riwp, cush_s, cin_s, cinlcl_s, &
-!$acc                 cbmf_s)
-
+!!$acc parallel loop gang &
+!!$acc                 private(pifc0,zifc0,pmid0,zmid0,dp0,u0,v0,tke,qv0,ql0, &
+!!$acc                 qi0,tr0,t0,s0,qt0,thl0,thvl0,ssqt0,ssthl0,ssu0, &
+!!$acc                 ssv0,thv0bot,thv0top,thvl0bot,thvl0top,exnmid0,exnifc0,sstr0,qv0_star,ql0_star, &
+!!$acc                 qi0_star,s0_star,umf,emf,dcm,qvten,qlten,qiten,sten,uten, &
+!!$acc                 vten,qrten,qsten,slflx,qtflx,uflx,vflx,cufrc,qcu,qlu, &
+!!$acc                 qiu,dwten,diten,fer,fdr,xco,uf,vf,qc,qlten_det, &
+!!$acc                 qiten_det,qc_l,qc_i,qtten,slten,ufrc,trten,trflx,trflx_d,trflx_u, &
+!!$acc                 uemf,comsub,qlten_sink,qiten_sink,wu,thlu,qtu,uu,vu,thvu, &
+!!$acc                 rei,tru,thlu_emf,qtu_emf,uu_emf,vu_emf,tru_emf,trsrc,tre,xflx, &
+!!$acc                 dcm_s,qv0_s,ql0_s,qi0_s,s0_s ,u0_s ,v0_s,t0_s ,qvten_s, &
+!!$acc                 qlten_s,qiten_s,qrten_s,qsten_s,sten_s,uten_s,vten_s,cufrc_s,qcu_s,qlu_s, &
+!!$acc                 qiu_s,fer_s,fdr_s,xc_s,qc_s,qtten_s,slten_s,qldet_s,qidet_s,qlsub_s, &
+!!$acc                 qisub_s,umf_s,slflx_s,qtflx_s,ufrc_s,uflx_s,vflx_s,tr0_s,trten_s,trflx_s, &
+!!$acc                 qv0_o,ql0_o,qi0_o,t0_o,s0_o,u0_o,v0_o,qt0_o,thl0_o,thvl0_o, &
+!!$acc                 thv0bot_o,thv0top_o,thvl0bot_o,thvl0top_o,ssthl0_o,ssqt0_o,ssu0_o,ssv0_o,tr0_o,trten_o, &
+!!$acc                 sstr0_o,trflx_o,trsrc_o, id_exit, thl0bot, thl0top, qt0bot, qt0top, id_check,&
+!!$acc                 thj, qvj, qlj, qij, qse, cush, tscaleh, tkeavg, qtavg, uavg, vavg, kinv, &
+!!$acc                 dpsum, thvlmin, thvlavg, k, zrho, buoyflx, delzg, wstar, qtsrc, &
+!!$acc                 thvlsrc, thlsrc, usrc, vsrc, plcl, klcl, thl0lcl, qt0lcl, thv0lcl, &
+!!$acc                 cin, cinlcl, cbmf, cnt, cnb, ufrcinvbase, ufrclcl, winvbase, wlcl, &
+!!$acc                 emfkbup, cbmflimit, plfc, klfc, thvubot, thvutop, cin_i, cinlcl_i, &
+!!$acc                 ke, kinv_o, klcl_o, klfc_o, plcl_o, plfc_o, tkeavg_o, thvlmin_o, qtsrc_o, &
+!!$acc                 thvlsrc_o, usrc_o, vsrc_o, thv0lcl_o, cin_f, cinlcl_f, del_CIN, alpha, &
+!!$acc                 krel, prel, thv0rel, wcrit, sigmaw, mu, rho0inv, mumin0, mulcl, mulclstar, &
+!!$acc                 mumin2, winv, ufrcinv, wtw, wrel, winvbase, uplus, vplus, pe, qsat_pe, &
+!!$acc                 dpe, exne, thvebot, thle, qte, ue, ve, scaleh, iter_scaleh, kbup, kpen, &
+!!$acc                 km1, thlue, qtue, wue, wtwb, thv0j, rhomid0j, qsat_arg, qs, excess0, &
+!!$acc                 exql, exqi, thvj, tj, excessu, cridis, xsat, xc, aquad, bquad, cquad, &
+!!$acc                 thlxsat, qtxsat, thv_x0, thv_x1, x_cu, x_en, ee2, ud2, bogbot, bogtop,&
+!!$acc                 delbog, drage, expfac, autodet, rhoifc0j, ppen, thlu_top, qtu_top, &
+!!$acc                 forcedCu, xsrc, xmean, xtop, xbot, kp1, thlten_sub, qtten_sub, qlten_sub, &
+!!$acc                 qiten_sub, nlten_sub, niten_sub, thl_prog, qt_prog, qlu_mid, qiu_mid, &
+!!$acc                 qlubelow, qiubelow, qlu_top, qiu_top, qc_lm, qc_im, nc_lm, nc_im, totsink, &
+!!$acc                 trmin, pdelx, dum, qcubelow, rcwp, rlwp, riwp, cush_s, cin_s, cinlcl_s, &
+!!$acc                 cbmf_s)
+!$acc parallel loop gang
       do i = 1, idim
 
          id_exit = .false.
-!$acc loop vector
+!!$acc loop vector
          do k = 1,k0
             pifc0(k)     = pifc0_in(i,k)
             zifc0(k)     = zifc0_in(i,k)
@@ -1263,7 +1265,7 @@ contains
          cush            = cush_inout(i)
 
          if (dotransport.eq.1) then
-!$acc loop vector collapse(2)
+!!$acc loop vector collapse(2)
             do m = 1,ncnst   ! loop over tracers
                do k = 1,k0
                   tr0(k,m) = tr0_inout(i,k,m)
@@ -1280,7 +1282,7 @@ contains
          !------------------------------------------------------!
 
          ! Compute internal environmental variables
-!$acc loop vector
+!!$acc loop vector
          do k = 1,k0
             exnmid0(k) = exnmid0_in(i,k)
             exnifc0(k) = exnifc0_in(i,k)
@@ -1315,7 +1317,7 @@ contains
          end if
 
          ! Compute thv0 and thvl0 at top/bottom interfaces in each layer
-!$acc loop seq
+!!$acc loop seq
          do k = 1,k0
 
             thl0bot = thl0(k) + ssthl0(k)*(pifc0(k-1) - pmid0(k))
@@ -1380,7 +1382,7 @@ contains
          ssu0_o(:k0)         = ssu0(:k0) 
          ssv0_o(:k0)         = ssv0(:k0) 
          if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
             do m = 1, ncnst
                tr0_o(:k0,m)     = tr0(:k0,m)
                sstr0_o(:k0,m)   = sstr0(:k0,m)
@@ -1468,7 +1470,7 @@ contains
 !      niten_sink(:k0)    = 0.0 
 
          if (dotransport.eq.1) then
-!$acc loop vector collapse(2)
+!!$acc loop vector collapse(2)
             do m = 1, ncnst
                do k = 0,k0
                   trflx(k,m)   = 0.0
@@ -1476,7 +1478,7 @@ contains
                   tru_emf(k,m) = 0.0
                enddo
             enddo
-!$acc loop vector collapse(2)
+!!$acc loop vector collapse(2)
             do m = 1, ncnst
                do k = 1,k0
                   trten(k,m)    = 0.0
@@ -1501,7 +1503,7 @@ contains
          ! iterative cin calculation, because cumulus convection induces non-zero fluxes !
          ! even at interfaces below PBL top height through 'fluxbelowinv' subroutine.    !
          ! ----------------------------------------------------------------------------- !
-!$acc loop seq
+!!$acc loop seq
          do iter = 1, iter_cin
 
             ! ---------------------------------------------------------------------- ! 
@@ -1584,7 +1586,7 @@ contains
             dpsum    = 0.
             thvlmin  = 1000.
             thvlavg  = 0.
-!$acc loop seq
+!!$acc loop seq
             do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.  
                dpi = pifc0(k-1) - pifc0(k)
                dpsum  = dpsum  + dpi 
@@ -1659,7 +1661,7 @@ contains
             endif
 
             if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                do m = 1, ncnst
                   trsrc(m) = tr0(1,m)
                enddo 
@@ -1700,7 +1702,7 @@ contains
             end if
 
             plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
-!$acc loop seq
+!!$acc loop seq
             do k = 0, k0
                if( pifc0(k) .lt. plcl ) then
                   klcl = k
@@ -1787,7 +1789,7 @@ contains
             !------------------------------------------------------------------------!
 
             if( klcl .ge. kinv ) then
-!$acc loop seq
+!!$acc loop seq
                do k = kinv, k0 - 1
                   if( k .lt. klcl ) then
                      thvubot = thvlsrc
@@ -1838,7 +1840,7 @@ contains
 
             else
                cinlcl = 0. 
-!$acc loop seq
+!!$acc loop seq
                do k = kinv, k0 - 1
                   call conden(pifc0(k-1),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
                   if( id_check .eq. 1 ) then
@@ -1902,7 +1904,7 @@ contains
                vsrc_o      = vsrc     
                thv0lcl_o   = thv0lcl  
                if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                   do m = 1, ncnst
                      trsrc_o(m) = trsrc(m)
                   enddo
@@ -1981,12 +1983,12 @@ contains
                   vsrc      = vsrc_o     
                   thv0lcl   = thv0lcl_o  
                   if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                      do m = 1, ncnst
                         trsrc(m) = trsrc_o(m)
                      enddo
                   end if
-!$acc loop vector
+!!$acc loop vector
                   do k = 1, k0
                      qv0(k)            = qv0_o(k)
                      ql0(k)            = ql0_o(k)
@@ -2027,7 +2029,7 @@ contains
                   ! ssu0(:k0)           = ssu0_o(:k0) 
                   ! ssv0(:k0)           = ssv0_o(:k0) 
                   if (dotransport.eq.1) then
-!$acc loop vector collapse(2)
+!!$acc loop vector collapse(2)
                      do m = 1, ncnst
                         do k = 1,k0
                            tr0(k,m)   = tr0_o(k,m)
@@ -2042,7 +2044,7 @@ contains
                   ! Initialize all fluxes, tendencies, and other variables ! 
                   ! in association with cumulus convection.                !
                   ! ------------------------------------------------------ ! 
-!$acc loop vector
+!!$acc loop vector
                   do k = 1,k0
                      umf(k)          = 0.0
                      dcm(k)           = 0.0
@@ -2155,7 +2157,7 @@ contains
 !                   vu_emf(0:k0)       = MAPL_UNDEF
                
                   if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                      do m = 1, ncnst
                         do k = 1,k0
                            trflx(k,m)   = 0.0
@@ -2242,7 +2244,7 @@ contains
                   cnt_out(i)              = cnt_s
                   cnb_out(i)              = cnb_s
                   if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                      do m = 1, ncnst
                         trten_out(i,:k0,m)   = trten_s(:k0,m)
                      enddo  
@@ -2305,7 +2307,7 @@ contains
                   bogtop_arr_out(i,k0:1:-1)   = bogtop_arr_s(:k0)
 
                   if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                      do m = 1, ncnst
                         trflx_out(i,k0:0:-1,m)   = trflx_s(0:k0,m)  
                         tru_out(i,k0:0:-1,m)     = tru_s(0:k0,m)
@@ -2532,7 +2534,7 @@ contains
                uplus = PGFc * ssu0(kinv) * ( prel - pifc0(kinv-1) )
                vplus = PGFc * ssv0(kinv) * ( prel - pifc0(kinv-1) )
             else
-!$acc loop seq
+!!$acc loop seq
                do k = kinv, max(krel-1,kinv)
                   uplus = uplus + PGFc * ssu0(k) * ( pifc0(k) - pifc0(k-1) )
                   vplus = vplus + PGFc * ssv0(k) * ( pifc0(k) - pifc0(k-1) )
@@ -2544,7 +2546,7 @@ contains
             vu(krel-1) = vsrc + vplus      
 
             if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                do m = 1, ncnst
                   tru(krel-1,m)  = trsrc(m)
                enddo
@@ -2567,7 +2569,7 @@ contains
             ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
             ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
             if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                do m = 1, ncnst
                   tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
                enddo
@@ -2695,7 +2697,7 @@ contains
             ue      = u0(krel)   + ssu0(krel)   * ( pe - pmid0(krel) )
             ve      = v0(krel)   + ssv0(krel)   * ( pe - pmid0(krel) )
             if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                do m = 1, ncnst
                   tre(m) = tr0(krel,m)  + sstr0(krel,m)  * ( pe - pmid0(krel) )
                enddo
@@ -2719,7 +2721,7 @@ contains
             ! want, but a sample test indicated that about 3 - 5 iterations  produced !
             ! satisfactory converent solution. Finally, identify 'kbup' and 'kpen'.   !
             ! ----------------------------------------------------------------------- !
-!$acc loop seq
+!!$acc loop seq
             do k = krel, k0 - 1 ! Here, 'k' is a layer index.
 
                km1 = k - 1
@@ -2728,7 +2730,7 @@ contains
                qtue  = qtu(km1)    
                wue   = wu(km1)
                wtwb  = wtw  
-!$acc loop seq
+!!$acc loop seq
                do iter_xc = 1, niter_xc
           
                   wtw = wu(km1) * wu(km1)
@@ -3207,7 +3209,7 @@ contains
                ue      = u0(k+1)
                ve      = v0(k+1) 
                if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                   do m = 1, ncnst
                      tre(m)  = tr0(k+1,m)
                   enddo
@@ -3439,7 +3441,7 @@ contains
             ! Calculate entrainment mass flux and conservative scalars of entraining !
             ! free air at interfaces of 'kbup <= k < kpen - 1'                       !
             ! ---------------------------------------------------------------------- !
-!$acc loop vector
+!!$acc loop vector
             do k = 0, k0
                thlu_emf(k) = thlu(k)
                qtu_emf(k)  = qtu(k)
@@ -3451,7 +3453,7 @@ contains
                   enddo
                endif
             end do
-!$acc loop seq
+!!$acc loop seq
             do k = kpen - 1, kbup, -1  ! Here, 'k' is an interface index at which
                                     ! penetrative entrainment fluxes are calculated. 
                                     
@@ -3492,7 +3494,7 @@ contains
                   uu_emf(k)   = u0(kpen)   + ssu0(kpen)   * ( pifc0(k) - pmid0(kpen) )     
                   vu_emf(k)   = v0(kpen)   + ssv0(kpen)   * ( pifc0(k) - pmid0(kpen) )   
                   if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                      do m = 1, ncnst
                         tru_emf(k,m)  = tr0(kpen,m)  + sstr0(kpen,m)  * ( pifc0(k) - pmid0(kpen) )
                      enddo
@@ -3528,7 +3530,7 @@ contains
                         uu_emf(k)   =   u0(k+1)
                         vu_emf(k)   =   v0(k+1)
                         if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                            do m = 1, ncnst
                               tru_emf(k,m)  =  tr0(k+1,m)
                            enddo
@@ -3545,7 +3547,7 @@ contains
                      uu_emf(k)   =   u0(k+1)
                      vu_emf(k)   =   v0(k+1)
                      if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                         do m = 1, ncnst
                            tru_emf(k,m)  =  tr0(k+1,m)
                         enddo
@@ -3824,7 +3826,7 @@ contains
             ! -------------------------------------------------------- !
          
             uemf(0:k0)         = 0.
-!$acc loop vector
+!!$acc loop vector
             do k = 0, kinv - 2  ! Assume linear updraft mass flux within the PBL.
                uemf(k) = cbmf * ( pifc0(0) - pifc0(k) ) / ( pifc0(0) - pifc0(kinv-1) ) 
             end do
@@ -3833,11 +3835,11 @@ contains
             uemf(kbup:kpen-1)   = emf(kbup:kpen-1) ! Only use penetrative entrainment flux consistently.
 
             comsub(1:k0) = 0.
-!$acc loop vector
+!!$acc loop vector
             do k = 1, kpen
                comsub(k)  = 0.5 * ( uemf(k) + uemf(k-1) )  ! comsub defined on interfaces 
             end do     
-!$acc loop seq
+!!$acc loop seq
             do k = 1, kpen
                if( comsub(k) .ge. 0. ) then
                   if( k .eq. k0 ) then
@@ -3899,7 +3901,7 @@ contains
             ! ----------------- !
             ! Momentum tendency !
             ! ----------------- !
-!$acc loop vector private(km1)
+!!$acc loop vector private(km1)
             do k = 1, kpen
                km1 = k - 1 
                uten(k) = ( uflx(km1) - uflx(k) ) * g / dp0(k)
@@ -3923,7 +3925,7 @@ contains
             ! finishing the below 'do-loop'.                                    !        
             ! ----------------------------------------------------------------- !
        
-!$acc loop seq
+!!$acc loop seq
             do k = 1, kpen
 
                km1 = k - 1
@@ -4268,7 +4270,7 @@ contains
             ! --------------------- !
 
             if (dotransport.eq.1) then
-!$acc loop seq
+!!$acc loop seq
                do m = 1, ncnst
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
@@ -4285,7 +4287,7 @@ contains
 !#endif 
                   trflx_d(0:k0) = 0.
                   trflx_u(0:k0) = 0.
-!$acc loop seq           
+!!$acc loop seq           
                   do k = 1, k0-1
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                      pdelx = dp0(k)
@@ -4296,7 +4298,7 @@ contains
                      dum = ( tr0(k,m) - trmin ) *  pdelx / g / dt + trflx(km1,m) - trflx(k,m) + trflx_d(km1)
                      trflx_d(k) = min( 0., dum )
                   enddo
-!$acc loop seq
+!!$acc loop seq
                   do k = k0, 2, -1
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                      pdelx = dp0(k)
@@ -4308,7 +4310,7 @@ contains
                                                                   trflx_d(km1) - trflx_d(k) - trflx_u(k) 
                      trflx_u(km1) = max( 0., -dum ) 
                   enddo
-!$acc loop seq
+!!$acc loop seq
                   do k = 1, k0
 !             if( cnst_get_type_byind(m) .eq. 'wet' ) then
                      pdelx = dp0(k)
@@ -4356,7 +4358,7 @@ contains
             ! In the below calculations, I explicitly considered cloud base ( LCL ) !
             ! and cloud top height ( pifc0(kpen-1) + ppen )                           !
             ! ----------------------------------------------------------------------! 
-!$acc loop seq
+!!$acc loop seq
             do k = krel, kpen ! This is a layer index
                ! ------------------------------------------------------------------ ! 
                ! Calculate cumulus condensate at the upper interface of each layer. !
@@ -4437,7 +4439,7 @@ contains
 !           qt0_s(:k0)           = qv0_s(:k0) + ql0_s(:k0) + qi0_s(:k0)
                t0_s(:k0)            = t0(:k0)  +  sten(:k0) * dt / cp
                if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                   do m = 1, ncnst
                      tr0_s(:k0,m)       = tr0(:k0,m) + trten(:k0,m) * dt
                   enddo
@@ -4527,7 +4529,7 @@ contains
                bogtop_arr_s(:k0)    = bogtop_arr(:k0)
 
                if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
                   do m = 1, ncnst
                      trten_s(:k0,m)    = trten(:k0,m)
                      trflx_s(0:k0,m)   = trflx(0:k0,m)
@@ -4565,7 +4567,7 @@ contains
                   ! enddo
                   call slope1(k0, ncnst, tr0, pmid0, sstr0)
                endif
-!$acc loop seq
+!!$acc loop seq
                do k = 1, k0
 
                   thl0bot = thl0(k) + ssthl0(k) * ( pifc0(k-1) - pmid0(k) )
@@ -4637,7 +4639,7 @@ contains
          vflx_out(i,0:k0)            = vflx(0:k0)
 
          if (dotransport.eq.1) then
-!$acc loop vector
+!!$acc loop vector
             do m = 1, ncnst
                tr0_inout(i,:k0,m)      = tr0_inout(i,:k0,m) + trten(:k0,m) * dt
             enddo
@@ -4837,7 +4839,7 @@ contains
       call system_clock(t_end)
 
       print*,'****** compute_uwshcu : Column Loop Eclipsed Time = ', (t_end - t_start) / rate
-
+!$acc end data
       return
 
    end subroutine compute_uwshcu
@@ -4869,7 +4871,7 @@ contains
    end function slope
 
    subroutine slope1(k0,ncnst,field,p0,sstr0)
-!$acc routine vector
+!$acc routine seq
       integer, intent(in):: k0,ncnst
       real, intent(out):: sstr0(k0,ncnst)
       real, intent(in) :: field(k0,ncnst)
@@ -4878,10 +4880,10 @@ contains
       real             :: above
       integer            :: k,m
 
-!$acc loop vector private(below,above)
+!!$acc loop vector private(below,above)
       do m = 1, ncnst
          below = ( field(2,m) - field(1,m) ) / ( p0(2) - p0(1) )
-!$acc loop seq
+!!$acc loop seq
          do k = 2, k0
             above = ( field(k,m) - field(k-1,m) ) / ( p0(k) - p0(k-1) )  
             if ( above .gt. 0. ) then
@@ -5014,6 +5016,7 @@ contains
    end function compute_alpha   
 
    real function compute_mumin2(mulcl,rmaxfrac,mulow)
+!$acc routine seq
    ! --------------------------------------------------------- !
    ! Subroutine to compute critical 'mu' (normalized CIN) such ! 
    ! that updraft fraction at the LCL is equal to 'rmaxfrac'.  !

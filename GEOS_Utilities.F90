@@ -36,6 +36,8 @@
   public GEOS_TRILU
   public GEOS_TRISOLVE
 
+  public exec_ESINIT
+
 !EOP
 
   interface GEOS_QsatICE
@@ -814,10 +816,10 @@
             if(present(QSAT)) QSAT  = QQ
          else
             QQ  = QSATLQU0(TL,PP,DQ=DQQ)
-            QI  = QSATICE0(TL,PP,DQ=DQI)
-            TI  = TI/URAMP
-            DQSAT = TI*(DQI - DQQ) + DQQ
-            if(present(QSAT)) QSAT  = TI*(QI - QQ) +  QQ
+         QI  = QSATICE0(TL,PP,DQ=DQI)
+         TI  = TI/URAMP
+         DQSAT = TI*(DQI - DQQ) + DQQ
+         if(present(QSAT)) QSAT  = TI*(QI - QQ) +  QQ
          end if
 
       end if
@@ -994,6 +996,16 @@
          UTBL = UT
 
        end subroutine ESINIT
+
+       subroutine exec_ESINIT
+         if(FIRST) then
+            FIRST = .false.
+            call ESINIT
+            !call LOGGER_INIT
+         end if
+
+!$acc update device(ESTFRZ, ESTLQU, ESTBLW, ESTBLE, ESTBLX, FIRST, UTBL)
+       end subroutine
 
       !  subroutine LOGGER_INIT
 
