@@ -141,16 +141,16 @@ contains
 
     ! Set the state variable specs.
     ! -----------------------------
-    call ESMF_ConfigGetAttribute( CF, DT,       Label="RUN_DT:",                              RC=STATUS)
+    call MAPL_GetResource( CF, DT,       Label="RUN_DT:",                              RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
+    call MAPL_GetResource( CF, RFRSHINT, Label="REFRESH_INTERVAL:",  default=nint(DT), RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
+    call MAPL_GetResource( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
     VERIFY_(STATUS)
 
     ! Inititialize deep convective parameterizations (Options: RAS, GF or NONE)
     !----------------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', default="GF", RC=STATUS)
+    call MAPL_GetResource( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', default="GF", RC=STATUS)
     VERIFY_(STATUS)
     LCONVPAR = adjustl(CONVPAR_OPTION)=="RAS" .or. &
                adjustl(CONVPAR_OPTION)=="GF" .or. &
@@ -159,7 +159,7 @@ contains
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
     !----------------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, SHALLOW_OPTION, Label="SHALLOW_OPTION:",  default="UW", RC=STATUS)
+    call MAPL_GetResource( CF, SHALLOW_OPTION, Label="SHALLOW_OPTION:",  default="UW", RC=STATUS)
     VERIFY_(STATUS)
     LSHALLOW = adjustl(SHALLOW_OPTION)=="UW" .or. &
                adjustl(SHALLOW_OPTION)=="NONE"
@@ -167,21 +167,21 @@ contains
 
     ! Inititialize cloud microphysics (Options: BACM_1M, MGB2_2M or GFDL_1M)
     !--------------------------------------------------------------
-    call ESMF_ConfigGetAttribute( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
+    call MAPL_GetResource( CF, CLDMICR_OPTION, Label="CLDMICR_OPTION:",  default="BACM_1M", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICR = adjustl(CLDMICR_OPTION)=="BACM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M" .or. &
                adjustl(CLDMICR_OPTION)=="GFDL_1M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
 
-    call ESMF_ConfigGetAttribute( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
     if (trim(GF_ENV_SETTING)=='DYNAMICS') then
        pdfRestartSkip = MAPL_RestartOptional
     else
        pdfRestartSkip = MAPL_RestartSkip
     endif
 
-    call ESMF_ConfigGetAttribute( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource( CF, PDFSHAPE, Label="PDFSHAPE:",  default=1, RC=STATUS) ; VERIFY_(STATUS)
     if (PDFSHAPE.eq.5) then
        gfEnvRestartSkip = MAPL_RestartOptional
     else
@@ -267,7 +267,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
-         SHORT_NAME = 'WHL',                                                   &
+         SHORT_NAME = 'WSL',                                                   &
          LONG_NAME  = 'Liquid_water_static_energy_flux',                       &
          UNITS      = 'K m s-1',                                               &
          DIMS       = MAPL_DimsHorzVert,                                       &
@@ -300,7 +300,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL3',                                       &
+            SHORT_NAME = 'SL3',                                       &
             LONG_NAME  = 'third_moment_of_liquid_water_static_energy',    &
             UNITS      = 'K+3',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -311,9 +311,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'EDMF_FRC',                                       &
-            LONG_NAME  = 'Mass_Flux_Fractional_Area',                 &
-            UNITS      = '1',                                         &
+            SHORT_NAME = 'SL2',                                       &
+            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
+            UNITS      = 'K+2',                                       &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -322,9 +322,9 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HL2',                                       &
-            LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
-            UNITS      = 'K+2',                                       &
+            SHORT_NAME = 'PDF_A',                                     &
+            LONG_NAME  = 'ADG_PDF_first_plume_fractional_area',       &
+            UNITS      = '1',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &
             VLOCATION  = MAPL_VLocationCenter,                          &
             AVERAGING_INTERVAL = AVRGNINT,                            &
@@ -355,7 +355,7 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME = 'HLQT',                                      &
+            SHORT_NAME = 'SLQT',                                      &
             LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity', &
             UNITS      = 'K',                                         &
             DIMS       = MAPL_DimsHorzVert,                           &
@@ -725,15 +725,6 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
-       UNITS      = '1',                                                     &
-       SHORT_NAME = 'PDF_A',                                                 &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
 #ifdef PDFDIAG
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'SHOC_PDF_vertical_velocity_standard_deviation_first_plume', &
@@ -870,6 +861,15 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 #endif
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'WQT_DC',                                                &
+       LONG_NAME  = 'Total_water_flux_from_deep_convection',                 &
+       UNITS      = 'kg kg-1 m s-1',                                         &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &

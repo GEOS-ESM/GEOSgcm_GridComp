@@ -14,7 +14,9 @@ module GEOS_CatchCNGridCompMod
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
        NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
- 
+
+  use  catch_wrap_stateMod
+
   implicit none
   private
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -48,9 +50,14 @@ subroutine SetServices ( GC, RC )
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
+    type(ESMF_GridComp), pointer :: gcs(:)
+    type(T_CATCHCN_STATE), pointer :: CATCHCN_INTERNAL_STATE
+    class(T_CATCH_STATE),  pointer :: statePtr
+    type(CATCHCN_WRAP)             :: wrap
+
     character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF
-    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2, SNOW_ALBEDO_INFO
+    type(ESMF_Config)                       :: SCF, CF
+    integer                                 :: LSM_CHOICE
     character(len=ESMF_MAXSTR)              :: tmp
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
 
@@ -70,28 +77,38 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+    allocate(CATCHCN_INTERNAL_STATE)
+    statePtr =>CATCHCN_INTERNAL_STATE
+
+    ! resource variables for offline GEOSldas; for documentation, see GEOSldas/src/Applications/LDAS_App/GEOSldas_LDAS.rc
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
+    call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
+
+    ! resource variables from GEOS_SurfaceGridComp.rc    
+    call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+
+    call surface_params_to_wrap_state(statePtr, SCF,  _RC)
+
+    call ESMF_ConfigDestroy(SCF, _RC)
+
+    call MAPL_Get (MAPL, CF=CF, _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%ATM_CO2, Label='ATM_CO2:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG, Label='RUN_IRRIG:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG, Label='PRESCRIBE_DVG:', _RC)
+    call MAPL_Set (MAPL, CF=CF, _RC)
+
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
+    VERIFY_(STATUS)
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
         !catchcn_exxxx
         tmp(1:ens_id_width)=COMP_NAME(8:8+ens_id_width-1)
     endif
-
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=2, RC=STATUS) ; VERIFY_(STATUS)
-
-    ! SNOW ALBEDO -- so far, only parameterization based on look-up table is implemented for CatchCN
-    ! 0 : parameterization based on look-up table 
-    ! 1 : MODIS-derived snow albedo (backfilled with global land average snow albedo)
-    call ESMF_ConfigGetAttribute (SCF, label='SNOW_ALBEDO_INFO:', value=SNOW_ALBEDO_INFO, DEFAULT=0, RC=STATUS) ; VERIFY_(STATUS)
-
-    _ASSERT( SNOW_ALBEDO_INFO==0, "SNOW_ALBEDO_INFO must be 0 for CatchCN")
-
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-
     if ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
@@ -105,6 +122,9 @@ subroutine SetServices ( GC, RC )
        _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45) or 4 (CLM51)")
     endif
 
+    wrap%ptr =>CATCHCN_INTERNAL_STATE
+    call ESMF_UserCompSetInternalState(gc, 'CatchcnInternal', wrap, status)
+    VERIFY_(status)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
     VERIFY_(STATUS)
@@ -307,7 +327,7 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (ATM_CO2 == 4) THEN
+    IF (CATCHCN_INTERNAL_STATE%ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'CO2SC',                             &
             LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
@@ -1011,7 +1031,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE' ,CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
 
-    if (DO_GOSWIM /= 0) then
+    if (CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCHCN, RC=STATUS) ; VERIFY_(STATUS)
@@ -1072,7 +1092,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (ESMF_GridComp        ), pointer   :: GCS(:)
-
+    type (CATCHCN_WRAP)                     :: wrap
     integer                                 :: I
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
@@ -1088,6 +1108,9 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
     VERIFY_(STATUS)
 
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
+    VERIFY_(status)
+
 ! Place the land tilegrid in the generic state of each child component
 !---------------------------------------------------------------------
     do I = 1, SIZE(GCS)
@@ -1095,6 +1118,8 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
        VERIFY_(STATUS)
+       call ESMF_UserCompSetInternalState(gcs(I), 'CatchcnInternal', wrap, status)
+       VERIFY_(status)
     end do
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)

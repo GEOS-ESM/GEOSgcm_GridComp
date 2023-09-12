@@ -37,6 +37,7 @@ module GEOS_SaltwaterGridCompMod
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
+  use GEOS_SeaiceInterfaceGridComp,         only : SeaiceInterfaceSetServices => SetServices
   use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
   
   implicit none
@@ -142,10 +143,15 @@ module GEOS_SaltwaterGridCompMod
     ! order is important !!!
     ! sea-ice first and openwater second 
     ! changing order requires also changing indices of ICE and WATER (sub-tiles at the top)
-    if(DO_CICE_THERMO /= 0) then
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, _RC)
+    if(DO_CICE_THERMO == 0) then
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
+       VERIFY_(STATUS)
+    elseif(DO_CICE_THERMO == 1) then 
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, RC=STATUS)
+       VERIFY_(STATUS)
     else
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,   _RC)
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SeaiceInterfaceSetServices, RC=STATUS)
+       VERIFY_(STATUS)
     endif  
 
     I = MAPL_AddChild(GC,    NAME='OPENWATER', SS=OpenWaterSetServices,    _RC)
@@ -646,10 +652,12 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, _RC)  
 
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID = ICE,   _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID = ICE,   _RC)
+  if (DO_CICE_THERMO <= 1) then 
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   _RC)
+  endif
      
-  if(DO_CICE_THERMO /= 0) then ! additional exports from CICE4 sea ice thermodynamics
+  if(DO_CICE_THERMO == 1) then ! additional exports from CICE4 sea ice thermodynamics
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, _RC)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, _RC)
@@ -702,10 +710,13 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, _RC)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINICE'  , CHILD_ID =   ICE, _RC)
+
+  if (DO_CICE_THERMO <= 1) then 
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, _RC)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, _RC)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, _RC)
+  endif
 
 ! Atmosphere-Ocean Fluxes
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_SHFLX'  , CHILD_ID = WATER, _RC)

@@ -74,7 +74,8 @@ module GEOS_SurfaceGridCompMod
 
   type( ESMF_VM ) :: VMG
 
-! !PUBLIC MEMBER FUNCTIONS:
+
+  ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
 
@@ -99,6 +100,7 @@ module GEOS_SurfaceGridCompMod
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
   logical :: DO_FIRE_DANGER
+  integer :: DO_DATA_ATM4OCN
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -112,9 +114,16 @@ module GEOS_SurfaceGridCompMod
   type T_Routing
      integer :: srcTileID, dstTileID,     &
                 srcIndex=-1, dstIndex=-1, &
-                srcPE=-1, dstPE=-1 
+                srcPE=-1, dstPE=-1, SeqIdx=-1 
      real    :: weight
   end type T_Routing
+
+  type T_RiverRouting
+     type(T_Routing), pointer :: LocalRoutings(:) => NULL()
+     integer, pointer :: karray(:)
+     integer, pointer :: kdx(:)
+     integer, pointer :: BlockSizes(:), displ(:)
+  end type T_RiverRouting
 
 ! Internal state and its wrapper
 ! ------------------------------
@@ -123,7 +132,7 @@ module GEOS_SurfaceGridCompMod
      private
      type (MAPL_LocStreamXFORM)  :: XFORM_IN (NUM_CHILDREN)
      type (MAPL_LocStreamXFORM)  :: XFORM_OUT(NUM_CHILDREN)
-     type (T_Routing), pointer   :: LocalRoutings(:) => NULL()                
+     type (T_RiverRouting), pointer   :: RoutingType => NULL()                
   end type T_SURFACE_STATE
 
   type SURF_WRAP
@@ -199,7 +208,7 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE
+    INTEGER                                 :: LSM_CHOICE, DO_CICE_THERMO
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF        ! info from Surface Config File 
 
@@ -219,6 +228,11 @@ module GEOS_SurfaceGridCompMod
 !--------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! Are we running DataAtm?
+    !------------------------
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATAATM:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Create Surface Config
@@ -641,6 +655,17 @@ module GEOS_SurfaceGridCompMod
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
+
+    if (DO_DATA_ATM4OCN /= 0) then
+       call MAPL_AddImportSpec ( gc,                               &
+         SHORT_NAME = 'DISCHARGE',                                 &
+         LONG_NAME  = 'river_discharge_at_ocean_points',           &
+         UNITS      = 'kg m-2 s-1',                                &
+         RESTART    = MAPL_RestartSkip,                            &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+    end if
 
 !  !EXPORT STATE:
 
@@ -1547,7 +1572,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'max_water_content'         ,&
+    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -3128,7 +3153,6 @@ module GEOS_SurfaceGridCompMod
          VLOCATION  = MAPL_VLocationNone, __RC__)
   end if
 
-
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -3303,8 +3327,19 @@ module GEOS_SurfaceGridCompMod
 ! the children; but our children do not talk to each other, only to us
 ! --------------------------------------------------------------------
 
-    call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
-    VERIFY_(STATUS)
+    ! Note; SURFSTATE is only connected between AGCM and OGCM if USE_CICE_Thermo is set
+    ! to 2. Otherwise it is not and indeed, SURFSTATE does not seem to exist. As such,
+    ! we use the old TerminateImport of all of ocean for less than 2
+
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, _RC)
+    if (DO_CICE_THERMO == 2) then
+       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                      CHILD_IDS=[OCEAN],  RC=STATUS  )
+       VERIFY_(STATUS)
+    else
+       call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 #ifndef AQUA_PLANET
     call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
     VERIFY_(STATUS)
@@ -3651,7 +3686,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     if (RoutingFile /= "") then
-       call InitializeRiverRouting(SURF_INTERNAL_STATE%LocalRoutings, &
+       call InitializeRiverRouting(SURF_INTERNAL_STATE%RoutingType, &
             RoutingFile, LocStream, rc=STATUS)
        VERIFY_(STATUS)
 
@@ -3694,9 +3729,9 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform( LOCSTREAM, PCMETILE, PCME, RC=STATUS)
           VERIFY_(STATUS)
 
-          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, PUMETILE, PUMEDISTILE, RC=STATUS)
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PUMETILE, PUMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
-          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, PCMETILE, PCMEDISTILE, RC=STATUS)
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PCMETILE, PCMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
@@ -3728,11 +3763,16 @@ module GEOS_SurfaceGridCompMod
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
-  subroutine InitializeRiverRouting(LocalRoutings, RoutingFile, Stream, rc)
-    type(T_Routing), pointer         :: LocalRoutings(:)
+  subroutine InitializeRiverRouting(RoutingType, RoutingFile, Stream, rc)
+    type(T_RiverRouting), pointer    :: RoutingType
     character(len=*),        intent(IN) :: RoutingFile
     type(MAPL_LocStream), intent(IN) :: Stream
     integer, optional,    intent(OUT):: rc
+
+    type(T_Routing), pointer         :: LocalRoutings(:) => NULL()
+    integer, pointer :: karray(:)
+    integer, pointer :: kdx(:)
+    integer, pointer :: BlockSizes(:), displ(:)
 
     type(ESMF_VM)            :: VM
     integer                  :: comm, nDEs, myPE, i, numRoutings
@@ -3742,9 +3782,11 @@ module GEOS_SurfaceGridCompMod
     integer, pointer         :: Active(:,:)
     integer, pointer         :: ActiveGlobal(:,:)
     integer                  :: numActive, numLocalRoutings
-    integer, allocatable     :: BlockSizes(:), displ(:)
     integer, pointer         :: Local_Id(:)
     integer                  :: unit
+    integer :: ksum, n, nsdx
+    integer :: ntotal, k
+    integer, allocatable :: kn(:), kseq(:), tmparray(:)
 #ifdef DEBUG
     character(len=ESMF_MAXSTR)  :: routefile
 #endif
@@ -3815,7 +3857,8 @@ module GEOS_SurfaceGridCompMod
 !  assigned an index of -1.
 
        Routing => tmpLocalRoutings(i)
-
+       Routing%seqIdx = i
+       
        call Tile2Index(Routing, Local_Id)
 
        if(Routing%srcIndex>0 .and. Routing%dstIndex>0) then
@@ -3926,6 +3969,71 @@ module GEOS_SurfaceGridCompMod
     close(unit)
 
 #endif
+    
+    !ALT NEW ROUTING to make communication more effective
+
+    nsdx=0
+    do i=1,numLocalRoutings
+       !notneeded if (mype == Routing(i)%dstPE) nddx = nddx+1
+       if (mype == LocalRoutings(i)%srcPE) nsdx = nsdx+1
+    end do
+    allocate(kdx(nsdx), blocksizes(nDEs), _STAT)
+    blocksizes=0
+    
+    ! exchange with everybody else
+    call MPI_AllGather(nsdx, 1, MP_Integer, &
+         blocksizes, 1, MP_Integer, comm, status)
+    _VERIFY(status)
+    
+    ! now everybody has blocksizes(nDEs)
+
+    ntotal = sum(blocksizes) ! should be same as # of paired sources and sinks (npairs)
+    _ASSERT(ntotal==numRoutings, 'Number source/sinks does not match')
+    allocate (karray(numRoutings), _STAT) !declare as target!!!
+    karray = 0
+    allocate (displ(0:nDEs), _STAT) !declare as target!!!
+    
+    ksum = 0
+    displ(0)=ksum
+    do n=1,nDEs
+       ksum = ksum + blocksizes(n)
+       displ(n)=ksum
+    end do
+    ! as another sanity check: ksum should be the same as npairs
+    _ASSERT(displ(nDEs)==ntotal, 'Displ source/sinks does not match')
+
+    allocate(kseq(nsdx), _STAT)
+    allocate(tmparray(numRoutings), _STAT)
+    ! local k index
+    k=0
+    do i=1,size(LocalRoutings)
+       if (mype==LocalRoutings(i)%srcPE) then
+          k=k+1
+          kseq(k) = LocalRoutings(i)%seqIdx
+          kdx(k) = i
+       end if
+    end do
+
+    call MPI_AllGatherV(kseq, nsdx, MP_Integer, &
+         tmparray, blocksizes, displ, MP_Integer, comm, status)
+    _VERIFY(STATUS)      
+
+    deallocate(kseq)
+    do n=1,nDEs
+       do k=1,blocksizes(n)
+          i=tmparray(displ(n-1)+k)
+          karray(i)=k
+       end do
+    end do
+    deallocate(tmparray)
+    
+    allocate(RoutingType, _STAT)
+    RoutingType%LocalRoutings => LocalRoutings
+    RoutingType%karray => karray
+    RoutingType%kdx => kdx
+    RoutingType%BlockSizes => BlockSizes
+    RoutingType%displ => displ
+    
     return
 
   contains
@@ -5675,6 +5783,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
     real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
 !
+    real, pointer, dimension(:,:) :: DISCHARGE_IM    => NULL()
 
 ! for reading "forced" precip
     real, pointer, dimension(:,:)           :: PTTe => NULL()
@@ -6525,7 +6634,7 @@ module GEOS_SurfaceGridCompMod
 !-----------------------------------------------------------------------
 
     if (associated(DISCHARGE)) then
-       _ASSERT(associated(SURF_INTERNAL_STATE%LocalRoutings),'needs informative message')
+       _ASSERT(associated(SURF_INTERNAL_STATE%RoutingType),'needs informative message')
 !ALT       call MAPL_GetPointer(EXPORT, RUNOFF, 'RUNOFF', alloc=.true.,  RC=STATUS)
 !ALT       VERIFY_(STATUS)
     end if
@@ -6990,9 +7099,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDSRF ,LWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDSRF ,SWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
-!ALT    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
-!ALT    call MKTILE(DISCHARGE,DISCHARGETILE,NT,RC=STATUS); VERIFY_(STATUS)
-    if (associated(SURF_INTERNAL_STATE%LocalRoutings)) then ! routing file exists
+    if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATA_ATM4OCN /=0) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -7143,9 +7250,20 @@ module GEOS_SurfaceGridCompMod
 
        ! Create discharge at exit tiles by routing runoff
 
-       call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
-       VERIFY_(STATUS)
-       
+       if (DO_DATA_ATM4OCN /= 0) then
+          call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
+          call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
+          VERIFY_(STATUS)
+          ! it seems redundant to fill both DISCHARGETILE and RUNOFFTILE
+          ! but this is done in case we need to output RUNOFF
+          ! and not to change the existing code too much
+          DISCHARGETILE = RUNOFFTILE 
+    
+       else
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          VERIFY_(STATUS)
+       end if
+
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
        !  that used "corrected" precips.
@@ -8146,6 +8264,19 @@ module GEOS_SurfaceGridCompMod
        if(associated( USTAR)) USTAR = FAC
        if(associated( TSTAR)) TSTAR = (SH/MAPL_CP + DSH  *DTS)/(RHOS*FAC)
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
+    end if
+
+    if (DO_DATA_ATM4OCN /= 0) then
+       ! dataAtm operates only on "saltwater" tiles. 
+       ! we need to handle grid boxes withot any ocean
+       ! and avoid division by 0
+       where (CN == MAPL_Undef)
+          CM = 0.01
+          CT = 0.01
+          CQ = 0.01
+          CN = 0.01
+          D0 = 0.0
+       end where
     end if
 
     FAC = sqrt(CN)/MAPL_KARMAN
@@ -10225,8 +10356,8 @@ module GEOS_SurfaceGridCompMod
 
   end subroutine FILLOUT_UNGRIDDED
 
-    subroutine RouteRunoff(Routing, Runoff, Discharge, rc)
-      type(T_Routing),  intent(IN ) :: Routing(:)
+    subroutine RouteRunoff(RoutingType, Runoff, Discharge, rc)
+      type(T_RiverRouting),  intent(IN ) :: RoutingType
       real,             intent(IN ) :: Runoff(:)
       real,             intent(OUT) :: Discharge(:)
       integer, optional,intent(OUT) :: rc
@@ -10234,12 +10365,18 @@ module GEOS_SurfaceGridCompMod
       character(len=ESMF_MAXSTR)   :: IAm="RouteRunoff"
       integer                      :: STATUS
 
+      type(T_Routing), pointer :: Routing(:)
+      integer, pointer :: karray(:)
+      integer, pointer :: kdx(:)
+      integer, pointer :: BlockSizes(:), displ(:)
+
       type(ESMF_VM) :: VM
       integer       :: myPE, nDEs, comm
       integer       :: i
       real          :: TileDischarge
       integer       :: mpstatus(MP_STATUS_SIZE)
-
+      integer :: n, k
+      real, allocatable :: td(:), tarray(:)
 
       call ESMF_VMGetCurrent(VM,                                RC=STATUS)
       VERIFY_(STATUS)
@@ -10248,29 +10385,39 @@ module GEOS_SurfaceGridCompMod
       call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
       VERIFY_(STATUS)
 
+      Routing => RoutingType%LocalRoutings
+      karray => RoutingType%karray
+      kdx => RoutingType%kdx
+      BlockSizes => RoutingType%BlockSizes
+      displ => RoutingType%displ
+    
       Discharge   = 0.0
 
+      n=size(kdx)
+      allocate(td(n), _STAT)
+      allocate(tarray(displ(nDEs)), _STAT)
+      do k=1,n
+         i=kdx(k)
+
+         TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
+         TileDischarge = max(TileDischarge, 0.0)
+         td(k) = TileDischarge
+      end do
+      call MPI_AllGatherV(td, n, MP_Real, &
+           tarray, blocksizes, displ, MP_Real, comm, status)
+      _VERIFY(STATUS)      
+
       do i=1,size(Routing)
-         if(Routing(i)%SrcPE==myPE) then
-            TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
-            TileDischarge = max(TileDischarge, 0.0)
-            if(Routing(i)%DstPE==myPE) then
-               Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
-            else
-               call MPI_Send(TileDischarge,1,MP_REAL,Routing(i)%DstPE,123,comm,status)
-               VERIFY_(STATUS)
-            end if
-         else
-            if(Routing(i)%DstPE==myPE) then
-               call MPI_Recv(TileDischarge,1,MP_REAL, Routing(i)%SrcPE,123,comm,mpstatus,status)
-               VERIFY_(STATUS)
-               Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
-            else
-               _ASSERT(.false.,'needs informative message')
-            end if
+         if(Routing(i)%DstPE==myPE) then
+            n=Routing(i)%srcPe
+            k=karray(Routing(i)%seqIdx)
+            TileDischarge=tarray(displ(n)+k)
+            Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
          end if
       end do
-
+      deallocate(td, _STAT)
+      deallocate(tarray, _STAT)
+      
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
 
