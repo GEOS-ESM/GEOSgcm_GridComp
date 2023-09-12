@@ -4191,8 +4191,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! call to set CN time step before any other CN routines are called (jkolassa May 2023)
 ! ------------------------------------------------------------------------------------------
-  dtcn = min(dtcn,14400.)
-  ndt = get_step_size( nint(dtcn) )
+  catchcn_internal%DTCN = min(catchcn_internal%DTCN,14400.)
+  ndt = get_step_size( nint(catchcn_internal%DTCN) ) ! gkw: get_step_size must be called here to set CN model time step
 
 ! update CN time step number
 ! --------------------------
@@ -4201,7 +4201,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,DTCN,water_inst,bgc_vegetation_inst,.true.) 
+      call CN_init(nt,ityp,fveg,cncol,cnpft,lats,lons,catchcn_internal%DTCN,water_inst,bgc_vegetation_inst,.true.) 
       call get_CN_LAI(nt,ityp,fveg,elai,esai=esai)
       first = .false.
    endif
