@@ -215,7 +215,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
         },
 
        {
-            "type": "select",
+            "type": "checkbox",
             "name": "SG",
             "message": f'''Select Stretched Cubed-Sphere (Stretched_CS) grid option:
                Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Choices
