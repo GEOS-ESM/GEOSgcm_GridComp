@@ -231,8 +231,8 @@ module gfdl2_cloud_microphys_mod
     real :: ccn_o = 90. !< ccn over ocean (cm^ - 3)
     real :: ccn_l = 270. !< ccn over land (cm^ - 3)
     
-    real :: rthreshu =  3.5e-6 !< critical cloud drop radius (micro m)
-    real :: rthreshs =  7.0e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshu =  7.0e-6 !< critical cloud drop radius (micro m)
+    real :: rthreshs = 10.0e-6 !< critical cloud drop radius (micro m)
     
     real :: sat_adj0 = 0.90 !< adjustment factor (0: no, 1: full) during fast_sat_adj
     
@@ -770,6 +770,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
+        ! slow autoconversion in stable regimes
+        cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
       
         ! 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr 
         onemsig = 1.0 - sigma(sqrt(area1(i))) 
@@ -1286,11 +1288,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
-            ! area and timescale efficiency on revap
-                                   AREA_LS_PRC_K = 0.0
-            if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-            fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-           !fac_revp = 1. - exp (- dt / tau_revp)
+           !! area and timescale efficiency on revap
+           !                       AREA_LS_PRC_K = 0.0
+           !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+           !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+            fac_revp = 1. - exp (- dt / tau_revp)
             
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient

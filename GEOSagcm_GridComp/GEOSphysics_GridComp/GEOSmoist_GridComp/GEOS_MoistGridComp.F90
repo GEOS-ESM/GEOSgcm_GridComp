@@ -1085,7 +1085,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CNV_MFD',                                     &
-         LONG_NAME = 'detraining_mass_flux',                        &
+         LONG_NAME = 'total_detraining_mass_flux',                        &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1094,10 +1094,28 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CNV_MFC',                                     &
-         LONG_NAME = 'cumulative_mass_flux',                        &
+         LONG_NAME = 'total_cumulative_mass_flux',                        &
          UNITS     = 'kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &     
+         SHORT_NAME = 'UMF_DC',                                      &
+         LONG_NAME = 'Deep_updraft_mass_flux_at_interfaces', &  
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+         
+    call MAPL_AddExportSpec(GC,                               &     
+         SHORT_NAME = 'MFD_DC',                                      &
+         LONG_NAME = 'Deep_updraft_detrained_mass_flux', &      
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -5278,6 +5296,13 @@ contains
        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
+       ! reset total mass fluxes to be accumuated over deep and shalow convection
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       PTR3D = 0.0
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       PTR3D = 0.0
+
+       ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          WHERE (CAPE .ne. MAPL_UNDEF)
@@ -5330,8 +5355,6 @@ contains
 
        ! Exports
          ! Cloud fraction exports
-
-
          call MAPL_GetPointer(EXPORT, CFICE, 'CFICE', ALLOC=.true., RC=STATUS); VERIFY_(STATUS)
          if (associated(CFICE)) then
            CFICE=0.0

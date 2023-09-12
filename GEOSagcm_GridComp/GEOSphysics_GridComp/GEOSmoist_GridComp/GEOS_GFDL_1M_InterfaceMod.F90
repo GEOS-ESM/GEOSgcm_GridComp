@@ -43,8 +43,8 @@ module GEOS_GFDL_1M_InterfaceMod
 
   ! Local resource variables
   real    :: TURNRHCRIT_PARAM
-  real    :: CCW_EVAP_EFF
-  real    :: CCI_EVAP_EFF
+  real    :: TAU_EVAP, CCW_EVAP_EFF
+  real    :: TAU_SUBL, CCI_EVAP_EFF
   integer :: PDFSHAPE
   real    :: ANV_ICEFALL 
   real    :: LS_ICEFALL
@@ -212,6 +212,11 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     type (ESMF_Grid )                   :: GRID
     type (ESMF_State)                   :: INTERNAL
 
+    type (ESMF_Alarm   )                :: ALARM
+    type (ESMF_TimeInterval)            :: TINT
+    real(ESMF_KIND_R8)                  :: DT_R8
+    real                                :: DT_MOIST
+
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
@@ -221,6 +226,15 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
+    call MAPL_Get( MAPL, &
+         RUNALARM = ALARM,             &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    DT_MOIST = DT_R8
 
     call MAPL_GetPointer(INTERNAL, Q,        'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QRAIN,    'QRAIN'   , RC=STATUS); VERIFY_(STATUS)
@@ -245,11 +259,13 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCW_EVAP_EFF = 4.e-3
+    call MAPL_GetResource( MAPL, TAU_EVAP        , 'TAU_EVAP:'        , DEFAULT=43200. , RC=STATUS); VERIFY_(STATUS)
+                                 CCW_EVAP_EFF = 1. - EXP (- DT_MOIST / TAU_EVAP)
                     if (do_evap) CCW_EVAP_EFF = 0.0 ! Evap done inside GFDL-MP
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCI_EVAP_EFF = 4.e-3
+    call MAPL_GetResource( MAPL, TAU_SUBL        , 'TAU_SUBL:'        , DEFAULT=43200. , RC=STATUS); VERIFY_(STATUS)
+                                 CCI_EVAP_EFF = 1. - EXP (- DT_MOIST / TAU_SUBL)
                     if (do_subl) CCI_EVAP_EFF = 0.0 ! Subl done inside GFDL-MP
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 

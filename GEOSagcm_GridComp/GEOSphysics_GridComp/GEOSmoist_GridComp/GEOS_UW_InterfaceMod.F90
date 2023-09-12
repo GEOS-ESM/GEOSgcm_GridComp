@@ -119,7 +119,7 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
     else
-      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 10.0,  RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
@@ -358,17 +358,17 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         V  = V  +  DVDT_SC * UW_DT
       !  Calculate detrained mass flux
       !--------------------------------------------------------------
-        where (DETR_SC.ne.MAPL_UNDEF)
-          MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
-        elsewhere
-          MFD_SC = 0.0
-        end where
+        if (JASON_UW) then
+          where (DETR_SC.ne.MAPL_UNDEF)
+            MFD_SC = 0.5*(UMF_SC(:,:,1:LM)+UMF_SC(:,:,0:LM-1))*DETR_SC*DP
+          elsewhere
+            MFD_SC = 0.0
+          end where
+        else
+          MFD_SC = DCM_SC
+        endif
        ! Tiedtke-style cloud fraction !!
-       !if (JASON_UW) then
-           DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
-       !else
-       !   DQADT_SC= DCM_SC*SCLM_SHALLOW/MASS ! Generally reduces low cloud QA
-       !endif
+        DQADT_SC= MFD_SC*SCLM_SHALLOW/MASS
         CLCN = CLCN + DQADT_SC*UW_DT
         CLCN = MIN( CLCN , 1.0 )
       !  Convert detrained water units before passing to cloud
