@@ -1674,7 +1674,8 @@ contains
             if(rai(j)*rootfr(p,j) > 0._r8 .and. j > 1) then
                k_soil_root(p,j) =  1._r8/rs_resis
             else
-               k_soil_root(p,j) =  0.
+               !k_soil_root(p,j) =  0.
+               k_soil_root(p,j) =  1._r8/rs_resis
             endif
             
          end do
