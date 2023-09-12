@@ -201,8 +201,6 @@ subroutine SetServices ( GC, RC )
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
     integer :: RESTART
-    character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -6912,7 +6910,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     windm   = windm   + UU
     rainfm  = rainfm  + (PCU + PLS)
     snowfm  = snowfm  + SNO
-    runsrfm = runsrfm + runsrf
+    runsrfm = runsrfm + RUNSURF
     ar1m    = ar1m    + car1        
     do n = 1,N_snow
        sndzm(:) = sndzm(:) + sndzn(n,:)
