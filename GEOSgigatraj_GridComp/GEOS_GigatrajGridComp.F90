@@ -377,6 +377,7 @@ contains
    character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
    character (len=ESMF_MAXSTR), allocatable  :: fieldnames(:)
    integer :: nitems
+   logical :: file_exists
 
    Iam = "getInitVars"
 
@@ -401,6 +402,8 @@ contains
       ! without restart file, get value from import
       call init_metsrc_field0(GC,  IMPORT,  ctime, 'PLE', _RC)
    else
+      INQUIRE(FILE= GigaRstFile, EXIST=file_exists) 
+      _ASSERT( file_exists, " GIGATRAJ_INTERNAL_RESTART_FILE does not exist")
       call init_metsrc_field0(GC, INTERNAL, ctime, 'PL',  _RC)
    endif
 
