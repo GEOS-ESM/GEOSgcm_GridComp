@@ -6902,6 +6902,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     snowfm  = snowfm  + SNO
     runsrfm = runsrfm + RUNSURF
     ar1m    = ar1m    + car1        
+    psnsunm = psnsunm + psnsun*laisun
+    psnsham = psnsham + psnsha*laisha
+    lmrsunm = lmrsunm + lmrsun*laisun
+    lmrsham = lmrsham + lmrsha*laisha
     do n = 1,N_snow
        sndzm(:) = sndzm(:) + sndzn(n,:)
     end do
@@ -6932,6 +6936,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           tgwm(:,nz) = tgwm(:,nz) / cnsum(:)
           rzmm(:,nz) = rzmm(:,nz) / cnsum(:)
           sfmm(:,nz) = sfmm(:,nz) / cnsum(:)
+          do nv = 1,nveg
+             psnsunm(:,nv,nz) = psnsunm(:,nv,nz) / cnsum(:)
+             psnsham(:,nv,nz) = psnsham(:,nv,nz) / cnsum(:)
+             lmrsunm(:,nv,nz) = lmrsunm(:,nv,nz) / cnsum(:)
+             lmrsham(:,nv,nz) = lmrsham(:,nv,nz) / cnsum(:)
+          end do
        end do
        tpm     = tpm     / cnsum
        bflowm  = bflowm  / cnsum
@@ -7046,6 +7056,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        snowfm  = 0.
        runsrfm = 0.
        ar1m    = 0.           
+       psnsunm = 0.
+       psnsham = 0.
+       lmrsunm = 0.
+       lmrsham = 0.
        sndzm   = 0.
        asnowm  = 0.
        cnsum   = 0.
@@ -7110,7 +7124,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            if (NextTime == NextRecordTime) record = .true.
        endif
 
-       if(NextTime == StopTime) then
+       if(NextTime == StopTime .or. record) then
           
           call CN_exit(ntile,ityp,fveg,cncol,cnpft)    
           i = 1
