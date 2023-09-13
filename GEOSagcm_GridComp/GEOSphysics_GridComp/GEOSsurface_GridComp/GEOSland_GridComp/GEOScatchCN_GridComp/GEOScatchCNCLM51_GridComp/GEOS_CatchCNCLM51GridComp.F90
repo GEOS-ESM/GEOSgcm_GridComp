@@ -2233,15 +2233,6 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'RUNSURF'                   ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowmelt_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'SMELT'                     ,&
@@ -5441,7 +5432,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,ICESOI             , 'ICESOI' ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPSNO             , 'EVPSNO'              ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,BFLOW              , 'BASEFLOW',ALLOC=.true.,          RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RUNSURF            , 'RUNSURF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT              , 'SMELT'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP              , 'HLWUP'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF            , 'SWNDSRF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
