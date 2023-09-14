@@ -680,9 +680,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! all variables, except Areas are now multipled by the area
       !
 
-      if (associated(EDMF_PLUMES_W))   EDMF_PLUMES_W(IH,JH,KTS-1:KTE,:)   = upw(KTE:KTS-1:-1,:)
-      if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
-      if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
 
       dry_a     = 0.
       moist_a   = 0.
@@ -879,6 +876,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
   !      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
   !      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       ENDDO
+
+
+      where (UPA.eq.0.)
+        UPW   = MAPL_UNDEF
+        UPTHL = MAPL_UNDEF
+        UPQT  = MAPL_UNDEF
+      end where
+      if (associated(EDMF_PLUMES_W))   EDMF_PLUMES_W(IH,JH,KTS-1:KTE,:)   = upw(KTE:KTS-1:-1,:)
+      if (associated(EDMF_PLUMES_THL)) EDMF_PLUMES_THL(IH,JH,KTS-1:KTE,:) = upthl(KTE:KTS-1:-1,:)
+      if (associated(EDMF_PLUMES_QT))  EDMF_PLUMES_QT(IH,JH,KTS-1:KTE,:)  = upqt(KTE:KTS-1:-1,:)
+
 
     END IF   !  IF ( wthv > 0.0 )
 
