@@ -85,7 +85,7 @@ def get_configs_from_answers(answers):
         if resolution == 'c2800': 
            NX = 21600
            NY = 10800
-        if resolution in ['c1536', 'c3072','c5760'] : 
+        if resolution in ['c3072','c5760'] : 
            NX = 43200
            NY = 21600
      
@@ -218,24 +218,32 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "checkbox",
             "name": "SG",
             "message": f'''Select Stretched Cubed-Sphere (Stretched_CS) grid option:
-               Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Choices
+               Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_In_Use
                -----  --------------  ---------  ---------  ------------------------
                SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
                SG002      3.0            39.5      -98.35   c1536                    \n ''',
             "choices": ["SG001", "SG002"],
             "when": lambda x: "Stretched_CS" == x['grid_type'],
         },
+
        {
             "type": "checkbox",
             "name": "Stretched_CS",
-            "message": "Select Stretched_CS resolution (multiple choices): \n ",
+            "message": "Current resolution options for this Stretched_CS option: \n ",
             "choices": [ \
                  "c270  -- 1/3  deg ( 37   km)", \
                  "c540  -- 1/6  deg ( 18   km)", \
                  "c1080 -- 1/12 deg (  9   km)", \
-                 "c1536 -- 1/16 deg (  7   km)", \
                  "c2160 -- 1/12 deg (  4   km)"],
-            "when": lambda x:  "Stretched_CS" == x['grid_type'],
+            "when": lambda x: "Stretched_CS" == x['grid_type'] and "SG001" == x['SG'][0],
+        },
+
+       {
+            "type": "checkbox",
+            "name": "Stretched_CS",
+            "message": "Current resolution options for this Stretched_CS option: \n ",
+            "choices": [ "c1536 -- 1/16 deg (  7   km)"],
+            "when": lambda x: "Stretched_CS" == x['grid_type'] and "SG002" == x['SG'][0],
         },
 
        {
@@ -254,7 +262,6 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c1000 -- 1/10 deg ( 10   km)", \
                  "c1152 -- 1/10 deg (  8   km)", \
                  "c1440 -- 1/16 deg (  7   km)", \
-                 "c1536 -- 1/16 deg (  7   km)", \
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
                  "c5760 -- 1/64 deg (  1.5 km)"],
