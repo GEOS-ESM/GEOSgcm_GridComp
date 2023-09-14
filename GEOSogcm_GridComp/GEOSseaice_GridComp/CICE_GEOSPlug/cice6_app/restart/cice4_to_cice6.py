@@ -214,6 +214,41 @@ def lon_lat_to_cartesian(lon, lat, R = 1):
     z = R * np.sin(lat_r)
     return x,y,z
 
+class saltwatertile:
+
+    def __init__(self, file): 
+         
+       header = np.genfromtxt(file, dtype='i4', usecols=(0), max_rows=8)
+       #print header
+       self.atm = 'x'.join([str(x) for x in header[3:5]])
+       self.ocn = 'x'.join([str(x) for x in header[6:]])
+       self.nx, self.ny = header[6], header[7]
+       print(self.atm, self.ocn) 
+       tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
+                           ('gj1','i4'), ('gw1','f8'),
+                           ('idum','i4'), ('gi2','i4'), ('gj2','i4'), ('gw2','f8')], skip_header=8)
+       n1=0
+       n2=0
+       for n in range(1, tile.shape[0]+1, 1):
+           if tile[n-1][0] == 0:
+               n1 = n
+               break
+       #print n1
+       for n in range(n1, tile.shape[0]+1, 1):
+           if tile[n-1][0] != 0:
+               n2 = n
+               break
+       #print n2
+       icetile=tile[n1-1:n2-1]
+       #print icetile.shape
+       #print 'hhh: ',icetile[0][2], icetile[-1][2]
+       self.size = icetile.shape[0]
+       self.gi = icetile['gi2'][:]
+       self.gj = icetile['gj2'][:]
+       self.lons = icetile['lon'][:]
+       self.lats = icetile['lat'][:]
+       #print 'hhh: ',self.size,self.gi[-1],self.gj[-1]
+       #return icetile
 
 def get_src_grid(fname): #reads lat lon for tripolar ocean grid 
     ncfile  = Dataset(fname, "r")
@@ -251,8 +286,9 @@ missing=np.float32(-32767.0)
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--inputfile', default=None, required=True, help='GEOS seaice thermo restart file on tile grid')
-    parser.add_argument('-ig', '--inputgrid', default=None, required=False, help='source tile file')
+    parser.add_argument('-ig', '--inputgrid', default=None, required=True, help='source tile file')
     parser.add_argument('-o', '--outputfile', default=None, required=True, help='CICE restart file on target grid')
+    parser.add_argument('-ot', '--outputtemplate', default=None, required=True, help='CICE restart file on target output grid servign as a template')
     parser.add_argument('-og', '--outputgrid', default=None, required=True, help='target grid file')
     return parser.parse_args()
 
@@ -269,20 +305,35 @@ def main() -> None:
 
    jm, im = LON.shape
    #print(im, jm)
-   if args.inputgrid:
-       lons, lats, mask = get_src_grid(args.inputgrid)
+   #lons, lats, mask = get_src_grid(args.inputgrid)
+   sw = saltwatertile(args.inputgrid) 
 
    #zSin = np.zeros(5, dtype='float64')
    #zQin = np.zeros(5, dtype='float64')
    #zTin = icepack_mushy_temperature_mush(zQin, zSin) 
    #print(zTin)   
+   saltmax = np.float64(3.2)
+   nsal =  np.float64(0.407)
+   msal = np.float64(0.573)
+   salinz = np.zeros((nilyr), dtype='float64')
+   Tmlt = np.zeros((nilyr), dtype='float64')
+   for k in range(nilyr):
+      zn = np.float64((k+1-0.5)/nilyr)
+      salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
+      Tmlt[k] = -depressT * salinz[k] 
+   print(salinz)
 
 
-   with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst:
+   with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst, \
+        Dataset(args.outputtemplate) as tpl:
      # copy global attributes all at once via dictionary
-      dst.setncatts(src.__dict__)
+      dst.setncatts(tpl.__dict__)
+
+      ncat = src.dimensions['subtile'][:]
+      nilyr = src.dimensions['unknown_dim2'][:]
+      nslyr = src.dimensions['unknown_dim1'][:]
     # copy dimensions
-      for name, dimension in src.dimensions.items():
+      for name, dimension in tpl.dimensions.items():
          if name == 'ni':  
             dst.createDimension(name, (im))
          elif name == 'nj':  
@@ -293,7 +344,7 @@ def main() -> None:
          #print(name, (len(dimension) if not dimension.isunlimited() else None)) 
       #print(dst.dimensions) 
     # copy all file data except for the excluded
-      for name, variable in src.variables.items():
+      for name, variable in tpl.variables.items():
         if len(variable.dimensions) == 3:
             x = dst.createVariable(name, variable.datatype,  ('ncat', 'nj', 'ni',))
         else:
@@ -311,13 +362,13 @@ def main() -> None:
            dst[name][:] = LON
         elif 'tlat' == name:
            dst[name][:] = LAT
-        elif args.fixedsalin and 'sice' in name:
+        elif 'sice' in name:
            k = int(name[4:]) - 1 # layer index
-           var = src[name][:]
+           var = tpl[name][:]
            for i in range(var.shape[0]):
               dst[name][i,:,:] = salinz[k]
               dst[name][i][wet<0.5] = 0.0
-        elif args.fixedsalin and 'qice' in name:
+        elif 'qice' in name:
            k = int(name[4:]) - 1 # layer index
            msk = mask.mask 
            lon_in = lons[~msk]  
