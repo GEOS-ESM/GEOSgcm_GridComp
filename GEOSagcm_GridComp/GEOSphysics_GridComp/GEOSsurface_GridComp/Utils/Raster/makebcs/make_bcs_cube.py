@@ -129,6 +129,7 @@ def make_bcs_cube(config):
 
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
+  OCEAN_VERSION = config['OCEAN_VERSION']
   SKIPLAND = config['skipland']
       
   GRIDNAME = 'CF'+NC+'x6C'+SGNAME+'_'+DATENAME+IMO+'x'+POLENAME+JMO
@@ -141,7 +142,7 @@ def make_bcs_cube(config):
     GRIDNAME   =  'CF'+ NC+'x6C'+SGNAME+'_CF'+NC+'x6C' 
 
   if config['TRIPOL_OCEAN'] :
-      GRIDNAME = 'CF'+NC+'x6C_'+OCEAN_VERSION+IMO+'x'+JMO
+      GRIDNAME = 'CF'+ NC+'x6C'+SGNAME+'_'+OCEAN_VERSION+IMO+'x'+JMO
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
