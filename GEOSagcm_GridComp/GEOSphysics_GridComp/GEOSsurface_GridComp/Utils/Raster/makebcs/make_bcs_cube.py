@@ -119,9 +119,9 @@ def make_bcs_cube(config):
   if 'Stretched_CS' in grid_type:
      IS_STRETCHED = True
      SG       = config['SG']
-     if SG == ['SG001'] :
+     if SG == 'SG001' :
         STRETCH  = '-F 2.5 -X -98.35 -Y 39.5' 
-     if SG == ['SG002'] :
+     if SG == 'SG002' :
         STRETCH  = '-F 3.0 -X -98.35 -Y 39.5'
      SGNAME = '-'+''.join(SG)
      SGPARAM = '-s '+''.join(SG)
