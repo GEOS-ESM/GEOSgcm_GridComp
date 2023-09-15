@@ -98,6 +98,7 @@ def get_configs_from_answers(answers):
         CUBED_SPHERE_OCEAN = False
         DATENAME = 'DE'
         POLENAME = 'PE'
+        OCEAN_VERSION='UNDEF'
         MOM_VERSION = 'UNDEF'
         SG= 'UNDEF'
         if orslv in['O2','O3','O1']:
@@ -107,13 +108,15 @@ def get_configs_from_answers(answers):
         if orslv in['T2','T3','T4']:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM5'
-           DATENAME = 'TM'
-           POLENAME = 'TM'
+           DATENAME = ''
+           POLENAME = ''
+           OCEAN_VERSION='M5TP'
         if 'MOM6' in orslv:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM6'
-           DATENAME = 'TM'
-           POLENAME = 'TM'
+           DATENAME = ''
+           POLENAME = ''
+           OCEAN_VERSION='M6TP'
         if  orslv == 'CS' :
            CUBED_SPHERE_OCEAN = True
            DATENAME = 'CF'
@@ -126,6 +129,7 @@ def get_configs_from_answers(answers):
         config['CUBED_SPHERE_OCEAN'] = CUBED_SPHERE_OCEAN
         config['DATENAME'] = DATENAME
         config['POLENAME'] = POLENAME
+        config['OCEAN_VERSION'] = OCEAN_VERSION
         config['MOM_VERSION'] =  MOM_VERSION
 
         config['skipland']  = skipland

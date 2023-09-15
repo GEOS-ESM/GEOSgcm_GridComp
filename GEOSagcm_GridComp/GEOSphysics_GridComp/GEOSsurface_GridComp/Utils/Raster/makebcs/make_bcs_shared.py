@@ -47,6 +47,15 @@ def get_change_til_file(grid_type):
 
 cd geometry/{GRIDNAME}/
 /bin/rm -f sedfile
+if( {TRIPOL_OCEAN} == True ) then
+cat > sedfile << EOF
+s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
+s/{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
+EOF
+sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
+/bin/mv -f tile.file {GRIDNAME}{RS}.til
+/bin/rm -f sedfile
+endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
@@ -55,7 +64,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-else
+endif
+if( {LATLON_OCEAN} == True ) then
 cat > sedfile << EOF
 s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
