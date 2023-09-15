@@ -217,7 +217,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "select",
             "name": "SG",
             "message": f'''Select Stretched Cubed-Sphere (Stretched_CS) grid option:
-               Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_In_Use
+               Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Options
                -----  --------------  ---------  ---------  ------------------------
                SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
                SG002      3.0            39.5      -98.35   c1536                    \n ''',
@@ -228,7 +228,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
        {
             "type": "checkbox",
             "name": "Stretched_CS",
-            "message": "Current resolution options for this Stretched_CS option: \n ",
+            "message": "Select resolution(s) for SG001: \n ",
             "choices": [ \
                  "c270  -- 1/3  deg ( 37   km)", \
                  "c540  -- 1/6  deg ( 18   km)", \
@@ -240,8 +240,9 @@ def ask_questions(default_grid="Cubed-Sphere"):
        {
             "type": "checkbox",
             "name": "Stretched_CS",
-            "message": "Current resolution options for this Stretched_CS option: \n ",
-            "choices": [ "c1536 -- 1/16 deg (  7   km)"],
+            "message": "Select resolution(s) for SG002: \n ",
+            "choices": [ \
+                 "c1536 -- 1/16 deg (  7   km)"],
             "when": lambda x: "Stretched_CS" == x['grid_type'] and "SG002" == x['SG'],
         },
 
