@@ -534,15 +534,15 @@ contains
        real, allocatable :: tmp(:)
        select case (fieldname)
        case('TH')
-         var_name = 'theta'
+         var_name = 'TH'
          long_name = "air_potential_temperature"
          units = "K"
        case('T')         
-         var_name = 't' 
+         var_name = 'T' 
          long_name = "air_temperature"
          units = "K"
        case('PALT')            
-         var_name = 'palt'
+         var_name = 'PALT'
          long_name = "pressure_altitude"
          units = "km"
        case default
@@ -1312,11 +1312,11 @@ contains
        do k = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
          select case (trim(GigaTrajInternalPtr%ExtraFieldNames(k)))
          case('TH')
-            var_name = 'theta'
+            var_name = 'TH'
          case('T')
-            var_name = 't'
+            var_name = 'T'
          case('PALT')
-            var_name = 'palt'
+            var_name = 'PALT'
          case default
             var_name = trim(GigaTrajInternalPtr%ExtraFieldNames(k))
          end select
@@ -1412,6 +1412,7 @@ contains
      character(len=ESMF_MAXSTR) :: regrid_to_latlon
      type(MAPL_MetaComp),pointer  :: MPL
      type (ESMF_VM)   :: vm
+     type (ESMF_GRID) :: grid_
      class(Variable), pointer :: t
      type(Attribute), pointer :: attr
      real :: lon_start
@@ -1456,20 +1457,16 @@ contains
      endif
      call MAPL_GetResource(MPL, regrid_to_latlon, "GIGATRAJ_REGRID_TO_LATLON:",  default= 'YES' , _RC)
      if (trim (regrid_to_latlon) == 'YES') then
-        call scatter_parcels(total_num, lons0, lats0, zs0, IDs0, internal%CellToRank, internal%LatLonGrid, comm, &
-                              Internal%parcels%lons, &
-                              Internal%parcels%lats, &
-                              Internal%parcels%zs,   &
-                              Internal%parcels%IDS,  & 
-                              Internal%parcels%num_parcels) 
+        grid_ = internal%LatLonGrid
      else
-        call scatter_parcels(total_num, lons0, lats0, zs0, IDs0, internal%CellToRank, internal%CubedGrid, comm, &
+        grid_ = internal%CubedGrid
+     endif
+     call scatter_parcels(total_num, lons0, lats0, zs0, IDs0, internal%CellToRank, grid_, comm, &
                               Internal%parcels%lons, &
                               Internal%parcels%lats, &
                               Internal%parcels%zs,   &
                               Internal%parcels%IDS,  & 
                               Internal%parcels%num_parcels) 
-     endif
 
      deallocate(lats0, lons0, zs0, ids0_r)
      RETURN_(ESMF_SUCCESS)
@@ -1578,6 +1575,7 @@ contains
     type (GigatrajInternalWrap)     :: wrap
     type (ESMF_FieldBundle)         :: TRI
     type (ESMF_Field)               :: field
+    type (ESMF_GRID)                :: grid_
     real, dimension(:,:,:), pointer     :: ptr3d
     real, dimension(:,:,:), allocatable :: field_latlon
     real, dimension(:,:,:), allocatable, target  :: haloField
@@ -1598,14 +1596,23 @@ contains
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
-    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       grid_ = GigaTrajInternalPtr%LatLonGrid
+    else
+       grid_ = GigaTrajInternalPtr%CubedGrid
+    endif
+
+    call MAPL_GridGet(grid_, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
 
     allocate(field_latlon(counts(1),counts(2),count3))
     allocate(haloField(counts(1)+2, counts(2)+2,count3), source = 0.0)
 
-    call GigaTrajInternalPtr%cube2latlon%regrid(ptr3d, Field_latlon, _RC)
-
-    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       call GigaTrajInternalPtr%cube2latlon%regrid(ptr3d, Field_latlon, _RC)
+       call esmf_halo(grid_, Field_latlon, haloField, _RC)
+    else
+       call esmf_halo(grid_, ptr3d, haloField, _RC)
+    endif
 
     field_ = trim(fieldname)//c_null_char
     call setData( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(field_), c_loc(haloField))
@@ -1634,6 +1641,7 @@ contains
 
     type(GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)     :: wrap
+    type (ESMF_GRID) :: grid_
     real, dimension(:,:,:), pointer     :: field
     real, dimension(:,:,:), allocatable :: field_latlon
     real, dimension(:,:,:), allocatable, target  :: haloField
@@ -1647,14 +1655,23 @@ contains
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
-    call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts, _RC)
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       grid_ = GigaTrajInternalPtr%LatLonGrid
+    else
+       grid_ = GigaTrajInternalPtr%CubedGrid
+    endif
+
+    call MAPL_GridGet(grid_, localCellCountPerDim=counts, _RC)
 
     allocate(field_latlon(counts(1),counts(2),count3))
     allocate(haloField(counts(1)+2, counts(2)+2,count3), source = 0.0)
 
-    call GigaTrajInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
-
-    call esmf_halo(GigaTrajInternalPtr%LatLonGrid, field_Latlon, haloField, _RC)
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       call GigaTrajInternalPtr%cube2latlon%regrid(field, Field_latlon, _RC)
+       call esmf_halo(grid_, Field_latlon, haloField, _RC)
+    else
+       call esmf_halo(grid_, field, haloField, _RC)
+    endif
 
     field_ = trim(fieldname)//'_2D'//c_null_char
 
