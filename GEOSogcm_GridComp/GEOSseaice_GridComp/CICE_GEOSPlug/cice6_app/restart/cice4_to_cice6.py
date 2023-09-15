@@ -324,6 +324,18 @@ def main() -> None:
    print(salinz)
 
 
+   def interp(varin):
+       lon_in = sw.lons 
+       lat_in = sw.lats  
+       var = varin[:,:]
+       qin = []
+       for i in range(var.shape[0]):
+           h_in = var[i,:]
+           hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+           qin.append(hout)  
+           qin[i][wet<0.5] = 0.0
+       return qin 
+
    with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst, \
         Dataset(args.outputtemplate) as tpl:
      # copy global attributes all at once via dictionary
@@ -332,6 +344,15 @@ def main() -> None:
       ncat = src.dimensions['subtile'][:]
       nilyr = src.dimensions['unknown_dim2'][:]
       nslyr = src.dimensions['unknown_dim1'][:]
+
+      aicen =  src['FR'][:]   
+      Tsfcn =  src['TSKINI'][:]   
+      iage  =  src['TAUAGE'][:]   
+      eicen =  src['ERGICE'][:]   
+      esnon =  src['ERGSNO'][:]   
+      vicen =  src['VOLICE'][:]   
+      vsnon =  src['VOLSNO'][:]   
+
     # copy dimensions
       for name, dimension in tpl.dimensions.items():
          if name == 'ni':  
@@ -339,12 +360,16 @@ def main() -> None:
          elif name == 'nj':  
             dst.createDimension(name, (jm))
          else:
-            dst.createDimension(
-                 name, (len(dimension) if not dimension.isunlimited() else None))
+            dst.createDimension(name, (ncat))
+            #dst.createDimension(
+            #     name, (len(dimension) if not dimension.isunlimited() else None))
          #print(name, (len(dimension) if not dimension.isunlimited() else None)) 
       #print(dst.dimensions) 
     # copy all file data except for the excluded
       for name, variable in tpl.variables.items():
+        if 'sice' in name and int(name[4:]) > nilyr: continue
+        if 'qice' in name and int(name[4:]) > nilyr: continue
+        if 'qsno' in name and int(name[4:]) > nslyr: continue
         if len(variable.dimensions) == 3:
             x = dst.createVariable(name, variable.datatype,  ('ncat', 'nj', 'ni',))
         else:
@@ -368,38 +393,50 @@ def main() -> None:
            for i in range(var.shape[0]):
               dst[name][i,:,:] = salinz[k]
               dst[name][i][wet<0.5] = 0.0
+        elif 'aicen' in name:
+            dst[name] = np.array(interp(aicen[:,:]))    
+        elif 'vicen' in name:
+            dst[name] = np.array(interp(vicen[:,:]))    
+        elif 'vsnon' in name:
+            dst[name] = np.array(interp(vsnon[:,:]))    
+        elif 'Tsfcn' in name:
+            dst[name] = np.array(interp(Tsfcn[:,:]))    
+        elif 'iage' in name:
+            dst[name] = np.array(interp(iage[:,:]))    
         elif 'qice' in name:
            k = int(name[4:]) - 1 # layer index
-           msk = mask.mask 
-           lon_in = lons[~msk]  
-           lat_in = lats[~msk]  
-           var = ti[k]
+           lon_in = sw.lons 
+           lat_in = sw.lats  
+           var1 = eicen[:,k,:]
+           var2 = vicen[:,:]
            for i in range(var.shape[0]):
-               h_in = var[i][~msk]  
-               hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-               qin = icepack_enthalpy_temperature_bl99(hout, Tmlt[k]) 
+               h_in = var1[i,:]
+               hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               h_in = var2[i,:]
+               hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               qin = hout1
+               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nilyr / hout2[hout2 > 0.0]  
+               qin[wet<0.5] = 0.0
+               dst[name][i,:,:] = qin    
+        elif 'qsno' in name:
+           k = int(name[4:]) - 1 # layer index
+           lon_in = sw.lons 
+           lat_in = sw.lats  
+           var1 = esnon[:,k,:]
+           var2 = vsnon[:,:]
+           for i in range(var.shape[0]):
+               h_in = var1[i,:]
+               hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               h_in = var2[i,:]
+               hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               qin = hout1
+               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nilyr / hout2[hout2 > 0.0]  
                qin[wet<0.5] = 0.0
                dst[name][i,:,:] = qin    
         else:
-           msk = mask.mask 
-           lon_in = lons[~msk]  
-           lat_in = lats[~msk]  
-           if len(variable.dimensions) == 3:
-              var = src[name][:]
-              for k in range(var.shape[0]):
-                  h_in = var[k][~msk]  
-                  #print('interpolating time slice:', k)
-                  hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-                  hout[wet<0.5] = 0.0
-                  dst[name][k,:,:] = hout    
-           else:
-              var = src[name][:]
-              h_in = var[~msk]  
-              hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-              hout[wet<0.5] = 0.0
-              dst[name][:] = hout    
+           dst[name][:] = c0 
         # copy variable attributes all at once via dictionary
-        dst[name].setncatts(src[name].__dict__)
+        dst[name].setncatts(tpl[name].__dict__)
 
 
 if __name__=="__main__":
