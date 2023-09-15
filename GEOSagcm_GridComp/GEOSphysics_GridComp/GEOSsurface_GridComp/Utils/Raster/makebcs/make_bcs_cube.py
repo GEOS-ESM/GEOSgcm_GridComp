@@ -45,22 +45,22 @@ endif
 
 if( {TRIPOL_OCEAN} == True ) then
    if ( {STEP1} == True ) then 
-      bin/mkMOMAquaRaster.x -x {NX} -y {NY}  data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
+      bin/mkMOMAquaRaster.x -x {NX} -y {NY} -w {OCEAN_VERSION} data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc > /dev/null
       /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
       /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-      bin/FillMomGrid.x -f 0 -g Pfafstetter-M {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
+      bin/FillMomGrid.x -f 0 -g Pfafstetter-M {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter data/{MOM_VERSION}/{imo}x{jmo}/MAPL_Tripolar.nc 
       /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
       /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
-      bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
-      bin/CombineRasters.x -t {NT} CF{NC}x6C {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-      bin/mk_runofftbl.x CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/CombineRasters.x -f 0 -t {NT} {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
+      bin/CombineRasters.x -t {NT} CF{NC}x6C {OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+      bin/mk_runofftbl.x CF{NC}x6C_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
       setenv OMP_NUM_THREADS 1
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
    endif
 
    if ( {STEP2} == True ) then 
       setenv OMP_NUM_THREADS {NCPUS}
-      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
+      if ({SKIPLAND} != True) bin/mkCatchParam.x -x {NX} -y {NY} -g CF{NC}x6C_{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
       chmod 755 bin/create_README.csh
       bin/create_README.csh
    endif
@@ -110,15 +110,19 @@ def make_bcs_cube(config):
 
   DATENAME = config['DATENAME']
   POLENAME = config['POLENAME']
+  OCEAN_VERSION = config['OCEAN_VERSION']
   GRIDNAME = 'CF'+NC+'x6C_'+DATENAME+IMO+'x'+POLENAME+JMO
   SKIPLAND = config['skipland']
 
   if config['CUBED_SPHERE_OCEAN'] :
-    GRIDNAME =  'CF'+ NC+'x6_CF'+NC+'x6C'
+    GRIDNAME =  'CF'+ NC+'x6C_CF'+NC+'x6C'
     DATENAME = 'CF'
     POLENAME = ''
     IMO = NC
     JMO = '6C'
+
+  if config['TRIPOL_OCEAN'] :
+      GRIDNAME = 'CF'+NC+'x6C_'+OCEAN_VERSION+IMO+'x'+JMO
 
   now   = datetime.now()
   tmp_dir =now.strftime("%Y%m%d%H%M%S") 
@@ -156,6 +160,7 @@ def make_bcs_cube(config):
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
+           OCEAN_VERSION = OCEAN_VERSION, \
            SKIPLAND = SKIPLAND, \
            MOM_VERSION = config['MOM_VERSION'], \
            LATLON_OCEAN= config['LATLON_OCEAN'], \
@@ -200,6 +205,7 @@ def make_bcs_cube(config):
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            DATENAME = DATENAME, \
            POLENAME = POLENAME, \
+           OCEAN_VERSION = OCEAN_VERSION, \
            SKIPLAND = SKIPLAND, \
            MOM_VERSION = config['MOM_VERSION'], \
            LATLON_OCEAN= config['LATLON_OCEAN'], \
