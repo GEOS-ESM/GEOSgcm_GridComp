@@ -58,10 +58,10 @@ module Process_Library_standalone
     real, parameter :: mapl_undef = 1.0e15  ! NOTE : This is the value pulled from MAPL_Mod
 
     public :: ICE_FRACTION
-!$acc declare create(aT_ICE_ALL, aT_ICE_MAX, aICEFRPWR, iT_ICE_ALL, iT_ICE_MAX, iICEFRPWR, &
-!$acc                lT_ICE_ALL, lT_ICE_MAX, lICEFRPWR, oT_ICE_ALL, oT_ICE_MAX, oICEFRPWR, &
-!$acc                EPSILON, K_COND, DIFFU, taufrz, dQCmax, RHO_W, Ldiss, Lk, Lbe, Lbx, RHO_I, &
-!$acc                cpbgrav, gravbcp, alhlbcp, alhfbcp, alhsbcp, mapl_undef)
+!!$acc declare create(aT_ICE_ALL, aT_ICE_MAX, aICEFRPWR, iT_ICE_ALL, iT_ICE_MAX, iICEFRPWR, &
+!!$acc                lT_ICE_ALL, lT_ICE_MAX, lICEFRPWR, oT_ICE_ALL, oT_ICE_MAX, oICEFRPWR, &
+!!$acc                EPSILON, K_COND, DIFFU, taufrz, dQCmax, RHO_W, Ldiss, Lk, Lbe, Lbx, RHO_I, &
+!!$acc                cpbgrav, gravbcp, alhlbcp, alhfbcp, alhsbcp, mapl_undef)
     contains    
 
     function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)

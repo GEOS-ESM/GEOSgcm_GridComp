@@ -247,10 +247,7 @@ module moist_subroutines_cloud_microphys
     logical :: mono_prof = .true. !< perform terminal fall with mono ppm scheme
     logical :: mp_print = .false. !< cloud microphysics debugging printout
 
-!$acc declare create(missing_value, grav, rdgas, rvgas, cp_air, hlv, hlf, pi, cp_vap, cv_air, &
-!$acc               cv_vap, c_ice, c_liq, eps, zvir, t_ice, table_ice, e00, dc_vap, dc_ice, &
-!$acc               hlv0, hlf0, lv0, li00, d2ice, li2, qpmin, qvmin, qcmin, vr_min, vf_min, &
-!$acc               dz_min, sfcrho, rhor, rc, &
+!$acc declare create(missing_value,  &
 !$acc               cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw, &
 !$acc               acco, cssub, cgsub, crevp, cgfr, csmlt, cgmlt, es0, ces0, pie, rgrav, &
 !$acc               c_air, c_vap, lati, latv, lats, lat2, lcp, icp, tcp, d0_vap, &
@@ -3016,7 +3013,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
-!$acc end parallel
+!$acc end parallel loop
         
 
         ! -----------------------------------------------------------------------
