@@ -849,31 +849,26 @@ contains
              w(i) = wesn(i)
              mass = mass + 0.5*(w(i)+w(i-1))
 
-             ! apply compaction as long as current density remains below max density
-             !   (if condition introduced Sep 2023; previously, compaction was always
-             !    applied, which in some cases resulted in large excs residual 
-             !    terms because of repeated densification beyond rhoma and 
-             !    subsequent removal of excs)
-             ! - reichle+koster 31 Aug 2023
-             if (dens(i)<rhoma-1.e-3) &     
-                  dens(i) = dens(i)*(1. + (dts*0.5e-7*9.81)*mass*cmpc(i))
+             dens(i) = dens(i)*(1. + (dts*0.5e-7*9.81)*mass*cmpc(i))
              
 !**** Clip densities below maximum value, adjust quantities accordingly
 !**** while conserving heat & mass (STEPH 06/21/03).
 
              if(dens(i) > rhoma) then
-                ! excs = SWE in excess of max density given fixed snow depth
-                excs(i) = (dens(i)-rhoma)*sndz(i)            ! solid + liquid
-                wlossfrac=excs(i)/wesn(i)
-                wesn(i) = wesn(i) - excs(i)                  ! remove excs from SWE
-                do k=1,N_constit
-                  rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
-                  rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
-                  rconstit(i,k)=amax1(0.,rconstit(i,k)) ! guard against truncation error
-                enddo
-                hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)   ! adjust heat content accordingly
-                hcorr= hcorr+(htsnn(i)-hnew)/dts             ! add excess heat content into residual accounting term
-                htsnn(i)= hnew
+
+!rk                ! excs = SWE in excess of max density given fixed snow depth
+!rk                excs(i) = (dens(i)-rhoma)*sndz(i)            ! solid + liquid
+!rk                wlossfrac=excs(i)/wesn(i)
+!rk                wesn(i) = wesn(i) - excs(i)                  ! remove excs from SWE
+!rk                do k=1,N_constit
+!rk                  rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
+!rk                  rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
+!rk                  rconstit(i,k)=amax1(0.,rconstit(i,k)) ! guard against truncation error
+!rk                enddo
+!rk                hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)   ! adjust heat content accordingly
+!rk                hcorr= hcorr+(htsnn(i)-hnew)/dts             ! add excess heat content into residual accounting term
+!rk                htsnn(i)= hnew
+
                 dens(i) = rhoma
              endif
           enddo
@@ -883,8 +878,8 @@ contains
        wesndens = wesn - wesndens
 
        !pre  = pre + sum(excs)/dts
-       pre  = pre + sum(excs*max(1.-fices,0.0))/dts
-       excs = excs * fices / dts
+!rk       pre  = pre + sum(excs*max(1.-fices,0.0))/dts
+!rk       excs = excs * fices / dts
       
 
        snowd=sum(wesn)
