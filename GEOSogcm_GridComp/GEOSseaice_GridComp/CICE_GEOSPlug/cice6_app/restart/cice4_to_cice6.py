@@ -312,16 +312,6 @@ def main() -> None:
    #zQin = np.zeros(5, dtype='float64')
    #zTin = icepack_mushy_temperature_mush(zQin, zSin) 
    #print(zTin)   
-   saltmax = np.float64(3.2)
-   nsal =  np.float64(0.407)
-   msal = np.float64(0.573)
-   salinz = np.zeros((nilyr), dtype='float64')
-   Tmlt = np.zeros((nilyr), dtype='float64')
-   for k in range(nilyr):
-      zn = np.float64((k+1-0.5)/nilyr)
-      salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
-      Tmlt[k] = -depressT * salinz[k] 
-   print(salinz)
 
 
    def interp(varin):
@@ -341,9 +331,20 @@ def main() -> None:
      # copy global attributes all at once via dictionary
       dst.setncatts(tpl.__dict__)
 
-      ncat = src.dimensions['subtile'][:]
-      nilyr = src.dimensions['unknown_dim2'][:]
-      nslyr = src.dimensions['unknown_dim1'][:]
+      ncat = src.dimensions['subtile'].size
+      nilyr = src.dimensions['unknown_dim2'].size
+      nslyr = src.dimensions['unknown_dim1'].size
+
+      saltmax = np.float64(3.2)
+      nsal =  np.float64(0.407)
+      msal = np.float64(0.573)
+      salinz = np.zeros((nilyr), dtype='float64')
+      Tmlt = np.zeros((nilyr), dtype='float64')
+      for k in range(nilyr):
+         zn = np.float64((k+1-0.5)/nilyr)
+         salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
+         Tmlt[k] = -depressT * salinz[k]
+      print(salinz)
 
       aicen =  src['FR'][:]   
       Tsfcn =  src['TSKINI'][:]   
@@ -394,15 +395,15 @@ def main() -> None:
               dst[name][i,:,:] = salinz[k]
               dst[name][i][wet<0.5] = 0.0
         elif 'aicen' in name:
-            dst[name] = np.array(interp(aicen[:,:]))    
+            dst[name][:] = np.array(interp(aicen[:,:]))
         elif 'vicen' in name:
-            dst[name] = np.array(interp(vicen[:,:]))    
+            dst[name][:] = np.array(interp(vicen[:,:]))
         elif 'vsnon' in name:
-            dst[name] = np.array(interp(vsnon[:,:]))    
+            dst[name][:] = np.array(interp(vsnon[:,:]))
         elif 'Tsfcn' in name:
-            dst[name] = np.array(interp(Tsfcn[:,:]))    
+            dst[name][:] = np.array(interp(Tsfcn[:,:]))
         elif 'iage' in name:
-            dst[name] = np.array(interp(iage[:,:]))    
+            dst[name][:] = np.array(interp(iage[:,:]))
         elif 'qice' in name:
            k = int(name[4:]) - 1 # layer index
            lon_in = sw.lons 
