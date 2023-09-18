@@ -586,7 +586,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
        end if
 
-       call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.FALSE., __RC__)
+       call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.TRUE., __RC__)
        if (STRICT_ICE_FRACTION) then
           if (any(FR < 0.0) .or. any(FR > 1.0)) then
              _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
