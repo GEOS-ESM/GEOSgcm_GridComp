@@ -587,7 +587,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.FALSE., __RC__)
        if (STRICT_ICE_FRACTION) then
           if (any(FR < 0.0) .or. any(FR > 1.0)) then
-             _ASSERT(.FALSE.,'Error in fraci file. Negative or larger-than-one fraction found')
+             _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
           endif
        else
           call MAPL_GetResource ( MAPL, ICE_FRACTION_TOLERANCE, Label="ICE_FRACTION_TOLERANCE:", DEFAULT=1.0e-2, __RC__)
@@ -610,8 +610,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            f=FRT(I,J)
            if (f==MAPL_UNDEF) cycle
            if ((f < 0.0) .or. (f > 1.0)) then
-              print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-              _ASSERT(.FALSE.,'needs informative message')
+              _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
            end if
         end do
      end do
