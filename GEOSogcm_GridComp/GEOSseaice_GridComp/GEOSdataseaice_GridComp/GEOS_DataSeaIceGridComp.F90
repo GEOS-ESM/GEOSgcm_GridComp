@@ -448,6 +448,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer :: DATA_ice(:,:) => null()
 ! above were for CICE Thermo
 
+   logical :: STRICT_ICE_FRACTION
+   real :: ICE_FRACTION_TOLERANCE
 
 !  Begin...
 !----------
