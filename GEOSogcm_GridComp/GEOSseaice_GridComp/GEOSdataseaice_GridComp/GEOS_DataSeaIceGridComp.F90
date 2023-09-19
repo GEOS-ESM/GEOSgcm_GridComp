@@ -588,14 +588,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.TRUE., __RC__)
        if (STRICT_ICE_FRACTION) then
-          if (any(FR < 0.0) .or. any(FR > 1.0)) then
-             _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
+          if (any(FR < 0.0)) then
+             _FAIL('Error in fraci file. Negative fraction found')
+          endif
+          if (any(FR > 1.0)) then
+             _FAIL('Error in fraci file. Fraction larger than one found')
           endif
        else
           call MAPL_GetResource ( MAPL, ICE_FRACTION_TOLERANCE, Label="ICE_FRACTION_TOLERANCE:", DEFAULT=1.0e-2, __RC__)
-          ! Now we can use a tolerance to allow the code to run with ice fraction slight higher than 1.0
-          where (FR < (0.0-ICE_FRACTION_TOLERANCE)) FR = 0.0
-          where (FR > (1.0+ICE_FRACTION_TOLERANCE)) FR = 1.0
+          ! First we look to see if we fail even with a tolerance
+          if (any (FR < (0.0 - ICE_FRACTION_TOLERANCE)) ) then
+             _FAIL('Error in fraci file. Negative fraction found with tolerance allowed')
+          end if
+          if (any (FR > (1.0 + ICE_FRACTION_TOLERANCE)) ) then
+             _FAIL('Error in fraci file. Fraction larger than one found with tolerance allowed')
+          end if
+          ! Now we can use a tolerance to allow the code to run with ice fraction with a tolerance
+          where ( ( FR < 0.0 ) .and. ( FR > (0.0 - ICE_FRACTION_TOLERANCE) ) ) FR = 0.0
+          where ( ( FR > 1.0 ) .and. ( FR < (1.0 + ICE_FRACTION_TOLERANCE) ) ) FR = 1.0
        end if
 
      end if
