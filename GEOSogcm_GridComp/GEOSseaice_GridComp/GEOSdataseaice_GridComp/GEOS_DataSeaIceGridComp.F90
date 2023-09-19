@@ -596,8 +596,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           _ASSERT(all(FR > (0.0 - ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Negative fraction found with tolerance allowed')
           _ASSERT(all(FR < (1.0 + ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Fraction larger than one found with tolerance allowed')
           ! If we get past those, we can just force FR to be in the range [0,1]
-          FR = max(FR, 0.0)
-          FR = min(FR, 1.0)
+          FR = max(0.0, min(1.0, FR))
        end if
 
      end if
