@@ -138,7 +138,7 @@ contains
 
     ! set parameters to default values or read from parameter file
 
-    this%leaf_mr_vcm = 0.015      ! jkolassa Mar 2022: default value in CTSM5.1
+    this%leaf_mr_vcm = 0.032 !0.015      ! jkolassa Mar 2022: 0.015 is default value in CTSM5.1, but accoring to ChangeLog 0.032 should be used for Atkin leaf respiration method, which we are using
 
 
     ! initialize variables from restart file or set to cold start value
