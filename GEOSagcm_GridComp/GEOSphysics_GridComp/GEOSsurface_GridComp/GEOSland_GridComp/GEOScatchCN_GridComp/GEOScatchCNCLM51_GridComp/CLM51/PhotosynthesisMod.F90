@@ -379,8 +379,8 @@ contains
           do nv = 1,num_veg ! defined veg loop
              if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
                 if (cold_start) then
-                   this%alphapsnsun_patch(np) = 0._r8
-                   this%alphapsnsha_patch(np) = 0._r8
+                   this%alphapsnsun_patch(np) = spval
+                   this%alphapsnsha_patch(np) = spval
                 else if (cold_start.eqv..false.) then
                     this%alphapsnsun_patch(np) = cnpft(nc,nz,nv, 76)
                     this%alphapsnsha_patch(np) = cnpft(nc,nz,nv, 77)
