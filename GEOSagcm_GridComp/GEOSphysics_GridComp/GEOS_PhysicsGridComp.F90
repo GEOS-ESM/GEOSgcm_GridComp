@@ -1163,6 +1163,15 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
+     IF (DO_OBIO /= 0) THEN 
+        call MAPL_AddConnectivity ( GC,                               &
+             SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
+             SRC_ID      = RAD,                                       &
+             DST_ID      = SURF,                                      &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+     ENDIF
+
      call MAPL_AddConnectivity ( GC,                               &
          SHORT_NAME  = (/'AERO_DP'/),                              &
          SRC_ID      = CHEM,                                       &
