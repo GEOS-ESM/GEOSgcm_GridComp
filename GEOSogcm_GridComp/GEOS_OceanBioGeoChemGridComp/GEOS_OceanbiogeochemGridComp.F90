@@ -19,6 +19,7 @@ module GEOS_OceanbiogeochemGridCompMod
 ! !PUBLIC ROUTINES:
   public SetServices
 
+  integer            :: DO_DATA_ATM4OCN
   integer            :: NUM_ICE_CATEGORIES
   integer, parameter :: NUM_DUDP           = 5
   integer, parameter :: NUM_DUWT           = 5
@@ -32,7 +33,7 @@ module GEOS_OceanbiogeochemGridCompMod
 ! !DEBUG-ing flags:
 !------------------------------------------
 
-  integer, save :: DEBUG
+!  integer, save :: DEBUG
 
 ! Private state containing static constants
 !------------------------------------------
@@ -52,7 +53,6 @@ module GEOS_OceanbiogeochemGridCompMod
     real :: wss(ntyp)        !particle sinking rate m/s
     real :: axs(ntyp,2)      !detrital sinking a and b coefficients
     real :: Pdeep(ntyp)      !deep BC's (not needed for MOM)
-    type(ESMF_Alarm) :: DayAlarm
   end type T_OBIO_STATE
 
    type OBIO_WRAP
@@ -132,6 +132,8 @@ module GEOS_OceanbiogeochemGridCompMod
     else
        NUM_ICE_CATEGORIES = 1
     endif
+
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATAATM:" , DEFAULT=0, _RC)
 
 ! Set the Run entry point
 ! -----------------------
@@ -252,6 +254,15 @@ module GEOS_OceanbiogeochemGridCompMod
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME              = 'CDOMABSQ',                     &
+    LONG_NAME               = 'quanta_absorbed_by_CDOM',      &
+    UNITS                   = 'umol quanta k-2 s-1',          &
+    DIMS                    = MAPL_DimsHorzVert,              &
+    VLOCATION               = MAPL_VLocationCenter,           &
+    RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'PS',                                        &
     LONG_NAME  = 'surface_pressure',                          &
     UNITS      = 'Pa',                                        &
@@ -277,7 +288,7 @@ module GEOS_OceanbiogeochemGridCompMod
     UNITS      = 'm',                                         &
     DIMS       = MAPL_DimsHorzVert,                           &
     VLOCATION  = MAPL_VLocationCenter,                        &
-    RESTART    = MAPL_RestartSkip,                            &
+!    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -287,7 +298,7 @@ module GEOS_OceanbiogeochemGridCompMod
     UNITS      = 'K',                                         &
     DIMS       = MAPL_DimsHorzVert,                           &
     VLOCATION  = MAPL_VLocationCenter,                        &
-    RESTART    = MAPL_RestartSkip,                            &
+!    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -297,7 +308,7 @@ module GEOS_OceanbiogeochemGridCompMod
     UNITS      = 'psu',                                       &
     DIMS       = MAPL_DimsHorzVert,                           &
     VLOCATION  = MAPL_VLocationCenter,                        &
-    RESTART    = MAPL_RestartSkip,                            &
+!    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -308,7 +319,7 @@ module GEOS_OceanbiogeochemGridCompMod
     DIMS       = MAPL_DimsHorzOnly,                           &
 !    UNGRIDDED_DIMS = (/NUM_ICE_CATEGORIES/),                  &
     VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
+!    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -328,7 +339,7 @@ module GEOS_OceanbiogeochemGridCompMod
     UNITS      = '1',                                         &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
+!    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -366,49 +377,51 @@ module GEOS_OceanbiogeochemGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    LONG_NAME               = 'Black Carbon Dry Deposition',  &
-    UNITS                   = 'kg m-2 s-1',                   &
-    SHORT_NAME              = 'BCDP',                         &
-    DIMS                    = MAPL_DimsHorzOnly,              &
-    UNGRIDDED_DIMS          = (/NUM_BCDP/),                   &
-    VLOCATION               = MAPL_VLocationNone,             &
-    RESTART                 = MAPL_RestartSkip,               &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+    if(DO_DATA_ATM4OCN==0) then
+      call MAPL_AddImportSpec(GC,                               &
+      LONG_NAME               = 'Black Carbon Dry Deposition',  &
+      UNITS                   = 'kg m-2 s-1',                   &
+      SHORT_NAME              = 'BCDP',                         &
+      DIMS                    = MAPL_DimsHorzOnly,              &
+      UNGRIDDED_DIMS          = (/NUM_BCDP/),                   &
+      VLOCATION               = MAPL_VLocationNone,             &
+      RESTART                 = MAPL_RestartSkip,               &
+      RC=STATUS  )
+      VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    LONG_NAME               = 'Black Carbon Wet Deposition',  &
-    UNITS                   = 'kg m-2 s-1',                   &
-    SHORT_NAME              = 'BCWT',                         &
-    DIMS                    = MAPL_DimsHorzOnly,              &
-    UNGRIDDED_DIMS          = (/NUM_BCWT/),                   &
-    VLOCATION               = MAPL_VLocationNone,             &
-    RESTART                 = MAPL_RestartSkip,               &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                               &
+      LONG_NAME               = 'Black Carbon Wet Deposition',  &
+      UNITS                   = 'kg m-2 s-1',                   &
+      SHORT_NAME              = 'BCWT',                         &
+      DIMS                    = MAPL_DimsHorzOnly,              &
+      UNGRIDDED_DIMS          = (/NUM_BCWT/),                   &
+      VLOCATION               = MAPL_VLocationNone,             &
+      RESTART                 = MAPL_RestartSkip,               &
+      RC=STATUS  )
+      VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    LONG_NAME               = 'Organic Carbon Dry Deposition',&
-    UNITS                   = 'kg m-2 s-1',                   &
-    SHORT_NAME              = 'OCDP',                         &
-    DIMS                    = MAPL_DimsHorzOnly,              &
-    UNGRIDDED_DIMS          = (/NUM_OCDP/),                   &
-    VLOCATION               = MAPL_VLocationNone,             &
-    RESTART                 = MAPL_RestartSkip,               &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                               &
+      LONG_NAME               = 'Organic Carbon Dry Deposition',&
+      UNITS                   = 'kg m-2 s-1',                   &
+      SHORT_NAME              = 'OCDP',                         &
+      DIMS                    = MAPL_DimsHorzOnly,              &
+      UNGRIDDED_DIMS          = (/NUM_OCDP/),                   &
+      VLOCATION               = MAPL_VLocationNone,             &
+      RESTART                 = MAPL_RestartSkip,               &
+      RC=STATUS  )
+      VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    LONG_NAME               = 'Organic Carbon Wet Deposition',&
-    UNITS                   = 'kg m-2 s-1',                   &
-    SHORT_NAME              = 'OCWT',                         &
-    DIMS                    = MAPL_DimsHorzOnly,              &
-    UNGRIDDED_DIMS          = (/NUM_OCWT/),                   &
-    VLOCATION               = MAPL_VLocationNone,             &
-    RESTART                 = MAPL_RestartSkip,               &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                               &
+      LONG_NAME               = 'Organic Carbon Wet Deposition',&
+      UNITS                   = 'kg m-2 s-1',                   &
+      SHORT_NAME              = 'OCWT',                         &
+      DIMS                    = MAPL_DimsHorzOnly,              &
+      UNGRIDDED_DIMS          = (/NUM_OCWT/),                   &
+      VLOCATION               = MAPL_VLocationNone,             &
+      RESTART                 = MAPL_RestartSkip,               &
+      RC=STATUS  )
+      VERIFY_(STATUS)
+    endif
 
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME              = 'CO2SC',                        &
@@ -416,16 +429,6 @@ module GEOS_OceanbiogeochemGridCompMod
     UNITS                   = '1e-6',                         &
     DIMS                    = MAPL_DimsHorzOnly,              &
     VLOCATION               = MAPL_VLocationNone,             &
-    RESTART                 = MAPL_RestartSkip,               &
-    RC=STATUS )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME              = 'CDOMABSQ',                     &
-    LONG_NAME               = 'quanta_absorbed_by_CDOM',      &
-    UNITS                   = 'umol quanta k-2 s-1',          &
-    DIMS                    = MAPL_DimsHorzVert,              &
-    VLOCATION               = MAPL_VLocationCenter,           &
     RESTART                 = MAPL_RestartSkip,               &
     RC=STATUS )
     VERIFY_(STATUS)
@@ -450,7 +453,6 @@ module GEOS_OceanbiogeochemGridCompMod
     VLOCATION  = MAPL_VLocationCenter,                        &
     DEFAULT    = 5.0,                                         &
     FRIENDLYTO = 'OCEAN:OANA',                                     &
-add2export=.true., &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -810,8 +812,7 @@ add2export=.true., &
     type (T_OBIO_STATE),    pointer     :: State => null()
     type (OBIO_wrap)                    :: WRAP
 !    type (ESMF_Bundle)                  :: BUNDLE
-    type (ESMF_TimeInterval)            :: RingInterval
-    integer                             :: DoBio
+!    integer                             :: DoBio
 
 ! Begin
 !------
@@ -833,10 +834,8 @@ add2export=.true., &
 ! Initialize Full Ocean biology, Get DEBUG parameter from configuration
 !----------------------------------------------------------------------
 
-    call MAPL_GetResource( MAPL, DoBio, 'UseFullBiology:', DEFAULT=0, RC=STATUS )
-    call MAPL_GetResource( MAPL, DEBUG, 'OBIO_DEBUG:',     DEFAULT=0, RC=STATUS )
-
-!    if(DoBio /= 0) then
+!    call MAPL_GetResource( MAPL, DoBio, 'UseFullBiology:', DEFAULT=0, RC=STATUS )
+!    call MAPL_GetResource( MAPL, DEBUG, 'OBIO_DEBUG:',     DEFAULT=0, RC=STATUS )
 
 ! Start Total timer
 !------------------
@@ -865,17 +864,6 @@ add2export=.true., &
                 State%cchl,  State%wss,    State%axs,                  & 
                 State%Pdeep)
 
-! Set Daily alarm
-!----------------
-
-    call ESMF_TimeIntervalSet(RingInterval,  D=1, RC=STATUS)
-
-    State%DayAlarm = ESMF_AlarmCreate(NAME="ObioAlarm", &
-                     CLOCK        = CLOCK,         &
-                     RingInterval = RingInterval,  &
-                     Sticky       = .FALSE.,       &
-                     RC=STATUS  )
-                     
 ! Stop Total timer
 !-----------------
 
@@ -952,23 +940,22 @@ add2export=.true., &
     real*8  :: DT8
 #include "definebio.h"
     integer :: IM,JM,LM,i,j,k,n
-    integer :: YY,DOY
+    integer :: YY,DOY,MM,DD,hr,mn,sec
     real    :: slp,wspd,Fedep,Fe,fnoice
-real :: tq(50)
     real    :: aco2
     real    :: discharg
     real, save :: CO2_0
     data    CO2_0 /0.0/
-!    real    :: dischrg2
 
 
 ! pointers to import
 
-    real, pointer, dimension(:,:)   :: WSM => null()
+    real, pointer, dimension(:,:)   :: UU => null()
     real, pointer, dimension(:,:)   :: PS => null()
     real, pointer, dimension(:,:,:) :: DH => null()
     real, pointer, dimension(:,:,:) :: T => null()
     real, pointer, dimension(:,:,:) :: S => null()
+    real, pointer, dimension(:,:)   :: MASKO => null()
     real, pointer, dimension(:,:,:) :: TIRRQ => null()
     real, pointer, dimension(:,:,:) :: CDOMABSQ => null()
 !    real, pointer, dimension(:,:,:) :: FRACICE => null()
@@ -978,7 +965,6 @@ real :: tq(50)
     real, pointer, dimension(:,:,:)   :: SED_DUST => null()
     real, pointer, dimension(:,:)   :: CO2SC => null()
     real, pointer, dimension(:,:)   :: DISCHARGE => null()
-    real, pointer, dimension(:,:)   :: MASKO => null()
 
 
 ! pointers to export
@@ -1116,7 +1102,7 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, CDOMABSQ, 'CDOMABSQ',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WSM,      'UU',      RC=STATUS)
+    call MAPL_GetPointer(IMPORT, UU,      'UU',      RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PS,      'PS',      RC=STATUS)
     VERIFY_(STATUS)
@@ -1125,6 +1111,8 @@ real :: tq(50)
     call MAPL_GetPointer(IMPORT, T,       'T',       RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, S,       'S',       RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MASKO,   'MASKO',   RC=STATUS)
     VERIFY_(STATUS)
 !    call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
 !    VERIFY_(STATUS)
@@ -1141,8 +1129,6 @@ real :: tq(50)
     call MAPL_GetPointer(IMPORT, CO2SC,   'CO2SC',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DISCHARGE,   'DISCHARGE',   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, MASKO,   'MASKO',   RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -1244,19 +1230,24 @@ real :: tq(50)
                RC=STATUS )
     VERIFY_(STATUS)
 
-! Alarm for midnight
-!-------------------
-
-    IS_MIDNIGHT = ESMF_AlarmIsRinging(State%DayAlarm, RC=STATUS)
-    VERIFY_(STATUS)
-
 ! Get parameters from configuration
 !----------------------------------
 
     call ESMF_ClockGet(CLOCK,       currTime=CURRENTTIME, RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY, RC=STATUS) 
+
+    call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY,   &
+          mm=MM, dd=DD, h=hr, m=mn, s=sec, RC=STATUS)
     VERIFY_(STATUS)
+
+! Alarm for midnight
+!-------------------
+
+    if (hr==0 .and. mn==0 .and. sec==0) then
+      IS_MIDNIGHT = .true.
+    else
+      IS_MIDNIGHT = .false.
+    endif
 
 !    aco2=368.6
     aco2 = CO2SC(im/2,jm/2)*1.0E6
@@ -1285,16 +1276,14 @@ real :: tq(50)
     allocate(RIKD(LM,nchl),                  __STAT__)
     allocate(PPZ(nchl),                      __STAT__)
 
-tq=10.0
     do j = 1, JM
      do i = 1, IM
-      if (DH(i,j,1) < 1.0E10) then
+      if (MASKO(i,j) > 0.0 ) then
        slp = PS(i,j)*0.01       ! convert from Pa to mbar
-       wspd = WSM(i,j)
-!write(6,*)'wspdcc',WSM(i,j),PS(i,j),DH(i,j,1),T(i,j,1),S(i,j,1)
+       wspd = UU(i,j)
        fnoice = 1.0 - FRICE(i,j)
        aco2 = CO2SC(i,j)
-       aco2 = aco2*1.0E6
+!       aco2 = aco2*1.0E6
        discharg = DISCHARGE(i,j)
 
 !    Dust is assumed to have an iron fraction of 5% for clay and 1.2%
@@ -1327,9 +1316,10 @@ tq=10.0
         aco2 = 368.6
        endif
        if (fnoice < 0.0 .or. fnoice > 1.0)fnoice = 1.0
-if (aco2 > 500.0)then
-write(6,*)'i,j,co2sc,aco2 = ',i,j,CO2SC(i,j),aco2
-endif
+
+!if (aco2 > 500.0)then
+!write(6,*)'i,j,co2sc,aco2 = ',i,j,CO2SC(i,j),aco2
+!endif
 
 !if (discharg > 0.0)then
 !write(6,*)'i,j,discharg = ',i,j,discharg
@@ -1377,7 +1367,6 @@ endif
                     State%dratez1, State%dratez2,    State%regen,   &
                     State%axs,     State%rmumax,                    &
                     BIO, DH(i,j,:), Fe, fnoice, RIKD, GCMAX,        &
-!                    tq, CDOMABSQ(i,j,:),aco2, wspd, slp,            &
                     TIRRQ(i,j,:),CDOMABSQ(i,j,:), aco2, wspd, slp,  &
                     T(i,j,:)-MAPL_TICE, S(i,j,:), PCO, CFLX, PPZ)
 
@@ -1424,10 +1413,22 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
      enddo
     enddo
 
+    if ( associated(ppDIATOM) ) &
+      where ( MASKO == 0.0 ) ppDIATOM = MAPL_UNDEF
+    if ( associated(ppCHLORO) ) &
+      where ( MASKO == 0.0 ) ppCHLORO = MAPL_UNDEF
+    if ( associated(ppCYANO) ) &
+      where ( MASKO == 0.0 ) ppCYANO  = MAPL_UNDEF
+    if ( associated(ppCOCCO) ) &
+      where ( MASKO == 0.0 ) ppCOCCO  = MAPL_UNDEF
+    if ( associated(ppDINO) ) & 
+      where ( MASKO == 0.0 ) ppDINO   = MAPL_UNDEF
+    if ( associated(ppPHAEO) ) & 
+      where ( MASKO == 0.0 ) ppPHAEO  = MAPL_UNDEF
     if ( associated(PCO2) ) &
-      where ( DH(:,:,1) > 1.0E10 ) PCO2 = MAPL_UNDEF
+      where ( MASKO == 0.0 ) PCO2 = MAPL_UNDEF
     if ( associated(FCO2) ) &
-      where ( DH(:,:,1) > 1.0E10 ) FCO2 = MAPL_UNDEF
+      where ( MASKO == 0.0 ) FCO2 = MAPL_UNDEF
 
     deallocate(COSZ  )
     deallocate(SLR   )
