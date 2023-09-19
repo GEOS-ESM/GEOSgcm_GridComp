@@ -293,6 +293,9 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
+     
+
+   
 
 def main() -> None:
 
@@ -325,6 +328,17 @@ def main() -> None:
            qin.append(hout)  
            qin[i][wet<0.5] = 0.0
        return qin 
+
+   def check() -> None:
+       with Dataset(args.outputfile) as src:
+           aicen = src['aicen'][:]
+           ncat, jm, im = aicen.shape
+           for i in range(im):
+              for j in range(jm):
+                 aice = sum(aicen[:,j,i])
+                 if aice > c1 + puny:
+                     print(i, j, aice)
+                     print(aicen[:,j,i])
 
    with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst, \
         Dataset(args.outputtemplate) as tpl:
@@ -396,6 +410,15 @@ def main() -> None:
               dst[name][i][wet<0.5] = 0.0
         elif 'aicen' in name:
             dst[name][:] = np.array(interp(aicen[:,:]))
+            for i in range(im):
+               for j in range(jm):
+                  aice = sum(dst[name][:,j,i])
+                  if aice > c1 + puny:  # remove excessive roundoff ice area
+                     dif = aice - c1
+                     for k in range(ncat):
+                         if dst[name][k,j,i] > dif:
+                              dst[name][k,j,i] -= dif
+                              break
         elif 'vicen' in name:
             dst[name][:] = np.array(interp(vicen[:,:]))
         elif 'vsnon' in name:
@@ -431,13 +454,15 @@ def main() -> None:
                h_in = var2[i,:]
                hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
                qin = hout1
-               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nilyr / hout2[hout2 > 0.0]  
+               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nslyr / hout2[hout2 > 0.0]
                qin[wet<0.5] = 0.0
                dst[name][i,:,:] = qin    
         else:
            dst[name][:] = c0 
         # copy variable attributes all at once via dictionary
         dst[name].setncatts(tpl[name].__dict__)
+   
+   check()
 
 
 if __name__=="__main__":
