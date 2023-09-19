@@ -119,13 +119,13 @@ contains
     allocate(this%laisha_z_patch           (begp:endp,1:nlevcan)) ; this%laisha_z_patch           (:,:) = 0.
     allocate(this%mlaidiff_patch           (begp:endp))           ; this%mlaidiff_patch           (:)   = 0.
     allocate(this%annlai_patch          (12,begp:endp))           ; this%annlai_patch             (:,:) = 0.
-    allocate(this%stem_biomass_patch       (begp:endp))           ; this%stem_biomass_patch       (:)   = nan
-    allocate(this%leaf_biomass_patch       (begp:endp))           ; this%leaf_biomass_patch       (:)   = nan
-    allocate(this%htop_patch               (begp:endp))           ; this%htop_patch               (:)   = nan
-    allocate(this%hbot_patch               (begp:endp))           ; this%hbot_patch               (:)   = nan
+    allocate(this%stem_biomass_patch       (begp:endp))           ; this%stem_biomass_patch       (:)   = 0.
+    allocate(this%leaf_biomass_patch       (begp:endp))           ; this%leaf_biomass_patch       (:)   = 0.
+    allocate(this%htop_patch               (begp:endp))           ; this%htop_patch               (:)   = 0.
+    allocate(this%hbot_patch               (begp:endp))           ; this%hbot_patch               (:)   = 0.
     allocate(this%z0m_patch                (begp:endp))           ; this%z0m_patch                (:)   = nan
     allocate(this%displa_patch             (begp:endp))           ; this%displa_patch             (:)   = nan
-    allocate(this%fsun_patch               (begp:endp))           ; this%fsun_patch               (:)   = nan
+    allocate(this%fsun_patch               (begp:endp))           ; this%fsun_patch               (:)   = spval
     allocate(this%fsun24_patch             (begp:endp))           ; this%fsun24_patch             (:)   = nan
     allocate(this%fsun240_patch            (begp:endp))           ; this%fsun240_patch            (:)   = nan
 
