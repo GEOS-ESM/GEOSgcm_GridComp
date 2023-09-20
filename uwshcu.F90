@@ -1195,41 +1195,178 @@ contains
    !========================
 
 !$acc parallel loop gang &
-!$acc                 private(pifc0,zifc0,pmid0,zmid0,dp0,u0,v0,tke,qv0,ql0, &
-!$acc                 qi0,tr0,t0,s0,qt0,thl0,thvl0,ssqt0,ssthl0,ssu0, &
-!$acc                 ssv0,thv0bot,thv0top,thvl0bot,thvl0top,exnmid0,exnifc0,sstr0,qv0_star,ql0_star, &
-!$acc                 qi0_star,s0_star,umf,emf,dcm,qvten,qlten,qiten,sten,uten, &
-!$acc                 vten,qrten,qsten,slflx,qtflx,uflx,vflx,cufrc,qcu,qlu, &
-!$acc                 qiu,dwten,diten,fer,fdr,xco,uf,vf,qc,qlten_det, &
-!$acc                 qiten_det,qc_l,qc_i,qtten,slten,ufrc,trten,trflx,trflx_d,trflx_u, &
-!$acc                 uemf,comsub,qlten_sink,qiten_sink,wu,thlu,qtu,uu,vu,thvu, &
-!$acc                 rei,tru,thlu_emf,qtu_emf,uu_emf,vu_emf,tru_emf,trsrc,tre,xflx, &
-!$acc                 dcm_s,qv0_s,ql0_s,qi0_s,s0_s ,u0_s ,v0_s,t0_s ,qvten_s, &
-!$acc                 qlten_s,qiten_s,qrten_s,qsten_s,sten_s,uten_s,vten_s,cufrc_s,qcu_s,qlu_s, &
-!$acc                 qiu_s,fer_s,fdr_s,xc_s,qc_s,qtten_s,slten_s,qldet_s,qidet_s,qlsub_s, &
-!$acc                 qisub_s,umf_s,slflx_s,qtflx_s,ufrc_s,uflx_s,vflx_s,tr0_s,trten_s,trflx_s, &
-!$acc                 qv0_o,ql0_o,qi0_o,t0_o,s0_o,u0_o,v0_o,qt0_o,thl0_o,thvl0_o, &
-!$acc                 thv0bot_o,thv0top_o,thvl0bot_o,thvl0top_o,ssthl0_o,ssqt0_o,ssu0_o,ssv0_o,tr0_o,trten_o, &
-!$acc                 sstr0_o,trflx_o,trsrc_o, id_exit, thl0bot, thl0top, qt0bot, qt0top, id_check,&
-!$acc                 thj, qvj, qlj, qij, qse, cush, tscaleh, tkeavg, qtavg, uavg, vavg, kinv, &
-!$acc                 dpsum, thvlmin, thvlavg, k, zrho, buoyflx, delzg, wstar, qtsrc, &
-!$acc                 thvlsrc, thlsrc, usrc, vsrc, plcl, klcl, thl0lcl, qt0lcl, thv0lcl, &
-!$acc                 cin, cinlcl, cbmf, cnt, cnb, ufrcinvbase, ufrclcl, winvbase, wlcl, &
-!$acc                 emfkbup, cbmflimit, plfc, klfc, thvubot, thvutop, cin_i, cinlcl_i, &
-!$acc                 ke, kinv_o, klcl_o, klfc_o, plcl_o, plfc_o, tkeavg_o, thvlmin_o, qtsrc_o, &
-!$acc                 thvlsrc_o, usrc_o, vsrc_o, thv0lcl_o, cin_f, cinlcl_f, del_CIN, alpha, &
-!$acc                 krel, prel, thv0rel, wcrit, sigmaw, mu, rho0inv, mumin0, mulcl, mulclstar, &
-!$acc                 mumin2, winv, ufrcinv, wtw, wrel, winvbase, uplus, vplus, pe, qsat_pe, &
-!$acc                 dpe, exne, thvebot, thle, qte, ue, ve, scaleh, iter_scaleh, kbup, kpen, &
-!$acc                 km1, thlue, qtue, wue, wtwb, thv0j, rhomid0j, qsat_arg, qs, excess0, &
-!$acc                 exql, exqi, thvj, tj, excessu, cridis, xsat, xc, aquad, bquad, cquad, &
-!$acc                 thlxsat, qtxsat, thv_x0, thv_x1, x_cu, x_en, ee2, ud2, bogbot, bogtop,&
-!$acc                 delbog, drage, expfac, autodet, rhoifc0j, ppen, thlu_top, qtu_top, &
-!$acc                 forcedCu, xsrc, xmean, xtop, xbot, kp1, thlten_sub, qtten_sub, qlten_sub, &
-!$acc                 qiten_sub, nlten_sub, niten_sub, thl_prog, qt_prog, qlu_mid, qiu_mid, &
-!$acc                 qlubelow, qiubelow, qlu_top, qiu_top, qc_lm, qc_im, nc_lm, nc_im, totsink, &
-!$acc                 trmin, pdelx, dum, qcubelow, rcwp, rlwp, riwp, cush_s, cin_s, cinlcl_s, &
-!$acc                 cbmf_s)
+!$acc                 private (pifc0, &
+!$acc zifc0, &
+!$acc pmid0, &
+!$acc zmid0, &
+!$acc dp0, &
+!$acc u0, &
+!$acc v0, &
+!$acc tke, &
+!$acc qv0, &
+!$acc ql0, &
+!$acc qi0, &
+!$acc cush, &
+!$acc tr0, &
+!$acc t0, &
+!$acc s0, &
+!$acc qt0, &
+!$acc thl0, &
+!$acc thvl0, &
+!$acc ssqt0, &
+!$acc ssthl0, &
+!$acc ssu0, &
+!$acc ssv0, &
+!$acc thv0bot, &
+!$acc thv0top, &
+!$acc thvl0bot, &
+!$acc thvl0top, &
+!$acc exnmid0, &
+!$acc exnifc0, &
+!$acc sstr0, &
+!$acc qv0_star, &
+!$acc ql0_star, &
+!$acc qi0_star, &
+!$acc s0_star, &
+!$acc umf, &
+!$acc emf, &
+!$acc dcm, &
+!$acc qvten, &
+!$acc qlten, &
+!$acc qiten, &
+!$acc sten, &
+!$acc uten, &
+!$acc vten, &
+!$acc qrten, &
+!$acc qsten, &
+!$acc slflx, &
+!$acc qtflx, &
+!$acc uflx, &
+!$acc vflx, & 
+!$acc cufrc, &
+!$acc qcu, &
+!$acc qlu, &
+!$acc qiu, &
+!$acc dwten, &
+!$acc diten, &
+!$acc fer, &
+!$acc fdr, &
+!$acc xco, &
+!$acc uf, &
+!$acc vf, &
+!$acc qc, &
+!$acc qlten_det, &
+!$acc qiten_det, &
+!$acc qc_l, &
+!$acc qc_i, &
+!$acc qc_lm, &
+!$acc qc_im, &
+!$acc nc_lm, &
+!$acc nc_im, &
+!$acc totsink, &
+!$acc ql_emf_kbup, &
+!$acc qi_emf_kbup, &
+!$acc nl_emf_kbup, &
+!$acc ni_emf_kbup, &
+!$acc cnt, &
+!$acc cnb, &
+!$acc qtten, &
+!$acc slten, &
+!$acc ufrc, &
+!$acc trten, &
+!$acc trflx, &
+!$acc trflx_d, &
+!$acc trflx_u, &
+!$acc trmin, &
+!$acc pdelx, dum , &
+!$acc zrho, delzg, buoyflx, wstar, &
+!$acc uemf, &
+!$acc comsub, &
+!$acc qlten_sink, &
+!$acc qiten_sink, &
+!$acc thlten_sub, qtten_sub, &
+!$acc qlten_sub, qiten_sub, &
+!$acc nlten_sub, niten_sub, &
+!$acc thl_prog, qt_prog, &
+!$acc wu, &
+!$acc thlu, &
+!$acc qtu, &
+!$acc uu, &
+!$acc vu , &
+!$acc thvu, &
+!$acc rei , &
+!$acc tru, &
+!$acc thlu_emf , &
+!$acc qtu_emf  , &
+!$acc uu_emf   , &
+!$acc vu_emf  , &
+!$acc tru_emf, &
+!$acc kk, k, kp1, km1, mm, m, &
+!$acc iter_scaleh, iter_xc, &
+!$acc id_check, status, &
+!$acc klcl, &
+!$acc kinv, &
+!$acc krel, &
+!$acc klfc, &
+!$acc kbup, &
+!$acc kpen, &
+!$acc id_exit, &
+!$acc forcedCu, &
+!$acc cin, cinlcl, &
+!$acc thlsrc, qtsrc, usrc, vsrc, thvlsrc, &
+!$acc uplus, vplus, &
+!$acc trsrc, tre, &
+!$acc plcl, plfc, prel, wrel, &
+!$acc ee2, ud2, wtw, wtwb, &
+!$acc xc, &
+!$acc cldhgt, scaleh, tscaleh, cridis, &
+!$acc sigmaw, tkeavg, qtavg, thvlavg, uavg, vavg, dpsum, dpi, thvlmin, &
+!$acc thlxsat, qtxsat, thvxsat, x_cu, x_en, thv_x0, thv_x1, &
+!$acc dpe, exne, thvebot, thle, qte, ue, ve, thlue, qtue, wue, &
+!$acc mu, mumin0, mumin2, mulcl, mulclstar, &
+!$acc cbmf, wcrit, winv, wlcl, ufrcinv, ufrclcl, &
+!$acc exql, exqi, ppen, &
+!$acc thj, qvj, qlj, qij, thvj, tj, thv0j, rhomid0j, rhoifc0j, qse, &
+!$acc thl0top, thl0bot, qt0bot, qt0top, thvubot, thvutop, &
+!$acc thl0lcl, qt0lcl, thv0lcl, thv0rel, rho0inv, autodet, &
+!$acc thlu_top, qtu_top, qlu_top, qiu_top, qlu_mid, qiu_mid, exntop, &
+!$acc aquad, bquad, cquad, xc1, xc2, excessu, excess0, xsat, xs1, xs2, &
+!$acc bogbot, bogtop, delbog, drage, expfac, &
+!$acc rcwp, rlwp, riwp, qcubelow, qlubelow, qiubelow, &
+!$acc qs, &
+!$acc qsat_arg, qsat_pe , &
+!$acc pe, &
+!$acc xsrc, xmean, xtop, xbot, xflx, &
+!$acc limit_cbmf, &
+!$acc ufrcinvbase_s, ufrclcl_s, winvbase_s, wlcl_s, plcl_s, pinv_s, prel_s, plfc_s, &
+!$acc qtsrc_s, thlsrc_s, thvlsrc_s, emfkbup_s, cinlcl_s, pbup_s, ppen_s, cbmflimit_s, &
+!$acc tkeavg_s, zinv_s, rcwp_s, rlwp_s, riwp_s, &
+!$acc ufrcinvbase, winvbase, emfkbup, cbmflimit, &
+!$acc dcm_s, qv0_s  , ql0_s   , qi0_s   , s0_s    , u0_s,    & 
+!$acc v0_s   , t0_s    , & 
+!$acc qvten_s , qlten_s, qiten_s , qrten_s , qsten_s , sten_s  ,& 
+!$acc uten_s, vten_s, cufrc_s, qcu_s, qlu_s, qiu_s, & 
+!$acc fer_s, fdr_s, xc_s, qc_s, qtten_s, slten_s, qldet_s,  &
+!$acc qidet_s, qlsub_s, qisub_s, &
+!$acc umf_s  , slflx_s , qtflx_s , ufrc_s  , uflx_s , vflx_s, &
+!$acc cush_s , cin_s   , cbmf_s, cnt_s, cnb_s, &
+!$acc cin_i, cin_f, del_CIN, ke, alpha, &
+!$acc cinlcl_i, cinlcl_f, del_cinlcl, &
+!$acc iter, &
+!$acc tr0_s, trten_s, &
+!$acc trflx_s, &
+!$acc qv0_o, ql0_o, qi0_o, t0_o, s0_o, u0_o, v0_o, &
+!$acc qt0_o    , thl0_o   , thvl0_o   , &
+!$acc thv0bot_o, thv0top_o, thvl0bot_o, thvl0top_o, &
+!$acc ssthl0_o , ssqt0_o  , ssu0_o    , ssv0_o, &
+!$acc tkeavg_o , thvlmin_o, qtsrc_o, thvlsrc_o, thlsrc_o ,    &
+!$acc usrc_o, vsrc_o, plcl_o, plfc_o, thv0lcl_o, &
+!$acc kinv_o   , klcl_o   , klfc_o, &
+!$acc lts, &
+!$acc tr0_o, & 
+!$acc trten_o, sstr0_o, &
+!$acc trflx_o, &
+!$acc trsrc_o)
 !!$acc parallel loop gang
       do i = 1, idim
 
