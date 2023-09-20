@@ -1,0 +1,76 @@
+
+if(UTBL) then
+
+   if(FIRST) then
+      FIRST = .false.
+      call ESINIT
+   end if
+
+   if    (TX<=TMINLQU) then
+      EX=ESTLQU
+      if(present(DQ)) DDQ = 0.0
+   elseif(TX>=TMAXTBL  ) then
+      EX=ESTBLW(TABLESIZE)
+      if(present(DQ)) DDQ = 0.0
+   else
+      TT  = (TX - TMINTBL)*DEGSUBS+1
+      IT  = int(TT)
+      DDQ = ESTBLW(IT+1) - ESTBLW(IT)
+      EX  = ((TT-IT)*DDQ + ESTBLW(IT))
+   end if
+
+   if(present(PL)) then
+      if(PX > EX) then
+         DD = (ESFAC/(PX - (1.0-ESFAC)*EX))
+         EX = EX*DD
+         if(present(DQ)) DX = DDQ*ERFAC*PX*DD*DD
+      else
+         EX  = MAX_MIXING_RATIO
+         if(present(DQ)) DX = 0.0
+      end if
+   else
+      if(present(DQ)) DX = DDQ
+   end if
+
+else  ! Exact Formulation
+
+   if    (TX<TMINLQU) then
+      TI = TMINLQU
+   elseif(TX>TMAXTBL) then
+      TI = TMAXTBL
+   else
+      TI = TX
+   end if
+
+#include "esatlqu.code"
+
+   if(present(DQ)) then
+      if    (TX<TMINLQU) then
+         DDQ = 0.0
+      elseif(TX>TMAXTBL) then
+         DDQ = 0.0
+      else
+         if(PX>EX) then
+            DD = EX
+            TI = TX + DELTA_T
+#include "esatlqu.code"
+            DDQ = EX-DD
+            EX  = DD
+         endif
+      end if
+   end if
+
+   if(present(PL)) then
+      if(PX > EX) then
+         DD = ESFAC/(PX - (1.0-ESFAC)*EX)
+         EX = EX*DD
+         if(present(DQ)) DX = DDQ*ERFAC*PX*DD*DD
+      else
+         EX = MAX_MIXING_RATIO
+         if(present(DQ)) DX = 0.0
+      end if
+   else
+      if(present(DQ)) DX = DDQ*(1.0/DELTA_T)
+   end if
+
+endif ! not table

@@ -17,6 +17,7 @@ set (srcs
 if (GPU_PHYSICS)
   list (APPEND srcs
     openacc/Process_Library.F90
+    openacc/GEOS_Utilities_ACC.F90
     openacc/GEOS_GFDL_1M_InterfaceMod.F90)
 else ()
   list (APPEND srcs
