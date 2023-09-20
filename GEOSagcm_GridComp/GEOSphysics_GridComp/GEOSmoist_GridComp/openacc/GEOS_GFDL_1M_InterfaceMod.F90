@@ -13,6 +13,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
+  use GEOS_Utils_ACC, only: GEOS_DQSAT_NOACC
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
@@ -429,7 +430,7 @@ contains
     END DO
     ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
     DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
-    DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+    DQST3    = GEOS_DQSAT_NOACC(T, PLmb, QSAT=QST3)
     DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
     MASS     = DP/MAPL_GRAV
     iMASS    = 1.0/MASS

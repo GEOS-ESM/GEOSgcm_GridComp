@@ -30,12 +30,12 @@ module GEOS_Utils_ACC
 
   logical            :: FIRST      = .true.
 
-  real,    save      :: ESTFRZ
-  real,    save      :: ESTLQU
+  real               :: ESTFRZ
+  real               :: ESTLQU
 
-  real,    save      :: ESTBLE(TABLESIZE)
-  real,    save      :: ESTBLW(TABLESIZE)
-  real,    save      :: ESTBLX(TABLESIZE)
+  real               :: ESTBLE(TABLESIZE)
+  real               :: ESTBLW(TABLESIZE)
+  real               :: ESTBLX(TABLESIZE)
 
   real,    parameter :: TMINSTR = -95.
   real,    parameter :: TSTARR1 = -75.
@@ -169,7 +169,6 @@ contains
        if(FIRST) then
           FIRST = .false.
           call ESINIT
-          call LOGGER_INIT
        end if
 
        if    (TL<=TMINTBL) then
@@ -204,7 +203,6 @@ contains
 
        if(FIRST) then
           FIRST = .false.
-          call LOGGER_INIT
        end if
 
        TI = TL - ZEROC
