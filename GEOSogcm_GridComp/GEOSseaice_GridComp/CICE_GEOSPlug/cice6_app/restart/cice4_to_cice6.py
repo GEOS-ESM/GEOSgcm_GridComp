@@ -227,21 +227,24 @@ class saltwatertile:
        tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
                            ('gj1','i4'), ('gw1','f8'),
                            ('idum','i4'), ('gi2','i4'), ('gj2','i4'), ('gw2','f8')], skip_header=8)
-       n1=0
-       n2=0
+       n1 = 0
+       n2 = -1
        for n in range(1, tile.shape[0]+1, 1):
            if tile[n-1][0] == 0:
                n1 = n
                break
-       #print n1
+       #print('n1 = ',n1)
        for n in range(n1, tile.shape[0]+1, 1):
            if tile[n-1][0] != 0:
                n2 = n
                break
-       #print n2
-       icetile=tile[n1-1:n2-1]
-       #print icetile.shape
-       #print 'hhh: ',icetile[0][2], icetile[-1][2]
+       #print('n2 = ',n2)
+       if n2 == -1:
+          icetile=tile[n1-1:]
+       else:
+          icetile=tile[n1-1:n2-1]
+       #print(icetile.shape)
+       #print('hhh: ',icetile[0][2], icetile[-1][2])
        self.size = icetile.shape[0]
        self.gi = icetile['gi2'][:]
        self.gj = icetile['gj2'][:]
