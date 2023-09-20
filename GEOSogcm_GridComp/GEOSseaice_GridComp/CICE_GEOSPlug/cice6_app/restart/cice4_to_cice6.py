@@ -318,12 +318,12 @@ def main() -> None:
 
 
    def interp(varin):
-       lon_in = sw.lons 
-       lat_in = sw.lats  
+       lon_in = sw.lons[slmask < 0.5]
+       lat_in = sw.lats[slmask < 0.5]
        var = varin[:,:]
        qin = []
        for i in range(var.shape[0]):
-           h_in = var[i,:]
+           h_in = var[i,slmask<0.5]
            hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
            qin.append(hout)  
            qin[i][wet<0.5] = 0.0
@@ -367,6 +367,7 @@ def main() -> None:
       esnon =  src['ERGSNO'][:]   
       vicen =  src['VOLICE'][:]   
       vsnon =  src['VOLSNO'][:]   
+      slmask = src['SLMASK'][:]
 
     # copy dimensions
       for name, dimension in tpl.dimensions.items():
@@ -429,14 +430,14 @@ def main() -> None:
             dst[name][:] = np.array(interp(iage[:,:]))
         elif 'qice' in name:
            k = int(name[4:]) - 1 # layer index
-           lon_in = sw.lons 
-           lat_in = sw.lats  
+           lon_in = sw.lons[slmask < 0.5]
+           lat_in = sw.lats[slmask < 0.5]
            var1 = eicen[:,k,:]
            var2 = vicen[:,:]
            for i in range(var.shape[0]):
-               h_in = var1[i,:]
+               h_in = var1[i,slmask < 0.5]
                hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-               h_in = var2[i,:]
+               h_in = var2[i,slmask < 0.5]
                hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
                qin = hout1
                qin[hout2 > 0.0] = qin[hout2 > 0.0] * nilyr / hout2[hout2 > 0.0]  
@@ -444,14 +445,14 @@ def main() -> None:
                dst[name][i,:,:] = qin    
         elif 'qsno' in name:
            k = int(name[4:]) - 1 # layer index
-           lon_in = sw.lons 
-           lat_in = sw.lats  
+           lon_in = sw.lons[slmask < 0.5]
+           lat_in = sw.lats[slmask < 0.5]
            var1 = esnon[:,k,:]
            var2 = vsnon[:,:]
            for i in range(var.shape[0]):
-               h_in = var1[i,:]
+               h_in = var1[i,slmask < 0.5]
                hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-               h_in = var2[i,:]
+               h_in = var2[i,slmask < 0.5]
                hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
                qin = hout1
                qin[hout2 > 0.0] = qin[hout2 > 0.0] * nslyr / hout2[hout2 > 0.0]
