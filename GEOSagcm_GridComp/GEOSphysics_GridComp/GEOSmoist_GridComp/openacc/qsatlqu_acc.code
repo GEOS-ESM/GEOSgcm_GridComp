@@ -3,22 +3,21 @@ if(UTBL) then
 
    if(FIRST) then
       FIRST = .false.
-      call ESINIT_NOACC
+      call ESINIT_ACC
    end if
 
-   if    (TX<=TMINTBL) then
-      EX=ESTBLE(1)
+   if    (TX<=TMINLQU) then
+      EX=ESTLQU
       if(present(DQ)) DDQ = 0.0
-   elseif(TX>=ZEROC  ) then
-      EX=ESTFRZ
+   elseif(TX>=TMAXTBL  ) then
+      EX=ESTBLW(TABLESIZE)
       if(present(DQ)) DDQ = 0.0
    else
       TT  = (TX - TMINTBL)*DEGSUBS+1
       IT  = int(TT)
-      DDQ = ESTBLE(IT+1) - ESTBLE(IT)
-      EX  =  ((TT-IT)*DDQ + ESTBLE(IT))
+      DDQ = ESTBLW(IT+1) - ESTBLW(IT)
+      EX  = ((TT-IT)*DDQ + ESTBLW(IT))
    end if
-
 
    if(present(PL)) then
       if(PX > EX) then
@@ -35,26 +34,26 @@ if(UTBL) then
 
 else  ! Exact Formulation
 
-   if    (TX<TMINICE) then
-      TI = TMINICE
-   elseif(TX>ZEROC  ) then
-      TI = ZEROC
+   if    (TX<TMINLQU) then
+      TI = TMINLQU
+   elseif(TX>TMAXTBL) then
+      TI = TMAXTBL
    else
       TI = TX
    end if
 
-#include "esatice_noacc.code"
+#include "esatlqu_acc.code"
 
    if(present(DQ)) then
-      if    (TX<TMINICE) then
+      if    (TX<TMINLQU) then
          DDQ = 0.0
-      elseif(TX>ZEROC  ) then
+      elseif(TX>TMAXTBL) then
          DDQ = 0.0
       else
          if(PX>EX) then
             DD = EX
             TI = TX + DELTA_T
-#include "esatice_noacc.code"
+#include "esatlqu_acc.code"
             DDQ = EX-DD
             EX  = DD
          endif
@@ -74,8 +73,4 @@ else  ! Exact Formulation
       if(present(DQ)) DX = DDQ*(1.0/DELTA_T)
    end if
 
-
-end if
-
-
-
+endif ! not table

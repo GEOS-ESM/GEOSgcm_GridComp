@@ -3,7 +3,7 @@ if(UTBL) then
 
    if(FIRST) then
       FIRST = .false.
-      call ESINIT_NOACC
+      call ESINIT_ACC
    end if
 
    if    (TX<=TMINTBL) then
@@ -43,7 +43,7 @@ else  ! Exact Formulation
       TI = TX
    end if
 
-#include "esatice_noacc.code"
+#include "esatice_acc.code"
 
    if(present(DQ)) then
       if    (TX<TMINICE) then
@@ -54,7 +54,7 @@ else  ! Exact Formulation
          if(PX>EX) then
             DD = EX
             TI = TX + DELTA_T
-#include "esatice_noacc.code"
+#include "esatice_acc.code"
             DDQ = EX-DD
             EX  = DD
          endif

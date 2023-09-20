@@ -7,14 +7,19 @@ module GEOS_Utils_ACC
   private
 
   public GEOS_DQSAT_NOACC
+  public GEOS_QSAT_ACC
 
   interface GEOS_DQSAT_NOACC
      module procedure DQSAT0_NOACC
      module procedure DQSAT3_NOACC
   end interface GEOS_DQSAT_NOACC
 
+  interface GEOS_QSAT_ACC
+     module procedure QSAT0_ACC
+  end interface GEOS_QSAT_ACC
+
   real,    parameter :: ESFAC = MAPL_H2OMW/MAPL_AIRMW
-  real,    parameter :: MAX_MIXING_RATIO = 1.  
+  real,    parameter :: MAX_MIXING_RATIO = 1.
   real,    parameter :: ZEROC   = MAPL_TICE
 
   real,    parameter :: TMINTBL    =  150.0
@@ -24,18 +29,6 @@ module GEOS_Utils_ACC
   real,    parameter :: DELTA_T    =  1.0 / DEGSUBS
   integer, parameter :: TABLESIZE  =  nint(TMAXTBL-TMINTBL)*DEGSUBS + 1
   real,    parameter :: TMIX       = -20.
-
-  logical            :: UTBL       = .true.
-  integer            :: TYPE       =  1
-
-  logical            :: FIRST      = .true.
-
-  real               :: ESTFRZ
-  real               :: ESTLQU
-
-  real               :: ESTBLE(TABLESIZE)
-  real               :: ESTBLW(TABLESIZE)
-  real               :: ESTBLX(TABLESIZE)
 
   real,    parameter :: TMINSTR = -95.
   real,    parameter :: TSTARR1 = -75.
@@ -73,7 +66,6 @@ module GEOS_Utils_ACC
   real*8,  parameter :: S21= 0.401390832E+0 *100.0
   real*8,  parameter :: S20= 0.535098336E+1 *100.0
 
-
   real*8, parameter  :: DI(0:3)=(/ 57518.5606E08, 2.01889049, 3.56654, 20.947031 /)
   real*8, parameter  :: CI(0:3)=(/ 9.550426, -5723.265, 3.53068, -.00728332 /)
   real*8, parameter  :: DL(6)=(/  -7.902980, 5.02808, -1.3816, 11.344, 8.1328, -3.49149 /)
@@ -83,8 +75,16 @@ module GEOS_Utils_ACC
        CL(0:9)=(/54.842763, -6763.22, -4.21000, .000367, &
        .0415, 218.8,  53.878000, -1331.22, -9.44523, .014025  /)
 
-  real       :: TMINLQU    =  ZEROC - 40.0
-  real       :: TMINICE    =  ZEROC + TMINSTR
+  real               :: TMINLQU =  ZEROC - 40.0
+  real               :: TMINICE =  ZEROC + TMINSTR
+  logical            :: UTBL    = .true.
+  integer            :: TYPE    =  1
+  logical            :: FIRST   = .true.
+  real               :: ESTFRZ
+  real               :: ESTLQU
+  real               :: ESTBLE(TABLESIZE)
+  real               :: ESTBLW(TABLESIZE)
+  real               :: ESTBLX(TABLESIZE)
 
 contains
 
@@ -113,6 +113,31 @@ contains
 
   end function QSATLQU0_NOACC
 
+  function QSATLQU0_ACC(TL,PL,DQ) result(QS)
+
+    real,              intent(IN) :: TL
+    real, optional,    intent(IN) :: PL
+    real, optional,    intent(OUT):: DQ
+    real    :: QS
+
+    real    :: TI
+    real    :: DD
+    real    :: TT
+    real    :: DDQ
+    integer :: IT
+#define TX TL
+#define PX PL
+#define EX QS
+#define DX DQ
+#include "qsatlqu_acc.code"
+#undef  DX
+#undef  TX
+#undef  EX
+#undef  PX
+    return
+
+  end function QSATLQU0_ACC
+
   function QSATICE0_NOACC(TL,PL,DQ) result(QS)
 
     real,              intent(IN) :: TL
@@ -137,6 +162,31 @@ contains
     return
 
   end function QSATICE0_NOACC
+
+  function QSATICE0_ACC(TL,PL,DQ) result(QS)
+
+    real,              intent(IN) :: TL
+    real, optional,    intent(IN) :: PL
+    real, optional,    intent(OUT):: DQ
+    real    :: QS
+
+    real    :: TI,W
+    real    :: DD
+    real    :: TT
+    real    :: DDQ
+    integer :: IT
+#define TX TL
+#define PX PL
+#define EX QS
+#define DX DQ
+#include "qsatice_acc.code"
+#undef  DX
+#undef  TX
+#undef  EX
+#undef  PX
+    return
+
+  end function QSATICE0_ACC
 
   function DQSAT0_NOACC(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
 
@@ -168,7 +218,7 @@ contains
 
        if(FIRST) then
           FIRST = .false.
-          call ESINIT
+          call ESINIT_NOACC
        end if
 
        if    (TL<=TMINTBL) then
@@ -226,6 +276,7 @@ contains
   end function DQSAT0_NOACC
 
   function DQSAT3_NOACC(TL,PL,RAMP,PASCALS,QSAT) result(DQSAT)
+
     real,              intent(IN) :: TL(:,:,:), PL(:,:,:)
     logical, optional, intent(IN) :: PASCALS
     real,    optional, intent(IN) :: RAMP
@@ -244,12 +295,101 @@ contains
           end do
        end do
     end do
+
   end function DQSAT3_NOACC
 
-  subroutine ESINIT
+  function QSAT0_ACC(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
 
-    ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
-    ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
+    real,   intent(IN) :: TL, PL
+    logical, optional, intent(IN) :: PASCALS
+    real,    optional, intent(IN) :: RAMP
+    real,    optional, intent(OUT):: DQSAT
+    real    :: QSAT
+
+    real    :: URAMP, DD, QQ, TI, DQ, PP
+    integer :: IT
+
+    if(present(RAMP)) then
+       URAMP = -abs(RAMP)
+    else
+       URAMP = TMIX
+    end if
+
+    if(present(PASCALS)) then
+       if(PASCALS) then
+          PP = PL
+       else
+          PP = PL*100.
+       end if
+    else
+       PP = PL*100.
+    end if
+
+    if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL) then
+
+       if(FIRST) then
+          FIRST = .false.
+          call ESINIT_ACC
+       end if
+
+       if    (TL<=TMINTBL) then
+          TI = TMINTBL
+       elseif(TL>=TMAXTBL-.001) then
+          TI = TMAXTBL-.001
+       else
+          TI = TL
+       end if
+
+       TI = (TI - TMINTBL)*DEGSUBS+1
+       IT = int(TI)
+
+       if(URAMP==TMIX) then
+          DQ    = ESTBLX(IT+1) - ESTBLX(IT)
+          QSAT  = (TI-IT)*DQ + ESTBLX(IT)
+       else
+          DQ    = ESTBLE(IT+1) - ESTBLE(IT)
+          QSAT  = (TI-IT)*DQ + ESTBLE(IT)
+       endif
+
+       if(present(DQSAT)) DQSAT = DQ*DEGSUBS
+
+       if(PP <= QSAT) then
+          QSAT = MAX_MIXING_RATIO
+          if(present(DQSAT)) DQSAT = 0.0
+       else
+          DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
+          QSAT = ESFAC*QSAT*DD
+          if(present(DQSAT)) DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+       end if
+
+    else
+
+       if(FIRST) then
+          FIRST = .false.
+       end if
+
+       TI = TL - ZEROC
+
+       if    (TI <= URAMP) then
+          QSAT  =  QSATICE0_ACC(TL,PP,DQ=DQSAT)
+       elseif(TI >= 0.0  ) then
+          QSAT  =  QSATLQU0_ACC(TL,PP,DQ=DQSAT)
+       else
+          QSAT  =  QSATICE0_ACC(TL,PP,DQ=DQSAT)
+          QQ    =  QSATLQU0_ACC(TL,PP,DQ=DQ   )
+          TI    =  TI/URAMP
+          QSAT  =  TI*(QSAT - QQ) +  QQ
+          if(PRESENT(DQSAT)) DQSAT = TI*(DQSAT-DQ) + DQ
+       end if
+
+    end if
+
+  end function QSAT0_ACC
+
+  subroutine ESINIT_NOACC
+
+    ! Saturation vapor pressure table initialization. This is invoked if UTBL is true
+    ! on the first call to any qsat routine or whenever GEOS_QsatSet is called
     ! N.B.--Tables are in Pa
 
     integer :: I
@@ -286,7 +426,48 @@ contains
 
     UTBL = UT
 
-  end subroutine ESINIT
+  end subroutine ESINIT_NOACC
+
+  subroutine ESINIT_ACC
+
+    ! Saturation vapor pressure table initialization. This is invoked if UTBL is true
+    ! on the first call to any qsat routine or whenever GEOS_QsatSet is called
+    ! N.B.--Tables are in Pa
+
+    integer :: I
+    real    :: T
+    logical :: UT
+
+    UT = UTBL
+    UTBL=.false.
+
+    do I=1,TABLESIZE
+
+       T = (I-1)*DELTA_T + TMINTBL
+
+       ESTBLW(I) = QSATLQU0_ACC(T)
+
+       if(T>ZEROC) then
+          ESTBLE(I) = ESTBLW(I)
+       else
+          ESTBLE(I) = QSATICE0_ACC(T)
+       end if
+
+       T = T-ZEROC
+
+       if(T>=TMIX .and. T<0.0) then
+          ESTBLX(I) = ( T/TMIX )*( ESTBLE(I) - ESTBLW(I) ) + ESTBLW(I)
+       else
+          ESTBLX(I) = ESTBLE(I)
+       end if
+
+    end do
+
+    ESTFRZ = QSATLQU0_ACC(ZEROC  )
+    ESTLQU = QSATLQU0_ACC(TMINLQU)
+
+    UTBL = UT
+
+  end subroutine ESINIT_ACC
 
 end module GEOS_Utils_ACC
-

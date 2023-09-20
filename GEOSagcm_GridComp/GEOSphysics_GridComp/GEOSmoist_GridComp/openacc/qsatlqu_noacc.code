@@ -3,7 +3,7 @@ if(UTBL) then
 
    if(FIRST) then
       FIRST = .false.
-      call ESINIT
+      call ESINIT_NOACC
    end if
 
    if    (TX<=TMINLQU) then
@@ -42,7 +42,7 @@ else  ! Exact Formulation
       TI = TX
    end if
 
-#include "esatlqu.code"
+#include "esatlqu_noacc.code"
 
    if(present(DQ)) then
       if    (TX<TMINLQU) then
@@ -53,7 +53,7 @@ else  ! Exact Formulation
          if(PX>EX) then
             DD = EX
             TI = TX + DELTA_T
-#include "esatlqu.code"
+#include "esatlqu_noacc.code"
             DDQ = EX-DD
             EX  = DD
          endif
