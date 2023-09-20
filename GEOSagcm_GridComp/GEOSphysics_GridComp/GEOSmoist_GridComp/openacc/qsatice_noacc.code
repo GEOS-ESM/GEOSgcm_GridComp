@@ -1,22 +1,22 @@
 
-if(UTBL) then
+if(UTBL_NOACC) then
 
-   if(FIRST) then
-      FIRST = .false.
+   if(FIRST_NOACC) then
+      FIRST_NOACC = .false.
       call ESINIT_NOACC
    end if
 
    if    (TX<=TMINTBL) then
-      EX=ESTBLE(1)
+      EX=ESTBLE_NOACC(1)
       if(present(DQ)) DDQ = 0.0
    elseif(TX>=ZEROC  ) then
-      EX=ESTFRZ
+      EX=ESTFRZ_NOACC
       if(present(DQ)) DDQ = 0.0
    else
       TT  = (TX - TMINTBL)*DEGSUBS+1
       IT  = int(TT)
-      DDQ = ESTBLE(IT+1) - ESTBLE(IT)
-      EX  =  ((TT-IT)*DDQ + ESTBLE(IT))
+      DDQ = ESTBLE_NOACC(IT+1) - ESTBLE_NOACC(IT)
+      EX  =  ((TT-IT)*DDQ + ESTBLE_NOACC(IT))
    end if
 
 
@@ -35,8 +35,8 @@ if(UTBL) then
 
 else  ! Exact Formulation
 
-   if    (TX<TMINICE) then
-      TI = TMINICE
+   if    (TX<TMINICE_NOACC) then
+      TI = TMINICE_NOACC
    elseif(TX>ZEROC  ) then
       TI = ZEROC
    else
@@ -46,7 +46,7 @@ else  ! Exact Formulation
 #include "esatice_noacc.code"
 
    if(present(DQ)) then
-      if    (TX<TMINICE) then
+      if    (TX<TMINICE_NOACC) then
          DDQ = 0.0
       elseif(TX>ZEROC  ) then
          DDQ = 0.0

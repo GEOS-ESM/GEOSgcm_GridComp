@@ -1,5 +1,5 @@
 
-   if( type==1) then     ! Use Starr formulation
+   if( type_noacc==1) then     ! Use Starr formulation
       TT = TI - ZEROC
       if    (TT < TSTARR1                   ) then
          EX = (TT*(TT*(TT*(TT*(TT*(TT*S16+S15)+S14)+S13)+S12)+S11)+S10)
@@ -16,9 +16,9 @@
       else
          EX = (TT*(TT*(TT*(TT*(TT*(TT*BI6+BI5)+BI4)+BI3)+BI2)+BI1)+BI0)
       endif
-   elseif(type==2) then !  Fit used in CAM.
+   elseif(type_noacc==2) then !  Fit used in CAM.
       TT = ZEROC/TI
       EX = DI(0) * exp( -(DI(1)/TT + DI(2)*log(TT) + DI(3)*TT) )
-   elseif(type==3) then   !  Murphy and Koop (2005, QJRMS)
+   elseif(type_noacc==3) then   !  Murphy and Koop (2005, QJRMS)
       EX = exp( CI(0)+ CI(1)/TI + CI(2)*alog(TI) + CI(3)*TI )
    endif

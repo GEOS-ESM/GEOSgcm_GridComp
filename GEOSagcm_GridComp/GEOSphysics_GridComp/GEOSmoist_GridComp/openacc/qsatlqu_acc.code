@@ -1,22 +1,22 @@
 
-if(UTBL) then
+if(UTBL_ACC) then
 
-   if(FIRST) then
-      FIRST = .false.
+   if(FIRST_ACC) then
+      FIRST_ACC = .false.
       call ESINIT_ACC
    end if
 
-   if    (TX<=TMINLQU) then
-      EX=ESTLQU
+   if    (TX<=TMINLQU_ACC) then
+      EX=ESTLQU_ACC
       if(present(DQ)) DDQ = 0.0
    elseif(TX>=TMAXTBL  ) then
-      EX=ESTBLW(TABLESIZE)
+      EX=ESTBLW_ACC(TABLESIZE)
       if(present(DQ)) DDQ = 0.0
    else
       TT  = (TX - TMINTBL)*DEGSUBS+1
       IT  = int(TT)
-      DDQ = ESTBLW(IT+1) - ESTBLW(IT)
-      EX  = ((TT-IT)*DDQ + ESTBLW(IT))
+      DDQ = ESTBLW_ACC(IT+1) - ESTBLW_ACC(IT)
+      EX  = ((TT-IT)*DDQ + ESTBLW_ACC(IT))
    end if
 
    if(present(PL)) then
@@ -34,8 +34,8 @@ if(UTBL) then
 
 else  ! Exact Formulation
 
-   if    (TX<TMINLQU) then
-      TI = TMINLQU
+   if    (TX<TMINLQU_ACC) then
+      TI = TMINLQU_ACC
    elseif(TX>TMAXTBL) then
       TI = TMAXTBL
    else
@@ -45,7 +45,7 @@ else  ! Exact Formulation
 #include "esatlqu_acc.code"
 
    if(present(DQ)) then
-      if    (TX<TMINLQU) then
+      if    (TX<TMINLQU_ACC) then
          DDQ = 0.0
       elseif(TX>TMAXTBL) then
          DDQ = 0.0

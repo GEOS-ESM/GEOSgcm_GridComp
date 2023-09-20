@@ -75,16 +75,27 @@ module GEOS_Utils_ACC
        CL(0:9)=(/54.842763, -6763.22, -4.21000, .000367, &
        .0415, 218.8,  53.878000, -1331.22, -9.44523, .014025  /)
 
-  real               :: TMINLQU =  ZEROC - 40.0
-  real               :: TMINICE =  ZEROC + TMINSTR
-  logical            :: UTBL    = .true.
-  integer            :: TYPE    =  1
-  logical            :: FIRST   = .true.
-  real               :: ESTFRZ
-  real               :: ESTLQU
-  real               :: ESTBLE(TABLESIZE)
-  real               :: ESTBLW(TABLESIZE)
-  real               :: ESTBLX(TABLESIZE)
+  real               :: TMINLQU_NOACC =  ZEROC - 40.0
+  real               :: TMINICE_NOACC    =  ZEROC + TMINSTR
+  logical            :: UTBL_NOACC    = .true.
+  integer            :: TYPE_NOACC    = 1
+  logical            :: FIRST_NOACC   = .true.
+  real               :: ESTFRZ_NOACC
+  real               :: ESTLQU_NOACC
+  real               :: ESTBLE_NOACC(TABLESIZE)
+  real               :: ESTBLW_NOACC(TABLESIZE)
+  real               :: ESTBLX_NOACC(TABLESIZE)
+
+  real               :: TMINLQU_ACC =  ZEROC - 40.0
+  real               :: TMINICE_ACC    =  ZEROC + TMINSTR
+  logical            :: UTBL_ACC    = .true.
+  integer            :: TYPE_ACC    = 1
+  logical            :: FIRST_ACC   = .true.
+  real               :: ESTFRZ_ACC
+  real               :: ESTLQU_ACC
+  real               :: ESTBLE_ACC(TABLESIZE)
+  real               :: ESTBLW_ACC(TABLESIZE)
+  real               :: ESTBLX_ACC(TABLESIZE)
 
 contains
 
@@ -214,10 +225,10 @@ contains
        PP = PL*100.
     end if
 
-    if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL) then
+    if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL_NOACC) then
 
-       if(FIRST) then
-          FIRST = .false.
+       if(FIRST_NOACC) then
+          FIRST_NOACC = .false.
           call ESINIT_NOACC
        end if
 
@@ -233,11 +244,11 @@ contains
        IT = int(TT)
 
        if(URAMP==TMIX) then
-          DQQ =  ESTBLX(IT+1) - ESTBLX(IT)
-          QQ  =  (TT-IT)*DQQ + ESTBLX(IT)
+          DQQ =  ESTBLX_NOACC(IT+1) - ESTBLX_NOACC(IT)
+          QQ  =  (TT-IT)*DQQ + ESTBLX_NOACC(IT)
        else
-          DQQ =  ESTBLE(IT+1) - ESTBLE(IT)
-          QQ  =  (TT-IT)*DQQ + ESTBLE(IT)
+          DQQ =  ESTBLE_NOACC(IT+1) - ESTBLE_NOACC(IT)
+          QQ  =  (TT-IT)*DQQ + ESTBLE_NOACC(IT)
        endif
 
        if(PP <= QQ) then
@@ -251,8 +262,8 @@ contains
 
     else
 
-       if(FIRST) then
-          FIRST = .false.
+       if(FIRST_NOACC) then
+          FIRST_NOACC = .false.
        end if
 
        TI = TL - ZEROC
@@ -299,6 +310,7 @@ contains
   end function DQSAT3_NOACC
 
   function QSAT0_ACC(TL,PL,RAMP,PASCALS,DQSAT) result(QSAT)
+    !!$acc routine seq
 
     real,   intent(IN) :: TL, PL
     logical, optional, intent(IN) :: PASCALS
@@ -325,10 +337,10 @@ contains
        PP = PL*100.
     end if
 
-    if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL) then
+    if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL_ACC) then
 
-       if(FIRST) then
-          FIRST = .false.
+       if(FIRST_ACC) then
+          FIRST_ACC = .false.
           call ESINIT_ACC
        end if
 
@@ -344,11 +356,11 @@ contains
        IT = int(TI)
 
        if(URAMP==TMIX) then
-          DQ    = ESTBLX(IT+1) - ESTBLX(IT)
-          QSAT  = (TI-IT)*DQ + ESTBLX(IT)
+          DQ    = ESTBLX_ACC(IT+1) - ESTBLX_ACC(IT)
+          QSAT  = (TI-IT)*DQ + ESTBLX_ACC(IT)
        else
-          DQ    = ESTBLE(IT+1) - ESTBLE(IT)
-          QSAT  = (TI-IT)*DQ + ESTBLE(IT)
+          DQ    = ESTBLE_ACC(IT+1) - ESTBLE_ACC(IT)
+          QSAT  = (TI-IT)*DQ + ESTBLE_ACC(IT)
        endif
 
        if(present(DQSAT)) DQSAT = DQ*DEGSUBS
@@ -364,8 +376,8 @@ contains
 
     else
 
-       if(FIRST) then
-          FIRST = .false.
+       if(FIRST_ACC) then
+          FIRST_ACC = .false.
        end if
 
        TI = TL - ZEROC
@@ -396,35 +408,35 @@ contains
     real    :: T
     logical :: UT
 
-    UT = UTBL
-    UTBL=.false.
+    UT = UTBL_NOACC
+    UTBL_NOACC=.false.
 
     do I=1,TABLESIZE
 
        T = (I-1)*DELTA_T + TMINTBL
 
-       ESTBLW(I) = QSATLQU0_NOACC(T)
+       ESTBLW_NOACC(I) = QSATLQU0_NOACC(T)
 
        if(T>ZEROC) then
-          ESTBLE(I) = ESTBLW(I)
+          ESTBLE_NOACC(I) = ESTBLW_NOACC(I)
        else
-          ESTBLE(I) = QSATICE0_NOACC(T)
+          ESTBLE_NOACC(I) = QSATICE0_NOACC(T)
        end if
 
        T = T-ZEROC
 
        if(T>=TMIX .and. T<0.0) then
-          ESTBLX(I) = ( T/TMIX )*( ESTBLE(I) - ESTBLW(I) ) + ESTBLW(I)
+          ESTBLX_NOACC(I) = ( T/TMIX )*( ESTBLE_NOACC(I) - ESTBLW_NOACC(I) ) + ESTBLW_NOACC(I)
        else
-          ESTBLX(I) = ESTBLE(I)
+          ESTBLX_NOACC(I) = ESTBLE_NOACC(I)
        end if
 
     end do
 
-    ESTFRZ = QSATLQU0_NOACC(ZEROC  )
-    ESTLQU = QSATLQU0_NOACC(TMINLQU)
+    ESTFRZ_NOACC = QSATLQU0_NOACC(ZEROC  )
+    ESTLQU_NOACC = QSATLQU0_NOACC(TMINLQU_NOACC)
 
-    UTBL = UT
+    UTBL_NOACC = UT
 
   end subroutine ESINIT_NOACC
 
@@ -438,35 +450,35 @@ contains
     real    :: T
     logical :: UT
 
-    UT = UTBL
-    UTBL=.false.
+    UT = UTBL_ACC
+    UTBL_ACC=.false.
 
     do I=1,TABLESIZE
 
        T = (I-1)*DELTA_T + TMINTBL
 
-       ESTBLW(I) = QSATLQU0_ACC(T)
+       ESTBLW_ACC(I) = QSATLQU0_ACC(T)
 
        if(T>ZEROC) then
-          ESTBLE(I) = ESTBLW(I)
+          ESTBLE_ACC(I) = ESTBLW_ACC(I)
        else
-          ESTBLE(I) = QSATICE0_ACC(T)
+          ESTBLE_ACC(I) = QSATICE0_ACC(T)
        end if
 
        T = T-ZEROC
 
        if(T>=TMIX .and. T<0.0) then
-          ESTBLX(I) = ( T/TMIX )*( ESTBLE(I) - ESTBLW(I) ) + ESTBLW(I)
+          ESTBLX_ACC(I) = ( T/TMIX )*( ESTBLE_ACC(I) - ESTBLW_ACC(I) ) + ESTBLW_ACC(I)
        else
-          ESTBLX(I) = ESTBLE(I)
+          ESTBLX_ACC(I) = ESTBLE_ACC(I)
        end if
 
     end do
 
-    ESTFRZ = QSATLQU0_ACC(ZEROC  )
-    ESTLQU = QSATLQU0_ACC(TMINLQU)
+    ESTFRZ_ACC = QSATLQU0_ACC(ZEROC  )
+    ESTLQU_ACC = QSATLQU0_ACC(TMINLQU_ACC)
 
-    UTBL = UT
+    UTBL_ACC = UT
 
   end subroutine ESINIT_ACC
 

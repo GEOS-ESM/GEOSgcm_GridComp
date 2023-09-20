@@ -1,22 +1,22 @@
 
-if(UTBL) then
+if(UTBL_ACC) then
 
-   if(FIRST) then
-      FIRST = .false.
+   if(FIRST_ACC) then
+      FIRST_ACC = .false.
       call ESINIT_ACC
    end if
 
    if    (TX<=TMINTBL) then
-      EX=ESTBLE(1)
+      EX=ESTBLE_ACC(1)
       if(present(DQ)) DDQ = 0.0
    elseif(TX>=ZEROC  ) then
-      EX=ESTFRZ
+      EX=ESTFRZ_ACC
       if(present(DQ)) DDQ = 0.0
    else
       TT  = (TX - TMINTBL)*DEGSUBS+1
       IT  = int(TT)
-      DDQ = ESTBLE(IT+1) - ESTBLE(IT)
-      EX  =  ((TT-IT)*DDQ + ESTBLE(IT))
+      DDQ = ESTBLE_ACC(IT+1) - ESTBLE_ACC(IT)
+      EX  =  ((TT-IT)*DDQ + ESTBLE_ACC(IT))
    end if
 
 
@@ -35,8 +35,8 @@ if(UTBL) then
 
 else  ! Exact Formulation
 
-   if    (TX<TMINICE) then
-      TI = TMINICE
+   if    (TX<TMINICE_ACC) then
+      TI = TMINICE_ACC
    elseif(TX>ZEROC  ) then
       TI = ZEROC
    else
@@ -46,7 +46,7 @@ else  ! Exact Formulation
 #include "esatice_acc.code"
 
    if(present(DQ)) then
-      if    (TX<TMINICE) then
+      if    (TX<TMINICE_ACC) then
          DDQ = 0.0
       elseif(TX>ZEROC  ) then
          DDQ = 0.0

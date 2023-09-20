@@ -1,22 +1,22 @@
 
-if(UTBL) then
+if(UTBL_NOACC) then
 
-   if(FIRST) then
-      FIRST = .false.
+   if(FIRST_NOACC) then
+      FIRST_NOACC = .false.
       call ESINIT_NOACC
    end if
 
-   if    (TX<=TMINLQU) then
-      EX=ESTLQU
+   if    (TX<=TMINLQU_NOACC) then
+      EX=ESTLQU_NOACC
       if(present(DQ)) DDQ = 0.0
    elseif(TX>=TMAXTBL  ) then
-      EX=ESTBLW(TABLESIZE)
+      EX=ESTBLW_NOACC(TABLESIZE)
       if(present(DQ)) DDQ = 0.0
    else
       TT  = (TX - TMINTBL)*DEGSUBS+1
       IT  = int(TT)
-      DDQ = ESTBLW(IT+1) - ESTBLW(IT)
-      EX  = ((TT-IT)*DDQ + ESTBLW(IT))
+      DDQ = ESTBLW_NOACC(IT+1) - ESTBLW_NOACC(IT)
+      EX  = ((TT-IT)*DDQ + ESTBLW_NOACC(IT))
    end if
 
    if(present(PL)) then
@@ -34,8 +34,8 @@ if(UTBL) then
 
 else  ! Exact Formulation
 
-   if    (TX<TMINLQU) then
-      TI = TMINLQU
+   if    (TX<TMINLQU_NOACC) then
+      TI = TMINLQU_NOACC
    elseif(TX>TMAXTBL) then
       TI = TMAXTBL
    else
@@ -45,7 +45,7 @@ else  ! Exact Formulation
 #include "esatlqu_noacc.code"
 
    if(present(DQ)) then
-      if    (TX<TMINLQU) then
+      if    (TX<TMINLQU_NOACC) then
          DDQ = 0.0
       elseif(TX>TMAXTBL) then
          DDQ = 0.0
