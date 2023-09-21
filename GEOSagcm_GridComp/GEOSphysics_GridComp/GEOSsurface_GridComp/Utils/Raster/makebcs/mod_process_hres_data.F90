@@ -20,62 +20,74 @@
 
 
 MODULE process_hres_data
-use rmTinyCatchParaMod
-use MAPL_SortMod
-use LDAS_DateTimeMod  
-use MAPL_ConstantsMod
-use lsm_routines, ONLY: sibalb
-use MAPL_Base,    ONLY: MAPL_UNDEF
+  
+  use MAPL_SortMod
+  use MAPL_ConstantsMod
+  use MAPL_Base,              ONLY: MAPL_UNDEF  
+
+  use LDAS_DateTimeMod  
+  
+  use rmTinyCatchParaMod
+  use lsm_routines,           ONLY: sibalb
 
 #if defined USE_EXTERNAL_FINDLOC
-use findloc_mod, only: findloc
+  use findloc_mod,            only: findloc
 #endif
 
-implicit none
+  implicit none
 
-include 'netcdf.inc'	
+  include 'netcdf.inc'	
+  
+  private
+  
+  public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
+  public :: MODIS_snow_alb, MODIS_snow_alb_v2 
+  public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
+  public :: histogram, create_mapping, esa2mosaic , esa2clm
+  public :: grid2tile_ndep_t2m_alb, map_country_codes, get_country_codes
+  public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
+  
+  integer, parameter :: nc_esa             = 129600   ! # columns in 10-arcsec GEOS5_10arcsec_mask* file
+  integer, parameter :: nr_esa             =  64800   ! # rows    in 10-arcsec GEOS5_10arcsec_mask* file
 
-private
+  real,    parameter :: pi                 = MAPL_PI
+  real,    parameter :: RADIUS             = MAPL_RADIUS
 
-public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
-public :: MODIS_snow_alb 
-public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
-public :: histogram, create_mapping, esa2mosaic , esa2clm
-public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
-public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
+  integer, parameter :: N_GADM             = 256 + 1
+  integer, parameter :: N_STATES           = 50
+  
+  real,    parameter :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
+  
+  character*512      :: MAKE_BCS_INPUT_DIR
 
-! Below structure is used to regrid high resolution data to high resolution tile raster
-
-integer, parameter   :: N_tiles_per_cell = 9
-integer  , parameter :: nc_esa = 129600, nr_esa = 64800
-real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
-integer, parameter   :: N_GADM = 256 + 1, N_STATES = 50
-
-real, parameter      :: SOILDEPTH_MIN_HWSD = 1334.   ! minimum soil depth for HWSD soil parameters
-
-type :: do_regrid
-   integer                               :: NT
-   integer, dimension (N_tiles_per_cell) :: TID
-   integer, dimension (N_tiles_per_cell) :: count
-end type do_regrid
-type, public :: regrid_map
-   integer :: nc_data = 1
-   integer :: nr_data = 1
-   integer, allocatable, dimension (:,:)   :: ij_index
-   type(do_regrid), pointer, dimension (:) :: map
-end type regrid_map
-
+  ! structure for remapping high-resolution data to tile space
+  
+  integer, parameter :: N_tiles_per_cell   = 9
+  
+  type :: do_regrid
+     integer                                      :: NT       ! number of tiles or raster grid cells [??]
+     integer,         dimension(N_tiles_per_cell) :: TID      ! tile ID [??]
+     integer,         dimension(N_tiles_per_cell) :: count    ! [??]
+  end type do_regrid
+  
+  type, public :: regrid_map
+     integer                                      :: nc_data = 1
+     integer                                      :: nr_data = 1
+     integer,         dimension(:,:), allocatable :: ij_index
+     type(do_regrid), dimension(:),   pointer     :: map
+  end type regrid_map
+  
 contains
-!
-! ---------------------------------------------------------------------
-!
-
-  SUBROUTINE ESA2CLM (nc, nr, gfile)
+  
+  ! ---------------------------------------------------------------------
+  !
+  
+  SUBROUTINE ESA2CLM (nc, nr, fnameRst)
 
     implicit none
 
     integer  , intent (in) :: nc, nr
-    character (*)          :: gfile
+    character (*)          :: fnameRst
     
     integer  , parameter   :: N_lon_clm = 1152, N_lat_clm = 768, lsmpft = 17
     integer*2, allocatable, target, dimension (:,:) :: esa_veg
@@ -255,7 +267,7 @@ contains
     dx = nc_esa / nc
     dy = nr_esa / nr
 
-    open (10,file=trim(gfile)//'.rst',status='old',action='read',  &
+    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
           form='unformatted',convert='little_endian')
 
     do j=1,nr
@@ -797,13 +809,13 @@ contains
 !
 ! ---------------------------------------------------------------------
 !
-  SUBROUTINE ESA2MOSAIC (nc, nr, gfile)
+  SUBROUTINE ESA2MOSAIC (nc, nr, fnameRst)
     
     implicit none
 
     integer  , intent (in) :: nc, nr
-    character (*)          :: gfile
-    integer  , parameter   :: nc_esa = 129600, nr_esa = 64800
+    character (*)          :: fnameRst
+    !integer  , parameter   :: nc_esa = 129600, nr_esa = 64800
     integer*2, allocatable, target, dimension (:,:) :: esa_veg
     integer*2, pointer    , dimension (:,:) :: subset
     integer  , allocatable, dimension (:)   :: tile_id, ityp
@@ -866,7 +878,7 @@ contains
     dx = nc_esa / nc
     dy = nr_esa / nr
 
-    open (10,file=trim(gfile)//'.rst',status='old',action='read',  &
+    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
           form='unformatted',convert='little_endian')
     
     do j=1,nr
@@ -960,10 +972,10 @@ contains
 
 ! Canopy height and ASCAT roughness length
 
-    call ascat_r0 (nc,nr,gfile, z0)
+    call ascat_r0 (nc,nr,fnameRst, z0)
 
     if(jpl_height) then
-       call jpl_canoph (nc,nr,gfile, z2)
+       call jpl_canoph (nc,nr,fnameRst, z2)
     else
        allocate (z2(1:maxcat))       
     endif
@@ -1065,174 +1077,326 @@ contains
 !----------------------------------------------------------------------
 !
   SUBROUTINE HISTOGRAM (NLENS, NBINS, density, loc_val, x, BIN)
-
+    
+    ! intent:           in     in     out      inout    in in
+    
+    ! assemble histogram of x 
+    !
+    ! if optional input argument "bin" is not present, return only density    
+    !
+    ! NOTE: When the underlying data are integer (as, e.g., when histogram() is used 
+    !       in subroutine create_mapping()), the use of this subroutine and how it is
+    !       implemented is highly questionable. 
+    
     implicit none
+    
+    integer,                   intent(in)             :: NBINS    ! # bins
+    integer,                   intent(in)             :: NLENS    ! # data 
+    
+    real,    dimension(NLENS), intent(in)             :: x        ! data
+    integer, dimension(NBINS), intent(out)            :: density  ! hist value
+    real,    dimension(NBINS), intent(inout)          :: loc_val  ! lower boundary of bin
 
-    integer, intent (in) :: NBINS, NLENS
-    real,    intent (in) :: x (NLENS)
-    integer, intent (out):: density (NBINS)
-    real,    intent (inout) :: loc_val (NBINS)
-    real,    intent (in), optional :: bin
-    real :: xdum(NLENS), xl, xu, min_value
+    real,                      intent(in),   optional :: bin      ! bin size ("delta_x")
+    
+    ! --------------------------------------------------------------
+    
+    real    :: xdum(NLENS), xl, xu, min_value
     integer :: n
-
-    if(present (bin)) min_value =  real(floor(minval(x)))
-
-    DO N = 1, NBINS
-       if(present (bin)) then
+    
+    if (present(bin)) min_value = real(floor(minval(x)))
+    
+    DO N=1,NBINS
+       if(present(bin)) then
           xl = (N - 1)*BIN + min_value
           loc_val (n) = xl
           xu = xl + bin
           XDUM = 0.
-          where((x >= xl).and.(x < xu))XDUM = 1
+          where( (x>=xl) .and. (x<xu) ) XDUM = 1
        else
           XDUM = 0.
-          where(x == loc_val (n)) XDUM = 1
+          where( x==loc_val(n)        ) XDUM = 1  ! NOTE: == operator applied to REAL!?!?!?!?!?
        endif
-          density(n) = int(sum(XDUM))       
+       density(n) = int(sum(XDUM))       
     END DO
-
-END SUBROUTINE HISTOGRAM
+    
+  END SUBROUTINE HISTOGRAM
 
 !
 !----------------------------------------------------------------------
 !
 
- SUBROUTINE create_mapping (nc,nr,nc_data,nr_data,rmap, gfile)
+ SUBROUTINE create_mapping( nc, nr, nc_data, nr_data, rmap, fnameRst )
 
+   ! assemble "rmap" structure that can be used for remapping 2-dim gridded 
+   !   science data (nc_data-by-nr_data) to *land* tiles, which are defined
+   !   on a 2-dim raster grid (nc-by-nr)
+   
    implicit none
+   
+   integer,          intent(in)    :: nc, nr            ! dims of raster array (with tile IDs)
+   integer,          intent(in)    :: nc_data, nr_data  ! dims of science data array
+   type(regrid_map), intent(inout) :: rmap              ! structure for remapping
+   character(*),     intent(in)    :: fnameRst          ! name of raster (*.rst) file
 
-   integer, intent (in) :: nc,nr,nc_data,nr_data
-   type (regrid_map), intent (inout) :: rmap
-   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS,pix_count
-   REAL,    allocatable, DIMENSION (:) :: loc_val
-   INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
-   logical, dimension (:), allocatable :: unq_mask    
-   integer, allocatable, target, dimension (:,:) :: tile_id
-   integer, pointer , dimension (:,:) :: subset
-   real   :: dx_data, dy_data,dx_geos, dy_geos, lon1,lon2,lat1,lat2
-   character (*), intent(in) :: gfile
-   integer, pointer  :: iraster  (:,:)
+   ! -----------------------
 
-! Reading rst file
+   integer :: i, j, n, i1, i2, j1, j2, ncatch, nbins, status, NPLUS, pix_count
+   
+   REAL,    allocatable, DIMENSION(:)            :: loc_val
+   INTEGER, ALLOCATABLE, DIMENSION(:)            :: density, loc_int
+   logical, allocatable, dimension(:)            :: unq_mask    
+   integer, allocatable, dimension(:,:), target  :: tile_id
+   integer,              dimension(:,:), pointer :: subset, iraster
 
-   open (10,file=trim(gfile)//'.rst',status='old',action='read',  &
-        form='unformatted',convert='little_endian')
-   allocate (tile_id    (1:nc,1:nr))         
+   real :: dx_data, dy_data, dx_rst, dy_rst
+
+   ! -------------------------------------------------------------------
+   !
+   ! Read raster (*.rst) file
+
+   open( 10, file=trim(fnameRst)//'.rst', status='old', action='read',  &
+        form='unformatted', convert='little_endian')
+   
+   allocate(tile_id(1:nc,1:nr))         
    
    do j=1,nr
-      read(10)tile_id(:,j)
+      read(10) tile_id(:,j)
    end do
-   close (10,status='keep')
-
-! Reading number of catchments
-
-   open (10,file='clsm/catchment.def',status='old',action='read',  &
-        form='formatted')
-   read (10, *) ncatch
-   close (10, status = 'keep')
    
-   dx_data = 360./real(nc_data)
+   close( 10,status='keep')
+   
+   ! Read number of land ("catchment") tiles (ncatch)
+    
+   open( 10, file='clsm/catchment.def', status='old', action='read',  &
+        form='formatted')
+   read( 10, *) ncatch
+   close(10, status = 'keep')
+   
+   ! grid spacing
+   
+   dx_data = 360./real(nc_data)          ! science data
    dy_data = 180./real(nr_data)
-   dx_geos = 360./real(nc)
-   dy_geos = 180./real(nr)
+   
+   dx_rst  = 360./real(nc)               ! raster (*.rst)
+   dy_rst  = 180./real(nr)
 
-   if((nc_data  >= nc).and.(nr_data >= nr)) then
-
+   if( (nc_data  >= nc) .and. (nr_data >= nr) ) then
+      
+      ! science data to be remapped has resolution same as or finer than that of raster grid with tile_id
+      
+      ! Step 1:
+      ! Apply primitive regridding of tile_id(1:nc,1:nr) to iraster(1:nc_data,1:nr_data)
+      !
+      ! NOTE: When the mask file is GEOS5_10arcsec_mask*.nc, then tile_id raster grid is nc=nx=43200 by nr=ny=21600.
+      !       In mkCatchParam.F90, nc_data=43200 and nr_data=21600 except for GEOLAND and old (16-day) MODIS1 data.
+      !
+      !       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      !         [??]  --> In most cases, RegridRaster should have no impact and could probably be skipped.
+      !         Edits in RegridRaster() will do just that but may not be 0-diff.
+      !       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      !         
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
-      call RegridRaster(tile_id,iraster)
-      NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
-      allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
-      allocate (rmap%map (1:NPLUS))     
-      rmap%map%NT = 0
-      pix_count = 1
-      do j = 1,nr_data
-         do i =  1,nc_data
-            if((iraster (i,j) >=1).and.(iraster (i,j) <=ncatch)) then
-               rmap%map(pix_count)%NT = 1
-               rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = iraster (i,j)
-               rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = 1
-               rmap%ij_index(i,j) = pix_count
-               pix_count = pix_count + 1
+      call RegridRaster(tile_id,iraster)   
+      
+      ! now iraster contains tile_id on nc_data-by-nr_data science data grid
+      
+      ! [??] WHY REMAP RASTER TO DATA?? SHOULDN'T DATA BE REMAPPED TO RASTER??
+      !      THEN WE WOULDN'T NEED A CUSTOM rmap STRUCTURE FOR EACH SCIENCE DATASET
+      
+      ! count number of science data grid cells that contribute to *land* tiles (excl. lake, landice, ocean)
+
+      NPLUS = count(iraster>=1 .and. iraster<=ncatch) 
+      
+      allocate( rmap%ij_index(1:nc_data, 1:nr_data), source = 0 )   ! allocate and initialize to 0
+      allocate( rmap%map(     1:NPLUS             ))     
+
+      rmap%map%NT = 1  ! science data & raster resolutions are such that there is at most 1 unique tile ID per science data grid cell
+      
+      pix_count   = 0  ! 1-dim indexing of 1:NPLUS *science* *data* grid cells that contribute to land tiles
+                       ! [??] WHY IS THIS CALLED pix_count??  
+      
+      do j=1,nr_data
+         do i=1,nc_data
+
+            if( (iraster(i,j)>=1) .and. (iraster(i,j)<=ncatch) ) then
+               
+               ! science data grid cell (i,j) contributes to a land tile
+               
+               pix_count                    = pix_count + 1
+               rmap%ij_index(i,j)           = pix_count         ! 1-dim index for [land subset of] 2-dim array (science data grid)
+               
+               rmap%map(pix_count)%TID  (1) = iraster (i,j)     ! 1-dim array with tile_id values
+               rmap%map(pix_count)%count(1) = 1                 ! [??] MAYBE DO rmap%map%count=1 OUTSIDE OF THIS LOOP??
+
+               
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
+      ! verify final value of pix_count after i,j loop
+      if (pix_count/=NPLUS) then
+         print *, 'ERROR 1 in create_mapping(); stopping.'
+         stop
+      end if
+      
    else
-      NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
+      
+      ! science data to be remapped has coarser resolution than that of raster grid with tile_id
+
+      ! count number of *original* raster grid cells that contribute to *land* tiles (excl. lake, landice, ocean)
+      
+      NPLUS = count(tile_id>=1 .and. tile_id<=ncatch)
+      
       allocate (rmap%ij_index(1:nc_data, 1:nr_data), source = 0)
-      allocate (rmap%map (1:NPLUS))     
+      allocate (rmap%map(     1:NPLUS             ))     
+
       rmap%map%NT = 0
-      pix_count   = 1
-      do j = 1,nr_data
+
+      pix_count   = 1  ! 1-dim indexing of 1:NPLUS *science* *data* grid cells that contribute to land tiles
+                       ! [??] WHY IS THIS CALLED pix_count??
+      
+      ! loop through *science* data grid 
+      
+      do j=1,nr_data
          
-         lat1 = -90. + (j-1)*dy_data
-         lat2 = lat1 + dy_data
-         j1   = floor  ((-90. + (j-1)*dy_data + 90.)/dy_geos) + 1
-         j2   = ceiling((-90. + (j)*dy_data + 90.  )/dy_geos) 
+         ! block (i1:i2,j1:j2) of orig raster grid falls within science data grid cell (i,j)
+         !
+         ! NOTE: --> when ratio dy_data/dy_rst is not integer, all orig raster grid cells that 
+         !           fall partly within science data grid cell are included
          
-         do i =  1,nc_data
+         j1 = floor  ( ( -90. + (j-1)*dy_data +90. )/dy_rst ) + 1       ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dy_data/dy_rst WITH SOMETHING LIKE nr_data/nr[+1] ???
+         j2 = ceiling( ( -90. + (j  )*dy_data +90. )/dy_rst )           ! WARNING: mixed mode arithmetic!!!
+         
+         do i=1,nc_data
             
-            lon1 = -180. + (i-1)*dx_data
-            lon2 = lon1 + dx_data 
-            i1   = floor  ((-180. + (i-1)*dx_data + 180.)/dx_geos) + 1
-            i2   = ceiling((-180. + (i)*dx_data + 180.  )/dx_geos) 
+            i1 = floor  ( ( -180. + (i-1)*dx_data +180.)/dx_rst) + 1     ! WARNING: mixed mode arithmetic!!!   [??] WHY NOT REPLACE dx_data/dx_rst WITH SOMETHING LIKE nc_data/nc[+1] ???
+            i2 = ceiling( ( -180. + (i  )*dx_data +180.)/dx_rst)         ! WARNING: mixed mode arithmetic!!!
             
-            if(j2 > j1 .or. i2 > i1)  then
-               subset => tile_id (i1:i2,j1:j2)
-               NPLUS = count(subset >= 1 .and. subset <= ncatch)
-               if(NPLUS > 0)  then
-                  allocate (loc_int (1:NPLUS))
-                  allocate (unq_mask(1:NPLUS))
-                  loc_int = pack(subset,mask = (subset >= 1 .and. subset <= ncatch))
-                  call MAPL_Sort (loc_int)
+            ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            ! a more sensible order of operations might be as follows:
+            !  
+            !   ! check if there is *land* in this science data grid cell
+            !
+            !   subset => tile_id(i1:i2,j1:j2)
+            !
+            !   ! WITHIN SUBSET, count number of *original* raster grid cells  that contribute 
+            !   !   to *land* tiles (excl. lake, landice, ocean)
+            !   
+            !   NPLUS = count(subset>=1 .and. subset<=ncatch)    ! [??] OVERWRITES NPLUS FROM ABOVE !?!?!?!?!
+            !   
+            !   if (NPLUS>0)  then
+            !
+            !     ! there is *land* in this science data grid cell
+            !
+            !     rmap%ij_index(i,j) = pix_count             ! 1-dim index for [land subset of] 2-dim array (science data grid)
+            !     pix_count          = pix_count + 1         ! [??] SWITCH ORDER WITH PREVIOUS LINE AND INIT pix_count TO ZERO ABOVE
+            !
+            !     if (j2>j1 .or. i2>i1)  then
+            !
+            !       etc...  [MAKE SURE TO REMOVE rmap%ij_index(i,j)=.. AND pix_count+=1 FROM CODE BELOW]
+            ! 
+            ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+            if (j2>j1 .or. i2>i1)  then
+               
+               subset => tile_id(i1:i2,j1:j2)
+               
+               ! WITHIN SUBSET, count number of *original* raster grid cells  that contribute 
+               !   to *land* tiles (excl. lake, landice, ocean)
+               
+               NPLUS = count(subset>=1 .and. subset<=ncatch)    ! [??] OVERWRITES NPLUS FROM ABOVE !?!?!?!?!
+               
+               if (NPLUS>0)  then
+                  
+                  ! determine unique *land* tile IDs within science data grid cell (i,j)
+                  
+                  ! Step (i): determine NBINS = unique *land* tile ID values within subset 
+                  
+                  allocate(loc_int (1:NPLUS))    ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??  NPLUS<=ceiling(dx_data/dx_rst)*ceiling(dy_data/dy_rst)
+                  allocate(unq_mask(1:NPLUS))    ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+                  loc_int = pack(subset, mask=(subset>=1 .and. subset<=ncatch))
+                  call MAPL_Sort(loc_int)
                   unq_mask = .true.
-                  do n = 2,NPLUS 
+                  do n=2,NPLUS 
                      unq_mask(n) = .not.(loc_int(n) == loc_int(n-1))
                   end do
                   NBINS = count(unq_mask)
                   
-                  allocate(loc_val (1:NBINS))
-                  allocate(density (1:NBINS))
-                  loc_val = 1.*pack(loc_int,mask =unq_mask)
-                  call histogram (size(subset,1)*size(subset,2), NBINS, density, loc_val, real(subset))   
+                  ! Step (ii): assemble histogram of unique *land* tile ID values
                   
-                  DO N =1,NBINS
-                     if(density(n) > 0) then 
-                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1
-                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then
-                           print *,'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
-                           print *,i,j,i1,i2,j1,j2
-                           print *,'NT',rmap%map(pix_count)%NT 
-                           print *,rmap%map(pix_count)%TID
-                           print *,rmap%map(pix_count)%count
+                  allocate(loc_val(1:NBINS))     ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??  NBINS<=N_tile_per_gridcell
+                  allocate(density(1:NBINS))     ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+                  loc_val = 1.*pack(loc_int,mask=unq_mask)     ! [??] WHY REAL WHEN HANDLING INTEGERS???
+                  
+                  call histogram( size(subset,1)*size(subset,2), NBINS, density, loc_val, real(subset) )   
+                  
+                  ! now "density(n)" contains the number of orig raster grid cells within the science
+                  !   data grid cell (i,j) that contribute to the tile with the tile ID in "loc_val(n)"
+                  
+                  DO N=1,NBINS
+                     
+                     if (density(n)>0) then 
+                        
+                        ! build up NT = # unique tile IDs within science grid cell (i,j) [a.k.a. (pix_count)]
+                        
+                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1   
+                        
+                        ! verify NT <= max allowed value (=N_tiles_per_cell)
+                        
+                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then  ! [??] WHY NOT CHECK NBINS<=N_tiles_per_gridcell OUTSIDE OF THIS LOOP????
+                           print *, 'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
+                           print *, i, j, i1, i2, j1, j2
+                           print *, 'NT   =', rmap%map(pix_count)%NT 
+                           print *, 'TID  =', rmap%map(pix_count)%TID
+                           print *, 'count=', rmap%map(pix_count)%count
                            stop
                         endif
-                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))
-                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)
+
+                        ! for NT-th unique tile ID within science data grid cell (i,j), record tile ID and count
+
+                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))  ! convert tile ID back to int!?!?!?
+                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)        
                         
-                     endif
-                  END DO
-                  rmap%ij_index(i,j) = pix_count
-                  pix_count = pix_count + 1
-                  deallocate (loc_val, density)
-                  deallocate (loc_int, unq_mask)
-               endif
+                     endif  ! if (density(n)>0)
+                     
+                  END DO    ! N=1,NBINS
+                  
+                  rmap%ij_index(i,j) = pix_count             ! 1-dim index for [land subset of] 2-dim array (science data grid)
+                  pix_count          = pix_count + 1
+
+                  deallocate (loc_val, density)              ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  deallocate (loc_int, unq_mask)             ! [??] WHY NOT ALLOCATE TO A MAX SIZE OUTSIDE OF THE LOOP??
+                  
+               endif   ! if (NPLUS>0)
+               
                NULLIFY (subset)
+               
             else
-               if((tile_id (i1,j1) > 0).and.(tile_id(i1,j1).le.ncatch)) then
+               
+               if ( (tile_id (i1,j1)>=1) .and. (tile_id(i1,j1)<=ncatch) ) then
+                  
+                  ! only one unique *land* tile ID in science data grid cell (i,j)
+                  
                   rmap%map(pix_count)%NT       = 1
-                  rmap%map(pix_count)%TID(1)   = tile_id (i1,j1)
+                  rmap%map(pix_count)%TID(1)   = tile_id(i1,j1)
                   rmap%map(pix_count)%COUNT(1) = 1
-                  rmap%ij_index(i,j) = pix_count
-                  pix_count = pix_count + 1
+                  rmap%ij_index(i,j)           = pix_count
+                  pix_count                    = pix_count + 1
+
                endif
+               
             endif
-         end do
-      end do
-   end if
-      
+            
+         end do        ! i=1,nc_data
+      end do           ! j=1,nr_data
+
+   end if              ! relative resolution of (nc,nr) and (nc_data,nr_data)
+   
  END SUBROUTINE create_mapping
 
 !
@@ -1386,7 +1550,7 @@ END SUBROUTINE HISTOGRAM
 !
 !----------------------------------------------------------------------
 !
-  SUBROUTINE modis_scale_para_high (ease_grid,MA,gfile)
+  SUBROUTINE modis_scale_para_high (ease_grid,MA,fnameTil)
     
     implicit none
     type (date_time_type) :: gf_green_time,af_green_time,end_time, &
@@ -1399,7 +1563,7 @@ END SUBROUTINE HISTOGRAM
     REAL :: tsteps,zth, slr,tarea
     INTEGER :: typ,j_dum,ierr,indr1,ip2
     character*100 :: path,fname,fout,metpath
-    character (*) :: gfile
+    character (*) :: fnameTil
     integer :: n,maxcat,ip
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
@@ -1437,7 +1601,7 @@ END SUBROUTINE HISTOGRAM
     allocate (albnr      (1:maxcat))
     close (10,status='keep')
 
-    fname=trim(gfile)//'.til'
+    fname=trim(fnameTil)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
 
     fname='clsm/mosaic_veg_typs_fracs'
@@ -1749,194 +1913,269 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE modis_alb_on_tiles_high (nc_data,nr_data,rmap,MA,gfiler)
-!
-! Processing MODIS Albedo and creating 8-day climatological data 
-!
-  implicit none 
-  integer, intent (in) :: nc_data,nr_data
-  type (regrid_map), intent (in) :: rmap
-  character*6 :: MA
-  character(*)  :: gfiler
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
-  integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
-      time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
-  character*200 :: fname,fout
-  character*10 :: string
-  character*2 :: VV,HH
-  integer, allocatable, dimension (:,:) :: &
-         net_data1,net_data2
-  REAL, ALLOCATABLE, dimension (:) :: vec_AlbVis, count_AlbVis,vec_AlbNir, count_AlbNir
-  character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
-  logical :: regrid
-  character *10 :: vname
-  REAL :: sf
+  SUBROUTINE modis_alb_on_tiles_high( nc_data, nr_data, rmap, MA )
+    
+    ! process high-res MODIS albedo and create 8-day or 16-day climatological data in tile space
+    
+    implicit none 
 
-!
-! Reading number of cathment-tiles from catchment.def file
-! 
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      close (10,status='keep')
+    integer,           intent(in) :: nc_data, nr_data   ! expected dimensions of global science data array 
+    type (regrid_map), intent(in) :: rmap               ! structure for mapping from science data grid to tile space
+    character*6,       intent(in) :: MA                 ! MODIS albedo version string
+    
+    ! ------------------------------------------
 
-      call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-      if(MA=='MODIS1') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H11V13.nc'
-      if(MA=='MODIS2') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
-      allocate (MMDD      (0: n_tslices + 1))
-      allocate (MMDD_next (0: n_tslices + 1))
+    integer       :: kk, nn, ii, jj, ncid, i_highd, j_highd, pix_count, N_tiles
+    integer       :: status, iLL, jLL, iG, jG, ix, jx, nc_10, nr_10, n_tslices, tt
+    integer       :: time_slice, time_slice_next, yr, mn, dd, yr1, mn1, dd1
+    character*512 :: fname
+    character*10  :: string
+    character*2   :: VV, HH
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+    integer,          dimension (:,:), allocatable :: net_data1,net_data2
+    REAL,             dimension (:),   allocatable :: vec_AlbVis, count_AlbVis, vec_AlbNir, count_AlbNir
+    character(len=4), dimension (:),   allocatable :: MMDD, MMDD_next
 
-      if(nc_data/=i_highd .or. nr_data/=j_highd) then
-         print *,'Inconsistent mapping and dimensions in modis_alb_on_tiles_high   -so stopping ...'
-         stop
-      end if
+    character(64) :: Iam = 'modis_alb_on_tiles_high'
+    REAL          :: sf
+    
+    ! -----------------------------------------------------------------------
+    !
+    ! read number of catchment-tiles (N_tiles) from "catchment.def" file
+    
+    fname='clsm/catchment.def' 
+    open( 10, file=fname, status='old', action='read', form='formatted')
+    read( 10, * ) N_tiles
+    close(10, status='keep')
+    
+    ! get some common dimensions and attributes from one of the 36-by-18 MODIS files
+    
+    call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
+    
+    if     (MA=='MODIS1') then
+       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H11V13.nc'
+    elseif (MA=='MODIS2') then
+       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H11V13.nc'
+    else
+       print *, 'ERROR: ', trim(Iam), '(): unknown input argument MA=', trim(MA), '; stopping'
+       stop
+    end if
 
-      mmdd(0) = mmdd(n_tslices)
-      mmdd(n_tslices + 1)= mmdd(1)
+    status = NF_OPEN( trim(fname), NF_NOWRITE, ncid ); VERIFY_(STATUS)
+    
+    status = NF_GET_att_INT( ncid, NF_GLOBAL, 'N_lon_global', i_highd ); VERIFY_(STATUS)
+    status = NF_GET_att_INT( ncid, NF_GLOBAL, 'N_lat_global', j_highd ); VERIFY_(STATUS)
+    
+    status = NF_INQ_DIM (ncid,1,string, nc_10);     VERIFY_(STATUS)    ! nc_10 = # grid cells in long dir
+    status = NF_INQ_DIM (ncid,2,string, nr_10);     VERIFY_(STATUS)    ! nr_10 = # grid cells in lat  dir
+    status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)    ! # time slices
+    
+    allocate(MMDD     (0:n_tslices+1))
+    allocate(MMDD_next(0:n_tslices+1))
+    
+    ! read variable #3 = MMDD = start month/day of time-averaging interval per MAPL_ReadForcing() convention
+    
+    status = NF_GET_VARA_text( ncid, 3, (/1,1/), (/4,n_tslices/), MMDD(1:n_tslices) ); VERIFY_(STATUS)
+    status = NF_CLOSE(ncid); VERIFY_(STATUS)
+    
+    ! verify input nc_data and nr_data against global dimensions in nc4 file
+    
+    if(nc_data/=i_highd .or. nr_data/=j_highd) then
+       print *, 'ERROR ', trim(Iam), '(): Inconsistent mapping and dimensions; stopping'
+       stop
+    end if
+    
+    ! "wrap around" for mmdd
+    
+    mmdd(0)                          = mmdd(n_tslices)     
+    mmdd(n_tslices+1)                = mmdd(1)   
+    
+    ! assemble mmdd_next 
+    
+    mmdd_next(        0:n_tslices-1) = mmdd(1:n_tslices)
+    mmdd_next(n_tslices:n_tslices+1) = mmdd(1:2)
+    
+    ! allocate arrays for gridded albedo data from one of the 36-by-18 MODIS files
+    
+    allocate(net_data1(1:nc_10,1:nr_10))
+    allocate(net_data2(1:nc_10,1:nr_10))       
+    
+    ! open *output* files
+ 
+    if(MA == 'MODIS1') then 
+       open(31,file='clsm/AlbMap.WS.16-day.tile.0.3_0.7.dat',            &
+            form='unformatted',status='unknown',convert='little_endian')
+       open(32,file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat',            &
+            form='unformatted',status='unknown',convert='little_endian')
+    endif
+    
+    if(MA == 'MODIS2') then 
+       open(31,file='clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat',            &
+            form='unformatted',status='unknown',convert='little_endian')
+       open(32,file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat',            &
+            form='unformatted',status='unknown',convert='little_endian')
+    endif
+    
+    ! allocate data vectors in tile space
+    
+    allocate(vec_AlbVis(  N_tiles))
+    allocate(count_AlbVis(N_tiles))    
+    allocate(vec_AlbNir(  N_tiles))
+    allocate(count_AlbNir(N_tiles))    
+    
+    do tt=0,n_tslices+1
 
-      mmdd_next(0:n_tslices - 1) =  mmdd(1:n_tslices)
-      mmdd_next(n_tslices: n_tslices + 1) = mmdd (1:2)
-
-
-      allocate(net_data1 (1:nc_10,1:nr_10))
-      allocate(net_data2 (1:nc_10,1:nr_10))       
-
-       !
-       ! reading Albedo data
-       !
-
-       if(MA == 'MODIS1') then 
-          open (31,file='clsm/AlbMap.WS.16-day.tile.0.3_0.7.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-          open (32,file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-       endif
-
-       if(MA == 'MODIS2') then 
-          open (31,file='clsm/AlbMap.WS.8-day.tile.0.3_0.7.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-          open (32,file='clsm/AlbMap.WS.8-day.tile.0.7_5.0.dat',        &
-               form='unformatted',status='unknown',convert='little_endian')
-       endif
-
-       allocate(vec_AlbVis(maxcat))
-       allocate(count_AlbVis(1:maxcat))    
-       allocate(vec_AlbNir(maxcat))
-       allocate(count_AlbNir(1:maxcat))    
-
-       do t =0,n_tslices+1
+       ! get time stamp for MAPL_Readforcing convention
        
-          time_slice = t
-          yr = 1
-          yr1= 1
-          if(t == 0) then
-             time_slice =  n_tslices
-             yr         =  1 - 1
+       ! yr,  mn,  dd  = year/month/day at end   of averaging interval in current time slice
+       ! yr1, mn1, dd1 = year/month/day at start of averaging interval in current time slice
+       
+       ! initialize
+
+       time_slice = tt
+
+       yr         = 1
+       yr1        = 1
+       
+       ! deal with wrap-around for tt=0, tt=n_tslices, and tt=n_tslices+1
+       
+       if (tt == 0) then
+          time_slice =  n_tslices
+          yr         =  0
+       endif
+       
+       if (tt >= n_tslices) then 
+          yr1 = 2
+          if (tt==n_tslices+1) then
+             time_slice = 1
+             yr         = 2
           endif
+       endif
+       
+       ! convert mmdd string to integers for month (mn) and day (dd) 
+       
+       read(mmdd(     tt),'(i2.2,i2.2)') mn,  dd
+       read(mmdd_next(tt),'(i2.2,i2.2)') mn1, dd1
+       
+       ! initialize data vectors in tile space
+       
+       vec_AlbVis   = 0.
+       count_AlbVis = 0.
+       vec_AlbNir   = 0.
+       count_AlbNir = 0. 
+       
+       ! loop through 36-by-18 MODIS files
+       
+       do jx = 1,18	
+          do ix = 1,36
 
-          if(t >= n_tslices) then 
-             yr1 = 1 + 1
-             if(t ==n_tslices + 1) then
-                time_slice =  1
-                yr = 1 + 1
-             endif
-          endif
+             ! open MODIS file (ix,jx)
+             
+             write (vv,'(i2.2)')jx
+             write (hh,'(i2.2)')ix 
 
-          read(mmdd(t),'(i2.2,i2.2)') mn,dd
-          read(mmdd_next(t),'(i2.2,i2.2)') mn1,dd1
+             if (MA=='MODIS1') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H'//hh//'V'//vv//'.nc'
+             if (MA=='MODIS2') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
 
-          ! Reading, interpolating or aggregating on to catchment-tiles
-          
-          vec_AlbVis   =0.
-          count_AlbVis = 0.
-          vec_AlbNir   =0.
-          count_AlbNir = 0. 
+             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 
-          do jx = 1,18	
-             do ix = 1,36
-                write (vv,'(i2.2)')jx
-                write (hh,'(i2.2)')ix 
-                if(MA=='MODIS1') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v1/MODISalb.c004.v2.WS_H'//hh//'V'//vv//'.nc'
-                if(MA=='MODIS2') fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snowfree/MODIS/v2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
-                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
-                if(status == 0) then
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
-
-                   do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1
-                         pix_count = rmap%ij_index(i,j)
-                         if (pix_count ==0) cycle
-                         if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
-                            
-                            if(rmap%map(pix_count)%nt > 0) then
-                               do n = 1, rmap%map(pix_count)%nt
-                                  vec_AlbVis(rmap%map(pix_count)%tid(n))  = vec_AlbVis(rmap%map(pix_count)%tid(n)) +  &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
-                                  count_AlbVis(rmap%map(pix_count)%tid(n))= count_AlbVis(rmap%map(pix_count)%tid(n)) + &
-                                        1.*rmap%map(pix_count)%count(n)
-                               end do
-                            endif
+             if(status == 0) then
+                
+                ! read attributes (global i,j indices of first grid cell in chunk of data in this MODIS file)
+                
+                status = NF_GET_att_INT( ncid, NF_GLOBAL, 'i_ind_offset_LL', iLL ); VERIFY_(STATUS)
+                status = NF_GET_att_INT( ncid, NF_GLOBAL, 'j_ind_offset_LL', jLL ); VERIFY_(STATUS)
+                
+                ! assume scale factor (sf) is same for Vis and NIR albedo
+                
+                status = NF_GET_att_REAL( ncid, 4, 'ScaleFactor', sf ); VERIFY_(STATUS)                                
+                
+                ! read chunk of MODIS data in file
+                !
+                !   variable #4 = net_data1 = Alb_0.3_0.7 = visible (Vis) albedo 
+                !   variable #5 = net_data2 = Alb_0.7_5.0 = near-infrared (NIR) albedo
+                
+                status = NF_GET_VARA_INT( ncid, 4, (/1,1,time_slice/), (/nc_10,nr_10,1/), net_data1 ); VERIFY_(STATUS)  
+                status = NF_GET_VARA_INT( ncid, 5, (/1,1,time_slice/), (/nc_10,nr_10,1/), net_data2 ); VERIFY_(STATUS)  
+                
+                ! loop through grid cells of this file's albedo science data and add into tile-space data vectors;
+                ! keep count of how many (original) raster grid cells contribute (note that this integer count 
+                ! does not allow for fractional coverage of raster grid cells by the science data value and 
+                ! therefore is approximate)
+                
+                do jj=1,nr_10 
+                   do ii=1,nc_10
+                      
+                      iG = ii+iLL-1     ! i-index relative to *global* 30-arcsec grid
+                      jG = jj+jLL-1     ! j-index relative to *global* 30-arcsec grid
+                      
+                      pix_count = rmap%ij_index(iG,jG)
+                      
+                      if (pix_count ==0) cycle
+                      
+                      if(net_data1(ii,jj) > 0) then
+                         if(rmap%map(pix_count)%nt > 0) then
+                            do kk = 1, rmap%map(pix_count)%nt
+                               vec_AlbVis(rmap%map(pix_count)%tid(kk))  = vec_AlbVis(  rmap%map(pix_count)%tid(kk)) +  &
+                                    sf*net_data1(ii,jj)*rmap%map(pix_count)%count(kk) 
+                               count_AlbVis(rmap%map(pix_count)%tid(kk))= count_AlbVis(rmap%map(pix_count)%tid(kk)) + &
+                                    1.*rmap%map(pix_count)%count(kk)     ! [??] WHY CONVERSION TO REAL???
+                            end do
                          endif
-                         if(net_data2(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap%map(pix_count)%nt > 0) then
-                               do n = 1, rmap%map(pix_count)%nt
-                                  vec_AlbNir(rmap%map(pix_count)%tid(n))  = vec_AlbNir(rmap%map(pix_count)%tid(n)) +  &
-                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
-                                  count_AlbNir(rmap%map(pix_count)%tid(n))= count_AlbNir(rmap%map(pix_count)%tid(n)) + &
-                                        1.*rmap%map(pix_count)%count(n)
-                               end do
-                            endif
-                          endif
-                      enddo
+                      endif
+                      if(net_data2(ii,jj) > 0) then
+                         if(rmap%map(pix_count)%nt > 0) then
+                            do kk = 1, rmap%map(pix_count)%nt
+                               vec_AlbNir(rmap%map(pix_count)%tid(kk))  = vec_AlbNir(  rmap%map(pix_count)%tid(kk)) +  &
+                                    sf*net_data2(ii,jj)*rmap%map(pix_count)%count(kk) 
+                               count_AlbNir(rmap%map(pix_count)%tid(kk))= count_AlbNir(rmap%map(pix_count)%tid(kk)) + &
+                                    1.*rmap%map(pix_count)%count(kk)     ! [??] WHY CONVERSION TO REAL???
+                            end do
+                         endif
+                      endif
                    enddo
-                   status = NF_CLOSE(ncid)
-                endif
-             end do
+                enddo
+                
+                status = NF_CLOSE(ncid)
+
+             endif
           end do
-
-          DO n =1,maxcat
-             if(count_AlbVis(n)/=0.) vec_AlbVis(n)=vec_AlbVis(n)/count_AlbVis(n)
-             if(count_AlbNir(n)/=0.) vec_AlbNir(n)=vec_AlbNir(n)/count_AlbNir(n)
-          END DO
-          write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
-          write(31)  vec_AlbVis(:)
-          write(32) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
-          write(32)  vec_AlbNir(:)
        end do
-       close(31,status='keep')
-       close(32,status='keep')
-
-       deallocate (net_data1,net_data2)
-       deallocate (count_AlbVis, count_AlbNir)
-       deallocate (vec_AlbVis, vec_AlbNir)
-   
-     END SUBROUTINE modis_alb_on_tiles_high
-!
+       
+       ! finalize remapping
+       
+       DO nn =1,N_tiles
+          if(count_AlbVis(nn)/=0.) vec_AlbVis(nn)=vec_AlbVis(nn)/count_AlbVis(nn)
+          if(count_AlbNir(nn)/=0.) vec_AlbNir(nn)=vec_AlbNir(nn)/count_AlbNir(nn)
+       END DO
+       
+       ! write to file (MAPL_ReadForcing convention)
+       
+       write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,N_tiles,1/))
+       write(31) vec_AlbVis(:)
+       write(32) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,N_tiles,1/))
+       write(32) vec_AlbNir(:)
+       
+    end do   ! do tt=0,n_tslices+1
+    
+    close(31,status='keep')
+    close(32,status='keep')
+    
+    deallocate( net_data1,    net_data2    )
+    deallocate( count_AlbVis, count_AlbNir )
+    deallocate( vec_AlbVis,   vec_AlbNir   )
+    
+  END SUBROUTINE modis_alb_on_tiles_high
+  
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_lai (nx,ny,gfiler,lai_name,merge)
+  SUBROUTINE hres_lai (nx,ny,fnameRst,lai_name,merge)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
   implicit none 
   integer, intent (in) :: nx, ny 
-  character(*)  :: gfiler,lai_name
+  character(*)  :: fnameRst,lai_name
   integer, intent(in), optional :: merge 
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
@@ -1998,7 +2237,7 @@ END SUBROUTINE modis_scale_para_high
        allocate(tile_id(1:nx,1:ny))
        allocate(net_data1 (1:nc_10,1:nr_10))
        
-       fname=trim(gfiler)//'.rst'
+       fname=trim(fnameRst)//'.rst'
        !          
        ! Reading tile-id raster file
        !
@@ -2202,7 +2441,7 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE grid2tile_modis6 (nc_data,nr_data,ncol,nrow,gfiler,lai_name)
+  SUBROUTINE grid2tile_modis6 (nc_data,nr_data,ncol,nrow,fnameRst,lai_name)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
@@ -2210,7 +2449,7 @@ END SUBROUTINE modis_scale_para_high
   integer, intent (in) :: nc_data,nr_data, ncol,nrow
   real, parameter :: dxy = 1.
   integer :: QSize
-  character(*)  :: gfiler,lai_name
+  character(*)  :: fnameRst,lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
@@ -2236,7 +2475,7 @@ END SUBROUTINE modis_scale_para_high
   real    :: dxm, dym
 ! Reading rst file
 !-----------------
-   open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+   open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
         form='unformatted',convert='little_endian')
    allocate (tile_id    (1:ncol,1:nrow))         
    
@@ -2449,7 +2688,7 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,gfiler,lai_name, merge)
+  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, merge)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
@@ -2458,7 +2697,7 @@ END SUBROUTINE modis_scale_para_high
   real, parameter :: dxy = 1.
   integer :: QSize
   type (regrid_map), intent (in) :: rmap
-  character(*)  :: gfiler,lai_name
+  character(*)  :: lai_name
   integer, intent(in), optional :: merge 
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
@@ -2483,7 +2722,7 @@ END SUBROUTINE modis_scale_para_high
 
 ! Reading rst file
 !-----------------
-!   open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+!   open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
 !        form='unformatted',convert='little_endian')
 !   allocate (tile_id    (1:nx,1:ny))         
 !   
@@ -2772,13 +3011,13 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_gswp2 (nc_data,nr_data,rmap, gfiler,lai_name,merge)
+  SUBROUTINE hres_gswp2 (nc_data,nr_data,rmap,lai_name,merge)
 !
 ! Processing GSWP2 30sec LAI and grnFrac climatological data 
 !
   implicit none 
   integer, intent (in) :: nc_data, nr_data 
-  character(*)  :: gfiler,lai_name
+  character(*)  :: lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
@@ -3001,20 +3240,200 @@ END SUBROUTINE modis_scale_para_high
 
   END SUBROUTINE hres_gswp2
 
-!----------------------------------------------------------------------  
+  !----------------------------------------------------------------------  
 
-  SUBROUTINE MODIS_snow_alb ( )  
-
-    ! Map static, MODIS climatology-based snow albedo from 30-arcsec raster 
-    !   grid to tile space and write into clsm/catch_params.nc4.
+  SUBROUTINE MODIS_snow_alb_v2( nc_data, nr_data, rmap )
+    
+    ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
+    !   to *land* tiles and write into clsm/catch_params.nc4.
     !
-    ! Assumes that input snow albedo on raster grid is backfilled
-    !   (i.e., does not contain no-data values).
+    ! Assumes that input snow albedo is backfilled (i.e., does not contain no-data values).
+    !
+    ! Snow albedo assigned to each tile is averaged over 30-arcsec MODIS grid cells associated
+    !   with the tile per the 30-arcsec raster file associated with the tile space.  
+    !   Unlike in subroutine MODIS_snow_alb_v2, the tile-average snow albedo computed here 
+    !   does not include snow albedo values from neighboring land tiles or water/landice tiles.
+    !
+    ! rmap is the precomputed mapping from a 30-arcsec raster file to the tile space.
+    !   The raster file used to compute rmap must be on the same 30-arcsec grid as the
+    !   MODIS input data.
+    !
+    ! Biljana Orescanin June 2023, SSAI@NASA
+    
+    implicit none
+    
+    integer(kind=4), parameter     :: nc_10=1200   ! # columns in 10deg-by-10deg MODIS input file
+    integer(kind=4), parameter     :: nr_10=1200   ! # rows    in 10deg-by-10deg MODIS input file
+    
+    type (regrid_map), intent (in) :: rmap
+    integer,           intent (in) :: nc_data,nr_data 
+    
+    integer                        :: nn, N_tile, ii, jj, ncid, iG, jG 
+    integer                        :: status, iLL, jLL, ix, jx
+    integer                        :: pix_count  
+    
+    character*200                  :: fname
+    character*2                    :: VV, HH
+    logical                        :: file_exists
+    
+    character*128                  :: Iam = "MODIS_snow_alb_v2"
+    
+    real, allocatable,          dimension (:)   :: snw_alb, count_snow_alb
+    real, allocatable, target,  dimension (:,:) :: stch_snw_alb
+    
+    ! ----------------------------------------------------------------------------
+
+    call get_environment_variable( "MAKE_BCS_INPUT_DIR", MAKE_BCS_INPUT_DIR ) 
+
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    !
+    ! TO DO
+    !
+    ! ASSERT THAT rmap IS CONSISTENT WITH 30-arcsec GRID OF MODIS INPUTS
+    !
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    ! Read number of catchment-tiles (N_tile) from catchment.def file
+
+    fname='clsm/catchment.def'
+    open (10,file=fname,status='old',action='read',form='formatted')
+    read (10,*) N_tile               ! # of tiles 
+    close(10,status='keep')
+    
+    allocate(stch_snw_alb   (1:nc_10,1:nr_10)) ! 10deg-by-10deg snow albedo data 
+    allocate(snw_alb        (1:N_tile))        ! snow albedo in tile space
+    allocate(count_snow_alb (1:N_tile))        ! count of MODIS grid cells contributing to tile-average snow albedo
+    
+    snw_alb        = -9999.                    ! set all to missing
+    count_snow_alb =     0.                    ! initialize counter (SHOULD THIS BE KIND REAL???)
+    
+    ! loop through the 36x18 10deg-by-10deg MODIS files
+    
+    do jx = 1,18                        
+       do ix = 1,36
+          
+          ! assemble file name and open file
+          
+          write (hh,'(i2.2)') ix
+          write (vv,'(i2.2)') jx
+          
+          fname = trim(MAKE_BCS_INPUT_DIR) // '/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+          
+          status = NF_OPEN (trim(fname),NF_NOWRITE, ncid) ! open file to read
+          
+          if(status == 0) then ! if file exists, read snow albedo 
+             
+             status = NF_GET_VARA_REAL( ncid, NC_VarID(NCID,'Snow_Albedo'), (/1,1/), (/nc_10,nr_10/), stch_snw_alb); VERIFY_(STATUS)
+             
+             ! verify that input snow albedo has been back-filled *everywhere*, incl. water and landice
+             ! (i.e., stch_snw_alb must not contain no-data or unphysical values)
+             
+             if ( any(stch_snw_alb<0.) .or. any(stch_snw_alb>1.) ) then
+                
+                print *, 'ERROR: subroutine ', trim(Iam), '() : detected no-data or unphysical values in MODIS file ', trim(fname) 
+                print *, 'STOPPING.'
+                stop
+                
+             end if
+             
+             ! calculate Lower Left (LL) indices for the chunk of the global 30-arcsec grid that is stored in file (ix,jx)
+             !
+             ! NOTE: In similar subroutines for processing other data, iLL and jLL are stored in the nc4 file. 
+             
+             iLL=(ix-1)*nc_10+1 
+             jLL=(jx-1)*nr_10+1 
+             
+             ! loop through 30-arcsec grid cells in current 10deg-by-10deg chunk 
+             
+             do jj=1,nr_10 
+                do ii=1,nc_10
+                   
+                   iG = ii+iLL-1     ! i-index relative to *global* 30-arcsec grid
+                   jG = jj+jLL-1     ! j-index relative to *global* 30-arcsec grid
+                   
+                   pix_count = rmap%ij_index(iG,jG)             ! pix_count == ID/index of tile to which current 30-arcsec grid cell belongs [???]
+                   
+                   if (pix_count == 0) cycle                    ! if this MODIS grid cell has no corresponding remapped value, skip it
+                   
+                   if (rmap%map(pix_count)%nt > 0) then         ! if the # of tiles corresponding to this gridbox is gt 0, proceed with calculations
+                      
+                      do nn = 1,rmap%map(pix_count)%nt          ! loop through all corresponding tiles [???]
+                         
+                         ! if first pass, set albedo to zero
+                         ! [????] CAN THIS BE SKIPPED IF snw_alb IS INITIALIZED TO ZERO ABOVE?  
+                         !        BECAUSE MODIS DATA ARE BACKFILLED, THERE SHOULD NOT BE NO-DATA-VALUES FOR ANY TILE
+                         if (snw_alb(rmap%map(pix_count)%tid(nn)) == -9999.) snw_alb(rmap%map(pix_count)%tid(nn)) = 0.
+                         
+                         ! accumulate values and counts
+                         snw_alb(rmap%map(pix_count)%tid(nn)) =                                                                &
+                              snw_alb(rmap%map(pix_count)%tid(nn))        + stch_snw_alb(ii,jj)*rmap%map(pix_count)%count(nn)
+                         
+                         ! [???] rmap%map(pix_count)%count(nn) IS INTEGER; MAKE count_snow_alb INTEGER AFTER FIRST ASSERTING 0-DIFF FOR CURRENT CLEANUP
+                         count_snow_alb(rmap%map(pix_count)%tid(nn)) =                                                         &
+                              count_snow_alb(rmap%map(pix_count)%tid(nn)) + 1.*rmap%map(pix_count)%count(nn)
+                         
+                      end do
+
+                   endif ! if not missing
+                enddo    ! ii-loop
+             enddo       ! jj-loop
+             
+             ! Close the file, freeing all resources.
+             status=NF_CLOSE(ncid); VERIFY_(STATUS)
+             
+          endif
+       end do    ! jx-loop through 10deg-by-10deg files
+    end do       ! ix-loop through 10deg-by-10deg files
+    
+    ! finalize calculation of mean values
+    ! [???] NOTE: count_snw_alb SHOULD BE INTEGER --> CONVERT TO REAL
+    
+    ! because MODIS data are backfilled, should have count_snow_alb>0
+    
+    if ( any(count_snow_alb<=0.) ) then
+       
+       print *, 'ERROR: subroutine ', trim(Iam), '() : something wrong with count_snow_alb(:)'
+       print *, 'STOPPING.'
+       stop
+       
+    end if
+    
+    snw_alb = snw_alb/count_snow_alb    ! finalize calculation of tile-average snow albedo
+        
+    ! write snow albedo into clsm/catch_params.nc4
+
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
+    
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID)                                                                ; VERIFY_(STATUS)
+    endif
+    
+    deallocate(stch_snw_alb)  
+    deallocate(count_snow_alb)
+    deallocate(snw_alb)
+    
+  END SUBROUTINE MODIS_snow_alb_v2
+  
+  !----------------------------------------------------------------------  
+  
+  SUBROUTINE MODIS_snow_alb( )
+
+    ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
+    !   to land tiles and write into clsm/catch_params.nc4.
+    !
+    ! Assumes that input snow albedo is backfilled (i.e., does not contain no-data values).
+    !
+    ! Snow albedo assigned to each tile is average over 30-arcsec MODIS grid cells located
+    !   within the rectangle defined by the min/max lat/lon of tile; this can include MODIS grid 
+    !   cells located in neighboring land tiles and/or water/landice tiles.
+    !   See subroutine MODIS_snow_alb_v2() for a refined algorithm.
     !
     ! Biljana Orescanin July 2022, SSAI@NASA
-    
-    implicit none	    
-    
+
+    implicit none
+
     character*200                   :: fname
     character*2                     :: vv,hh
     integer                         :: n,N_tile,ncid,status
@@ -3022,18 +3441,18 @@ END SUBROUTINE modis_scale_para_high
     integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
     real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
     real,dimension(36,18,xdim,ydim) :: stch_snw_alb
-    real                            :: minlon,maxlon,minlat,maxlat                   
-    real                            :: sno_alb_cnt,sno_alb_sum                            
+    real                            :: minlon,maxlon,minlat,maxlat
+    real                            :: sno_alb_cnt,sno_alb_sum
     integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
     integer                         :: tindex1,pfaf1
     integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
-    
+
     ! Read number of catchment-tiles (N_tile) from catchment.def file
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read(10,*) N_tile
-    
+
     ! Read min/max lat/lons to use when locating snow albedo grids in 
     ! the stitched MODIS albedo file
     allocate (min_lon(1:N_tile))
@@ -3041,10 +3460,10 @@ END SUBROUTINE modis_scale_para_high
     allocate (max_lon(1:N_tile))
     allocate (max_lat(1:N_tile))
     allocate (snw_alb(1:N_tile))
-    
+
     ! Start by setting all snow albedo values to missing
-    snw_alb(:)=MAPL_UNDEF 
-    
+    snw_alb(:)=MAPL_UNDEF
+
     do n = 1, N_tile
        read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
        min_lon(n) = minlon
@@ -3052,25 +3471,28 @@ END SUBROUTINE modis_scale_para_high
        min_lat(n) = minlat
        max_lat(n) = maxlat
     end do
-    
+
     close (10,status='keep')
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
+
     ! ----------- Get the information on snow albedo -----
     ! ----------- The information on snow albedo is stored in 10x10deg 30-arcsec resolution files.
     ! ----------- Read in this information, then loop over the tiles to find a corresponding snow albedo.
-    
+
     ! Read in all 10x10deg snow albedo files into a single [36,18,1200,1200] array
     do hhtil=1,36  ! loop over input files - horizontal direction
        do vvtil=1,18 ! loop over input files - vertical direction
-          
+
           write(vv,'(i2.2)') vvtil
           write(hh,'(i2.2)') hhtil
-          
+
           ! MODIS-based climatology albedo raster files, backfilled with global land 
           ! average snow albedo (=0.56; average excludes Antarctica and Greenland ice 
           ! sheets and is weighted by the grid-cell area).
+
           fname =trim(MAKE_BCS_INPUT_DIR)//'/land/albedo/snow/MODIS/v2/snow_alb_FillVal_MOD10A1.061_30arcsec_H'//hh//'V'//vv//'.nc'
+
           ! Open the file. (NF90_NOWRITE ensures read-only access to the file)
           status=NF_OPEN(trim(fname),NF_NOWRITE, ncid)   ; VERIFY_(STATUS)
           ! Based on vars name, get the varids.
@@ -3079,10 +3501,10 @@ END SUBROUTINE modis_scale_para_high
           status=NF_GET_VARA_REAL(ncid,VarID1,(/1,1/),(/xdim,ydim/),stch_snw_alb_tmp) ; VERIFY_(STATUS)
           ! Close the file, freeing all resources.
           status=NF_CLOSE(ncid); VERIFY_(STATUS)
-          
+
           ! Store snow albedo values into a single 4D aray
           stch_snw_alb(hhtil,vvtil,:,:)=stch_snw_alb_tmp
-          
+
        enddo
     enddo
 
@@ -3090,42 +3512,42 @@ END SUBROUTINE modis_scale_para_high
       print*, 'There is a problem with snow albedo raster file. Non-physical values present. STOP!'
       stop
     endif
-    
+
     ! loop over tiles
     print*, 'Starting tile loop for snow albedo.'
-    
+
     do n = 1, N_tile ! loop over tiles
-      
+
       ! Set sums and counts to zero
       sno_alb_sum=0.
       sno_alb_cnt=0.
-      
+
       ! Use tile's min/max lat/lon info to identify the 10x10deg input file(s)
       ! indexes
-      vvtil_min=floor((min_lat(n)+ 90.0)/10.)+1 
-      hhtil_min=floor((min_lon(n)+180.0)/10.)+1   
-      
+      vvtil_min=floor((min_lat(n)+ 90.0)/10.)+1
+      hhtil_min=floor((min_lon(n)+180.0)/10.)+1
+
       ! if tile crosses the edge of the snow albedo 10x10deg box, expand the 
       ! search area into the neighbouring 10x10deg box
       hhtil_max=hhtil_min
       vvtil_max=vvtil_min
       if (floor(min_lon(n)/10) .ne. floor(max_lon(n)/10)) hhtil_max=hhtil_min+1
       if (floor(min_lat(n)/10) .ne. floor(max_lat(n)/10)) vvtil_max=vvtil_min+1
-      
+
       ! Safety check; keep within the range
       vvtil_min=max(vvtil_min,1)
       vvtil_max=min(vvtil_max,18)
       hhtil_min=max(hhtil_min,1)
       hhtil_max=min(hhtil_max,36)
-      
+
       do hhtil=hhtil_min,hhtil_max   ! loop through input files - horizontal direction
         do vvtil=vvtil_min,vvtil_max ! loop through input files - vertical direction
-          
+
           ! Find indices ranges corresponding to the current tile area.
-          imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1 
-          imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1  
-          jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
-          jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1  
+          imin=floor((min_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1
+          imax=floor((max_lon(n)+180.0 - (hhtil-1)*10.0) * (xdim/10.0)) +1
+          jmin=floor((min_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1
+          jmax=floor((max_lat(n)+ 90.0 - (vvtil-1)*10.0) * (ydim/10.0)) +1
 
           ! if no matching grids, go to the next vv/hh box
           if (imin .gt. xdim .or. jmin .gt. ydim .or. imax .lt. 1 .or. jmax .lt. 1) cycle
@@ -3135,43 +3557,43 @@ END SUBROUTINE modis_scale_para_high
           imax=min(imax,xdim)
           jmin=max(jmin,1)
           jmax=min(jmax,ydim)
-          
+
           ! Generate sums and counts using current tile corresponding indices
           sno_alb_sum = sno_alb_sum + sum(stch_snw_alb(hhtil,vvtil,imin:imax,jmin:jmax))
           sno_alb_cnt = sno_alb_cnt + (imax-imin+1)*(jmax-jmin+1)
-          
+
         end do ! vvtil
       end do ! hhtil
-      
+
       ! If matching grids found, calculate snow albedo for the current tile;
       !   ensure that resulting value is within physical range [0,1].
       if (sno_alb_cnt .ne. 0) snw_alb(n)=min(1.0,max(0.0,sno_alb_sum/sno_alb_cnt))
-      
+
     end do ! n-loop over tiles
-    
+
     ! write snow albedo into clsm/catch_params.nc4
     inquire(file='clsm/catch_params.nc4', exist=file_exists)
-    
+
     if(file_exists) then
        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                             ) ; VERIFY_(STATUS)
        status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'SNOWALB'),(/1/),(/N_tile/),real(snw_alb)) ; VERIFY_(STATUS)
        STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
     endif
-    
+
     print*, 'Ended tile loop for snow albedo. '
-    
+
   END SUBROUTINE MODIS_snow_alb
-  
+
   !--------------------------------------------------------------------------------------
-  
-  SUBROUTINE soil_para_hwsd (nx,ny,gfiler)
+
+  SUBROUTINE soil_para_hwsd (nx,ny,fnameRst)
 
 ! Processing NGDC-HWSD-STATSGO merged soil properties with Woesten Soil
 ! Parameters and produces tau_param.dat and soil_param.dat files
  
       implicit none	    
       integer, intent (in) :: nx, ny 
-      character(*)         :: gfiler
+      character(*)         :: fnameRst
       real, dimension (:), allocatable ::           &
       	    a_sand,a_clay,a_silt,a_oc,a_bee,a_psis, &
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
@@ -3296,7 +3718,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       allocate(tile_id(1:nx,1:ny))
       
-      fname=trim(gfiler)//'.rst'
+      fname=trim(fnameRst)//'.rst'
       
       open (10,file=fname,status='old',action='read',  &
            form='unformatted',convert='little_endian')
@@ -4312,7 +4734,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       END DO              ! loop through tiles
 !$OMP ENDPARALLELDO
 
-!      call process_peatmap (nx, ny, gfiler, pmap)
+!      call process_peatmap (nx, ny, fnameRst, pmap)
 
       ! -----------------------------------------------------------------------------
       !
@@ -4629,13 +5051,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! this subroutine seems obsolete, commented out for now - reichle, 9 Feb 2022
 
-!   SUBROUTINE process_peatmap (nc, nr, gfiler, pmap)
+!   SUBROUTINE process_peatmap (nc, nr, fnameRst, pmap)
 !     
 !     implicit none
 !     integer  , parameter                         :: N_lon_pm = 43200, N_lat_pm = 21600
 !     integer, intent (in)                         :: nc, nr
 !     real, pointer, dimension (:), intent (inout) :: pmap
-!     character(*), intent (in)                    :: gfiler
+!     character(*), intent (in)                    :: fnameRst
 !     integer                                      :: i,j, status, varid, ncid
 !     integer                                      :: NTILES        
 !     REAL, ALLOCATABLE, dimension (:)             :: count_pix
@@ -4677,7 +5099,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !     
 !     allocate(tile_id(1:nc,1:nr))
 !     
-!     open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+!     open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
 !          form='unformatted',convert='little_endian')
 !     
 !     do j=1,nr
@@ -4711,7 +5133,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     
 ! ====================================================================
 
-  SUBROUTINE grid2tile_ndep_t2m_alb (irst,jrst,gfiler)  
+  SUBROUTINE grid2tile_ndep_t2m_alb (irst,jrst,fnameRst)  
 
     implicit none
 
@@ -4737,7 +5159,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! 19 crop          [moisture stress only]
 
     integer  ,intent (in)       :: irst, jrst
-    character (*), intent (in)  :: gfiler    
+    character (*), intent (in)  :: fnameRst    
 
     integer, parameter :: nveg =  4   ! number of veg types
     integer, parameter :: npft = 19   ! number of PFT
@@ -4789,7 +5211,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     allocate(vector(nland))
     allocate(icount(nland))
     
-    open(8,file=trim(gfiler)//'.rst' ,status='old',action='read',form='unformatted')
+    open(8,file=trim(fnameRst)//'.rst' ,status='old',action='read',form='unformatted')
     do j=1,jrst
       read(8) tile_id(:,j)
     end do
@@ -5160,218 +5582,218 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 ! --------------------------------------------------------------------------------------
 !
 
-        SUBROUTINE CREATE_ROUT_PARA_FILE (NC, NR, gfile, MGRID, deltaXY)
-          
-          IMPLICIT NONE
-          
-          INTEGER,     INTENT (IN)                  :: NC, NR
-          character*5, INTENT (IN), OPTIONAL        :: MGRID
-          REAL,        INTENT (IN), OPTIONAL        :: deltaXY
-          character(*),INTENT (IN)                  :: gfile
-          real,   allocatable,  dimension (:)       :: pfaf_area
-          integer,allocatable,  dimension (:)       :: pfaf_index
-          INTEGER :: NBINS, NPLUS, PFAF,N,L, I1,I2,J1,J2,I,J,K,IL1,IL2,JL1,JL2,NC_RAT
-          REAL    :: mnx,mxx,mny,mxy, lats, dxy30
-          INTEGER, PARAMETER :: NC_SRTM = 21600, NR_SRTM = 10800 
-          REAL    :: dx =360._8/NC_ESA,dy = 180._8/NR_ESA, d2r = PI/180._8
-          integer :: max_pfaf_smap = 40
-          INTEGER, TARGET,  ALLOCATABLE, DIMENSION (:,:) :: raster, tileid_index,&
-               SUBSET_MSK
-          INTEGER, POINTER,              DIMENSION (:,:) :: SUBSET_RST
-          REAL,             ALLOCATABLE, DIMENSION (:,:) :: SUBSET_AREA
-          REAL,             ALLOCATABLE, DIMENSION (:)   :: loc_val, loc_area
-          INTEGER,          ALLOCATABLE, DIMENSION (:)   :: density, loc_int
-          logical,          ALLOCATABLE, DIMENSION (:)   :: unq_mask   
-
-          INCLUDE 'netcdf.inc'
-
-          INTEGER :: CellID, MaxID, d2(2), STATUS, VID, NCID, NCID_MSK, NCAT
-          integer, dimension(8)   :: date_time_values
-          character (22)          :: time_stamp    
-
-
-          ! Reading raster file
-
-          allocate(raster               (1:nc,1:nr))
-
-          open (10, file ='rst/'//trim(gfile)//'.rst',form='unformatted',status='old',  &
-               action='read')
-          
-          do j=1,nr
-             read(10)(raster (i,j),i=1,nc)
-          end do
-
-          close (10,status='keep')
- 
-          ! Creating SMAP-Catch_TransferData.nc that contains SMAP cells to Pfafstetter transfer infor
-
-          open (10,file='clsm/catchment.def',form='formatted',status='old', action = 'read')
-          
-          read (10,*) NCAT
-
-          if (PRESENT (MGRID)) then
-             if (trim(MGRID) == 'M25') max_pfaf_smap = 30
-             if (trim(MGRID) == 'M09') max_pfaf_smap = 12
-             if (trim(MGRID) == 'M03') max_pfaf_smap = 5
-          endif
-
-          if (PRESENT (deltaXY)) then
-             if (deltaXY <  0.125) max_pfaf_smap = 15
-             if (deltaXY >= 0.125) max_pfaf_smap = 15
-             if (deltaXY >= 0.25 ) max_pfaf_smap = 40
-             if (deltaXY >= 0.5  ) max_pfaf_smap = 100
-             if (deltaXY >= 1.0  ) max_pfaf_smap = 250
-          endif
-
-          status = NF_CREATE ('clsm/Grid2Catch_TransferData.nc', NF_NETCDF4, NCID)
-          status = NF_DEF_DIM(NCID, 'N_GRID_CELLS'    , ncat,CellID)
-          status = NF_DEF_DIM(NCID, 'MAX_CAT_PER_CELL', max_pfaf_smap ,MaxID )
-
-          d2(1) = MaxID
-          d2(2) = CellID
-
-          status = NF_DEF_VAR(NCID, 'NCats_in_GRID', NF_INT  , 1 ,CellID, vid)
-          status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name',&
-               LEN_TRIM('No. of watersheds contributed to the Grid cell'), &
-               trim('No. of watersheds contributed to the Grid cell')) 
-          status = NF_DEF_VAR(NCID, 'Pfaf_Index'   , NF_INT  , 2 ,d2    , vid)
-          status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name',&
-               LEN_TRIM('Pfaf indices of those contributing watersheds'), &
-               trim('Pfaf indices of those contributing watersheds')) 
-          status = NF_DEF_VAR(NCID, 'Pfaf_Area '   , NF_FLOAT, 2 ,d2    , vid)
-          status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name', &
-               LEN_TRIM('Area of watershed fraction'),&
-               trim('Area of watershed fraction')) 
-          status = NF_PUT_ATT_TEXT(NCID, vid, 'units',&
-               LEN_TRIM('km2'), trim('km2')) 
-!          status = NF_DEF_VAR(NCID, 'Pfaf_Frac '   , NF_FLOAT, 2 ,d2    , vid)
-!          status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name', &
-!               LEN_TRIM('Fraction of Pfaf catchment contributed to the SMAP cell'),&
-!               trim('Fraction of Pfaf catchment contributed to the SMAP cell')) 
-!
-!  Global attributes
-!
-          call date_and_time(VALUES=date_time_values)
-          
-          write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
-               date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
-               date_time_values(5),':',date_time_values(6),':',date_time_values(7)
-
-          status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'CreatedBy', LEN_TRIM('Sarith Mahanama @ GMAO/GSFC/NASA'),  &
-               trim('Sarith Mahanama @ GMAO/GSFC/NASA'))
-          status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'Contact', LEN_TRIM('sarith.p.mahanama@nasa.gov'),          &
-               trim('sarith.p.mahanama@nasa.gov'))
-          status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'Date'   , LEN_TRIM(time_stamp),trim(time_stamp))
-          status = NF_ENDDEF(NCID) 
-
-          ! Now computing SMAP-cells to Pfafcatchment fractional areas 
-
-          call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
-          status    = NF_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid_msk)	
-          nbins = 1
-
-          allocate (pfaf_area (1:max_pfaf_smap))
-          allocate (pfaf_index(1:max_pfaf_smap))
-          
-          dxy30  = 360._8/nc
-          NC_RAT = nc_esa/nc
-
-          DO N = 1, NCAT
-             
-             pfaf_index = 0
-             pfaf_area  = 0.
-
-             READ (10,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
-
-             IL1 = FLOOR  ((180. + mnx)/DXY30 + 1.)
-             IL2 = CEILING((180. + mxx)/DXY30 + 1.)
-             JL1 = FLOOR  (( 90. + mny)/DXY30 + 1.)
-             JL2 = CEILING(( 90. + mxy)/DXY30 + 1.)
-             
-             IF(IL2 > NC) IL2 = NC
-             IF(JL2 > NR) JL2 = NR
-
-             I1  = NC_RAT * IL1 - (NC_RAT -1)
-             I2  = NC_RAT * IL2
-             J1  = NC_RAT * JL1 - (NC_RAT -1)
-             J2  = NC_RAT * JL2
-            
-             ALLOCATE (SUBSET_MSK (1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
-             ALLOCATE (SUBSET_AREA(1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
-             ALLOCATE (TILEID_INDEX(1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
-
-             DO J = J1, J2 
-                lats = -90._8 + (j - 0.5_8)*dy
-                SUBSET_AREA(:,J-J1 + 1) = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
-             END DO
-
-             status   = NF_GET_VARA_INT (ncid_msk,4,(/I1,J1/),(/I2 - I1 +1,J2 - J1 + 1/),SUBSET_MSK)
-
-             if (associated (subset_rst )) NULLIFY (subset_rst)
-             SUBSET_RST => RASTER (IL1 : IL2, JL1 : JL2)
-
-             call RegridRaster(SUBSET_RST, tileid_index)
-
-             NPLUS = count((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat))
-             allocate (loc_int (1:NPLUS))
-             allocate (loc_area(1:NPLUS))
-             allocate (unq_mask(1:NPLUS))
-
-             loc_int = pack(SUBSET_MSK  ,mask = ((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat)))
-             loc_area= pack(SUBSET_AREA ,mask = ((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat)))
-
-             call MAPL_Sort (loc_int, loc_area)
-
-             unq_mask = .true.
-             do K = 2,NPLUS 
-                unq_mask(K) = .not.(loc_int(K) == loc_int(K-1)) ! count number of unique numbers in loc_int for binning
-             end do
-             NBINS = count(unq_mask)
-             
-             if (NBINS > max_pfaf_smap) then
-                print *, 'NBINS exceeded max_pfaf_smap', NBINS, max_pfaf_smap
-                STOP
-             endif
-
-             if (NBINS > 1) then
-                L = 1
-                pfaf_index(L) = loc_int (1)
-                pfaf_area (L) = loc_area(1)
-                DO K = 2,NPLUS
-                   IF(.not.(loc_int(K) == loc_int(K-1))) L = L + 1
-                   pfaf_index(L) = loc_int (K)
-                   pfaf_area (L) = pfaf_area (L) + loc_area(K) * MAPL_RADIUS * MAPL_RADIUS/1000./1000.
-                END DO
-             else
-                IF(NBINS == 1) THEN
-                   pfaf_index(1) = loc_int (1)
-                   pfaf_area (1) = sum (loc_area(1:NPLUS))
-                   pfaf_area (1) = pfaf_area(1) * MAPL_RADIUS * MAPL_RADIUS/1000./1000.
-                ELSE
-                   PRINT *,'NO Catchments so skipping'
-                   NBINS = 1
-                   pfaf_index(1) = -1
-                   pfaf_area (1)= -9999.
-                ENDIF
-             endif
-
-             status = NF_PUT_VARA_INT (NCID, 1,(/N/),(/1/),nbins)
-             status = NF_PUT_VARA_INT (NCID, 2,(/1,N/),(/nbins,1/),pfaf_index(1:nbins))
-             status = NF_PUT_VARA_REAL(NCID, 3,(/1,N/),(/nbins,1/),pfaf_area (1:nbins))
-             
-             DEALLOCATE (SUBSET_MSK,SUBSET_AREA, loc_int,loc_area,unq_mask,tileid_index)
-          END DO
-
-        DEALLOCATE (RASTER) 
-        status    = NF_CLOSE (ncid)  
-        status    = NF_CLOSE (ncid_msk)
-        close (10, status = 'keep')  
-
-        END SUBROUTINE CREATE_ROUT_PARA_FILE
+!        SUBROUTINE CREATE_ROUT_PARA_FILE (NC, NR, fnameRst, MGRID, deltaXY)
+!          
+!          IMPLICIT NONE
+!          
+!          INTEGER,     INTENT (IN)                  :: NC, NR
+!          character*5, INTENT (IN), OPTIONAL        :: MGRID
+!          REAL,        INTENT (IN), OPTIONAL        :: deltaXY
+!          character(*),INTENT (IN)                  :: fnameRst
+!          real,   allocatable,  dimension (:)       :: pfaf_area
+!          integer,allocatable,  dimension (:)       :: pfaf_index
+!          INTEGER :: NBINS, NPLUS, PFAF,N,L, I1,I2,J1,J2,I,J,K,IL1,IL2,JL1,JL2,NC_RAT
+!          REAL    :: mnx,mxx,mny,mxy, lats, dxy30
+!          INTEGER, PARAMETER :: NC_SRTM = 21600, NR_SRTM = 10800 
+!          REAL    :: dx =360._8/NC_ESA,dy = 180._8/NR_ESA, d2r = PI/180._8
+!          integer :: max_pfaf_smap = 40
+!          INTEGER, TARGET,  ALLOCATABLE, DIMENSION (:,:) :: raster, tileid_index,&
+!                SUBSET_MSK
+!           INTEGER, POINTER,              DIMENSION (:,:) :: SUBSET_RST
+!           REAL,             ALLOCATABLE, DIMENSION (:,:) :: SUBSET_AREA
+!           REAL,             ALLOCATABLE, DIMENSION (:)   :: loc_val, loc_area
+!           INTEGER,          ALLOCATABLE, DIMENSION (:)   :: density, loc_int
+!           logical,          ALLOCATABLE, DIMENSION (:)   :: unq_mask   
+! 
+!           INCLUDE 'netcdf.inc'
+! 
+!           INTEGER :: CellID, MaxID, d2(2), STATUS, VID, NCID, NCID_MSK, NCAT
+!           integer, dimension(8)   :: date_time_values
+!           character (22)          :: time_stamp    
+! 
+! 
+!           ! Reading raster file
+! 
+!           allocate(raster               (1:nc,1:nr))
+! 
+!           open (10, file ='rst/'//trim(fnameRst)//'.rst',form='unformatted',status='old',  &
+!                action='read')
+!           
+!           do j=1,nr
+!              read(10)(raster (i,j),i=1,nc)
+!           end do
+! 
+!           close (10,status='keep')
+!  
+!           ! Creating SMAP-Catch_TransferData.nc that contains SMAP cells to Pfafstetter transfer infor
+! 
+!           open (10,file='clsm/catchment.def',form='formatted',status='old', action = 'read')
+!           
+!           read (10,*) NCAT
+! 
+!           if (PRESENT (MGRID)) then
+!              if (trim(MGRID) == 'M25') max_pfaf_smap = 30
+!              if (trim(MGRID) == 'M09') max_pfaf_smap = 12
+!              if (trim(MGRID) == 'M03') max_pfaf_smap = 5
+!           endif
+! 
+!           if (PRESENT (deltaXY)) then
+!              if (deltaXY <  0.125) max_pfaf_smap = 15
+!              if (deltaXY >= 0.125) max_pfaf_smap = 15
+!              if (deltaXY >= 0.25 ) max_pfaf_smap = 40
+!              if (deltaXY >= 0.5  ) max_pfaf_smap = 100
+!              if (deltaXY >= 1.0  ) max_pfaf_smap = 250
+!           endif
+! 
+!           status = NF_CREATE ('clsm/Grid2Catch_TransferData.nc', NF_NETCDF4, NCID)
+!           status = NF_DEF_DIM(NCID, 'N_GRID_CELLS'    , ncat,CellID)
+!           status = NF_DEF_DIM(NCID, 'MAX_CAT_PER_CELL', max_pfaf_smap ,MaxID )
+! 
+!           d2(1) = MaxID
+!           d2(2) = CellID
+! 
+!           status = NF_DEF_VAR(NCID, 'NCats_in_GRID', NF_INT  , 1 ,CellID, vid)
+!           status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name',&
+!                LEN_TRIM('No. of watersheds contributed to the Grid cell'), &
+!                trim('No. of watersheds contributed to the Grid cell')) 
+!           status = NF_DEF_VAR(NCID, 'Pfaf_Index'   , NF_INT  , 2 ,d2    , vid)
+!           status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name',&
+!                LEN_TRIM('Pfaf indices of those contributing watersheds'), &
+!                trim('Pfaf indices of those contributing watersheds')) 
+!           status = NF_DEF_VAR(NCID, 'Pfaf_Area '   , NF_FLOAT, 2 ,d2    , vid)
+!           status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name', &
+!                LEN_TRIM('Area of watershed fraction'),&
+!                trim('Area of watershed fraction')) 
+!           status = NF_PUT_ATT_TEXT(NCID, vid, 'units',&
+!                LEN_TRIM('km2'), trim('km2')) 
+! !          status = NF_DEF_VAR(NCID, 'Pfaf_Frac '   , NF_FLOAT, 2 ,d2    , vid)
+! !          status = NF_PUT_ATT_TEXT(NCID, vid, 'long_name', &
+! !               LEN_TRIM('Fraction of Pfaf catchment contributed to the SMAP cell'),&
+! !               trim('Fraction of Pfaf catchment contributed to the SMAP cell')) 
+! !
+! !  Global attributes
+! !
+!           call date_and_time(VALUES=date_time_values)
+!           
+!           write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
+!                date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
+!                date_time_values(5),':',date_time_values(6),':',date_time_values(7)
+! 
+!           status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'CreatedBy', LEN_TRIM('Sarith Mahanama @ GMAO/GSFC/NASA'),  &
+!                trim('Sarith Mahanama @ GMAO/GSFC/NASA'))
+!           status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'Contact', LEN_TRIM('sarith.p.mahanama@nasa.gov'),          &
+!                trim('sarith.p.mahanama@nasa.gov'))
+!           status = NF_PUT_ATT_TEXT(NCID, NF_GLOBAL, 'Date'   , LEN_TRIM(time_stamp),trim(time_stamp))
+!           status = NF_ENDDEF(NCID) 
+! 
+!           ! Now computing SMAP-cells to Pfafcatchment fractional areas 
+! 
+!           call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
+!           status    = NF_OPEN (trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/GEOS5_10arcsec_mask.nc', NF_NOWRITE, ncid_msk)	
+!           nbins = 1
+! 
+!           allocate (pfaf_area (1:max_pfaf_smap))
+!           allocate (pfaf_index(1:max_pfaf_smap))
+!           
+!           dxy30  = 360._8/nc
+!           NC_RAT = nc_esa/nc
+! 
+!           DO N = 1, NCAT
+!              
+!              pfaf_index = 0
+!              pfaf_area  = 0.
+! 
+!              READ (10,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
+! 
+!              IL1 = FLOOR  ((180. + mnx)/DXY30 + 1.)
+!              IL2 = CEILING((180. + mxx)/DXY30 + 1.)
+!              JL1 = FLOOR  (( 90. + mny)/DXY30 + 1.)
+!              JL2 = CEILING(( 90. + mxy)/DXY30 + 1.)
+!              
+!              IF(IL2 > NC) IL2 = NC
+!              IF(JL2 > NR) JL2 = NR
+! 
+!              I1  = NC_RAT * IL1 - (NC_RAT -1)
+!              I2  = NC_RAT * IL2
+!              J1  = NC_RAT * JL1 - (NC_RAT -1)
+!              J2  = NC_RAT * JL2
+!             
+!              ALLOCATE (SUBSET_MSK (1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
+!              ALLOCATE (SUBSET_AREA(1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
+!              ALLOCATE (TILEID_INDEX(1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
+! 
+!              DO J = J1, J2 
+!                 lats = -90._8 + (j - 0.5_8)*dy
+!                 SUBSET_AREA(:,J-J1 + 1) = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+!              END DO
+! 
+!              status   = NF_GET_VARA_INT (ncid_msk,4,(/I1,J1/),(/I2 - I1 +1,J2 - J1 + 1/),SUBSET_MSK)
+! 
+!              if (associated (subset_rst )) NULLIFY (subset_rst)
+!              SUBSET_RST => RASTER (IL1 : IL2, JL1 : JL2)
+! 
+!              call RegridRaster(SUBSET_RST, tileid_index)
+! 
+!              NPLUS = count((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat))
+!              allocate (loc_int (1:NPLUS))
+!              allocate (loc_area(1:NPLUS))
+!              allocate (unq_mask(1:NPLUS))
+! 
+!              loc_int = pack(SUBSET_MSK  ,mask = ((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat)))
+!              loc_area= pack(SUBSET_AREA ,mask = ((tileid_index ==N).AND.(SUBSET_MSK >= 1 .and. subset_MSK <= SRTM_maxcat)))
+! 
+!              call MAPL_Sort (loc_int, loc_area)
+! 
+!              unq_mask = .true.
+!              do K = 2,NPLUS 
+!                 unq_mask(K) = .not.(loc_int(K) == loc_int(K-1)) ! count number of unique numbers in loc_int for binning
+!              end do
+!              NBINS = count(unq_mask)
+!              
+!              if (NBINS > max_pfaf_smap) then
+!                 print *, 'NBINS exceeded max_pfaf_smap', NBINS, max_pfaf_smap
+!                 STOP
+!              endif
+! 
+!              if (NBINS > 1) then
+!                 L = 1
+!                 pfaf_index(L) = loc_int (1)
+!                 pfaf_area (L) = loc_area(1)
+!                 DO K = 2,NPLUS
+!                    IF(.not.(loc_int(K) == loc_int(K-1))) L = L + 1
+!                    pfaf_index(L) = loc_int (K)
+!                    pfaf_area (L) = pfaf_area (L) + loc_area(K) * MAPL_RADIUS * MAPL_RADIUS/1000./1000.
+!                 END DO
+!              else
+!                 IF(NBINS == 1) THEN
+!                    pfaf_index(1) = loc_int (1)
+!                    pfaf_area (1) = sum (loc_area(1:NPLUS))
+!                    pfaf_area (1) = pfaf_area(1) * MAPL_RADIUS * MAPL_RADIUS/1000./1000.
+!                 ELSE
+!                    PRINT *,'NO Catchments so skipping'
+!                    NBINS = 1
+!                    pfaf_index(1) = -1
+!                    pfaf_area (1)= -9999.
+!                 ENDIF
+!              endif
+! 
+!              status = NF_PUT_VARA_INT (NCID, 1,(/N/),(/1/),nbins)
+!              status = NF_PUT_VARA_INT (NCID, 2,(/1,N/),(/nbins,1/),pfaf_index(1:nbins))
+!              status = NF_PUT_VARA_REAL(NCID, 3,(/1,N/),(/nbins,1/),pfaf_area (1:nbins))
+!              
+!              DEALLOCATE (SUBSET_MSK,SUBSET_AREA, loc_int,loc_area,unq_mask,tileid_index)
+!           END DO
+! 
+!         DEALLOCATE (RASTER) 
+!         status    = NF_CLOSE (ncid)  
+!         status    = NF_CLOSE (ncid_msk)
+!         close (10, status = 'keep')  
+! 
+!         END SUBROUTINE CREATE_ROUT_PARA_FILE
 
 ! -------------------------------------------------------------------------------------------------------------------------------
 
-    SUBROUTINE CLM45_fixed_parameters (nc,nr,gfiler)
+    SUBROUTINE CLM45_fixed_parameters (nc,nr,fnameRst)
 
       implicit none
       
@@ -5388,7 +5810,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! 3) field capacity one value per tile
      
       integer, intent (in)               :: nc, nr 
-      character(*), intent (in)          :: gfiler
+      character(*), intent (in)          :: fnameRst
       integer  , parameter               :: N_lon_clm = 720, N_lat_clm = 360
       real, parameter                    :: dxy_clm = 0.5
       integer                            :: i,j, status, varid, ncid_hdm, ncid_abm, ncid_gdp, ncid_peatf
@@ -5457,7 +5879,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       allocate(tile_id(1:nc,1:nr))
       
-      open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
            form='unformatted',convert='little_endian')
       
       do j=1,nr
@@ -5555,13 +5977,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
    ! ----------------------------------------------------------------------------------------------------------------------------
 
-  SUBROUTINE CLM45_clim_parameters (nc,nr,gfiler)
+  SUBROUTINE CLM45_clim_parameters (nc,nr,fnameRst)
 
       implicit none
       ! Producing :  lightening frequency HRMC_COM_FR /gpfsm/dnb31/fzeng/clm4-to-clm4.5/data/firedata4.5/LISOTD_HRMC_V2.3.2014.hdf
       !  12 values per tile
       integer, intent (in)                   :: nc, nr 
-      character(*), intent (in)              :: gfiler
+      character(*), intent (in)              :: fnameRst
       integer  , parameter                   :: N_lon_clm = 720, N_lat_clm = 360
       integer                                :: NTILES, status, varid, ncid
       real, dimension (:,:), allocatable     :: hrmc_grid, data_grid
@@ -5586,7 +6008,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       allocate(tile_id(1:nc,1:nr))
       
-      open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
            form='unformatted',convert='little_endian')
       
       do j=1,nr
@@ -5648,7 +6070,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! ----------------------------------------------------------------------------------------------------------------------------
 
-  SUBROUTINE grid2tile_glass (ncol,nrow,gfiler,lai_name)
+  SUBROUTINE grid2tile_glass (ncol,nrow,fnameRst,lai_name)
 !
 ! Processing GLASS LAI (AVHRR or MODIS) and creating 8-day climatological data 
 !
@@ -5657,7 +6079,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   integer, intent (in) :: ncol, nrow
   real, parameter :: dxy = 1.
   integer :: QSize
-  character(*)  :: gfiler,lai_name
+  character(*)  :: fnameRst,lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
@@ -5684,7 +6106,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! Reading rst file
 !-----------------
-   open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+   open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
         form='unformatted',convert='little_endian')
    allocate (tile_id    (1:ncol,1:nrow))         
    
@@ -5875,13 +6297,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
    ! ----------------------------------------------------------------------------------------------------------------------------
 
-    SUBROUTINE gimms_clim_ndvi (nc,nr,gfiler)
+    SUBROUTINE gimms_clim_ndvi (nc,nr,fnameRst)
       
       implicit none
       ! Producing :  GIMMS NDVI 15-day climatology from 5 arcmin data
       !  24 values per tile
       integer, intent (in)                   :: nc, nr 
-      character(*), intent (in)              :: gfiler
+      character(*), intent (in)              :: fnameRst
       integer  , parameter                   :: N_lon_gimms = 4320, N_lat_gimms = 2160
       integer                                :: NTILES, status, varid, ncid1, ncid2,ncid
       real, dimension (:,:), allocatable     :: ndvi_grid, data_grid 
@@ -5909,7 +6331,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       
       allocate(tile_id(1:nc,1:nr))
       
-      open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
            form='unformatted',convert='little_endian')
       
       do j=1,nr
@@ -6164,11 +6586,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! ----------------------------------------------------------------------------------------------
 
 
-    SUBROUTINE map_country_codes (NC, NR,  gfiler)
+    SUBROUTINE map_country_codes (NC, NR)
 
       implicit none
       integer  , intent (in) :: nc, nr
-      character (*)          :: gfiler
 
       integer, parameter :: GC = 43200
       integer, parameter :: GR = 21600
