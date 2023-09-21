@@ -30,8 +30,8 @@ module rmTinyCatchParaMod
 
   private
 
-  public remove_tiny_tiles,modis_alb_on_tiles,modis_scale_para  
-  public make_75,catchment_def,soil_para_high
+  public remove_tiny_tiles,modis_alb_on_tiles
+  public catchment_def,soil_para_high
   public create_soil_types_files,compute_mosaic_veg_types
   public cti_stat_file, create_model_para_woesten
   public create_model_para, modis_lai,regridraster,regridrasterreal
@@ -40,21 +40,21 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
-  public :: MAKE_BCS_INPUT_DIR
 
   INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
 
-  logical,     public, save :: use_PEATMAP = .false.
-  logical,     public, save :: jpl_height  = .false.
-  character*8, public, save :: LAIBCS      = 'UNDEF'
-  character*6, public, save :: SOILBCS     = 'UNDEF'
-  character*6, public, save :: MODALB      = 'UNDEF'
-  character*8, public, save :: SNOWALB     = 'UNDEF'
-  REAL,        public, save :: GNU         = MAPL_UNDEF
-  character*400          :: MAKE_BCS_INPUT_DIR
+  logical,      public, save :: use_PEATMAP = .false.
+  logical,      public, save :: jpl_height  = .false.
+  character*8,  public, save :: LAIBCS      = 'UNDEF'
+  character*6,  public, save :: SOILBCS     = 'UNDEF'
+  character*6,  public, save :: MODALB      = 'UNDEF'
+  character*10, public, save :: SNOWALB     = 'UNDEF'
+  REAL,         public, save :: GNU         = MAPL_UNDEF
+
+  character*512              :: MAKE_BCS_INPUT_DIR
 
   type :: mineral_perc
      real :: clay_perc
@@ -69,25 +69,26 @@ contains
     ! determine BCs details from land BCs version string (LBCSV)
     !
     ! LAIBCS:  Leaf-Area-Index data set.        DEFAULT : MODGEO
-    !   GLASSA   : 8-day AVHRR clim, 1981-2017,        7200x3600  grid
-    !   GLASSM   : 8-day MODIS clim, 2000-2017,        7200x3600  grid
-    !   MODISV6  : 8-day       clim, 2002.01-2016.10, 86400x43200 grid
-    !   MODGEO   : MODIS with GEOLAND2 overlaid on South America, Africa, and Australia
-    !   GEOLAND2 : 10-day  clim,     1999-2011,       40320x20160 grid               
-    !   GSWP2    : Monthly clim,     1982-1998,         360x180   grid                  
-    !   MODIS    : 8-day   clim,     2000-2013,       43200x21600 grid
-    !   GSWPH    : Monthly clim,     1982-1998,       43200x21600 grid           
+    !   GLASSA    : 8-day AVHRR clim, 1981-2017,        7200x3600  grid
+    !   GLASSM    : 8-day MODIS clim, 2000-2017,        7200x3600  grid
+    !   MODISV6   : 8-day       clim, 2002.01-2016.10, 86400x43200 grid
+    !   MODGEO    : MODIS with GEOLAND2 overlaid on South America, Africa, and Australia
+    !   GEOLAND2  : 10-day  clim,     1999-2011,       40320x20160 grid               
+    !   GSWP2     : Monthly clim,     1982-1998,         360x180   grid                  
+    !   MODIS     : 8-day   clim,     2000-2013,       43200x21600 grid
+    !   GSWPH     : Monthly clim,     1982-1998,       43200x21600 grid           
     !
     ! MODALB:  MODIS Albedo data (snow-free).   DEFAULT : MODIS2                                            
-    !   MODIS1   : 16-day clim,  1'x1' (21600x10800) MODIS data, 2000-2004 
-    !   MODIS2   :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
+    !   MODIS1    : 16-day clim,  1'x1' (21600x10800) MODIS data, 2000-2004 
+    !   MODIS2    :  8-day clim, 30"x30"(43200x21600) MODIS data, 2001-2011 
     !
     ! SNOWALB: Snow albedo data.                DEFAULT : LUT
-    !   LUT      : Parameterization based on look-up table values. 
-    !   MODC061  : Static snow albedo derived from MODIS Collection 6.1 data where available, LUT elsewhere. 
+    !   LUT       : Parameterization based on look-up table values. 
+    !   MODC061   : Static snow albedo derived from MODIS Collection 6.1 data where available, fill value of 0.56 elsewhere. 
+    !   MODC061v2 : Same as MODC061 but using tile ID instead of tile bounding box for mapping from raster to tile.
     !
     ! SOILBCS: Soil parameter data.             DEFAULT : HWSD                                                       
-    !   HWSD     : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
+    !   HWSD      : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     
     implicit none
     
@@ -176,6 +177,23 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .false.
 
+     case ("v10")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .false.
+
+     case ("v11")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
     case default
 
        print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'
@@ -283,7 +301,7 @@ END SUBROUTINE Time_Interp_Fac
 
 ! ---------------------------------------------------------------------
 ! ---------------------------------------------------------------------
-SUBROUTINE process_gswp2_veg (nc,nr,regrid,vname,gridnamer,merge)
+SUBROUTINE process_gswp2_veg (nc,nr,regrid,vname,fnameRst,merge)
 
 implicit none
     integer, intent(in) :: nc,nr
@@ -299,12 +317,12 @@ implicit none
     integer :: yr,mn,yr1,mn1
     logical :: regrid
     integer, pointer :: Raster(:,:)
-    character(*) :: vname,gridnamer
+    character(*) :: vname,fnameRst
     character*100 :: fname
 
     integer, intent(in), optional :: merge
  
-     open (10,file=trim(gridnamer)//'.rst',status='old',action='read',  &
+     open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
           form='unformatted',convert='little_endian')
 
     allocate (gswp2_mask (1:i_raster,1:j_raster))
@@ -1520,437 +1538,437 @@ integer :: n_threads=1
 
 !----------------------------------------------------------------------
 
-  SUBROUTINE modis_scale_para (ease_grid,gfile)
-    
-    implicit none
-    type (date_time_type) :: gf_green_time,af_green_time,end_time, &
-              bf_lai_time,af_lai_time,date_time_new
-    logical :: ease_grid
-    CHARACTER*20 :: version,resoln,continent
-    integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
-    REAL :: latt,lont,fr_gcm,fr_cat,tsteps,zth, slr,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
-    character*100 :: path,fname,fout,metpath
-    character (*) :: gfile
-    integer :: n,maxcat,ip
-    integer :: ialbt,ialbs,yy,j,month,unit1,unit2,unit3
-    character*2 :: bw
-    character*5 :: cyy
-    character*300 :: albtype, albspec
-    character*30, dimension (2,2) :: sibname
-    character*30, dimension (2,2) :: geosname
-    integer, allocatable, dimension (:) :: vegcls 
-    real, allocatable, dimension (:) :: &
-         modisalb,scale_fac,albvf,albnf, lat,lon, &
-         green,lai,lai_before,lai_after,grn_before,grn_after
-    real, allocatable, dimension (:) :: &
-         calbvf,calbnf, zero_array, one_array, albvr,albnr
-    character*300 :: ifile1,ifile2,ofile
-    integer, dimension(12), parameter :: days_in_month_nonleap = &
-         (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
-    integer :: day, hour, min ,secs_in_day,k
-    real :: yr,mn,dy,yr1,mn1,dy1,dum, slice1,slice2
-
-! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
-!
-! NOTE: "!$" is for conditional compilation
-!
-logical :: running_omp = .false.
-!
-!$ integer :: omp_get_thread_num, omp_get_num_threads
-!
-integer :: n_threads=1
-!
-! ------------------------------------------------------------------
-
-  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
-  !
-  ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
-  !
-  !$ running_omp = .true.         ! conditional compilation
-  !
-  ! ECHO BASIC OMP VARIABLES
-  !
-  !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
-  !
-  !$OMP SINGLE
-  !
-  !$ n_threads = omp_get_num_threads()
-  !
-  !$ write (*,*) 'running_omp = ', running_omp
-  !$ write (*,*)
-  !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
-  !$ write (*,*)
-  !$OMP ENDSINGLE
-  !
-  !$OMP CRITICAL
-  !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
-  !$OMP ENDCRITICAL
-  !
-  !$OMP BARRIER
-  !
-  !$OMP ENDPARALLEL
-  ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
-
-    data sibname /'albvr','albnr',  &
-                'albvf','albnf'/
-    data geosname /'visdr','nirdr',  &
-                'visdf','nirdf'/
-
-    fname='clsm/catchment.def'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)maxcat
-    allocate (albvf    (1:maxcat))
-    allocate (albnf    (1:maxcat))
-    allocate (calbvf   (1:maxcat))
-    allocate (calbnf   (1:maxcat))
-    allocate (modisalb (1:maxcat))
-    allocate (lai      (1:maxcat))
-    allocate (green    (1:maxcat))
-    allocate (lai_before (1:maxcat))
-    allocate (grn_before (1:maxcat))
-    allocate (lai_after  (1:maxcat))
-    allocate (grn_after  (1:maxcat))
-    allocate (vegcls     (1:maxcat))
-    allocate (zero_array (1:maxcat))
-    allocate (one_array  (1:maxcat))
-    allocate (albvr      (1:maxcat))
-    allocate (albnr      (1:maxcat))    
-    close (10,status='keep')
-
-    date_time_new%year   =2002
-    date_time_new%month  =1
-    date_time_new%day    =1
-    date_time_new%hour   =0            
-    date_time_new%min    =0            
-    date_time_new%sec    =0            
-    date_time_new%pentad =1            
-    date_time_new%dofyr  =1   
-
-    gf_green_time   = date_time_new
-    af_green_time   = date_time_new
-    end_time        = date_time_new
-    bf_lai_time     = date_time_new
-    af_lai_time     = date_time_new   
-
-    fname=trim(gfile)//'.til'
-
-    open (10,file=fname,status='old',action='read',form='formatted')
-    fname='clsm/mosaic_veg_typs_fracs'
-    open (20,file=fname,status='old',action='read',form='formatted')
-
-    read (10,*)ip
-    read (10,*)j_dum
-
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do
-    
-    do n = 1,ip
-      if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
-      else
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
-      endif
-       if (typ == 100) then
-          ip2 = n 
-          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
-            indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
-       endif
-       if(ierr /= 0)write (*,*)'Problem reading'
-    end do
-    close (10,status='keep')
-    close (20,status='keep')
-
-    cyy='00-04'
-    albvf    =0.
-    albnf    =0.
-    calbvf   =0.
-    calbnf   =0.
-    modisalb =0.
-    zero_array = 0.
-    one_array  = 1.
-    albvr      = 0.
-    albnr      = 0.
-    
-    unit1 =10
-    unit2 =20
-    unit3 =30
-
-    do  ialbt = 2,2
-       do ialbs = 1,2
-        
-        if(ialbt.eq.1)albtype='BlackSky/'
-        if(ialbt.eq.2)albtype='WhiteSky/'
-        if(ialbt.eq.1)bw='BS'
-        if(ialbt.eq.2)bw='WS'
-        if(ialbs.eq.1)albspec='0.3_0.7/'
-        if(ialbs.eq.2)albspec='0.7_5.0/'         
-        ifile1='clsm/AlbMap.'//bw//'.2x5.'//trim(cyy)//'.monthly-tile.'   &
-             //albspec(1:index(albspec,'/')-1)//'.dat'
-!        write (*,*) 'MODIS file: ',  unit1,trim(ifile1) 
-!        write (*,*) '-----------------------------'
-
-        ifile2='clsm/sibalb1.'//trim(sibname(ialbs,ialbt))//'.climatology'
-!        write (*,*) 'SiB file: ', unit2, trim(ifile2)
-
-        ofile='clsm/modis_scale_factor.'//trim(sibname(ialbs,ialbt))//'.clim'
-
-!        write (*,*) 'Scale factor: ', unit3, trim(ofile)
-
-        open (unit1,file=trim(ifile1),form='unformatted',convert='big_endian', &
-                action='read',status='old')
-        open (unit2,file=trim(ifile2),form='unformatted',convert='big_endian', &
-                action='write',status='unknown')
-        open (unit3,file=trim(ofile),form='unformatted',convert='big_endian', &
-             action='write',status='unknown')
-
-        unit1 = unit1 + 1
-        unit2 = unit2 + 1
-        unit3 = unit3 + 1
-     end do
-  end do
-
-    fname='clsm/lai.dat'
-    open (40,file=fname,status='old',action='read',form='unformatted', &
-         convert='little_endian')
-    read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-    read(40) lai_before
-    call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,bf_lai_time)
-    
-    read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-    read(40) lai_after
-    call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_lai_time)
-
-    fname='clsm/green.dat'
-    open (41,file=fname,status='old',action='read',form='unformatted', &
-         convert='little_endian')
-    read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-    read(41) grn_before
-    call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,gf_green_time)
- 
-    read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-    read(41) grn_after
-    call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_green_time)
-
-  do month=1,12
-
-     write (*,'(a48,i3)') '     Computing MODIS scale parameters for month: ',month
-
-    calbvf   =0.
-    calbnf   =0.
-    albvf    =0.
-    albnf    =0.
-    tsteps   =0.
-     
-    do day = 1,days_in_month_nonleap(month)
-
-    if (datetime_le_refdatetime(date_time_new,af_lai_time)) then
-
-    else
-         lai_before = lai_after
-	 bf_lai_time = af_lai_time
-	 read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-	 read(40) lai_after
-         call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_lai_time)
-    endif
-       call Time_Interp_Fac (date_time_new, bf_lai_time, af_lai_time, slice1, slice2)
-       lai    = (slice1*lai_before + slice2*lai_after)
-!       print *,'LAI'
-!       print *,bf_lai_time
-!       print *,af_lai_time
-!       print *,slice1,slice2
-!       print *,minval(lai),maxval(lai)
-
-    if (datetime_le_refdatetime(date_time_new,af_green_time)) then
-
-    else
-         grn_before = grn_after
-	 gf_green_time = af_green_time
-	 read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
-	 read(41) grn_after
-         call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_green_time)
-
-    endif
-       call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
-       green  = (slice1*grn_before + slice2*grn_after)
- !      print *,'GREEN'
- !      print *,gf_green_time
- !      print *,af_green_time
- !      print *,slice1,slice2
- !      print *,minval(green),maxval(green)
-
-       call augment_date_time(86400,date_time_new)
-        
-        tsteps = tsteps + 1.
-
-        call sibalb (                                 &
-             MAXCAT,vegcls,lai,green, zero_array,     &
-             one_array,one_array,one_array,one_array, &
-             ALBVR, ALBNR, albvf, albnf)
-                 
-        calbvf = calbvf + albvf
-        calbnf = calbnf + albnf
-              
-     end do
-
-     calbvf = calbvf/tsteps
-     calbnf = calbnf/tsteps
-
-     unit1 =10
-     unit2 =20
-     unit3 =30
-     
-     do  ialbt = 2,2
-        do ialbs = 1,2
-           
-           read (unit1) (modisalb(n),n=1,maxcat)
-           if(unit2==20)write (unit2) (calbvf(n),n=1,maxcat)
-           if(unit2==21)write (unit2) (calbnf(n),n=1,maxcat)
-        
-           if(unit2==20) modisalb = modisalb/(calbvf + 1.e-20)
-           if(unit2==21) modisalb = modisalb/(calbnf + 1.e-20)
-
-	   do n =1, maxcat
-	   if(modisalb(n).le.0)then 
-	      print *,'Negative MODIS scale param at cell',n, modisalb(n)
-	      print *,'Set to 1'
-	      modisalb(n)=1
-	   endif
-
-	   if(modisalb(n).gt.100)then 
-	      print *,'Too large MODIS scale param',n, modisalb(n)
-	      print *,'Set to 1'
-	      modisalb(n)=1
-	   endif
-
-	   enddo	   
-
-           write (unit3) (modisalb(n),n=1,maxcat) 
-
-           unit1 = unit1 + 1
-           unit2 = unit2 + 1
-           unit3 = unit3 + 1        
-     end do
-  end do
-
-  end do
-    
-  deallocate (modisalb,albvf,albnf)
-  deallocate (green,lai)
-  deallocate (vegcls)
-  deallocate (calbvf,calbnf)
-  deallocate (zero_array, one_array, albvr, albnr)
-  
-  unit1 =10
-  unit2 =20
-  unit3 =30
-
-  do  ialbt = 2,2
-     do ialbs = 1,2
-        
-        close (unit1, status='keep')
-        close (unit2, status='keep')
-        close (unit3, status='keep')
-
-        unit1 = unit1 + 1
-        unit2 = unit2 + 1
-        unit3 = unit3 + 1
-     end do
-  end do
-
-  close (40, status='keep')
-  close (41, status='keep')
-  
-END SUBROUTINE modis_scale_para
- 
-!----------------------------------------------------------------------
-
-  SUBROUTINE make_75 (nx,ny,regrid,path,gfile)
-    implicit none
-    integer nc,nr,i,j,i1,i2,j1,j2,cls,ip, ii, jj,xc,xr
-    integer, allocatable ::  catid(:,:),catold(:,:),cat75(:,:)
-    integer sam(3,3)
-    character*100 filename,path
-    character (*) :: gfile
-    integer :: nx,ny
-    logical :: regrid
-
-    nc = i_raster
-    nr = j_raster
-
-    filename=trim(path)//'global.cat_id.catch.DL'
-    open (9,file=filename,form='formatted',status='old')
-    
-    filename=trim(gfile)//'.rst'
-
-    open (10,file=filename,convert='little_endian',   &
-         form='unformatted',status='old',action='read')
-    
-    allocate(catid(nc,nr))
-    allocate(catold(nc,nr))
-    catid=0
-    catold=0
-    
-    do j=1,nr
-       read (9,*)(catold(i,j),i=1,nc)
-       read (10)(catid(i,j),i=1,nc)
-       do i=1,nc
-          if((catold(i,j).eq.0).or.(catold(i,j).gt.5999900))catid(i,j)=0
-       end do
-    end do
-
-    close(9,status='keep')
-    close(10,status='keep')
-
-    deallocate(catold)
-    allocate(cat75(nc/3,nr/3))
-    
-    cat75=0
-
-      filename=trim(gfile)//'.7.5.rst'
-
-      open (11,file=filename,convert='little_endian',form='unformatted',status='unknown')
-      
-      do j=1,1440
-         j2=J*3
-         j1=j2-2
-         do i=1,2880
-            i2=i*3
-            i1=i2-2
-            sam(1:3,1:3)=catid(i1:i2,j1:j2)
-            call pick_cat(sam,cat75(i,j))
-            !         write(*,*)cat75(i,j)
-            !         pause
-         end do
-         write (11)(cat75(i,j),i=1,2880)
-      end do
-      deallocate(catid)
-      deallocate(cat75)
-
-    end SUBROUTINE make_75
-
-!----------------------------------------------------------------------
-
-    subroutine pick_cat(sam,clr)
-      implicit none
-
-      integer sam(9),num_val(9),i,j,cls(1),clr(1)
-      num_val(1:9)=0
-      clr=0
-      do i=1,9
-         do j=1,9
-            if(sam(i).eq.sam(j))num_val(i)=num_val(i)+1
-         end do
-      end do
-      clr=sam(maxloc(num_val))
-      
-    end subroutine pick_cat
-        
-
+!   SUBROUTINE modis_scale_para (ease_grid,gfile)
+!     
+!     implicit none
+!     type (date_time_type) :: gf_green_time,af_green_time,end_time, &
+!               bf_lai_time,af_lai_time,date_time_new
+!     logical :: ease_grid
+!     CHARACTER*20 :: version,resoln,continent
+!     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
+!     REAL :: latt,lont,fr_gcm,fr_cat,tsteps,zth, slr,tarea
+!     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+!     character*100 :: path,fname,fout,metpath
+!     character (*) :: gfile
+!     integer :: n,maxcat,ip
+!     integer :: ialbt,ialbs,yy,j,month,unit1,unit2,unit3
+!     character*2 :: bw
+!     character*5 :: cyy
+!     character*300 :: albtype, albspec
+!     character*30, dimension (2,2) :: sibname
+!     character*30, dimension (2,2) :: geosname
+!     integer, allocatable, dimension (:) :: vegcls 
+!     real, allocatable, dimension (:) :: &
+!          modisalb,scale_fac,albvf,albnf, lat,lon, &
+!          green,lai,lai_before,lai_after,grn_before,grn_after
+!     real, allocatable, dimension (:) :: &
+!          calbvf,calbnf, zero_array, one_array, albvr,albnr
+!     character*300 :: ifile1,ifile2,ofile
+!     integer, dimension(12), parameter :: days_in_month_nonleap = &
+!          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+!     integer :: day, hour, min ,secs_in_day,k
+!     real :: yr,mn,dy,yr1,mn1,dy1,dum, slice1,slice2
+! 
+! ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+! !
+! ! NOTE: "!$" is for conditional compilation
+! !
+! logical :: running_omp = .false.
+! !
+! !$ integer :: omp_get_thread_num, omp_get_num_threads
+! !
+! integer :: n_threads=1
+! !
+! ! ------------------------------------------------------------------
+! 
+!   ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+!   !
+!   ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+!   !
+!   !$ running_omp = .true.         ! conditional compilation
+!   !
+!   ! ECHO BASIC OMP VARIABLES
+!   !
+!   !$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+!   !
+!   !$OMP SINGLE
+!   !
+!   !$ n_threads = omp_get_num_threads()
+!   !
+!   !$ write (*,*) 'running_omp = ', running_omp
+!   !$ write (*,*)
+!   !$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+!   !$ write (*,*)
+!   !$OMP ENDSINGLE
+!   !
+!   !$OMP CRITICAL
+!   !$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+!   !$OMP ENDCRITICAL
+!   !
+!   !$OMP BARRIER
+!   !
+!   !$OMP ENDPARALLEL
+!   ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+! 
+!     data sibname /'albvr','albnr',  &
+!                 'albvf','albnf'/
+!     data geosname /'visdr','nirdr',  &
+!                 'visdf','nirdf'/
+! 
+!     fname='clsm/catchment.def'
+!     open (10,file=fname,status='old',action='read',form='formatted')
+!     read (10,*)maxcat
+!     allocate (albvf    (1:maxcat))
+!     allocate (albnf    (1:maxcat))
+!     allocate (calbvf   (1:maxcat))
+!     allocate (calbnf   (1:maxcat))
+!     allocate (modisalb (1:maxcat))
+!     allocate (lai      (1:maxcat))
+!     allocate (green    (1:maxcat))
+!     allocate (lai_before (1:maxcat))
+!     allocate (grn_before (1:maxcat))
+!     allocate (lai_after  (1:maxcat))
+!     allocate (grn_after  (1:maxcat))
+!     allocate (vegcls     (1:maxcat))
+!     allocate (zero_array (1:maxcat))
+!     allocate (one_array  (1:maxcat))
+!     allocate (albvr      (1:maxcat))
+!     allocate (albnr      (1:maxcat))    
+!     close (10,status='keep')
+! 
+!     date_time_new%year   =2002
+!     date_time_new%month  =1
+!     date_time_new%day    =1
+!     date_time_new%hour   =0            
+!     date_time_new%min    =0            
+!     date_time_new%sec    =0            
+!     date_time_new%pentad =1            
+!     date_time_new%dofyr  =1   
+! 
+!     gf_green_time   = date_time_new
+!     af_green_time   = date_time_new
+!     end_time        = date_time_new
+!     bf_lai_time     = date_time_new
+!     af_lai_time     = date_time_new   
+! 
+!     fname=trim(gfile)//'.til'
+! 
+!     open (10,file=fname,status='old',action='read',form='formatted')
+!     fname='clsm/mosaic_veg_typs_fracs'
+!     open (20,file=fname,status='old',action='read',form='formatted')
+! 
+!     read (10,*)ip
+!     read (10,*)j_dum
+! 
+!     do n = 1, j_dum
+!        read (10,'(a)')version
+!        read (10,*)nc_gcm
+!        read (10,*)nr_gcm
+!     end do
+!     
+!     do n = 1,ip
+!       if (ease_grid) then     
+! 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+!       else
+!       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+!             typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+!       endif
+!        if (typ == 100) then
+!           ip2 = n 
+!           read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
+!             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
+!        endif
+!        if(ierr /= 0)write (*,*)'Problem reading'
+!     end do
+!     close (10,status='keep')
+!     close (20,status='keep')
+! 
+!     cyy='00-04'
+!     albvf    =0.
+!     albnf    =0.
+!     calbvf   =0.
+!     calbnf   =0.
+!     modisalb =0.
+!     zero_array = 0.
+!     one_array  = 1.
+!     albvr      = 0.
+!     albnr      = 0.
+!     
+!     unit1 =10
+!     unit2 =20
+!     unit3 =30
+! 
+!     do  ialbt = 2,2
+!        do ialbs = 1,2
+!         
+!         if(ialbt.eq.1)albtype='BlackSky/'
+!         if(ialbt.eq.2)albtype='WhiteSky/'
+!         if(ialbt.eq.1)bw='BS'
+!         if(ialbt.eq.2)bw='WS'
+!         if(ialbs.eq.1)albspec='0.3_0.7/'
+!         if(ialbs.eq.2)albspec='0.7_5.0/'         
+!         ifile1='clsm/AlbMap.'//bw//'.2x5.'//trim(cyy)//'.monthly-tile.'   &
+!              //albspec(1:index(albspec,'/')-1)//'.dat'
+! !        write (*,*) 'MODIS file: ',  unit1,trim(ifile1) 
+! !        write (*,*) '-----------------------------'
+! 
+!         ifile2='clsm/sibalb1.'//trim(sibname(ialbs,ialbt))//'.climatology'
+! !        write (*,*) 'SiB file: ', unit2, trim(ifile2)
+! 
+!         ofile='clsm/modis_scale_factor.'//trim(sibname(ialbs,ialbt))//'.clim'
+! 
+! !        write (*,*) 'Scale factor: ', unit3, trim(ofile)
+! 
+!         open (unit1,file=trim(ifile1),form='unformatted',convert='big_endian', &
+!                 action='read',status='old')
+!         open (unit2,file=trim(ifile2),form='unformatted',convert='big_endian', &
+!                 action='write',status='unknown')
+!         open (unit3,file=trim(ofile),form='unformatted',convert='big_endian', &
+!              action='write',status='unknown')
+! 
+!         unit1 = unit1 + 1
+!         unit2 = unit2 + 1
+!         unit3 = unit3 + 1
+!      end do
+!   end do
+! 
+!     fname='clsm/lai.dat'
+!     open (40,file=fname,status='old',action='read',form='unformatted', &
+!          convert='little_endian')
+!     read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+!     read(40) lai_before
+!     call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,bf_lai_time)
+!     
+!     read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+!     read(40) lai_after
+!     call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_lai_time)
+! 
+!     fname='clsm/green.dat'
+!     open (41,file=fname,status='old',action='read',form='unformatted', &
+!          convert='little_endian')
+!     read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+!     read(41) grn_before
+!     call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,gf_green_time)
+!  
+!     read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+!     read(41) grn_after
+!     call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_green_time)
+! 
+!   do month=1,12
+! 
+!      write (*,'(a48,i3)') '     Computing MODIS scale parameters for month: ',month
+! 
+!     calbvf   =0.
+!     calbnf   =0.
+!     albvf    =0.
+!     albnf    =0.
+!     tsteps   =0.
+!      
+!     do day = 1,days_in_month_nonleap(month)
+! 
+!     if (datetime_le_refdatetime(date_time_new,af_lai_time)) then
+! 
+!     else
+!          lai_before = lai_after
+! 	 bf_lai_time = af_lai_time
+! 	 read(40) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+! 	 read(40) lai_after
+!          call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_lai_time)
+!     endif
+!        call Time_Interp_Fac (date_time_new, bf_lai_time, af_lai_time, slice1, slice2)
+!        lai    = (slice1*lai_before + slice2*lai_after)
+! !       print *,'LAI'
+! !       print *,bf_lai_time
+! !       print *,af_lai_time
+! !       print *,slice1,slice2
+! !       print *,minval(lai),maxval(lai)
+! 
+!     if (datetime_le_refdatetime(date_time_new,af_green_time)) then
+! 
+!     else
+!          grn_before = grn_after
+! 	 gf_green_time = af_green_time
+! 	 read(41) yr,mn,dy,dum,dum,dum,yr1,mn1,dy1
+! 	 read(41) grn_after
+!          call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_green_time)
+! 
+!     endif
+!        call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
+!        green  = (slice1*grn_before + slice2*grn_after)
+!  !      print *,'GREEN'
+!  !      print *,gf_green_time
+!  !      print *,af_green_time
+!  !      print *,slice1,slice2
+!  !      print *,minval(green),maxval(green)
+! 
+!        call augment_date_time(86400,date_time_new)
+!         
+!         tsteps = tsteps + 1.
+! 
+!         call sibalb (                                 &
+!              MAXCAT,vegcls,lai,green, zero_array,     &
+!              one_array,one_array,one_array,one_array, &
+!              ALBVR, ALBNR, albvf, albnf)
+!                  
+!         calbvf = calbvf + albvf
+!         calbnf = calbnf + albnf
+!               
+!      end do
+! 
+!      calbvf = calbvf/tsteps
+!      calbnf = calbnf/tsteps
+! 
+!      unit1 =10
+!      unit2 =20
+!      unit3 =30
+!      
+!      do  ialbt = 2,2
+!         do ialbs = 1,2
+!            
+!            read (unit1) (modisalb(n),n=1,maxcat)
+!            if(unit2==20)write (unit2) (calbvf(n),n=1,maxcat)
+!            if(unit2==21)write (unit2) (calbnf(n),n=1,maxcat)
+!         
+!            if(unit2==20) modisalb = modisalb/(calbvf + 1.e-20)
+!            if(unit2==21) modisalb = modisalb/(calbnf + 1.e-20)
+! 
+! 	   do n =1, maxcat
+! 	   if(modisalb(n).le.0)then 
+! 	      print *,'Negative MODIS scale param at cell',n, modisalb(n)
+! 	      print *,'Set to 1'
+! 	      modisalb(n)=1
+! 	   endif
+! 
+! 	   if(modisalb(n).gt.100)then 
+! 	      print *,'Too large MODIS scale param',n, modisalb(n)
+! 	      print *,'Set to 1'
+! 	      modisalb(n)=1
+! 	   endif
+! 
+! 	   enddo	   
+! 
+!            write (unit3) (modisalb(n),n=1,maxcat) 
+! 
+!            unit1 = unit1 + 1
+!            unit2 = unit2 + 1
+!            unit3 = unit3 + 1        
+!      end do
+!   end do
+! 
+!   end do
+!     
+!   deallocate (modisalb,albvf,albnf)
+!   deallocate (green,lai)
+!   deallocate (vegcls)
+!   deallocate (calbvf,calbnf)
+!   deallocate (zero_array, one_array, albvr, albnr)
+!   
+!   unit1 =10
+!   unit2 =20
+!   unit3 =30
+! 
+!   do  ialbt = 2,2
+!      do ialbs = 1,2
+!         
+!         close (unit1, status='keep')
+!         close (unit2, status='keep')
+!         close (unit3, status='keep')
+! 
+!         unit1 = unit1 + 1
+!         unit2 = unit2 + 1
+!         unit3 = unit3 + 1
+!      end do
+!   end do
+! 
+!   close (40, status='keep')
+!   close (41, status='keep')
+!   
+! END SUBROUTINE modis_scale_para
+!  
+! !----------------------------------------------------------------------
+! 
+!   SUBROUTINE make_75 (nx,ny,regrid,path,gfile)
+!     implicit none
+!     integer nc,nr,i,j,i1,i2,j1,j2,cls,ip, ii, jj,xc,xr
+!     integer, allocatable ::  catid(:,:),catold(:,:),cat75(:,:)
+!     integer sam(3,3)
+!     character*100 filename,path
+!     character (*) :: gfile
+!     integer :: nx,ny
+!     logical :: regrid
+! 
+!     nc = i_raster
+!     nr = j_raster
+! 
+!     filename=trim(path)//'global.cat_id.catch.DL'
+!     open (9,file=filename,form='formatted',status='old')
+!     
+!     filename=trim(gfile)//'.rst'
+! 
+!     open (10,file=filename,convert='little_endian',   &
+!          form='unformatted',status='old',action='read')
+!     
+!     allocate(catid(nc,nr))
+!     allocate(catold(nc,nr))
+!     catid=0
+!     catold=0
+!     
+!     do j=1,nr
+!        read (9,*)(catold(i,j),i=1,nc)
+!        read (10)(catid(i,j),i=1,nc)
+!        do i=1,nc
+!           if((catold(i,j).eq.0).or.(catold(i,j).gt.5999900))catid(i,j)=0
+!        end do
+!     end do
+! 
+!     close(9,status='keep')
+!     close(10,status='keep')
+! 
+!     deallocate(catold)
+!     allocate(cat75(nc/3,nr/3))
+!     
+!     cat75=0
+! 
+!       filename=trim(gfile)//'.7.5.rst'
+! 
+!       open (11,file=filename,convert='little_endian',form='unformatted',status='unknown')
+!       
+!       do j=1,1440
+!          j2=J*3
+!          j1=j2-2
+!          do i=1,2880
+!             i2=i*3
+!             i1=i2-2
+!             sam(1:3,1:3)=catid(i1:i2,j1:j2)
+!             call pick_cat(sam,cat75(i,j))
+!             !         write(*,*)cat75(i,j)
+!             !         pause
+!          end do
+!          write (11)(cat75(i,j),i=1,2880)
+!       end do
+!       deallocate(catid)
+!       deallocate(cat75)
+! 
+!     end SUBROUTINE make_75
+! 
+! !----------------------------------------------------------------------
+! 
+!     subroutine pick_cat(sam,clr)
+!       implicit none
+! 
+!       integer sam(9),num_val(9),i,j,cls(1),clr(1)
+!       num_val(1:9)=0
+!       clr=0
+!       do i=1,9
+!          do j=1,9
+!             if(sam(i).eq.sam(j))num_val(i)=num_val(i)+1
+!          end do
+!       end do
+!       clr=sam(maxloc(num_val))
+!       
+!     end subroutine pick_cat
+!         
+! 
 !----------------------------------------------------------------------
 
   SUBROUTINE catchment_def (nx,ny,regrid,dateline,gfilet,gfiler)
@@ -6652,93 +6670,188 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 subroutine RegridRaster(Rin,Rout)
 
-  integer, intent(IN)  :: Rin(:,:)
+  ! primitive regridding of integer values from 2-dim array Rin to 2-dim array Rout
+  !
+  ! If Rout is higher-resolution than Rin, result should be fine:
+  !   An Rout grid cell is assigned the value of the Rin grid cell that 
+  !   contains the center of the Rout grid cell (oversampling). 
+  ! If Rin is higher-resolution than Rout, result is questionable:
+  !   An Rout grid cell is assigned the value of the Rin grid cell that is 
+  !    near the *corner* of the Rout grid cell. See notes below.
+
+  integer, intent(IN)  :: Rin( :,:)
   integer, intent(OUT) :: Rout(:,:)
-
+  
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      :: i, j, ii, jj
+  integer      :: Nx_in, Ny_in, Nx_out, Ny_out
+  
+  Nx_in  = size(Rin ,1)
+  Ny_in  = size(Rin ,2) 
 
-  xx = size(Rin ,1)/float(size(Rout,1))
-  yy = size(Rin ,2)/float(size(Rout,2))
+  Nx_out = size(Rout,1)
+  Ny_out = size(Rout,2) 
+  
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
+    
+     ! avoid loop through output grid cells
 
-  do j=1,size(Rout,2)
-     jj = (j-1)*yy + 1
-     do i=1,size(Rout,1)
-        ii = (i-1)*xx + 1
-        Rout(i,j) = Rin(ii,jj)
+     Rout = Rin       ! [??] MAY NOT BE 0-DIFF B/C OF MIXED-MODE ARITHMETIC IN LOOP!?!?!?
+     
+  else
+     
+     ! NOTE: float() yields real*4 but xx was declared real*8
+     
+     xx = Nx_in/float(Nx_out)      ! WARNING: mixed mode arithmentic!!! 
+     yy = Ny_in/float(Ny_out)      ! WARNING: mixed mode arithmentic!!! 
+     
+     do j=1,Ny_out
+        
+        ! NOTE: When Rin is finer resolution than Rout, the below use of  
+        !          ii = (i-1)*xx + 1                          (1a)
+        !          jj = (j-1)*yy + 1                          (1b)
+        !       implies that Rout(i,j) is assigned the Rin(ii,jj) value near a corner of 
+        !       the (ii,jj) output grid cell, which effectively results in a shift of the 
+        !       data by 1/2 of the width of the output grid cell.  This shift could
+        !       presumably minimized by using 
+        !          ii = NINT( (i-1)*xx + xx/2 )               (2a)
+        !          jj = NINT( (j-1)*yy + yy/2 )               (2b)
+        !
+        !       HOWEVER, equations (2a) and (2b) are preferable when Rout is finer resolution
+        !       than Rin, in which case Rout should just be oversampling of Rin.
+        
+        jj = (j-1)*yy + 1          ! WARNING: mixed mode arithmetic!!!  Note implied "floor()" operator.
+        do i=1,Nx_out
+           ii = (i-1)*xx + 1       ! WARNING: mixed mode arithmetic!!!  Note implied "floor()" operator.
+           Rout(i,j) = Rin(ii,jj)  
+        end do
      end do
-  end do
-
+     
+  end if
+  
 end subroutine RegridRaster
 
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRaster1(Rin,Rout)
 
-  integer*1, intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded integer*1 values
+
+  integer*1, intent(IN)  :: Rin( :,:)
   integer*1, intent(OUT) :: Rout(:,:)
 
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      :: i, j, ii, jj
+  integer      :: Nx_in, Ny_in, Nx_out, Ny_out
+  
+  Nx_in  = size(Rin ,1)
+  Ny_in  = size(Rin ,2) 
 
-  xx = size(Rin ,1)/float(size(Rout,1))
-  yy = size(Rin ,2)/float(size(Rout,2))
-
-  do j=1,size(Rout,2)
-     jj = (j-1)*yy + 1
-     do i=1,size(Rout,1)
-        ii = (i-1)*xx + 1
-        Rout(i,j) = Rin(ii,jj)
+  Nx_out = size(Rout,1)
+  Ny_out = size(Rout,2) 
+  
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
+     
+     Rout = Rin
+     
+  else
+     
+     xx = Nx_in/float(Nx_out)
+     yy = Ny_in/float(Ny_out)
+     
+     do j=1,Ny_out
+        jj = (j-1)*yy + 1
+        do i=1,Nx_out
+           ii = (i-1)*xx + 1
+           Rout(i,j) = Rin(ii,jj)
+        end do
      end do
-  end do
+     
+  end if
 
 end subroutine RegridRaster1
-
 
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRaster2(Rin,Rout)
 
-  integer(kind=2), intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded integer*2 values
+
+  integer(kind=2), intent(IN)  :: Rin( :,:)
   integer(kind=2), intent(OUT) :: Rout(:,:)
 
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      :: i, j, ii, jj
+  integer      :: Nx_in, Ny_in, Nx_out, Ny_out
+  
+  Nx_in  = size(Rin ,1)
+  Ny_in  = size(Rin ,2) 
 
-  xx = size(Rin ,1)/float(size(Rout,1))
-  yy = size(Rin ,2)/float(size(Rout,2))
-
-  do j=1,size(Rout,2)
-     jj = (j-1)*yy + 1
-     do i=1,size(Rout,1)
-        ii = (i-1)*xx + 1
-        Rout(i,j) = Rin(ii,jj)
+  Nx_out = size(Rout,1)
+  Ny_out = size(Rout,2) 
+  
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
+     
+     Rout = Rin
+     
+  else
+     
+     xx = Nx_in/float(Nx_out)
+     yy = Ny_in/float(Ny_out)
+     
+     do j=1,Ny_out
+        jj = (j-1)*yy + 1
+        do i=1,Nx_out
+           ii = (i-1)*xx + 1
+           Rout(i,j) = Rin(ii,jj)
+        end do
      end do
-  end do
+     
+  end if
 
 end subroutine RegridRaster2
-
 
 ! -----------------------------------------------------------------------------------
 
 subroutine RegridRasterReal(Rin,Rout)
 
-  real, intent(IN)  :: Rin(:,:)
+  ! same as RegridRaster() but for gridded real values
+
+  real, intent(IN)  :: Rin( :,:)
   real, intent(OUT) :: Rout(:,:)
-
+  
   REAL(KIND=8) :: xx, yy
-  integer :: i,j,ii,jj
+  integer      :: i, j, ii, jj
+  integer      :: Nx_in, Ny_in, Nx_out, Ny_out
+  
+  Nx_in  = size(Rin ,1)
+  Ny_in  = size(Rin ,2) 
 
-  xx = size(Rin ,1)/float(size(Rout,1))
-  yy = size(Rin ,2)/float(size(Rout,2))
-
-  do j=1,size(Rout,2)
-     jj = (j-1)*yy + 1
-     do i=1,size(Rout,1)
-        ii = (i-1)*xx + 1
-        Rout(i,j) = Rin(ii,jj)
+  Nx_out = size(Rout,1)
+  Ny_out = size(Rout,2) 
+  
+  !if ( (Nx_in==Nx_out) .and. (Ny_in==Ny_out) ) then
+  if (.false.) then    
+     
+     Rout = Rin
+     
+  else
+     
+     xx = Nx_in/float(Nx_out)
+     yy = Ny_in/float(Ny_out)
+     
+     do j=1,Ny_out
+        jj = (j-1)*yy + 1
+        do i=1,Nx_out
+           ii = (i-1)*xx + 1
+           Rout(i,j) = Rin(ii,jj)
+        end do
      end do
-  end do
+     
+  end if
 
 end subroutine RegridRasterReal
 
