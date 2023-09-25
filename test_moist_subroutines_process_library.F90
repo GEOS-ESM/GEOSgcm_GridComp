@@ -21,7 +21,7 @@ module test_process_library_subroutines
 
     subroutine test_BUOYANCY2(IM, JM, LM, dirName, rank_str)
 
-        integer :: IM, JM, LM, fileID
+        integer :: IM, JM, LM, fileID, iter
         character*100 :: dirName, rank_str
 
         allocate(T(IM, JM, LM))
@@ -131,20 +131,21 @@ module test_process_library_subroutines
         read(fileID) LNB
         close(fileID)
 
-!$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb, MLCAPE, MUCAPE, &
-!$acc             MLCIN, MUCIN) &
+!$acc data copyin(T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb), &
 !$acc      copyout(BYNCY) &
-!$acc      copyin(SBCIN, SBCAPE, LFC, LNB)
+!$acc      copy(SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, LFC, LNB)
 
         ! This is to initialize arrays in GEOS_UtilsMod ahead of time
         call ESINIT_v2
 
         print*,'Testing Buoyancy2 Subroutine'
 
-        call start_timing()
-        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
-        call end_timing()
-        call print_timing()
+        do iter = 1,1
+            call start_timing()
+            call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
+            call end_timing()
+            call print_timing()
+        enddo
 !$acc end data
         open(newunit=fileID, file=trim(dirName) // "/BYNCY_" // trim(rank_str) // ".out", &
             status='old', form="unformatted", action="read")

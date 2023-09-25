@@ -67,11 +67,6 @@ module Process_Library_standalone
 
     integer :: I, J, L
 
-    ! Tve   = T*(1.+MAPL_VIREPS*Q)
-    ! BYNCY = MAPL_UNDEF
-    ! MSEp  = 0.
-    ! Qp    = 0.
-
 !$acc data create(Tve, MSEp, Qp, tmp1, tmp2, Lev0)
 
     !$acc kernels
@@ -103,12 +98,12 @@ module Process_Library_standalone
         !$acc end kernels
         call RETURN_CAPE_CIN_v2(ZLO, PLO, DZ,      & 
                                 MSEp, Qp, Tve, QS, DQS,       &
-                                MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, MUCAPE, MUCIN, 0)
+                                MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, 0)
         !$acc kernels
-       where (MLCAPE.le.0.)
+        where (MLCAPE.le.0.)
             MLCAPE = MAPL_UNDEF
             MLCIN  = MAPL_UNDEF
-       end where
+        end where
        !$acc end kernels
     end if
 
@@ -120,50 +115,48 @@ module Process_Library_standalone
         BYNCY = MAPL_UNDEF
         LFC = MAPL_UNDEF
         LNB = MAPL_UNDEF
-        !$acc end kernels
-        ! do I = 1,IM
-        !     do J = 1,JM
-        !         do L = LM,1,-1
+        !$acc end kernels   
 
-        do L = LM,1,-1
-            do J = 1,JM  
-                do I = 1,IM  
-                    if (PS(I,J)-PLO(I,J,L).le.255.) then
+        call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, tmp1, tmp2, BYNCY, LFC, LNB, &
+                                   Lev0, PS, T, Q, 1, MUCAPE=MUCAPE, MUCIN=MUCIN)
 
-                        MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
-                        Qp(I,J)   = Q(I,J,L)
-                        call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
-                                            MSEp(I,J), Qp(I,J), Tve(I,J,1:L), QS(I,J,1:L), DQS(I,J,1:L),       &
-                                            tmp1(I,J), tmp2(I,J), BYNCY(I,J,1:L), LFC(I,J), LNB(I,J) )
-                        if (tmp1(I,J) .gt. MUCAPE(I,J)) then
-                            MUCAPE(I,J) = tmp1(I,J)
-                            MUCIN(I,J)  = tmp2(I,J)
-                        end if
-                    endif
-                end do
-            end do
-        end do        
-
+        !$acc kernels
         where (MUCAPE.le.0.)
             MUCAPE = MAPL_UNDEF
             MUCIN  = MAPL_UNDEF
         end where
+        !$acc end kernels
     end if
 
     ! Surface-based calculation
+    !$acc kernels
     MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
-    Qp   = Q(:,:,LM)                                            ! parcel specific humidity
-    do I = 1,IM
-        do J = 1,JM
-            call RETURN_CAPE_CIN( ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:),      & 
-                                    MSEp(I,J), Qp(I,J), Tve(I,J,:), QS(I,J,:), DQS(I,J,:),       &
-                                    SBCAPE(I,J), SBCIN(I,J), BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
-        end do
-    end do
+    Qp   = Q(:,:,LM)
+    ! do J = 1, JM
+    !     do I = 1, IM
+    !         MSEp(I,J) = T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)  ! parcel moist static energy
+    !         Qp(I,J)   = Q(I,J,LM)
+    !     enddo
+    ! enddo
+    !$acc end kernels                                            ! parcel specific humidity
+
+    call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, SBCAPE, SBCIN, BYNCY, LFC, LNB, &
+                             Lev0, PS, T, Q, 2)
+    
+    !$acc kernels
     where (SBCAPE.le.0.)
         SBCAPE = MAPL_UNDEF
         SBCIN  = MAPL_UNDEF
     end where
+    ! do J = 1,JM
+    !     do I = 1, IM
+    !         if(SBCAPE(I,J).le.0.) then
+    !             SBCAPE(I,J) = mapl_undef
+    !             SBCIN (I,J) = mapl_undef
+    !         endif
+    !     enddo
+    ! enddo
+    !$acc end kernels
 !$acc end data
     end subroutine BUOYANCY2
 
@@ -263,17 +256,18 @@ module Process_Library_standalone
     end subroutine RETURN_CAPE_CIN
 
     subroutine RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, Qsate, DQS, CAPE, CIN, BYNCY, LFC, LNB, &
-                                   Lev0, PS, T, Q, MUCAPE, MUCIN, ctype )
+                                   Lev0, PS, T, Q, ctype, MUCAPE, MUCIN)
         integer, dimension(:,:),   intent(in)  :: Lev0
         real,    dimension(:,:),   intent(in)  :: PS
         real,    dimension(:,:,:), intent(in)  :: ZLO, PLO, DZ, Tve, Qsate, DQS, T, Q
         real,    dimension(:,:),   intent(out) :: CAPE, CIN, LFC, LNB
+        real,    dimension(:,:),   optional, intent(out) :: MUCAPE, MUCIN
         real,    dimension(:,:,:), intent(out) :: BYNCY
-        real,    dimension(:,:),   intent(inout) :: MSEp, Qp, MUCAPE, MUCIN
+        real,    dimension(:,:),   intent(inout) :: MSEp, Qp
         integer,                   intent(in)  :: ctype
     
         integer :: I, J, L, LL, IM, JM, LM, II, KLNB, KLFC
-        real    :: Qpnew, Tp, Tvp, Tlcl, Buoy, dq
+        real    :: Qpnew, Tp, Tvp, Tlcl, dq
         logical :: aboveLNB, aboveLFC, aboveLCL
     
         IM = size(ZLO,1)
@@ -377,104 +371,108 @@ module Process_Library_standalone
 !$acc end parallel
         else
             LM = size(Tve,3)
-!$acc parallel loop gang vector collapse(2) &
-!$acc          private(aboveLNB, aboveLFC, Qpnew, &
-!$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, LL)
-            do J = 1,IM
-                do I = 1, IM
-!$acc loop seq
-                    do LL = LM, 1, -1
-                        if(PS(I,J) - PLO(I,J,LL) .gt. 255.) exit
-                        MSEp(I,J) = T(I,J,LL) + gravbcp*ZLO(I,J,LL) + alhlbcp*Q(I,J,LL)
-                        Qp(I,J)   = Q(I,J,LL)
-                        aboveLNB = .false.
-                        aboveLFC = .false.
+
+            do LL = LM, 1, -1
+                !$acc parallel loop gang vector collapse(2) &
+                !$acc          private(aboveLNB, aboveLFC, Qpnew, &
+                !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC)
+                do J = 1,IM
+                    do I = 1, IM
+                        if(PS(I,J) - PLO(I,J,LL) .le. 255.) then
+                            MSEp(I,J) = T(I,J,LL) + gravbcp*ZLO(I,J,LL) + alhlbcp*Q(I,J,LL)
+                            Qp(I,J)   = Q(I,J,LL)
+
+                            aboveLNB = .false.
+                            aboveLFC = .false.
                     
-                        Qpnew = Qp(I,J)
+                            Qpnew = Qp(I,J)
+                            
+                            CAPE(I,J) = 0.
+                            CIN(I,J)  = 0.
+                            BYNCY(I,J, 1:LL) = 0.
+                            LFC(I,J) = MAPL_UNDEF
+                            LNB(I,J) = MAPL_UNDEF
+                    
+                            Tp = MSEp(I,J) - gravbcp*ZLO(I,J,LL) - alhlbcp*Qp(I,J)  ! initial parcel temp at source level LM
+                            Tlcl = find_tlcl( Tp, 100.*Qp(I,J)/QSATE(I,J,LL) )
+                            aboveLCL = (Tp.lt.Tlcl)
+                    
+                            do L = LL-1,1,-1   ! start at level above source air
                         
-                        CAPE(I,J) = 0.
-                        CIN(I,J)  = 0.
-                        BYNCY(I,J, 1:LL) = 0.
-                        LFC(I,J) = MAPL_UNDEF
-                        LNB(I,J) = MAPL_UNDEF
-                    
-                        Tp = MSEp(I,J) - gravbcp*ZLO(I,J,LL) - alhlbcp*Qp(I,J)  ! initial parcel temp at source level LM
-                        Tlcl = find_tlcl( Tp, 100.*Qp(I,J)/QSATE(I,J,LL) )
-                        aboveLCL = (Tp.lt.Tlcl)
-                    
-                        do L = LL-1,1,-1   ! start at level above source air
-                    
-                            ! determine parcel Qp, Tp      
-                            if ( .not. aboveLCL ) then
-                                Tp = Tp - gravbcp*(ZLO(I,J,L)-ZLO(I,J,L+1))                ! new parcel temperature w/o condensation 
-                                if (Tp.lt.Tlcl) then
-                                    Tp = Tp + gravbcp*(ZLO(I,J,L)-ZLO(I,J,L+1))             ! if cross LCL, revert Tp and go to aboveLCL below
-                                    aboveLCL = .true.
+                                ! determine parcel Qp, Tp      
+                                if ( .not. aboveLCL ) then
+                                    Tp = Tp - gravbcp*(ZLO(I,J,L)-ZLO(I,J,L+1))                ! new parcel temperature w/o condensation 
+                                    if (Tp.lt.Tlcl) then
+                                        Tp = Tp + gravbcp*(ZLO(I,J,L)-ZLO(I,J,L+1))             ! if cross LCL, revert Tp and go to aboveLCL below
+                                        aboveLCL = .true.
+                                    end if
                                 end if
-                            end if
-                            if ( aboveLCL .and. Qpnew*alhlbcp.gt.0.01 ) then
-                                Tp = Tp - gravbcp*( ZLO(I,J,L)-ZLO(I,J,L+1) ) / ( 1.+alhlbcp*DQS(I,J,L) )     ! initial guess including condensation
-                                DO II = 1,10                                                       ! iterate until Qp=qsat(Tp)
-                                    dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
-                                    if (abs(dq*alhlbcp)<0.01) then
+                                if ( aboveLCL .and. Qpnew*alhlbcp.gt.0.01 ) then
+                                    Tp = Tp - gravbcp*( ZLO(I,J,L)-ZLO(I,J,L+1) ) / ( 1.+alhlbcp*DQS(I,J,L) )     ! initial guess including condensation
+                                    DO II = 1,10                                                       ! iterate until Qp=qsat(Tp)
+                                        dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
+                                        if (abs(dq*alhlbcp)<0.01) then
+                                            exit
+                                        end if
+                                        Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
+                                        Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
+                                    END DO
+                                end if
+                                Tp = MSEp(I,J) - gravbcp*ZLO(I,J,L) - alhlbcp*Qpnew
+                                !  Qc = qp - qpnew.   ! condensate (not used for pseudoadiabatic ascent)
+                            
+                                Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)              ! parcel virtual temp
+                                !  Tvp = Tp*(1.+0.61*Qpnew - Qc) ! condensate loading
+                            
+                                BYNCY(I,J,L) = MAPL_GRAV*(Tvp-Tve(I,J,L))/Tve(I,J,L)         ! parcel buoyancy
+                        
+                            end do
+                    
+                            ! if surface parcel immediately buoyant, scan upward to find first elevated
+                            ! B>0 level above a B<0 level, label it LFC.  If no such level, set LFC at surface.
+                            KLFC = LL
+                            KLNB = LL
+                            aboveLFC = .false.
+                            if (BYNCY(I,J,LL-1).gt.0.) then
+                                do L = LL-2,1,-1   ! scan up to find elevated LFC
+                                    if (BYNCY(I,J,L).gt.0. .and. BYNCY(I,J,L+1).le.0.) then
+                                        KLFC = L
+                                        aboveLFC = .true.
+                                    end if
+                                    if (aboveLFC .and. BYNCY(I,J,L).lt.0. ) then 
+                                        KLNB = L
                                         exit
                                     end if
-                                    Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
-                                    Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
-                                END DO
+                                end do
+                            else   ! if surface parcel not immediately buoyant, LFC is first B>0 level
+                                do L = LL-1,1,-1
+                                    if (BYNCY(I,J,L).gt.0. .and. .not.aboveLFC) then
+                                        KLFC = L
+                                        aboveLFC = .true.
+                                    end if
+                                    if (aboveLFC .and. BYNCY(I,J,L).lt.0.) then
+                                        KLNB = L
+                                        exit
+                                    end if
+                                end do
                             end if
-                            Tp = MSEp(I,J) - gravbcp*ZLO(I,J,L) - alhlbcp*Qpnew
-                            !  Qc = qp - qpnew.   ! condensate (not used for pseudoadiabatic ascent)
-                        
-                            Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)              ! parcel virtual temp
-                            !  Tvp = Tp*(1.+0.61*Qpnew - Qc) ! condensate loading
-                        
-                            BYNCY(I,J,L) = MAPL_GRAV*(Tvp-Tve(I,J,L))/Tve(I,J,L)         ! parcel buoyancy
+                            LFC(I,J) = ZLO(I,J,KLFC)
+                            LNB(I,J) = ZLO(I,J,KLNB)
                     
-                        end do
-                    
-                        ! if surface parcel immediately buoyant, scan upward to find first elevated
-                        ! B>0 level above a B<0 level, label it LFC.  If no such level, set LFC at surface.
-                        KLFC = LL
-                        KLNB = LL
-                        aboveLFC = .false.
-                        if (BYNCY(I,J,LL-1).gt.0.) then
-                            do L = LL-2,1,-1   ! scan up to find elevated LFC
-                                if (BYNCY(I,J,L).gt.0. .and. BYNCY(I,J,L+1).le.0.) then
-                                    KLFC = L
-                                    aboveLFC = .true.
+                            CIN(I,J) = SUM( min(0.,BYNCY(I,J,KLFC:LL)*DZ(I,J,KLFC:LL)) )        ! define CIN as negative
+                        !    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
+                            CAPE(I,J) = SUM( max(0.,BYNCY(I,J,1:LL)*DZ(I,J,1:LL)) )
+
+                            if(present(MUCAPE).and.present(MUCIN)) then
+                                if (CAPE(I,J) .gt. MUCAPE(I,J)) then
+                                    MUCAPE(I,J) = CAPE(I,J)
+                                    MUCIN(I,J)  = CIN(I,J)
                                 end if
-                                if (aboveLFC .and. BYNCY(I,J,L).lt.0. ) then 
-                                    KLNB = L
-                                    exit
-                                end if
-                            end do
-                        else   ! if surface parcel not immediately buoyant, LFC is first B>0 level
-                            do L = LL-1,1,-1
-                                if (BYNCY(I,J,L).gt.0. .and. .not.aboveLFC) then
-                                    KLFC = L
-                                    aboveLFC = .true.
-                                end if
-                                if (aboveLFC .and. BYNCY(I,J,L).lt.0.) then
-                                    KLNB = L
-                                    exit
-                                end if
-                            end do
-                        end if
-                        LFC(I,J) = ZLO(I,J,KLFC)
-                        LNB(I,J) = ZLO(I,J,KLNB)
-                    
-                        CIN(I,J) = SUM( min(0.,BYNCY(I,J,KLFC:LL)*DZ(I,J,KLFC:LL)) )        ! define CIN as negative
-                    !    CAPE = SUM( max(0.,BYNCY(KLNB:KLFC)*DZ(KLNB:KLFC)) )
-                        CAPE(I,J) = SUM( max(0.,BYNCY(I,J,1:LL)*DZ(I,J,1:LL)) )
+                            endif
+                        endif
                     enddo
-                    if (CAPE(I,J) .gt. MUCAPE(I,J)) then
-                        MUCAPE(I,J) = CAPE(I,J)
-                        MUCIN(I,J)  = CIN(I,J)
-                    end if
                 enddo
             enddo
-!$acc end parallel
         endif
     
     end subroutine RETURN_CAPE_CIN_v2
