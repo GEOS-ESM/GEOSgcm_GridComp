@@ -15,6 +15,7 @@ module test_process_library_subroutines
     real, dimension(:,:),   allocatable :: SBCAPE, SBCIN, SBCAPE_comp, SBCIN_comp
     real, dimension(:,:),   allocatable :: LFC, LNB, LFC_comp, LNB_comp
     real, dimension(:,:),   pointer     :: MLCAPE, MUCAPE, MLCIN, MUCIN
+    real, dimension(:,:),   allocatable :: MLCAPE_comp, MUCAPE_comp, MLCIN_comp, MUCIN_comp
 
     contains
 
@@ -34,11 +35,15 @@ module test_process_library_subroutines
         allocate(SBCAPE(IM, JM))
         allocate(SBCAPE_comp(IM, JM))
         allocate(MLCAPE(IM, JM))
+        allocate(MLCAPE_comp(IM, JM))
         allocate(MUCAPE(IM, JM))
+        allocate(MUCAPE_comp(IM, JM))
         allocate(SBCIN(IM, JM))
         allocate(SBCIN_comp(IM, JM))
         allocate(MLCIN(IM, JM))
+        allocate(MLCIN_comp(IM, JM))
         allocate(MUCIN(IM, JM))
+        allocate(MUCIN_comp(IM, JM))
         allocate(BYNCY(IM, JM, LM))
         allocate(BYNCY_comp(IM, JM, LM))
         allocate(LFC(IM, JM))
@@ -149,38 +154,85 @@ module test_process_library_subroutines
         print*,'sum(BYNCY - BYNCY_comp) = ', sum(BYNCY - BYNCY_comp)
         print*,'sum(BYNCY) = ', sum(BYNCY)
 
-        ! open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".out", &
-        !     status='old', form="unformatted", action="read")
-        ! read(fileID) SBCAPE_comp
-        ! close(fileID)
+        print*,'*****'
 
-        ! print*,'sum(SBCAPE - SBCAPE_comp) = ', sum(SBCAPE - SBCAPE_comp)
-        ! print*,'sum(SBCAPE) = ', sum(SBCAPE)
+        open(newunit=fileID, file=trim(dirName) // "/SBCAPE_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCAPE_comp
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".out", &
-        !     status='old', form="unformatted", action="read")
-        ! read(fileID) SBCIN_comp
-        ! close(fileID)
+        print*,'sum(SBCAPE - SBCAPE_comp) = ', sum(SBCAPE - SBCAPE_comp)
+        print*,'sum(SBCAPE) = ', sum(SBCAPE)
 
-        ! print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
-        ! print*,'sum(SBCIN) = ', sum(SBCIN)
+        print*,'*****'
 
-        ! open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".out", &
-        !     status='old', form="unformatted", action="read")
-        ! read(fileID) LFC_comp
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // "/SBCIN_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) SBCIN_comp
+        close(fileID)
 
-        ! print*,'sum(LFC - LFC_comp) = ', sum(LFC - LFC_comp)
-        ! print*,'sum(LFC) = ', sum(LFC)
+        print*,'sum(SBCIN - SBCIN_comp) = ', sum(SBCIN - SBCIN_comp)
+        print*,'sum(SBCIN) = ', sum(SBCIN)
 
-        ! open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".out", &
-        !     status='old', form="unformatted", action="read")
-        ! read(fileID) LNB_comp
-        ! close(fileID)
+        print*,'*****'
 
-        ! print*,'sum(LNB - LNB_comp) = ', sum(LNB - LNB_comp)
-        ! print*,'sum(LNB) = ', sum(LNB)
+        open(newunit=fileID, file=trim(dirName) // "/LFC_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LFC_comp
+        close(fileID)
+
+        print*,'sum(LFC - LFC_comp) = ', sum(LFC - LFC_comp)
+        print*,'sum(LFC) = ', sum(LFC)
+
+        print*,'*****'
+
+        open(newunit=fileID, file=trim(dirName) // "/LNB_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) LNB_comp
+        close(fileID)
+
+        print*,'sum(LNB - LNB_comp) = ', sum(LNB - LNB_comp)
+        print*,'sum(LNB) = ', sum(LNB)
+
+        print*,'*****'
         
+        open(newunit=fileID, file=trim(dirName) // "/MLCAPE_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MLCAPE_comp
+        close(fileID)
+
+        print*,'sum(MLCAPE - MLCAPE_comp) = ', sum(MLCAPE - MLCAPE_comp)
+        print*,'sum(MLCAPE) = ', sum(MLCAPE)
+
+        print*,'*****'
+
+        open(newunit=fileID, file=trim(dirName) // "/MUCAPE_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MUCAPE_comp
+        close(fileID)
+
+        print*,'sum(MUCAPE - MUCAPE_comp) = ', sum(MUCAPE - MUCAPE_comp)
+        print*,'sum(MUCAPE) = ', sum(MUCAPE)
+
+        print*,'*****'
+
+        open(newunit=fileID, file=trim(dirName) // "/MLCIN_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MLCIN_comp
+        close(fileID)
+
+        print*,'sum(MLCIN - MLCIN_comp) = ', sum(MLCIN - MLCIN_comp)
+        print*,'sum(MLCIN) = ', sum(MLCIN)
+
+        print*,'*****'
+
+        open(newunit=fileID, file=trim(dirName) // "/MUCIN_" // trim(rank_str) // ".out", &
+            status='old', form="unformatted", action="read")
+        read(fileID) MUCIN_comp
+        close(fileID)
+
+        print*,'sum(MUCIN - MUCIN_comp) = ', sum(MUCIN - MUCIN_comp)
+        print*,'sum(MUCIN) = ', sum(MUCIN)
         
     end subroutine
 end module
