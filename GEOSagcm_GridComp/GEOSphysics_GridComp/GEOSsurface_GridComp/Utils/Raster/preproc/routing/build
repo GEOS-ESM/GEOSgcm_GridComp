@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+        echo "no f90 specified"
+        exit
+fi
+
+string=$1
+array=(${string//./ })  
+
+FILENAME=${array[0]}
+
+#source /opt/intel/oneapi/setvars.sh
+
+#module load intel_compilers/19.0.5 
+#module load intel_compilers/2021.3.0
+
+#NETCDF_PATH=/usr/local/netcdf-4.2_optimized
+
+#NETCDF_PATH=/Users/zsp/opt/anaconda3/envs/
+#NETCDF_PATH=/usr/local/Cellar/netcdf-fortran/4.6.0
+#NETCDF_PATH=/usr/local/Cellar/netcdf/4.9.0
+#NETCDF_PATH=/Users/zsp/apps/netcdf-4.2.1.1
+
+NETCDF_PATH=/discover/nobackup/yzeng3/apps/netcdf-4.2.1.1
+
+ifort -qopenmp ncdioMod.f90 rwncMod.f90 ${FILENAME}.f90 -I$NETCDF_PATH/include -L$NETCDF_PATH/lib -L/usr/local/intel/oneapi/2021/compiler/2021.4.0/linux/lib -lnetcdf -lnetcdff -o ${FILENAME}.out
+
+
+#ifort -O3 -m64 ${FILENAME}.f90 -I$NETCDF_PATH/include -L$NETCDF_PATH/lib -o ${FILENAME}.out
+
