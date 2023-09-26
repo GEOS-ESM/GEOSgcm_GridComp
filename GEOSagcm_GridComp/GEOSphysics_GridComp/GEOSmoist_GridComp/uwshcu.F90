@@ -297,7 +297,7 @@ contains
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, tke, rkfre, cush, umf, &
+           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
@@ -394,7 +394,7 @@ contains
    subroutine compute_uwshcu(idim, k0, dt,ncnst, pifc0_in,zifc0_in,& ! IN
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
-         tr0_inout, kpbl_in, tke_in, rkfre, cush_inout,            & ! OUT
+         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, cush_inout, & ! OUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
@@ -464,6 +464,7 @@ contains
       real, intent(out)   :: uflx_out(idim, 0:k0 )   
       real, intent(out)   :: vflx_out(idim, 0:k0 )   
       integer, intent(in) :: kpbl_in( idim )          ! Boundary layer top layer index
+      real, intent(in)    :: frland_in( idim )        ! fraction of and in grid cell
 
       real, intent(inout) :: cush_inout( idim )       ! Convective scale height [m]
       real, intent(inout) :: tr0_inout(idim,k0,ncnst) !  Environmental tracers [ #, kg/kg ]
@@ -1138,6 +1139,7 @@ contains
       do i = 1, idim
 
          id_exit = .false.
+         frc_rasn        = (1.0-frland_in(i)) * shlwparams%frc_rasn
 
          pifc0(0:k0)     = pifc0_in(i,0:k0)
          zifc0(0:k0)     = zifc0_in(i,0:k0)

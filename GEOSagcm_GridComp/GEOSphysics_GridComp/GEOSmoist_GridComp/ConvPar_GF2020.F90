@@ -2297,10 +2297,12 @@ loop1:  do n=1,maxiens
 !--- define entrainment/detrainment profiles for updrafts
 !
       !- initial entrainment/detrainment
-      entr_rate   (:  ) = entr_rate_input
-      entr_rate_2d(:,:) = entr_rate_input
-      cd          (:,:) = entr_rate_input
+      entr_rate(:)  = entr_rate_input*(1.0-xland)*3.0
       min_entr_rate     = entr_rate_input*0.1
+      do k=kts,kte
+        entr_rate_2d(:,k) = entr_rate(:)
+        cd          (:,k) = entr_rate(:)
+      enddo
 !
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
 !    base mass flux
@@ -2473,7 +2475,7 @@ loop1:  do n=1,maxiens
 
                factor = float(USE_MEMORY)
 
-               entr_rate   (i  ) = entr_rate_input*factor
+               entr_rate(i) = entr_rate(i)*factor
 
                if(ierr(i) /= 0) cycle
 
@@ -3207,18 +3209,6 @@ loop0:       do k=kts,ktf
            T_star=40.
       endif
 !
-!--- get the vertical mean of W over the cloud depth
-!
-      DO i=its,itf
-         wmean(i) = 0 
-         do k=kbcon(i),ktop(i)
-            dz=zo_cup(i,k+1)-zo_cup(i,k)
-            wmean(i) = wmean(i) + ws(i,k)*dz
-         enddo
-         dz=zo_cup(i,ktop(i)) - zo_cup(i,kbcon(i))
-         wmean(i) = wmean(i)/dz
-      ENDDO
-!
 !--- Bechtold et al 2008 time-scale of cape removal
 !
       IF(SGS_W_TIMESCALE == 0) THEN
@@ -3226,22 +3216,25 @@ loop0:       do k=kts,ktf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
             dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)= dz / 3.0 ! 3.0 is estimated wmean
-            if(trim(cumulus)=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
-            tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
-            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
-            tau_bl   (i)= dz / 3.0 ! 3.0 is estimated wmean
+            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
+            if(xland(i) > 0.99 ) then !- over water
+               umean= 2.0+sqrt(0.5*(US(i,1)**2+VS(i,1)**2+US(i,kbcon(i))**2+VS(i,kbcon(i))**2))
+               tau_bl(i) = (zo_cup(i,kbcon(i))- z1(i)) /umean
+            else !- over land
+               tau_bl(i) = dz / 3.0 ! 3.0 m/s is estimated wmean
+            endif
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
             dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)= dz / wmean(i)
+            tau_ecmwf(i)=  3600.0*(    sigma(dx(i))) + &
+                          43200.0*(1.0-sigma(dx(i))) + &
+                          (dz / vvel1d(i))
             tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
-            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
-            tau_bl   (i)= dz / wmean(i)
+            tau_bl   (i)= tau_ecmwf(i) / 2.0
          ENDDO
       ENDIF
       tau_ec_ = tau_ecmwf
@@ -5815,7 +5808,6 @@ ENDIF !- end of section for atmospheric composition
         dp,rhoc,dh,qrch,c0,dz,radius,berryc0,q1,berryc
      real :: qaver,denom,aux,cx0,qrci,step,cbf,qrc_crit_BF,min_liq,qavail
      real delt,tem1,cup
-    !real,   dimension (its:ite,kts:kte) :: qc2
 
         !--- no precip for small clouds
         if(name.eq.'shallow')  c0 = c0_shal
@@ -5833,7 +5825,6 @@ ENDIF !- end of section for atmospheric composition
           tempc   (i,k)=t_cup (i,k)
           qrc     (i,k)=0.          !--- liq/ice water
           qc      (i,k)=qe_cup(i,k) !--- total water: liq/ice = vapor water
-         !qc2     (i,k)=qe_cup(i,k) !--- total water: liq/ice = vapor water
          enddo
         enddo
 
@@ -5843,7 +5834,6 @@ ENDIF !- end of section for atmospheric composition
             call get_cloud_bc(name,kts,kte,ktf,xland(i),po(i,kts:kte),qe_cup (i,kts:kte),qaver,k22(i))
             qc  (i,kts:start_level(i)) = qaver + zqexec(i) + 0.5*x_add_buoy(i)/xlv
             qrc (i,kts:start_level(i)) = 0.
-           !qc2 (i,kts:start_level(i)) = qaver + zqexec(i) + 0.5*x_add_buoy(i)/xlv
         enddo
 
         !--- option to produce linear fluxes in the sub-cloud layer.
@@ -5885,9 +5875,6 @@ ENDIF !- end of section for atmospheric composition
                 qrc(i,k)=    qrc(i,k-1)
             endif
 
-!            qc2(i,k)= ( (1.-0.5*entr_rate_2d(i,k-1)*dz)*qc2(i,k-1)     &
-!                              + entr_rate_2d(i,k-1)*dz *q  (i,k-1) ) / &
-!                        (1.+0.5*entr_rate_2d(i,k-1)*dz)
 
             !-- updraft temp
             tempc(i,k) = (1./cp)*(hc(i,k)-g*z_cup(i,k)-xlv*QRCH)
@@ -5917,9 +5904,9 @@ ENDIF !- end of section for atmospheric composition
                 pw (i,k)=pw(i,k)*zu(i,k)
 
             ELSEIF (AUTOCONV == 2 ) then
-              ! this is identical to AUTOCONV == 1
+              ! this is similar to AUTOCONV == 1 with temperature dependence
                 min_liq  = ( xland(i)*qrc_crit_ocn + (1.-xland(i))*qrc_crit_lnd )
-                cx0     = (c1d(i,k)+c0)*DZ
+                cx0     = (c1d(i,k)+c0)*DZ*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i))
                 qrc(i,k)= clw_all(i,k)/(1.+cx0) 
                 pw (i,k)= cx0*max(0.,qrc(i,k) - min_liq)! units kg[rain]/kg[air]
                 !--- convert PW to normalized PW
@@ -5968,7 +5955,6 @@ ENDIF !- end of section for atmospheric composition
                 else
                    cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k),cnvfrc(i),srftype(i)))
                    qrc(i,k)= qrc(i,k)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
-                   qrc(i,k)= max(qrc(i,k),min_liq)
                    pw (i,k)= max(0.,clw_all(i,k)-qrc(i,k)) ! units kg[rain]/kg[air]
                    qrc(i,k)= clw_all(i,k)-pw(i,k)
                   !--- convert pw to normalized pw
