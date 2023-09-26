@@ -17,7 +17,7 @@ call read_ncfile_int2d("outputs/"//trim(latfile),"data",lats,nx,ny)
 call read_ncfile_int2d("outputs/"//trim(lonfile),"data",lons,nx,ny)
 
 
-open(30,file="outlet_file/Outlet_latlon.43200x21600",form="unformatted")
+open(30,file="Outlet_latlon.43200x21600",form="unformatted")
 
 
 do j = 1, ny
