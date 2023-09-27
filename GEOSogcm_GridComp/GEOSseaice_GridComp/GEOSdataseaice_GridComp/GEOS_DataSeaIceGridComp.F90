@@ -11,7 +11,7 @@
 
 module GEOS_DataSeaIceGridCompMod
 
-! !USES: 
+! !USES:
 
   use ESMF
   use MAPL
@@ -39,10 +39,10 @@ module GEOS_DataSeaIceGridCompMod
   logical            :: seaIceT_extData
 
 ! !DESCRIPTION:
-! 
-!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the 
-!   ocean\_bcs file 
-!   This module interpolates the sea ice fraction data from 
+!
+!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the
+!   ocean\_bcs file
+!   This module interpolates the sea ice fraction data from
 !   either daily or monthly values to the correct time of the simulation.
 !   Data are read only if the simulation time is not in the save interval.
 !
@@ -66,7 +66,7 @@ module GEOS_DataSeaIceGridCompMod
 
 !  !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -346,7 +346,7 @@ module GEOS_DataSeaIceGridCompMod
   VERIFY_(STATUS)
 
   RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -364,7 +364,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -442,12 +442,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: LATS    => null()
    real, pointer, dimension(:,:)  :: LONS    => null()
 
-   real, allocatable, dimension(:,:)  :: FRT 
+   real, allocatable, dimension(:,:)  :: FRT
    real :: f
 
    real, pointer :: DATA_ice(:,:) => null()
 ! above were for CICE Thermo
 
+   logical :: STRICT_ICE_FRACTION
+   real :: ICE_FRACTION_TOLERANCE
 
 !  Begin...
 !----------
@@ -493,7 +495,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(IMPORT, TI8   ,  'TI'   , RC=STATUS)
       VERIFY_(STATUS)
    end if
-   call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
+   call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
    VERIFY_(STATUS)
@@ -555,7 +557,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
 ! If using CICE Thermodynamics in AMIP mode, get prescribed ice thickness
-! FOR NOW, following way sets thickness to a constant value in either hemisphere- 
+! FOR NOW, following way sets thickness to a constant value in either hemisphere-
 ! And in future (>04/2016) we will explore "other" ideas. [BZ/SA/MT]
 !----------------------------------------------------------------------------------
     if (DO_CICE_THERMO /= 0) then
@@ -584,10 +586,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
        end if
 
-       if (any(FR < 0.0) .or. any(FR > 1.0)) then
-          if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          _ASSERT(.FALSE.,'needs informative message')
-       endif
+       call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.TRUE., __RC__)
+       if (STRICT_ICE_FRACTION) then
+          _ASSERT(all(FR >= 0.0), 'Error in fraci file. Negative fraction found')
+          _ASSERT(all(FR <= 1.0), 'Error in fraci file. Fraction larger than one found')
+       else
+          call MAPL_GetResource ( MAPL, ICE_FRACTION_TOLERANCE, Label="ICE_FRACTION_TOLERANCE:", DEFAULT=1.0e-2, __RC__)
+          ! First we look to see if we fail even with a tolerance
+          _ASSERT(all(FR > (0.0 - ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Negative fraction found with tolerance allowed')
+          _ASSERT(all(FR < (1.0 + ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Fraction larger than one found with tolerance allowed')
+          ! If we get past those, we can just force FR to be in the range [0,1]
+          FR = max(0.0, min(1.0, FR))
+       end if
+
      end if
    else
      if (ocean_extData) then
@@ -602,8 +613,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            f=FRT(I,J)
            if (f==MAPL_UNDEF) cycle
            if ((f < 0.0) .or. (f > 1.0)) then
-              print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-              _ASSERT(.FALSE.,'needs informative message')
+              _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
            end if
         end do
      end do
@@ -612,7 +622,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    end if ! (DO_CICE_THERMO == 0)
 
    if (DO_CICE_THERMO == 0) then
-  
+
      where (TI /= MAPL_Undef)
        TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
      end where
