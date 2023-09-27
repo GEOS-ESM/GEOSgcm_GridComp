@@ -789,7 +789,7 @@ contains
 
     ! Radiation Coupling
 
-    !$acc parallel loop gang vector collapse(3)
+    !!$acc parallel loop gang vector collapse(3)
     do L = 1, LM
        do J = 1, JM
           do I = 1, IM
@@ -803,11 +803,11 @@ contains
                   RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                   CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                   FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-             ! if (do_qa) RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+             if (do_qa) RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
           enddo
        enddo
     enddo
-    !$acc end parallel loop
+    !!$acc end parallel loop
 
     call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
     call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
