@@ -2155,6 +2155,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
               if (do_subl) then
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
                 sink = fac_i2v * max (pidep, sink, - qi (k))
+                subl1(k) = subl1(k) + pssub / dts
               else
                 sink = 0.
               endif
@@ -2192,7 +2193,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             pssub = (qsi - qv (k)) * dts * pssub
             if (pssub > 0.) then ! qs -- > qv, sublimation
                 pssub = min (fac_s2v * pssub * min (1., dim (tz (k), t_sub) * 0.2), qs (k))
-                subl1(k) = pssub / dts
+                subl1(k) = subl1(k) + pssub / dts
             else
                 if (tz (k) > tice) then
                     pssub = 0. ! no deposition
