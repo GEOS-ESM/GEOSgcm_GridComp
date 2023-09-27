@@ -54,8 +54,10 @@ program mkOverlaySimple
   logical                :: Verb
   logical                :: found
   logical                :: Merge
+  logical                :: s_flag=.false.
                          
   character*4            :: tildir, rstdir
+  character*14           :: sg
   character*1            :: Opt 
   character*128          :: arg
   character*128          :: Overlay=''
@@ -63,7 +65,7 @@ program mkOverlaySimple
   character*128          :: Grid1, Grid2
   character*128          :: TilFile, RstFile
   character*128          :: &
-      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE BOTTOMRASTER TOPRASTER"
+      Usage = "CombineRasters -v -h -z -t MT -g GF -f TYPE -s SG BOTTOMRASTER TOPRASTER"
 
   character*128          :: Iam = "CombineRasters"
   integer :: Pix1, Pix2
@@ -114,6 +116,9 @@ program mkOverlaySimple
           read(arg,*) maxtiles
        case ('g')
           Overlay = trim(arg)
+       case ('s')
+          sg = trim(arg)
+          s_flag=.true.
        case default
           print *, trim(Usage)
           call exit(1)
@@ -132,11 +137,20 @@ program mkOverlaySimple
 
     Merge = fill/=-1
 
+
     if(trim(Overlay)=='') then
        if(Merge) then
-          Overlay = trim(Grid1)//"-"//adjustl(Grid2)
+         if (s_flag) then
+           Overlay = trim(Grid1)//"-"//trim(sg)//"-"//adjustl(Grid2)
+         else
+           Overlay = trim(Grid1)//"-"//adjustl(Grid2)
+         endif
        else
-          Overlay = trim(Grid1)//"_"//adjustl(Grid2)
+         if (s_flag) then
+           Overlay = trim(Grid1)//"-"//trim(sg)//"_"//adjustl(Grid2)
+         else
+           Overlay = trim(Grid1)//"_"//adjustl(Grid2)
+         endif
        end if
     end if
 
@@ -150,15 +164,27 @@ program mkOverlaySimple
 
 ! Input files:
      
-    open (TILUNIT1,file=trim(tildir)//trim(adjustl(Grid1))//'.til', & 
-         form=  'formatted',                          status='old')
-    open (TILUNIT2,file=trim(tildir)//trim(adjustl(Grid2))//'.til', & 
-         form=  'formatted',                          status='old')
+    if (s_flag) then
+      open (TILUNIT1,file=trim(tildir)//trim(adjustl(Grid1))//"-"//trim(sg)//'.til', & 
+           form=  'formatted',                          status='old')
+      open (TILUNIT2,file=trim(tildir)//trim(adjustl(Grid2))//'.til', & 
+           form=  'formatted',                          status='old')
 
-    open (RSTUNIT1,file=trim(rstdir)//trim(adjustl(Grid1))//'.rst', & 
-         form=  'unformatted', convert='little_endian',  status='old')
-    open (RSTUNIT2,file=trim(rstdir)//trim(adjustl(Grid2))//'.rst', & 
-         form=  'unformatted', convert='little_endian',  status='old')
+      open (RSTUNIT1,file=trim(rstdir)//trim(adjustl(Grid1))//"-"//trim(sg)//'.rst', & 
+           form=  'unformatted', convert='little_endian',  status='old')
+      open (RSTUNIT2,file=trim(rstdir)//trim(adjustl(Grid2))//'.rst', & 
+           form=  'unformatted', convert='little_endian',  status='old')
+    else
+      open (TILUNIT1,file=trim(tildir)//trim(adjustl(Grid1))//'.til', & 
+           form=  'formatted',                          status='old')
+      open (TILUNIT2,file=trim(tildir)//trim(adjustl(Grid2))//'.til', & 
+           form=  'formatted',                          status='old')
+
+      open (RSTUNIT1,file=trim(rstdir)//trim(adjustl(Grid1))//'.rst', & 
+           form=  'unformatted', convert='little_endian',  status='old')
+      open (RSTUNIT2,file=trim(rstdir)//trim(adjustl(Grid2))//'.rst', & 
+           form=  'unformatted', convert='little_endian',  status='old')
+    endif
 
     call system_clock(count0,count_rate)
 

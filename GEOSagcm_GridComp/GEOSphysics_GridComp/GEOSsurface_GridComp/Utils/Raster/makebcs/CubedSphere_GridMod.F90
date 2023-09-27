@@ -10,6 +10,12 @@ use MAPL_ConstantsMod
 
   public Get_CubedSphere_Grid
   private
+  type stretch
+     real(r8) :: target_lon
+     real(r8) :: target_lat
+     real(r8) :: stretch_factor
+  end type stretch
+  public stretch
 
 #ifdef EIGHT_BYTE
  integer, parameter:: f_p = 8!selected_real_kind(15)   ! same as 12 on Altix
@@ -21,11 +27,12 @@ use MAPL_ConstantsMod
 contains
 !!!!!!!!!!!!!!!%%%%%%%%%%%%%%%%%%%%%%%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
- subroutine Get_CubedSphere_Grid(npx, npy, xlocs, ylocs, grid_type, shift_west)
+ subroutine Get_CubedSphere_Grid(npx, npy, xlocs, ylocs, grid_type, shift_west, stg)
  integer, intent(in)   :: npx, npy
  real(r8), intent(out) :: xlocs(npx,npy), ylocs(npx,npy)
  integer, intent(in)   :: grid_type
  logical, optional, intent(in) :: shift_west
+ type(stretch), optional :: stg	
 
 ! ErrLog variables
 !-----------------
@@ -50,8 +57,10 @@ contains
   real(r8), pointer     :: lons(:,:)
   real(r8), pointer     :: lats(:,:)
   real(r8)              :: alocs(2)
+  real(r8)              :: target_lon,target_lat
 
   logical doShiftWest
+  logical :: do_schmidt	
 
  isg = 1
  ieg = npx
@@ -83,6 +92,23 @@ contains
 ! Cell Vertices
   doShiftWest = .false.
   if (present(shift_west)) doShiftWest = shift_west
+    if (present(stg)) then
+     do_schmidt = .true.
+  end if
+   !------------------------
+   ! Schmidt transformation:
+   !------------------------
+    if ( do_schmidt ) then
+       doShiftWest = .false.
+       target_lon = stg%target_lon*PI/180._8
+       target_lat = stg%target_lat*PI/180._8
+       do n=1,ntiles
+          call direct_transform(stg%stretch_factor, 1, npts, 1, npts, &
+               target_lon, target_lat, &
+               n, grid_global(1:npts,1:npts,1,n), &
+               grid_global(1:npts,1:npts,2,n))
+       enddo
+    endif
 
   if (doShiftWest) then 
     do myTile=1,ntiles
@@ -694,5 +720,63 @@ subroutine gnomonic_angl(im, lamda, theta)
       e(3) = p1(1)*p2(2) - p1(2)*p2(1)
         
  end subroutine vect_cross
+
+!! The subroutine 'direct_transform' performs a direct transformation of the 
+!! standard (symmetrical) cubic grid to a locally enhanced high-res grid on the sphere.
+!! It is an application of the Schmidt transformation at the south pole 
+!! followed by a pole_shift_to_target (rotation) operation, ( May 2023 A.Trayanov) 
+  subroutine direct_transform(c, i1, i2, j1, j2, lon_p, lat_p, n, lon, lat)
+    real(r8),    intent(in):: c              !< Stretching factor
+    real(r8),    intent(in):: lon_p, lat_p   !< center location of the target face, radian
+    integer, intent(in):: n              !< grid face number
+    integer, intent(in):: i1, i2, j1, j2
+!  0 <= lon <= 2*pi ;    -pi/2 <= lat <= pi/2
+    real(r8), intent(inout), dimension(i1:i2,j1:j2):: lon, lat
+!
+    real(f_p):: lat_t, sin_p, cos_p, sin_lat, cos_lat, sin_o, p2, two_pi
+    real(f_p):: c2p1, c2m1
+    integer:: i, j
+
+    p2 = 0.5d0*pi
+    two_pi = 2.d0*pi
+
+    if( n==1 ) then
+        write(*,*) n, 'DEBUG::Schmidt transformation: stretching factor=', c, ' center=', lon_p, lat_p
+    endif
+
+    c2p1 = 1.d0 + c*c
+    c2m1 = 1.d0 - c*c
+
+    sin_p = sin(lat_p)
+    cos_p = cos(lat_p)
+
+    do j=j1,j2
+       do i=i1,i2
+          if ( abs(c2m1) > 1.d-7 ) then
+               sin_lat = sin(lat(i,j))
+               lat_t = asin( (c2m1+c2p1*sin_lat)/(c2p1+c2m1*sin_lat) )
+          else         ! no stretching
+               lat_t = lat(i,j)
+          endif
+          sin_lat = sin(lat_t)
+          cos_lat = cos(lat_t)
+            sin_o = -(sin_p*sin_lat + cos_p*cos_lat*cos(lon(i,j)))
+          if ( (1.-abs(sin_o)) < 1.d-7 ) then    ! poles
+               lon(i,j) = 0.d0
+               lat(i,j) = sign( p2, sin_o )
+          else
+               lat(i,j) = asin( sin_o )
+               lon(i,j) = lon_p + atan2( -cos_lat*sin(lon(i,j)),   &
+                          -sin_lat*cos_p+cos_lat*sin_p*cos(lon(i,j)))
+               if ( lon(i,j) < 0.d0 ) then
+                    lon(i,j) = lon(i,j) + two_pi
+               elseif( lon(i,j) >= two_pi ) then
+                    lon(i,j) = lon(i,j) - two_pi
+               endif
+          endif
+       enddo
+    enddo
+
+  end subroutine direct_transform
 
 end module CubedSphere_GridMod

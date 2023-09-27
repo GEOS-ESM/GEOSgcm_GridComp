@@ -75,9 +75,9 @@ def main():
          make_bcs_ease(config)    
       if 'Lat-Lon' in config['grid_type']:
          make_bcs_latlon(config)    
-      if 'Cubed-Sphere' in config['grid_type']:
+      if 'Cubed-Sphere' in config['grid_type'] or 'Stretched_CS' in config['grid_type']:
          make_bcs_cube(config)    
-  
+
 if __name__ == '__main__' :
   #exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
   main()
