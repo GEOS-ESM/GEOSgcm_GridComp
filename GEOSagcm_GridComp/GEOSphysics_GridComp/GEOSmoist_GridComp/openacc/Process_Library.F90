@@ -459,6 +459,7 @@ contains
   end subroutine SUBL3
 
   function LDRADIUS4(PL,TE,QC,NNL,NNI,ITYPE) RESULT(RADIUS)
+    !$acc routine seq
 
     REAL   , INTENT(IN) :: TE,PL,QC
     REAL   , INTENT(IN) :: NNL,NNI ! #/m^3
@@ -479,7 +480,8 @@ contains
        NNX = max(NNL*1.e-6, 10.0)
        !- radius in meters
        !- [liu&daum, 2000 and 2005. liu et al 2008]
-       RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+       ! RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe)) ! OFFENDING line
+       RADIUS = min(60.e-6, max(2.5e-6, 1.e-6*Lbx*(WC/NNX)))
 
     ELSEIF(ITYPE == ICE) THEN
 
@@ -494,14 +496,17 @@ contains
        if(TE>MAPL_TICE .or. QC <=0.) then
           BB = -2.
        else
-          BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+          ! BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5) ! OFFENDING line
+          BB = -2. + log10(WC/50.)*(1.e-3*sqrt(MAPL_TICE-TE)**3)
        endif
        BB     = MIN((MAX(BB,-6.)),-2.)
        RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
        RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
 
     ELSE
+
        STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
+
     ENDIF
 
   end function LDRADIUS4
