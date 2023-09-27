@@ -892,6 +892,7 @@ contains
        QLA,&
        QIA,&
        AF  )
+    !$acc routine seq
 
     real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA
 
