@@ -809,6 +809,7 @@ contains
        RAD_RI,          & 
        FAC_RL, MIN_RL, MAX_RL, &
        FAC_RI, MIN_RI, MAX_RI)
+    !$acc routine seq
 
     real, intent(in ) :: TE
     real, intent(in ) :: PL
