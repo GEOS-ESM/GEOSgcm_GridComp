@@ -75,8 +75,6 @@ module Process_Library_standalone
     MSEp  = 0.
     Qp    = 0.
     !$acc end kernels
-    ! !$acc update host(Tve)
-    ! print*,'sum(Tve) = ', sum(Tve)
 
     ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
@@ -89,12 +87,6 @@ module Process_Library_standalone
         !$acc parallel
         !$acc loop seq
         do L = LM,1,-1
-            ! where (PS-PLO(:,:,L).lt.90.) 
-            !     MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L) 
-            !     Qp   = Qp   + Q(:,:,L)*DZ(:,:,L)
-            !     tmp1 = tmp1 + DZ(:,:,L)
-            !     Lev0 = L
-            ! end where
             !$acc loop gang vector collapse(2)
             do J = 1,JM
                 do I = 1,IM
@@ -110,19 +102,13 @@ module Process_Library_standalone
         end do
         !$acc end parallel
 
-        ! !$acc update host(MSEp, Qp)
-        ! print*,'sum(MSEp) = ', sum(MSEp)
-        ! print*,'sum(Qp) = ', sum(Qp)
-
         !$acc kernels
         where (tmp1.gt.0.)   ! average
             MSEp = MSEp / tmp1
             Qp = Qp / tmp1
         end where
         !$acc end kernels
-        ! !$acc update host(MSEp, Qp)
-        ! print*,'sum(MSEp) = ', sum(MSEp)
-        ! print*,'sum(Qp) = ', sum(Qp)
+
         call RETURN_CAPE_CIN_v2(ZLO, PLO, DZ,      & 
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, 0)
@@ -133,14 +119,6 @@ module Process_Library_standalone
         end where
        !$acc end kernels
 
-        !!$acc update host(MSEp, Qp, BYNCY, MLCAPE, MLCIN, LFC, LNB)
-        ! print*,'sum(MSEp) = ', sum(MSEp)
-        ! print*,'sum(Qp) = ', sum(Qp)
-        ! print*,'sum(BYNCY) = ', sum(BYNCY)
-        ! print*,'sum(MLCAPE) = ', sum(MLCAPE)
-        ! print*,'sum(MLCIN) = ', sum(MLCIN)
-        ! print*,'sum(LFC) = ', sum(LFC)
-        ! print*,'sum(LNB) = ', sum(LNB)
     end if
 
     ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
@@ -155,10 +133,6 @@ module Process_Library_standalone
 
         call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, tmp1, tmp2, BYNCY, LFC, LNB, &
                                    Lev0, PS, T, Q, 1, MUCAPE=MUCAPE, MUCIN=MUCIN)
-
-        ! !$acc update host(MUCAPE, MUCIN)
-        ! print*,'sum(MUCAPE) = ', sum(MUCAPE)
-        ! print*,'sum(MUCIN) = ', sum(MUCIN)
 
         !$acc kernels
         where (MUCAPE.le.0.)
@@ -180,35 +154,22 @@ module Process_Library_standalone
     ! enddo
     !$acc end kernels                                            ! parcel specific humidity
 
-    ! !$acc update host(MSEp, Qp)
-    ! print*,'sum(MSEp) = ', sum(MSEp)
-    ! print*,'sum(Qp) = ', sum(Qp)
-
     call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, SBCAPE, SBCIN, BYNCY, LFC, LNB, &
                              Lev0, PS, T, Q, 2)
-
-    ! !$acc update host(MSEp, Qp, SBCAPE, SBCIN, LFC, LNB, BYNCY)
-    ! print*,'sum(MSEp) = ', sum(MSEp)
-    ! print*,'sum(Qp) = ', sum(Qp)
-    ! print*,'sum(SBCAPE) = ', sum(SBCAPE)
-    ! print*,'sum(SBCIN) = ', sum(SBCIN)
-    ! print*,'sum(LFC) = ', sum(LFC)
-    ! print*,'sum(LNB) = ', sum(LNB)
-    ! print*,'sum(BYNCY) = ', sum(BYNCY)
     
     !$acc kernels
-    where (SBCAPE.le.0.)
-        SBCAPE = MAPL_UNDEF
-        SBCIN  = MAPL_UNDEF
-    end where
-    ! do J = 1,JM
-    !     do I = 1, IM
-    !         if(SBCAPE(I,J).le.0.) then
-    !             SBCAPE(I,J) = mapl_undef
-    !             SBCIN (I,J) = mapl_undef
-    !         endif
-    !     enddo
-    ! enddo
+    ! where (SBCAPE.le.0.)
+    !     SBCAPE = MAPL_UNDEF
+    !     SBCIN  = MAPL_UNDEF
+    ! end where
+    do J = 1,JM
+        do I = 1, IM
+            if(SBCAPE(I,J).le.0.) then
+                SBCAPE(I,J) = mapl_undef
+                SBCIN (I,J) = mapl_undef
+            endif
+        enddo
+    enddo
     !$acc end kernels
 !$acc end data
     end subroutine BUOYANCY2
@@ -327,9 +288,13 @@ module Process_Library_standalone
         JM = size(ZLO,2)
 
         if((ctype == 0) .or. (ctype == 2)) then
+            !$acc kernels
+            BYNCY = 0.0
+            !$acc end kernels
+
             !$acc parallel loop gang vector collapse(2) &
             !$acc          private(LM, aboveLNB, aboveLFC, Qpnew, &
-            !$acc                  Tp, Tlcl, aboveLCL, dq, KLNB, KLFC,L)
+            !$acc                  Tp, Tlcl, aboveLCL, KLNB, KLFC,L)
             do J = 1,JM
                 do I = 1, IM
 
@@ -346,7 +311,7 @@ module Process_Library_standalone
                     
                     CAPE(I,J) = 0.
                     CIN(I,J)  = 0.
-                    BYNCY(I,J, 1:LM) = 0.
+                    ! BYNCY(I,J, 1:LM) = 0.
                     LFC(I,J) = MAPL_UNDEF
                     LNB(I,J) = MAPL_UNDEF
                 
@@ -368,7 +333,6 @@ module Process_Library_standalone
                             Tp = Tp - gravbcp*( ZLO(I,J,L)-ZLO(I,J,L+1) ) / ( 1.+alhlbcp*DQS(I,J,L) )     ! initial guess including condensation
                             !$acc loop seq
                             DO II = 1,10                                                       ! iterate until Qp=qsat(Tp)
-                                ! print*,I, J, L, II, dq
                                 dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
                                 if (abs(dq*alhlbcp)<0.01) then
                                     exit
@@ -428,7 +392,6 @@ module Process_Library_standalone
                 enddo
             enddo
             !$acc end parallel loop
-            !!$acc end serial loop
         else
             LM = size(Tve,3)
             !$acc parallel loop seq
@@ -534,12 +497,8 @@ module Process_Library_standalone
                     enddo
                 enddo
             enddo
-            !!$acc end serial loop
+            !$acc end parallel loop
         endif
-    
-        ! !$acc update host(CIN, CAPE)
-        ! print*,'sum(CIN) = ', sum(CIN)
-        ! print*,'sum(CAPE) = ', sum(CAPE)
 
     end subroutine RETURN_CAPE_CIN_v2
 
