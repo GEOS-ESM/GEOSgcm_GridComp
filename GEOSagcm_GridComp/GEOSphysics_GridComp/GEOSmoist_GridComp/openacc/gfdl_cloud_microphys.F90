@@ -4056,7 +4056,6 @@ contains
   subroutine qs_tablew (n)
 
     implicit none
-    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4089,7 +4088,6 @@ contains
   subroutine qs_table2 (n)
 
     implicit none
-    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4140,7 +4138,6 @@ contains
   subroutine qs_table3 (n)
 
     implicit none
-    !$acc routine seq
 
     integer, intent (in) :: n
 
@@ -4229,7 +4226,6 @@ contains
   subroutine qs_table (n)
 
     implicit none
-    !$acc routine seq
 
     integer, intent (in) :: n
 
