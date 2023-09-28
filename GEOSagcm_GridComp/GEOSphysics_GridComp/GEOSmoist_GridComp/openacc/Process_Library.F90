@@ -236,6 +236,7 @@ contains
   end function ICE_FRACTION_1D
 
   function ICE_FRACTION_SC (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+    !$acc routine seq
     real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
     real             :: ICEFRCT
     real             :: tc, ptc
