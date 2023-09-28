@@ -2705,6 +2705,7 @@ contains
   subroutine check_column (ktop, kbot, q, no_fall)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
