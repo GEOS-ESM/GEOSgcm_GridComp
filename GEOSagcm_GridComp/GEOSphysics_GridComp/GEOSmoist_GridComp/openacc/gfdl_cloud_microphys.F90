@@ -341,7 +341,8 @@ module gfdl2_cloud_microphys_mod
   !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
   !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
   !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
-  !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, const_vi, &
+  !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
+  !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, &
 
   !$acc     ces0, cracs, cracw, cssub, &
   !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
@@ -456,7 +457,8 @@ contains
     !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
     !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
     !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
-    !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, const_vi)
+    !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
+    !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max)
 
     ! tendency zero out for am moist processes should be done outside the driver
 
@@ -3136,7 +3138,7 @@ contains
        den, qs, qi, qg, ql, tk, vts, vti, vtg)
 
     implicit none
-    !!$acc routine seq
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
