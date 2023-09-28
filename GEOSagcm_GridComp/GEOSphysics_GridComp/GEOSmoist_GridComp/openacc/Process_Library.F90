@@ -480,8 +480,8 @@ contains
        NNX = max(NNL*1.e-6, 10.0)
        !- radius in meters
        !- [liu&daum, 2000 and 2005. liu et al 2008]
-       ! RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe)) ! OFFENDING line
-       RADIUS = min(60.e-6, max(2.5e-6, 1.e-6*Lbx*(WC/NNX)))
+       RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe)) ! OFFENDING line
+       ! RADIUS = min(60.e-6, max(2.5e-6, 1.e-6*Lbx*(WC/NNX)))
 
     ELSEIF(ITYPE == ICE) THEN
 
