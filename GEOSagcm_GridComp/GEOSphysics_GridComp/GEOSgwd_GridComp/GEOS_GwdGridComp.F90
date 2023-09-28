@@ -841,7 +841,7 @@ contains
       if(dateline.eq.'CF') imsize = imsize*4
       call MAPL_GetResource(MAPL,STRETCH_FACTOR,'AGCM.STRETCH_FACTOR:', default=1.0, _RC)
       imsize = imsize*CEILING(STRETCH_FACTOR)
-      sigma = 1.0-0.9900*exp(-0.12500*4.e7*0.9/imsize/3000.) ! Modified from Arakawa 2011 sigma used in GF2020
+      sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
 
 ! Gravity wave drag
 ! -----------------
@@ -886,9 +886,9 @@ contains
 ! -----------------
       call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - (1.0-0.125)*sigma
+                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = ceiling(50.0*sigma)
+                                   NCAR_HR_CF = CEILING(5.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
