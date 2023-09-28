@@ -55,11 +55,7 @@ module gfdl2_cloud_microphys_mod
 
   private
 
-  public gfdl_cloud_microphys_driver, gfdl_cloud_microphys_init, gfdl_cloud_microphys_end
-  public wqs1, wqs2, qs_blend, wqsat_moist, wqsat2_moist
-  public qsmith_init, qsmith, es2_table1d, es3_table1d, esw_table1d
-  public setup_con, wet_bulb
-  public cloud_diagnosis
+  public gfdl_cloud_microphys_driver, gfdl_cloud_microphys_init
 
   real :: missing_value = - 1.e10
 
@@ -127,6 +123,8 @@ module gfdl2_cloud_microphys_mod
 
   real, parameter :: rc = (4. / 3.) * pi * rhor
 
+  integer, parameter :: TABLE_LENGTH = 2621
+
   real :: cracs, csacr, cgacr, cgacs, csacw, craci, csaci, cgacw, cgaci, cracw !< constants for accretions
   real :: acco (3, 4) !< constants for accretions
   real :: cssub (5), cgsub (5), crevp (5), cgfr (2), csmlt (5), cgmlt (5)
@@ -159,8 +157,8 @@ module gfdl2_cloud_microphys_mod
   logical :: do_setup = .true. !< setup constants and parameters
   logical :: p_nonhydro = .false. !< perform hydrosatic adjustment on air density
 
-  real, allocatable :: table (:), table2 (:), table3 (:), tablew (:)
-  real, allocatable :: des (:), des2 (:), des3 (:), desw (:)
+  real, dimension(TABLE_LENGTH) :: table, table2, table3, tablew
+  real, dimension(TABLE_LENGTH) :: des, des2, des3, desw
 
   logical :: tables_are_initialized = .false.
 
@@ -192,7 +190,7 @@ module gfdl2_cloud_microphys_mod
 
   real :: log_10 = log (10.)
   real :: tice0 = 273.16 - 0.01
-  real :: t_wfr = 273.16 - 40.0 ! supercooled water can exist down to - 40 c, which is the "absolute"
+  real, parameter :: t_wfr = 273.16 - 40.0 ! supercooled water can exist down to - 40 c, which is the "absolute"
 
   real :: t_min = 178. !< min temp to freeze - dry all water vapor
   real :: t_sub = 184. !< min temp for sublimation of cloud ice
@@ -335,11 +333,9 @@ module gfdl2_cloud_microphys_mod
        do_sedi_heat, sedi_transport, do_sedi_w, dt_fr, de_ice, icloud_f, irain_f, mp_print
 
   !$acc declare create( &
-  !$acc     do_qa, rthreshs, rthreshu, irain_f, z_slope_liq, const_vr, vr_fac, &
-  !$acc     do_sedi_w, use_ppm, mono_prof, do_sedi_heat, t_wfr, ql0_max, dt_fr, &
-  !$acc     vr_max, tau_revp, d0_vap, lv00, c_vap, c_air, crevp, cracw, &
-  !$acc     tables_are_initialized, table, table2, table3, tablew, des, des2, &
-  !$acc     des3, desw)
+  !$acc     tables_are_initialized, &
+  !$acc     des, des2, des3, desw, table, table2, table3, tablew, &
+  !$acc     tau_revp, d0_vap, lv00, crevp, c_vap, c_air, cracw)
 
 contains
 
@@ -429,6 +425,7 @@ contains
     endif
     d0_vap = c_vap - c_liq
     lv00 = hlv0 - d0_vap * t_ice
+    !$acc update device (tau_revp, d0_vap, lv00, c_vap, c_air)
 
     if (hydrostatic) do_sedi_w = .false.
 
@@ -3345,6 +3342,7 @@ contains
     crevp (4) = cssub (4)
     cgsub (5) = cssub (5)
     crevp (5) = hltc ** 2 * vdifu
+    !$acc update device(cracw, crevp(:))
 
     cgfr (1) = 20.e2 * pisq * rnzr * rhor / act (2) ** 1.75
     cgfr (2) = 0.66
@@ -3491,29 +3489,6 @@ contains
   end subroutine gfdl_cloud_microphys_init
 
   ! =======================================================================
-  ! end of gfdl cloud microphysics
-  !>@brief The subroutine 'gfdl_cloud_microphys_init' terminates the GFDL
-  !! cloud microphysics.
-  ! =======================================================================
-
-  subroutine gfdl_cloud_microphys_end
-
-    implicit none
-
-    deallocate (table)
-    deallocate (table2)
-    deallocate (table3)
-    deallocate (tablew)
-    deallocate (des)
-    deallocate (des2)
-    deallocate (des3)
-    deallocate (desw)
-
-    tables_are_initialized = .false.
-
-  end subroutine gfdl_cloud_microphys_end
-
-  ! =======================================================================
   ! qsmith table initialization
   !>@brief The subroutine 'setup_con' sets up constants and calls 'qsmith_init'.
   ! =======================================================================
@@ -3610,9 +3585,8 @@ contains
   subroutine qsmith_init
 
     implicit none
-    !$acc routine seq
 
-    integer, parameter :: length = 2621
+    integer, parameter :: length = TABLE_LENGTH
 
     integer :: i
 
@@ -3628,15 +3602,6 @@ contains
        ! end debug code
 
        ! generate es table (dt = 0.1 deg. c)
-
-       allocate (table (length))
-       allocate (table2 (length))
-       allocate (table3 (length))
-       allocate (tablew (length))
-       allocate (des (length))
-       allocate (des2 (length))
-       allocate (des3 (length))
-       allocate (desw (length))
 
        call qs_table (length)
        call qs_table2 (length)
@@ -3655,6 +3620,10 @@ contains
        desw (length) = desw (length - 1)
 
        tables_are_initialized = .true.
+
+       !$acc update device(tables_are_initialized)
+       !$acc update device(des(:), des2(:), des3(:), desw(:))
+       !$acc update device(table, table2, table3, tablew)
 
     endif
 
@@ -3712,8 +3681,6 @@ contains
     integer :: it
 
     tmin = table_ice - 160.
-
-    if (.not. tables_are_initialized) call qsmith_init
 
     ap1 = 10. * dim (ta, tmin) + 1.
     ap1 = min (2621., ap1)
@@ -4320,62 +4287,6 @@ contains
     enddo
 
   end subroutine qs_table
-
-  ! =======================================================================
-  ! compute the saturated specific humidity and the gradient of saturated specific humidity
-  ! input t in deg k, p in pa; p = rho rdry tv, moist pressure
-  !>@brief The function 'qsmith' computes the saturated specific humidity
-  !! with a blend of water and ice depending on the temperature in 3D.
-  !@details It als oincludes the option for computing des/dT.
-  ! =======================================================================
-
-  subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
-
-    implicit none
-
-    integer, intent (in) :: im, km, ks
-
-    real, intent (in), dimension (im, km) :: t, p, q
-
-    real, intent (out), dimension (im, km) :: qs
-
-    real, intent (out), dimension (im, km), optional :: dqdt
-
-    real :: eps10, ap1, tmin
-
-    real, dimension (im, km) :: es
-
-    integer :: i, k, it
-
-    tmin = table_ice - 160.
-    eps10 = 10. * eps
-
-    if (.not. tables_are_initialized) then
-       call qsmith_init
-    endif
-
-    do k = ks, km
-       do i = 1, im
-          ap1 = 10. * dim (t (i, k), tmin) + 1.
-          ap1 = min (2621., ap1)
-          it = ap1
-          es (i, k) = table (it) + (ap1 - it) * des (it)
-          qs (i, k) = eps * es (i, k) * (1. + zvir * q (i, k)) / p (i, k)
-       enddo
-    enddo
-
-    if (present (dqdt)) then
-       do k = ks, km
-          do i = 1, im
-             ap1 = 10. * dim (t (i, k), tmin) + 1.
-             ap1 = min (2621., ap1) - 0.5
-             it = ap1
-             dqdt (i, k) = eps10 * (des (it) + (ap1 - it) * (des (it + 1) - des (it))) * (1. + zvir * q (i, k)) / p (i, k)
-          enddo
-       enddo
-    endif
-
-  end subroutine qsmith
 
   ! =======================================================================
   !>@brief The subroutine 'neg_adj' fixes negative water species.
