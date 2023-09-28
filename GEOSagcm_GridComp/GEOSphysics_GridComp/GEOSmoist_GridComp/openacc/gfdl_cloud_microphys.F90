@@ -2735,6 +2735,7 @@ contains
   subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
 
     implicit none
+    !$acc routine vector
 
     integer, intent (in) :: ktop, kbot
 
@@ -2750,13 +2751,12 @@ contains
 
     real, intent (out) :: precip
 
-    real, dimension (ktop:kbot) :: dz, qm, dd
+    real, dimension (ktop:kbot) :: qm
 
     integer :: k
 
+    !$acc loop vector
     do k = ktop, kbot
-       dz (k) = ze (k) - ze (k + 1)
-       dd (k) = dt * vt (k)
        q (k) = q (k) * dp (k)
     enddo
 
@@ -2764,17 +2764,19 @@ contains
     ! sedimentation: non - vectorizable loop
     ! -----------------------------------------------------------------------
 
-    qm (ktop) = q (ktop) / (dz (ktop) + dd (ktop))
+    qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
+    !$acc loop seq
     do k = ktop + 1, kbot
-       qm (k) = (q (k) + dd (k - 1) * qm (k - 1)) / (dz (k) + dd (k))
+       qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ( (ze (k) - ze (k + 1)) + (dt * vt (k)))
     enddo
 
     ! -----------------------------------------------------------------------
     ! qm is density at this stage
     ! -----------------------------------------------------------------------
 
+    !$acc loop vector
     do k = ktop, kbot
-       qm (k) = qm (k) * dz (k)
+       qm (k) = qm (k) * (ze (k) - ze (k + 1))
     enddo
 
     ! -----------------------------------------------------------------------
@@ -2782,6 +2784,7 @@ contains
     ! -----------------------------------------------------------------------
 
     m1 (ktop) = q (ktop) - qm (ktop)
+    !$acc loop seq
     do k = ktop + 1, kbot
        m1 (k) = m1 (k - 1) + q (k) - qm (k)
     enddo
@@ -2791,6 +2794,7 @@ contains
     ! update:
     ! -----------------------------------------------------------------------
 
+    !$acc loop vector
     do k = ktop, kbot
        q (k) = qm (k) / dp (k)
     enddo
