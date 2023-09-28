@@ -844,8 +844,15 @@ contains
           ! sedimentation of cloud ice, snow, and graupel
           ! -----------------------------------------------------------------------
 
-          call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
-               den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
+          do k = ktop, kbot
+             call fall_speed( &
+                  ktop, kbot, &
+                  p1(k), cnv_fraction(i), anv_icefall, lsc_icefall, &
+                  den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k) &
+                  )
+          end do
+          ! call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
+          !      den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
 
           call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
@@ -3129,12 +3136,13 @@ contains
        den, qs, qi, qg, ql, tk, vts, vti, vtg)
 
     implicit none
+    !!$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
     real, intent (in) :: cnv_fraction, anv_icefall, lsc_icefall
-    real, intent (in), dimension (ktop:kbot) :: pl, den, qs, qi, qg, ql, tk
-    real, intent (out), dimension (ktop:kbot) :: vts, vti, vtg
+    real, intent (in) :: pl, den, qs, qi, qg, ql, tk
+    real, intent (out) :: vts, vti, vtg
 
     ! fall velocity constants:
 
@@ -3161,7 +3169,7 @@ contains
     real, parameter :: norms = 942477796.076938
     real, parameter :: normg = 5026548245.74367
 
-    real, dimension (ktop:kbot) :: qden, tc, rhof
+    real :: tc, rhof
 
     real :: vi1, viCNV, viLSC, IWC
     real :: rBB, C0, C1, DIAM, lnP
@@ -3176,58 +3184,54 @@ contains
     ! much smaller than sfcrho over high mountains
     ! -----------------------------------------------------------------------
 
-    do k = ktop, kbot
-       rhof (k) = sqrt (min (10., sfcrho / den (k)))
-    enddo
+    rhof = sqrt (min (10., sfcrho / den))
 
     ! -----------------------------------------------------------------------
     ! ice:
     ! -----------------------------------------------------------------------
 
     if (const_vi) then
-       vti (:) = vi_fac
+       vti = vi_fac
     else
        vi1 = 0.01 * vi_fac
-       do k = ktop, kbot
-          if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
-             vti (k) = vf_min
-          else
-             tc (k) = tk (k) - tice ! deg C
-             IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
-             ! -----------------------------------------------------------------------
-             ! use deng and mace (2008, grl)
-             ! https://doi.org/10.1029/2008GL035054
-             ! -----------------------------------------------------------------------
-             viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-             viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-             ! -----------------------------------------------------------------------
-             ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
-             !                               ice clouds: Results from SPartICus'
-             ! -----------------------------------------------------------------------
-             !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
-             !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
-             ! Combine
-             vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-             ! Update units from cm/s to m/s
-             vti (k) = vi1 * vti (k)
-             ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-             !------ice cloud effective radius ----- [klaus wyser, 1998]
-             !if(tk(k)>t_ice) then
-             !   rBB  = -2.
-             !else
-             !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
-             !endif
-             !rBB   = MIN((MAX(rBB,-6.)),-2.)
-             !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-             !lnP   = log(pl(k)/100.0)
-             !C0    = -1.04 + 0.298*lnP
-             !C1    =  0.67 - 0.097*lnP
-             ! apply pressure scaling
-             !vti (k) = vti (k) * (C0 + C1*log(DIAM))
-             ! Limits
-             vti (k) = min (vi_max, max (vf_min, vti (k)))
-          endif
-       enddo
+       if (qi < thi) then ! this is needed as the fall - speed maybe problematic for small qi
+          vti = vf_min
+       else
+          tc = tk - tice ! deg C
+          IWC = qi * den * 1.e3 ! Units are g/m3
+          ! -----------------------------------------------------------------------
+          ! use deng and mace (2008, grl)
+          ! https://doi.org/10.1029/2008GL035054
+          ! -----------------------------------------------------------------------
+          viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
+          viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
+          ! -----------------------------------------------------------------------
+          ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
+          !                               ice clouds: Results from SPartICus'
+          ! -----------------------------------------------------------------------
+          !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+          !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
+          ! Combine
+          vti = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+          ! Update units from cm/s to m/s
+          vti = vi1 * vti
+          ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+          !------ice cloud effective radius ----- [klaus wyser, 1998]
+          !if(tk(k)>t_ice) then
+          !   rBB  = -2.
+          !else
+          !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
+          !endif
+          !rBB   = MIN((MAX(rBB,-6.)),-2.)
+          !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+          !lnP   = log(pl(k)/100.0)
+          !C0    = -1.04 + 0.298*lnP
+          !C1    =  0.67 - 0.097*lnP
+          ! apply pressure scaling
+          !vti = vti * (C0 + C1*log(DIAM))
+          ! Limits
+          vti = min (vi_max, max (vf_min, vti))
+       endif
     endif
 
     ! -----------------------------------------------------------------------
@@ -3235,16 +3239,14 @@ contains
     ! -----------------------------------------------------------------------
 
     if (const_vs) then
-       vts (:) = vs_fac ! 1. ifs_2016
+       vts = vs_fac ! 1. ifs_2016
     else
-       do k = ktop, kbot
-          if (qs (k) < ths) then
-             vts (k) = vf_min
-          else
-             vts (k) = vs_fac * vcons * rhof (k) * exp (0.0625 * log (qs (k) * den (k) / norms))
-             vts (k) = min (vs_max, max (vf_min, vts (k)))
-          endif
-       enddo
+       if (qs < ths) then
+          vts = vf_min
+       else
+          vts = vs_fac * vcons * rhof * exp (0.0625 * log (qs * den / norms))
+          vts = min (vs_max, max (vf_min, vts))
+       endif
     endif
 
     ! -----------------------------------------------------------------------
@@ -3252,16 +3254,14 @@ contains
     ! -----------------------------------------------------------------------
 
     if (const_vg) then
-       vtg (:) = vg_fac ! 2.
+       vtg = vg_fac ! 2.
     else
-       do k = ktop, kbot
-          if (qg (k) < thg) then
-             vtg (k) = vf_min
-          else
-             vtg (k) = vg_fac * vcong * rhof (k) * sqrt (sqrt (sqrt (qg (k) * den (k) / normg)))
-             vtg (k) = min (vg_max, max (vf_min, vtg (k)))
-          endif
-       enddo
+       if (qg < thg) then
+          vtg = vf_min
+       else
+          vtg = vg_fac * vcong * rhof * sqrt (sqrt (sqrt (qg * den / normg)))
+          vtg = min (vg_max, max (vf_min, vtg))
+       endif
     endif
 
   end subroutine fall_speed
