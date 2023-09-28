@@ -1379,6 +1379,7 @@ contains
   subroutine linear_prof (km, q, dm, z_var, h_var)
 
     implicit none
+    !$acc routine vector
 
     integer, intent (in) :: km
 
@@ -1388,25 +1389,24 @@ contains
 
     logical, intent (in) :: z_var
 
-    real :: dq (km)
+    real :: dq, dq_p1
 
     integer :: k
 
     if (z_var) then
-       do k = 2, km
-          dq (k) = 0.5 * (q (k) - q (k - 1))
-       enddo
        dm (1) = 0.
 
        ! -----------------------------------------------------------------------
        ! use twice the strength of the positive definiteness limiter (lin et al 1994)
        ! -----------------------------------------------------------------------
-
+       !$acc loop vector private(dq, dq_p1)
        do k = 2, km - 1
-          dm (k) = 0.5 * min (abs (dq (k) + dq (k + 1)), 0.5 * q (k))
-          if (dq (k) * dq (k + 1) <= 0.) then
-             if (dq (k) > 0.) then ! local max
-                dm (k) = min (dm (k), dq (k), - dq (k + 1))
+          dq = 0.5 * (q(k) - q(k-1))
+          dq_p1 = 0.5 * (q(k+1) - q(k))
+          dm (k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (k))
+          if (dq * dq_p1 <= 0.) then
+             if (dq > 0.) then ! local max
+                dm (k) = min (dm (k), dq, - dq_p1)
              else
                 dm (k) = 0.
              endif
@@ -1418,10 +1418,12 @@ contains
        ! impose a presumed background horizontal variability that is proportional to the value itself
        ! -----------------------------------------------------------------------
 
+       !$acc loop vector
        do k = 1, km
           dm (k) = max (dm (k), qvmin, h_var(k) * q (k))
        enddo
     else
+       !$acc loop vector
        do k = 1, km
           dm (k) = max (qvmin, h_var(k) * q (k))
        enddo
