@@ -162,6 +162,26 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'UWC',                                &
+         LONG_NAME          = 'water_skin_eastward_cgrid_velocity', &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'VWC',                                &
+         LONG_NAME          = 'water_skin_northward_cgrid_velocity',&
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         DEFAULT            = 0.0,                                 &
+         RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME         = 'SLV',                           &
          LONG_NAME          = 'sea_level_with_ice_loading',     &
          UNITS              = 'm',                                 &
@@ -758,6 +778,8 @@ contains
     REAL_, pointer                     :: TAUY(:,:)          => null()
     REAL_, pointer                     :: UWB(:,:)           => null()
     REAL_, pointer                     :: VWB(:,:)           => null()
+    REAL_, pointer                     :: UWC(:,:)           => null()
+    REAL_, pointer                     :: VWC(:,:)           => null()
     REAL_, pointer                     :: SLV(:,:)           => null()
 
 ! Temporaries
@@ -813,6 +835,8 @@ contains
     call MAPL_GetPointer(IMPORT,  SLV,     'SLV'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  UWB,     'UWB'         ,                 _RC)
     call MAPL_GetPointer(IMPORT,  VWB,     'VWB'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  UWC,     'UWC'         ,                 _RC)
+    call MAPL_GetPointer(IMPORT,  VWC,     'VWC'         ,                 _RC)
 
     call MAPL_GetPointer(EXPORT,   TI,     'TI'          ,  alloc=.true.,  _RC)
     call MAPL_GetPointer(EXPORT,   FI,     'FRSEAICE'    ,  alloc=.true.,  _RC)
@@ -830,7 +854,7 @@ contains
 
     !call ice_import_thermo2()
 
-    call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, _RC)
+    call ice_import_dyna(TAUX, TAUY, SLV, UWB, VWB, UWC, VWC, _RC)
 
 
     call CICE_Run
