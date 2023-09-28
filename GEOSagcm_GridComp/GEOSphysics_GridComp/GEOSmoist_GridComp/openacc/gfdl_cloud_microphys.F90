@@ -333,12 +333,19 @@ module gfdl2_cloud_microphys_mod
        do_sedi_heat, sedi_transport, do_sedi_w, dt_fr, de_ice, icloud_f, irain_f, mp_print
 
   !$acc declare create( &
+
   !$acc     tables_are_initialized, &
   !$acc     des, des2, des3, desw, table, table2, table3, tablew, &
-  !$acc     tau_revp, d0_vap, lv00, crevp, cssub, c_vap, c_air, cracw, lat2, &
+
+  !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
   !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
-  !$acc     tice, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
-  !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt)
+  !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+  !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
+  !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, const_vi, &
+
+  !$acc     ces0, cracs, cracw, cssub, &
+  !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
+  !$acc     crevp, csmlt, cgmlt, cgfr, acco)
 
 contains
 
@@ -447,8 +454,9 @@ contains
     !$acc update device ( &
     !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
     !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
-    !$acc     tice, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
-    !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2)
+    !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+    !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
+    !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, const_vi)
 
     ! tendency zero out for am moist processes should be done outside the driver
 
@@ -1443,6 +1451,7 @@ contains
        den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
 
     implicit none
+    !$acc routine vector
 
     integer, intent (in) :: ktop, kbot
 
@@ -1456,9 +1465,10 @@ contains
 
     real, intent (in), dimension (ktop:kbot) :: h_var, ccn
 
-    real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, di, lhl, lhi
+    real, dimension (ktop:kbot) :: di
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
 
+    real :: icpk, tcpk, lhl, lhi
     real :: rdts, fac_g2v, fac_i2s, fac_imlt, fac_frz
     real :: tz, qv, ql, qr, qi, qs, qg, melt, ifrac, newqi, newql
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
@@ -1486,12 +1496,11 @@ contains
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
+    !$acc loop vector
     do k = ktop, kbot
-       lhi (k) = li00 + dc_ice * tzk (k)
        q_liq (k) = qlk (k) + qrk (k)
        q_sol (k) = qik (k) + qsk (k) + qgk (k)
        cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-       icpk (k) = lhi (k) / cvm (k)
     enddo
 
     ! -----------------------------------------------------------------------
@@ -1501,15 +1510,23 @@ contains
     ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
     ! -----------------------------------------------------------------------
 
-
+    !*****
+    ! Note: If 'sink' gets added as a private variable, the code will not verify
+    !*****
+    !$acc loop vector private(lhi, icpk, melt, tmp)
     do k = ktop, kbot
+
+       lhi = li00 + dc_ice * tzk (k)
+
        if (tzk (k) > tice .and. qik (k) > qcmin) then
+
+          icpk = lhi / cvm (k)
 
           ! -----------------------------------------------------------------------
           ! pimlt: instant melting of cloud ice
           ! -----------------------------------------------------------------------
 
-          melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
+          melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk)
           tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
 
           ! new total condensate / old condensate
@@ -1522,7 +1539,7 @@ contains
           q_liq (k) = q_liq (k) + melt
           q_sol (k) = q_sol (k) - melt
           cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-          tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
+          tzk (k) = tzk (k) - melt * lhi / cvm (k)
 
        elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
 
@@ -1545,9 +1562,10 @@ contains
           q_liq (k) = q_liq (k) - sink
           q_sol (k) = q_sol (k) + sink
           cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-          tzk (k) = tzk (k) + sink * lhi (k) / cvm (k)
+          tzk (k) = tzk (k) + sink * lhi / cvm (k)
 
        endif
+
     enddo
 
     ! -----------------------------------------------------------------------
@@ -1560,15 +1578,12 @@ contains
     ! update capacity heat and latend heat coefficient
     ! -----------------------------------------------------------------------
 
+    !$acc loop seq
     do k = ktop, kbot
-       lhl (k) = lv00 + d0_vap * tzk (k)
-       lhi (k) = li00 + dc_ice * tzk (k)
-       lcpk (k) = lhl (k) / cvm (k)
-       icpk (k) = lhi (k) / cvm (k)
-       tcpk (k) = lcpk (k) + icpk (k)
-    enddo
-
-    do k = ktop, kbot
+       lhl = lv00 + d0_vap * tzk (k)
+       lhi = li00 + dc_ice * tzk (k)
+       icpk = lhi / cvm (k)
+       tcpk = lhl / cvm (k) + icpk
 
        ! -----------------------------------------------------------------------
        ! do nothing above p_min
@@ -1631,7 +1646,7 @@ contains
 
              psmlt = max (0., smlt (tc, dqs0, qs * den (k), psacw, psacr, csmlt, &
                   den (k), denfac (k)))
-             sink = min (qs, dts * (psmlt + pracs), tc / icpk (k))
+             sink = min (qs, dts * (psmlt + pracs), tc / icpk)
              qs = qs - sink
              ! sjl, 20170321:
              tmp = min (sink, dim (qs_mlt, ql)) ! max ql due to snow melt
@@ -1647,7 +1662,7 @@ contains
              q_liq (k) = q_liq (k) + sink
              q_sol (k) = q_sol (k) - sink
              cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-             tz = tz - sink * lhi (k) / cvm (k)
+             tz = tz - sink * lhi / cvm (k)
              tc = tz - tice
 
           endif
@@ -1656,8 +1671,8 @@ contains
           ! update capacity heat and latend heat coefficient
           ! -----------------------------------------------------------------------
 
-          lhi (k) = li00 + dc_ice * tz
-          icpk (k) = lhi (k) / cvm (k)
+          lhi = li00 + dc_ice * tz
+          icpk = lhi / cvm (k)
 
           ! -----------------------------------------------------------------------
           ! melting of graupel
@@ -1688,13 +1703,13 @@ contains
              ! -----------------------------------------------------------------------
 
              pgmlt = dts * gmlt (tc, dqs0, qden, pgacw, pgacr, cgmlt, den (k))
-             pgmlt = min (max (0., pgmlt), qg, tc / icpk (k))
+             pgmlt = min (max (0., pgmlt), qg, tc / icpk)
              qg = qg - pgmlt
              qr = qr + pgmlt
              q_liq (k) = q_liq (k) + pgmlt
              q_sol (k) = q_sol (k) - pgmlt
              cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-             tz = tz - pgmlt * lhi (k) / cvm (k)
+             tz = tz - pgmlt * lhi / cvm (k)
 
           endif
 
@@ -1823,7 +1838,7 @@ contains
              ! -----------------------------------------------------------------------
 
              sink = psacr + pgfr
-             factor = min (sink, qr, - tc / icpk (k)) / max (sink, qpmin)
+             factor = min (sink, qr, - tc / icpk) / max (sink, qpmin)
 
              psacr = factor * psacr
              pgfr = factor * pgfr
@@ -1835,7 +1850,7 @@ contains
              q_liq (k) = q_liq (k) - sink
              q_sol (k) = q_sol (k) + sink
              cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-             tz = tz + sink * lhi (k) / cvm (k)
+             tz = tz + sink * lhi / cvm (k)
 
           endif
 
@@ -1843,8 +1858,8 @@ contains
           ! update capacity heat and latend heat coefficient
           ! -----------------------------------------------------------------------
 
-          lhi (k) = li00 + dc_ice * tz
-          icpk (k) = lhi (k) / cvm (k)
+          lhi = li00 + dc_ice * tz
+          icpk = lhi / cvm (k)
 
           ! -----------------------------------------------------------------------
           ! graupel production terms:
@@ -1903,7 +1918,7 @@ contains
              endif
 
              sink = pgacr + pgacw
-             factor = min (sink, dim (tice, tz) / icpk (k)) / max (sink, qpmin)
+             factor = min (sink, dim (tice, tz) / icpk) / max (sink, qpmin)
              pgacr = factor * pgacr
              pgacw = factor * pgacw
 
@@ -1914,7 +1929,7 @@ contains
              q_liq (k) = q_liq (k) - sink
              q_sol (k) = q_sol (k) + sink
              cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-             tz = tz + sink * lhi (k) / cvm (k)
+             tz = tz + sink * lhi / cvm (k)
 
           endif
 
@@ -3353,8 +3368,6 @@ contains
     cgsub (5) = cssub (5)
     crevp (5) = hltc ** 2 * vdifu
 
-    !$acc update device(cracw, cssub, crevp(:))
-
     cgfr (1) = 20.e2 * pisq * rnzr * rhor / act (2) ** 1.75
     cgfr (2) = 0.66
 
@@ -3376,6 +3389,11 @@ contains
 
     es0 = 6.107799961e2 ! ~6.1 mb
     ces0 = eps * es0
+
+    !$acc update device( &
+    !$acc     ces0, cracs, cracw, cssub, &
+    !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
+    !$acc     crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
 
   end subroutine setupm
 
@@ -4612,6 +4630,7 @@ contains
   end subroutine cloud_diagnosis
 
   real function new_ice_condensate(tk, qlk, qik, cnv_fraction, srf_type)
+    !$acc routine seq
 
     real, intent(in) :: tk, qlk, qik, cnv_fraction, srf_type
     real :: ptc, ifrac
