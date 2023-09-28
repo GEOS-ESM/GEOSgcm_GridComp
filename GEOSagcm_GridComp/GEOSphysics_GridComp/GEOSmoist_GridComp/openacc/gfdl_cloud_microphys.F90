@@ -335,7 +335,10 @@ module gfdl2_cloud_microphys_mod
   !$acc declare create( &
   !$acc     tables_are_initialized, &
   !$acc     des, des2, des3, desw, table, table2, table3, tablew, &
-  !$acc     tau_revp, d0_vap, lv00, crevp, c_vap, c_air, cracw)
+  !$acc     tau_revp, d0_vap, lv00, crevp, cssub, c_vap, c_air, cracw, lat2, &
+  !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
+  !$acc     tice, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+  !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt)
 
 contains
 
@@ -425,7 +428,6 @@ contains
     endif
     d0_vap = c_vap - c_liq
     lv00 = hlv0 - d0_vap * t_ice
-    !$acc update device (tau_revp, d0_vap, lv00, c_vap, c_air)
 
     if (hydrostatic) do_sedi_w = .false.
 
@@ -441,6 +443,12 @@ contains
     lcp = latv / cp_air
     icp = lati / cp_air
     tcp = (latv + lati) / cp_air
+
+    !$acc update device ( &
+    !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
+    !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
+    !$acc     tice, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+    !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2)
 
     ! tendency zero out for am moist processes should be done outside the driver
 
@@ -1923,7 +1931,6 @@ contains
     ! -----------------------------------------------------------------------
     ! subgrid cloud microphysics
     ! -----------------------------------------------------------------------
-
     call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tzk, qvk, &
          qlk, qrk, qik, qsk, qgk, qak, subl1, h_var, ccn, cnv_fraction, srf_type)
 
@@ -1937,6 +1944,7 @@ contains
        ql, qr, qi, qs, qg, qa, subl1, h_var, ccn, cnv_fraction, srf_type)
 
     implicit none
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -3342,7 +3350,8 @@ contains
     crevp (4) = cssub (4)
     cgsub (5) = cssub (5)
     crevp (5) = hltc ** 2 * vdifu
-    !$acc update device(cracw, crevp(:))
+
+    !$acc update device(cracw, cssub, crevp(:))
 
     cgfr (1) = 20.e2 * pisq * rnzr * rhor / act (2) ** 1.75
     cgfr (2) = 0.66
@@ -3638,6 +3647,7 @@ contains
   real function wqs1 (ta, den)
 
     implicit none
+    !$acc routine seq
 
     !> pure water phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -3729,6 +3739,7 @@ contains
   real function iqs1 (ta, den)
 
     implicit none
+    !$acc routine seq
 
     !> water - ice phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -3756,6 +3767,7 @@ contains
   real function iqs2 (ta, den, dqdt)
 
     implicit none
+    !$acc routine seq
 
     !> water - ice phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
