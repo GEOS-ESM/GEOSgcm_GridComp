@@ -3523,6 +3523,7 @@ contains
   real function acr3d (v1, v2, q1, q2, c, cac, rho)
 
     implicit none
+    !$acc routine seq
 
     real, intent (in) :: v1, v2, c, rho
     real, intent (in) :: q1, q2 ! mixing ratio!!!
@@ -3557,6 +3558,7 @@ contains
   real function smlt (tc, dqs, qsrho, psacw, psacr, c, rho, rhofac)
 
     implicit none
+    !$acc routine seq
 
     real, intent (in) :: tc, dqs, qsrho, psacw, psacr, c (5), rho, rhofac
 
@@ -3573,6 +3575,7 @@ contains
   real function gmlt (tc, dqs, qgrho, pgacw, pgacr, c, rho)
 
     implicit none
+    !$acc routine seq
 
     real, intent (in) :: tc, dqs, qgrho, pgacw, pgacr, c (5), rho
 
