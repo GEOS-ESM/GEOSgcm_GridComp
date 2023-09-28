@@ -75,8 +75,8 @@ module Process_Library_standalone
     MSEp  = 0.
     Qp    = 0.
     !$acc end kernels
-    !$acc update host(Tve)
-    print*,'sum(Tve) = ', sum(Tve)
+    ! !$acc update host(Tve)
+    ! print*,'sum(Tve) = ', sum(Tve)
 
     ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
@@ -110,9 +110,9 @@ module Process_Library_standalone
         end do
         !$acc end parallel
 
-        !$acc update host(MSEp, Qp)
-        print*,'sum(MSEp) = ', sum(MSEp)
-        print*,'sum(Qp) = ', sum(Qp)
+        ! !$acc update host(MSEp, Qp)
+        ! print*,'sum(MSEp) = ', sum(MSEp)
+        ! print*,'sum(Qp) = ', sum(Qp)
 
         !$acc kernels
         where (tmp1.gt.0.)   ! average
@@ -120,9 +120,9 @@ module Process_Library_standalone
             Qp = Qp / tmp1
         end where
         !$acc end kernels
-        !$acc update host(MSEp, Qp)
-        print*,'sum(MSEp) = ', sum(MSEp)
-        print*,'sum(Qp) = ', sum(Qp)
+        ! !$acc update host(MSEp, Qp)
+        ! print*,'sum(MSEp) = ', sum(MSEp)
+        ! print*,'sum(Qp) = ', sum(Qp)
         call RETURN_CAPE_CIN_v2(ZLO, PLO, DZ,      & 
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, 0)
@@ -133,66 +133,83 @@ module Process_Library_standalone
         end where
        !$acc end kernels
 
-        !$acc update host(MSEp, Qp, BYNCY, MLCAPE, MLCIN, LFC, LNB)
-        print*,'sum(MSEp) = ', sum(MSEp)
-        print*,'sum(Qp) = ', sum(Qp)
-        print*,'sum(BYNCY) = ', sum(BYNCY)
-        print*,'sum(MLCAPE) = ', sum(MLCAPE)
-        print*,'sum(MLCIN) = ', sum(MLCIN)
-        print*,'sum(LFC) = ', sum(LFC)
-        print*,'sum(LNB) = ', sum(LNB)
+        !!$acc update host(MSEp, Qp, BYNCY, MLCAPE, MLCIN, LFC, LNB)
+        ! print*,'sum(MSEp) = ', sum(MSEp)
+        ! print*,'sum(Qp) = ', sum(Qp)
+        ! print*,'sum(BYNCY) = ', sum(BYNCY)
+        ! print*,'sum(MLCAPE) = ', sum(MLCAPE)
+        ! print*,'sum(MLCIN) = ', sum(MLCIN)
+        ! print*,'sum(LFC) = ', sum(LFC)
+        ! print*,'sum(LNB) = ', sum(LNB)
     end if
 
-    ! ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
-    ! if ( associated(MUCAPE) .and. associated(MUCIN) ) then
-    !     !$acc kernels
-    !     MUCAPE = 0.
-    !     MUCIN  = 0.
-    !     BYNCY = MAPL_UNDEF
-    !     LFC = MAPL_UNDEF
-    !     LNB = MAPL_UNDEF
-    !     !$acc end kernels   
+    ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
+    if ( associated(MUCAPE) .and. associated(MUCIN) ) then
+        !$acc kernels
+        MUCAPE = 0.
+        MUCIN  = 0.
+        BYNCY = MAPL_UNDEF
+        LFC = MAPL_UNDEF
+        LNB = MAPL_UNDEF
+        !$acc end kernels   
 
-    !     call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, tmp1, tmp2, BYNCY, LFC, LNB, &
-    !                                Lev0, PS, T, Q, 1, MUCAPE=MUCAPE, MUCIN=MUCIN)
+        call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, tmp1, tmp2, BYNCY, LFC, LNB, &
+                                   Lev0, PS, T, Q, 1, MUCAPE=MUCAPE, MUCIN=MUCIN)
 
-    !     !$acc kernels
-    !     where (MUCAPE.le.0.)
-    !         MUCAPE = MAPL_UNDEF
-    !         MUCIN  = MAPL_UNDEF
-    !     end where
-    !     !$acc end kernels
-    ! end if
+        ! !$acc update host(MUCAPE, MUCIN)
+        ! print*,'sum(MUCAPE) = ', sum(MUCAPE)
+        ! print*,'sum(MUCIN) = ', sum(MUCIN)
 
-    ! ! Surface-based calculation
-    ! !$acc kernels
-    ! MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
-    ! Qp   = Q(:,:,LM)
-    ! ! do J = 1, JM
-    ! !     do I = 1, IM
-    ! !         MSEp(I,J) = T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)  ! parcel moist static energy
-    ! !         Qp(I,J)   = Q(I,J,LM)
-    ! !     enddo
-    ! ! enddo
-    ! !$acc end kernels                                            ! parcel specific humidity
+        !$acc kernels
+        where (MUCAPE.le.0.)
+            MUCAPE = MAPL_UNDEF
+            MUCIN  = MAPL_UNDEF
+        end where
+        !$acc end kernels
+    end if
 
-    ! call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, SBCAPE, SBCIN, BYNCY, LFC, LNB, &
-    !                          Lev0, PS, T, Q, 2)
+    ! Surface-based calculation
+    !$acc kernels
+    MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
+    Qp   = Q(:,:,LM)
+    ! do J = 1, JM
+    !     do I = 1, IM
+    !         MSEp(I,J) = T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)  ! parcel moist static energy
+    !         Qp(I,J)   = Q(I,J,LM)
+    !     enddo
+    ! enddo
+    !$acc end kernels                                            ! parcel specific humidity
+
+    ! !$acc update host(MSEp, Qp)
+    ! print*,'sum(MSEp) = ', sum(MSEp)
+    ! print*,'sum(Qp) = ', sum(Qp)
+
+    call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, SBCAPE, SBCIN, BYNCY, LFC, LNB, &
+                             Lev0, PS, T, Q, 2)
+
+    ! !$acc update host(MSEp, Qp, SBCAPE, SBCIN, LFC, LNB, BYNCY)
+    ! print*,'sum(MSEp) = ', sum(MSEp)
+    ! print*,'sum(Qp) = ', sum(Qp)
+    ! print*,'sum(SBCAPE) = ', sum(SBCAPE)
+    ! print*,'sum(SBCIN) = ', sum(SBCIN)
+    ! print*,'sum(LFC) = ', sum(LFC)
+    ! print*,'sum(LNB) = ', sum(LNB)
+    ! print*,'sum(BYNCY) = ', sum(BYNCY)
     
-    ! !$acc kernels
-    ! where (SBCAPE.le.0.)
-    !     SBCAPE = MAPL_UNDEF
-    !     SBCIN  = MAPL_UNDEF
-    ! end where
-    ! ! do J = 1,JM
-    ! !     do I = 1, IM
-    ! !         if(SBCAPE(I,J).le.0.) then
-    ! !             SBCAPE(I,J) = mapl_undef
-    ! !             SBCIN (I,J) = mapl_undef
-    ! !         endif
-    ! !     enddo
-    ! ! enddo
-    ! !$acc end kernels
+    !$acc kernels
+    where (SBCAPE.le.0.)
+        SBCAPE = MAPL_UNDEF
+        SBCIN  = MAPL_UNDEF
+    end where
+    ! do J = 1,JM
+    !     do I = 1, IM
+    !         if(SBCAPE(I,J).le.0.) then
+    !             SBCAPE(I,J) = mapl_undef
+    !             SBCIN (I,J) = mapl_undef
+    !         endif
+    !     enddo
+    ! enddo
+    !$acc end kernels
 !$acc end data
     end subroutine BUOYANCY2
 
@@ -310,10 +327,9 @@ module Process_Library_standalone
         JM = size(ZLO,2)
 
         if((ctype == 0) .or. (ctype == 2)) then
-            !!$acc parallel loop gang vector collapse(2) &
-            !$acc serial loop &
+            !$acc parallel loop gang vector collapse(2) &
             !$acc          private(LM, aboveLNB, aboveLFC, Qpnew, &
-            !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC,L)
+            !$acc                  Tp, Tlcl, aboveLCL, dq, KLNB, KLFC,L)
             do J = 1,JM
                 do I = 1, IM
 
@@ -337,7 +353,7 @@ module Process_Library_standalone
                     Tp = MSEp(I,J) - gravbcp*ZLO(I,J,LM) - alhlbcp*Qp(I,J)  ! initial parcel temp at source level LM
                     Tlcl = find_tlcl( Tp, 100.*Qp(I,J)/QSATE(I,J,LM) )
                     aboveLCL = (Tp.lt.Tlcl)
-                    !$acc loop seq
+                    !$acc loop seq private(Tvp, dq)
                     do L = LM-1,1,-1   ! start at level above source air
                 
                         ! determine parcel Qp, Tp      
@@ -367,13 +383,10 @@ module Process_Library_standalone
                         Tvp = Tp*(1.+MAPL_VIREPS*Qpnew)              ! parcel virtual temp
                         !  Tvp = Tp*(1.+0.61*Qpnew - Qc) ! condensate loading
                     
+                        ! Note : OpenACC GPU evalutes (Tvp-Tve(I,J,L)) slightly differently than CPU
                         BYNCY(I,J,L) = MAPL_GRAV*(Tvp-Tve(I,J,L))/Tve(I,J,L)         ! parcel buoyancy
-                        ! print*,i, j, L, II, aboveLCL
-                        !if(I.eq.56 .and. J.eq.77 .and. ((L.eq.61).or.(L.eq.60))) print*,'L, Tvp, Tve: ', L, Tvp, Tve(I,J,L)
-                        if(I.eq.56 .and. J.eq.77 .and. L.eq.61) print*,'BYNCY(61), Tvp, Tve: ',  BYNCY(I,J,61)
                     end do
                 
-                    if(I.eq.56 .and. J.eq.77) print*,'BYNCY 60 61: ', BYNCY(I,J,60), BYNCY(I,J,61)
 
                     ! if surface parcel immediately buoyant, scan upward to find first elevated
                     ! B>0 level above a B<0 level, label it LFC.  If no such level, set LFC at surface.
@@ -401,14 +414,11 @@ module Process_Library_standalone
                             end if
                             if (aboveLFC .and. BYNCY(I,J,L).lt.0.) then
                                 KLNB = L
-                                !if(I.eq.56 .and. J.eq.77) print*, 'L, KLNB, BYNCY', L, KLNB, BYNCY(I,J,L)
                                 exit
                             end if
                         end do
                     end if
-                    ! if(I.eq.56 .and. J.eq.77) then
-                    !     print*,'I, J, KLFC, KLNB, BYNCY(60), BYNCY(61)', I, J, KLFC, KLNB, BYNCY(I,J,60), BYNCY(I,J,61)
-                    ! endif
+
                     LFC(I,J) = ZLO(I,J,KLFC)
                     LNB(I,J) = ZLO(I,J,KLNB)
                 
@@ -417,15 +427,16 @@ module Process_Library_standalone
                     CAPE(I,J) = SUM( max(0.,BYNCY(I,J,1:LM)*DZ(I,J,1:LM)) )
                 enddo
             enddo
-            !!$acc end parallel loop
-            !$acc end serial loop
+            !$acc end parallel loop
+            !!$acc end serial loop
         else
             LM = size(Tve,3)
-
+            !$acc parallel loop seq
             do LL = LM, 1, -1
-                !$acc parallel loop gang vector collapse(2) &
+                !$acc loop gang vector collapse(2) &
+                !!$acc loop seq &
                 !$acc          private(aboveLNB, aboveLFC, Qpnew, &
-                !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC)
+                !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, L)
                 do J = 1,IM
                     do I = 1, IM
                         if(PS(I,J) - PLO(I,J,LL) .le. 255.) then
@@ -523,11 +534,12 @@ module Process_Library_standalone
                     enddo
                 enddo
             enddo
+            !!$acc end serial loop
         endif
     
-        !$acc update host(CIN, CAPE)
-        print*,'sum(CIN) = ', sum(CIN)
-        print*,'sum(CAPE) = ', sum(CAPE)
+        ! !$acc update host(CIN, CAPE)
+        ! print*,'sum(CIN) = ', sum(CIN)
+        ! print*,'sum(CAPE) = ', sum(CAPE)
 
     end subroutine RETURN_CAPE_CIN_v2
 
