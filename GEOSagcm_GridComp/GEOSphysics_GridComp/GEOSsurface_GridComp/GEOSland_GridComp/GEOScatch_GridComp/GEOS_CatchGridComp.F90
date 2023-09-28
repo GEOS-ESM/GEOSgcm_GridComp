@@ -5392,6 +5392,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                          CAPAC, CATDEF, RZEXC, SRFEXC,                                                   &
                          GHTCNT, WESNN, HTSNNN, SNDZN  )
                     
+                    ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                    !
+                    ! NEED TO RE-DIAGNOSE SNOW TEMP, ASNOW, etc HERE !?!?!?!?
+                    !
+                    ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                    
                     deallocate(ghtcnt_incr,wesnn_incr,htsnnn_incr,sndzn_incr)
                     
                     call WRITE_PARALLEL('LDAS_coupling: Done loading and applying LDAS increments.')

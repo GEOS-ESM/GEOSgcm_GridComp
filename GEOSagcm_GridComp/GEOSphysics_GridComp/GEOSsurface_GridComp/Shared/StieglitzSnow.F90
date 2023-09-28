@@ -33,7 +33,8 @@ module StieglitzSnow
   public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment, LDAS
   public :: StieglitzSnow_echo_constants   ! used by                     LDAS
   public :: StieglitzSnow_targetthick_land ! used by          Catchment, LDAS, land-atm DAS
-  
+  public :: StieglitzSnow_relayer          ! used by                           land-atm DAS
+
   public :: StieglitzSnow_RHOMA            ! used by                     LDAS, land-atm DAS
 
   public :: get_tf0d ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
@@ -423,8 +424,9 @@ contains
              rconstit(1,k)=rconstit(1,k)+areasc0*totdepos(k)*dts
           enddo
           
-          call relayer2(N_snow, N_constit, topthick, thickdist, &
-               htsnn, wesn, sndz, rconstit)
+          call StieglitzSnow_relayer( N_snow, N_constit, topthick, thickdist, &
+               htsnn, wesn, sndz, rconstit )
+          
           call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
           
        endif   ! (snowf > 0.)
@@ -898,9 +900,9 @@ contains
        topthick  = targetthick(1)
        thickdist = targetthick(2:N_snow)     
     end select
-
-    call relayer2(N_snow, N_constit, topthick, thickdist, &
-         htsnn, wesn, sndz, rconstit)
+    
+    call StieglitzSnow_relayer( N_snow, N_constit, topthick, thickdist, &
+         htsnn, wesn, sndz, rconstit )
     
     wesnrepar = wesn - wesnrepar
     
@@ -1049,9 +1051,17 @@ contains
   
   ! **********************************************************************
   
-  subroutine relayer2(N_snow, N_constit, thick_toplayer, thickdist, & 
+  subroutine StieglitzSnow_relayer(N_snow, N_constit, thick_toplayer, thickdist, & 
        htsnn, wesn, sndz, rconstit)
     
+    ! relayer for *land* tiles
+    !
+    ! landice has a nearly identical copy of this subroutine in GEOS_LandIceGridComp.F90;
+    ! the key difference is in how the top-layer thickness is processed at the beginning;
+    ! there is also an adjustment to snow depth at the very end of the LandIceGridComp relayer routine 
+    !
+    ! should probably create a common interface for relayer between land and landice    
+
     implicit none
     
     integer, intent(in)                         :: N_snow, N_constit
@@ -1176,7 +1186,7 @@ contains
     
     return
     
-  end subroutine relayer2
+  end subroutine StieglitzSnow_relayer
   
   ! **********************************************************************
   
@@ -1374,7 +1384,7 @@ contains
        
     ! get snow layer target thicknesses to be used with relayer for *land* (Catch)
     !
-    ! for landice, see FindTargetThickDist()
+    ! for landice, see FindTargetThickDist() -- should probably create common interface
     !
     ! reichle, 28 Sep 2023
     !
