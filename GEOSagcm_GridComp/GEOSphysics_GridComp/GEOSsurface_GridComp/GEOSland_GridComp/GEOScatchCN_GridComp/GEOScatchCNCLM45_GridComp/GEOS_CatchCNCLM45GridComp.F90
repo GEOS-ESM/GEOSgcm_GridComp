@@ -197,7 +197,7 @@ subroutine SetServices ( GC, RC )
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
-    integer :: RESTART
+    integer :: RESTART, SNOW_ALBEDO_INFO
 
 ! Begin...
 ! --------
@@ -223,6 +223,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
     call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
     call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
+    call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,   Label="SNOW_ALBEDO_INFO:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -839,7 +840,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'max_water_content'         ,&
+    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1378,6 +1379,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+    if (SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -4544,6 +4558,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -6845,7 +6860,23 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
     SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
     SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
- 
+
+    if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+
+        ! use MODIS-derived snow albedo from bcs (via Catch restart)
+        !
+        ! as a restart parameter from the bcs, snow albedo must not have no-data-values
+        ! (checks for unphysical values should be in the make_bcs package)
+
+        call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+
+        SNOVR = SNOWALB
+        SNONR = SNOWALB
+        SNOVF = SNOWALB
+        SNONF = SNOWALB
+
+    endif
+
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
     ! --------------------------------------------------------------------------
@@ -7609,6 +7640,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
         SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
         SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
+
+        if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           !  
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+        
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+           
+        endif 
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW

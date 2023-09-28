@@ -111,13 +111,14 @@ module GEOSmoist_Process_Library
   public :: VertInterp, cs_interpolator
   public :: find_l, FIND_EIS, FIND_KLCL
   public :: find_cldtop, find_cldbase, gw_prof
-  public :: make_IceNumber, make_DropletNumber
+  public :: make_IceNumber, make_DropletNumber, make_RainNumber
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-  
+  public :: sigma 
+ 
  
   contains
 
@@ -304,6 +305,11 @@ module GEOSmoist_Process_Library
     deallocate(QNAMES)
 
   end subroutine CNV_Tracers_Init
+
+  real function sigma (dx)
+      real, intent(in) :: dx
+      sigma = 1.0-0.9839*exp(-0.09835*(dx/1000.)) ! Arakawa 2011 sigma
+  end function sigma
 
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
       real, intent(in) :: TEMP(:,:,:),CNV_FRACTION(:,:),SRF_TYPE(:,:)
@@ -2931,7 +2937,6 @@ module GEOSmoist_Process_Library
 
       implicit none
       real, parameter:: ice_density = 890.0
-      real, parameter:: pi = 3.1415926536
       real, intent(in):: q_ice, temp
       integer idx_rei
       real corr, reice, deice, mui, k,  TC, lambdai
@@ -3010,7 +3015,7 @@ module GEOSmoist_Process_Library
       
 
       k =  (mui+3)*(mui*3)/(mui+2)/(mui+1)
-      make_IceNumber = k*Q_ice * lambda*lambda*lambda / (PI*Ice_density)
+      make_IceNumber = k*Q_ice * lambda*lambda*lambda / (MAPL_PI*Ice_density)
 
 !+---+-----------------------------------------------------------------+ 
 !..Example1: Common ice size coming from Thompson scheme is about 30 microns.
@@ -3031,7 +3036,7 @@ module GEOSmoist_Process_Library
 
       implicit none
       real, intent(in):: q_cloud, qnwfa
-      real, parameter:: am_r = 3.1415927*1000./6.
+      real, parameter:: am_r = MAPL_PI*1000./6.
       real, dimension(15), parameter:: g_ratio = (/24,60,120,210,336,   &
                       504,720,990,1320,1716,2184,2730,3360,4080,4896/)
       double precision:: lambda, qnc
@@ -3058,6 +3063,45 @@ module GEOSmoist_Process_Library
 
       return
       end function make_DropletNumber
+
+!+---+-----------------------------------------------------------------+ 
+
+      elemental real function make_RainNumber (Q_rain, temp)
+
+      IMPLICIT NONE
+
+      real, intent(in):: Q_rain, temp
+      double precision:: lambda, N0, qnr
+      real, parameter:: am_r = MAPL_PI*1000./6.
+
+      if (Q_rain == 0) then
+         make_RainNumber = 0
+         return
+      end if
+
+      !+---+-----------------------------------------------------------------+ 
+      !.. Not thrilled with it, but set Y-intercept parameter to Marshal-Palmer value
+      !.. that basically assumes melting snow becomes typical rain. However, for
+      !.. -2C < T < 0C, make linear increase in exponent to attempt to keep
+      !.. supercooled collision-coalescence (warm-rain) similar to drizzle rather
+      !.. than bigger rain drops.  While this could also exist at T>0C, it is
+      !.. more difficult to assume it directly from having mass and not number.
+      !+---+-----------------------------------------------------------------+ 
+
+      N0 = 8.E6
+
+      if (temp .le. 271.15) then
+         N0 = 8.E8
+      elseif (temp .gt. 271.15 .and. temp.lt.273.15) then
+         N0 = 8. * 10**(279.15-temp)
+      endif
+
+      lambda = SQRT(SQRT(N0*am_r*6.0/Q_rain))
+      qnr = Q_rain / 6.0 * lambda*lambda*lambda / am_r
+      make_RainNumber = SNGL(qnr)
+
+      return
+      end function make_RainNumber
 
 !+---+-----------------------------------------------------------------+ 
 
@@ -3515,5 +3559,7 @@ subroutine update_cld( &
   enddo
 
  end subroutine cs_prof
+
+
 
 end module GEOSmoist_Process_Library
