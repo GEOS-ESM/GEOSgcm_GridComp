@@ -535,7 +535,6 @@
     end if
 
     if((URAMP==TMIX .OR. URAMP==0.) .and. UTBL) then
-
        if(FIRST) then
           FIRST = .false.
          !  call ESINIT
@@ -979,7 +978,7 @@
          ESTLQU = QSATLQU0(TMINLQU)
 
          UTBL = UT
-!$acc update device(ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE)
+!!$acc update device(ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE, ESTBLW)
        end subroutine ESINIT
 
       subroutine ESINIT_v2
@@ -988,6 +987,21 @@
             call ESINIT
          endif
       !$acc update device(FIRST)
+      ! print*, 'ESTFRZ = ', ESTFRZ
+      ! print*, 'ESTLQU = ', ESTLQU
+      ! print*, "UBTL = ", UTBL
+      ! print*, "sum(ESTBLX) = ", sum(ESTBLX)
+      ! print*, "sum(ESTBLE) = ", sum(ESTBLE)
+      ! print*, "sum(ESTBLW) = ", sum(ESTBLW)
+      !$acc update device(FIRST, ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE, ESTBLW)
+      ! !$acc update host(ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE, ESTBLW)
+      ! print*, 'ESTFRZ = ', ESTFRZ
+      ! print*, 'ESTLQU = ', ESTLQU
+      ! print*, "UBTL = ", UTBL
+      ! print*, "sum(ESTBLX) = ", sum(ESTBLX)
+      ! print*, "sum(ESTBLE) = ", sum(ESTBLE)
+      ! print*, "sum(ESTBLW) = ", sum(ESTBLW)
+      !call exit(1)
       end subroutine
 !        subroutine LOGGER_INIT
 
