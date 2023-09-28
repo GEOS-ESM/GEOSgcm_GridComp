@@ -86,7 +86,6 @@
            SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
            SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-           DZ1MAX            => CATCH_DZ1MAX,        &  
            SCONST            => CATCH_SCONST,        &
            CSOIL_1           => CATCH_CSOIL_1,       &
            N_sm              => CATCH_N_ZONES,       &
@@ -108,10 +107,11 @@
            SRUNOFF 
       
       USE SIBALB_COEFF,  ONLY: coeffsib
-
-      USE STIEGLITZSNOW, ONLY: &
-           snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d, N_constit
-
+      
+      USE STIEGLITZSNOW, ONLY:                                                               &
+           snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d, N_constit, &
+           StieglitzSnow_targetthick_land
+      
       IMPLICIT NONE
 
       private
@@ -911,11 +911,8 @@
         tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
 
         sumdepth=sum(sndz)
-        targetthick(1)=dz1max
 
-        do i=2,N_snow
-           targetthick(i)=1./(N_snow-1.)
-           enddo
+        call StieglitzSnow_targetthick_land( N_snow, targetthick )
 
         CALL SNOWRT(                                                           &
                    N_sm, N_snow,     MAPL_Land,                                &

@@ -66,7 +66,6 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_NIRMAX = 0.5      ! 
   REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_SLOPE  = -0.0006  ! 
   REAL,    PARAMETER, PUBLIC :: CATCH_MAXSNDEPTH    = 1.e20    ! 
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZ1MAX        = 0.08     ! m   
   
   ! ---------------------------------------------------------------------------
   !

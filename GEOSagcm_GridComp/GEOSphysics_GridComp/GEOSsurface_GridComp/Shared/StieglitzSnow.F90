@@ -26,25 +26,28 @@ module StieglitzSnow
  
   USE SurfParams,   ONLY: WEMIN, AICEV, AICEN
   
-  public :: snowrt                        ! used by LandIce, Catchment
-  public :: TRID                          ! used by LandIce
-  public :: SNOW_ALBEDO                   ! used by LandIce, Catchment, and LDAS
-  public :: StieglitzSnow_calc_asnow      ! used by          Catchment, and LDAS
-  public :: StieglitzSnow_calc_tpsnow     ! used by          Catchment, and LDAS
-  public :: StieglitzSnow_echo_constants  ! used by                         LDAS
+  public :: snowrt                         ! used by LandIce, Catchment
+  public :: TRID                           ! used by LandIce
+  public :: SNOW_ALBEDO                    ! used by LandIce, Catchment, LDAS
+  public :: StieglitzSnow_calc_asnow       ! used by          Catchment, LDAS
+  public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment, LDAS
+  public :: StieglitzSnow_echo_constants   ! used by                     LDAS
+  public :: StieglitzSnow_targetthick_land ! used by          Catchment, LDAS, land-atm DAS
   
-  public :: StieglitzSnow_RHOMA           ! used by land-atm DAS
-  
+  public :: StieglitzSnow_RHOMA            ! used by                     LDAS, land-atm DAS
+
   public :: get_tf0d ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
   ! constants specific to StieglitzSnow
   
-  real,   private,  parameter :: MINSWE              = 0.013   ! kg/m^2  min SWE to avoid immediate melt
-  real,   private,  parameter :: cpw                 = 2065.22 ! @ 0 C [J/kg/K]
-  real,   private,  parameter :: DZ1MAX              = 0.08    ! m
-  real,             parameter :: StieglitzSnow_RHOMA = 500.    ! kg/m^3  maximum snow density
-  real,   private,  parameter :: SNWALB_VISMIN       = 0.5
-  real,   private,  parameter :: SNWALB_NIRMIN       = 0.3
+  real, private, parameter :: MINSWE              = 0.013   ! kg/m^2  min SWE to avoid immediate melt
+  real, private, parameter :: cpw                 = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
+
+  real, private, parameter :: DZ1MAX              = 0.08    ! m       target thickness of top snow layer for land (Catch)
+  real,          parameter :: StieglitzSnow_RHOMA = 500.    ! kg/m^3  maximum snow density
+
+  real, private, parameter :: SNWALB_VISMIN       = 0.5
+  real, private, parameter :: SNWALB_NIRMIN       = 0.3
 
   !================================ Added by Teppei Yasunari ==================================
   !--------------------------------------------------------------------------------------------
@@ -979,6 +982,10 @@ contains
   
   subroutine FindTargetThickDist(N_snow, sndz, dzmax, topthick, thickdist)
     
+    ! get snow layer target thicknesses to be used with relayer for *landice*
+    !
+    ! note overlap with eponymous subroutine in GEOS_LandIceGridComp.F90
+
     integer, intent(in)                       :: N_snow
     real,    intent(in)                       :: sndz(N_snow)
     real,    intent(in)                       :: dzmax(N_snow)
@@ -1360,6 +1367,32 @@ contains
     asnow = min( sum(wesnn,1)/wemin, 1. )
     
   end subroutine StieglitzSnow_calc_asnow
+  
+  ! ********************************************************************
+  
+  subroutine StieglitzSnow_targetthick_land( N_snow, targetthick )
+       
+    ! get snow layer target thicknesses to be used with relayer for *land* (Catch)
+    !
+    ! for landice, see FindTargetThickDist()
+    !
+    ! reichle, 28 Sep 2023
+    !
+    ! ----------------------------------------------------------------
+    
+    implicit none
+    
+    integer,                    intent(in)  :: N_snow
+    
+    real,    dimension(N_snow), intent(out) :: targetthick
+    
+    ! -----------------------------------------------------------
+    
+    targetthick(1)        = DZ1MAX
+    
+    targetthick(2:N_snow) = 1./(N_snow-1.)
+    
+  end subroutine StieglitzSnow_targetthick_land
   
   ! **********************************************************************
   
@@ -1969,20 +2002,20 @@ contains
     write (logunit,*)
     write (logunit,*) 'StieglitzSnow_echo_constants():'
     write (logunit,*)
-    write (logunit,*) 'PIE                 = ', PIE      
-    write (logunit,*) 'ALHE                = ', ALHE     
-    write (logunit,*) 'ALHM                = ', ALHM     
-    write (logunit,*) 'TF                  = ', TF    
-    write (logunit,*) 'RHOW                = ', RHOW     
+    write (logunit,*) 'PIE                  = ', PIE      
+    write (logunit,*) 'ALHE                 = ', ALHE     
+    write (logunit,*) 'ALHM                 = ', ALHM     
+    write (logunit,*) 'TF                   = ', TF    
+    write (logunit,*) 'RHOW                 = ', RHOW     
     write (logunit,*)
-    write (logunit,*) 'MINSWE              = ', MINSWE
-    write (logunit,*) 'WEMIN               = ', WEMIN
-    write (logunit,*) 'CPW                 = ', CPW
-    write (logunit,*) 'StieglitzSnow_RHOMA = ', StieglitzSnow_RHOMA    
-    write (logunit,*) 'DZ1MAX              = ', DZ1MAX   
+    write (logunit,*) 'MINSWE               = ', MINSWE
+    write (logunit,*) 'WEMIN                = ', WEMIN
+    write (logunit,*) 'CPW                  = ', CPW
+    write (logunit,*) 'StieglitzSnow_RHOMA  = ', StieglitzSnow_RHOMA    
+    write (logunit,*) 'DZ1MAX               = ', DZ1MAX   
     write (logunit,*) 
-    write (logunit,*) 'SNWALB_VISMIN       = ', SNWALB_VISMIN
-    write (logunit,*) 'SNWALB_NIRMIN       = ', SNWALB_NIRMIN
+    write (logunit,*) 'SNWALB_VISMIN        = ', SNWALB_VISMIN
+    write (logunit,*) 'SNWALB_NIRMIN        = ', SNWALB_NIRMIN
     write (logunit,*) 
     write (logunit,*) 'end StieglitzSnow_echo_constants()'
     write (logunit,*)
