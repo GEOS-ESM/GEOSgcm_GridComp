@@ -33,16 +33,18 @@ module StieglitzSnow
   public :: StieglitzSnow_calc_tpsnow     ! used by          Catchment, and LDAS
   public :: StieglitzSnow_echo_constants  ! used by                         LDAS
   
+  public :: StieglitzSnow_RHOMA           ! used by land-atm DAS
+  
   public :: get_tf0d ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
   ! constants specific to StieglitzSnow
   
-  real,   private,  parameter :: MINSWE        = 0.013   ! kg/m^2  min SWE to avoid immediate melt
-  real,   private,  parameter :: cpw           = 2065.22 ! @ 0 C [J/kg/K]
-  real,   private,  parameter :: DZ1MAX        = 0.08    ! m
-  real,   private,  parameter :: RHOMA         = 500.    ! kg/m^3  maximum snow density
-  real,   private,  parameter :: SNWALB_VISMIN = 0.5
-  real,   private,  parameter :: SNWALB_NIRMIN = 0.3
+  real,   private,  parameter :: MINSWE              = 0.013   ! kg/m^2  min SWE to avoid immediate melt
+  real,   private,  parameter :: cpw                 = 2065.22 ! @ 0 C [J/kg/K]
+  real,   private,  parameter :: DZ1MAX              = 0.08    ! m
+  real,             parameter :: StieglitzSnow_RHOMA = 500.    ! kg/m^3  maximum snow density
+  real,   private,  parameter :: SNWALB_VISMIN       = 0.5
+  real,   private,  parameter :: SNWALB_NIRMIN       = 0.3
 
   !================================ Added by Teppei Yasunari ==================================
   !--------------------------------------------------------------------------------------------
@@ -640,7 +642,7 @@ contains
           endif
           wesn(1)  = wesn(1) + dw
           denom = 1./dens(1)
-          if(dw > 0.) denom = 1./rhoma
+          if(dw > 0.) denom = 1./StieglitzSnow_RHOMA
           sndz(1) = sndz(1) + dw*denom
           sndzsc = dw*denom
        endif
@@ -834,8 +836,8 @@ contains
           !**** Clip densities below maximum value, adjust quantities accordingly
           !**** while conserving heat & mass (STEPH 06/21/03).
           
-          if(dens(i) > rhoma) then
-             excs(i) = (dens(i)-rhoma)*sndz(i)
+          if(dens(i) > StieglitzSnow_RHOMA) then
+             excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)
              wlossfrac=excs(i)/wesn(i)
              wesn(i) = wesn(i) - excs(i)
              do k=1,N_constit
@@ -846,7 +848,7 @@ contains
              hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)
              hcorr= hcorr+(htsnn(i)-hnew)/dts
              htsnn(i)= hnew
-             dens(i) = rhoma
+             dens(i) = StieglitzSnow_RHOMA
           endif
        enddo
        drho0 = dens - drho0
@@ -1478,7 +1480,7 @@ contains
     if(SLOPE < 0.0) then
        GK_B = SLOPE
     else
-       GK_B = (0.85808-0.6)/(RHOFRESH-RHOMA)
+       GK_B = (0.85808-0.6)/(RHOFRESH-StieglitzSnow_RHOMA)
     endif
     
     DO I=1,NCH
@@ -1657,7 +1659,7 @@ contains
           ! Dry snow density in each snow layer [kg m-3] (N_Snow layers)
           
           DENEL(M)=(FICES(M)*WESN(M)/(AREASC+1.e-20))/(SNDZ(M) + 1.e-20)
-          DENEL(M)=MIN(RHOMA,DENEL(M))
+          DENEL(M)=MIN(StieglitzSnow_RHOMA,DENEL(M))
           
           ! Mass concentrations of dust,BC, and OC [kg kg-1] (3 layers)
           
@@ -1967,20 +1969,20 @@ contains
     write (logunit,*)
     write (logunit,*) 'StieglitzSnow_echo_constants():'
     write (logunit,*)
-    write (logunit,*) 'PIE              = ', PIE      
-    write (logunit,*) 'ALHE             = ', ALHE     
-    write (logunit,*) 'ALHM             = ', ALHM     
-    write (logunit,*) 'TF               = ', TF    
-    write (logunit,*) 'RHOW             = ', RHOW     
+    write (logunit,*) 'PIE                 = ', PIE      
+    write (logunit,*) 'ALHE                = ', ALHE     
+    write (logunit,*) 'ALHM                = ', ALHM     
+    write (logunit,*) 'TF                  = ', TF    
+    write (logunit,*) 'RHOW                = ', RHOW     
     write (logunit,*)
-    write (logunit,*) 'MINSWE           = ', MINSWE
-    write (logunit,*) 'WEMIN            = ', WEMIN
-    write (logunit,*) 'CPW              = ', CPW
-    write (logunit,*) 'RHOMA            = ', RHOMA    
-    write (logunit,*) 'DZ1MAX           = ', DZ1MAX   
+    write (logunit,*) 'MINSWE              = ', MINSWE
+    write (logunit,*) 'WEMIN               = ', WEMIN
+    write (logunit,*) 'CPW                 = ', CPW
+    write (logunit,*) 'StieglitzSnow_RHOMA = ', StieglitzSnow_RHOMA    
+    write (logunit,*) 'DZ1MAX              = ', DZ1MAX   
     write (logunit,*) 
-    write (logunit,*) 'SNWALB_VISMIN    = ', SNWALB_VISMIN
-    write (logunit,*) 'SNWALB_NIRMIN    = ', SNWALB_NIRMIN
+    write (logunit,*) 'SNWALB_VISMIN       = ', SNWALB_VISMIN
+    write (logunit,*) 'SNWALB_NIRMIN       = ', SNWALB_NIRMIN
     write (logunit,*) 
     write (logunit,*) 'end StieglitzSnow_echo_constants()'
     write (logunit,*)
