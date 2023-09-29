@@ -157,6 +157,7 @@ contains
 
     real, dimension(1)                :: asnow_tmp     !  StieglitzSnow_calc_asnow() requires array
     real, dimension(1,1)              :: swe_tmp       !  StieglitzSnow_calc_asnow() requires array
+    real                              :: snow_dens
 
     real, dimension(N_snow)           :: targetthick   ! for snow model relayer
     real, dimension(N_snow,N_constit) :: rconstit
