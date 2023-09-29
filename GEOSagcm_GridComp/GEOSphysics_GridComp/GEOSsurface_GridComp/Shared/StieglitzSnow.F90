@@ -1374,7 +1374,7 @@ contains
     
     ! -----------------------------------------------------------
     
-    asnow = min( sum(wesnn,1)/wemin, 1. )
+    asnow = max( min( sum(wesnn,1)/wemin, 1. ), 0. )
     
   end subroutine StieglitzSnow_calc_asnow
   
