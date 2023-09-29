@@ -814,6 +814,11 @@ contains
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddConnectivity ( GC,   &
+          SHORT_NAME  = (/'UWC','VWC'/), &
+          SRC_ID = OCEAN,                &
+          DST_ID = SEAICE,               &
+          _RC)
      endif
   end if
 
