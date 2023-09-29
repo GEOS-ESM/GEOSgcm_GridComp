@@ -196,7 +196,7 @@ contains
 
        call StieglitzSnow_calc_asnow( N_snow, 1, wesnn(1:N_snow,ii), asnow_tmp ) 
        
-       if (asnow_tmp>0.) then
+       if (asnow_tmp(1)>0.) then
        
           do kk=1,N_snow
              
