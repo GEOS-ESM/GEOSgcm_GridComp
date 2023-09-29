@@ -184,7 +184,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 6.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%HYSTPDFOPT,     'HYSTPDFOPT:',     DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 1.0     )
