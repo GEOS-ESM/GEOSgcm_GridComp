@@ -1844,7 +1844,8 @@ module GEOSmoist_Process_Library
          WTHV2,      &
          WQL,        &
          needs_preexisting, &
-         USE_BERGERON )
+         USE_BERGERON, &
+         SC_ICE )
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: PDFSHAPE
@@ -1860,17 +1861,18 @@ module GEOSmoist_Process_Library
       real, intent(out)   :: WTHV2, WQL
       real, intent(out)   :: PDFITERS
       logical, intent(in) :: needs_preexisting, USE_BERGERON
+      real, optional , intent(in) :: SC_ICE
 
       ! internal arrays
       real :: TAU,HL
-      real :: QT, sigmaqt1, sigmaqt2
+      real :: QT, sigmaqt1, sigmaqt2, scice
 
       real :: QSx,DQsx,QS,DQs
 
       real :: TEp, QSp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
-      real :: QAo, QAx, QCx, QC, fQi
+      real :: QAo, QAx, QCx, QC, fQi, QCi, qsnx
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
 
       real :: tmpARR
@@ -1879,6 +1881,9 @@ module GEOSmoist_Process_Library
       integer :: N, nmax
 
       character*(10) :: Iam='Process_Library:hystpdf'
+      
+      scice =  1.0
+       
 
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
@@ -1888,6 +1893,7 @@ module GEOSmoist_Process_Library
 
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
+      QCi = (QILS)*tmpARR
       TEn = TE
 
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
@@ -1903,6 +1909,13 @@ module GEOSmoist_Process_Library
          CFp = CFn
          TEp = TEn
          DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         
+         if(present(SC_ICE)) then
+         	scice = min(max(SC_ICE, 1.0), 1.7)
+            qsnx= Qsn*scice !
+            if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
+          end if  
+         
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
@@ -1916,7 +1929,7 @@ module GEOSmoist_Process_Library
          elseif(PDFSHAPE .eq. 4) then !lognormal (sigma is dimmensionless)
             sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
          endif
-
+       
          if (PDFSHAPE.lt.5) then
            call pdffrac(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,CFn)
            call pdfcondensate(PDFSHAPE,QT,sigmaqt1,sigmaqt2,QSn,QCn)

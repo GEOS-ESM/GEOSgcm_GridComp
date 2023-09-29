@@ -29,6 +29,7 @@ MODULE Aer_Actv_Single_Moment
 
        real, parameter :: NN_MIN      =  100.0e6
        real, parameter :: NN_MAX      = 1000.0e6
+       
 
        LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
       CONTAINS          
@@ -38,7 +39,7 @@ MODULE Aer_Actv_Single_Moment
 
       SUBROUTINE Aer_Activation(IM,JM,LM, q, t, plo, ple, zlo, zle, qlcn, qicn, qlls, qils, &
                                        sh, evap, kpbl, tke, vvel, FRLAND, USE_AERO_BUFFER, &
-                                       AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN)
+                                       AeroProps, aero_aci, NACTL, NACTI, NWFA, NN_LAND, NN_OCEAN, CLDMICRO)
       IMPLICIT NONE
       integer, intent(in)::IM,JM,LM
       TYPE(AerProps), dimension (IM,JM,LM),intent(inout)  :: AeroProps
@@ -52,7 +53,7 @@ MODULE Aer_Actv_Single_Moment
       real                        ,intent(in ) :: NN_LAND, NN_OCEAN     
       logical                     ,intent(in ) :: USE_AERO_BUFFER
       
- 
+      character(LEN=ESMF_MAXSTR):: CLDMICRO
       real, dimension (IM,JM,LM),intent(OUT) :: NACTL,NACTI, NWFA
       
       real(AER_PR), allocatable, dimension (:) :: sig0,rg,ni,bibar,nact 
@@ -227,7 +228,7 @@ MODULE Aer_Actv_Single_Moment
              
 
               deallocate(aero_aci_modes, __STAT__)
-
+       if (CLDMICRO .eq.  "MGB2_2M") return
       !--- activated aerosol # concentration for liq/ice phases (units: m^-3)
       numbinit = 0.
       WC       = 0.

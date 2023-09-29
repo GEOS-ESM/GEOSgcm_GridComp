@@ -1090,7 +1090,7 @@ contains
             ! be rewwritten and this parameters can be removed
             
             !************ Donifan            
-            !It might be unrealistic to apply full microphysics to droplet form on this time step
+            !It might be unrealistic to apply full microphysics to droplet formed on this time step
 
             lcldm(i,k)=max(liqcldf(i,k),mincld)
             cldm(i,k)=max(cldn(i,k),mincld)
@@ -1217,8 +1217,9 @@ contains
             endif
 
             if (t(i,k).lt.tmelt - 5._r8) then
+               
+               dumnnuc =  0.
                if (liu_in) then 
-
                   ! if aerosols interact with ice set number of activated ice nuclei
                   dum2=naai(i,k)
                   dumnnuc = dum2 ! make sure we pass tendencies

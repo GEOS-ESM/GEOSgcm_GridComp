@@ -5031,8 +5031,8 @@ contains
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
     if (USE_AEROSOL_NN) then
       call MAPL_GetResource( MAPL, USE_AERO_BUFFER , 'USE_AERO_BUFFER:' , DEFAULT=.TRUE. , RC=STATUS); VERIFY_(STATUS)
-      call aer_cloud_init()
-      call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
+      !call aer_cloud_init()
+      !call WRITE_PARALLEL ("INITIALIZED aer_cloud_init")
     endif
 
     ! MAT These have to be defined as they are passed into Aer_Activate below and are intent(in)
@@ -5293,7 +5293,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6, adjustl(CLDMICR_OPTION))
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5365,7 +5365,7 @@ contains
            end where
          endif
 
-         if (.FALSE.) then
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then 
           QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          else
           DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
