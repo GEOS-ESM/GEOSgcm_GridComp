@@ -196,15 +196,15 @@ contains
           
           ! snow water equivalent >= 0
           
-          wesnn(kk,ii) = max(wesnn(kk,ii), 0.)
+          wesnn( kk,ii) = max(wesnn( kk,ii), 0.)
           
           ! snow heat content <= 0 
           
-          htsnn(kk,ii) = min(htsnn(kk,ii), 0.)
+          htsnnn(kk,ii) = min(htsnnn(kk,ii), 0.)
           
           ! snow depth >= 0
           
-          sndzn(kk,ii) = max(sndzn(kk,ii), 0.)
+          sndzn( kk,ii) = max(sndzn( kk,ii), 0.)
           
           ! adjust snow depth to ensure  min <= density <= max
           
@@ -226,9 +226,9 @@ contains
        call StieglitzSnow_relayer(                 &
             N_snow, N_constit,                     &
             targetthick(1), targetthick(2:N_snow), &  
-            htsnn(1:N_snow,ii),                    &
-            wesnn(1:N_snow,ii),                    &
-            sndzn(1:N_snow,ii),                    &
+            htsnnn(1:N_snow,ii),                   &
+            wesnn( 1:N_snow,ii),                   &
+            sndzn( 1:N_snow,ii),                   &
             rconstit                       )
        
        ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
