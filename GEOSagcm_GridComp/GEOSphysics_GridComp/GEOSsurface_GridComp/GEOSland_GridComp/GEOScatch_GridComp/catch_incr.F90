@@ -3,7 +3,8 @@ module catch_incr
 
   ! module for "incremental analysis update" of Catchment in tile-space
   
-  ! reichle+csdraper, 3 Apr 2012
+  ! reichle+csdraper,  3 Apr 2012
+  ! reichle,          29 Sep 2023 - added snow checks 
 
   use catch_constants, ONLY:                 &
        N_SNOW        => CATCH_N_SNOW,        &
@@ -15,7 +16,9 @@ module catch_incr
   use StieglitzSnow,   ONLY:                 &
        N_constit,                            &
        StieglitzSnow_RHOMA,                  &
-       StieglitzSnow_relayer
+       StieglitzSnow_relayer,                &
+       StieglitzSnow_calc_asnow,             &
+       StieglitzSnow_targetthick_land
   
   implicit none
   
