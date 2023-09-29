@@ -497,18 +497,17 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    do j = js, je
-       call mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg,&
-            qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes,  &
-            rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
-            m2_sol, cond (:, j), area (:, j),                                  &
-            land (:, j), cnv_fraction(:, j), srf_type(:, j), eis(:,j),         &
-            rhcrit, anv_icefall, lsc_icefall,                                  &
-            revap, isubl,                                                      &
-            udt, vdt, pt_dt,                                                   &
-            qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r,      &
-            vt_s, vt_g, vt_i, qn2)
-    enddo
+    call mpdrv ( &
+         hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
+         qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes, &
+         rain, snow, graupel, ice, m2_rain, &
+         m2_sol, cond, area, &
+         land, cnv_fraction, srf_type, eis, &
+         rhcrit, anv_icefall, lsc_icefall, &
+         revap, isubl, &
+         udt, vdt, pt_dt, &
+         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
+         vt_s, vt_g, vt_i, qn2)
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -649,26 +648,26 @@ contains
   !>@param 5) qs: snow (kg / kg)
   !>@param 6) qg: graupel (kg / kg)
   ! -----------------------------------------------------------------------
-  subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
-       qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
+  subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, &
+       qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes, &
        rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land, &
-       cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl,                 &
-       u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
+       cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, revap, isubl, &
+       u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, &
        w_var, vt_r, vt_s, vt_g, vt_i, qn2)
 
     implicit none
 
     logical, intent (in) :: hydrostatic
 
-    integer, intent (in) :: j, is, ie, js, je, ks, ke
+    integer, intent (in) :: is, ie, js, je, ks, ke
     integer, intent (in) :: ntimes, ktop, kbot
 
     real, intent (in) :: dt_in
 
-    real, intent (in), dimension (is:) :: area1, land
-    real, intent (in), dimension (is:) :: cnv_fraction
-    real, intent (in), dimension (is:) :: srf_type
-    real, intent (in), dimension (is:) :: eis
+    real, intent (in), dimension (is:, js:) :: area1, land
+    real, intent (in), dimension (is:, js:) :: cnv_fraction
+    real, intent (in), dimension (is:, js:) :: srf_type
+    real, intent (in), dimension (is:, js:) :: eis
 
     real, intent (in), dimension (is:, js:, ks:) :: rhcrit
 
@@ -681,7 +680,7 @@ contains
     real, intent (inout), dimension (is:, js:, ks:) :: qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt
     real, intent (  out), dimension (is:, js:, ks:) :: revap, isubl
 
-    real, intent (inout), dimension (is:) :: rain, snow, ice, graupel, cond
+    real, intent (inout), dimension (is:, js:) :: rain, snow, ice, graupel, cond
 
     real, intent (out), dimension (is:, js:) :: w_var
 
@@ -692,309 +691,306 @@ contains
     real, dimension (ktop:kbot) :: h_var1d
     real, dimension (ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
     real, dimension (ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
-    real, dimension (ktop:kbot) :: dp0, dp1, dz0, dz1
-    real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0, qa0
-    real, dimension (ktop:kbot) :: t0, den, den0, tz, p1, denfac
+    real, dimension (ktop:kbot) :: dp1, dz1
+    real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
+    real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
-    real, dimension (ktop:kbot) :: u0, v0, u1, v1, w1
+    real, dimension (ktop:kbot) :: w1
 
-    real :: cpaut, rh_adj, rh_rain
+    real :: cpaut, rh_adj, rh_rain, t0
     real :: r1, s1, i1, g1, rdt, ccn0
     real :: dts
     real :: s_leng, t_land, t_ocean, h_var
     real :: cvm, tmp, omq
     real :: dqi, qio, qin
+    real :: u1_k, u1_km1, v1_k, v1_km1
 
-    integer :: i, k, n
+    integer :: i, j, k, n
 
     dts = dt_in / real (ntimes)
     rdt = 1. / dt_in
 
     ! -----------------------------------------------------------------------
+    ! calculate cloud condensation nuclei (ccn)
+    ! the following is based on klein eq. 15
+    ! -----------------------------------------------------------------------
+
+    cpaut = c_paut * 0.104 * grav / 1.717e-5
+    !! slow autoconversion in stable regimes
+    !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
+
+    ! Initialize
+    do k = ktop, kbot
+       do j = js, je
+          do i = is, ie
+             m2_rain (i, j, k) = 0.
+             m2_sol (i, j, k) = 0.
+             revap (i, j, k) = 0.
+             isubl (i, j, k) = 0.
+          enddo
+       enddo
+    enddo
+
+    ! -----------------------------------------------------------------------
     ! use local variables
     ! -----------------------------------------------------------------------
 
-    do i = is, ie
+    do j = js, je
 
-       do k = ktop, kbot
+       do i = is, ie
 
-          t0 (k) = pt (i, j, k)
-          tz (k) = t0 (k)
-          dp1 (k) = delp (i, j, k)
-          dp0 (k) = dp1 (k) ! moist air mass * grav
-
-          ! -----------------------------------------------------------------------
-          ! import horizontal subgrid variability with pressure dependence
-          ! total water subgrid deviation in horizontal direction
-          ! default area dependent form: use dx ~ 100 km as the base
-          ! -----------------------------------------------------------------------
-          h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
-
-          ! -----------------------------------------------------------------------
-          ! convert moist mixing ratios to dry mixing ratios
-          ! -----------------------------------------------------------------------
-
-          qvz (k) = qv (i, j, k)
-          qlz (k) = ql (i, j, k)
-          qiz (k) = qi (i, j, k)
-          qrz (k) = qr (i, j, k)
-          qsz (k) = qs (i, j, k)
-          qgz (k) = qg (i, j, k)
-
-          ! dp1: dry air_mass
-          ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
-          dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
-          omq = dp0 (k) / dp1 (k)
-
-          qvz (k) = qvz (k) * omq
-          qlz (k) = qlz (k) * omq
-          qrz (k) = qrz (k) * omq
-          qiz (k) = qiz (k) * omq
-          qsz (k) = qsz (k) * omq
-          qgz (k) = qgz (k) * omq
-
-          qa0 (k) = qa (i, j, k)
-          qaz (k) = qa (i, j, k)
-          dz0 (k) = dz (i, j, k)
-
-          den0 (k) = - dp1 (k) / (grav * dz0 (k)) ! density of dry air
-          p1 (k) = den0 (k) * rdgas * t0 (k) ! dry air pressure
-
-          ! -----------------------------------------------------------------------
-          ! save a copy of old value for computing tendencies
-          ! -----------------------------------------------------------------------
-
-          qv0 (k) = qvz (k)
-          ql0 (k) = qlz (k)
-          qr0 (k) = qrz (k)
-          qi0 (k) = qiz (k)
-          qs0 (k) = qsz (k)
-          qg0 (k) = qgz (k)
-
-          ! -----------------------------------------------------------------------
-          ! for sedi_momentum
-          ! -----------------------------------------------------------------------
-
-          m1 (k) = 0.
-          u0 (k) = uin (i, j, k)
-          v0 (k) = vin (i, j, k)
-          u1 (k) = u0 (k)
-          v1 (k) = v0 (k)
-
-       enddo
-
-       if (do_sedi_w) then
           do k = ktop, kbot
-             w1 (k) = w (i, j, k)
+
+             t0 = pt (i, j, k)
+             tz (k) = t0
+             dp1 (k) = delp (i, j, k)
+             ! dp0 (k) = dp1 (k) ! moist air mass * grav
+
+             ! -----------------------------------------------------------------------
+             ! import horizontal subgrid variability with pressure dependence
+             ! total water subgrid deviation in horizontal direction
+             ! default area dependent form: use dx ~ 100 km as the base
+             ! -----------------------------------------------------------------------
+             h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
+
+             ! -----------------------------------------------------------------------
+             ! convert moist mixing ratios to dry mixing ratios
+             ! -----------------------------------------------------------------------
+
+             qvz (k) = qv (i, j, k)
+             qlz (k) = ql (i, j, k)
+             qiz (k) = qi (i, j, k)
+             qrz (k) = qr (i, j, k)
+             qsz (k) = qs (i, j, k)
+             qgz (k) = qg (i, j, k)
+
+             ! dp1: dry air_mass
+             ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
+             dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
+             omq = delp (i, j, k) / dp1 (k)
+
+             qvz (k) = qvz (k) * omq
+             qlz (k) = qlz (k) * omq
+             qrz (k) = qrz (k) * omq
+             qiz (k) = qiz (k) * omq
+             qsz (k) = qsz (k) * omq
+             qgz (k) = qgz (k) * omq
+
+             qaz (k) = qa (i, j, k)
+
+             den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
+             p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
+
+             ! -----------------------------------------------------------------------
+             ! save a copy of old value for computing tendencies
+             ! -----------------------------------------------------------------------
+
+             qv0 (k) = qvz (k)
+             ql0 (k) = qlz (k)
+             qr0 (k) = qrz (k)
+             qi0 (k) = qiz (k)
+             qs0 (k) = qsz (k)
+             qg0 (k) = qgz (k)
+
+             ! -----------------------------------------------------------------------
+             ! for sedi_momentum
+             ! -----------------------------------------------------------------------
+
+             m1 (k) = 0.
+
+             if (do_sedi_w) w1 (k) = w (i, j, k)
+
+             ! ccn needs units #/m^3
+             if (prog_ccn) then
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+             else
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+                c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+             endif
+
           enddo
-       endif
-
-       ! -----------------------------------------------------------------------
-       ! calculate cloud condensation nuclei (ccn)
-       ! the following is based on klein eq. 15
-       ! -----------------------------------------------------------------------
-
-       cpaut = c_paut * 0.104 * grav / 1.717e-5
-       !! slow autoconversion in stable regimes
-       !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-
-       ! ccn needs units #/m^3
-       if (prog_ccn) then
-          do k = ktop, kbot
-             ! qn has units # / m^3
-             ccn (k) = qn (i, j, k)
-             c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-          enddo
-       else
-          do k = ktop, kbot
-             ! qn has units # / m^3
-             ccn (k) = qn (i, j, k)
-!!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-             c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-          enddo
-       endif
-
-       ! -----------------------------------------------------------------------
-       ! fix all negative water species
-       ! -----------------------------------------------------------------------
-
-       if (fix_negative) &
-            call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
-
-       m2_rain (i, j, :) = 0.
-       m2_sol (i, j, :) = 0.
-       revap (i, j, :) = 0.
-       isubl (i, j, :) = 0.
-
-       do n = 1, ntimes
 
           ! -----------------------------------------------------------------------
-          ! dry air density
+          ! fix all negative water species
           ! -----------------------------------------------------------------------
 
-          if (p_nonhydro) then
+          if (fix_negative) then
+             call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
+          endif
+
+          do n = 1, ntimes
+
+             ! -----------------------------------------------------------------------
+             ! dry air density
+             ! -----------------------------------------------------------------------
+
              do k = ktop, kbot
-                dz1 (k) = dz0 (k)
-                den (k) = den0 (k) ! dry air density remains the same
-                denfac (k) = sqrt (sfcrho / den (k))
+                if (p_nonhydro) then
+                   dz1 (k) = dz (i, j, k)
+                   den (k) = den0 (k) ! dry air density remains the same
+                   denfac (k) = sqrt (sfcrho / den (k))
+                else
+                   t0 = pt (i, j, k)
+                   dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
+                   den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
+                   denfac (k) = sqrt (sfcrho / den (k))
+                endif
+
+                ! -----------------------------------------------------------------------
+                ! sedimentation of cloud ice, snow, and graupel
+                ! -----------------------------------------------------------------------
+                call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+                     den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+             end do
+
+             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+                  dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
+             rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
+             snow (i, j) = snow (i, j) + s1
+             graupel (i, j) = graupel (i, j) + g1
+             ice (i, j) = ice (i, j) + i1
+
+             ! -----------------------------------------------------------------------
+             ! heat transportation during sedimentation
+             ! -----------------------------------------------------------------------
+
+             if (do_sedi_heat) then
+                call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
+                     qsz, qgz, c_ice)
+             endif
+
+             ! -----------------------------------------------------------------------
+             ! warm rain processes
+             ! -----------------------------------------------------------------------
+
+             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
+                  qgz, qaz, eis(i, j), den, denfac, ccn, c_praut, vtrz, &
+                  r1, evap1, m1_rain, w1, h_var1d)
+
+             rain (i, j) = rain (i, j) + r1
+
+             do k = ktop, kbot
+                revap (i,j,k) = revap (i,j,k) + evap1(k)
+                m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
+                m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
+                m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
              enddo
-          else
+
+             ! -----------------------------------------------------------------------
+             ! ice - phase microphysics
+             ! -----------------------------------------------------------------------
+
+             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
+                  denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
+                  ccn, cnv_fraction(i, j), srf_type(i, j))
+
              do k = ktop, kbot
-                dz1 (k) = dz0 (k) * tz (k) / t0 (k) ! hydrostatic balance
-                den (k) = den0 (k) * dz0 (k) / dz1 (k)
-                denfac (k) = sqrt (sfcrho / den (k))
+                isubl (i,j,k) = isubl (i,j,k) + subl1(k)
+             enddo
+
+          enddo ! ntimes
+
+          ! -----------------------------------------------------------------------
+          ! momentum transportation during sedimentation
+          ! note: dp1 is dry mass; dp0 is the old moist (total) mass
+          ! -----------------------------------------------------------------------
+
+          if (sedi_transport) then
+             v1_km1 = vin (i, j, ktop)
+             u1_km1 = uin (i, j, ktop)
+             do k = ktop + 1, kbot
+                u1_k = uin (i, j, k)
+                v1_k = vin (i, j, k)
+                u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
+                v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
+                u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
+                v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
+                u1_km1 = u1_k
+                v1_km1 = v1_k
+             enddo
+          endif
+
+          if (do_sedi_w) then
+             do k = ktop, kbot
+                w (i, j, k) = w1 (k)
              enddo
           endif
 
           ! -----------------------------------------------------------------------
-          ! sedimentation of cloud ice, snow, and graupel
+          ! update moist air mass (actually hydrostatic pressure)
+          ! convert to dry mixing ratios
           ! -----------------------------------------------------------------------
 
           do k = ktop, kbot
-             call fall_speed( &
-                  ktop, kbot, &
-                  p1(k), cnv_fraction(i), anv_icefall, lsc_icefall, &
-                  den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k) &
-                  )
-          end do
-          ! call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
-          !      den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
-
-          call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
-               dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
-
-          rain (i) = rain (i) + r1 ! from melted snow & ice that reached the ground
-          snow (i) = snow (i) + s1
-          graupel (i) = graupel (i) + g1
-          ice (i) = ice (i) + i1
-
-          ! -----------------------------------------------------------------------
-          ! heat transportation during sedimentation
-          ! -----------------------------------------------------------------------
-
-          if (do_sedi_heat) &
-               call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
-               qsz, qgz, c_ice)
-
-          ! -----------------------------------------------------------------------
-          ! warm rain processes
-          ! -----------------------------------------------------------------------
-
-          call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-               qgz, qaz, eis(i), den, denfac, ccn, c_praut, vtrz,   &
-               r1, evap1, m1_rain, w1, h_var1d)
-
-          rain (i) = rain (i) + r1
-
-          do k = ktop, kbot
-             revap (i,j,k) = revap (i,j,k) + evap1(k)
-             m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
-             m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
-             m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
+             t0 = pt (i, j, k)
+             omq = dp1 (k) / delp (i, j, k)
+             qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
+             ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
+             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+             qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+             qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+             qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+             cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
+             pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
           enddo
 
           ! -----------------------------------------------------------------------
-          ! ice - phase microphysics
+          ! update cloud fraction tendency
+          ! -----------------------------------------------------------------------
+          if (.not. do_qa) then
+             do k = ktop, kbot
+                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
+                     qa(i, j, k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
+                     qa(i, j, k) )                                                      ! Old Cloud
+             enddo
+          endif
+
+          ! -----------------------------------------------------------------------
+          ! fms diagnostics:
           ! -----------------------------------------------------------------------
 
-          call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-               denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
-               ccn, cnv_fraction(i), srf_type(i))
+          ! if (id_cond > 0) then
+          ! do k = ktop, kbot ! total condensate
+          ! cond (i) = cond (i) + dp1 (k) * (qlz (k) + qrz (k) + qsz (k) + qiz (k) + qgz (k))
+          ! enddo
+          ! endif
+          !
+          ! if (id_vtr > 0) then
+          ! do k = ktop, kbot
+          ! vt_r (i, j, k) = vtrz (k)
+          ! enddo
+          ! endif
+          !
+          ! if (id_vts > 0) then
+          ! do k = ktop, kbot
+          ! vt_s (i, j, k) = vtsz (k)
+          ! enddo
+          ! endif
+          !
+          ! if (id_vtg > 0) then
+          ! do k = ktop, kbot
+          ! vt_g (i, j, k) = vtgz (k)
+          ! enddo
+          ! endif
+          !
+          ! if (id_vts > 0) then
+          ! do k = ktop, kbot
+          ! vt_i (i, j, k) = vtiz (k)
+          ! enddo
+          ! endif
+          !
+          ! if (id_droplets > 0) then
+          ! do k = ktop, kbot
+          ! qn2 (i, j, k) = ccn (k)
+          ! enddo
+          ! endif
 
-          do k = ktop, kbot
-             isubl (i,j,k) = isubl (i,j,k) + subl1(k)
-          enddo
-
-
-       enddo ! ntimes
-
-       ! -----------------------------------------------------------------------
-       ! momentum transportation during sedimentation
-       ! note: dp1 is dry mass; dp0 is the old moist (total) mass
-       ! -----------------------------------------------------------------------
-
-       if (sedi_transport) then
-          do k = ktop + 1, kbot
-             u1 (k) = (dp0 (k) * u1 (k) + m1 (k - 1) * u1 (k - 1)) / (dp0 (k) + m1 (k - 1))
-             v1 (k) = (dp0 (k) * v1 (k) + m1 (k - 1) * v1 (k - 1)) / (dp0 (k) + m1 (k - 1))
-             u_dt (i, j, k) = u_dt (i, j, k) + (u1 (k) - u0 (k)) * rdt
-             v_dt (i, j, k) = v_dt (i, j, k) + (v1 (k) - v0 (k)) * rdt
-          enddo
-       endif
-
-       if (do_sedi_w) then
-          do k = ktop, kbot
-             w (i, j, k) = w1 (k)
-          enddo
-       endif
-
-       ! -----------------------------------------------------------------------
-       ! update moist air mass (actually hydrostatic pressure)
-       ! convert to dry mixing ratios
-       ! -----------------------------------------------------------------------
-
-       do k = ktop, kbot
-          omq = dp1 (k) / dp0 (k)
-          qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
-          ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-          qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-          qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-          qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-          qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
-          cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-          pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0 (k)) * cvm / cp_air
        enddo
-
-       ! -----------------------------------------------------------------------
-       ! update cloud fraction tendency
-       ! -----------------------------------------------------------------------
-       if (.not. do_qa) then
-          do k = ktop, kbot
-             qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
-                  qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
-                  qa0(k) )                                                      ! Old Cloud
-          enddo
-       endif
-
-       ! -----------------------------------------------------------------------
-       ! fms diagnostics:
-       ! -----------------------------------------------------------------------
-
-       ! if (id_cond > 0) then
-       ! do k = ktop, kbot ! total condensate
-       ! cond (i) = cond (i) + dp1 (k) * (qlz (k) + qrz (k) + qsz (k) + qiz (k) + qgz (k))
-       ! enddo
-       ! endif
-       !
-       ! if (id_vtr > 0) then
-       ! do k = ktop, kbot
-       ! vt_r (i, j, k) = vtrz (k)
-       ! enddo
-       ! endif
-       !
-       ! if (id_vts > 0) then
-       ! do k = ktop, kbot
-       ! vt_s (i, j, k) = vtsz (k)
-       ! enddo
-       ! endif
-       !
-       ! if (id_vtg > 0) then
-       ! do k = ktop, kbot
-       ! vt_g (i, j, k) = vtgz (k)
-       ! enddo
-       ! endif
-       !
-       ! if (id_vts > 0) then
-       ! do k = ktop, kbot
-       ! vt_i (i, j, k) = vtiz (k)
-       ! enddo
-       ! endif
-       !
-       ! if (id_droplets > 0) then
-       ! do k = ktop, kbot
-       ! qn2 (i, j, k) = ccn (k)
-       ! enddo
-       ! endif
 
     enddo
 
