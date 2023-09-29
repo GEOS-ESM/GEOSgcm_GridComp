@@ -1480,7 +1480,7 @@ contains
     INTEGER, INTENT(IN), DIMENSION(NCH)           :: ITYP
     REAL,    INTENT(IN)                           :: RHOFRESH 
     REAL,    INTENT(IN)                           :: SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE 
-    REAL,    INTENT(IN), DIMENSION(NCH)           :: AVISDR, ANIRDR, AVISDF, 
+    REAL,    INTENT(IN), DIMENSION(NCH)           :: AVISDR, ANIRDR, AVISDF 
     REAL,    INTENT(IN), DIMENSION(NCH)           :: ANIRDF, VLAI, ZTH
     REAL,    INTENT(IN), DIMENSION(N_Snow,NCH)    :: WESN, HTSNN, SNDZ
     
