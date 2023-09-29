@@ -114,10 +114,15 @@ contains
        bf1,bf2,                                                            & 
        TC1, TC2, TC4, QC1, QC2, QC4,                                       & 
        CAPAC, CATDEF, RZEXC, SRFEXC,                                       & 
-       GHTCNT, WESNN, HTSNNN, SNDZN  )
+       GHTCNT, WESNN, HTSNNN, SNDZN,                                       &
+       check_soil_moisture, check_snow )
     
     ! check Catchment prognostic variables for physical constraints, re-set
     !  if constraints are violated
+    !
+    ! optional input arguments can be used to turn off checks of soil
+    !  moisture and/or snow states (added to maintain 0-diff for 
+    !  LDAS SMAP Tb assimilation test cases)
     !
     ! reichle,  2 Aug 2005
     ! reichle,  5 Feb 2008 - moved from clsm_ensdrv_pert_routines.F90 and 
@@ -150,6 +155,8 @@ contains
     real,    dimension(N_GT,  NTILES), intent(inout) :: GHTCNT
     real,    dimension(N_SNOW,NTILES), intent(inout) :: WESNN, HTSNNN, SNDZN
 
+    logical, optional,                 intent(in)    :: check_soil_moisture, check_snow
+
     ! ----------------------------------------------------------------
     
     ! local variables
@@ -164,13 +171,23 @@ contains
     real, dimension(N_snow)           :: targetthick   ! for snow model relayer
     real, dimension(N_snow,N_constit) :: rconstit
 
+    logical                           :: check_sm, check_sno
+    
     ! ----------------------------------------------------------------
     
-    ! get target for snow layer thickness (as used in subroutine catchment() over land tiles)
+    ! process optional inputs; by default, check everything
     
-    call StieglitzSnow_targetthick_land( N_snow, targetthick )
+    check_sm  = .true.
+    check_sno = .true.
+    
+    if (present(check_soil_moisture))  check_sm  = check_soil_moisture
+    if (present(check_snow         ))  check_sno = check_snow    
+    
+    ! ------------------------------------------------------------
 
     ! check for violations of physical constraints and correct accordingly
+    
+    ! legacy checks (not currently related to analysis updates)
     
     do ii=1,NTILES
        
@@ -192,82 +209,108 @@ contains
        !
        ! ghtcnt(1:N_gt,ii)
        
-       ! checks on snow states 
-
-       call StieglitzSnow_calc_asnow( N_snow, 1, wesnn(1:N_snow,ii), asnow_tmp ) 
-       
-       if (asnow_tmp(1)>0.) then
-       
-          do kk=1,N_snow
-             
-             ! snow water equivalent >= 0
-             
-             wesnn( kk,ii) = max(wesnn( kk,ii), 0.)
-             
-             ! snow heat content <= 0 
-             
-             htsnnn(kk,ii) = min(htsnnn(kk,ii), 0.)
-             
-             ! snow depth >= 0
-             
-             sndzn( kk,ii) = max(sndzn( kk,ii), 0.)
-             
-             ! adjust snow depth to ensure  min <= density <= max
-          
-             snow_dens = (wesnn(kk,ii)/asnow_tmp(1))/sndzn(kk,ii)
-             
-             snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
-             snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
-             
-             sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp(1))/snow_dens
-             
-          end do
-          
-          ! relayer snow
-          
-          call StieglitzSnow_relayer(                 &
-               N_snow, N_constit,                     &
-               targetthick(1), targetthick(2:N_snow), &  
-               htsnnn(1:N_snow,ii),                   &
-               wesnn( 1:N_snow,ii),                   &
-               sndzn( 1:N_snow,ii),                   &
-               rconstit                       )
-          
-          ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
-          !   TO RE-DIAGNOSE SNOW TEMP AND ASNOW !!!!
-          
-       end if  ! (asnow_tmp>0.)
-          
     end do
+    
+    ! --------------------------------------------------------------------
+    
+    if (check_sno) then  ! check snow states 
        
-    ! check soil moisture states (done as part of calculation of
-    ! soil moisture content)
-    ! reichle, 6 Feb 2004
+       ! get target snow layer thicknesses for land tiles
+       
+       call StieglitzSnow_targetthick_land( N_snow, targetthick )
+       
+       do ii=1,NTILES
+          
+          call StieglitzSnow_calc_asnow( N_snow, 1, wesnn(1:N_snow,ii), asnow_tmp ) 
+          
+          if (asnow_tmp(1)>0.) then
+             
+             do kk=1,N_snow
+                
+                ! snow water equivalent >= 0
+                
+                wesnn( kk,ii) = max(wesnn( kk,ii), 0.)
+                
+                ! snow heat content <= 0 
+                
+                htsnnn(kk,ii) = min(htsnnn(kk,ii), 0.)
+                
+                ! snow depth >= 0
+                
+                sndzn( kk,ii) = max(sndzn( kk,ii), 0.)
+                
+                ! adjust snow depth to ensure  min <= density <= max
+                
+                snow_dens = (wesnn(kk,ii)/asnow_tmp(1))/sndzn(kk,ii)
+                
+                snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
+                snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
+                
+                sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp(1))/snow_dens
+                
+             end do
+             
+             ! relayer snow
+             
+             call StieglitzSnow_relayer(                 &
+                  N_snow, N_constit,                     &
+                  targetthick(1), targetthick(2:N_snow), &  
+                  htsnnn(1:N_snow,ii),                   &
+                  wesnn( 1:N_snow,ii),                   &
+                  sndzn( 1:N_snow,ii),                   &
+                  rconstit                       )
+             
+             ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
+             !   TO RE-DIAGNOSE SNOW TEMP AND ASNOW !!!!
+          
+          else
+             
+             ! zero snow mass, make sure snow depth and snow heat content are also zero
+             
+             wesnn( 1:N_snow,ii) = 0.    ! protect against sum(wesn)<0.
+             htsnnn(1:N_snow,ii) = 0.
+             sndzn( 1:N_snow,ii) = 0.             
+             
+          end if  ! (asnow_tmp>0.)
+          
+       end do
+       
+    end if        ! (check_sno)
 
-    ! NOTE: calc_soil_moist() was moved into catchment.F90 (when GEOS5
-    !       went from catchment.f to catchment.F90).  The constraint
-    !       in calc_soil_moist() was originally catdef>0., but this
-    !       proved insufficient when the code was compiled on discover
-    !       with "-openmp" because of unprotected divisions by zero
-    !       in partition().  (See comment dated 26 March 2007 in the old
-    !       catchment.f)
-    !       Here, preface the call to calc_soil_moist() with the appropriate
-    !       lower bound so that the off-line driver can be used with older 
-    !       versions of catchment.F90 (at least version 1.37 and earlier).
-    !       IMPORTANT: This *will* mess up the optional diagnostic
-    !       "werror", which is not used here but may be in the future.
-    !       reichle - 5 Feb 2008
-    
-    ! call to revised subroutine catch_calc_soil_moist() -- which includes the
-    ! lower bound on catdef, - reichle, 3 Apr 2012
-        
-    call catch_calc_soil_moist( &
-         NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
-         ars1,ars2,ars3,ara1,ara2, &
-         ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2, &
-         srfexc,rzexc,catdef, &
-         ar1, ar2, ar4 )
-    
+    ! ----------------------------------------------------------------
+
+    if (check_sm) then
+       
+       ! check soil moisture states (done as part of calculation of
+       ! soil moisture content)
+       ! reichle, 6 Feb 2004
+       
+       ! NOTE: calc_soil_moist() was moved into catchment.F90 (when GEOS5
+       !       went from catchment.f to catchment.F90).  The constraint
+       !       in calc_soil_moist() was originally catdef>0., but this
+       !       proved insufficient when the code was compiled on discover
+       !       with "-openmp" because of unprotected divisions by zero
+       !       in partition().  (See comment dated 26 March 2007 in the old
+       !       catchment.f)
+       !       Here, preface the call to calc_soil_moist() with the appropriate
+       !       lower bound so that the off-line driver can be used with older 
+       !       versions of catchment.F90 (at least version 1.37 and earlier).
+       !       IMPORTANT: This *will* mess up the optional diagnostic
+       !       "werror", which is not used here but may be in the future.
+       !       reichle - 5 Feb 2008
+       
+       ! call to revised subroutine catch_calc_soil_moist() -- which includes the
+       ! lower bound on catdef, - reichle, 3 Apr 2012
+       
+       call catch_calc_soil_moist( &
+            NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
+            ars1,ars2,ars3,ara1,ara2, &
+            ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2, &
+            srfexc,rzexc,catdef, &
+            ar1, ar2, ar4 )
+       
+    end if  ! (check_sm)
+
   end subroutine check_catch_progn
 
 end module catch_incr
