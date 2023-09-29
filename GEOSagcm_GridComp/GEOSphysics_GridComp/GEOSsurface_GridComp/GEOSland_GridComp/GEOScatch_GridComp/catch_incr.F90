@@ -193,49 +193,53 @@ contains
        ! ghtcnt(1:N_gt,ii)
        
        ! checks on snow states 
-       
-       do kk=1,N_snow
-          
-          ! snow water equivalent >= 0
-          
-          wesnn( kk,ii) = max(wesnn( kk,ii), 0.)
-          
-          ! snow heat content <= 0 
-          
-          htsnnn(kk,ii) = min(htsnnn(kk,ii), 0.)
-          
-          ! snow depth >= 0
-          
-          sndzn( kk,ii) = max(sndzn( kk,ii), 0.)
-          
-          ! adjust snow depth to ensure  min <= density <= max
-          
-          call StieglitzSnow_calc_asnow( 1, 1, wesnn(kk,ii), asnow_tmp ) 
-          
-          snow_dens = (wesnn(kk,ii)/asnow_tmp(1))/sndzn(kk,ii)
-          
-          snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
-          snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
-          
-          sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp(1))/snow_dens
-          
-       end do
-       
-       ! relayer snow
-       
-       call StieglitzSnow_relayer(                 &
-            N_snow, N_constit,                     &
-            targetthick(1), targetthick(2:N_snow), &  
-            htsnnn(1:N_snow,ii),                   &
-            wesnn( 1:N_snow,ii),                   &
-            sndzn( 1:N_snow,ii),                   &
-            rconstit                       )
-       
-       ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
-       !   TO RE-DIAGNOSE SNOW TEMP AND ASNOW !!!!
 
+       call StieglitzSnow_calc_asnow( N_snow, 1, wesnn(1:N_snow,ii), asnow_tmp ) 
+       
+       if (asnow_tmp>0.) then
+       
+          do kk=1,N_snow
+             
+             ! snow water equivalent >= 0
+             
+             wesnn( kk,ii) = max(wesnn( kk,ii), 0.)
+             
+             ! snow heat content <= 0 
+             
+             htsnnn(kk,ii) = min(htsnnn(kk,ii), 0.)
+             
+             ! snow depth >= 0
+             
+             sndzn( kk,ii) = max(sndzn( kk,ii), 0.)
+             
+             ! adjust snow depth to ensure  min <= density <= max
+          
+             snow_dens = (wesnn(kk,ii)/asnow_tmp(1))/sndzn(kk,ii)
+             
+             snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
+             snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
+             
+             sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp(1))/snow_dens
+             
+          end do
+          
+          ! relayer snow
+          
+          call StieglitzSnow_relayer(                 &
+               N_snow, N_constit,                     &
+               targetthick(1), targetthick(2:N_snow), &  
+               htsnnn(1:N_snow,ii),                   &
+               wesnn( 1:N_snow,ii),                   &
+               sndzn( 1:N_snow,ii),                   &
+               rconstit                       )
+          
+          ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
+          !   TO RE-DIAGNOSE SNOW TEMP AND ASNOW !!!!
+          
+       end if  ! (asnow_tmp>0.)
+          
     end do
-
+       
     ! check soil moisture states (done as part of calculation of
     ! soil moisture content)
     ! reichle, 6 Feb 2004
