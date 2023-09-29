@@ -1015,17 +1015,11 @@ contains
 
     real, intent (in) :: cw ! heat capacity
 
-    real, dimension (ktop:kbot) :: dgz, cvn
+    real :: dgz, cvn
 
     real :: tmp
 
     integer :: k
-
-    do k = ktop, kbot
-       dgz (k) = - 0.5 * grav * dz (k) ! > 0
-       cvn (k) = dm (k) * (cv_air + qv (k) * cv_vap + (qr (k) + ql (k)) * &
-            c_liq + (qi (k) + qs (k) + qg (k)) * c_ice)
-    enddo
 
     ! -----------------------------------------------------------------------
     ! sjl, july 2014
@@ -1037,8 +1031,10 @@ contains
     ! -----------------------------------------------------------------------
 
     k = ktop
-    tmp = cvn (k) + m1 (k) * cw
-    tz (k) = (tmp * tz (k) + m1 (k) * dgz (k)) / tmp
+    cvn = dm (k) * (cv_air + qv (k) * cv_vap + (qr (k) + ql (k)) * &
+         c_liq + (qi (k) + qs (k) + qg (k)) * c_ice)
+    dgz = - 0.5 * grav * dz (k) ! > 0
+    tz (k) = ((cvn + m1 (k) * cw) * tz (k) + m1 (k) * dgz) / (cvn + m1 (k) * cw)
 
     ! -----------------------------------------------------------------------
     ! implicit algorithm: can't be vectorized
@@ -1046,8 +1042,11 @@ contains
     ! -----------------------------------------------------------------------
 
     do k = ktop + 1, kbot
-       tz (k) = ((cvn (k) + cw * (m1 (k) - m1 (k - 1))) * tz (k) + m1 (k - 1) * &
-            cw * tz (k - 1) + dgz (k) * (m1 (k - 1) + m1 (k))) / (cvn (k) + cw * m1 (k))
+       dgz = - 0.5 * grav * dz (k) ! > 0
+       cvn = dm (k) * (cv_air + qv (k) * cv_vap + (qr (k) + ql (k)) * &
+            c_liq + (qi (k) + qs (k) + qg (k)) * c_ice)
+       tz (k) = ((cvn + cw * (m1 (k) - m1 (k - 1))) * tz (k) + m1 (k - 1) * &
+            cw * tz (k - 1) + dgz * (m1 (k - 1) + m1 (k))) / (cvn + cw * m1 (k))
     enddo
 
   end subroutine sedi_heat
