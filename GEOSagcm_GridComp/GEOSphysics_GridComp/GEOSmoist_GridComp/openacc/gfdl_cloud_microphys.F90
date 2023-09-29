@@ -342,9 +342,10 @@ module gfdl2_cloud_microphys_mod
   !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
   !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
   !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
-  !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, &
-  !$acc     do_sedi_w, use_ppm, mono_prof, &
-
+  !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
+  !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
+  !$acc     ql0_max, dt_fr, &
+  
   !$acc     ces0, cracs, cracw, cssub, &
   !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
   !$acc     crevp, csmlt, cgmlt, cgfr, acco)
@@ -459,8 +460,9 @@ contains
     !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
     !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
     !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
-    !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, &
-    !$acc     do_sedi_w, use_ppm, mono_prof)
+    !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
+    !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
+    !$acc     ql0_max, dt_fr)
 
     ! tendency zero out for am moist processes should be done outside the driver
 
@@ -1063,6 +1065,7 @@ contains
        den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
 
     implicit none
+    !$acc routine vector
 
     integer, intent (in) :: ktop, kbot
 
@@ -1088,7 +1091,7 @@ contains
 
     real :: sink, dq, qc0, qc
     real :: fac_rc, qden
-    real :: zs = 0.
+    real :: zs
     real :: dt5
 
     integer :: k
@@ -1101,6 +1104,7 @@ contains
 
     logical :: no_fall
 
+    zs = 0.
     dt5 = 0.5 * dt
 
     ! -----------------------------------------------------------------------
@@ -1136,6 +1140,7 @@ contains
        ! no subgrid varaibility
        ! -----------------------------------------------------------------------
 
+       !$acc loop vector private(qc0, qc, dq, sink)
        do k = ktop, kbot
           qc0 = fac_rc * ccn (k)
           if (tz (k) > t_wfr) then
@@ -1158,6 +1163,7 @@ contains
 
        call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
+       !$acc loop vector private(qc0, qc, dq, sink)
        do k = ktop, kbot
           qc0 = fac_rc * ccn (k)
           if (tz (k) > t_wfr + dt_fr) then
@@ -1197,6 +1203,7 @@ contains
     elseif (const_vr) then
        vtr (:) = vr_fac ! ifs_2016: 4.0
     else
+       !$acc loop vector private(qden)
        do k = ktop, kbot
           qden = qr (k) * den (k)
           if (qr (k) < thr) then
@@ -1210,6 +1217,7 @@ contains
     endif
 
     ze (kbot + 1) = zs
+    !$acc loop seq
     do k = kbot, ktop, - 1
        ze (k) = ze (k + 1) - dz (k) ! dz < 0
     enddo
@@ -1222,6 +1230,7 @@ contains
     evap1 = revap
 
     if (do_sedi_w) then
+       !$acc loop vector
        do k = ktop, kbot
           dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
        enddo
@@ -1235,11 +1244,13 @@ contains
        r1 = 0.0
     elseif (use_ppm) then
        zt (ktop) = ze (ktop)
+       !$acc loop vector
        do k = ktop + 1, kbot
           zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
        enddo
        zt (kbot + 1) = zs - dt * vtr (kbot)
 
+       !$acc loop seq
        do k = ktop, kbot
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
@@ -1254,6 +1265,7 @@ contains
 
     if (do_sedi_w) then
        w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+       !$acc loop vector
        do k = ktop + 1, kbot
           w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
                / (dm (k) + m1_rain (k - 1) - m1_rain (k))
