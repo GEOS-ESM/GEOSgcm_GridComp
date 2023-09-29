@@ -4384,6 +4384,8 @@ contains
   subroutine neg_adj (ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
 
     implicit none
+    !!$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -4391,7 +4393,7 @@ contains
 
     real, intent (inout), dimension (ktop:kbot) :: pt, qv, ql, qr, qi, qs, qg
 
-    real, dimension (ktop:kbot) :: lcpk, icpk
+    real :: lcpk, icpk
 
     real :: dq, cvm
 
@@ -4401,13 +4403,11 @@ contains
     ! define heat capacity and latent heat coefficient
     ! -----------------------------------------------------------------------
 
+    !!$acc loop vector private(cvm, lcpk, icpk)
     do k = ktop, kbot
        cvm = c_air + qv (k) * c_vap + (qr (k) + ql (k)) * c_liq + (qi (k) + qs (k) + qg (k)) * c_ice
-       lcpk (k) = (lv00 + d0_vap * pt (k)) / cvm
-       icpk (k) = (li00 + dc_ice * pt (k)) / cvm
-    enddo
-
-    do k = ktop, kbot
+       lcpk = (lv00 + d0_vap * pt (k)) / cvm
+       icpk = (li00 + dc_ice * pt (k)) / cvm
 
        ! -----------------------------------------------------------------------
        ! ice phase:
@@ -4426,7 +4426,7 @@ contains
        ! if graupel < 0, borrow from rain
        if (qg (k) < 0.) then
           qr (k) = qr (k) + qg (k)
-          pt (k) = pt (k) - qg (k) * icpk (k) ! heating
+          pt (k) = pt (k) - qg (k) * icpk ! heating
           qg (k) = 0.
        endif
 
@@ -4442,7 +4442,7 @@ contains
        ! if cloud water < 0, borrow from water vapor
        if (ql (k) < 0.) then
           qv (k) = qv (k) + ql (k)
-          pt (k) = pt (k) - ql (k) * lcpk (k) ! heating
+          pt (k) = pt (k) - ql (k) * lcpk ! heating
           ql (k) = 0.
        endif
 
@@ -4452,6 +4452,7 @@ contains
     ! fix water vapor; borrow from below
     ! -----------------------------------------------------------------------
 
+    !!$acc loop seq
     do k = ktop, kbot - 1
        if (qv (k) < 0.) then
           qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
