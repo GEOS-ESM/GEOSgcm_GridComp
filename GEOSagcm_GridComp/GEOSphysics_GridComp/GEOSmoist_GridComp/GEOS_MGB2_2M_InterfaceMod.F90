@@ -52,10 +52,7 @@ module GEOS_MGB2_2M_InterfaceMod
   ! Local resource variables
   integer :: imsize
   real    :: TURNRHCRIT
-  real    :: MINRHCRITLND
-  real    :: MINRHCRITOCN
-  real    :: MAXRHCRITLND
-  real    :: MAXRHCRITOCN
+  real    :: MINRHCRIT  
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -368,7 +365,10 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS); VERIFY_(STATUS)
 
-    
+    call MAPL_GetResource( MAPL, MINRHCRIT, 'MINRHCRIT:', DEFAULT = 0.9, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT, 'TURNRHCRIT:', DEFAULT = 884., RC=STATUS); VERIFY_(STATUS)
+
+     
     !2M==tuning and options======
     
     
@@ -537,9 +537,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     real    :: ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L, K
-    real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
-    real :: dw_ocean = 0.10 !< base value for ocean
-
+  
 
     integer :: num_steps_micro,  pcnst, n_modes, kbmin, kcldtop, kcldbot , &
                 NAUX, kcldtopcvn, nbincontactdust, index, K0, KCBLMIN, i_src_mode, i_dst_mode
@@ -1300,6 +1298,12 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                
             enddo
          enddo
+         
+          where (T .gt. 238.0)
+       		SC_ICE  =  1.0
+          end where 
+       		SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.8)
+        
 
              call MAPL_TimerOff(MAPL,"---ACTIV", __RC__)
         
@@ -1416,54 +1420,28 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
       
       
-       ! evap/subl/pdf
-        call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        
-           do I=1,IM
-          do J=1,JM
-           do L=1,LM
-     
-       ! Send the condensates through the pdf after convection
-             ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
-             if (EIS(I,J) > 5.0) then ! Stable
-                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**2))
-             else ! Unstable
-                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(PLEmb(i,j,LM)/PLEmb(i,j,l))**4))
-             endif
-             ! include area scaling and limit RHcrit to > 70% 
-             ALPHA = min( 0.30, ALPHA*SQRT(SQRT(AREA(I,J)/1.e10)) )
-           ! fill RHCRIT export
-           
-           
-           ALPH3D(I, J, L) =  ALPHA
-      
-                 end do ! IM loop
-         end do ! JM loop
-       end do ! LM loop
-      
-      
-      if (associated(RHCRIT3D)) RHCRIT3D = 1.0-ALPH3D
-      
-       ! Put condensates in touch with the PDF
-       
-       where (T .gt. 238.0)
-       	SC_ICE  =  1.0
-       end where 
-       SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.8)
-       
-       if (.true.) then
+       !=========== evap/subl/pdf
+         
         call MAPL_TimerOn(MAPL,"----hystpdf")
          
+        
         do I=1,IM
           do J=1,JM
            do L=1,LM
 			
             DLPDF_X(I, J, L)=  QLLS(I, J, L) +QLCN(I, J, L)
             DIPDF_X(I, J, L)=  QILS(I, J, L) +QICN(I, J, L)
-    
-             call hystpdf( &
+            
+            call pdf_alpha(PLmb(I, J, L),PLmb(I, J, LM), ALPHA, FRLAND(I, J),  &
+                              MINRHCRIT, TURNRHCRIT, EIS(I, J), 0) !0 uses old slingo formulation 
+     		
+            !include area scaling and limit RHcrit to > 70%
+            ALPHA = min( 0.30, ALPHA*SQRT(SQRT(max(AREA(I,J), 0.0)/1.e10)) )
+            ALPH3D(I, J, L) =  ALPHA
+            
+            call hystpdf( &
                       DT_MOIST       , &
-                      ALPH3D(I, J, L)          , &
+                      ALPHA          , &
                       PDFSHAPE       , &
                       CNV_FRC(I,J)   , &
                       SRF_TYPE(I,J)  , &
@@ -1497,23 +1475,24 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                       .true., &
                       SC_ICE(I, J, L))
                       
-         DLPDF_X(I, J, L)=((QLLS(I, J, L)+QLCN(I, J, L)) - DLPDF_X(I, J, L))/DT_MOIST
-         DIPDF_X(I, J, L)=((QILS(I, J, L)+QICN(I, J, L)) - DIPDF_X(I, J, L))/DT_MOIST
+         	DLPDF_X(I, J, L)=((QLLS(I, J, L)+QLCN(I, J, L)) - DLPDF_X(I, J, L))/DT_MOIST
+         	DIPDF_X(I, J, L)=((QILS(I, J, L)+QICN(I, J, L)) - DIPDF_X(I, J, L))/DT_MOIST
          
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
        
+      call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      if (associated(RHCRIT3D)) RHCRIT3D = 1.0-ALPH3D
        
       call MAPL_GetPointer(EXPORT, PTR3D,     'DIPDF'     , ALLOC=.TRUE., __RC__)
       PTR3D= DIPDF_X
       call MAPL_GetPointer(EXPORT, PTR3D,     'DLPDF'     , ALLOC=.TRUE., __RC__)
       PTR3D= DLPDF_X
     
-       call MAPL_TimerOff(MAPL,"----hystpdf")
-      end if 
+      call MAPL_TimerOff(MAPL,"----hystpdf")
        
-           do I=1,IM
+         do I=1,IM
           do J=1,JM
            do L=1,LM
 
