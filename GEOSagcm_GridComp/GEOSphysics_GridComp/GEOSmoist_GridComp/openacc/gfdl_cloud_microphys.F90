@@ -345,7 +345,7 @@ module gfdl2_cloud_microphys_mod
   !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
   !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
   !$acc     ql0_max, dt_fr, &
-  
+
   !$acc     ces0, cracs, cracw, cssub, &
   !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
   !$acc     crevp, csmlt, cgmlt, cgfr, acco)
@@ -497,6 +497,14 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
+    !!$acc data copyin(uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    !!$acc             qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    !!$acc             rhcrit, ntimes) &
+    !!$acc      copyout(m2_rain, m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    !!$acc              vt_i, qn2) &
+    !!$acc      copy(w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    !!$acc           ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+
     call mpdrv ( &
          hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
          qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes, &
@@ -508,6 +516,8 @@ contains
          udt, vdt, pt_dt, &
          qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
          vt_s, vt_g, vt_i, qn2)
+
+    !!$acc end data
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -720,6 +730,8 @@ contains
     !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
 
     ! Initialize
+    !$acc data copy(m2_rain, m2_sol, revap, isubl)
+    !$acc parallel loop gang vector collapse(3)
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
@@ -730,6 +742,8 @@ contains
           enddo
        enddo
     enddo
+    !$acc end parallel loop
+    !$acc end data
 
     ! -----------------------------------------------------------------------
     ! use local variables
@@ -1427,8 +1441,8 @@ contains
        ! -----------------------------------------------------------------------
        !$acc loop vector private(dq, dq_p1)
        do k = 2, km - 1
-          dq = 0.5 * (q(k) - q(k-1))
-          dq_p1 = 0.5 * (q(k+1) - q(k))
+          dq = 0.5 * (q (k) - q (k - 1))
+          dq_p1 = 0.5 * (q (k + 1) - q (k))
           dm (k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (k))
           if (dq * dq_p1 <= 0.) then
              if (dq > 0.) then ! local max
@@ -1966,6 +1980,7 @@ contains
     ! -----------------------------------------------------------------------
     ! subgrid cloud microphysics
     ! -----------------------------------------------------------------------
+
     call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tzk, qvk, &
          qlk, qrk, qik, qsk, qgk, qak, subl1, h_var, ccn, cnv_fraction, srf_type)
 
@@ -2485,7 +2500,7 @@ contains
        tc = tz (k) - tice
        if (qi (k) > qcmin .and. tc > 0.) then
           q_liq = ql (k) + qr (k)
-          q_sol = qi(k) + qs (k) + qg (k)
+          q_sol = qi (k) + qs (k) + qg (k)
           lhi = li00 + dc_ice * tz (k)
 
           sink = min (qi (k), fac_imlt * tc / icpk (k))
@@ -2826,7 +2841,7 @@ contains
     qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
     !$acc loop seq
     do k = ktop + 1, kbot
-       qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ( (ze (k) - ze (k + 1)) + (dt * vt (k)))
+       qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
     enddo
 
     ! -----------------------------------------------------------------------
