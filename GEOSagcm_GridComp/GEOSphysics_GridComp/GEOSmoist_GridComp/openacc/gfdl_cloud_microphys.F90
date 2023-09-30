@@ -338,8 +338,9 @@ module gfdl2_cloud_microphys_mod
   !$acc     des, des2, des3, desw, table, table2, table3, tablew, &
 
   !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
-  !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
-  !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+  !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
+  !$acc     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
+  !$acc     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
   !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
   !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
   !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
@@ -456,8 +457,9 @@ contains
 
     !$acc update device ( &
     !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
-    !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, tau_v2g, tau_frz, &
-    !$acc     tau_imlt, tau_i2s, tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+    !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
+    !$acc     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
+    !$acc     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
     !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
     !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
     !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
@@ -731,19 +733,35 @@ contains
 
     ! Initialize
 
-    !$acc data &
-    !$acc copyin( &
-    !$acc     dts, rdt, cpaut, &
-    !$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    !$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
-    !$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
-    !$acc     qv, qi, ql, qr, qs, qg, qa, qn) &
-    !$acc copy( &
+    !!$acc data &
+    !!$acc copyin( &
+    !!$acc     dts, rdt, cpaut, &
+    !!$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !!$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
+    !!$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
+    !!$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
+    !!$acc     u_dt) &
+    !!$acc copy( &
     !!$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
     !!$acc     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
     !!$acc    rain, snow, ice, graupel, cond) & ! ice and graupel causing compilation issue
-    !$acc     rain, snow, cond) &
-    !$acc copyout( &
+    !!$acc     rain, snow, cond) &
+    !!$acc copyout( &
+    !!$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol, &
+    !!$acc     u_dt)
+
+    !$acc data &
+    !$acc copy( &
+    !!$acc     dts, rdt, cpaut, &
+    !!$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !!$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
+    !!$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
+    !!$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
+    !!$acc     u_dt, &
+    !!$acc    u_dt, v_dt, w, pt_dt, qa_dt, &
+    !!$acc    qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !!$acc    rain, snow, ice, graupel, cond) & ! ice and graupel causing compilation issue
+    !$acc     rain, snow, cond, &
     !$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     !!$acc data copy(m2_rain, m2_sol, revap, isubl)
@@ -1090,7 +1108,7 @@ contains
        den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
 
     implicit none
-    !$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -1165,7 +1183,7 @@ contains
        ! no subgrid varaibility
        ! -----------------------------------------------------------------------
 
-       !$acc loop vector private(qc0, qc, dq, sink)
+       !!$acc loop vector private(qc0, qc, dq, sink)
        do k = ktop, kbot
           qc0 = fac_rc * ccn (k)
           if (tz (k) > t_wfr) then
@@ -1188,7 +1206,7 @@ contains
 
        call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
-       !$acc loop vector private(qc0, qc, dq, sink)
+       !!$acc loop vector private(qc0, qc, dq, sink)
        do k = ktop, kbot
           qc0 = fac_rc * ccn (k)
           if (tz (k) > t_wfr + dt_fr) then
@@ -1228,7 +1246,7 @@ contains
     elseif (const_vr) then
        vtr (:) = vr_fac ! ifs_2016: 4.0
     else
-       !$acc loop vector private(qden)
+       !!$acc loop vector private(qden)
        do k = ktop, kbot
           qden = qr (k) * den (k)
           if (qr (k) < thr) then
@@ -1242,7 +1260,7 @@ contains
     endif
 
     ze (kbot + 1) = zs
-    !$acc loop seq
+    !!$acc loop seq
     do k = kbot, ktop, - 1
        ze (k) = ze (k + 1) - dz (k) ! dz < 0
     enddo
@@ -1255,7 +1273,7 @@ contains
     evap1 = revap
 
     if (do_sedi_w) then
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop, kbot
           dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
        enddo
@@ -1269,13 +1287,13 @@ contains
        r1 = 0.0
     elseif (use_ppm) then
        zt (ktop) = ze (ktop)
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop + 1, kbot
           zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
        enddo
        zt (kbot + 1) = zs - dt * vtr (kbot)
 
-       !$acc loop seq
+       !!$acc loop seq
        do k = ktop, kbot
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
@@ -1290,7 +1308,7 @@ contains
 
     if (do_sedi_w) then
        w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop + 1, kbot
           w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
                / (dm (k) + m1_rain (k - 1) - m1_rain (k))
@@ -1435,7 +1453,7 @@ contains
   subroutine linear_prof (km, q, dm, z_var, h_var)
 
     implicit none
-    !$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: km
 
@@ -1455,7 +1473,7 @@ contains
        ! -----------------------------------------------------------------------
        ! use twice the strength of the positive definiteness limiter (lin et al 1994)
        ! -----------------------------------------------------------------------
-       !$acc loop vector private(dq, dq_p1)
+       !!$acc loop vector private(dq, dq_p1)
        do k = 2, km - 1
           dq = 0.5 * (q (k) - q (k - 1))
           dq_p1 = 0.5 * (q (k + 1) - q (k))
@@ -1474,12 +1492,12 @@ contains
        ! impose a presumed background horizontal variability that is proportional to the value itself
        ! -----------------------------------------------------------------------
 
-       !$acc loop vector
+       !!$acc loop vector
        do k = 1, km
           dm (k) = max (dm (k), qvmin, h_var(k) * q (k))
        enddo
     else
-       !$acc loop vector
+       !!$acc loop vector
        do k = 1, km
           dm (k) = max (qvmin, h_var(k) * q (k))
        enddo
@@ -1499,7 +1517,7 @@ contains
        den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
 
     implicit none
-    !$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -1544,7 +1562,7 @@ contains
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector
+    !!$acc loop vector
     do k = ktop, kbot
        q_liq (k) = qlk (k) + qrk (k)
        q_sol (k) = qik (k) + qsk (k) + qgk (k)
@@ -1561,7 +1579,7 @@ contains
     !*****
     ! Note: If 'sink' gets added as a private variable, the code will not verify
     !*****
-    !$acc loop vector private(lhi, icpk, melt, tmp)
+    !!$acc loop vector private(lhi, icpk, melt, tmp)
     do k = ktop, kbot
 
        lhi = li00 + dc_ice * tzk (k)
@@ -1626,7 +1644,7 @@ contains
     ! update capacity heat and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    !$acc loop seq
+    !!$acc loop seq
     do k = ktop, kbot
        lhl = lv00 + d0_vap * tzk (k)
        lhi = li00 + dc_ice * tzk (k)
@@ -2443,7 +2461,7 @@ contains
        den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
 
     implicit none
-    !$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -2481,7 +2499,7 @@ contains
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector private(lhi)
+    !!$acc loop vector private(lhi)
     do k = ktop, kbot
        m1_sol (k) = 0.
        ! lhl (k) = lv00 + d0_vap * tz (k)
@@ -2499,7 +2517,7 @@ contains
 
     k0 = kbot
     exit_flag = .true.
-    !$acc loop seq
+    !!$acc loop seq
     do k = ktop, kbot - 1
        if (tz (k) > tice .and. exit_flag) then
           k0 = k
@@ -2511,7 +2529,7 @@ contains
     ! melting of cloud_ice (before fall) :
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
+    !!$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
     do k = k0, kbot
        tc = tz (k) - tice
        if (qi (k) > qcmin .and. tc > 0.) then
@@ -2543,7 +2561,7 @@ contains
     ! sjl, turn off melting of falling cloud ice, snow and graupel
 
     ze (kbot + 1) = zs
-    !$acc loop seq
+    !!$acc loop seq
     do k = kbot, ktop, - 1
        ze (k) = ze (k + 1) - dz (k) ! dz < 0
     enddo
@@ -2554,7 +2572,7 @@ contains
     ! update capacity heat and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector private(lhi)
+    !!$acc loop vector private(lhi)
     do k = k0, kbot
        lhi = li00 + dc_ice * tz (k)
        icpk (k) = lhi / cvm (k)
@@ -2572,23 +2590,23 @@ contains
 
     else
 
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop + 1, kbot
           zt (k) = ze (k) - dtm * (vti (k - 1) + vti (k))/2.0
        enddo
        zt (kbot + 1) = zs - dtm * vti (kbot)
 
-       !$acc loop seq
+       !!$acc loop seq
        do k = ktop, kbot
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
 
        if (k0 < kbot) then
-          !$acc loop seq
+          !!$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qi (k) > qcmin) then
                 exit_flag = .true.
-                !$acc loop seq
+                !!$acc loop seq
                 do m = k + 1, kbot
                    if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
                    if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
@@ -2606,7 +2624,7 @@ contains
        endif
 
        if (do_sedi_w) then
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop, kbot
              dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
           enddo
@@ -2620,7 +2638,7 @@ contains
 
        if (do_sedi_w) then
           w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop + 1, kbot
              w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
                   / (dm (k) + m1_sol (k - 1) - m1_sol (k))
@@ -2640,22 +2658,22 @@ contains
     if (no_fall) then
        s1 = 0.
     else
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop + 1, kbot
           zt (k) = ze (k) - dtm * (vts (k - 1) + vts (k))/2.0
        enddo
        zt (kbot + 1) = zs - dtm * vts (kbot)
-       !$acc loop seq
+       !!$acc loop seq
        do k = ktop, kbot
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
 
        if (k0 < kbot) then
-          !$acc loop seq
+          !!$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qs (k) > qpmin) then
                 exit_flag = .true.
-                !$acc loop seq
+                !!$acc loop seq
                 do m = k + 1, kbot
                    if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
                    if (exit_flag) then
@@ -2680,7 +2698,7 @@ contains
        endif
 
        if (do_sedi_w) then
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop, kbot
              dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
           enddo
@@ -2692,14 +2710,14 @@ contains
           call implicit_fall (dtm, ktop, kbot, ze, vts, dp, qs, s1, m1)
        endif
 
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop, kbot
           m1_sol (k) = m1_sol (k) + m1 (k)
        enddo
 
        if (do_sedi_w) then
           w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vts (ktop)) / (dm (ktop) - m1 (ktop))
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop + 1, kbot
              w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vts (k - 1) + m1 (k) * vts (k)) &
                   / (dm (k) + m1 (k - 1) - m1 (k))
@@ -2717,23 +2735,23 @@ contains
     if (no_fall) then
        g1 = 0.
     else
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop + 1, kbot
           zt (k) = ze (k) - dtm * (vtg (k - 1) + vtg (k))/2.0
        enddo
        zt (kbot + 1) = zs - dtm * vtg (kbot)
 
-       !$acc loop seq
+       !!$acc loop seq
        do k = ktop, kbot
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
 
        if (k0 < kbot) then
-          !$acc loop seq
+          !!$acc loop seq
           do k = kbot - 1, k0, - 1
              if (qg (k) > qpmin) then
                 exit_flag = .true.
-                !$acc loop seq
+                !!$acc loop seq
                 do m = k + 1, kbot
                    if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
                    if (exit_flag) then
@@ -2757,7 +2775,7 @@ contains
        endif
 
        if (do_sedi_w) then
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop, kbot
              dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
           enddo
@@ -2769,14 +2787,14 @@ contains
           call implicit_fall (dtm, ktop, kbot, ze, vtg, dp, qg, g1, m1)
        endif
 
-       !$acc loop vector
+       !!$acc loop vector
        do k = ktop, kbot
           m1_sol (k) = m1_sol (k) + m1 (k)
        enddo
 
        if (do_sedi_w) then
           w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vtg (ktop)) / (dm (ktop) - m1 (ktop))
-          !$acc loop vector
+          !!$acc loop vector
           do k = ktop + 1, kbot
              w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vtg (k - 1) + m1 (k) * vtg (k)) &
                   / (dm (k) + m1 (k - 1) - m1 (k))
@@ -2825,7 +2843,7 @@ contains
   subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
 
     implicit none
-    !$acc routine vector
+    !$acc routine seq
 
     integer, intent (in) :: ktop, kbot
 
@@ -2845,7 +2863,7 @@ contains
 
     integer :: k
 
-    !$acc loop vector
+    !!$acc loop vector
     do k = ktop, kbot
        q (k) = q (k) * dp (k)
     enddo
@@ -2855,7 +2873,7 @@ contains
     ! -----------------------------------------------------------------------
 
     qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
-    !$acc loop seq
+    !!$acc loop seq
     do k = ktop + 1, kbot
        qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
     enddo
@@ -2864,7 +2882,7 @@ contains
     ! qm is density at this stage
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector
+    !!$acc loop vector
     do k = ktop, kbot
        qm (k) = qm (k) * (ze (k) - ze (k + 1))
     enddo
@@ -2874,7 +2892,7 @@ contains
     ! -----------------------------------------------------------------------
 
     m1 (ktop) = q (ktop) - qm (ktop)
-    !$acc loop seq
+    !!$acc loop seq
     do k = ktop + 1, kbot
        m1 (k) = m1 (k - 1) + q (k) - qm (k)
     enddo
@@ -2884,7 +2902,7 @@ contains
     ! update:
     ! -----------------------------------------------------------------------
 
-    !$acc loop vector
+    !!$acc loop vector
     do k = ktop, kbot
        q (k) = qm (k) / dp (k)
     enddo
