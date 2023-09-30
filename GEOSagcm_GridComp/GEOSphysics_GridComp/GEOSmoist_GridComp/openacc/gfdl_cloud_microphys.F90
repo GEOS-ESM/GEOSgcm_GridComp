@@ -730,7 +730,22 @@ contains
     !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
 
     ! Initialize
-    !$acc data copy(m2_rain, m2_sol, revap, isubl)
+
+    !$acc data &
+    !$acc copyin( &
+    !!$acc     dts, rdt, cpaut, &
+    !!$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !!$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
+    !!$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
+    !$acc     qv, qi, ql, qr, qs, qg, qa, qn) &
+    !!$acc copy( &
+    !!$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
+    !!$acc     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !!$acc     rain, snow, ice, graupel, cond) &
+    !$acc copyout( &
+    !$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+
+    !!$acc data copy(m2_rain, m2_sol, revap, isubl)
     !$acc parallel loop gang vector collapse(3)
     do k = ktop, kbot
        do j = js, je
