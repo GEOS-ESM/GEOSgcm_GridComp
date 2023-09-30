@@ -759,8 +759,6 @@ contains
     enddo
     !$acc end parallel loop
 
-    !$acc end data
-
     ! -----------------------------------------------------------------------
     ! use local variables
     ! -----------------------------------------------------------------------
@@ -1023,6 +1021,8 @@ contains
        enddo
 
     enddo
+
+    !$acc end data
 
   end subroutine mpdrv
 
