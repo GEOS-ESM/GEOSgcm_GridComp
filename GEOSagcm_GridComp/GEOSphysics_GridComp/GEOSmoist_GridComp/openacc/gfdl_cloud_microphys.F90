@@ -733,10 +733,10 @@ contains
 
     !$acc data &
     !$acc copyin( &
-    !!$acc     dts, rdt, cpaut, &
-    !!$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    !!$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
-    !!$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
+    !$acc     dts, rdt, cpaut, &
+    !$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
+    !$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
     !$acc     qv, qi, ql, qr, qs, qg, qa, qn) &
     !!$acc copy( &
     !!$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
