@@ -738,10 +738,11 @@ contains
     !$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
     !$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
     !$acc     qv, qi, ql, qr, qs, qg, qa, qn) &
-    !!$acc copy( &
+    !$acc copy( &
     !!$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
     !!$acc     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !!$acc     rain, snow, ice, graupel, cond) &
+    !!$acc    rain, snow, ice, graupel, cond) & ! ice and graupel causing compilation issue
+    !$acc     rain, snow, cond) &
     !$acc copyout( &
     !$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
