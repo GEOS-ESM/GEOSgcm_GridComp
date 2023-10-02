@@ -37,12 +37,13 @@ module StieglitzSnow
 
   public :: StieglitzSnow_RHOMA            ! used by                     LDAS, land-atm DAS
 
-  public :: get_tf0d ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
+  public :: get_tf0d  ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
   interface StieglitzSnow_calc_asnow
 
-     module procedure StieglitzSnow_calc_asnow_scalar
-     module procedure StieglitzSnow_calc_asnow_vector
+     module procedure StieglitzSnow_calc_asnow_1
+     module procedure StieglitzSnow_calc_asnow_2
+     module procedure StieglitzSnow_calc_asnow_3
      
   end interface StieglitzSnow_calc_asnow
 
@@ -1362,30 +1363,11 @@ contains
   
   ! ********************************************************************
   
-  subroutine StieglitzSnow_calc_asnow_scalar( N_snow, NTILES, wesnn, asnow )
+  subroutine StieglitzSnow_calc_asnow_1( N_snow, NTILES, wesnn, asnow )
     
-    ! Calculate diagnostic snow area from prognostic SWE (scalar version)
-    
-    implicit none
-    
-    integer, intent(in)  :: N_snow, NTILES
-    
-    real,    intent(in)  :: wesnn
-      
-    real,    intent(out) :: asnow
-    
-    ! -----------------------------------------------------------
-    
-    asnow = max( min( sum(wesnn,1)/wemin, 1. ), 0. )
-    
-  end subroutine StieglitzSnow_calc_asnow_scalar
-  
-
-  ! ********************************************************************
-  
-  subroutine StieglitzSnow_calc_asnow_vector( N_snow, NTILES, wesnn, asnow )
-       
     ! Calculate diagnostic snow area from prognostic SWE
+    !
+    ! *_1(): multiple snow layers, multiple tiles
     !
     ! reichle, Nov 3, 2004
     ! reichle,  2 Apr 2012 - revised for use without catch_types structures
@@ -1396,18 +1378,60 @@ contains
     
     implicit none
     
-    integer,                        intent(in)  :: N_snow, NTILES
-    
-    real, dimension(N_snow,NTILES), intent(in)  :: wesnn
-    
+    integer,                        intent(in)  :: N_snow, NTILES    
+    real, dimension(N_snow,NTILES), intent(in)  :: wesnn    
     real, dimension(       NTILES), intent(out) :: asnow
     
     ! -----------------------------------------------------------
     
     asnow = max( min( sum(wesnn,1)/wemin, 1. ), 0. )
     
-  end subroutine StieglitzSnow_calc_asnow_vector
+  end subroutine StieglitzSnow_calc_asnow_1
   
+  ! *************************
+  
+  subroutine StieglitzSnow_calc_asnow_2( N_snow, wesnn, asnow )
+    
+    ! Calculate diagnostic snow area from prognostic SWE 
+    !
+    ! *_2(): multiple snow layers, single tile
+    
+    implicit none
+    
+    integer,                 intent(in)  :: N_snow
+    real, dimension(N_snow), intent(in)  :: wesnn
+    real,                    intent(out) :: asnow
+    
+    ! -----------------------------------------------------------
+    
+    asnow = max( min( sum(wesnn)/wemin, 1. ), 0. )
+    
+  end subroutine StieglitzSnow_calc_asnow_2
+
+  ! *************************
+  
+  subroutine StieglitzSnow_calc_asnow_3( totswe, asnow )
+    
+    ! Calculate diagnostic snow area from prognostic SWE
+    !
+    ! *_3(): total SWE, single tile
+    
+    implicit none
+    
+    real,    intent(in)  :: wesnn
+    real,    intent(out) :: asnow
+    
+    ! -----------------------------------------------------------
+    
+    asnow = max( min( totswe/wemin, 1. ), 0. )
+    
+  end subroutine StieglitzSnow_calc_asnow_3
+
+  ! ********************************************************************
+  
+  subroutine StieglitzSnow_calc_asnow_1( N_snow, NTILES, wesnn, asnow )
+
+
   ! ********************************************************************
   
   subroutine StieglitzSnow_targetthick_land( N_snow, targetthick )

@@ -6063,7 +6063,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   wesnn(1,:) = wesnn1
   wesnn(2,:) = wesnn2
   wesnn(3,:) = wesnn3
-  call StieglitzSnow_calc_asnow(3, ntiles, wesnn, asnow)
+  call StieglitzSnow_calc_asnow(N_snow, ntiles, wesnn, asnow)
   emis = EMSVEG(nint(ity)) + (EMSBARESOIL - EMSVEG(nint(ity)))*exp(-lai)
   emis = emis*(1.-asnow) + EMSSNO*asnow
 

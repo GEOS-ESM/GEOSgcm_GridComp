@@ -165,8 +165,7 @@ contains
     
     real, dimension(NTILES)           :: ar1, ar2, ar4
 
-    real, dimension(1)                :: asnow_tmp     !  StieglitzSnow_calc_asnow() requires array
-    real                              :: snow_dens
+    real                              :: asnow_tmp, snow_dens
 
     real, dimension(N_snow)           :: targetthick   ! for snow model relayer
     real, dimension(N_snow,N_constit) :: rconstit
@@ -221,9 +220,9 @@ contains
        
        do ii=1,NTILES
           
-          call StieglitzSnow_calc_asnow( N_snow, 1, wesnn(1:N_snow,ii), asnow_tmp ) 
+          call StieglitzSnow_calc_asnow( N_snow, wesnn(1:N_snow,ii), asnow_tmp ) 
           
-          if (asnow_tmp(1)>0.) then
+          if (asnow_tmp>0.) then
              
              do kk=1,N_snow
                 
@@ -241,12 +240,12 @@ contains
                 
                 ! adjust snow depth to ensure  min <= density <= max
                 
-                snow_dens = (wesnn(kk,ii)/asnow_tmp(1))/sndzn(kk,ii)
+                snow_dens = (wesnn(kk,ii)/asnow_tmp)/sndzn(kk,ii)
                 
                 snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
                 snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
                 
-                sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp(1))/snow_dens
+                sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp)/snow_dens
                 
              end do
              
