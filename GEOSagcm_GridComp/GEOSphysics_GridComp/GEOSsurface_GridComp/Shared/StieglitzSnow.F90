@@ -39,6 +39,13 @@ module StieglitzSnow
 
   public :: get_tf0d ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
+  interface StieglitzSnow_calc_asnow
+
+     module procedure StieglitzSnow_calc_asnow_scalar
+     module procedure StieglitzSnow_calc_asnow_vector
+     
+  end interface StieglitzSnow_calc_asnow
+
   ! constants specific to StieglitzSnow
   
   real, private, parameter :: MINSWE              = 0.013   ! kg/m^2  min SWE to avoid immediate melt
@@ -413,7 +420,7 @@ contains
           
           select case (tileType)
           case (MAPL_LANDICE)
-             call FindTargetThickDist(N_snow, sndz, targetthick, topthick, thickdist)
+             call FindTargetThickDist_Landice(N_snow, sndz, targetthick, topthick, thickdist)
           case default
              topthick  = targetthick(1)
              thickdist = targetthick(2:N_snow)    
@@ -895,7 +902,7 @@ contains
     
     select case (tileType)
     case (MAPL_LANDICE)
-       call FindTargetThickDist(N_snow, sndz, targetthick, topthick, thickdist)
+       call FindTargetThickDist_Landice(N_snow, sndz, targetthick, topthick, thickdist)
     case default
        topthick  = targetthick(1)
        thickdist = targetthick(2:N_snow)     
@@ -982,11 +989,11 @@ contains
   
   ! **********************************************************************
   
-  subroutine FindTargetThickDist(N_snow, sndz, dzmax, topthick, thickdist)
+  subroutine FindTargetThickDist_Landice(N_snow, sndz, dzmax, topthick, thickdist)
     
     ! get snow layer target thicknesses to be used with relayer for *landice*
     !
-    ! note overlap with eponymous subroutine in GEOS_LandIceGridComp.F90
+    ! for *land*, see subroutine StieglitzSnow_targetthick_land()
 
     integer, intent(in)                       :: N_snow
     real,    intent(in)                       :: sndz(N_snow)
@@ -1047,28 +1054,27 @@ contains
        
     return
        
-  end subroutine FindTargetThickDist
+  end subroutine FindTargetThickDist_Landice
   
   ! **********************************************************************
   
   subroutine StieglitzSnow_relayer(N_snow, N_constit, thick_toplayer, thickdist, & 
-       htsnn, wesn, sndz, rconstit)
+       htsnn, wesn, sndz, rconstit )
     
-    ! relayer for *land* tiles
-    !
-    ! landice has a nearly identical copy of this subroutine in GEOS_LandIceGridComp.F90;
-    ! the key difference is in how the top-layer thickness is processed at the beginning;
-    ! there is also an adjustment to snow depth at the very end of the LandIceGridComp relayer routine 
-    !
-    ! should probably create a common interface for relayer between land and landice    
+    ! relayer for land and landice tiles
 
+    ! thick_toplayer: target thickness of topmost snow layer (m);
+    !        NOTE: thickness(1) [see below] is the final thickness of the topmost layer (m)
+    ! thickdist: the assigned (final) distribution of thickness in layers
+    !        2 through N_snow, in terms of fraction
+    
     implicit none
     
     integer, intent(in)                         :: N_snow, N_constit
     
     real,    intent(in)                         :: thick_toplayer
     real,    intent(in),    dimension(N_snow-1) :: thickdist
-    real,    intent(inout)                      :: htsnn(N_snow),wesn(N_snow),sndz(N_snow)
+    real,    intent(inout)                      :: htsnn(N_snow), wesn(N_snow), sndz(N_snow)
     real,    intent(inout)                      :: rconstit(N_snow,N_constit)
     
     ! local variables:
@@ -1082,30 +1088,33 @@ contains
     real, dimension(size(sndz))                 :: tol_old, bol_old, tol_new, bol_new
     real, dimension(size(sndz))                 :: thickness
     
-    !**** thick_toplayer: the assigned (final) thickness of the topmost layer (m)
-    !**** thickdist: the assigned (final) distribution of thickness in layers
-    !****        2 through N_snow, in terms of fraction
-    !**** h: array holding specific heat, water, and constituent contents
-    !**** s: array holding the total and final heat, water, and constit. contents
-    !**** ilow: first layer used in a particular relayering calculation
-    !**** ihigh: final layer used in a particular relayering calculation 
-    !**** totalthick: total thickness of layers 2 through N_snow
-    !**** thickness: array holding final thicknesses (m) of the snow layers
-    !**** tol_old(i): depth (from surface) of the top of layer i, before          &
-    !****               relayering
-    !**** bol_old(i): depth (from surface) of the bottom of layer i, before       &
-    !****               relayering
-    !**** tol_old(i): depth (from surface) of the top of layer i, after           &
-    !****               relayering
-    !**** bol_old(i): depth (from surface) of the bottom of layer i, after        &
-    !****               relayering
+    !**** thickness(1) : final thickness of topmost snow layer (m)
+    !**** h            : array holding specific heat, water, and constituent contents
+    !**** s            : array holding the total and final heat, water, and constit. contents
+    !**** ilow         : first layer used in a particular relayering calculation
+    !**** ihigh        : final layer used in a particular relayering calculation 
+    !**** totalthick   : total thickness of layers 2 through N_snow
+    !**** thickness    : array holding final thicknesses (m) of the snow layers
+    !**** tol_old(i)   : depth (from surface) of the top of layer i, before          &
+    !****                  relayering
+    !**** bol_old(i)   : depth (from surface) of the bottom of layer i, before       &
+    !****                  relayering
+    !**** tol_old(i)   : depth (from surface) of the top of layer i, after           &
+    !****                  relayering
+    !**** bol_old(i)   : depth (from surface) of the bottom of layer i, after        &
+    !****                  relayering
     
     !if(sum(sndz) .lt. thick_toplayer) &
     !    write(*,*) 'Snow layer thickness inconsistency'
     
-    totalthick=sum(sndz)
-    thickness(1)=amin1(totalthick*0.9, thick_toplayer)
-    totalthick=totalthick-thickness(1)
+    totalthick   = sum(sndz)     ! total snow depth
+
+    ! make sure thickness of top layer does not exceed total thickness
+
+    thickness(1) = amin1(totalthick*0.9, thick_toplayer)
+
+    totalthick   = totalthick-thickness(1)
+
     do i=1,N_snow-1
        thickness(i+1)=thickdist(i)*totalthick
     enddo
@@ -1353,7 +1362,28 @@ contains
   
   ! ********************************************************************
   
-  subroutine StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
+  subroutine StieglitzSnow_calc_asnow_scalar( N_snow, NTILES, wesnn, asnow )
+    
+    ! Calculate diagnostic snow area from prognostic SWE (scalar version)
+    
+    implicit none
+    
+    integer, intent(in)  :: N_snow, NTILES
+    
+    real,    intent(in)  :: wesnn
+      
+    real,    intent(out) :: asnow
+    
+    ! -----------------------------------------------------------
+    
+    asnow = max( min( sum(wesnn,1)/wemin, 1. ), 0. )
+    
+  end subroutine StieglitzSnow_calc_asnow_scalar
+  
+
+  ! ********************************************************************
+  
+  subroutine StieglitzSnow_calc_asnow_vector( N_snow, NTILES, wesnn, asnow )
        
     ! Calculate diagnostic snow area from prognostic SWE
     !
@@ -1376,7 +1406,7 @@ contains
     
     asnow = max( min( sum(wesnn,1)/wemin, 1. ), 0. )
     
-  end subroutine StieglitzSnow_calc_asnow
+  end subroutine StieglitzSnow_calc_asnow_vector
   
   ! ********************************************************************
   
@@ -1384,7 +1414,7 @@ contains
        
     ! get snow layer target thicknesses to be used with relayer for *land* (Catch)
     !
-    ! for landice, see FindTargetThickDist() -- should probably create common interface
+    ! for landice, see FindTargetThickDist_Landice()
     !
     ! reichle, 28 Sep 2023
     !
