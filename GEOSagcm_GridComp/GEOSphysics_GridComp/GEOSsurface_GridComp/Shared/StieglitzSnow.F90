@@ -1429,11 +1429,6 @@ contains
 
   ! ********************************************************************
   
-  subroutine StieglitzSnow_calc_asnow_1( N_snow, NTILES, wesnn, asnow )
-
-
-  ! ********************************************************************
-  
   subroutine StieglitzSnow_targetthick_land( N_snow, targetthick )
        
     ! get snow layer target thicknesses to be used with relayer for *land* (Catch)
