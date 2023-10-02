@@ -976,20 +976,20 @@ contains
           ! convert to dry mixing ratios
           ! -----------------------------------------------------------------------
 
-          ! !!$acc loop vector private(omq, cvm, t0)
-          ! !$acc loop seq
-          ! do k = ktop, kbot
-          !    t0 = pt (i, j, k)
-          !    omq = dp1 (k) / delp (i, j, k)
-          !    qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
-          !    ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-          !    qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-          !    qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-          !    qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-          !    qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
-          !    cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-          !    pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
-          ! enddo
+          ! !$acc loop vector private(omq, cvm, t0)
+          !$acc loop seq
+          do k = ktop, kbot
+             t0 = pt (i, j, k)
+             omq = dp1 (k) / delp (i, j, k)
+             qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
+             ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
+             ! qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+             ! qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+             ! qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+             ! qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+             cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
+             ! pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
+          enddo
 
           ! -----------------------------------------------------------------------
           ! update cloud fraction tendency
