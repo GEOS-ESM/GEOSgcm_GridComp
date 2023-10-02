@@ -709,12 +709,10 @@ contains
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: w1
 
-    real :: cpaut, rh_adj, rh_rain, t0
-    real :: r1, s1, i1, g1, rdt, ccn0
+    real :: cpaut, t0
+    real :: r1, s1, i1, g1, rdt
     real :: dts
-    real :: s_leng, t_land, t_ocean, h_var
-    real :: cvm, tmp, omq
-    real :: dqi, qio, qin
+    real :: cvm, omq
     real :: u1_k, u1_km1, v1_k, v1_km1
 
     integer :: i, j, k, n
@@ -731,14 +729,19 @@ contains
     !! slow autoconversion in stable regimes
     !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
 
-    ! Initialize
     !$acc data &
     !$acc copyin( &
     !$acc     dts, rdt, cpaut, &
     !$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
     !$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
     !$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
-    !$acc     qv, qi, ql, qr, qs, qg, qa, qn) &
+    !$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
+    ! NOTE: gfortran doesn't seem to support private arrays
+    !$acc     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    !$acc     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    !$acc     qv0, ql0, qr0, qi0, qs0, qg0, &
+    !$acc     den, den0, tz, p1, denfac, &
+    !$acc     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1) &
     !$acc copy( &
     !$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$acc     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
@@ -746,6 +749,7 @@ contains
     !$acc copyout( &
     !$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
+    ! Initialize
     !$acc parallel loop gang vector collapse(3)
     do k = ktop, kbot
        do j = js, je
@@ -757,16 +761,28 @@ contains
           enddo
        enddo
     enddo
-    !$acc end parallel loop
 
-    ! -----------------------------------------------------------------------
-    ! use local variables
-    ! -----------------------------------------------------------------------
+    print *, 'gfdl_cloud_microphys::mpdrv - Initialization complete'
 
+    !!$acc parallel
+    !!$acc loop gang collapse(2) &
+    !!$acc private( &
+    !!!$acc    h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    !!!$acc    vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    !!!$acc    qv0, ql0, qr0, qi0, qs0, qg0, &
+    !!!$acc    den, den0, tz, p1, denfac, &
+    !!!$acc    ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1)
+    !!!$acc    r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
+    !!$acc     r1, s1, i1, g1)
+
+    !$acc parallel
+    !$acc loop seq
     do j = js, je
 
+       !$acc loop seq
        do i = is, ie
 
+          !$acc loop vector private(r1, s1, i1, g1, omq, t0)
           do k = ktop, kbot
 
              t0 = pt (i, j, k)
@@ -850,12 +866,14 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
+          !$acc loop seq
           do n = 1, ntimes
 
              ! -----------------------------------------------------------------------
              ! dry air density
              ! -----------------------------------------------------------------------
 
+             !$acc loop vector private(t0)
              do k = ktop, kbot
                 if (p_nonhydro) then
                    dz1 (k) = dz (i, j, k)
@@ -902,6 +920,7 @@ contains
 
              rain (i, j) = rain (i, j) + r1
 
+             !$acc loop vector
              do k = ktop, kbot
                 revap (i,j,k) = revap (i,j,k) + evap1(k)
                 m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
@@ -917,6 +936,7 @@ contains
                   denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                   ccn, cnv_fraction(i, j), srf_type(i, j))
 
+             !$acc loop vector
              do k = ktop, kbot
                 isubl (i,j,k) = isubl (i,j,k) + subl1(k)
              enddo
@@ -928,22 +948,24 @@ contains
           ! note: dp1 is dry mass; dp0 is the old moist (total) mass
           ! -----------------------------------------------------------------------
 
-          if (sedi_transport) then
-             v1_km1 = vin (i, j, ktop)
-             u1_km1 = uin (i, j, ktop)
-             do k = ktop + 1, kbot
-                u1_k = uin (i, j, k)
-                v1_k = vin (i, j, k)
-                u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
-                v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
-                u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
-                v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
-                u1_km1 = u1_k
-                v1_km1 = v1_k
-             enddo
-          endif
+          ! if (sedi_transport) then
+          !    v1_km1 = vin (i, j, ktop)
+          !    u1_km1 = uin (i, j, ktop)
+          !    !$acc loop seq
+          !    do k = ktop + 1, kbot
+          !       u1_k = uin (i, j, k)
+          !       v1_k = vin (i, j, k)
+          !       u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
+          !       v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
+          !       u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
+          !       v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
+          !       u1_km1 = u1_k
+          !       v1_km1 = v1_k
+          !    enddo
+          ! endif
 
           if (do_sedi_w) then
+             !$acc loop vector
              do k = ktop, kbot
                 w (i, j, k) = w1 (k)
              enddo
@@ -954,23 +976,26 @@ contains
           ! convert to dry mixing ratios
           ! -----------------------------------------------------------------------
 
-          do k = ktop, kbot
-             t0 = pt (i, j, k)
-             omq = dp1 (k) / delp (i, j, k)
-             qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
-             ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-             qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-             qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-             qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
-             cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-             pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
-          enddo
+          ! !!$acc loop vector private(omq, cvm, t0)
+          ! !$acc loop seq
+          ! do k = ktop, kbot
+          !    t0 = pt (i, j, k)
+          !    omq = dp1 (k) / delp (i, j, k)
+          !    qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
+          !    ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
+          !    qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+          !    qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+          !    qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+          !    qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+          !    cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
+          !    pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
+          ! enddo
 
           ! -----------------------------------------------------------------------
           ! update cloud fraction tendency
           ! -----------------------------------------------------------------------
           if (.not. do_qa) then
+             !$acc loop vector
              do k = ktop, kbot
                 qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
                      qa(i, j, k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
@@ -1022,6 +1047,7 @@ contains
 
     enddo
 
+    !$acc end parallel
     !$acc end data
 
   end subroutine mpdrv
