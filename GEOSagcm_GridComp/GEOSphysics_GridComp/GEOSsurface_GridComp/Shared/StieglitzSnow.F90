@@ -1367,7 +1367,7 @@ contains
     
     ! Calculate diagnostic snow area from prognostic SWE
     !
-    ! *_1(): multiple snow layers, multiple tiles
+    ! *_1(): input SWE for multiple snow layers at multiple tiles
     !
     ! reichle, Nov 3, 2004
     ! reichle,  2 Apr 2012 - revised for use without catch_types structures
@@ -1394,7 +1394,7 @@ contains
     
     ! Calculate diagnostic snow area from prognostic SWE 
     !
-    ! *_2(): multiple snow layers, single tile
+    ! *_2(): input SWE for multiple snow layers at single tile
     
     implicit none
     
@@ -1414,11 +1414,11 @@ contains
     
     ! Calculate diagnostic snow area from prognostic SWE
     !
-    ! *_3(): total SWE, single tile
+    ! *_3(): input total SWE at single tile
     
     implicit none
     
-    real,    intent(in)  :: wesnn
+    real,    intent(in)  :: totswe
     real,    intent(out) :: asnow
     
     ! -----------------------------------------------------------
