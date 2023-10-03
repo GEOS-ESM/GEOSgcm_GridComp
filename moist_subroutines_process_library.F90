@@ -45,7 +45,7 @@ module Process_Library_standalone
     real, parameter :: mapl_undef = 1.0e15  ! NOTE : This is the value pulled from MAPL_Mod
 
     public :: BUOYANCY2
-!$acc declare create(gravbcp, alhlbcp,mapl_undef)
+
     contains
 
     subroutine BUOYANCY2( IM, JM, LM, T, Q, QS, DQS, DZ, ZLO, PLO, PS, SBCAPE, MLCAPE, MUCAPE, &
