@@ -67,6 +67,8 @@ module Process_Library_standalone
 
     integer :: I, J, L
 
+    logical :: loop_exec
+
 !$acc data create(Tve, MSEp, Qp, tmp1, tmp2, Lev0)
 
     !$acc kernels
@@ -85,20 +87,24 @@ module Process_Library_standalone
         !$acc end kernels
 
         !$acc parallel
+        loop_exec = .true.
         !$acc loop seq
         do L = LM,1,-1
-            !$acc loop gang vector collapse(2)
-            do J = 1,JM
-                do I = 1,IM
-                    if(PS(I,J) - PLO(I,J,L).lt.90) then
-                        MSEp(I,J) = MSEp(I,J) + (T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L))*DZ(I,J,L) 
-                        Qp(I,J)   = Qp(I,J)   + Q(I,J,L)*DZ(I,J,L)
-                        tmp1(I,J) = tmp1(I,J) + DZ(I,J,L)
-                        Lev0(I,J) = L
-                    endif
+            if(loop_exec) then
+                !$acc loop gang vector collapse(2)
+                do J = 1,JM
+                    do I = 1,IM
+                        if(PS(I,J) - PLO(I,J,L).lt.90) then
+                            MSEp(I,J) = MSEp(I,J) + (T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L))*DZ(I,J,L) 
+                            Qp(I,J)   = Qp(I,J)   + Q(I,J,L)*DZ(I,J,L)
+                            tmp1(I,J) = tmp1(I,J) + DZ(I,J,L)
+                            Lev0(I,J) = L
+                        endif
+                    enddo
                 enddo
-            enddo
-            if (all(PS-PLO(:,:,L).gt.90.)) exit
+                if (all(PS-PLO(:,:,L).gt.90.)) loop_exec = .false. !exit
+            endif
+            
         end do
         !$acc end parallel
 
@@ -282,7 +288,7 @@ module Process_Library_standalone
     
         integer :: I, J, L, LL, IM, JM, LM, II, KLNB, KLFC
         real    :: Qpnew, Tp, Tvp, Tlcl, dq
-        logical :: aboveLNB, aboveLFC, aboveLCL
+        logical :: aboveLNB, aboveLFC, aboveLCL, loop_exec
     
         IM = size(ZLO,1)
         JM = size(ZLO,2)
@@ -294,7 +300,7 @@ module Process_Library_standalone
 
             !$acc parallel loop gang vector collapse(2) &
             !$acc          private(LM, aboveLNB, aboveLFC, Qpnew, &
-            !$acc                  Tp, Tlcl, aboveLCL, KLNB, KLFC,L)
+            !$acc                  Tp, Tlcl, aboveLCL, KLNB, KLFC,L, loop_exec)
             do J = 1,JM
                 do I = 1, IM
 
@@ -331,14 +337,20 @@ module Process_Library_standalone
                         end if
                         if ( aboveLCL .and. Qpnew*alhlbcp.gt.0.01 ) then
                             Tp = Tp - gravbcp*( ZLO(I,J,L)-ZLO(I,J,L+1) ) / ( 1.+alhlbcp*DQS(I,J,L) )     ! initial guess including condensation
+                            loop_exec = .true.
                             !$acc loop seq
                             DO II = 1,10                                                       ! iterate until Qp=qsat(Tp)
-                                dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
-                                if (abs(dq*alhlbcp)<0.01) then
-                                    exit
-                                end if
-                                Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
-                                Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
+                                if(loop_exec) then
+                                    dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
+                                    if (abs(dq*alhlbcp)<0.01) then
+                                        ! exit
+                                        loop_exec = .false.
+                                    end if
+                                endif
+                                if(loop_exec) then
+                                    Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
+                                    Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
+                                endif
                             END DO
                         end if
                         Tp = MSEp(I,J) - gravbcp*ZLO(I,J,L) - alhlbcp*Qpnew
@@ -358,28 +370,38 @@ module Process_Library_standalone
                     KLNB = LM
                     aboveLFC = .false.
                     if (BYNCY(I,J,LM-1).gt.0.) then
+                        loop_exec = .true.
                         !$acc loop seq
                         do L = LM-2,1,-1   ! scan up to find elevated LFC
-                            if (BYNCY(I,J,L).gt.0. .and. BYNCY(I,J,L+1).le.0.) then
-                                KLFC = L
-                                aboveLFC = .true.
-                            end if
-                            if (aboveLFC .and. BYNCY(I,J,L).lt.0. ) then 
-                                KLNB = L
-                                exit
-                            end if
+                            if(loop_exec) then
+                                if (BYNCY(I,J,L).gt.0. .and. BYNCY(I,J,L+1).le.0.) then
+                                    KLFC = L
+                                    aboveLFC = .true.
+                                end if
+
+                                if (aboveLFC .and. BYNCY(I,J,L).lt.0. ) then 
+                                    KLNB = L
+                                    ! exit
+                                    loop_exec = .false.
+                                end if
+                            endif
                         end do
                     else   ! if surface parcel not immediately buoyant, LFC is first B>0 level
+                        loop_exec = .true.
                         !$acc loop seq
                         do L = LM-1,1,-1
-                            if (BYNCY(I,J,L).gt.0. .and. .not.aboveLFC) then
-                                KLFC = L
-                                aboveLFC = .true.
-                            end if
-                            if (aboveLFC .and. BYNCY(I,J,L).lt.0.) then
-                                KLNB = L
-                                exit
-                            end if
+                            if(loop_exec) then
+                                if (BYNCY(I,J,L).gt.0. .and. .not.aboveLFC) then
+                                    KLFC = L
+                                    aboveLFC = .true.
+                                end if
+
+                                if (aboveLFC .and. BYNCY(I,J,L).lt.0.) then
+                                    KLNB = L
+                                    ! exit
+                                    loop_exec = .false.
+                                end if
+                            endif
                         end do
                     end if
 
@@ -399,7 +421,7 @@ module Process_Library_standalone
                 !$acc loop gang vector collapse(2) &
                 !!$acc loop seq &
                 !$acc          private(aboveLNB, aboveLFC, Qpnew, &
-                !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, L)
+                !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, L, loop_exec)
                 do J = 1,IM
                     do I = 1, IM
                         if(PS(I,J) - PLO(I,J,LL) .le. 255.) then
@@ -433,13 +455,19 @@ module Process_Library_standalone
                                 end if
                                 if ( aboveLCL .and. Qpnew*alhlbcp.gt.0.01 ) then
                                     Tp = Tp - gravbcp*( ZLO(I,J,L)-ZLO(I,J,L+1) ) / ( 1.+alhlbcp*DQS(I,J,L) )     ! initial guess including condensation
-                                    DO II = 1,10                                                       ! iterate until Qp=qsat(Tp)
-                                        dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
-                                        if (abs(dq*alhlbcp)<0.01) then
-                                            exit
-                                        end if
-                                        Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
-                                        Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
+                                    loop_exec = .true.
+                                    DO II = 1,10      
+                                        if(loop_exec) then                                                 ! iterate until Qp=qsat(Tp)
+                                            dq = Qpnew - GEOS_QSAT( Tp, PLO(I,J,L) )
+                                            if (abs(dq*alhlbcp)<0.01) then
+                                                ! exit
+                                                loop_exec = .false.
+                                            end if
+                                        endif
+                                        if(loop_exec) then
+                                            Tp = Tp + dq*alhlbcp/(1.+alhlbcp*DQS(I,J,L))
+                                            Qpnew = Qpnew - dq/(1.+alhlbcp*DQS(I,J,L))
+                                        endif
                                     END DO
                                 end if
                                 Tp = MSEp(I,J) - gravbcp*ZLO(I,J,L) - alhlbcp*Qpnew

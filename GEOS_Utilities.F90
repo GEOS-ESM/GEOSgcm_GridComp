@@ -940,7 +940,7 @@
 ! !=======================================================================================
 
         subroutine ESINIT
-!!$acc routine seq
+!$acc routine seq
 ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
 ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
 ! N.B.--Tables are in Pa
@@ -981,10 +981,51 @@
 !!$acc update device(ESTFRZ, ESTLQU, UTBL, ESTBLX, ESTBLE, ESTBLW)
        end subroutine ESINIT
 
+      subroutine ESINIT_
+         ! Saturation vapor pressure table initialization. This is invoked if UTBL is true 
+         ! on the first call to any qsat routine or whenever GEOS_QsatSet is called 
+         ! N.B.--Tables are in Pa
+          
+         integer :: I
+         real    :: T
+         logical :: UT
+
+         UT = UTBL
+         UTBL=.false.
+
+         do I=1,TABLESIZE
+
+            T = (I-1)*DELTA_T + TMINTBL
+
+            ESTBLW(I) = QSATLQU0(T)
+
+            if(T>ZEROC) then
+               ESTBLE(I) = ESTBLW(I)
+            else
+               ESTBLE(I) = QSATICE0(T)
+            end if
+
+            T = T-ZEROC
+
+            if(T>=TMIX .and. T<0.0) then
+               ESTBLX(I) = ( T/TMIX )*( ESTBLE(I) - ESTBLW(I) ) + ESTBLW(I)
+            else
+               ESTBLX(I) = ESTBLE(I)
+            end if
+
+         end do
+
+         ESTFRZ = QSATLQU0(ZEROC  )
+         ESTLQU = QSATLQU0(TMINLQU)
+
+         UTBL = UT
+
+      end subroutine ESINIT_
+
       subroutine ESINIT_v2
          if(FIRST) then
             FIRST = .false.
-            call ESINIT
+            call ESINIT_
          endif
       !$acc update device(FIRST)
       ! print*, 'ESTFRZ = ', ESTFRZ
