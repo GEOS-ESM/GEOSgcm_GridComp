@@ -763,18 +763,7 @@ contains
 
     print *, 'gfdl_cloud_microphys::mpdrv - Initialization complete'
 
-    !!$acc parallel
-    !!$acc loop gang collapse(2) &
-    !!$acc private( &
-    !!!$acc    h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    !!!$acc    vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    !!!$acc    qv0, ql0, qr0, qi0, qs0, qg0, &
-    !!!$acc    den, den0, tz, p1, denfac, &
-    !!!$acc    ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1)
-    !!!$acc    r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
-    !!$acc     r1, s1, i1, g1)
-
-    !$acc parallel loop seq & !gang collapse(2)
+    !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
     do j = js, je
 
