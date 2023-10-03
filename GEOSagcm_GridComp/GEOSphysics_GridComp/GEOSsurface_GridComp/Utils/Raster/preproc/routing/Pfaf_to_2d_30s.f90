@@ -21,9 +21,9 @@ integer :: xi,yi,id
 
 allocate(catchind(nlon,nlat),data2d(nlon,nlat))
 allocate(lon(nlon),lat(nlat))
-call read_ncfile_double1d("inputs/"//trim(map),"lon",lon,nlon)
-call read_ncfile_double1d("inputs/"//trim(map),"lat",lat,nlat)
-call read_ncfile_int2d("inputs/"//trim(map),"data",catchind,nlon,nlat)
+call read_ncfile_double1d("outputs/"//trim(map),"lon",lon,nlon)
+call read_ncfile_double1d("outputs/"//trim(map),"lat",lat,nlat)
+call read_ncfile_int2d("outputs/"//trim(map),"data",catchind,nlon,nlat)
 
 allocate(data_Pfaf(nc))
 

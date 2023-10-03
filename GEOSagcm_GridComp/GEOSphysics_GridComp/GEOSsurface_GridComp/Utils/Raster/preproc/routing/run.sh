@@ -17,6 +17,8 @@ ln -s ${INPUT}/* inputs
 
 echo "Building get_outlets_land.f90 ..."
 ./build get_outlets_land.f90
+echo "Building get_landocean_Greenland_real_TM0072xTM0036.f90 ..."
+./build get_landocean_Greenland_real_TM0072xTM0036.f90
 echo "Building get_mask_MAPL_2d.f90 ..."
 ./build get_mask_MAPL_2d.f90
 echo "Building get_mask_TM0072xTM0036.f90 ..."
@@ -43,6 +45,8 @@ echo "running get_sinkxy_land.ncl"
 ncl get_sinkxy_land.ncl
 
 echo "STEP TWO:"
+echo "running get_landocean_Greenland_real_TM0072xTM0036.out"
+./get_landocean_Greenland_real_TM0072xTM0036.out
 echo "running get_mask_MAPL_1d.ncl"
 ncl get_mask_MAPL_1d.ncl
 echo "running get_mask_MAPL_2d.out"
