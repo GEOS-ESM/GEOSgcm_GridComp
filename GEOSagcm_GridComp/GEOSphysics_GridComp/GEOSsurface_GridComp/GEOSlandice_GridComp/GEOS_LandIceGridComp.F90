@@ -31,6 +31,8 @@ module GEOS_LandiceGridCompMod
        snowrt      => StieglitzSnow_snowrt,      &
        SNOW_ALBEDO => StieglitzSnow_snow_albedo, &
        TRID        => StieglitzSnow_trid,        & 
+       MINSWE      => StieglitzSnow_MINSWE,      &
+       cpw         => StieglitzSnow_CPW,         &
        N_CONSTIT,                                &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD,   &
        NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD,   &
@@ -60,24 +62,19 @@ module GEOS_LandiceGridCompMod
   real,    parameter :: ALHM     = MAPL_ALHF   ! J/kg 
   real,    parameter :: TF       = MAPL_TICE   ! K
   real,    parameter :: RHOW     = MAPL_RHOWTR ! kg/m^3
-  real,    parameter :: RHOFRESH = 300.        ! kg/m^3  density of fresh snow
-  !real,    parameter :: RHOMA    = 500.        ! kg/m^3  maximum snow density
-  real,    parameter :: RHOICE   = 917.        ! kg/m^3  pure ice density
-  real,    parameter :: MINSWE   = 0.013       ! kg/m^2  min SWE to avoid immediate melt
-  real,    parameter :: MAXSNDZ  = 15.0        ! m
-  real,    parameter :: ZERO     = 0.
-  real,    parameter :: ONE      = 1.
-  real,    parameter :: BIG      = 1.e10
-  real,    parameter :: cpw      = 2065.22    !  @ 0 C [J/kg/K]
-  real,    parameter :: condice  = 2.25       !  @ 0 C [W/m/K] 
-  real,    parameter :: MINFRACSNO = 1.e-20   !  mininum sno/ice fraction for
-                                              !  heat diffusion of ice layers to take effect
-  real,    parameter :: LWCTOP     = 1.       !  top thickness to compute LWC. 1m taken from
-                                              !  Fettweis et al 2011  
 
-  real,    parameter :: VISMAX    = 0.96
-  real,    parameter :: NIRMAX    = 0.68
-  real,    parameter :: SLOPE     = 1.0
+  real,    parameter :: RHOFRESH = 300.        ! kg/m^3  density of fresh snow
+  real,    parameter :: RHOICE   = 917.        ! kg/m^3  pure ice density
+  real,    parameter :: MAXSNDZ  = 15.0        ! m
+  real,    parameter :: BIG      = 1.e10
+  real,    parameter :: condice  = 2.25        ! @ 0 C [W/m/K] 
+  real,    parameter :: MINFRACSNO = 1.e-20    ! mininum sno/ice fraction for
+                                               ! heat diffusion of ice layers to take effect
+  real,    parameter :: LWCTOP     = 1.        ! top thickness to compute LWC. 1m taken from
+                                               ! Fettweis et al 2011  
+  real,    parameter :: VISMAX    = 0.96       ! parameter for snow_albedo
+  real,    parameter :: NIRMAX    = 0.68       ! parameter for snow_albedo
+  real,    parameter :: SLOPE     = 1.0        ! parameter for snow_albedo
 
   ! taken from CICE
    real,   parameter :: &                       ! currently used only

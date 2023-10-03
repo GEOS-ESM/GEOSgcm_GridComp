@@ -36,6 +36,8 @@ module StieglitzSnow
   public :: StieglitzSnow_relayer          ! used by                               land-atm DAS
 
   public :: StieglitzSnow_RHOMA            ! used by                         LDAS, land-atm DAS
+  public :: StieglitzSnow_MINSWE           ! used by LandIce
+  public :: StieglitzSnow_CPW              ! used by LandIce
 
   public :: get_tf0d  ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
@@ -49,14 +51,14 @@ module StieglitzSnow
 
   ! constants specific to StieglitzSnow
   
-  real, private, parameter :: MINSWE              = 0.013   ! kg/m^2  min SWE to avoid immediate melt
-  real, private, parameter :: cpw                 = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
+  real,          parameter :: StieglitzSnow_RHOMA  = 500.    ! kg/m^3  maximum snow density
+  real,          parameter :: StieglitzSnow_MINSWE = 0.013   ! kg/m^2  min SWE to avoid immediate melt
+  real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
 
-  real, private, parameter :: DZ1MAX              = 0.08    ! m       target thickness of top snow layer for land (Catch)
-  real,          parameter :: StieglitzSnow_RHOMA = 500.    ! kg/m^3  maximum snow density
+  real, private, parameter :: DZ1MAX               = 0.08    ! m       target thickness of top snow layer for land (Catch)
 
-  real, private, parameter :: SNWALB_VISMIN       = 0.5
-  real, private, parameter :: SNWALB_NIRMIN       = 0.3
+  real, private, parameter :: SNWALB_VISMIN        = 0.5    
+  real, private, parameter :: SNWALB_NIRMIN        = 0.3
 
   !================================ Added by Teppei Yasunari ==================================
   !--------------------------------------------------------------------------------------------
@@ -351,7 +353,7 @@ contains
     ghfluxsno = 0.
     
     !rr   correction for "cold" snow
-    tsx   = min(ts-tf,0.)*cpw
+    tsx   = min(ts-tf,0.)*StieglitzSnow_CPW
     
     !rr   correction for heat content of rain
     !rr       tsx_rain = max(ts-tf,0.)*cpw_liquid
@@ -389,7 +391,7 @@ contains
     drho0  = 0.0
     tksno  = 0.0
     
-    if(snowd <= MINSWE) then ! no snow
+    if(snowd <= StieglitzSnow_MINSWE) then ! no snow
        
        ! Assume initial (very small) snow water melts; new snow pack is based
        !   on new snowfall only
@@ -441,7 +443,7 @@ contains
        
        return  ! if there was no snow at start of time step
        
-    endif      ! (snowd <= MINSWE)
+    endif      ! (snowd <= StieglitzSnow_MINSWE)
     
     ! ---------------------------------------------------------------
     !
@@ -535,7 +537,7 @@ contains
        
        if(ice1(i)) then
           cl(i) = df(i)
-          cd(i) = cpw*wesn(i)/dts - df(i) - df(i+1)
+          cd(i) = StieglitzSnow_CPW*wesn(i)/dts - df(i) - df(i+1)
           cr(i) = df(i+1)
           q(i)  = fhsn(i+1)-fhsn(i)
        else
@@ -567,7 +569,7 @@ contains
     !**** If implicit change has taken layer past melting/freezing, correct.
     
     do i=1,N_snow
-       if(tpsn(i)+dtc(i) > 0. .or. htsnn(i)+wesn(i)*cpw*dtc(i) > 0.) then
+       if(tpsn(i)+dtc(i) > 0. .or. htsnn(i)+wesn(i)*StieglitzSnow_CPW*dtc(i) > 0.) then
           dtc(i)=-tpsn(i)
        endif
        if(.not.ice1(i)) dtc(i)=0.
@@ -668,7 +670,7 @@ contains
        
        !**** Now update thermodynamic quantities.
        
-       htsnn(i)=(cpw*tnew-fnew*alhm)*wesn(i)
+       htsnn(i)=(StieglitzSnow_CPW*tnew-fnew*alhm)*wesn(i)
        tpsn(i) = tnew    
        fices(i)= fnew
 
@@ -858,7 +860,7 @@ contains
                 rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
                 rconstit(i,k)=amax1(0.,rconstit(i,k)) ! guard against truncation error
              enddo
-             hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)
+             hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)
              hcorr= hcorr+(htsnn(i)-hnew)/dts
              htsnn(i)= hnew
              dens(i) = StieglitzSnow_RHOMA
@@ -887,7 +889,7 @@ contains
           rconstit(N_snow,k)=rconstit(N_snow,k)*(1.-wlossfrac)
           rconstit(N_snow,k)=amax1(0.,rconstit(N_snow,k)) ! guard against truncation error
        enddo
-       hnew = (cpw*tpsn(N_snow)-fices(N_snow)*alhm)*wesn(N_snow)
+       hnew = (StieglitzSnow_CPW*tpsn(N_snow)-fices(N_snow)*alhm)*wesn(N_snow)
        htsnn(N_snow)= hnew
        sndz(N_snow) = sndz(N_snow) - excsdz
        wesnbot = excswe
@@ -1225,7 +1227,7 @@ contains
     
     logical, intent(out)   :: ice1,tzero    ! frozen fraction==1?, snow temp at 0 deg C?
     
-    real,    parameter     :: tfac=1./cpw
+    real,    parameter     :: tfac=1./StieglitzSnow_CPW
     real,    parameter     :: ffac=1./alhm
     
     real :: hbw
@@ -1309,7 +1311,7 @@ contains
     !rr   real, parameter :: lhs    = 2.8434e6 !  @ 0 C [J/kg]
     !      real, parameter :: lhf    = (lhs-lhv) !  @ 0 C [J/kg]
     
-    real, parameter :: tfac=1./cpw
+    real, parameter :: tfac=1./StieglitzSnow_CPW
     real, parameter :: ffac=1./alhm
     
     integer :: i      
@@ -2068,9 +2070,9 @@ contains
     write (logunit,*) 'TF                   = ', TF    
     write (logunit,*) 'RHOW                 = ', RHOW     
     write (logunit,*)
-    write (logunit,*) 'MINSWE               = ', MINSWE
+    write (logunit,*) 'StieglitzSnow_MINSWE = ', StieglitzSnow_MINSWE
     write (logunit,*) 'WEMIN                = ', WEMIN
-    write (logunit,*) 'CPW                  = ', CPW
+    write (logunit,*) 'StieglitzSnow_CPW    = ', StieglitzSnow_CPW
     write (logunit,*) 'StieglitzSnow_RHOMA  = ', StieglitzSnow_RHOMA    
     write (logunit,*) 'DZ1MAX               = ', DZ1MAX   
     write (logunit,*) 
