@@ -46,9 +46,8 @@ module gfdl2_cloud_microphys_mod
   ! use fms_mod, only: write_version_number, open_namelist_file, &
   ! check_nml_error, file_exist, close_file
 
-  use fms_mod,             only: write_version_number, open_namelist_file, &
-       check_nml_error, close_file, file_exist,  &
-       fms_init
+  use fms_mod, only: write_version_number, open_namelist_file
+  use fms_mod, only: check_nml_error, close_file, file_exist, fms_init
   use GEOSmoist_Process_Library, only: ice_fraction
 
   implicit none
@@ -948,21 +947,21 @@ contains
           ! note: dp1 is dry mass; dp0 is the old moist (total) mass
           ! -----------------------------------------------------------------------
 
-          ! if (sedi_transport) then
-          !    v1_km1 = vin (i, j, ktop)
-          !    u1_km1 = uin (i, j, ktop)
-          !    !$acc loop seq
-          !    do k = ktop + 1, kbot
-          !       u1_k = uin (i, j, k)
-          !       v1_k = vin (i, j, k)
-          !       u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
-          !       v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
-          !       u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
-          !       v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
-          !       u1_km1 = u1_k
-          !       v1_km1 = v1_k
-          !    enddo
-          ! endif
+          if (sedi_transport) then
+             v1_km1 = vin (i, j, ktop)
+             u1_km1 = uin (i, j, ktop)
+             !$acc loop seq
+             do k = ktop + 1, kbot
+                u1_k = uin (i, j, k)
+                v1_k = vin (i, j, k)
+                ! u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
+                ! v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
+                ! u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
+                ! v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
+                ! u1_km1 = u1_k
+                ! v1_km1 = v1_k
+             enddo
+          endif
 
           if (do_sedi_w) then
              !$acc loop vector
