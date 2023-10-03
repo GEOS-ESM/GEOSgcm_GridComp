@@ -82,9 +82,6 @@
            N_SNOW            => CATCH_N_SNOW,        &
            N_GT              => CATCH_N_GT,          &
            RHOFS             => CATCH_SNWALB_RHOFS,  &
-           SNWALB_VISMAX     => CATCH_SNWALB_VISMAX, &
-           SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
-           SLOPE             => CATCH_SNWALB_SLOPE,  &
            MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
            SCONST            => CATCH_SCONST,        &
            CSOIL_1           => CATCH_CSOIL_1,       &
@@ -109,7 +106,11 @@
       USE SIBALB_COEFF,  ONLY: coeffsib
       
       USE STIEGLITZSNOW, ONLY:                                                               &
-           snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d, N_constit, &
+           StieglitzSnow_snowrt,                     & 
+           StieglitzSnow_calc_asnow,                 &
+           StieglitzSnow_calc_tpsnow,                &
+           get_tf0d,                                 &
+           N_constit,                                &
            StieglitzSnow_targetthick_land
       
       IMPLICIT NONE
@@ -914,7 +915,7 @@
 
         call StieglitzSnow_targetthick_land( N_snow, targetthick )
 
-        CALL SNOWRT(                                                           &
+        CALL StieglitzSnow_snowrt(                                             &
                    N_sm, N_snow,     MAPL_Land,                                &
                    t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
                    eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &

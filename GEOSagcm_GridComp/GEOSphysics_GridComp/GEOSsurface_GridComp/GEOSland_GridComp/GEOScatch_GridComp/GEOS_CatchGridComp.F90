@@ -27,10 +27,14 @@ module GEOS_CatchGridCompMod
   use GEOS_Mod
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  use CATCHMENT_MODEL, ONLY :                 &
+
+  use CATCHMENT_MODEL, ONLY :                  &
        catchment
-  USE STIEGLITZSNOW,   ONLY :                 &
-       snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,  &
+  
+  USE STIEGLITZSNOW,   ONLY :                  &
+       StieglitzSnow_snow_albedo,              &
+       StieglitzSnow_calc_tpsnow,              &
+       N_CONSTIT,                              &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
        NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
@@ -38,12 +42,12 @@ module GEOS_CatchGridCompMod
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD, &
        StieglitzSnow_calc_asnow
 
-  USE CATCH_CONSTANTS, ONLY :                 &
-       N_SNOW         => CATCH_N_SNOW,        &
-       RHOFS          => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE,  &
+  USE CATCH_CONSTANTS, ONLY :                  &
+       N_SNOW         => CATCH_N_SNOW,         &
+       RHOFS          => CATCH_SNWALB_RHOFS,   &
+       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX,  &
+       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX,  &
+       SLOPE          => CATCH_SNWALB_SLOPE,   &
        PEATCLSM_POROS_THRESHOLD
 
 
@@ -4852,7 +4856,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow, CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call StieglitzSnow_snow_albedo(NTILES, N_snow, CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -5551,7 +5555,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call StieglitzSnow_snow_albedo(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &

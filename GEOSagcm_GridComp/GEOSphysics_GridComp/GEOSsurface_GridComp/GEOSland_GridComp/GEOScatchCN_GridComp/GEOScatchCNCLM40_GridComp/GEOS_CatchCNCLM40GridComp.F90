@@ -36,8 +36,11 @@ module GEOS_CatchCNCLM40GridCompMod
   use CATCHMENT_CN_MODEL
   use compute_rc_mod
   use CN_DriverMod
-  USE STIEGLITZSNOW,   ONLY :                 &
-       snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,   &
+
+  USE STIEGLITZSNOW,   ONLY :                  &
+       StieglitzSnow_snow_albedo,              &
+       StieglitzSnow_calc_tpsnow,              &
+       N_CONSTIT,                              &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
        NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
@@ -6647,7 +6650,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
     TPSN1OUT1 =  TPSN1OUT1 + Tzero
     
-    call   SNOW_ALBEDO(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
+    call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
          RHOFS,                                              &   
          SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
          WESNN, HTSNNN, SNDZN,                               &
@@ -6660,7 +6663,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE. ) ! instantaneous snow-free albedos on tiles
   
 
-    call   SNOW_ALBEDO(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
+    call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
          RHOFS,                                              &   
          SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
          WESNN, HTSNNN, SNDZN,                               &
@@ -7329,7 +7332,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + Tzero        
 
-        call   SNOW_ALBEDO(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
+        call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -7342,7 +7345,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
 
-        call   SNOW_ALBEDO(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
+        call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &

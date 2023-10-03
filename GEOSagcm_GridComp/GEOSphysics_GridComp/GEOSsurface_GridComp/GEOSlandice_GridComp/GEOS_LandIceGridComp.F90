@@ -27,11 +27,15 @@ module GEOS_LandiceGridCompMod
 ! !USES:
 
   use sfclayer   !  use module that contains surface layer routines
-  use StieglitzSnow, only: snowrt, SNOW_ALBEDO, TRID, N_CONSTIT, &
-       NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
-       NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
-       NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
-       NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
+  use StieglitzSnow, only:                       &
+       snowrt      => StieglitzSnow_snowrt,      &
+       SNOW_ALBEDO => StieglitzSnow_snow_albedo, &
+       TRID        => StieglitzSnow_trid,        & 
+       N_CONSTIT,                                &
+       NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD,   &
+       NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD,   &
+       NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD,   &
+       NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD,   &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
   use ESMF
   use MAPL
@@ -70,6 +74,11 @@ module GEOS_LandiceGridCompMod
                                               !  heat diffusion of ice layers to take effect
   real,    parameter :: LWCTOP     = 1.       !  top thickness to compute LWC. 1m taken from
                                               !  Fettweis et al 2011  
+
+  real,    parameter :: VISMAX    = 0.96
+  real,    parameter :: NIRMAX    = 0.68
+  real,    parameter :: SLOPE     = 1.0
+
   ! taken from CICE
    real,   parameter :: &                       ! currently used only
           AWTVDR = 0.00318, &! visible, direct  ! for history and
@@ -3027,7 +3036,7 @@ contains
        !*** call new/shared routine to compute albedo 
 
        call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, & 
-                   RHOFRESH, 0.96, 0.68, 1.0,  & !
+                   RHOFRESH, VISMAX, NIRMAX, SLOPE, &     !0.96, 0.68, 1.0,  & !
                    WESNN, HTSNN, SNDZN,        & ! snow stuff
                    LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
                    SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
@@ -3229,7 +3238,7 @@ contains
        ITYPE = 9
 
        call    SNOW_ALBEDO(NT, NUM_SNOW_LAYERS, N_CONST_LANDICE4SNWALB, ITYPE, LAI, ZTH, & 
-                   RHOFRESH, 0.96, 0.68, 1.0,  & !
+                   RHOFRESH, VISMAX, NIRMAX, SLOPE,  &   ! 0.96, 0.68, 1.0,  & !
                    WESNN, HTSNN, SNDZN,        & ! snow stuff
                    LNDVR, LNDNR, LNDVF, LNDNF, & ! instantaneous snow-free albedos on tiles
                    SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles

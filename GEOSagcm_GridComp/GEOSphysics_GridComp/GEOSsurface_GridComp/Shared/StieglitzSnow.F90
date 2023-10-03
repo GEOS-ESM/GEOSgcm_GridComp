@@ -26,16 +26,16 @@ module StieglitzSnow
  
   USE SurfParams,   ONLY: WEMIN, AICEV, AICEN
   
-  public :: snowrt                         ! used by LandIce, Catchment
-  public :: TRID                           ! used by LandIce
-  public :: SNOW_ALBEDO                    ! used by LandIce, Catchment, LDAS
-  public :: StieglitzSnow_calc_asnow       ! used by          Catchment, LDAS
-  public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment, LDAS
-  public :: StieglitzSnow_echo_constants   ! used by                     LDAS
-  public :: StieglitzSnow_targetthick_land ! used by          Catchment, LDAS, land-atm DAS
-  public :: StieglitzSnow_relayer          ! used by                           land-atm DAS
+  public :: StieglitzSnow_snowrt           ! used by LandIce, Catchment[CN]
+  public :: StieglitzSnow_trid             ! used by LandIce
+  public :: StieglitzSnow_snow_albedo      ! used by LandIce, Catchment[CN], LDAS
+  public :: StieglitzSnow_calc_asnow       ! used by          Catchment[CN], LDAS
+  public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment[CN], LDAS
+  public :: StieglitzSnow_echo_constants   ! used by                         LDAS
+  public :: StieglitzSnow_targetthick_land ! used by          Catchment[CN], LDAS, land-atm DAS
+  public :: StieglitzSnow_relayer          ! used by                               land-atm DAS
 
-  public :: StieglitzSnow_RHOMA            ! used by                     LDAS, land-atm DAS
+  public :: StieglitzSnow_RHOMA            ! used by                         LDAS, land-atm DAS
 
   public :: get_tf0d  ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
   
@@ -181,7 +181,7 @@ module StieglitzSnow
   
 contains
   
-  subroutine snowrt(N_zones, N_snow, tileType,                            &
+  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                            &
        t1,area,tkgnd,precip,snowf,ts,dts, eturb,dedtc,hsturb,dhsdtc,      &
        hlwtc,dhlwtc,desdtc,hlwout,raddn,zc1,totdepos,wss,                 &
        wesn,htsnn,sndz,fices,tpsn, rconstit,rmelt,                        &
@@ -561,7 +561,7 @@ contains
     
     !**** Solve the tri-diagonal matrix for implicit change in Tc.
     
-    call TRID(dtc,cl,cd,cr,q,N_snow)
+    call STIEGLITZSNOW_TRID(dtc,cl,cd,cr,q,N_snow)
     
     !**** Check temperature changes for passages across critical points,i.e.
     !**** If implicit change has taken layer past melting/freezing, correct.
@@ -986,7 +986,7 @@ contains
     
     return  !  end snow
     
-  end subroutine snowrt
+  end subroutine StieglitzSnow_snowrt
   
   ! **********************************************************************
   
@@ -1455,7 +1455,7 @@ contains
   
   ! **********************************************************************
   
-  SUBROUTINE TRID(X,DD,D,RD,B,N)
+  SUBROUTINE StieglitzSnow_trid(X,DD,D,RD,B,N)
       IMPLICIT NONE
 
       INTEGER,INTENT(IN) :: N
@@ -1476,12 +1476,13 @@ contains
    20 if(D(J).ne.0.) X(J)=(B(J)-DD(J)*X(J-1))/D(J)
       RETURN
 
-  END SUBROUTINE TRID
+  END SUBROUTINE StieglitzSnow_trid
 
   !=======================================================================
   !      Version 5.0.2  by Teppei J. Yasuanari on 02/14/2011
   
-  SUBROUTINE SNOW_ALBEDO (NCH, N_snow, N_constit_type, ITYP, VLAI, ZTH,  &
+  SUBROUTINE StieglitzSnow_snow_albedo(                                  &
+       NCH, N_snow, N_constit_type, ITYP, VLAI, ZTH,                     &
        RHOFRESH,                                                         &   
        SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                              & 
        WESN, HTSNN, SNDZ,                                                &
@@ -1628,7 +1629,7 @@ contains
     
     RETURN
     
-  END SUBROUTINE SNOW_ALBEDO
+  END SUBROUTINE StieglitzSnow_Snow_Albedo
   
   ! ****************************************************************************
   
