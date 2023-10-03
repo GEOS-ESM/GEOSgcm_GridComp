@@ -774,14 +774,13 @@ contains
     !!!$acc    r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
     !!$acc     r1, s1, i1, g1)
 
-    !$acc parallel
-    !$acc loop seq
+    !$acc parallel loop seq & !gang collapse(2)
+    !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
     do j = js, je
 
-       !$acc loop seq
        do i = is, ie
 
-          !$acc loop vector private(r1, s1, i1, g1, omq, t0)
+          !$acc loop vector private(omq, t0)
           do k = ktop, kbot
 
              t0 = pt (i, j, k)
@@ -1046,7 +1045,6 @@ contains
 
     enddo
 
-    !$acc end parallel
     !$acc end data
 
   end subroutine mpdrv
