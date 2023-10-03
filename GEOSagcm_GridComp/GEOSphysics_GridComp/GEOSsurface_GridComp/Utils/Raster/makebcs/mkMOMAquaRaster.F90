@@ -21,9 +21,10 @@ program MOMraster
   character*(128)        :: GridFile
   character*(128)        :: GridName=''
   character*(128)        :: arg
+  character*(128)        :: OCEAN_VERSION
   character*(2)          :: opt
   character*(128)        :: &
-      Usage = "mkMOMAquaRaster -x rx -y ry -z -v -g GridName -h GridSpecFile"
+      Usage = "mkMOMAquaRaster -x rx -y ry -z -v -g GridName -h GridSpecFile -w OCEAN_VERSION"
   character*(128)        :: Iam = "mkMOMAquaRaster"
 
 ! argument defaults
@@ -73,6 +74,8 @@ INCLUDE "netcdf.inc"
           Here  = .true.
        case ('g')
           GridName = trim(arg) 
+       case ('w')
+          OCEAN_VERSION = trim(arg) 
        case default
           print *, trim(Usage)
           call exit(1)
@@ -88,7 +91,7 @@ INCLUDE "netcdf.inc"
     IM = size(xvert,1)
     JM = size(xvert,2)
 
-    if(trim(GridName)=='')write(Gridname,'(A2,I4.4,A3,I4.4)') "TM",im,"xTM",jm
+    if(trim(GridName)=='')write(Gridname,'(A4,I4.4,A1,I4.4)')trim(OCEAN_VERSION),im,"x",jm
 
     if(DoZip) GridName = trim(Gridname)//'.gz'
 
