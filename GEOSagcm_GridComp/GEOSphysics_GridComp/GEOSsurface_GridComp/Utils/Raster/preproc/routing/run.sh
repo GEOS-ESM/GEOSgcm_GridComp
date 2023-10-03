@@ -6,10 +6,14 @@ INPUT=/discover/nobackup/yzeng3/work/outlets/inputs
 module load comp/intel/2021.3.0
 module load ncl
 
+rm -rf inputs >& /dev/null
+rm -rf outputs >& /dev/null
+rm -f *.mod >& /dev/null
+rm -f *.out >& /dev/null
+rm -f Outlet_latlon.43200x21600 >& /dev/null 
+
 mkdir -p inputs outputs
-cd inputs
-ln -s ${INPUT}/* . 
-cd ..
+ln -s ${INPUT}/* inputs 
 
 echo "Building get_outlets_land.f90 ..."
 ./build get_outlets_land.f90
