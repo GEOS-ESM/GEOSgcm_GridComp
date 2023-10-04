@@ -5546,7 +5546,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              LHACC=LHACC                                          ,&
-             MLTWTRTMP=mltwtrout, PREOUTTMP=preout, ficesout=ficesout)
+             MLTWTROUT=mltwtrtmp, PREOUT=preouttmp, FICESOUT=ficesout)
 
         end if
         
