@@ -71,20 +71,56 @@ module Process_Library_standalone
 
 !$acc data create(Tve, MSEp, Qp, tmp1, tmp2, Lev0)
 
-    !$acc kernels
-    Tve   = T*(1.+MAPL_VIREPS*Q)
-    BYNCY = MAPL_UNDEF
-    MSEp  = 0.
-    Qp    = 0.
-    !$acc end kernels
+    ! !$acc kernels
+    ! Tve   = T*(1.+MAPL_VIREPS*Q)
+    ! BYNCY = MAPL_UNDEF
+    ! MSEp  = 0.
+    ! Qp    = 0.
+    ! !$acc end kernels
+
+    !$acc parallel loop gang vector collapse(3)
+    do L = 1, LM
+        do J = 1, JM
+            do I = 1, IM
+                Tve(I,J,L)   = T(I,J,L)*(1.+MAPL_VIREPS*Q(I,J,L))
+                BYNCY(I,J,L) = MAPL_UNDEF
+            enddo
+        enddo
+    enddo
+
+    !$acc parallel loop gang vector collapse(2)
+    do J = 1, JM
+        do I = 1, IM
+            MSEp(I,J) = 0.
+            Qp(I,J) = 0.
+        enddo
+    enddo
 
     ! Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
     if ( associated(MLCAPE) .and. associated(MLCIN) ) then
-        !$acc kernels
-        BYNCY = MAPL_UNDEF
-        tmp1 = 0.
-        Lev0 = LM
-        !$acc end kernels
+        ! !$acc kernels
+        ! BYNCY = MAPL_UNDEF
+        ! tmp1 = 0.
+        ! Lev0 = LM
+        ! !$acc end kernels
+
+        !$acc parallel loop gang vector collapse(3)
+        do L = 1, LM
+            do J = 1, JM
+                do I = 1, IM
+                    BYNCY(I,J,L) = MAPL_UNDEF
+                enddo
+            enddo
+        enddo
+
+        !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1, IM
+                tmp1(I,J) = 0.
+                Lev0(I,J) = LM
+            enddo
+        enddo
+        !$acc end parallel loop
 
         !$acc parallel
         loop_exec = .true.
@@ -108,66 +144,119 @@ module Process_Library_standalone
         end do
         !$acc end parallel
 
-        !$acc kernels
-        where (tmp1.gt.0.)   ! average
-            MSEp = MSEp / tmp1
-            Qp = Qp / tmp1
-        end where
-        !$acc end kernels
+        ! !$acc kernels
+        ! where (tmp1.gt.0.)   ! average
+        !     MSEp = MSEp / tmp1
+        !     Qp = Qp / tmp1
+        ! end where
+        ! !$acc end kernels
+
+        !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1, IM
+                if(tmp1(I,J).gt.0) then
+                    MSEp(I,J) = MSEp(I,J) / tmp1(I,J)
+                    Qp(I,J) = Qp(I,J) / tmp1(I,J)
+                endif
+            enddo
+        enddo
+        !$acc end parallel loop
 
         call RETURN_CAPE_CIN_v2(ZLO, PLO, DZ,      & 
                                 MSEp, Qp, Tve, QS, DQS,       &
                                 MLCAPE, MLCIN, BYNCY, LFC, LNB, Lev0, PS, T, Q, 0)
-        !$acc kernels
-        where (MLCAPE.le.0.)
-            MLCAPE = MAPL_UNDEF
-            MLCIN  = MAPL_UNDEF
-        end where
-       !$acc end kernels
+    !     !$acc kernels
+    !     where (MLCAPE.le.0.)
+    !         MLCAPE = MAPL_UNDEF
+    !         MLCIN  = MAPL_UNDEF
+    !     end where
+    !    !$acc end kernels
+
+        !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1, IM
+                if(MLCAPE(I,J).le.0) then
+                    MLCAPE(I,J) = MAPL_UNDEF
+                    MLCIN(I,J)  = MAPL_UNDEF
+                endif
+            enddo
+        enddo
 
     end if
 
     ! Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
     if ( associated(MUCAPE) .and. associated(MUCIN) ) then
-        !$acc kernels
-        MUCAPE = 0.
-        MUCIN  = 0.
-        BYNCY = MAPL_UNDEF
-        LFC = MAPL_UNDEF
-        LNB = MAPL_UNDEF
-        !$acc end kernels   
+        ! !$acc kernels
+        ! MUCAPE = 0.
+        ! MUCIN  = 0.
+        ! LFC = MAPL_UNDEF
+        ! LNB = MAPL_UNDEF
+        ! BYNCY = MAPL_UNDEF
+        ! !$acc end kernels   
+
+        !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1, IM
+                MUCAPE(I,J) = 0.
+                MUCIN(I,J)  = 0.
+                LFC(I,J) = MAPL_UNDEF
+                LNB(I,J) = MAPL_UNDEF
+            enddo
+        enddo
+
+        !$acc parallel loop gang vector collapse(3)
+        do L = 1, LM
+            do J = 1, JM
+                do I = 1, IM
+                    BYNCY(I,J,L) = MAPL_UNDEF
+                enddo
+            enddo
+        enddo
 
         call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, tmp1, tmp2, BYNCY, LFC, LNB, &
                                    Lev0, PS, T, Q, 1, MUCAPE=MUCAPE, MUCIN=MUCIN)
 
-        !$acc kernels
-        where (MUCAPE.le.0.)
-            MUCAPE = MAPL_UNDEF
-            MUCIN  = MAPL_UNDEF
-        end where
-        !$acc end kernels
+        !!$acc kernels
+        !where (MUCAPE.le.0.)
+        !    MUCAPE = MAPL_UNDEF
+        !    MUCIN  = MAPL_UNDEF
+        !end where
+        !!$acc end kernels
+        !$acc parallel loop gang vector collapse(2)
+        do J = 1, JM
+            do I = 1, IM
+                if(MUCAPE(I,J).le.0) then
+                    MUCAPE(I,J) = MAPL_UNDEF
+                    MUCIN(I,J)  = MAPL_UNDEF
+                endif
+            enddo
+        enddo
+        !$acc end parallel loop
     end if
 
     ! Surface-based calculation
-    !$acc kernels
-    MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
-    Qp   = Q(:,:,LM)
-    ! do J = 1, JM
-    !     do I = 1, IM
-    !         MSEp(I,J) = T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)  ! parcel moist static energy
-    !         Qp(I,J)   = Q(I,J,LM)
-    !     enddo
-    ! enddo
-    !$acc end kernels                                            ! parcel specific humidity
+    !!$acc kernels
+    ! MSEp = T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)  ! parcel moist static energy
+    ! Qp   = Q(:,:,LM)
+    !$acc parallel loop gang vector collapse(2)
+    do J = 1, JM
+        do I = 1, IM
+            MSEp(I,J) = T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)  ! parcel moist static energy
+            Qp(I,J)   = Q(I,J,LM)
+        enddo
+    enddo
+    !$acc end parallel loop
+    !!$acc end kernels                                            ! parcel specific humidity
 
     call RETURN_CAPE_CIN_v2( ZLO, PLO, DZ, MSEp, Qp, Tve, QS, DQS, SBCAPE, SBCIN, BYNCY, LFC, LNB, &
                              Lev0, PS, T, Q, 2)
     
-    !$acc kernels
+    !!$acc kernels
     ! where (SBCAPE.le.0.)
     !     SBCAPE = MAPL_UNDEF
     !     SBCIN  = MAPL_UNDEF
     ! end where
+    !$acc parallel loop gang vector collapse(2)
     do J = 1,JM
         do I = 1, IM
             if(SBCAPE(I,J).le.0.) then
@@ -176,7 +265,8 @@ module Process_Library_standalone
             endif
         enddo
     enddo
-    !$acc end kernels
+    !$acc end parallel loop
+    !!$acc end kernels
 !$acc end data
     end subroutine BUOYANCY2
 
