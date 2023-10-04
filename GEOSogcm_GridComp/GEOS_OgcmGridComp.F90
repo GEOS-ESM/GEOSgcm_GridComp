@@ -58,7 +58,7 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_DATASEAONLY
   integer            :: DO_DATAICE
   integer            :: DO_OBIO
-  integer            :: DO_DATAATM
+  integer            :: DO_DATA_ATM4OCN
 
   logical          :: ocean_extData
   logical          :: ocean_sssData
@@ -194,12 +194,12 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,     Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, OCEAN_NAME,     Label="OCEAN_NAME:",          DEFAULT="MOM", __RC__ )
     
 ! following logic is to make sure: configuration of cetain components (CICE, OBIO, etc) has associated models "active."
-    if (DO_DATAATM/=0) then
+    if (DO_DATA_ATM4OCN/=0) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
@@ -374,7 +374,7 @@ contains
   VERIFY_(STATUS)
 
   if (DO_OBIO/=0) then
-    call OBIO_SetServices(DO_DATAATM, RC)
+    call OBIO_SetServices(DO_DATA_ATM4OCN, RC)
   end if
   
 ! These are supposed to be friendly to us
@@ -814,6 +814,11 @@ contains
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddConnectivity ( GC,   &
+          SHORT_NAME  = (/'UWC','VWC'/), &
+          SRC_ID = OCEAN,                &
+          DST_ID = SEAICE,               &
+          _RC)
      endif
   end if
 
@@ -887,9 +892,9 @@ contains
  
     contains
 
-    subroutine OBIO_SetServices(DO_DATAATM, RC)
+    subroutine OBIO_SetServices(DO_DATA_ATM4OCN, RC)
     
-      integer,                intent(IN   ) ::  DO_DATAATM
+      integer,                intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,      intent(  OUT) ::  RC
       integer                               :: STATUS
 
@@ -1732,7 +1737,7 @@ contains
     endif 
     
     if (DO_OBIO/=0) then
-      call OBIO_RunTransforms(DO_DATAATM, RC)
+      call OBIO_RunTransforms(DO_DATA_ATM4OCN, RC)
     endif
 
     call MAPL_GetPointer(IMPORT, LWFLX, 'LWFLX', RC=STATUS)
@@ -2365,9 +2370,9 @@ contains
    
     contains
 
-    subroutine OBIO_RunTransforms(DO_DATAATM, RC)
+    subroutine OBIO_RunTransforms(DO_DATA_ATM4OCN, RC)
 
-      integer,                    intent(IN   ) ::  DO_DATAATM
+      integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,          intent(  OUT) ::  RC
       
       character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
@@ -2439,7 +2444,7 @@ contains
       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
         call MAPL_GetPointer(IMPORT, BCDP      , 'BCDP'      , RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, BCWT      , 'BCWT'      , RC=STATUS)
@@ -2529,7 +2534,7 @@ contains
        VERIFY_(STATUS)
       endif
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
         call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
@@ -2539,7 +2544,7 @@ contains
         call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
        if(associated(BCDPB)) then
           do N = 1, NUM_BCDP
              call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )
