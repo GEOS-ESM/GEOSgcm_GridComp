@@ -283,10 +283,6 @@ contains
     real, parameter :: snfr   = 0.01       !  holding capacity
     real, parameter :: small  = 1.e-6      !  small number 
 
-    !      integer, parameter :: nlay = 3             ! number of layers
-    !      integer, parameter :: N_zones   = 3        ! number of zones
-    !      real   , parameter :: MIN_SNOW_MASS = .013 ! kg/M**2 equiv to 0.1% area
-    
     integer, intent(in)   :: N_zones, N_snow, tileType
     real,    intent(in )  :: t1(N_zones),area(N_zones),tkgnd(N_zones)
     real,    intent(in)   :: totdepos(N_constit)
