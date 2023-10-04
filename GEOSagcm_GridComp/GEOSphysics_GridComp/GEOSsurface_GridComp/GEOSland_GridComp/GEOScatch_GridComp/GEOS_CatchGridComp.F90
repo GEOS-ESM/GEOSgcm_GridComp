@@ -1664,90 +1664,48 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-!lca-------
-
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_frozen_fraction_layer_1'             ,&
-    UNITS              = '1'                ,&
-    SHORT_NAME         = 'FICES1'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_1' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE1'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
   
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_frozen_fraction_layer_2'             ,&
-    UNITS              = '1'                ,&
-    SHORT_NAME         = 'FICES2'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_2' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE2'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
   
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_frozen_fraction_layer_3'             ,&
-    UNITS              = '1'                ,&
-    SHORT_NAME         = 'FICES3'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_3' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE3'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-!lca-------
-  
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_mass_excess_due_to_densification_layer_1'             ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'EXCS1'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-  
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_mass_excess_due_to_densification_layer_2'             ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'EXCS2'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-  
-  call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_mass_excess_due_to_densification_layer_3'             ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'EXCS3'                     ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-! lca %%%%%%%%
-
-  call MAPL_AddExportSpec(GC,                    &       !!lca not sure if right
-    LONG_NAME          = 'runoff_from_snow_base'     ,&
-    UNITS              = 'kg m-2 s-1'                ,&
+  call MAPL_AddExportSpec(GC,                            &       ! lca/rhr not sure if right
+    LONG_NAME          = 'runoff_from_snow_base'        ,&
+    UNITS              = 'kg m-2 s-1'                   ,&
     SHORT_NAME         = 'PREOUT'                       ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-!  call MAPL_AddExportSpec(GC,                    &       !!lca not sure if right
-!    LONG_NAME          = 'frozen_part_of_water_content_from_densification_excess'     ,&
-!    UNITS              = 'kg m-2 s-1'                ,&
-!    SHORT_NAME         = 'excs'                       ,&
-!    DIMS               = MAPL_DimsTileOnly           ,&
-!    VLOCATION          = MAPL_VLocationNone          ,&
-!                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &       !!lca not sure if right
-    LONG_NAME          = 'total_meltwater_production_rate'     ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'MLTWTR'                       ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
+  call MAPL_AddExportSpec(GC,                               &    ! lca/rhr not sure if right
+    LONG_NAME          = 'total_meltwater_production_flux' ,&
+    UNITS              = 'kg m-2 s-1'                      ,&
+    SHORT_NAME         = 'MLTWTR'                          ,&
+    DIMS               = MAPL_DimsTileOnly                 ,&
+    VLOCATION          = MAPL_VLocationNone                ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -3882,15 +3840,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: bflow
         real, dimension(:),   pointer :: runsurf
         real, dimension(:),   pointer :: smelt
-        real, dimension(:),   pointer :: fices1 !lca
-        real, dimension(:),   pointer :: fices2 !lca
-        real, dimension(:),   pointer :: fices3 !lca
-        real, dimension(:),   pointer :: excs1  !lca
-        real, dimension(:),   pointer :: excs2  !lca
-        real, dimension(:),   pointer :: excs3  !lca
-        real, dimension(:),   pointer :: preout  !!lca
-        real, dimension(:),   pointer :: mltwtr !!lca
-       ! real, dimension(:),   pointer :: excs  !!lca
+        real, dimension(:),   pointer :: fice1 
+        real, dimension(:),   pointer :: fice2 
+        real, dimension(:),   pointer :: fice3 
+        real, dimension(:),   pointer :: preout
+        real, dimension(:),   pointer :: mltwtr
         real, dimension(:),   pointer :: accum
         real, dimension(:),   pointer :: hlwup
         real, dimension(:),   pointer :: swndsrf
@@ -4018,7 +3972,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
-        real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: FICE1TMP
+        real,pointer,dimension(:) :: PREOUTTMP
+        real,pointer,dimension(:) :: MLTWTRTMP
         real,pointer,dimension(:) :: SLDTOT
  
 !       real*8,pointer,dimension(:) :: fsum
@@ -4027,8 +3983,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:,:) :: wesnn
         real,pointer,dimension(:,:) :: htsnnn
         real,pointer,dimension(:,:) :: sndzn
-        real,pointer,dimension(:,:) :: ficesout !lca
-        real,pointer,dimension(:,:) :: excsout !lca
+        real,pointer,dimension(:,:) :: ficesout
         real,pointer,dimension(:,:) :: shsbt
         real,pointer,dimension(:,:) :: dshsbt
         real,pointer,dimension(:,:) :: evsbt
@@ -4420,7 +4375,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! -----------------------------------------------------
 
         call MAPL_GetPointer(EXPORT,EVAPOUT,'EVAPOUT',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SUBLIM,'SUBLIM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SUBLIM, 'SUBLIM' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHOUT,  'SHOUT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFF' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4434,15 +4389,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,BFLOW,  'BASEFLOW',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RUNSURF,'RUNSURF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT,  'SMELT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FICES1, 'FICES1' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,FICES2, 'FICES2' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,FICES3, 'FICES3' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,EXCS1, 'EXCS1' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,EXCS2, 'EXCS2' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,EXCS3, 'EXCS3' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca         
-        call MAPL_GetPointer(EXPORT,PREOUT, 'PREOUT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        call MAPL_GetPointer(EXPORT,MLTWTR, 'MLTWTR' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
-        !call MAPL_GetPointer(EXPORT,excs,  'excs'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS) !!lca
+        call MAPL_GetPointer(EXPORT,FICE1,  'FICE1'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE2,  'FICE2'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE3,  'FICE3'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,PREOUT, 'PREOUT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,MLTWTR, 'MLTWTR' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,LWNDSRF,'LWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4535,12 +4486,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ALLOCATE LOCAL POINTERS
         ! --------------------------------------------------------------------------
 
-        allocate(GHTCNT (6,NTILES))
-        allocate(WESNN  (3,NTILES))
-        allocate(HTSNNN (3,NTILES))
-        allocate(SNDZN  (3,NTILES))
-        allocate(FICESOUT  (3,NTILES)) !lca
-        allocate(EXCSOUT   (3,NTILES)) !lca
+        allocate(GHTCNT  (6,NTILES))
+        allocate(WESNN   (3,NTILES))
+        allocate(HTSNNN  (3,NTILES))
+        allocate(SNDZN   (3,NTILES))
+        allocate(FICESOUT(3,NTILES))
         allocate(TILEZERO (NTILES))
         allocate(DZSF     (NTILES))
         allocate(SWNETFREE(NTILES))
@@ -4596,9 +4546,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TPSN1OUT1 (NTILES))
         allocate(LHACC     (NTILES))
         allocate(SUMEV     (NTILES))
-        allocate(FICE1     (NTILES)) 
+        allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
         allocate(FSW_CHANGE(NTILES))
+        allocate(PREOUTTMP (NTILES))
+        allocate(MLTWTRTMP (NTILES))
         
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -4719,10 +4671,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         GHTCNT(4,:) = GHTCNT4
         GHTCNT(5,:) = GHTCNT5
         GHTCNT(6,:) = GHTCNT6
-
-       ! FICES(1,:) = FICES1  !lca
-       ! FICES(2,:) = FICES2
-       ! FICES(3,:) = FICES3
 
         WESNN (1,:) = WESNN1
         WESNN (2,:) = WESNN2
@@ -4962,7 +4910,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP)    
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
         call   SNOW_ALBEDO(NTILES, N_snow, CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
@@ -5596,7 +5544,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC, mltwtr=mltwtr, preout=preout, ficesout=ficesout, excsout=excsout)! mltwtr=meltwtr) !lca
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
+             LHACC=LHACC                                          ,&
+             MLTWTRTMP=mltwtrout, PREOUTTMP=preout, ficesout=ficesout)
 
         end if
         
@@ -5655,7 +5605,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
                        ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
         call   SNOW_ALBEDO(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
@@ -5766,31 +5716,27 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(TPSN1OUT)) TPSN1OUT = TPSN1OUT1
         if(associated(GHTSKIN))GHTSKIN = GHFLXTSKIN
         if(associated(SMLAND)) SMLAND = SMELT
-        if(associated(preout)) preout =preout  !!lca
-        if(associated(mltwtr)) mltwtr = mltwtr !!lca
-        !if(associated(excs))   excs = excs !!lca
+        if(associated(preout)) preout = PREOUTTMP
+        if(associated(mltwtr)) mltwtr = MLTWTRTMP
         if(associated(TWLAND)) TWLAND = WTOT
         if(associated(TELAND)) TELAND = ENTOT
-        if(associated(TSLAND)) TSLAND = WESNN (1,:) + WESNN (2,:) + WESNN (3,:)
+        if(associated(TSLAND)) TSLAND = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
         if(associated(DWLAND)) DWLAND = WCHANGE
         if(associated(DHLAND)) DHLAND = ECHANGE
         if(associated(SPLAND)) SPLAND = SHACC
         if(associated(SPWATR)) SPWATR = EVACC
         if(associated(SPSNOW)) SPSNOW = HSNACC
 
-        if(associated(FRSAT )) FRSAT  = max( min( FR(:,FSAT),1.0 ), 0.0 )
-        if(associated(FRUST )) FRUST  = max( min( FR(:,FTRN),1.0 ), 0.0 )
-        if(associated(FRWLT )) FRWLT  = max( min( FR(:,FWLT),1.0 ), 0.0 )
+        if(associated(FRSAT )) FRSAT  = max( min( FR(:,FSAT),   1.0 ), 0.0 )
+        if(associated(FRUST )) FRUST  = max( min( FR(:,FTRN),   1.0 ), 0.0 )
+        if(associated(FRWLT )) FRWLT  = max( min( FR(:,FWLT),   1.0 ), 0.0 )
 
-        if(associated(SNOMAS)) SNOMAS = WESNN (1,:) + WESNN (2,:) + WESNN (3,:)
-        if(associated(SNOWDP)) SNOWDP = SNDZN (1,:) + SNDZN (2,:) + SNDZN (3,:)
+        if(associated(SNOMAS)) SNOMAS = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
+        if(associated(SNOWDP)) SNOWDP = SNDZN(1,:) + SNDZN(2,:) + SNDZN(3,:)
 
-        if(associated(FICES1)) FICES1 = FICESOUT(1,:) !lca
-        if(associated(FICES2)) FICES2 = FICESOUT(2,:)
-        if(associated(FICES3)) FICES3 = FICESOUT(3,:) !lca
-        if(associated(EXCS1)) EXCS1 = EXCSOUT(1,:)    !lca
-        if(associated(EXCS2)) EXCS2 = EXCSOUT(2,:)
-        if(associated(EXCS3)) EXCS3 = EXCSOUT(3,:)    !lca
+        if(associated(FICE1 )) FICE1  = max( min( FICESOUT(1,:),1.0 ), 0.0 )
+        if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
+        if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
         if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
         if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
@@ -5893,8 +5839,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(GHTCNT   )
         deallocate(WESNN    )
         deallocate(HTSNNN   )
-        deallocate(FICESOUT ) !lca
-        deallocate(EXCSOUT  ) !lca
+        deallocate(FICESOUT )
         deallocate(SNDZN    )
         deallocate(TILEZERO )
         deallocate(DZSF     )
@@ -5974,10 +5919,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(QA4_0    )
         deallocate(RCONSTIT )
         deallocate(TOTDEPOS )
-        deallocate(RMELT )
-        deallocate(FICE1 )
-        deallocate(SLDTOT )
+        deallocate(RMELT    )
+        deallocate(FICE1TMP )
+        deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
+        deallocate(PREOUTTMP)
+        deallocate(MLTWTRTMP)
 
         RETURN_(ESMF_SUCCESS)
 

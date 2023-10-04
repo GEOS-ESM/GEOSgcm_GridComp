@@ -161,8 +161,8 @@
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
                      TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE ,                   &
                      lonbeg,lonend,latbeg,latend,                              &
-                     TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, mltwtr, preout, FICESOUT, EXCSOUT)              !lca mltwtr, pre
+                     TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &   ! OPTIONAL
+                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, MLTWTROUT, PREOUT, FICESOUT ) ! OPTIONAL
 
       IMPLICIT NONE
 
@@ -230,14 +230,15 @@
 
       
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC    
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: mltwtr     !lca
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: preout         !lca
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: MLTWTROUT     !lca
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: PREOUT         !lca
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: EACC_0 
 
       REAL, INTENT(OUT), DIMENSION(NCH, N_Constit), OPTIONAL :: RMELT	
-     REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH), OPTIONAL :: FICESOUT,EXCSOUT !lca
+      REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH),    OPTIONAL :: FICESOUT
+
 ! -----------------------------------------------------------
 !     LOCAL VARIABLES
 
@@ -263,9 +264,8 @@
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
 
-      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, targetthick, &
+      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices, targetthick, &
              wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
-      REAL, DIMENSION(N_SNOW) :: FICES                                        !lca
 
       REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
 
@@ -286,7 +286,7 @@
               EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
               EVAPXS,SHFLUXXS,phi,rho_fs,WSS,sumdepth,                         &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
-              mltwtr_, wesnbot, dtss       !lca
+              mltwtr, wesnbot, dtss       !lca
 
 
 
@@ -883,13 +883,6 @@
                    TOTDEP1 (K) = 0.
                    ENDDO
              endif
-         if(present(FICESOUT)) then !lca
-            FICES(i) = FICESOUT(i,n) !lca
-            EXCS(i)  = EXCSOUT(i,n)  !lca
-          else                       !lca
-            FICES(i) = 0.0           !lca 
-            EXCS(i)  = 0.0           !lca
-         endif
        enddo 
 
 !     TPSN1 is used as input here, contradicts "declaration" as output only.
@@ -931,16 +924,18 @@
                    t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
                    eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
                    desdtc,hups,raddn,zc1, totdep1,  wss,                       &
-                   wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &
+                   wesn,htsnn,sndz, fices, tpsn, RCONSTIT1, RMELT1,            &
                    areasc,areasc0,pre,fhgnd,                                   &
                    EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
                    sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
-                   wesnperc, wesndens, wesnrepar, mltwtr_,                      &
-                   excs, drho0, wesnbot, tksno, dtss,                          & !lca
+                   wesnperc, wesndens, wesnrepar, mltwtr,                      &
+                   excs, drho0, wesnbot, tksno, dtss,                          & 
                    maxsndepth,  rhofs, targetthick )
 
-        if (present(mltwtr) ) mltwtr(N) = mltwtr_    !lca
-        if (present(preout)    ) preout(N)    = pre       !lca
+        if (present(MLTWTROUT)) MLTWTROUT( N) = mltwtr
+        if (present(PREOUT)   ) PREOUT(    N) = pre   
+        if (present(FICESOUT) ) FICESOUT(:,N) = fices
+
         LH_SNOW(N)=areasc*EVSN*ALHS
         SH_SNOW(N)=areasc*SHFLS
         LWUP_SNOW(N)=areasc*HUPS
@@ -957,7 +952,7 @@
         ! reichle+koster, 12 Aug 2014 
 
         TPSNB(N) = TPSN(N_snow)+TF 
-        SMELT(N) = PRE+sum(EXCS)            
+        SMELT(N) = PRE+sum(EXCS)               
         fh31w=fhgnd(1) 
         fh31i=fhgnd(2) 
         fh31d=fhgnd(3) 
@@ -976,18 +971,9 @@
              DO K=1,N_Constit
                 RCONSTIT(N,I,K)=RCONSTIT1(I,K)
 		RMELT (N,K) = RMELT1(K)
-                ENDDO
-             endif
-         if(present(ficesout)) then    !lca
-           FICESOUT(i,n) = FICES(i) !lca
-         endif                      !lca
-         if(present(excsout)) then !lca
-           EXCSOUT(i,n) = EXCS(i)  !lca
-         endif                     !lca
-
-      enddo 
-
-
+             ENDDO
+          endif
+        enddo
  
         traincx(n)= trainc(n)*(1.-areasc) 
         trainlx(n)= trainl(n)*(1.-areasc)
@@ -1514,14 +1500,17 @@
 
 ! **** SPECIAL DIAGNOSTICS FOR AR5 DECADAL RUNS
 
-           CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        ! the following assumes that fices is unchanged, otherwise need to update FICESOUT
+        ! - reichle,  4 Oct 2023
+        
+        CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, fices)  
 
-           !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
-           !     (TPSN(3)+TF)*WESNN(3,N)
-
-           tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
-
-           AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
+        !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
+        !     (TPSN(3)+TF)*WESNN(3,N)
+        
+        tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
+        
+        AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
            
         WAT_10CM(N)=0.1*(RZEQ(N)+RZEXC(N))+SRFEXC(N)
 
@@ -1530,7 +1519,7 @@
         TOTICE_SOIL(N)=TOTWAT_SOIL(N)*FRICE(N)
 
 
-        ENDDO     
+     ENDDO     ! N=1,NCH  (PROCESS DATA AS NECESSARY PRIOR TO RETURN)
 
       if(numout.ne.0) then
        do i = 1,numout

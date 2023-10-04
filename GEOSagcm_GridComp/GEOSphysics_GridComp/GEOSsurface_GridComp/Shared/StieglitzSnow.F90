@@ -414,7 +414,7 @@ contains
           rconstit(:,:) = 0.
 
           if(snowf > 0.) then   ! only initialize with non-liquid part of precip
-                                ! liquid part runs off (above)
+                                ! liquid part runs off (see "pre" above)
 
              wesn    = snowf*dts/float(N_snow)  
              htsnn   = (tsx-alhm)*wesn
@@ -758,18 +758,18 @@ contains
           term=densfac*snfr*(sndz(i)*rhow-wesn(i)*fices(i))
       
           if(pre > term) then
-            pre = min(pre - term, wesn(i))
+            pre = min(pre - term, wesn(i))       ! when asnow=1, retain some liquid water in snow pack
              do k=1,N_constit
                 rconc(k)=rconstit(i,k)/wesn(i)
              enddo
-            wesn(i) = wesn(i) - pre
-            flow = pre
+            wesn(i) = wesn(i) - pre    
+            flow = pre                           
           endif
         else
              do k=1,N_constit
                 rconc(k)=rconstit(i,k)/wesn(i)
              enddo
-          wesn(i) = wesn(i) - pre
+          wesn(i) = wesn(i) - pre                ! when asnow<1, remove all liquid water from snow pack
           flow = pre
        endif
 
