@@ -587,7 +587,6 @@ module Process_Library_standalone
         !    if lifed dry adiabatically to it's lifting condensation level (lcl).  
         ! References:                                                              
         !    Bolton (1980), Monthly Weather Review, pg. 1048, Eq. 22
-            IMPLICIT NONE
             REAL, INTENT ( IN ) :: tK   !~ Temperature ( K )
             REAL, INTENT ( IN ) :: rh   !~ Relative Humidity ( % )
             REAL                :: tlcl
