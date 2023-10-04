@@ -856,18 +856,23 @@ contains
 
              if(dens(i) > rhoma) then
 
-!rk                ! excs = SWE in excess of max density given fixed snow depth
-!rk                excs(i) = (dens(i)-rhoma)*sndz(i)            ! solid + liquid
-!rk                wlossfrac=excs(i)/wesn(i)
-!rk                wesn(i) = wesn(i) - excs(i)                  ! remove excs from SWE
-!rk                do k=1,N_constit
-!rk                  rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
-!rk                  rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
-!rk                  rconstit(i,k)=amax1(0.,rconstit(i,k)) ! guard against truncation error
-!rk                enddo
-!rk                hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)   ! adjust heat content accordingly
-!rk                hcorr= hcorr+(htsnn(i)-hnew)/dts             ! add excess heat content into residual accounting term
-!rk                htsnn(i)= hnew
+                if (tileType==MAPL_LANDICE) then               ! restrict SWE adjustment to LANDICE tiles
+
+                  ! excs = SWE in excess of max density given fixed snow depth
+
+                  excs(i) = (dens(i)-rhoma)*sndz(i)            ! solid + liquid
+                  wlossfrac=excs(i)/wesn(i)
+                  wesn(i) = wesn(i) - excs(i)                  ! remove excs from SWE
+                  do k=1,N_constit
+                    rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
+                    rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
+                    rconstit(i,k)=amax1(0.,rconstit(i,k))      ! guard against truncation error
+                  enddo
+                  hnew = (cpw*tpsn(i)-fices(i)*alhm)*wesn(i)   ! adjust heat content accordingly
+                  hcorr= hcorr+(htsnn(i)-hnew)/dts             ! add excess heat content into residual accounting term
+                  htsnn(i)= hnew
+
+                endif   
 
                 dens(i) = rhoma
              endif
@@ -878,9 +883,11 @@ contains
        wesndens = wesn - wesndens
 
        !pre  = pre + sum(excs)/dts
-!rk       pre  = pre + sum(excs*max(1.-fices,0.0))/dts
-!rk       excs = excs * fices / dts
-      
+
+       if (tileType==MAPL_LANDICE) then                        ! finish SWE adjustment for LANDICE tiles
+         pre  = pre + sum(excs*max(1.-fices,0.0))/dts
+         excs = excs * fices / dts
+       endif
 
        snowd=sum(wesn)
        areasc0 = max(small, min(snowd/wemin,1.) )
