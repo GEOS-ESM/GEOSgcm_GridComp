@@ -2151,7 +2151,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real, pointer                       :: LATS(:)
   real, pointer                       :: LONS(:)
-  integer, pointer                    :: TILETYPES(:)
+  !integer, pointer                    :: TILETYPES(:)
   type(MAPL_SunOrbit)                 :: ORBIT
 
 !=============================================================================
@@ -2186,7 +2186,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ORBIT     = ORBIT,                      &
          TILELATS  = LATS,                       &
          TILELONS  = LONS,                       &
-         TILETYPES = TILETYPES,                  &     
+         !TILETYPES = TILETYPES,                  &     
          RUNALARM  = ALARM,                      &
                                        RC=STATUS )
     VERIFY_(STATUS)
@@ -3092,7 +3092,7 @@ contains
 #endif
           TKSNO = condice 
 
-          call SNOWRT(1,NUM_SNOW_LAYERS,TILETYPES(k),                          &
+          call SNOWRT(1,NUM_SNOW_LAYERS,MAPL_LANDICE,                          &
                    LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &
                    EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLW(k),            &
                    DUM,HLWO(k),RADDN(k),ZC1,TOTDEPOS(k,:),WSS,                 &
