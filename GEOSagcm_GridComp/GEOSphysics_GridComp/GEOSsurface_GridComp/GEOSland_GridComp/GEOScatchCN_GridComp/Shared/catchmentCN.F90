@@ -171,9 +171,9 @@ CONTAINS
        EVACC, SHACC, TSURF,                                      &
        SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
        LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
-       TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE,                    &
-       TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-       RCONSTIT, RMELT, TOTDEPOS, LHACC                          &
+       TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
+       TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
+       RCONSTIT, RMELT, TOTDEPOS, LHACC                          &  ! OPTIONAL
        )
     
     IMPLICIT NONE
@@ -240,6 +240,7 @@ CONTAINS
     REAL, INTENT(OUT), DIMENSION(:) :: TCSORIG, TPSN1IN, TPSN1OUT, &
          FSW_CHANGE
     
+    REAL, INTENT(OUT), DIMENSION(:, :) :: FICESOUT
     
     REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: LHACC
     
@@ -883,19 +884,21 @@ CONTAINS
                    t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
                    eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
                    desdtc,hups,raddn,zc1, totdep1, wss,                        &
-                   wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &
+                   wesn,htsnn,sndz,fices,tpsn,RCONSTIT1, RMELT1,               &
                    areasc,areasc0,pre,fhgnd,                                   &
                    EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
                    sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &
                    excs, drho0, wesnbot, tksno, dtss,                          &
-                   maxsndepth,  rhofs, targetthick )
+                   maxsndepth, rhofs, targetthick )
 
-        LH_SNOW(N)=areasc*EVSN*ALHS
-        SH_SNOW(N)=areasc*SHFLS
-        LWUP_SNOW(N)=areasc*HUPS
-        LWDOWN_SNOW(N)=areasc*HLWDWN(N)
-        NETSW_SNOW(N)=areasc*SWNETS(N)
+        FICESOUT(:,N)  = fices
+
+        LH_SNOW(N)     = areasc*EVSN*ALHS
+        SH_SNOW(N)     = areasc*SHFLS
+        LWUP_SNOW(N)   = areasc*HUPS
+        LWDOWN_SNOW(N) = areasc*HLWDWN(N)
+        NETSW_SNOW(N)  = areasc*SWNETS(N)
 
         TPSN1(N) = TPSN(1)+TF 
 
@@ -1464,19 +1467,19 @@ CONTAINS
         SHACC(N)=SHFLUX(N)-SHACC(N)
 
 
-
-
-
 ! **** SPECIAL DIAGNOSTICS FOR AR5 DECADAL RUNS
 
-           CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        ! the following assumes that fices is unchanged, otherwise may need to update FICESOUT
+        ! - reichle,  4 Oct 2023
 
-           !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
-           !     (TPSN(3)+TF)*WESNN(3,N)
-
-           tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
-
-           AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
+        CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        
+        !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
+        !     (TPSN(3)+TF)*WESNN(3,N)
+        
+        tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
+        
+        AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
            
         WAT_10CM(N)=0.1*(RZEQ(N)+RZEXC(N))+SRFEXC(N)
 
@@ -1485,7 +1488,7 @@ CONTAINS
         TOTICE_SOIL(N)=TOTWAT_SOIL(N)*FRICE(N)
 
 
-        ENDDO     
+        ENDDO  ! N=1,NCH (PROCESS DATA AS NECESSARY PRIOR TO RETURN)     
 
       if(numout.ne.0) then
        do i = 1,numout
