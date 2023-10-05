@@ -68,14 +68,14 @@ subroutine surface_layer(IM, JM, LM, &
   
   real, dimension(IM,JM) :: w_star, bw_surf, wspd
 
-  if ( flux_type == 2 ) then
+  if ( flux_type == 3 ) then
      niter = 1
   else
      niter = 20
 
      zeta(:,:) = -0.01
      
-     if ( flux_type == 1 ) then
+     if ( flux_type == 1 .or. flux_type == 2 ) then
         bw_surf(:,:) = (mapl_grav/thv(:,:,LM)) * ( sh(:,:)/mapl_cp + evap(:,:) )/rhoe(:,:,LM)
      else
         bw_surf(:,:) = 0.01
@@ -104,7 +104,7 @@ subroutine surface_layer(IM, JM, LM, &
         bar = log(work1) - Psi_M(work2/zeta(i,j)) + Psi_M(z0/zeta(i,j))
 
         ! Approximate zeta using Newton's method
-        if ( flux_type /= 2 ) then
+        if ( flux_type /= 3 ) then
            Dfoo = ( work2*DPsi_H(work2/zeta(i,j)) - z0*DPsi_H(z0/zeta(i,j)) )/zeta(i,j)**2.
            Dbar = ( work2*DPsi_M(work2/zeta(i,j)) - z0*DPsi_M(z0/zeta(i,j)) )/zeta(i,j)**2.
 
@@ -117,7 +117,7 @@ subroutine surface_layer(IM, JM, LM, &
         end if
 
         ! Compute surface thermodynamic fluxes
-        if ( flux_type /= 1 ) then 
+        if ( flux_type /= 1 .and. flux_type /= 2 ) then 
            ct(i,j) = mapl_karman**2./( foo*bar )
 
            sh(i,j)   = -ct(i,j)*rhoe(i,j,LM)*( mapl_cp*T(i,j,LM) + mapl_grav*zl(i,j,LM) - s_surf(i,j) )
