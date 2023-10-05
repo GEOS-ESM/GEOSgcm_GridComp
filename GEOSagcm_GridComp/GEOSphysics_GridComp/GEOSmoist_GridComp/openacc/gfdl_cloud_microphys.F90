@@ -36,6 +36,7 @@
 
 module gfdl2_cloud_microphys_mod
 
+  use mpi
   use mpp_mod, only: mpp_pe, mpp_root_pe
   ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
   ! mpp_clock_begin, mpp_clock_end, clock_routine, &
@@ -406,7 +407,7 @@ contains
     integer :: i, j, k
     integer :: is, ie, js, je !< physics window
     integer :: ks, ke !< vertical dimension
-    integer :: days, ntimes
+    integer :: days, ntimes, mpierr
 
     real, dimension (iie - iis + 1, jje - jjs + 1) :: prec_mp, prec1, cond, w_var, rh0
 
@@ -506,17 +507,20 @@ contains
     !!$acc      copy(w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
     !!$acc           ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
+    print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
          hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
          qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes, &
-         rain, snow, graupel, ice, m2_rain, &
-         m2_sol, cond, area, &
-         land, cnv_fraction, srf_type, eis, &
+         rain(:, js:je), snow(:, js:je), graupel(:, js:je), ice(:, js:je), m2_rain, &
+         m2_sol, cond(:, js:je), area(:, js:je), &
+         land(:, js:je), cnv_fraction(:, js:je), srf_type(:, js:je), eis(:, js:je), &
          rhcrit, anv_icefall, lsc_icefall, &
          revap, isubl, &
          udt, vdt, pt_dt, &
          qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
          vt_s, vt_g, vt_i, qn2)
+    call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+    print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
     !!$acc end data
 
@@ -761,8 +765,6 @@ contains
        enddo
     enddo
 
-    print *, 'gfdl_cloud_microphys::mpdrv - Initialization complete'
-
     !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
     do j = js, je
@@ -775,7 +777,6 @@ contains
              t0 = pt (i, j, k)
              tz (k) = t0
              dp1 (k) = delp (i, j, k)
-             ! dp0 (k) = dp1 (k) ! moist air mass * grav
 
              ! -----------------------------------------------------------------------
              ! import horizontal subgrid variability with pressure dependence
@@ -932,7 +933,7 @@ contains
 
           ! -----------------------------------------------------------------------
           ! momentum transportation during sedimentation
-          ! note: dp1 is dry mass; dp0 is the old moist (total) mass
+          ! note: dp1 is dry mass; delp(i, j, :) is the old moist (total) mass
           ! -----------------------------------------------------------------------
 
           if (sedi_transport) then
@@ -942,12 +943,12 @@ contains
              do k = ktop + 1, kbot
                 u1_k = uin (i, j, k)
                 v1_k = vin (i, j, k)
-                ! u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
-                ! v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
-                ! u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
-                ! v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
-                ! u1_km1 = u1_k
-                ! v1_km1 = v1_k
+                u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
+                v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
+                u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
+                v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
+                u1_km1 = u1_k ! store for next iteration
+                v1_km1 = v1_k
              enddo
           endif
 
@@ -963,8 +964,7 @@ contains
           ! convert to dry mixing ratios
           ! -----------------------------------------------------------------------
 
-          ! !$acc loop vector private(omq, cvm, t0)
-          !$acc loop seq
+          !$acc loop vector private(omq, cvm, t0)
           do k = ktop, kbot
              t0 = pt (i, j, k)
              omq = dp1 (k) / delp (i, j, k)
@@ -984,7 +984,7 @@ contains
           if (.not. do_qa) then
              !$acc loop vector
              do k = ktop, kbot
-                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
+                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                           &
                      qa(i, j, k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
                      qa(i, j, k) )                                                      ! Old Cloud
              enddo
