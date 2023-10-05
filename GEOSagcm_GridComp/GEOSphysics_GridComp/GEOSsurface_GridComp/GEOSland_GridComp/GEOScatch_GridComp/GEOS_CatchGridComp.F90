@@ -1691,24 +1691,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                            &       ! lca/rhr not sure if right
-    LONG_NAME          = 'runoff_from_snow_base'        ,&
-    UNITS              = 'kg m-2 s-1'                   ,&
-    SHORT_NAME         = 'PREOUT'                       ,&
-    DIMS               = MAPL_DimsTileOnly              ,&
-    VLOCATION          = MAPL_VLocationNone             ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                               &    ! lca/rhr not sure if right
-    LONG_NAME          = 'total_meltwater_production_flux' ,&
-    UNITS              = 'kg m-2 s-1'                      ,&
-    SHORT_NAME         = 'MLTWTR'                          ,&
-    DIMS               = MAPL_DimsTileOnly                 ,&
-    VLOCATION          = MAPL_VLocationNone                ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
@@ -3843,8 +3825,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: fice1 
         real, dimension(:),   pointer :: fice2 
         real, dimension(:),   pointer :: fice3 
-        real, dimension(:),   pointer :: preout
-        real, dimension(:),   pointer :: mltwtr
         real, dimension(:),   pointer :: accum
         real, dimension(:),   pointer :: hlwup
         real, dimension(:),   pointer :: swndsrf
@@ -3973,8 +3953,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
         real,pointer,dimension(:) :: FICE1TMP
-        real,pointer,dimension(:) :: PREOUTTMP
-        real,pointer,dimension(:) :: MLTWTRTMP
         real,pointer,dimension(:) :: SLDTOT
  
 !       real*8,pointer,dimension(:) :: fsum
@@ -4392,8 +4370,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,FICE1,  'FICE1'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FICE2,  'FICE2'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FICE3,  'FICE3'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,PREOUT, 'PREOUT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,MLTWTR, 'MLTWTR' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,LWNDSRF,'LWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4549,8 +4525,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
         allocate(FSW_CHANGE(NTILES))
-        allocate(PREOUTTMP (NTILES))
-        allocate(MLTWTRTMP (NTILES))
         
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -5546,7 +5520,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS    ,&
              LHACC=LHACC                                          ,&
-             MLTWTROUT=mltwtrtmp, PREOUT=preouttmp, FICESOUT=ficesout)
+             FICESOUT=ficesout )
 
         end if
         
@@ -5716,8 +5690,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(TPSN1OUT)) TPSN1OUT = TPSN1OUT1
         if(associated(GHTSKIN))GHTSKIN = GHFLXTSKIN
         if(associated(SMLAND)) SMLAND = SMELT
-        if(associated(preout)) preout = PREOUTTMP
-        if(associated(mltwtr)) mltwtr = MLTWTRTMP
         if(associated(TWLAND)) TWLAND = WTOT
         if(associated(TELAND)) TELAND = ENTOT
         if(associated(TSLAND)) TSLAND = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
@@ -5923,8 +5895,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(FICE1TMP )
         deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
-        deallocate(PREOUTTMP)
-        deallocate(MLTWTRTMP)
 
         RETURN_(ESMF_SUCCESS)
 
@@ -6041,15 +6011,13 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
-  ! Pointers to EXPOERTs
+  ! Pointers to EXPORTs
   call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
   VERIFY_(status)
 
   ! Pointers to INTERNALs
-  !call MAPL_GetPointer(INTERNAL, pre, 'PRE', rc=status)
-  !VERIFY_(status)    !!lca
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)

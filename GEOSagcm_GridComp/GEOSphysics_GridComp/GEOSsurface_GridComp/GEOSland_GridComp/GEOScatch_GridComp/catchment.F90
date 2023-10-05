@@ -162,7 +162,7 @@
                      TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE ,                   &
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &   ! OPTIONAL
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, MLTWTROUT, PREOUT, FICESOUT ) ! OPTIONAL
+                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, FICESOUT )                 ! OPTIONAL
 
       IMPLICIT NONE
 
@@ -230,8 +230,6 @@
 
       
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC    
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: MLTWTROUT     !lca
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: PREOUT         !lca
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: EACC_0 
@@ -286,7 +284,7 @@
               EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
               EVAPXS,SHFLUXXS,phi,rho_fs,WSS,sumdepth,                         &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
-              mltwtr, wesnbot, dtss       !lca
+              mltwtr, wesnbot, dtss  
 
 
 
@@ -932,8 +930,6 @@
                    excs, drho0, wesnbot, tksno, dtss,                          & 
                    maxsndepth,  rhofs, targetthick )
 
-        if (present(MLTWTROUT)) MLTWTROUT( N) = mltwtr
-        if (present(PREOUT)   ) PREOUT(    N) = pre   
         if (present(FICESOUT) ) FICESOUT(:,N) = fices
 
         LH_SNOW(N)=areasc*EVSN*ALHS

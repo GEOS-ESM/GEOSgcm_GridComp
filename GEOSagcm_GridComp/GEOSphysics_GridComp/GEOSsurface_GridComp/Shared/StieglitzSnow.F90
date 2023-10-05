@@ -237,7 +237,7 @@ contains
 !  fices  : Layer frozen fraction [0-1]
 !  areasc : Areal snow coverage at beginning of step [0-1]
 !  areasc0: Areal snow coverage at end of step [0-1]
-!  pre    : Liquid water flow from snow base [kg/m^2/s]
+!  pre    : Liquid water outflow from snow base [kg/m^2/s]
 !  fhgnd  : Heat flux at snow base at catchment zones  [W/m^2]
 !  hlwout : Final emitted IR flux per unit area of snow [W/m^2]
 !  lhflux : Final latent heat flux per unit area of snow [W/m^2]
@@ -413,8 +413,8 @@ contains
             enddo
           rconstit(:,:) = 0.
 
-          if(snowf > 0.) then   ! only initialize with non-liquid part of precip
-                                ! liquid part runs off (see "pre" above)
+          if(snowf > 0.) then  ! only initialize with non-liquid part of precip
+                               ! liquid precip (rainf) is part of outflow from snow base (see "pre" above)
 
              wesn    = snowf*dts/float(N_snow)  
              htsnn   = (tsx-alhm)*wesn
@@ -739,7 +739,7 @@ contains
        do i=1,N_snow
 
         if(flow > 0.) then
-         wesn (i) =  wesn(i) + flow
+         wesn(i) =  wesn(i) + flow  ! add "flow" [kg/m2] from layer i-1 to wesn(i)
           do k=1,N_constit
              rconstit(i,k)=rconstit(i,k)+flow_r(k)
           enddo
@@ -821,7 +821,7 @@ contains
 
        wesnperc = wesn - wesnperc
 
-       pre = flow/dts
+       pre = flow/dts                       ! convert outflow to flux units [kg/m2/s]
        do k=1,N_constit
          rmelt(k)=rmelt(k)+flow_r(k)/dts
        enddo
