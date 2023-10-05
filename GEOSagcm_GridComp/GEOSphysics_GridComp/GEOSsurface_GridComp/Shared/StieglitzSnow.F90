@@ -241,7 +241,7 @@ contains
     !  fices  : Layer frozen fraction [0-1]
     !  areasc : Areal snow coverage at beginning of step [0-1]
     !  areasc0: Areal snow coverage at end of step [0-1]
-    !  pre    : Liquid water flow from snow base [kg/m^2/s]
+    !  pre    : Liquid water outflow from snow base [kg/m^2/s]
     !  fhgnd  : Heat flux at snow base at catchment zones  [W/m^2]
     !  hlwout : Final emitted IR flux per unit area of snow [W/m^2]
     !  lhflux : Final latent heat flux per unit area of snow [W/m^2]
@@ -406,7 +406,7 @@ contains
        rconstit(:,:) = 0.
        
        if(snowf > 0.) then  ! only initialize with non-liquid part of precip
-                            ! liquid part runs off (above)
+                            ! liquid precip (rainf) is part of outflow from snow base (see "pre" above)
           
           wesn    = snowf*dts/float(N_snow)  
           htsnn   = (tsx-alhm)*wesn
@@ -728,7 +728,7 @@ contains
     do i=1,N_snow
        
        if(flow > 0.) then
-          wesn (i) =  wesn(i) + flow
+          wesn (i) =  wesn(i) + flow               ! add "flow" [kg/m2] from layer i-1 to wesn(i)
           do k=1,N_constit
              rconstit(i,k)=rconstit(i,k)+flow_r(k)
           enddo
@@ -747,7 +747,7 @@ contains
           term=densfac*snfr*(sndz(i)*rhow-wesn(i)*fices(i))
           
           if(pre > term) then
-             pre = min(pre - term, wesn(i))
+             pre = min(pre - term, wesn(i))        ! when asnow=1, retain some liquid water in snow pack
              do k=1,N_constit
                 rconc(k)=rconstit(i,k)/wesn(i)
              enddo
@@ -756,9 +756,9 @@ contains
           endif
        else
           do k=1,N_constit
-             rconc(k)=rconstit(i,k)/wesn(i)
+             rconc(k)=rconstit(i,k)/wesn(i)         
           enddo
-          wesn(i) = wesn(i) - pre
+          wesn(i) = wesn(i) - pre                  ! when asnow<1, remove all liquid water from snow pack
           flow = pre
        endif
        
@@ -815,7 +815,7 @@ contains
 
     wesnperc = wesn - wesnperc
     
-    pre = flow/dts
+    pre = flow/dts                                 ! convert outflow to flux units [kg/m2/s]
     do k=1,N_constit
        rmelt(k)=rmelt(k)+flow_r(k)/dts
     enddo
@@ -840,24 +840,28 @@ contains
        cmpc    = exp(14.643 - (4000./min(tpsn+tf,tf))-.02*dens)
        
        do i=1,N_snow
-          w(i) = wesn(i)
-          mass = mass + 0.5*(w(i)+w(i-1))
+
+          w(i)    = wesn(i)
+          mass    = mass + 0.5*(w(i)+w(i-1))
           dens(i) = dens(i)*(1. + (dts*0.5e-7*9.81)*mass*cmpc(i))
           
           !**** Clip densities below maximum value, adjust quantities accordingly
           !**** while conserving heat & mass (STEPH 06/21/03).
           
           if(dens(i) > StieglitzSnow_RHOMA) then
-             excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)
+
+             ! excs = SWE in excess of max density given fixed snow depth
+
+             excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)           ! solid + liquid
              wlossfrac=excs(i)/wesn(i)
-             wesn(i) = wesn(i) - excs(i)
+             wesn(i) = wesn(i) - excs(i)                               ! remove EXCS from SWE
              do k=1,N_constit
                 rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
                 rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
-                rconstit(i,k)=amax1(0.,rconstit(i,k)) ! guard against truncation error
+                rconstit(i,k)=amax1(0.,rconstit(i,k))                  ! guard against truncation error
              enddo
-             hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)
-             hcorr= hcorr+(htsnn(i)-hnew)/dts
+             hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)  ! adjust heat content accordingly
+             hcorr= hcorr+(htsnn(i)-hnew)/dts                          ! add excess heat content into residual accounting term
              htsnn(i)= hnew
              dens(i) = StieglitzSnow_RHOMA
           endif
