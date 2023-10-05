@@ -46,7 +46,7 @@ module GEOS_THOM_1M_InterfaceMod
 
   ! Local resource variables
   real    :: DT_THOM
-  real    :: TURNRHCRIT
+  real    :: TURNRHCRIT_PARAM
   real    :: CCW_EVAP_EFF
   real    :: CCI_EVAP_EFF
   integer :: PDFSHAPE
@@ -273,7 +273,7 @@ subroutine THOM_1M_Initialize (MAPL, RC)
     _ASSERT( STATUS==0, errmsg )
     call WRITE_PARALLEL ("INITIALIZED THOM_1M microphysics in non-generic GC INIT")
 
-    call MAPL_GetResource( MAPL, TURNRHCRIT      , 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 0.8   , RC=STATUS); VERIFY_(STATUS)
@@ -412,7 +412,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Local variables
     real    :: facEIS
-    real    :: minrhcrit, ALPHA, RHCRIT
+    real    :: minrhcrit, turnrhcrit, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
     CHARACTER(len=ESMF_MAXSTR) :: errmsg
@@ -697,9 +697,11 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
            ! determine combined minrhcrit in stable/unstable regimes
              minrhcrit  = (1.0-0.1)*(1.0-facEIS) + (1.0-0.05)*facEIS
-             if (turnrhcrit <= 0.0) then
+             if (TURNRHCRIT_PARAM <= 0.0) then
               ! determine the turn pressure using the LCL
                 turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
+             else
+                turnrhcrit  = TURNRHCRIT_PARAM
              endif
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
@@ -751,7 +753,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       PDFITERS(I,J,L), &
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
-                      .false.        , &
+                      .false.        , & 
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
            ! meltfrz new condensates
