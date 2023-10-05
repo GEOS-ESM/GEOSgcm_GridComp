@@ -517,8 +517,9 @@ contains
          rhcrit, anv_icefall, lsc_icefall, &
          revap, isubl, &
          udt, vdt, pt_dt, &
-         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
-         vt_s, vt_g, vt_i, qn2)
+         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, &
+         vt_r(is:, js:, ks:), vt_s(is:, js:, ks:), vt_g(is:, js:, ks:), vt_i(is:, js:, ks:), &
+         qn2(is:, js:, ks:))
     call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
@@ -970,7 +971,7 @@ contains
              omq = dp1 (k) / delp (i, j, k)
              qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
              ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-             ! qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
              ! qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
              ! qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
              ! qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
