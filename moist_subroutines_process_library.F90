@@ -461,7 +461,6 @@ module Process_Library_standalone
             !$acc parallel loop seq
             do LL = LM, 1, -1
                 !$acc loop gang vector collapse(2) &
-                !!$acc loop seq &
                 !$acc          private(aboveLNB, aboveLFC, Qpnew, &
                 !$acc                  Tp, Tlcl, aboveLCL, dq, Tvp, KLNB, KLFC, L, loop_exec)
                 do J = 1,IM
