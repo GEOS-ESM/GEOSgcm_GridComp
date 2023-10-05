@@ -28,6 +28,7 @@ module GEOS_PhysicsGridCompMod
 
   use GEOS_UtilsMod, only: GEOS_Qsat
   use Bundle_IncrementMod
+  use MBundle_IncrementMod
 
 ! PGI Module that contains the initialization
 ! routines for the GPUs
@@ -565,6 +566,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MCHEMTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
          LONG_NAME  = 'upward_net_turbulence_heat_flux',           &
          UNITS      = 'W m-2',                                     &
          SHORT_NAME = 'FTB',                                       &
@@ -1038,7 +1047,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV   ','QLTOT','QITOT','QCTOT','WTHV2'/),&
+         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','QCTOT ',      &
+                         'WTHV2 ','WQT_DC'                   /),   &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1279,10 +1289,10 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
-                         'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
-                         'HL2          ', 'HL3          ', 'W2           ',     &
-                         'W3           ', 'HLQT         ', 'WQT          ',     &
-                         'WHL          ', 'QT2          ', 'QT3          '/),    &
+                         'TKE          ', 'TKESHOC      ', 'PDF_A        ',     &
+                         'SL2          ', 'SL3          ', 'W2           ',     &
+                         'W3           ', 'SLQT         ', 'WQT          ',     &
+                         'WSL          ', 'QT2          ', 'QT3          '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
@@ -1304,8 +1314,8 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'T2M', 'Q2M', 'TA', 'QA', 'SH',           &
-                         'EVAP '                                   &
+         SHORT_NAME  = (/'T2M ', 'Q2M ', 'TA  ', 'QA  ', 'SH  ',   &
+                         'EVAP'                                    &
                        /),                                         &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
@@ -1942,7 +1952,7 @@ contains
 ! Fill the moist increments bundle
 !---------------------------------
 
-    call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
+    call Initialize_IncMBundle_init(GC, GIM(MOIST), EXPORT, __RC__)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
@@ -1992,6 +2002,7 @@ contains
 ! Local derived type aliases
 
    type (MAPL_MetaComp),      pointer  :: STATE
+   type (MAPL_MetaComp),      pointer  :: CMETA
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
    type (ESMF_State),         pointer  :: GEX(:)
@@ -2081,7 +2092,7 @@ contains
    real, allocatable, dimension(:,:,:) :: TFORQS
    real, allocatable, dimension(:,:)   :: qs,pmean
 
-   logical :: isPresent
+   logical :: isPresent, SCM_NO_RAD
    real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
@@ -2126,6 +2137,9 @@ contains
 
     call MAPL_TimerOn(STATE,"TOTAL")
     call MAPL_TimerOn(STATE,"RUN")
+
+    call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
@@ -2427,7 +2441,7 @@ contains
 ! Moist Processes
 !----------------
 
-    call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
+    call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,__RC__)
 
     I=MOIST
 
@@ -2436,7 +2450,9 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-    call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
+    call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
+
+    call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,__RC__)
 
     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
@@ -2750,12 +2766,20 @@ contains
             VERIFY_(STATUS)
        endif
 
-       TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
-           + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
-           + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
-           + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
-           + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-           + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       if (SCM_NO_RAD) then
+          TOT = STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       else
+          TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
+              + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       end if
 
        IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))
