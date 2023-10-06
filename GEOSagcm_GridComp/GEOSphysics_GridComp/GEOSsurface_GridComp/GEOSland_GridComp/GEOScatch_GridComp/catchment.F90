@@ -109,7 +109,6 @@
            StieglitzSnow_snowrt,                     & 
            StieglitzSnow_calc_asnow,                 &
            StieglitzSnow_calc_tpsnow,                &
-           get_tf0d,                                 &
            N_constit,                                &
            StieglitzSnow_targetthick_land
       
@@ -170,12 +169,13 @@
 ! -----------------------------------------------------------
 !     INPUTS
 
-      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN)                 :: NCH
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
-      REAL, INTENT(IN)     :: DTSTEP, FWETC, FWETL
-      LOGICAL,  INTENT(IN) :: UFW4RO
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
+      REAL,    INTENT(IN)                 :: DTSTEP, FWETC, FWETL
+      LOGICAL, INTENT(IN)                 :: UFW4RO
+
+      REAL,    INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,             &
                      TSNOW, TICE, TFRZR,  UM,                                  &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -190,13 +190,15 @@
                      CDCR1,CDCR2, psis, bee, poros, wpwet, cond, gnu,          &
                      ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,ARW3,ARW4,   &
                      tsa1,tsa2,tsb1,tsb2,atau,btau
-      REAL, INTENT(IN), DIMENSION(NCH) :: LONS, LATS
+      
+      REAL,    INTENT(IN), DIMENSION(NCH)                      :: LONS, LATS
 
-      REAL, INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
+      REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
       LOGICAL, INTENT(IN) :: BUG
 
-      REAL, INTENT(IN) :: lonbeg,lonend,latbeg,latend
+      REAL,    INTENT(IN) :: lonbeg, lonend, latbeg, latend
+
 ! -----------------------------------------------------------
 !     PROGNOSTIC VARIABLES
 
@@ -893,7 +895,7 @@
 !     in process
 !     reichle, 29 May 03
 
-        call get_tf0d(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
         tcs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig(n)=                       &
                   amin1( tf, tc1_orig(n)*ar1(n)+tc2_orig(n)*ar2(n)+            &

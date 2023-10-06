@@ -41,8 +41,6 @@ module StieglitzSnow
   public :: StieglitzSnow_MINSWE           ! used by LandIce
   public :: StieglitzSnow_CPW              ! used by LandIce
 
-  public :: get_tf0d  ! for now, to be unified w/ StieglitzSnow_calc_tpsnow, reichle, 12 Aug 2014
-  
   interface StieglitzSnow_calc_asnow
 
      module procedure StieglitzSnow_calc_asnow_1
@@ -50,6 +48,13 @@ module StieglitzSnow
      module procedure StieglitzSnow_calc_asnow_3
      
   end interface StieglitzSnow_calc_asnow
+
+  interface StieglitzSnow_calc_tpsnow
+     
+     module procedure StieglitzSnow_calc_tpsnow_scalar       ! replicates original get_tf0d()
+     module procedure StieglitzSnow_calc_tpsnow_vector       ! replicates original get_tf_nd()
+
+  end interface StieglitzSnow_calc_tpsnow
 
   ! constants specific to StieglitzSnow
   
@@ -531,7 +536,7 @@ contains
     
     do i=1,N_snow
        
-       call get_tf0d(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i))
+       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), .true.)
        
        if(ice1(i)) then
           cl(i) = df(i)
@@ -608,7 +613,7 @@ contains
           if(i==N_snow) flxnet=fhsn(i+1)+df(i+1)*dtc(i)                     &
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-          call get_tf0d(HTSPRIME,wesn(i),  tdum,fnew,logdum,logdum)
+          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
           fnew=amax1(0.,  amin1(1.,  fnew))
           
        endif
@@ -632,7 +637,7 @@ contains
                   -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
              
              HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-             call get_tf0d(HTSPRIME,wesn(i),   tdum,fnew,logdum,logdum)
+             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
              fnew=amax1(0.,  amin1(1.,  fnew))
           endif
        endif
@@ -902,7 +907,7 @@ contains
     wesnrepar = wesn
     
     do i=1,N_snow
-       call get_tf0d(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i))
+       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), .true. )
     enddo
     
     select case (tileType)
@@ -1204,7 +1209,8 @@ contains
   
   ! **********************************************************************
   
-  subroutine get_tf0d(h,w,t,f,ice1,tzero)
+  subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero,  &
+       use_threshold_fac )
     
     ! diagnose snow temperature and frozen fraction from snow mass and snow heat content
     !
@@ -1215,6 +1221,11 @@ contains
     !         ice1  = .true.  -->  frozen fraction (fice) equal to 1.
     !         tzero = .true.  -->  snow temperature at 0 deg C
     
+    ! reichle,  6 Oct 2023:
+    !   modified to have single subroutine that can maintain the above-mentioned differences
+    !   (and thus 0-diff test results) and can provide a single interface with the science 
+    !   calculations being in just one place
+
     implicit none
     
     !RR      real, parameter :: cpw    = 2065.22   !  @ 0 C [J/kg/K] -- ALREADY DEFINED ABOVE
@@ -1227,25 +1238,51 @@ contains
     real,    intent(in )   :: w, h          ! snow mass (SWE), snow heat content 
     real,    intent(out)   :: t, f          ! snow temperature, frozen ("ice") fraction
     
-    logical, intent(out)   :: ice1,tzero    ! frozen fraction==1?, snow temp at 0 deg C?
+    logical, intent(out)   :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
+    
+    logical, intent(in)    :: use_threshold_fac
+    
+    ! ------------------------------------------------------------
     
     real,    parameter     :: tfac=1./StieglitzSnow_CPW
     real,    parameter     :: ffac=1./alhm
     
-    real :: hbw
+    real                   :: hbw
     
+    real                   :: threshold1, threshold2
+    
+    ! ------------------------------------------------------------------------------
+    
+    if (use_thresholdfac) then
+       
+       ! replicates original get_tf0d()
+       
+       threshold1 = -1.00001*alhm     
+       threshold2 = -0.99999*alhm
+
+    else
+
+       ! replicates original get_tf_nd() / StieglitzSnow_calc_tpsnow[_vector]()
+       
+       threshold1 = -alhm                      
+       threshold2 = -alhm                      
+              
+    end if
+    
+    ! -------------------------------------------------------------------    
+
     hbw=0.
     
     if (w > 0.) hbw = h/w
     
-    if     (hbw < -1.00001*alhm) then  ! differs from StieglitzSnow_calc_tpsnow() !!
+    if     (hbw < threshold1) then
 
        t = (hbw+alhm)*tfac
        f = 1.
        ice1=.true.
        tzero=.false.
 
-    elseif (hbw > -0.99999*alhm) then  ! differs from StieglitzSnow_calc_tpsnow() !!
+    elseif (hbw > threshold2) then
 
        t = 0.
        f =-hbw*ffac
@@ -1276,11 +1313,11 @@ contains
     
     return
     
-  end subroutine get_tf0d
+  end subroutine StieglitzSnow_calc_tpsnow_scalar
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_calc_tpsnow(N,h,w,t,f)
+  subroutine StieglitzSnow_calc_tpsnow_vector( N, h, w, t, f )
     
     ! renamed for clarity:   get_tf_nd() --> StieglitzSnow_calc_tpsnow()
     ! reichle, 12 Aug 2014
@@ -1299,71 +1336,32 @@ contains
     !     reichle, 22 Aug 2002
     !     reichle, 29 Apr 2003 (updated parameter values)
     
-    integer, intent(in) :: N
+    ! modified to call StieglitzSnow_calc_tpsnow_scalar() while maintaining 0-diff
+    !   [avoiding same science equations in two different places]
+
+    integer,               intent(in)  :: N
     
-    real, dimension(n), intent(in)    :: h, w
-    real, dimension(n), intent(out)   :: t, f
+    real,    dimension(N), intent(in)  :: h, w
+    real,    dimension(N), intent(out) :: t, f
     
-    !     local variables
+    ! -----------------------------------
     
-    !RR      real, parameter :: cpw    = 2065.22   !  @ 0 C [J/kg/K] -- ALREADY DEFINED ABOVE
-    !      real, parameter :: lhv    = 2.4548E6 !  2.5008e6   !  @ 0 C [J/kg]
-    !      real, parameter :: lhs    = 2.8368E6 !  2.8434e6 !  @ 0 C [J/kg]
-    !rr   real, parameter :: lhv    = 2.5008e6  !  @ 0 C [J/kg]
-    !rr   real, parameter :: lhs    = 2.8434e6 !  @ 0 C [J/kg]
-    !      real, parameter :: lhf    = (lhs-lhv) !  @ 0 C [J/kg]
+    integer            :: ii      
     
-    real, parameter :: tfac=1./StieglitzSnow_CPW
-    real, parameter :: ffac=1./alhm
+    logical            :: ice1, tzero   
     
-    integer :: i      
+    logical, parameter :: use_threshold_fac = .false.
+
+    ! ----------------------------------
     
-    real :: hbw
-    
-    do i=1,N
+    do ii=1,N
        
-       if(w(i) .gt. 0.0) then
-          hbw = h(i)/w(i)
-       else
-          hbw = 0.
-       endif
-       
-       if     (hbw .lt. -alhm) then  ! differs from get_tf0d() !! 
-
-          t(i) = (hbw+alhm)*tfac
-          f(i) = 1.
-
-       elseif (hbw .gt. -alhm) then  ! differs from get_tf0d() !! 
-
-          t(i) =  0.
-          f(i) = -hbw*ffac
-
-       else
-
-          t(i) = 0.
-          f(i) = 1.
-
-       endif
-       
-       if(f(i) .lt. 0.) then
-
-          t(i) = hbw*tfac
-          f(i) = 0.
-
-       endif
-       
-       if(w(i) .eq. 0.) then
-
-          t(i) = 0.
-          f(i) = 0.
-
-       endif
+       call StieglitzSnow_calc_tpsnow_scalar( h(ii), w(ii), t(ii), f(ii), ice1, tzero,  &
+            use_threshold_fac )
        
     end do
-    
-    return
-    
-  end subroutine StieglitzSnow_calc_tpsnow
+
+  end subroutine StieglitzSnow_calc_tpsnow_vector
   
   ! ********************************************************************
   
