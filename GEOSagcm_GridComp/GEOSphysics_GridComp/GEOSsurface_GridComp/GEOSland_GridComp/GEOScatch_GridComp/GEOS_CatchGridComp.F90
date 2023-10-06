@@ -2967,7 +2967,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-    type(MAPL_MetaComp),pointer :: MAPL
+    type(MAPL_MetaComp),    pointer :: MAPL
     type(ESMF_State)                :: INTERNAL
     type(ESMF_Alarm)                :: ALARM
     type(ESMF_Config)               :: CF
@@ -2977,19 +2977,19 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! IMPORT Pointers
 ! ----------------------------------------------------  -
 
-    real, dimension(:),     pointer :: ITY
-    real, dimension(:),     pointer :: PS
-    real, dimension(:),     pointer :: TA
-    real, dimension(:),     pointer :: QA
-    real, dimension(:),     pointer :: UU
-    real, pointer, dimension(:)    :: UWINDLMTILE
-    real, pointer, dimension(:)    :: VWINDLMTILE
-    real, dimension(:),     pointer :: DZ
-    real, dimension(:),     pointer :: LAI
-    real, dimension(:),     pointer :: Z2CH
-    real, dimension(:),     pointer :: PCU
-    real, dimension(:),     pointer :: ASCATZ0
-    real, dimension(:),     pointer :: NDVI
+    real, dimension(:),   pointer :: ITY
+    real, dimension(:),   pointer :: PS
+    real, dimension(:),   pointer :: TA
+    real, dimension(:),   pointer :: QA
+    real, dimension(:),   pointer :: UU
+    real, dimension(:),   pointer :: UWINDLMTILE
+    real, dimension(:),   pointer :: VWINDLMTILE
+    real, dimension(:),   pointer :: DZ
+    real, dimension(:),   pointer :: LAI
+    real, dimension(:),   pointer :: Z2CH
+    real, dimension(:),   pointer :: PCU
+    real, dimension(:),   pointer :: ASCATZ0
+    real, dimension(:),   pointer :: NDVI
 
 ! -----------------------------------------------------
 ! INTERNAL Pointers
@@ -3055,37 +3055,37 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: ZQ(:)
     integer,allocatable :: VEG(:)
     real,   allocatable :: Z0T(:,:)
-    real, allocatable              :: U50M (:)
-    real, allocatable              :: V50M (:)
-    real, allocatable              :: T10M (:)
-    real, allocatable              :: Q10M (:)
-    real, allocatable              :: U10M (:)
-    real, allocatable              :: V10M (:)
-    real, allocatable              :: T2M (:)
-    real, allocatable              :: Q2M (:)
-    real, allocatable              :: U2M (:)
-    real, allocatable              :: V2M (:)
-    real, allocatable              :: RHOH(:)
-    real, allocatable              :: VKH(:)
-    real, allocatable              :: VKM(:)
-    real, allocatable              :: USTAR(:)
-    real, allocatable              :: XX(:)
-    real, allocatable              :: YY(:)
-    real, allocatable              :: CU(:)
-    real, allocatable              :: CT(:)
-    real, allocatable              :: RIB(:)
-    real, allocatable              :: ZETA(:)
-    real, allocatable              :: WS(:)
-    integer, allocatable           :: IWATER(:)
-    real, allocatable              :: PSMB(:)
-    real, allocatable              :: PSL(:)
-    integer                        :: niter
+    real,   allocatable :: U50M (:)
+    real,   allocatable :: V50M (:)
+    real,   allocatable :: T10M (:)
+    real,   allocatable :: Q10M (:)
+    real,   allocatable :: U10M (:)
+    real,   allocatable :: V10M (:)
+    real,   allocatable :: T2M (:)
+    real,   allocatable :: Q2M (:)
+    real,   allocatable :: U2M (:)
+    real,   allocatable :: V2M (:)
+    real,   allocatable :: RHOH(:)
+    real,   allocatable :: VKH(:)
+    real,   allocatable :: VKM(:)
+    real,   allocatable :: USTAR(:)
+    real,   allocatable :: XX(:)
+    real,   allocatable :: YY(:)
+    real,   allocatable :: CU(:)
+    real,   allocatable :: CT(:)
+    real,   allocatable :: RIB(:)
+    real,   allocatable :: ZETA(:)
+    real,   allocatable :: WS(:)
+    integer,allocatable :: IWATER(:)
+    real,   allocatable :: PSMB(:)
+    real,   allocatable :: PSL(:)
+    integer             :: niter
 
-    integer                        :: CHOOSEZ0
-    real                           :: SCALE4Z0
-    real                           :: SCALE4ZVG
-    real                           :: SCALE4Z0_u
-    real                           :: MIN_VEG_HEIGHT 
+    integer             :: CHOOSEZ0
+    real                :: SCALE4Z0
+    real                :: SCALE4ZVG
+    real                :: SCALE4Z0_u
+    real                :: MIN_VEG_HEIGHT 
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
@@ -3128,17 +3128,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters from generic state
 ! ---------------------------------
-
-    call MAPL_Get ( MAPL                          ,&
-                                INTERNAL_ESMF_STATE=INTERNAL   ,&
-                                                      RC=STATUS )
+    
+    call MAPL_Get ( MAPL               , &
+         INTERNAL_ESMF_STATE=INTERNAL  , &
+         RC=STATUS )
     VERIFY_(STATUS)
-
+    
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
-
+    
 ! Pointers to inputs
 !-------------------
 
@@ -5436,7 +5436,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     
                     ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
                     !
-                    ! NEED TO RE-DIAGNOSE SNOW TEMP, ASNOW, etc HERE !?!?!?!?
+                    ! Should not need to re-compute diagnostics (e.g., TSURF, TPSN1) here because
+                    !   the immediate next step is to run catchment(), which should only depend
+                    !   on Catchment prognostic variables.
+                    ! However, TURBULENCE (and RADIATION?) presumably have seen the Catchment forecast
+                    !   (incl. surface temperature TC0 and might now be out of sync with the Catchment 
+                    !   analysis.  Move apply_catch_incr() into Run1() ???
                     !
                     ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
                     
