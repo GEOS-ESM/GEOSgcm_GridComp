@@ -117,9 +117,9 @@ MODULE CATCHMENT_CN_MODEL
   private
   
   public :: catchcn
-  public :: catchcn_calc_tsurf
-  public :: catchcn_calc_tsurf_excl_snow
-  public :: catchcn_calc_etotl
+!!  public :: catchcn_calc_tsurf
+!!  public :: catchcn_calc_tsurf_excl_snow
+!!  public :: catchcn_calc_etotl
 
   ! -----------------------------------------------------------------------------
   
@@ -2332,183 +2332,189 @@ CONTAINS
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
 
-  subroutine catchcn_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
-       ar1, ar2, ar4, tsurf )
-        
-    ! Calculate diagnostic surface temperature "tsurf" from prognostics
-    !
-    ! reichle, Aug 31, 2004
-    ! reichle, Jan  4, 2012 - optionally "ignore_snow"
-    ! reichle, Apr  2, 2012 - revised for use without catch_types structures and
-    !                          to avoid duplicate calls to rzequil() and partition()
-    ! reichle, Oct 20, 2014 - removed option to "ignore_snow"; 
-    !                          use subroutine catch_calc_tsurf_excl_snow() instead
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)           :: NTILES
-    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
-    real,    dimension(N_snow,NTILES), intent(in)           :: wesnn, htsnn
-    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
-    real,    dimension(       NTILES), intent(out)          :: tsurf
-    
-    ! ----------------------------
-    !    
-    ! local variables
-    
-    integer                    :: n
-    
-    real,    dimension(NTILES) :: asnow
-    
-    real                       :: tpsn1, real_dummy
-    
-    logical                    :: ice1, tzero
-    
-    logical, parameter         :: use_threshold_fac = .false.
 
-    ! ------------------------------------------------------------------
-        
-    ! Compute tsurf excluding snow
-    
-    call catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, tsurf )
-
-    ! Compute snow covered area
-    
-    call StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
-    
-    ! Add contribution of snow temperature 
-    
-    do n=1,NTILES
-       
-       if (asnow(n)>0.) then
-          
-          ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
-          
-          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
-               ice1, tzero, use_threshold_fac ) 
-          
-          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
-          
-       end if
-       
-    end do
-    
-  end subroutine catchcn_calc_tsurf
-  
-  ! *******************************************************************
-
-  subroutine catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, &
-       tsurf_excl_snow )
-    
-    ! Calculate diagnostic surface temperature "tsurf" ignoring snow
-    !
-    ! reichle, 20 Oct 2014
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)           :: NTILES
-    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
-    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
-    real,    dimension(       NTILES), intent(out)          :: tsurf_excl_snow
-        
-    ! ------------------------------------------------------------------
-
-    tsurf_excl_snow = ar1*tc1 + ar2*tc2 + ar4*tc4
-    
-  end subroutine catchcn_calc_tsurf_excl_snow
-
-
-  ! *******************************************************************
-
-  subroutine catchcn_calc_etotl( NTILES, dzsf, vgwmax, cdcr1, cdcr2,         &
-       psis, bee, poros, wpwet,bf1, bf2,                                     &
-       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
-       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                  &
-       wesnn, htsnn, ghtcnt,                                                 &
-       etotl )
-    
-    ! compute total energy stored in land tiles
-    !
-    ! reichle,  4 Jan 2012
-    ! reichle,  2 Apr 2012 - revised for use without catch_types structures
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)  :: NTILES
-    
-    real,    dimension(       NTILES), intent(in)  :: dzsf
-    real,    dimension(       NTILES), intent(in)  :: vgwmax
-    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2, bf1, bf2
-    real,    dimension(       NTILES), intent(in)  :: psis, bee, poros, wpwet    
-    real,    dimension(       NTILES), intent(in)  :: ars1, ars2, ars3
-    real,    dimension(       NTILES), intent(in)  :: ara1, ara2, ara3, ara4
-    real,    dimension(       NTILES), intent(in)  :: arw1, arw2, arw3, arw4
-    real,    dimension(       NTILES), intent(in)  :: srfexc, rzexc, catdef
-    real,    dimension(       NTILES), intent(in)  :: tc1, tc2, tc4
-    real,    dimension(       NTILES), intent(in)  :: tg1, tg2, tg4
-    real,    dimension(N_snow,NTILES), intent(in)  :: wesnn, htsnn
-    real,    dimension(N_gt  ,NTILES), intent(in)  :: ghtcnt
-    
-    real,    dimension(       NTILES), intent(out) :: etotl
-    
-    ! ----------------------------
-    !    
-    ! local variables
-    
-    integer :: n
-
-    real    :: tot_htsn, tot_ght, csoil
-    
-    real, dimension(NTILES) :: srfexc_tmp, rzexc_tmp, catdef_tmp
-        
-    real, dimension(NTILES) :: ar1, ar2, ar4, avg_tc, avg_tg
-
-    ! ----------------------------------------------------------------
-    !
-    ! diagnose ar1, ar2, ar4 prior to catchcn_calc_tsurf()
-    
-    srfexc_tmp = srfexc   ! srfexc is "inout" in catch_calc_soil_moist()
-    rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
-    catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
-    
-    call catch_calc_soil_moist(                                                    &
-         NTILES, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,              &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,bf1, bf2,&
-         srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
-    
-    ! compute snow-free tsurf
-    
-    call catchcn_calc_tsurf_excl_snow(                                           &
-         NTILES, tc1, tc2, tc4, ar1, ar2, ar4, avg_tc )
-    
-    ! compute snow-free tg
-    
-    call catchcn_calc_tsurf_excl_snow(                                           &
-         NTILES, tg1, tg2, tg4, ar1, ar2, ar4, avg_tg )
-
-    do n=1,NTILES
-       
-       ! total snow heat content
-       
-       tot_htsn = sum( htsnn(1:N_snow,n) )
-       
-       ! total ground heat content
-       
-       tot_ght  = sum( ghtcnt(1:N_gt,n))
-       
-       ! total energy
-       
-       etotl(n) = C_CANOP*avg_tc(n) + CSOIL_2*avg_tg(n) + tot_htsn + tot_ght 
-
-    end do
-    
-  end subroutine catchcn_calc_etotl
+!! reichle,  6 Oct 2023: commented out subroutines catchcn_calc_*() below
+!!                       they seem to have been copied from the corresponding
+!!                       catch_calc_*() by CatchCN developers but do not seem
+!!                       right for CatchCN
+!!
+!!  subroutine catchcn_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
+!!       ar1, ar2, ar4, tsurf )
+!!        
+!!    ! Calculate diagnostic surface temperature "tsurf" from prognostics
+!!    !
+!!    ! reichle, Aug 31, 2004
+!!    ! reichle, Jan  4, 2012 - optionally "ignore_snow"
+!!    ! reichle, Apr  2, 2012 - revised for use without catch_types structures and
+!!    !                          to avoid duplicate calls to rzequil() and partition()
+!!    ! reichle, Oct 20, 2014 - removed option to "ignore_snow"; 
+!!    !                          use subroutine catch_calc_tsurf_excl_snow() instead
+!!    !
+!!    ! ----------------------------------------------------------------
+!!    
+!!    implicit none
+!!    
+!!    integer,                           intent(in)           :: NTILES
+!!    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
+!!    real,    dimension(N_snow,NTILES), intent(in)           :: wesnn, htsnn
+!!    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
+!!    real,    dimension(       NTILES), intent(out)          :: tsurf
+!!    
+!!    ! ----------------------------
+!!    !    
+!!    ! local variables
+!!    
+!!    integer                    :: n
+!!    
+!!    real,    dimension(NTILES) :: asnow
+!!    
+!!    real                       :: tpsn1, real_dummy
+!!    
+!!    logical                    :: ice1, tzero
+!!    
+!!    logical, parameter         :: use_threshold_fac = .false.
+!!
+!!    ! ------------------------------------------------------------------
+!!        
+!!    ! Compute tsurf excluding snow
+!!    
+!!    call catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, tsurf )
+!!
+!!    ! Compute snow covered area
+!!    
+!!    call StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
+!!    
+!!    ! Add contribution of snow temperature 
+!!    
+!!    do n=1,NTILES
+!!       
+!!       if (asnow(n)>0.) then
+!!          
+!!          ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
+!!          
+!!          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
+!!               ice1, tzero, use_threshold_fac ) 
+!!          
+!!          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
+!!          
+!!       end if
+!!       
+!!    end do
+!!    
+!!  end subroutine catchcn_calc_tsurf
+!!  
+!!  ! *******************************************************************
+!!
+!!  subroutine catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, &
+!!       tsurf_excl_snow )
+!!    
+!!    ! Calculate diagnostic surface temperature "tsurf" ignoring snow
+!!    !
+!!    ! reichle, 20 Oct 2014
+!!    !
+!!    ! ----------------------------------------------------------------
+!!    
+!!    implicit none
+!!    
+!!    integer,                           intent(in)           :: NTILES
+!!    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
+!!    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
+!!    real,    dimension(       NTILES), intent(out)          :: tsurf_excl_snow
+!!        
+!!    ! ------------------------------------------------------------------
+!!
+!!    tsurf_excl_snow = ar1*tc1 + ar2*tc2 + ar4*tc4
+!!    
+!!  end subroutine catchcn_calc_tsurf_excl_snow
+!!
+!!
+!!  ! *******************************************************************
+!!
+!!  subroutine catchcn_calc_etotl( NTILES, dzsf, vgwmax, cdcr1, cdcr2,         &
+!!       psis, bee, poros, wpwet,bf1, bf2,                                     &
+!!       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
+!!       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                  &
+!!       wesnn, htsnn, ghtcnt,                                                 &
+!!       etotl )
+!!    
+!!    ! compute total energy stored in land tiles
+!!    !
+!!    ! reichle,  4 Jan 2012
+!!    ! reichle,  2 Apr 2012 - revised for use without catch_types structures
+!!    !
+!!    ! ----------------------------------------------------------------
+!!    
+!!    implicit none
+!!    
+!!    integer,                           intent(in)  :: NTILES
+!!    
+!!    real,    dimension(       NTILES), intent(in)  :: dzsf
+!!    real,    dimension(       NTILES), intent(in)  :: vgwmax
+!!    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2, bf1, bf2
+!!    real,    dimension(       NTILES), intent(in)  :: psis, bee, poros, wpwet    
+!!    real,    dimension(       NTILES), intent(in)  :: ars1, ars2, ars3
+!!    real,    dimension(       NTILES), intent(in)  :: ara1, ara2, ara3, ara4
+!!    real,    dimension(       NTILES), intent(in)  :: arw1, arw2, arw3, arw4
+!!    real,    dimension(       NTILES), intent(in)  :: srfexc, rzexc, catdef
+!!    real,    dimension(       NTILES), intent(in)  :: tc1, tc2, tc4
+!!    real,    dimension(       NTILES), intent(in)  :: tg1, tg2, tg4
+!!    real,    dimension(N_snow,NTILES), intent(in)  :: wesnn, htsnn
+!!    real,    dimension(N_gt  ,NTILES), intent(in)  :: ghtcnt
+!!    
+!!    real,    dimension(       NTILES), intent(out) :: etotl
+!!    
+!!    ! ----------------------------
+!!    !    
+!!    ! local variables
+!!    
+!!    integer :: n
+!!
+!!    real    :: tot_htsn, tot_ght, csoil
+!!    
+!!    real, dimension(NTILES) :: srfexc_tmp, rzexc_tmp, catdef_tmp
+!!        
+!!    real, dimension(NTILES) :: ar1, ar2, ar4, avg_tc, avg_tg
+!!
+!!    ! ----------------------------------------------------------------
+!!    !
+!!    ! diagnose ar1, ar2, ar4 prior to catchcn_calc_tsurf()
+!!    
+!!    srfexc_tmp = srfexc   ! srfexc is "inout" in catch_calc_soil_moist()
+!!    rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
+!!    catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
+!!    
+!!    call catch_calc_soil_moist(                                                    &
+!!         NTILES, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,              &
+!!         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,bf1, bf2,&
+!!         srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
+!!    
+!!    ! compute snow-free tsurf
+!!    
+!!    call catchcn_calc_tsurf_excl_snow(                                           &
+!!         NTILES, tc1, tc2, tc4, ar1, ar2, ar4, avg_tc )
+!!    
+!!    ! compute snow-free tg
+!!    
+!!    call catchcn_calc_tsurf_excl_snow(                                           &
+!!         NTILES, tg1, tg2, tg4, ar1, ar2, ar4, avg_tg )
+!!
+!!    do n=1,NTILES
+!!       
+!!       ! total snow heat content
+!!       
+!!       tot_htsn = sum( htsnn(1:N_snow,n) )
+!!       
+!!       ! total ground heat content
+!!       
+!!       tot_ght  = sum( ghtcnt(1:N_gt,n))
+!!       
+!!       ! total energy
+!!       
+!!       etotl(n) = C_CANOP*avg_tc(n) + CSOIL_2*avg_tg(n) + tot_htsn + tot_ght 
+!!
+!!    end do
+!!    
+!!  end subroutine catchcn_calc_etotl
   
 
 END MODULE CATCHMENT_CN_MODEL
