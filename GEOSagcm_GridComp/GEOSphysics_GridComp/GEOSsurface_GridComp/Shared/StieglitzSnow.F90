@@ -26,6 +26,8 @@ module StieglitzSnow
  
   USE SurfParams,   ONLY: WEMIN, AICEV, AICEN
   
+  implicit none
+
   public :: StieglitzSnow_snowrt           ! used by LandIce, Catchment[CN]
   public :: StieglitzSnow_trid             ! used by LandIce
   public :: StieglitzSnow_snow_albedo      ! used by LandIce, Catchment[CN], LDAS
@@ -221,7 +223,7 @@ contains
     !***  Bin Zhao added *************************************************
     !  maxsndepth :  Maximum snow depth beyond which snow gets thrown away
     !  rhofs      :  fresh snow density 
-    ! targetthick :  the target thickness distribution relayer redistribute mass 
+    !  targetthick:  the target thickness distribution relayer redistribute mass 
     !                and energy to; currently its value is surface type dependent           
     !                for catchment, the 1st array element the target thickness
     !                               the rest define a sigma distribution;
@@ -545,7 +547,7 @@ contains
        
     enddo
     
-    cl(1)    = 0.
+    cl(1)      = 0.
     cr(N_snow) = 0.
     
     do i=1,N_snow-1
@@ -924,11 +926,11 @@ contains
     
     do i=1,N_snow
        kflag=.false.
-       if(ice10(i).and.tzero0(i) .and.                                      &
-            (fices(i) .ne. 1. .or. tpsn(i) .ne. 0.) ) kflag=.true.
-       if(.not.ice10(i).and.tzero0(i) .and.                                 &
+       if(     ice10(i) .and.      tzero0(i) .and.                                &
+            (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.
+       if(.not.ice10(i) .and.      tzero0(i) .and.                                &
             (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.
-       if(ice10(i).and. .not.tzero0(i) .and.                                &
+       if(     ice10(i) .and. .not.tzero0(i) .and.                                &
             (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.
        
        if(kflag) then
