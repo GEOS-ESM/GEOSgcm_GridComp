@@ -193,7 +193,7 @@ CONTAINS
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
-                               ,REVSU,  entr_dp, entr_md, entr_sh, PRFIL          &
+                               ,REVSU, entr3d, entr_dp, entr_md, entr_sh, PRFIL   &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &
                                ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d                   &
                                ,CNV_TR)
@@ -237,7 +237,7 @@ CONTAINS
 
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNPCPRATE, LIGHTN_DENS
 
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr_dp, entr_md, entr_sh
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr3d, entr_dp, entr_md, entr_sh
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PRFIL
 
@@ -262,13 +262,13 @@ CONTAINS
     REAL,  DIMENSION(mzp , mxp, myp ) :: up       &
                                         ,vp       &
                                         ,wp       &
-                                        ,entr_c   &
                                         ,rvap     &
                                         ,temp     &
                                         ,press    &
                                         ,zm3d     &
                                         ,zt3d     &
                                         ,dm3d     &
+                                        ,ec3d     &
                                         ,curr_rvap&
                                         ,buoy_exc &
                                         ,khloc
@@ -544,8 +544,9 @@ CONTAINS
         curr_rvap(k,i,j) = Q1 (i,j,flip(k))!current rvap
 
        ! eq 6 of https://doi.org/10.1029/2021JD034881
-       !entr_c(k,i,j) = 1.e-4 
-        entr_c(k,i,j) = 1.e-4 * 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.5,BYNCY(i,j,flip(k)))**(-0.36)
+       !ec3d(k,i,j) = 1.0 
+        ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.01,BYNCY(i,j,flip(k)))**(-0.36)
+        entr3d(i,j,flip(k)) = ec3d(k,i,j) 
 
         mp_ice(lsmp,k,i,j) = QILS  (i,j,flip(k))
         mp_liq(lsmp,k,i,j) = QLLS  (i,j,flip(k))
@@ -601,8 +602,9 @@ CONTAINS
         curr_rvap  (k,i,j) = Q1         (i,j,flip(k)) ! current rvap (dyn+phys)
 
        ! eq 6 of https://doi.org/10.1029/2021JD034881
-       !entr_c(k,i,j) = 1.e-4 
-        entr_c(k,i,j) = 1.e-4 * 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.5,BYNCY(i,j,flip(k)))**(-0.36)
+       !ec3d(k,i,j) = 1.0 
+        ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.01,BYNCY(i,j,flip(k)))**(-0.36)
+        entr3d(i,j,flip(k)) = ec3d(k,i,j)     
 
         mp_ice(lsmp,k,i,j) = QILS       (i,j,flip(k))
         mp_liq(lsmp,k,i,j) = QLLS       (i,j,flip(k))
@@ -681,7 +683,7 @@ CONTAINS
                      ,up          &
                      ,vp          &
                      ,wp          &
-                     ,entr_c      &
+                     ,ec3d        &
                      ,temp        &
                      ,press       &
                      ,rvap        &
@@ -1508,7 +1510,6 @@ CONTAINS
        enddo
 
        CALL CUP_gf(its,ite,kts,kte, itf,ktf, mtp, nmp &
-                  ,               plume             &
                   ,cumulus_type  (plume)            &
                   ,closure_choice(plume)            &
                   ,cum_entr_rate (plume)            &
@@ -1786,10 +1787,9 @@ loop1:  do n=1,maxiens
 !---------------------------------------------------------------------------------------------------
 
     SUBROUTINE CUP_gf(its,ite,kts,kte ,itf,ktf, mtp, nmp &
-                     ,plume             &
                      ,cumulus           &
                      ,ichoice           &
-                     ,entr_rate_input   &
+                     ,entr_rate_plume   &
                      ,use_excess        &
                      !input data
                      ,dx                &
@@ -1892,7 +1892,6 @@ loop1:  do n=1,maxiens
      LOGICAL, PARAMETER:: USE_LCL       =.FALSE.
      LOGICAL, PARAMETER:: USE_INV_LAYERS=.TRUE.
 
-     INTEGER      ,INTENT(IN) :: plume
      CHARACTER*(*),INTENT(IN) :: cumulus
      INTEGER      ,INTENT(IN) :: itf,ktf,its,ite,kts,kte,ichoice,use_excess,mtp, nmp
      INTEGER      ,INTENT(IN),     DIMENSION (its:ite) ::   last_ierr
@@ -1930,7 +1929,7 @@ loop1:  do n=1,maxiens
      REAL,    DIMENSION (its:ite)               ,INTENT (INOUT)    ::   &
         zws,ztexec,zqexec
      REAL                                       ,INTENT (IN   )    ::   &
-        dtime,entr_rate_input
+        dtime,entr_rate_plume
      REAL,    DIMENSION (nmp,its:ite,kts:kte)   ,INTENT (INOUT)   ::   &
          mpqi,mpql,mpcf
      REAL,    DIMENSION (nmp,its:ite,kts:kte)   ,INTENT (INOUT)   ::   &
@@ -2274,8 +2273,8 @@ loop1:  do n=1,maxiens
 !
       !- initial entrainment/detrainment
       do k=kts,kte
-        entr_rate_2d(:,k) = ec(:,k)
-        cd          (:,k) = ec(:,k)
+        entr_rate_2d(:,k) = ec(:,k)*entr_rate_plume
+        cd          (:,k) = ec(:,k)*entr_rate_plume
       enddo
 !
 !--- max/min allowed value for epsilon (ratio downdraft base mass flux/updraft
@@ -2629,13 +2628,13 @@ loop0:       do k=kts,ktf
                      if(ENTRNEW) then
                        !- v 2
                        if(k >= klcl(i)) then
-                             entr_rate_2d(i,k)=ec(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
+                             entr_rate_2d(i,k)=entr_rate_2d(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
                        else
-                             entr_rate_2d(i,k)=ec(i,k)*(1.3-frh)
+                             entr_rate_2d(i,k)=entr_rate_2d(i,k)*(1.3-frh)
                        endif
                      else
                        !- v 1
-                       entr_rate_2d(i,k)=ec(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**1.25
+                       entr_rate_2d(i,k)=entr_rate_2d(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**1.25
                      endif
                      entr_rate_2d(i,k) = max(entr_rate_2d(i,k),min_entr_rate)
                      if(trim(cumulus) == 'deep'   ) cd(i,k)=0.10*entr_rate_2d(i,k)
@@ -2660,8 +2659,8 @@ loop0:       do k=kts,ktf
 
 !--- define entrainment/detrainment profiles for downdrafts
      do i=its,itf
-       cdd(i,kts:kte) = ec(i,kts:kte)*0.3
-       mentrd_rate_2d(i,kts:kte) = ec(i,kts:kte)*0.3
+       cdd(i,kts:kte) = entr_rate_2d(i,kts:kte)*0.3
+       mentrd_rate_2d(i,kts:kte) = entr_rate_2d(i,kts:kte)*0.3
      enddo
      !- scale dependence factor
      if( DOWNDRAFT /= 0) sigd(:) = sig

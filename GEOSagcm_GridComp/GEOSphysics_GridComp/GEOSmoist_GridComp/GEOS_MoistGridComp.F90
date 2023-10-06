@@ -1177,6 +1177,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'ENTR',                                    &
+         LONG_NAME = 'Lateral_entrainment_rate_input_to_gf',  &
+         UNITS     = 'km-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'ENTR_DP',                                    &
          LONG_NAME = 'Lateral_entrainment_rate_in_gf_deep_convection_updraft',  &
          UNITS     = 'm-1',                                           &
