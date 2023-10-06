@@ -1253,7 +1253,7 @@ contains
     
     ! ------------------------------------------------------------------------------
     
-    if (use_thresholdfac) then
+    if (use_threshold_fac) then
        
        ! replicates original get_tf0d()
        
