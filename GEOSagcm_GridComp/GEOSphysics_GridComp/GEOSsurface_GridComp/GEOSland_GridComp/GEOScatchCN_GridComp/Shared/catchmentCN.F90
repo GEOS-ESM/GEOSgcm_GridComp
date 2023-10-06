@@ -2358,11 +2358,15 @@ CONTAINS
     !    
     ! local variables
     
-    integer                 :: n
+    integer                    :: n
     
-    real, dimension(NTILES) :: asnow
+    real,    dimension(NTILES) :: asnow
     
-    real, dimension(1)      :: tpsn1, real_dummy
+    real                       :: tpsn1, real_dummy
+    
+    logical                    :: ice1, tzero
+    
+    logical, parameter         :: use_threshold_fac = .false.
 
     ! ------------------------------------------------------------------
         
@@ -2382,9 +2386,10 @@ CONTAINS
           
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
-          call StieglitzSnow_calc_tpsnow( 1, htsnn(1,n), wesnn(1,n), tpsn1, real_dummy ) 
+          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
+               ice1, tzero, use_threshold_fac ) 
           
-          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1(1) + TF)
+          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
        end if
        

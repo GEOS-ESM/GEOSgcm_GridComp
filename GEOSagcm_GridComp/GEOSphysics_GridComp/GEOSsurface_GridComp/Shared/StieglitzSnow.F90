@@ -37,7 +37,7 @@ module StieglitzSnow
   public :: StieglitzSnow_targetthick_land ! used by          Catchment[CN], LDAS, land-atm DAS
   public :: StieglitzSnow_relayer          ! used by                               land-atm DAS
 
-  public :: StieglitzSnow_RHOMA            ! used by                         LDAS, land-atm DAS
+  public :: StieglitzSnow_RHOMA            ! used by                               land-atm DAS
   public :: StieglitzSnow_MINSWE           ! used by LandIce
   public :: StieglitzSnow_CPW              ! used by LandIce
 

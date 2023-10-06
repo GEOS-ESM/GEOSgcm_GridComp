@@ -2904,6 +2904,7 @@
 !****
 
  ! *******************************************************************
+
   subroutine catch_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
        ar1, ar2, ar4, tsurf )
         
@@ -2929,30 +2930,26 @@
     
     real,    dimension(       NTILES), intent(out)          :: tsurf
     
-
-
     ! ----------------------------
     !    
     ! local variables
     
     integer :: n
     
-    real, dimension(NTILES) :: asnow
+    real,    dimension(NTILES) :: asnow
     
-    real, dimension(1)      :: tpsn1, real_dummy
+    real                       :: tpsn1, real_dummy
 
+    logical                    :: ice1, tzero
 
+    logical, parameter         :: use_threshold_fac = .false.
 
     ! ------------------------------------------------------------------
 
     ! Compute tsurf excluding snow
 
-
-    
     call catch_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, tsurf )
 
-
-    
     ! Compute snow covered area
     
     call StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
@@ -2962,14 +2959,13 @@
     do n=1,NTILES
        
        if (asnow(n)>0.) then
-
-
-          
+                    
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
-          call StieglitzSnow_calc_tpsnow( 1, htsnn(1,n), wesnn(1,n), tpsn1, real_dummy ) 
+          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy, &
+               ice1, tzero, use_threshold_fac ) 
           
-          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1(1) + TF)
+          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
        end if
        
