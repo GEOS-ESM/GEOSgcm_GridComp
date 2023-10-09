@@ -778,6 +778,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
 !*****
 ! Note : If 'sink' gets added as a private variable, the code will not verify
+!        10/9/23 : Adding 'sink' as a private variable works now.
 !*****
 !$acc loop vector private(lhi, icpk, melt, tmp, sink)
         do k = ktop, kbot
@@ -1221,7 +1222,7 @@ module moist_subroutines_cloud_microphys
 
     subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ql, qr, qi, qs, qg, qa, subl1, h_var, ccn, cnv_fraction, srf_type)
-    !$acc routine seq
+    !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -1286,6 +1287,11 @@ module moist_subroutines_cloud_microphys
         !     tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
         ! enddo
         
+        !$acc loop vector private(lhl, lhi, q_liq, q_sol, cvm, rh_adj, rh_rain, sink, &
+        !$acc                     lcpk, icpk, tcpk, tcp3, qpz, tin, rh, qsw, dq0, &
+        !$acc                     factor, evap, dtmp, qsi, dq, pidep, ifrac, qi_crt, &
+        !$acc                     qden, tmp, tsq, pssub, pgsub, q_cond, qstar, rqi, &
+        !$acc                     q_plus, q_minus, tc, dwsdt, dqsdt)
         do k = ktop, kbot
             lhl = lv00 + d0_vap * tz (k)
             lhi = li00 + dc_ice * tz (k)
