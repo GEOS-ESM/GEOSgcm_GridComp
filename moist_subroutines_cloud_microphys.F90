@@ -1795,7 +1795,7 @@ module moist_subroutines_cloud_microphys
             enddo
             
             if (k0 < kbot) then
-!$acc loop seq
+!$acc loop vector private(exit_flag, dtime, sink, tmp)
                 do k = kbot - 1, k0, - 1
                     if (qi (k) > qcmin) then
                         exit_flag = .true.
@@ -1862,7 +1862,7 @@ module moist_subroutines_cloud_microphys
             enddo
             
             if (k0 < kbot) then
-!$acc loop seq
+!$acc loop vector private(exit_flag, dtime, sink)
                 do k = kbot - 1, k0, - 1
                     if (qs (k) > qpmin) then
                         exit_flag = .true.
@@ -1938,7 +1938,7 @@ module moist_subroutines_cloud_microphys
             enddo
             
             if (k0 < kbot) then
-!$acc loop seq
+!$acc loop vector private(exit_flag, dtime, sink)
                 do k = kbot - 1, k0, - 1
                     if (qg (k) > qpmin) then
                         exit_flag = .true.
@@ -2099,7 +2099,7 @@ module moist_subroutines_cloud_microphys
     ! =======================================================================
 
     subroutine lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, q, precip, m1, mono)
-        !$acc routine seq
+        !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -2117,11 +2117,11 @@ module moist_subroutines_cloud_microphys
         
         real, intent (out) :: precip
         
-        real, dimension (ktop:kbot) :: qm, dz
+        real, dimension (ktop:kbot) :: dz
         
         real :: a4 (4, ktop:kbot)
         
-        real :: pl, pr, delz, esl
+        real :: pl, pr, delz, esl, qm
         
         integer :: k, k0, n, m
         
@@ -2130,12 +2130,12 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! density:
         ! -----------------------------------------------------------------------
-        
+        !$acc loop vector
         do k = ktop, kbot
             dz (k) = zt (k) - zt (k + 1) ! note: dz is positive
             q (k) = q (k) * dp (k)
             a4 (1, k) = q (k) / dz (k)
-            qm (k) = 0.
+            ! qm (k) = 0.
         enddo
         
         ! -----------------------------------------------------------------------
@@ -2145,30 +2145,32 @@ module moist_subroutines_cloud_microphys
         call cs_profile (a4 (1, ktop), dz (ktop), kbot - ktop + 1, mono)
         
         k0 = ktop
+        !$acc loop seq
         do k = ktop, kbot
+            qm = 0.
             do n = k0, kbot
                 if (ze (k) <= zt (n) .and. ze (k) >= zt (n + 1)) then
                     pl = (zt (n) - ze (k)) / dz (n)
                     if (zt (n + 1) <= ze (k + 1)) then
                         ! entire new grid is within the original grid
                         pr = (zt (n) - ze (k + 1)) / dz (n)
-                        qm (k) = a4 (2, n) + 0.5 * (a4 (4, n) + a4 (3, n) - a4 (2, n)) * (pr + pl) - &
+                        qm = a4 (2, n) + 0.5 * (a4 (4, n) + a4 (3, n) - a4 (2, n)) * (pr + pl) - &
                             a4 (4, n) * r3 * (pr * (pr + pl) + pl ** 2)
-                        qm (k) = qm (k) * (ze (k) - ze (k + 1))
+                        qm = qm * (ze (k) - ze (k + 1))
                         k0 = n
                         goto 555
                     else
-                        qm (k) = (ze (k) - zt (n + 1)) * (a4 (2, n) + 0.5 * (a4 (4, n) + &
+                        qm = (ze (k) - zt (n + 1)) * (a4 (2, n) + 0.5 * (a4 (4, n) + &
                             a4 (3, n) - a4 (2, n)) * (1. + pl) - a4 (4, n) * (r3 * (1. + pl * (1. + pl))))
                         if (n < kbot) then
                             do m = n + 1, kbot
                                 ! locate the bottom edge: ze (k + 1)
                                 if (ze (k + 1) < zt (m + 1)) then
-                                    qm (k) = qm (k) + q (m)
+                                    qm = qm + q (m)
                                 else
                                     delz = zt (m) - ze (k + 1)
                                     esl = delz / dz (m)
-                                    qm (k) = qm (k) + delz * (a4 (2, m) + 0.5 * esl * &
+                                    qm = qm + delz * (a4 (2, m) + 0.5 * esl * &
                                         (a4 (3, m) - a4 (2, m) + a4 (4, m) * (1. - r23 * esl)))
                                     k0 = m
                                     goto 555
@@ -2180,20 +2182,29 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
             555 continue
+
+            if (k.eq.ktop) then
+                m1 (ktop) = q (ktop) - qm
+            else
+                m1 (k) = m1 (k - 1) + q (k) - qm
+            endif
+
+            q (k) = qm / dp (k)
         enddo
         
-        m1 (ktop) = q (ktop) - qm (ktop)
-        do k = ktop + 1, kbot
-            m1 (k) = m1 (k - 1) + q (k) - qm (k)
-        enddo
+        ! m1 (ktop) = q (ktop) - qm (ktop)
+        ! !$acc loop seq
+        ! do k = ktop + 1, kbot
+        !     m1 (k) = m1 (k - 1) + q (k) - qm (k)
+        ! enddo
         precip = m1 (kbot)
         
         ! convert back to * dry * mixing ratio:
         ! dp must be dry air_mass (because moist air mass will be changed due to terminal fall) .
-        
-        do k = ktop, kbot
-            q (k) = qm (k) / dp (k)
-        enddo
+        ! !$acc loop vector
+        ! do k = ktop, kbot
+        !     q (k) = qm (k) / dp (k)
+        ! enddo
         
     end subroutine lagrangian_fall_ppm
 
