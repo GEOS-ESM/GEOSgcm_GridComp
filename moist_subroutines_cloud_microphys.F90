@@ -551,7 +551,7 @@ module moist_subroutines_cloud_microphys
     ! -----------------------------------------------------------------------
 
     subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        !$acc routine seq
+        !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -574,12 +574,14 @@ module moist_subroutines_cloud_microphys
     
         revap(:) = 0.
     
-        TOT_PREC_LS = 0.
-        AREA_LS_PRC = 0.
+        ! TOT_PREC_LS = 0.
+        ! AREA_LS_PRC = 0.
+        !$acc loop vector private(fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, qsat, &
+        !$acc                     dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, sink)
         do k = ktop, kbot
             
-            TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )
-            AREA_LS_PRC = AREA_LS_PRC  + ( qa (k) * ( qr (k) + qs (k) + qg (k) ) * den (k) )
+            ! TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )
+            ! AREA_LS_PRC = AREA_LS_PRC  + ( qa (k) * ( qr (k) + qs (k) + qg (k) ) * den (k) )
 
             if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
