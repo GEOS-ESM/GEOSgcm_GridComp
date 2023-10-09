@@ -779,7 +779,7 @@ module moist_subroutines_cloud_microphys
 !*****
 ! Note : If 'sink' gets added as a private variable, the code will not verify
 !*****
-!$acc loop vector private(lhi, icpk, melt, tmp)
+!$acc loop vector private(lhi, icpk, melt, tmp, sink)
         do k = ktop, kbot
             lhi = li00 + dc_ice * tzk (k)
             if (tzk (k) > tice .and. qik (k) > qcmin) then
@@ -838,7 +838,9 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-!$acc loop seq
+!$acc loop vector private(lhi, lhl, icpk, tcpk, tz, qv, ql, qi, qr, qs, qg, pgacr, pgacw, &
+!$acc                     tc, dqs0, factor, psacw, psacr, pracs, psmlt, sink, tmp, qden, &
+!$acc                     pgmlt, psaci, qim, q_plus, dq, psaut, pgaci, pgfr, qsm)
         do k = ktop, kbot
             lhi = li00 + dc_ice * tzk (k)
             lhl = lv00 + d0_vap * tzk (k)
