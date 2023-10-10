@@ -901,7 +901,7 @@
       end if
 
       ! C3 and C4 dependent parameters
-      g1_ef_choice = 0
+      g1_ef_choice = 1
       if (g1_ef_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8

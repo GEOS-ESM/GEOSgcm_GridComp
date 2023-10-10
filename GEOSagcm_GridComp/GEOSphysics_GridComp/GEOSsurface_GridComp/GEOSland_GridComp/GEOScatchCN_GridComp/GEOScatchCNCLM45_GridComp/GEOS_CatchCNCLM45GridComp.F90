@@ -68,6 +68,7 @@ module GEOS_CatchCNCLM45GridCompMod
 
   use update_model_para4cn, only : upd_curr_date_time
   use pso_params, only: pso_vals
+  use read_env
 
 implicit none
 private
@@ -6571,7 +6572,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       ! we need to use the PSO to do load our EF of Ksat and g1
       ! set your PSO choice
-      pso_choice = 0
+      pso_choice = 1
       ksat_ef_choice = 0
       ! if we are running the PSO
       if (pso_choice == 1) then
@@ -6605,33 +6606,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ! allocate and assign the tiles that are running on this cpu
               allocate(pso_vals%local_tile_nums(size(CAT_ID)))
               pso_vals%local_tile_nums = CAT_ID
-              ! load the maps for precip and lai
+              ! load the maps for precip, lai, sand, ksat_init
               ! start with precip
-              precip_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_precip.nc4'
+              precip_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_precip.nc4'
               precip_fname = trim(precip_fname)
-              call read_env_data(precip_fname)
               ! and now do for lai
-              lai_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_lai.nc4'
+              lai_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_lai.nc4'
               lai_fname = trim(lai_fname)
-              call read_env_data(lai_fname)
               ! read the sand fraction values
-              sand_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_sand_perc.nc4'
+              sand_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_sand.nc4'
               sand_fname = trim(sand_fname)
-              call read_env_data(sand_fname)
               ! read the k0 values
-              k0_fname = '/discover/nobackup/trobinet/pso/step_2_env_covariates/outputs/averaged_ksat.nc4'
+              k0_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_ksat.nc4'
               k0_fname = trim(k0_fname)
-              call read_env_data(k0_fname)
+              ! now call read_env for all of these
+              call read_env_data(precip_fname,lai_fname,sand_fname,k0_fname)
               ! allocate our parameter values and get their values
               allocate(pso_vals%param_vals(num_params,pso_vals%total_ens))
-              ! make sure that the pso vals file has been created
-              ! otherwise abort
-              inquire(FILE='/discover/nobackup/troinet/exps/GEOSldas_CN45_pso_g1_ksat/position_vals.csv',EXIST=pso_exists)
-              if (pso_exists == .false. ) then
-                  write(*,*) 'position_vals.csv must exist to run pso! Please fix and restart!'
-              endif
               ! read the current PSO vals
-              open(unit = 8, file='/discover/nobackup/trobinet/exps/GEOSldas_CN45_pso_g1_ksat/position_vals.csv',IOSTAT = reason)
+              open(unit = 8, file='/lustre/catchment/exps/GEOSldas_CN45_pso_g1_et_v2/positions.csv',IOSTAT = reason)
               read(8, *,IOSTAT = reason) pso_vals%param_vals
               close(8)
           endif
@@ -6656,9 +6649,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           const_1 = pso_vals%param_vals(8,this_particle)
           const_2 = pso_vals%param_vals(9,this_particle)
           sand_exp = pso_vals%param_vals(10,this_particle)
-          ks_max = k0_val_tile_real*(10**(const_1 - const_2*(sand_val_tile_real**(sand_exp))))
+          ks_max = k0_val_tile_real*(10**(const_1 - (const_2*(sand_val_tile_real**sand_exp))))
+          !ks_max = k0_val_tile_real*(10**(3.5 - (1.5*(sand_val_tile_real**0.13))))
           if ( ksat_ef_choice == 1 ) then
               cond(n) = ks_max - ((ks_max - k0_val_tile_real)/(1 + ((lai_val_tile_real/alpha)**beta)))
+              !cond(n) = ks_max - ((ks_max - k0_val_tile_real)/(1 + ((lai_val_tile_real/4.5)**5)))
           endif
       endif
 
