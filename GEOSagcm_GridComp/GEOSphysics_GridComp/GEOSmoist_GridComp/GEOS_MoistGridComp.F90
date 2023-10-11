@@ -4851,34 +4851,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_a',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_b',                                  &
-         LONG_NAME  = 'dummy_array_for_output_GF',                &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_c',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_d',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
        !-2d
        call MAPL_AddExportSpec(GC,                                &
         SHORT_NAME         = 'MFDP',                              &

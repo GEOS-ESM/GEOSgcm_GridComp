@@ -195,7 +195,6 @@ CONTAINS
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,REVSU, entr3d, entr_dp, entr_md, entr_sh, PRFIL   &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &
-                               ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d                   &
                                ,CNV_TR)
 
     IMPLICIT NONE
@@ -247,13 +246,9 @@ CONTAINS
     !-for debug/diagnostoc purposes
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH
-    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: MUPDP,MDNDP,MUPSH,MUPMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
-
-   ! Local
-    REAL   ,DIMENSION(MXP,MYP)                     :: VAR2d
 
     INTEGER      :: ims,ime, jms,jme, kms,kme,    &
                     its,ite, jts,jte, kts,kte,    &
@@ -290,11 +285,7 @@ CONTAINS
                                         ,SRC_NL   & ! Droplet number tendency from convection
                                         ,SRC_BUOY & ! buoyancy tendency from downdrafts
                                         ,REVSU_GF & ! evaporation_or_sublimation of_convective_precipitation kg kg-1 s-1
-                                        ,PRFIL_GF & ! ice_or_liq convective_precipitation flux: kg m2 s-1 (deep only)
-                                        ,VAR3d_aGF& ! dummy 3-d var for output
-                                        ,VAR3d_bGF& ! dummy 3-d var for output
-                                        ,VAR3d_cGF& ! dummy 3-d var for output
-                                        ,VAR3d_dGF  ! dummy 3-d var for output
+                                        ,PRFIL_GF   ! ice_or_liq convective_precipitation flux: kg m2 s-1 (deep only)
 
 
     REAL,  DIMENSION(nmp, mzp , mxp, myp ) ::     &
@@ -386,10 +377,6 @@ CONTAINS
 
    SIGMA_DEEP = 0.0
    SIGMA_MID = 0.0
-   VAR3d_a = 0.0
-   VAR3d_b = 0.0
-   VAR3d_c = 0.0
-   VAR3d_d = 0.0
    MUPDP = 0.0
    MDNDP = 0.0
    MUPSH = 0.0
@@ -452,11 +439,6 @@ CONTAINS
     SRC_BUOY       =0.
     REVSU_GF       =0.
     PRFIL_GF       =0.
-    VAR3d_aGF      =0.
-    VAR3d_bGF      =0.
-    VAR3d_cGF      =0.
-    VAR3d_dGF      =0.
-    VAR2d          =0.
     !-
     !---temporary settings for debugging purposes
     !- special setting for SCM runs
@@ -763,8 +745,7 @@ CONTAINS
                      ,tup5d        &
                      ,conv_cld_fr5d&
                      !-- for debug/diagnostic
-                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
-                     ,VAR2d,VAR3d_aGF,VAR3d_bGF,VAR3d_cGF,VAR3d_dGF)
+                     ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
 
 
  IF(FEED_3DMODEL)THEN
@@ -824,18 +805,6 @@ CONTAINS
         ENDDO
 
       ENDIF
-
-    !--- for dummy output
-       DO j=1,myp
-         DO i=1,mxp
-          DO k=1,mzp
-             VAR3d_a  (i,j,k) = VAR3d_aGF(flip(k),i,j)
-             VAR3d_b  (i,j,k) = VAR3d_bGF(flip(k),i,j)
-             VAR3d_c  (i,j,k) = VAR3d_cGF(flip(k),i,j)
-             VAR3d_d  (i,j,k) = VAR3d_dGF(flip(k),i,j)
-          ENDDO
-         ENDDO
-       ENDDO
 
       entr_dp = MAPL_UNDEF
       entr_md = MAPL_UNDEF
@@ -1098,8 +1067,7 @@ CONTAINS
               ,tup5d                 &
               ,conv_cld_fr5d         &
               !-- for debug/diagnostic
-              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
-              ,VAR2d,VAR3d_aGF,VAR3d_bGF,VAR3d_cGF,VAR3d_dGF)
+              ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
 
    IMPLICIT NONE
   !include "mpif.h"
@@ -1151,11 +1119,7 @@ CONTAINS
                                                    ,rvcuten    &
                                                    ,rbuoycuten &
                                                    ,revsu_gf   &
-                                                   ,prfil_gf   &
-                                                   ,var3d_agf  &
-                                                   ,var3d_bgf  &
-                                                   ,var3d_cgf  &
-                                                   ,var3d_dgf
+                                                   ,prfil_gf
 
 
    REAL,    DIMENSION(nmp,kts:kte,its:ite,jts:jte), INTENT(IN)  :: &
@@ -1206,7 +1170,7 @@ CONTAINS
               ,tup5d                     &
               ,conv_cld_fr5d
 !--for debug
-   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC,var2d
+   REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
 
 !----------------------------------------------------------------------
 ! LOCAL VARS
@@ -1225,7 +1189,7 @@ CONTAINS
                               ,temp_new_dp,qv_new_dp,temp_new_sh,qv_new_sh,z2d  &
                               ,tkeg,rcpg,dhdt,temp_new_md,qv_new_md             &
                               ,temp_new_BL,qv_new_BL,dm2d,temp_tendqv,qv_curr   &
-                              ,buoy_exc2d,revsu_gf_2d,prfil_gf_2d,var3d_Agf_2d,var3d_Bgf_2d  &
+                              ,buoy_exc2d,revsu_gf_2d,prfil_gf_2d               &
                               ,temp_new,qv_new,Tpert_2d,temp_new_adv,qv_new_adv
 
 
@@ -1294,12 +1258,9 @@ CONTAINS
         !
         conprr     (i,j) = 0.0
         lightn_dens(i,j) = 0.0
-        var2d      (i,j) = 0.0
         !--- (i,k)
         revsu_gf_2d (i,:) = 0.0
         prfil_gf_2d (i,:) = 0.0
-        var3d_agf_2d(i,:) = 0.0
-        var3d_bgf_2d(i,:) = 0.0
         Tpert_2d    (i,:) = 0.0
         !
         temp_tendqv(i,:) = 0.0
@@ -1623,11 +1584,8 @@ CONTAINS
                   ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_EC(:,j) &
                   !-- for diag
                   ,lightn_dens  (:,j)               &
-                  ,var2d        (:,j)               &
                   ,revsu_gf_2d                      &
                   ,prfil_gf_2d                      &
-                  ,var3d_agf_2d                     &
-                  ,var3d_bgf_2d                     &
                   ,Tpert_2d                         &
                   )
         ! Save ierr from this plume
@@ -1699,18 +1657,6 @@ loop1:  do n=1,maxiens
 
             !---these arrays are only for the deep plume mode
              PRFIL_GF (kr,i,j)= prfil_gf_2d (i,k)*fixout_qv(i) !-- ice/liq prec flux of the deep plume
-            !VAR3d_aGF(kr,i,j)= var3d_gf_2d(i,k)               !-- vertical velocity of the deep plume
-             VAR3d_aGF(kr,i,j)= outt (i,k,mid )*fixout_qv(i)   !--
-             VAR3d_bGF(kr,i,j)= outq (i,k,mid )*fixout_qv(i)   !--
-
-             if(icumulus_gf(shal) == OFF) then
-                VAR3d_cGF(kr,i,j)= outqc (i,k,deep)*fixout_qv(i)  !--
-                VAR3d_dGF(kr,i,j)= outqc (i,k,mid )*fixout_qv(i)  !--
-             else
-                VAR3d_cGF(kr,i,j)= outt (i,k,shal)*fixout_qv(i)   !--
-                VAR3d_dGF(kr,i,j)= outq (i,k,shal)*fixout_qv(i)   !--
-             endif
-
       ENDDO
      ENDDO
      IF(USE_MOMENTUM_TRANSP > 0) THEN
@@ -1899,11 +1845,8 @@ loop1:  do n=1,maxiens
                      !- for debug/diag
                      ,AA0_,AA1_,AA2_,AA3_,AA1_BL_,AA1_CIN_,TAU_BL_,TAU_EC_   &
                      ,lightn_dens        &
-                     ,var2d             &
                       ,revsu_gf          &
                      ,prfil_gf          &
-                     ,var3d_agf         &
-                     ,var3d_bgf         &
                      ,Tpert             &
                      )
      IMPLICIT NONE
@@ -1922,11 +1865,11 @@ loop1:  do n=1,maxiens
   ! outqc  = output qc tendency (per s)
   ! pre    = output precip
      REAL,    DIMENSION (its:ite,kts:kte) ,INTENT (INOUT)   ::       &
-        outu,outv,outt,outq,outqc,outbuoy,revsu_gf,prfil_gf,var3d_agf ,var3d_bgf &
+        outu,outv,outt,outq,outqc,outbuoy,revsu_gf,prfil_gf          &
        ,outnliq ,outnice
 
      REAL,    DIMENSION (its:ite)         ,INTENT (OUT  )   ::       &
-        pre,sig,lightn_dens,var2d
+        pre,sig,lightn_dens
 
   !
   ! basic environmental input includes
@@ -2186,7 +2129,6 @@ loop1:  do n=1,maxiens
      sig = 0.0
      sigd = 0.0
      lightn_dens = 0.0
-     var2d = 0.0
 
 !
 !--- maximum depth (mb) of capping inversion (larger cap = no convection)
@@ -4321,10 +4263,8 @@ ENDIF ! vertical discretization formulation
        if( trim(cumulus) == 'deep') then
           do i=its,itf
             if(ierr(i) /= 0) cycle
-            var2d(i) = p_cwv_ave(i)
             do k=kts,ktop(i)+1
                prfil_gf  (i,k) = prec_flx(i,k)
-               var3d_agf (i,k) = vvel2d  (i,k)
             enddo
           enddo
        endif
@@ -6239,7 +6179,8 @@ ENDIF !- end of section for atmospheric composition
      integer, intent(in)   , dimension(its:ite)            :: ierr,ktop,kbcon,k22,kpbl
      real,    intent(in)   , dimension(its:ite), OPTIONAL  :: lambau
      real,    intent(in)   , dimension(its:ite,kts:kte) :: zo_cup,zuo,po_cup
-     real,    intent(in)   , dimension(its:ite,kts:kte) :: cd,entr_rate
+     real,    intent(in)   , dimension(its:ite,kts:kte) :: entr_rate
+     real,    intent(inout), dimension(its:ite,kts:kte) :: cd
      real,    intent(  out), dimension(its:ite,kts:kte) :: up_massentro, up_massdetro&
                                                           ,up_massentr,  up_massdetr
      real,    intent(  out), dimension(its:ite,kts:kte),  &
@@ -6263,6 +6204,12 @@ ENDIF !- end of section for atmospheric composition
          if(ierr(i)/= 0)cycle
 
          k_ent=maxloc(zuo(i,:),1)
+         !-will not allow detrainment below cloud base or in the PBL
+         if(draft=='shallow') then
+              cd(i,1:max(kbcon(i),kpbl(i))+1)=0.0
+         else
+              cd(i,1:k_ent+1)=0.0
+         endif
 
         !- mass entrainment and detrainment are defined on model levels
          do k=kts,k_ent

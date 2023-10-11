@@ -128,13 +128,13 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 2,    RC=STATUS );VERIFY_(STATUS)
       if (ENTRVERSION == 0) then
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 1.0e-5,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.5e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 0.5e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 5.0e-4,RC=STATUS );VERIFY_(STATUS)
       else
-        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 1.0e-5,RC=STATUS );VERIFY_(STATUS)  
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.4e-4,RC=STATUS );VERIFY_(STATUS)  
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
       endif
@@ -325,7 +325,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Exports
     real, pointer, dimension(:,:,:) :: BYNCY, CNV_MF0, ENTLAM
     real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
-    real, pointer, dimension(:,:,:) :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
     real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
     real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
     real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
@@ -465,10 +464,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MUPMD    ,'MUPMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_a  ,'VAR3d_a'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_b  ,'VAR3d_b'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_c  ,'VAR3d_c'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_d  ,'VAR3d_d'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MFDP     ,'MFDP'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MFSH     ,'MFSH'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MFMD     ,'MFMD'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
@@ -563,8 +558,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
-                                 ,TPWI, TPWI_star, LFR_GF                           &
-                                 ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
+                                 ,TPWI, TPWI_star, LFR_GF, CNV_TR)
     ELSE
          !- call GF/GEOS5 interface routine
          ! PLE and PL are passed in Pa
