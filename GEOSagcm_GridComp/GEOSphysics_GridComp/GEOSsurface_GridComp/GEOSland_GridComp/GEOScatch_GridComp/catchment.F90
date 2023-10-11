@@ -2934,7 +2934,7 @@
     !    
     ! local variables
     
-    integer :: n
+    integer                    :: n
     
     real,    dimension(NTILES) :: asnow
     
@@ -2962,7 +2962,7 @@
                     
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
-          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy, &
+          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
                ice1, tzero, use_threshold_fac ) 
           
           tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)

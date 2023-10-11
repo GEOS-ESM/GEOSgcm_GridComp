@@ -394,19 +394,19 @@ contains
     drho0  = 0.0
     tksno  = 0.0
     
-    if(snowd <= StieglitzSnow_MINSWE) then ! no snow
+    if(snowd <= StieglitzSnow_MINSWE) then ! initial snow mass is negligible
        
-       ! Assume initial (very small) snow water melts; new snow pack is based
-       !   on new snowfall only
+       ! Melt off initial (very small) snowpack; new snow pack is based
+       !   on new snowfall only (if any)
        
        areasc = min(snowd/wemin,1.)
        areasc0 = 0.
-       pre = snowd/dts + areasc*rainf
+       pre = snowd/dts + areasc*rainf       ! pre = melted snowpack plus rainfall
        wesn  = 0.
        hcorr = hcorr + raddn*areasc + sum(htsnn)/dts
        htsnn = 0.
        sndz  = 0.
-       mltwtr = snowd/dts
+       mltwtr = snowd/dts                   ! mltwtr = melted snowpack
        do k=1,N_constit
           rmelt(k)=sum(rconstit(:,k))/dts
        enddo
@@ -929,21 +929,35 @@ contains
     !**** relayering process (or at least that (fices,tpsn) conditions don't 
     !**** go through the (1,0) point); excess goes to hcorr.
     
-    do i=1,N_snow
-       kflag=.false.
-       if(     ice10(i) .and.      tzero0(i) .and.                                &
-            (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.
-       if(.not.ice10(i) .and.      tzero0(i) .and.                                &
-            (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.
-       if(     ice10(i) .and. .not.tzero0(i) .and.                                &
-            (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.
+    ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
+    !   before and after relayer; in select cases, adjust snow heat content and temp
+    !
+    ! NOTE: logicals before relayer are computed with    "buffer" (use_threshold_fac=.true. )
+    !       reals    after  relayer are computed without "buffer" (use_threshold_fac=.false.)
+
+    do i=1,N_snow                                                          
+
+       kflag = .false.                                                   ! default: do nothing
+
+       ! set klfag to .true. under certain conditions:
+
+       if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
+            (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
+       
+       if(.not.ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: partially frozen and at    0 deg
+            (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.      !    and after  relayer: fully     frozen and below 0 deg
+
+       if(     ice10(i) .and. .not.tzero0(i) .and.                   &   ! if     before relayer: fully frozen     and below 0 deg
+            (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.      !    and after  relayer: partially frozen and at    0 deg
+       
+       ! if needed, adjust snow heat content, frozen fraction, and temperature
        
        if(kflag) then
-          hnew=-alhm*wesn(i)
-          hcorr=hcorr+(htsnn(i)-hnew)/dts
-          htsnn(i)=hnew
-          tpsn(i)=0.
-          fices(i)=1.
+          hnew    = -alhm*wesn(i)
+          hcorr   = hcorr+(htsnn(i)-hnew)/dts                            ! add "excess" heat content to hcorr
+          htsnn(i)= hnew
+          tpsn(i) = 0.
+          fices(i)= 1.
        endif
        
     enddo
@@ -1275,36 +1289,36 @@ contains
     
     if (w > 0.) hbw = h/w
     
-    if     (hbw < threshold1) then
+    if     (hbw < threshold1) then    ! fully     frozen, temp below 0 deg
 
-       t = (hbw+alhm)*tfac
-       f = 1.
-       ice1=.true.
-       tzero=.false.
+       t     = (hbw+alhm)*tfac
+       f     = 1.
+       ice1  = .true.
+       tzero = .false.
 
-    elseif (hbw > threshold2) then
+    elseif (hbw > threshold2) then    ! partially frozen, temp at    0 deg
 
-       t = 0.
-       f =-hbw*ffac
-       ice1=.false.
-       tzero=.true.
+       t     = 0.
+       f     = -hbw*ffac
+       ice1  = .false.
+       tzero = .true.
 
-    else
-       t = 0.
-       f = 1.
-       ice1=.true.
-       tzero=.true.
+    else                              ! fully     frozen, temp at    0 deg
+       t     = 0.
+       f     = 1.
+       ice1  = .true.
+       tzero = .true.
 
     endif
     
-    if(f < 0.) then
+    if (f <  0.) then                 ! (i.e., h>0 and f=-hbw/alhm via "partially frozen, temp at 0 deg")
 
-       t = hbw*tfac
+       t = hbw*tfac                   ! t>0.  ??????
        f = 0.
 
     endif
     
-    if(w == 0.) then
+    if (w == 0.) then                 ! no snow
 
        t = 0.
        f = 0.
