@@ -228,6 +228,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     if (CLDPARAMS%ICE_SETTLE==2) TMP_ICEFALL=TMP_ICEFALL*0.8
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM ,         'ICE_RADII_PARAM:',DEFAULT= 1       )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )
     call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )

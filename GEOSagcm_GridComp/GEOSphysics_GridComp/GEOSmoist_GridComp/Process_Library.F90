@@ -72,12 +72,15 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! option for cloud ice radii
+  integer :: ICE_RADII_PARAM = 1
+
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
 
- ! Storage of aerosol properties for activation
+  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
   ! Tracer Bundle things for convection
@@ -115,10 +118,10 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
+  public :: ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: sigma 
- 
  
   contains
 
@@ -350,25 +353,25 @@ module GEOSmoist_Process_Library
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M
 
-      ! Anvil clouds
-      ! Anvil-Convective sigmoidal function like figure 6(right)
-      ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-        ICEFRCT_C  = 0.00
-        if ( TEMP <= aT_ICE_ALL ) then
-           ICEFRCT_C = 1.000
-        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_C = MIN(ICEFRCT_C,1.00)
-        ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-        ICEFRCT_C = ICEFRCT_C**aICEFRPWR
 #ifdef MODIS_ICE_POLY
-      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
-        tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
-        ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-        ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+     ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
+      tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 #else
-  ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+     ! Anvil clouds
+     ! Anvil-Convective sigmoidal function like figure 6(right)
+     ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+      ICEFRCT_C  = 0.00
+      if ( TEMP <= aT_ICE_ALL ) then
+         ICEFRCT_C = 1.000
+      else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
+         ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+      end if
+      ICEFRCT_C = MIN(ICEFRCT_C,1.00)
+      ICEFRCT_C = MAX(ICEFRCT_C,0.00)
+      ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+     ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
       if (SRF_TYPE == 2.0) then
         ! Over snow/ice
         ICEFRCT_M  = 0.00
@@ -403,9 +406,9 @@ module GEOSmoist_Process_Library
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**oICEFRPWR
       endif
-#endif
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+#endif
 
   end function ICE_FRACTION_SC
 
@@ -575,6 +578,7 @@ module GEOSmoist_Process_Library
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
+       REAL :: TC,ZFSR,AA
 
        !- air density (kg/m^3)
        RHO = (100.*PL) / (MAPL_RGAS*TE )
@@ -595,19 +599,26 @@ module GEOSmoist_Process_Library
        !- ice cloud effective radius ----- 
           !- ice water content
           WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
-          !- cloud ice number concentration #/m3
-          !- from the aerosol model + ....
-          NNX = NNI*1.e-6 ! #/m3
           !- radius in meters
-          !------ice cloud effective radius ----- [klaus wyser, 1998]
-          if(TE>MAPL_TICE .or. QC <=0.) then
-            BB = -2.
+          if (ICE_RADII_PARAM == 1) then
+            !------ice cloud effective radius ----- [klaus wyser, 1998]
+            if(TE>MAPL_TICE .or. QC <=0.) then
+              BB = -2.
+            else
+              BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+            endif
+            BB     = MIN((MAX(BB,-6.)),-2.)
+            RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
           else
-            BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+            !------ice cloud effective radius ----- [Sun, 2001]
+            TC = TE - MAPL_TICE
+            ZFSR = 1.2351 + 0.0105 * TC
+            AA = 45.8966 * (WC**0.2214)
+            BB = 0.79570 * (WC**0.2535)
+            RADIUS = ZFSR * (AA + BB * (TE - 83.15))
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS*0.64952))
           endif
-          BB     = MIN((MAX(BB,-6.)),-2.)
-          RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-          RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
