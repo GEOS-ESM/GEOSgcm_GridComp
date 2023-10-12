@@ -335,7 +335,7 @@ module gfdl2_cloud_microphys_mod
   !$acc declare create( &
 
   !$acc     tables_are_initialized, &
-  !$acc     des, des2, des3, desw, table, table2, table3, tablew, &
+  !$acc     des2, desw, table2, tablew, &
 
   !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
   !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
@@ -347,9 +347,9 @@ module gfdl2_cloud_microphys_mod
   !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
   !$acc     ql0_max, dt_fr, &
 
-  !$acc     ces0, cracs, cracw, cssub, &
+  !$acc     ces0, cracs, cracw, &
   !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
-  !$acc     crevp, csmlt, cgmlt, cgfr, acco)
+  !$acc     cssub, crevp, csmlt, cgmlt, cgfr, acco)
 
 contains
 
@@ -3492,9 +3492,9 @@ contains
     ces0 = eps * es0
 
     !$acc update device( &
-    !$acc     ces0, cracs, cracw, cssub, &
+    !$acc     ces0, cracs, cracw, &
     !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
-    !$acc     crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
+    !$acc     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
 
   end subroutine setupm
 
@@ -3754,9 +3754,7 @@ contains
 
        tables_are_initialized = .true.
 
-       !$acc update device(tables_are_initialized)
-       !$acc update device(des(:), des2(:), des3(:), desw(:))
-       !$acc update device(table, table2, table3, tablew)
+       !$acc update device(table2(:), des2(:), tablew(:), desw(:))
 
     endif
 
