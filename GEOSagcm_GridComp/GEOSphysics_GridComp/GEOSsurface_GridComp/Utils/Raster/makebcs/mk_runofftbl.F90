@@ -736,26 +736,20 @@ subroutine endrun(msg,subname)
    stop 
 end subroutine endrun  
 !------------------------------------------------------------------------
-subroutine mask_MAPL_2d(rst_ocn,msk1d,msk2d,nt,nlon,nlat)
+subroutine mask_MAPL_2d(landocean,mask1d,msk2d,nt,nlon,nlat)
 
 integer,intent(in) :: nt,nlon,nlat
-integer,intent(in) :: rst_ocn(nlon,nlat)
-integer,intent(in) :: msk1d(nt)
+integer,intent(in) :: landocean(nlon,nlat)
+integer,intent(in) :: mask1d(nt)
 integer,intent(out) :: msk2d(nlon,nlat)
 
 real*8,allocatable,dimension(:) :: lon,lat
-integer,allocatable,dimension(:,:) :: landocean
-integer,allocatable,dimension(:) :: mask1d
 
 integer :: i,j,xi,yi,tid
 
 !print *,"running mask_MAPL_2d() ..."
 
-allocate(landocean(nlon,nlat))
-landocean=rst_ocn
 
-allocate(mask1d(nt))
-mask1d=msk1d
 do i=1,nlon
   do j=1,nlat
     tid=landocean(i,j)
@@ -763,7 +757,6 @@ do i=1,nlon
   enddo
 enddo
 
-deallocate(landocean,mask1d)
 
 end subroutine mask_MAPL_2d
 !------------------------------------------------------------------------
