@@ -5,6 +5,7 @@ program Runoff
   use netcdf
 
   implicit none
+  include 'netcdf.inc'
 
   integer                :: nx, ny, pf
   integer, allocatable   :: lats(:,:), lons(:,:)
@@ -23,7 +24,7 @@ program Runoff
 
   character*5            :: C_NX, C_NY
 
-  logical                :: adjust_oceanLandSea_mask = .false. ! default is .false.
+  logical                :: adjust_oceanLandSea_mask = .true. ! default is .true.
   integer                :: nxt, command_argument_count
   character*(128)        :: arg, &
                             Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter", &
@@ -54,13 +55,16 @@ program Runoff
   if (I > 1) then
     nxt = nxt + 1
     call get_command_argument(nxt, arg)
-    if ( trim(arg) .ne. 'yes') then
-      print *, "Incorrect optional second argument, should be: yes"
-      call exit(2)
-    else
-      adjust_oceanLandSea_mask = .true.
-      nxt = nxt + 1
-      call get_command_argument(nxt, mapl_tp_file)
+    !if ( trim(arg) .ne. 'yes') then
+    !  print *, "Incorrect optional second argument, should be: yes"
+    !  call exit(2)
+    !else
+    !  adjust_oceanLandSea_mask = .true.
+    !  nxt = nxt + 1
+    !  call get_command_argument(nxt, mapl_tp_file)
+    !endif
+    if ( trim(arg) .eq. 'no') then
+      adjust_oceanLandSea_mask = .false.  
     endif
   endif
 ! ------------------------------------------------------------------
@@ -136,7 +140,8 @@ program Runoff
     print *, "- Of GEOS land and external ocean model."
     print *, "- Output file: ", fileB
     print *, " "
-    call read_oceanModel_mask( mapl_tp_file)
+!    call read_oceanModel_mask( mapl_tp_file)
+    call outlets_to_ocean(file,lons,lats,nx,ny)
 !   ... some adjustment of following variable: `type` 
 !   ... using ocean model land-sea mask should be done here
   endif
@@ -394,6 +399,593 @@ contains
   stop
   end if
   end subroutine check
-! -----------------------------------------------------------------
+!------------------------------------------------------------------------
+subroutine outlets_to_ocean(file,lons,lats,nx,ny)
+
+  integer, intent(in) :: nx,ny
+  character(len=*) :: file
+  integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
+
+  integer,allocatable,dimension(:) :: lati_lnd,loni_lnd  
+  integer,allocatable,dimension(:) :: msk1d
+  integer,allocatable,dimension(:,:) :: msk2d  
+  integer,allocatable,dimension(:,:) :: mask  
+  integer,allocatable,dimension(:,:) :: boundary  
+  real*8, allocatable,dimension(:) :: lonsh,latsh
+  real*8,allocatable,dimension(:) :: lons_adj,lats_adj
+  integer,allocatable,dimension(:) :: lati_ocn,loni_ocn   
+  character*100          :: file_ocn
+  character*100          :: fileT_ocn, fileR_ocn
+  character*100          :: file_ocn_lnd
+  character*100          :: fileT_ocn_lnd, fileR_ocn_lnd
+  character*100          :: res_MAPL
+  integer, allocatable,dimension(:,:)   :: rst_ocn,rst_ocn_lnd
+  real :: num1,num2,num3,num4
+  integer :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
+  integer, allocatable,dimension(:)  :: t2lati,t2loni
+  real*8,allocatable,dimension(:) :: lon30s,lat30s
+  real*8 :: dx,dy
+  integer :: ns
+  integer,allocatable,dimension(:,:)   :: ns_map
+  real*8,allocatable,dimension(:) :: lat_lnd,lon_lnd
+
+  integer :: i,j,l,k,status,type,np
+
+  do i=1,100
+    if(file(i:i).eq."T".and.file(i+1:i+1).eq."M")then
+      exit
+    endif
+  enddo
+  file_ocn=""
+  file_ocn(1:13)=file(i:i+12)  
+  !print *,trim(file_ocn)
+  file_ocn_lnd=""
+  file_ocn_lnd(1:13)=file_ocn
+  file_ocn_lnd(14:25)="-Pfafstetter"
+  !print *,trim(file_ocn_lnd)    
+
+  if(trim(file_ocn).eq."TM0072xTM0036")then
+    res_MAPL="72x36"
+    nx_MAPL=72
+    ny_MAPL=36
+  else if(trim(file_ocn).eq."TM0540xTM0458")then
+    res_MAPL="540x458"
+    nx_MAPL=540
+    ny_MAPL=458
+  else if(trim(file_ocn).eq."TM1440xTM1080")then
+    res_MAPL="1440x1080"
+    nx_MAPL=1440
+    ny_MAPL=1080
+  else
+    print *,"ocean resolution is not supported!"
+    stop
+  endif
+
+  fileT_ocn = "til/"//trim(file_ocn)//".til" ! input
+  fileR_ocn = "rst/"//trim(file_ocn)//".rst" ! input
+  fileT_ocn_lnd = "til/"//trim(file_ocn_lnd)//".til" ! input
+  fileR_ocn_lnd = "rst/"//trim(file_ocn_lnd)//".rst" ! input  
+
+  !print *, "Reading rst file "//trim(fileR_ocn) 
+  open(20,file=fileR_ocn,form="unformatted",status="old")
+  allocate(rst_ocn(nx,ny),stat=status)
+  if(status/=0) then
+     print *, "Out of Memory"
+     stop 
+  endif
+  do j=1,ny
+     read(20) rst_ocn(:,j)
+  enddo
+  close(20)
+
+  !print *, "Reading rst file "//trim(fileR_ocn_lnd) 
+  open(21,file=fileR_ocn_lnd,form="unformatted",status="old")
+  allocate(rst_ocn_lnd(nx,ny),stat=status)
+  if(status/=0) then
+     print *, "Out of Memory"
+     stop 
+  endif
+  do j=1,ny
+     read(21) rst_ocn_lnd(:,j)
+  enddo
+  close(21)  
+
+  open(10,file=fileT_ocn, form="formatted", status="old")
+  read(10,*) nt_ocn
+  allocate(t2lati(nt_ocn),t2loni(nt_ocn))
+  do i=1,4
+    read(10,*)
+  enddo  
+  do l=1,nt_ocn
+    read(10,*)type,num1,num2,num3,t2loni(l),t2lati(l)
+  enddo
+  close(10)
+
+  open(10,file=fileT_ocn_lnd, form="formatted", status="old")
+  read(10,*) np
+  do i=1,4
+    read(10,*)
+  enddo  
+  k=0
+  do l=1,np
+    read(10,*)type,num1,num2,num3,num4
+    if(type/=100)exit
+    k=k+1
+  enddo
+  close(10)
+  nt_ocn_lnd=np
+  nl_ocn_lnd=k
+
+
+  allocate(lon30s(nx),lat30s(ny))
+  dx=360.d0/nx
+  dy=180.d0/ny
+  do i=1,nx
+    lon30s(i)=-180.d0+dx/2.d0+dx*(i-1)
+  enddo
+  do j=1,ny
+    lat30s(j)=-90.d0+dy/2.d0+dy*(j-1)
+  enddo
+
+  !print *,"running outlets_num() ..."
+  call outlets_num(rst_ocn_lnd,nl_ocn_lnd,nt_ocn_lnd,lons,lats,nx,ny,ns)
+  !print *,"outlets num is ",ns
+  allocate(loni_lnd(ns),lati_lnd(ns))
+  allocate(msk1d(nt_ocn))
+  allocate(msk2d(nx,ny))
+  allocate(mask(nx,ny))
+  allocate(boundary(nx,ny))
+  allocate(lons_adj(ns),lats_adj(ns))
+  allocate(loni_ocn(ns),lati_ocn(ns))  
+  allocate(ns_map(nx,ny))
+  allocate(lon_lnd(ns),lat_lnd(ns))
+  !print *,"running retrieve_outlets() ..."
+  call retrieve_outlets(lons,lats,lon30s,lat30s,loni_lnd,lati_lnd,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
+  !print *,"running mask_MAPL_1d() ..."
+  call mask_MAPL_1d(msk1d,t2loni,t2lati,nt_ocn,res_MAPL,nx_MAPL,ny_MAPL)
+  !print *,"running mask_MAPL_2d() ..."
+  call mask_MAPL_2d(rst_ocn,msk1d,msk2d,nt_ocn,nx,ny)
+  !print *,"running mask_MAPL_bcs() ..."
+  call mask_MAPL_bcs(rst_ocn_lnd,msk2d,mask,nx,ny,nl_ocn_lnd,nt_ocn_lnd)
+  !print *,"running ocean_boundary() ..."
+  call ocean_boundary(mask,boundary,nx,ny)
+  !print *,"running ocean_boundary_num() ..."
+  call ocean_boundary_num(boundary,nx,ny,nsh)  
+  !print *,"ocean boundary point num is ",nsh
+  allocate(lonsh(nsh),latsh(nsh))  
+  !print *,"running ocean_boundary_points() ..."
+  call ocean_boundary_points(boundary,lon30s,lat30s,lonsh,latsh,nx,ny,nsh)
+  !print *,"running move_to_ocean() ..."
+  call move_to_ocean(loni_lnd,lati_lnd,lon_lnd,lat_lnd,mask,lonsh,latsh,lons_adj,lats_adj,ns,nx,ny,nsh)  
+  !print *,"running sinkxy_ocean() ..."
+  call sinkxy_ocean(lons_adj,lats_adj,lon30s,lat30s,loni_ocn,lati_ocn,ns,nx,ny)  
+  !print *,"running update_outlets() ..."
+  call update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
+
+  deallocate(loni_lnd,lati_lnd,msk1d,msk2d,mask,&
+             boundary,lonsh,latsh,lons_adj,lats_adj,loni_ocn,lati_ocn)
+  deallocate(rst_ocn,lat30s,lon30s)
+  deallocate(ns_map,lon_lnd,lat_lnd)
+  deallocate(rst_ocn_lnd)
+
+end subroutine outlets_to_ocean
+!-------------------------------------------------------------------------
+subroutine outlets_num(rst_ocn_lnd,nl,nt,lons,lats,nx,ny,ns)
+
+integer,intent(in) :: nx,ny,nl,nt
+integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
+integer,intent(in) :: rst_ocn_lnd(nx,ny)
+integer,intent(out) :: ns
+
+integer,allocatable,dimension(:) :: lonp,latp
+integer,allocatable,dimension(:,:) :: acc,np_map
+
+integer :: i,j,k,l,lonc,latc,flag,maxbak,status,num
+
+!print *,"running outlets_num() ..."
+
+allocate(acc(nx,ny))
+
+do i=1,nx
+  do j=1,ny
+    if(rst_ocn_lnd(i,j)>nl.and.rst_ocn_lnd(i,j)/=nt)then
+      lons(i,j)=-999
+      lats(i,j)=-999
+    endif
+  enddo
+enddo
+
+acc=0
+k=0
+do i=1,nx
+  do j=1,ny
+    if(lons(i,j)/=-999.and.lats(i,j)/=-999)then
+      lonc=lons(i,j)
+      latc=lats(i,j)
+      if(acc(lonc,latc)==0)then
+        k=k+1
+        acc(lonc,latc)=1
+      else
+        acc(lonc,latc)=acc(lonc,latc)+1
+      endif 
+    endif
+  enddo
+enddo
+ns=k
+deallocate(acc)
+end subroutine outlets_num
+!------------------------------------------------------------------------
+subroutine retrieve_outlets(lons,lats,lon30s,lat30s,lonp,latp,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
+
+integer,intent(in) :: nx,ny,ns
+integer,intent(in) :: lons(nx,ny),lats(nx,ny)
+real*8,intent(in) :: lon30s(nx),lat30s(ny)
+integer,intent(out) :: lonp(ns),latp(ns)
+real*8,intent(out) :: lon_lnd(ns),lat_lnd(ns)
+integer,intent(out) :: ns_map(nx,ny)
+
+
+integer,allocatable,dimension(:,:) :: acc
+
+integer :: i,j,k,l,lonc,latc
+
+!print *,"running retrieve_outlets() ..."
+
+allocate(acc(nx,ny))
+ns_map=-9999
+acc=0
+k=0
+do i=1,nx
+  do j=1,ny
+    if(lons(i,j)/=-999.and.lats(i,j)/=-999)then
+      lonc=lons(i,j)
+      latc=lats(i,j)
+      if(acc(lonc,latc)==0)then
+        k=k+1
+        acc(lonc,latc)=1
+        lonp(k)=lonc
+        latp(k)=latc
+        ns_map(lonc,latc)=k
+      else
+        acc(lonc,latc)=acc(lonc,latc)+1
+      endif 
+    endif
+  enddo
+enddo
+
+do i=1,ns
+  lon_lnd(i)=lon30s(lonp(i))
+  lat_lnd(i)=lat30s(latp(i))
+enddo
+
+deallocate(acc)
+
+end subroutine retrieve_outlets
+!------------------------------------------------------------------------
+subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
+
+integer,intent(in) :: nt,nlon,nlat
+integer,intent(in) :: t2loni(nt),t2lati(nt)
+character(len=*) :: res_MAPL
+integer,intent(out) :: msk_tile(nt)
+
+
+real,allocatable,dimension(:,:) :: msk_MAPL
+
+integer :: i
+
+!print *,"running mask_MAPL_1d() ..."
+
+allocate(msk_MAPL(nlon,nlat))
+call read_oceanModel_mapl("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ocean/MOM6/"//trim(res_MAPL)//"/MAPL_Tripolar.nc",msk_MAPL,nlon,nlat)
+
+do i=1,nt
+  msk_tile(i)=int(msk_MAPL(t2loni(i),t2lati(i)))
+enddo
+
+deallocate(msk_MAPL)
+
+end subroutine mask_MAPL_1d
+!------------------------------------------------------------------------
+  subroutine read_oceanModel_mapl(mask_file,wetMask,nx,ny)
+  implicit none
+  character(len=*),    intent(in)  :: mask_file
+  integer,intent(in) :: nx, ny
+  real :: wetMask(nx,ny)
+
+  integer :: ncid, varid
+  character(len=4) :: subname="read"
+
+  !print *, "Reading ocean model mask from : ", mask_file
+
+  call check_ret(nf_open(mask_file,0,ncid),subname)
+  call check_ret(nf_inq_varid(ncid,"mask",varid),subname)
+  call check_ret(nf_get_var_real(ncid,varid,wetMask),subname)
+  call check_ret(nf_close(ncid), subname)    
+
+  end subroutine read_oceanModel_mapl 
+!------------------------------------------------------------------------
+  subroutine check_ret(ret, calling)
+    implicit none
+    integer, intent(in) :: ret
+    character(len=*) :: calling
+
+    if (ret /= NF_NOERR) then !Èç¹û´ò¿ªncÎÄ¼þ³ö´í£¬ÔòÌáÊ¾³ö´íÐÅÏ¢
+       write(6,*)'netcdf error from ',trim(calling)
+       call endrun(nf_strerror(ret))
+    end if
+
+  end subroutine check_ret  
+!-----------------------------------------------------------------------  
+subroutine endrun(msg,subname)
+
+   implicit none
+   character(len=*), intent(in), optional :: msg    ! string to be printed
+   character(len=*), intent(in), optional :: subname    ! subname
+
+   if (present (subname)) then 
+    write(6,*) 'ERROR in subroutine :', trim(subname)
+   end if
+
+   if (present (msg)) then
+      write(6,*)'ENDRUN:', msg
+   else
+      write(6,*) 'ENDRUN: called without a message string'
+   end if
+
+   stop 
+end subroutine endrun  
+!------------------------------------------------------------------------
+subroutine mask_MAPL_2d(rst_ocn,msk1d,msk2d,nt,nlon,nlat)
+
+integer,intent(in) :: nt,nlon,nlat
+integer,intent(in) :: rst_ocn(nlon,nlat)
+integer,intent(in) :: msk1d(nt)
+integer,intent(out) :: msk2d(nlon,nlat)
+
+real*8,allocatable,dimension(:) :: lon,lat
+integer,allocatable,dimension(:,:) :: landocean
+integer,allocatable,dimension(:) :: mask1d
+
+integer :: i,j,xi,yi,tid
+
+!print *,"running mask_MAPL_2d() ..."
+
+allocate(landocean(nlon,nlat))
+landocean=rst_ocn
+
+allocate(mask1d(nt))
+mask1d=msk1d
+do i=1,nlon
+  do j=1,nlat
+    tid=landocean(i,j)
+    msk2d(i,j)=mask1d(tid)
+  enddo
+enddo
+
+deallocate(landocean,mask1d)
+
+end subroutine mask_MAPL_2d
+!------------------------------------------------------------------------
+subroutine mask_MAPL_bcs(rst_ocn_lnd,msk2d,mask,nlon,nlat,nl,nt)
+
+integer,intent(in) :: nlon,nlat,nl,nt
+integer,intent(in) :: rst_ocn_lnd(nlon,nlat)
+integer,intent(in) :: msk2d(nlon,nlat)
+integer,intent(out) :: mask(nlon,nlat)
+
+real*8,allocatable :: lon(:),lat(:)
+
+integer,allocatable,dimension(:,:) :: mask_mapl,mask_rst
+
+!print *,"running mask_MAPL_bcs() ..."
+
+allocate(mask_mapl(nlon,nlat),lon(nlon),lat(nlat))
+mask_mapl=msk2d
+mask=0
+where(rst_ocn_lnd>nl.and.rst_ocn_lnd/=nt.and.rst_ocn_lnd/=nt-1.and.mask_mapl==1)mask=1
+deallocate(mask_mapl,lon,lat)
+
+end subroutine mask_MAPL_bcs
+!------------------------------------------------------------------------
+subroutine ocean_boundary(mask,boundary,nlon,nlat)
+
+integer,intent(in) :: nlon,nlat
+integer,intent(in) :: mask(nlon,nlat)
+integer,intent(out) :: boundary(nlon,nlat)
+
+real*8,allocatable :: lon(:),lat(:)
+
+integer,allocatable :: catchind(:,:)
+
+integer :: xi,yi,id
+integer :: xp1,xm1,yp1,ym1
+
+!print *,"running ocean_boundary() ..."
+
+allocate(catchind(nlon,nlat),lon(nlon),lat(nlat))
+catchind=mask
+
+boundary=catchind
+boundary=-9999
+
+do xi=2,nlon-1
+  do yi=2,nlat-1
+    id=catchind(xi,yi)
+    if(id==1)then
+      boundary(xi,yi)=0 
+      if(catchind(xi+1,yi)==1.and.&
+         catchind(xi+1,yi-1)==1.and.&
+         catchind(xi  ,yi-1)==1.and.&
+         catchind(xi-1,yi-1)==1.and.&
+         catchind(xi-1,yi)==1.and.&
+         catchind(xi-1,yi+1)==1.and.&
+         catchind(xi  ,yi+1)==1.and.&
+         catchind(xi+1,yi+1)==1)then
+         boundary(xi,yi)=-9999
+      endif
+    endif
+  enddo
+enddo
+
+deallocate(catchind,lon,lat)
+
+end subroutine ocean_boundary
+!------------------------------------------------------------------------
+subroutine ocean_boundary_num(mskh,nlon,nlat,nsh)
+
+integer,intent(in) :: nlon,nlat
+integer,intent(in) :: mskh(nlon,nlat)
+integer,intent(out) :: nsh
+
+integer i,xi,yi,k
+
+!print *,"running ocean_boundary_num() ..."
+k=0
+do xi=1,nlon
+  do yi=1,nlat
+    if(mskh(xi,yi)==0)then
+      k=k+1
+    endif
+  enddo
+enddo
+nsh=k
+end subroutine ocean_boundary_num
+!------------------------------------------------------------------------
+subroutine ocean_boundary_points(mskh,lon30s,lat30s,lonsh,latsh,nlon,nlat,nsh)
+
+integer,intent(in) :: nlon,nlat,nsh
+integer,intent(in) :: mskh(nlon,nlat)
+real*8,intent(in) :: lon30s(nlon),lat30s(nlat)
+real*8,intent(out) :: lonsh(nsh),latsh(nsh)
+integer i,xi,yi,k
+
+!print *,"running ocean_boundary_points() ..."
+k=0
+do xi=1,nlon
+  do yi=1,nlat
+    if(mskh(xi,yi)==0)then
+      k=k+1
+      lonsh(k)=lon30s(xi)
+      latsh(k)=lat30s(yi)
+    endif
+  enddo
+enddo
+end subroutine ocean_boundary_points
+!------------------------------------------------------------------------
+subroutine move_to_ocean(loni_lnd,lati_lnd,lons,lats,mask,lonsh,latsh,lons_adj,lats_adj,ns,nlon,nlat,nsh)
+
+integer,intent(in) :: ns,nlon,nlat,nsh
+integer,intent(in) :: loni_lnd(ns),lati_lnd(ns)
+real*8,intent(in) :: lons(ns),lats(ns)
+integer,intent(in) :: mask(nlon,nlat)
+real*8,intent(in) :: lonsh(nsh),latsh(nsh)
+real*8,intent(out) :: lons_adj(ns),lats_adj(ns)
+
+integer,allocatable :: lonsi(:),latsi(:)
+integer,allocatable :: catid(:),flag(:)
+
+real,allocatable :: dist(:)
+
+integer :: i,j
+real :: dy,dy2,dx,dx2,dxA,dxB,dist_temp 
+
+!print *,"running move_to_ocean() ..."
+
+allocate(lonsi(ns),latsi(ns))
+allocate(catid(ns),flag(ns),dist(ns))
+lonsi=loni_lnd
+latsi=lati_lnd
+do i=1,ns
+  IF(mask(lonsi(i),latsi(i))==0)THEN
+  dist(i)=1.e12
+  do j=1,nsh
+    dy=abs(lats(i)-latsh(j))
+    dy2=dy*dy
+    dxA=abs(lons(i)-lonsh(j)) 
+    dxB=360.-dxA
+    dx=min(dxA,dxB)
+    dx2=dx*dx
+    dist_temp=sqrt(dx2+dy2)
+    if(dist_temp<dist(i))then
+      dist(i)=dist_temp
+      lons_adj(i)=lonsh(j)
+      lats_adj(i)=latsh(j)
+    endif
+  enddo
+  ELSE
+    lons_adj(i)=lons(i)
+    lats_adj(i)=lats(i)
+    dist(i)=0.
+  ENDIF
+enddo 
+deallocate(lonsi,latsi,catid,flag,dist)
+
+end subroutine move_to_ocean
+!------------------------------------------------------------------------
+subroutine sinkxy_ocean(lons_adj,lats_adj,lon30s,lat30s,loni,lati,ns,nlon,nlat)
+
+integer,intent(in) :: ns,nlon,nlat
+real*8,intent(in) :: lons_adj(ns),lats_adj(ns)
+real*8,intent(in) :: lon30s(nlon),lat30s(nlat)
+integer,intent(out) :: loni(ns),lati(ns)
+
+real*8,allocatable,dimension(:) :: lats,lons,lat_dis,lon_dis
+
+integer :: i,temp(1)
+
+!print *,"running sinkxy_ocean() ..."
+
+allocate(lats(ns),lons(ns))
+allocate(lat_dis(nlat),lon_dis(nlon))
+lats=lats_adj
+lons=lons_adj
+
+do i=1,ns
+  lat_dis=abs(lat30s-lats(i))
+  temp=minloc(lat_dis)
+  lati(i)=temp(1)
+enddo
+do i=1,ns
+  lon_dis=abs(lon30s-lons(i))
+  temp=minloc(lon_dis)
+  loni(i)=temp(1)
+enddo
+
+deallocate(lats,lons,lat_dis,lon_dis)
+
+end subroutine sinkxy_ocean
+!------------------------------------------------------------------------
+subroutine update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
+
+integer,intent(in) :: nx,ny,ns
+integer,intent(in) :: loni_ocn(ns),lati_ocn(ns)
+integer,intent(in) :: ns_map(nx,ny)
+integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
+
+integer :: i,j,lonc,latc,ind
+
+!print *,"running update_outlets() ..."
+
+do i=1,nx
+  do j=1,ny
+    if(lons(i,j)/=-999.and.lats(i,j)/=-999.)then
+      
+      lonc=lons(i,j)
+      latc=lats(i,j)      
+      ind=ns_map(lonc,latc)
+      if(ind<1.or.ind>ns)then
+        print *,"ns_map is Incorrect, ind=",ind
+        stop
+      endif
+      lons(i,j)=loni_ocn(ind)
+      lats(i,j)=lati_ocn(ind)
+
+    endif
+  enddo
+enddo
+
+end subroutine update_outlets
+!------------------------------------------------------------------------
 
 end program Runoff
