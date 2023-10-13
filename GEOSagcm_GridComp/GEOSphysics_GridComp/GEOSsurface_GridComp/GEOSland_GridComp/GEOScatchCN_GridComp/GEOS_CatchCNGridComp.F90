@@ -36,7 +36,7 @@ subroutine SetServices ( GC, RC )
 ! !DESCRIPTION:
 ! This version uses GEOS\_GenericSetServices, overriding
 ! only the run method. It also relies on MAPL\_Generic to
-! handle data services. 
+! handle data services.
 
 !EOP
 !
@@ -82,11 +82,11 @@ subroutine SetServices ( GC, RC )
 
     ! resource variables for offline GEOSldas; for documentation, see GEOSldas/src/Applications/LDAS_App/GEOSldas_LDAS.rc
     call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)    
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, CATCHCN_INTERNAL_STATE%CATCH_SPINUP,  Label="CATCHMENT_SPINUP:",  DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)    
+    VERIFY_(STATUS)
 
-    ! resource variables from GEOS_SurfaceGridComp.rc    
+    ! resource variables from GEOS_SurfaceGridComp.rc
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
@@ -100,6 +100,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%N_CONST_LAND4SNWALB, Label='N_CONST_LAND4SNWALB:', _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%RUN_IRRIG, Label='RUN_IRRIG:', _RC)
     call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%PRESCRIBE_DVG, Label='PRESCRIBE_DVG:', _RC)
+    call ESMF_ConfigSetAttribute(CF, value=CATCHCN_INTERNAL_STATE%SNOW_ALBEDO_INFO, Label='SNOW_ALBEDO_INFO:', _RC)
     call MAPL_Set (MAPL, CF=CF, _RC)
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=2, RC=STATUS)
@@ -111,10 +112,10 @@ subroutine SetServices ( GC, RC )
     endif
     if ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
-       VERIFY_(STATUS)       
+       VERIFY_(STATUS)
     else if ( LSM_CHOICE == 3 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM45'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
-       VERIFY_(STATUS)       
+       VERIFY_(STATUS)
     else
        _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")
     endif
@@ -146,7 +147,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'PS'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
 
     VERIFY_(STATUS)
 
@@ -156,7 +157,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'TA'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
 
     VERIFY_(STATUS)
 
@@ -166,7 +167,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'QA'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -175,7 +176,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'UU'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
@@ -202,7 +203,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'PCU'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -211,7 +212,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'PLS'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -220,7 +221,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'SNO'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -230,9 +231,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
-    
+
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'freezing_rain_fall'          ,&
          UNITS              = 'kg m-2 s-1'                  ,&
@@ -240,7 +241,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
-    
+
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -249,16 +250,16 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DRPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -267,7 +268,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -276,7 +277,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -285,7 +286,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DRUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -294,7 +295,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DFUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -303,7 +304,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'LWDNSRF'                     ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -312,7 +313,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'ALW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -321,7 +322,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'BLW'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     IF (CATCHCN_INTERNAL_STATE%ATM_CO2 == 4) THEN
@@ -341,7 +342,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'LAI'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -350,7 +351,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'GRN'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -359,7 +360,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'EVAP'                        ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -368,7 +369,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DEVAP'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -377,7 +378,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'SH'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -386,7 +387,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DSH'                         ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -395,7 +396,7 @@ subroutine SetServices ( GC, RC )
          SHORT_NAME         = 'DZ'                          ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
    call MAPL_AddImportSpec(GC                         ,&
@@ -404,7 +405,7 @@ subroutine SetServices ( GC, RC )
         SHORT_NAME         = 'ROOTL'                       ,&
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
-                                                 RC=STATUS  ) 
+                                                 RC=STATUS  )
    VERIFY_(STATUS)
 
    call MAPL_AddImportSpec(GC                         ,&
@@ -413,9 +414,9 @@ subroutine SetServices ( GC, RC )
         SHORT_NAME         = 'Z2CH'                        ,&
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
-                                                 RC=STATUS  ) 
+                                                 RC=STATUS  )
    VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'THATM',                       &
          LONG_NAME          = 'effective_surface_skin_temperature',&
@@ -433,7 +434,7 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone,            &
                                                   RC=STATUS  )
     VERIFY_(STATUS)
- 
+
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'CTATM',                       &
          LONG_NAME          = 'surface_exchange_coefficient_for_heat', &
@@ -459,15 +460,15 @@ subroutine SetServices ( GC, RC )
        DIMS       = MAPL_DimsTileOnly                         ,&
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
-    VERIFY_(STATUS)  
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                             ,&
-        SHORT_NAME         = 'NDVI'                        ,& 
+        SHORT_NAME         = 'NDVI'                        ,&
         LONG_NAME          = 'normalized_difference_vegetation_index' ,&
-        UNITS              = '1'                           ,&        
+        UNITS              = '1'                           ,&
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                         &
@@ -477,9 +478,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_DUDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_wet_depos_conv_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -487,9 +488,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_DUSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_wet_depos_ls_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -497,9 +498,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_DUWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_gravity_sett_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -507,9 +508,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_DUSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_dry_depos_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -517,9 +518,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_BCDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_wet_depos_conv_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -527,9 +528,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_BCSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_wet_depos_ls_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -537,9 +538,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_BCWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
- 
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_gravity_sett_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -547,9 +548,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_BCSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_dry_depos_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -557,9 +558,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_OCDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_wet_depos_conv_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -567,9 +568,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_OCSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_wet_depos_ls_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -577,9 +578,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_OCWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_gravity_sett_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -587,9 +588,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_OCSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_dry_depos_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -597,9 +598,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SUDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_wet_depos_conv_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -607,9 +608,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SUSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_wet_depos_ls_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -617,9 +618,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SUWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_gravity_sett_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -627,9 +628,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SUSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_dry_depos_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -637,9 +638,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SSDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_wet_depos_conv_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -647,9 +648,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SSSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_wet_depos_ls_scav_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -657,9 +658,9 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SSWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_gravity_sett_all_bins', &
          UNITS              = 'kg m-2 s-1',                  &
@@ -667,7 +668,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          UNGRIDDED_DIMS     = (/NUM_SSSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
-         RC=STATUS  ) 
+         RC=STATUS  )
     VERIFY_(STATUS)
 
   !  EXPORT STATE:
@@ -1069,7 +1070,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -1177,7 +1178,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"RUN1")
-    
+
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
     VERIFY_(STATUS)
 
