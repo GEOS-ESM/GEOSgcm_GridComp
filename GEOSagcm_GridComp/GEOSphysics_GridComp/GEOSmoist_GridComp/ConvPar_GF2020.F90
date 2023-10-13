@@ -1421,9 +1421,9 @@ CONTAINS
 !
 
      DO ii_plume = 1, maxiens
-       if(ii_plume == 1) plume = deep
-       if(ii_plume == 2) plume = mid
-       if(ii_plume == 3) plume = shal
+       if(ii_plume == 1) plume = shal
+       if(ii_plume == 2) plume = deep
+       if(ii_plume == 3) plume = mid
 
        cd_factor      =  cum_cd_factor      (plume)
        hei_down_land  =  cum_hei_down_land  (plume)
@@ -1584,9 +1584,9 @@ CONTAINS
                   ,Tpert_2d                         &
                   )
         ! Save ierr from this plume
-          DO i=its,itf
-            last_ierr(i) = max(last_ierr(i), ierr4d(i,j,plume))
-          ENDDO
+        ! DO i=its,itf
+        !   last_ierr(i) = max(last_ierr(i), ierr4d(i,j,plume))
+        ! ENDDO
 
      ENDDO !- plume
 
@@ -2242,7 +2242,7 @@ loop1:  do n=1,maxiens
 !--- define entrainment/detrainment profiles for updrafts
 !
       !- initial entrainment/detrainment
-      entr_rate(:)  = entr_rate_input*(1.0-xland)*3.0
+      entr_rate(:)  = entr_rate_input
       min_entr_rate = entr_rate_input*MIN_ENTR_FACTOR
       do k=kts,kte
         entr_rate_2d(:,k) = entr_rate(:)
