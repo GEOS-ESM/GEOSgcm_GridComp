@@ -2380,10 +2380,7 @@ contains
    real,  dimension(1)            :: ZONEAREA
    real                           :: ZC1, ZDEP, ALPHA, ZKL
    real,  dimension(1)            :: TKGND
-   real                           :: DUM
    real,  dimension(NUM_SNOW_LAYERS)    :: TKSNO
-
-   real                           :: WSS
 
    real,    allocatable           :: PRECIP  (:)
    real,    allocatable           :: RAIN    (:)
@@ -2907,8 +2904,6 @@ contains
     LHFO      = 0.0
     DTS       = 0.0
 
-    DUM       = 0.0
-
     ! just to be safe
     DRHO0     = 0.0
     EXCS      = 0.0
@@ -2926,7 +2921,6 @@ contains
     LNDNR     = 0.0
     LNDVF     = 0.0
     LNDNF     = 0.0
-    WSS       = 0.0
 
     debugzth = .false.
 
@@ -3095,7 +3089,7 @@ contains
           call SNOWRT(1,NUM_SNOW_LAYERS,MAPL_LANDICE,                          &
                    LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &
                    EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLW(k),            &
-                   DUM,HLWO(k),RADDN(k),ZC1,TOTDEPOS(k,:),WSS,                 &
+                   HLWO(k),RADDN(k),ZC1,TOTDEPOS(k,:),                         &
                    WESN(k,:),HTSN(k,:),SNDZ(k,:),                              &
                    FROZFRAC(k,:),TPSN(k,:), RCONSTIT(k,:,:), RMELT(k,:),       & 
                    AREASC(k),FR(K,N),PERC(k),FHGND(k),                         &

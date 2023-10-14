@@ -331,8 +331,8 @@ contains
          enew,eold,tdum,fnew,tnew,icedens,densfac,hnew,scale,t1ave,         &
          flxnet,fdum,dw,waterin,waterout,snowin,snowout, mtwt,              &
          waterbal,precision,flow,term,dz,w(0:N_snow),HTSPRIME,              &
-         wlossfrac,rho_fs
-    real :: excsdz, excswe, sndzsum, melti, mtwt0, mtwt1
+         wlossfrac
+    real :: excsdz, excswe, sndzsum, mtwt0
     
     real, dimension(size(wesn)  ) :: cmpc,dens
     real, dimension(size(wesn)  ) :: tksn
@@ -354,7 +354,7 @@ contains
     real,    dimension(N_constit)    :: flow_r,rconc
     
     integer :: i,izone,k
-    logical :: logdum,kflag
+    logical :: logdum
     
     snowd = sum(wesn)
     snowin = snowd
@@ -1071,16 +1071,16 @@ contains
 
     real,    dimension(N_snow,  2+N_Constit) :: h, s
     
-    integer                                  :: i, j, k, ilow, ihigh
+    integer                                  :: i, k, ilow, ihigh
     
-    real                                     :: areasc, dz, hnew
+    real                                     :: dz, hnew
     real                                     :: totalthick, tdum, fdum
     real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
     real,    dimension(N_snow)               :: thickness
 
-    logical                                  :: adjust_htsnn, update_hcorr
+    logical                                  :: adjust_htsnn, update_hcorr, kflag
 
-    logical, dimension(N_snow)               :: ice10, tzero0, kflag
+    logical, dimension(N_snow)               :: ice10, tzero0
     
     !**** thickness(1) : final thickness of topmost snow layer (m)
     !**** h            : array holding specific heat, water, and constituent contents
@@ -1283,7 +1283,7 @@ contains
           if(     ice10(i) .and. .not.tzero0(i) .and.                   &   ! if     before relayer: fully frozen     and below 0 deg
                (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.      !    and after  relayer: partially frozen and at    0 deg
           
-          if(kflag) then                                                    
+          if (kflag) then                                                    
              
              ! make fully frozen and at 0 deg
 
@@ -1626,16 +1626,15 @@ contains
     ! --------------------------------------
     ! Other variables as needed.  Includes:
     ! SSA: snow specific surface area
-    ! RHO_FS: fresh snow density
     ! EFFG: effective ice thickness (m)
     
-    INTEGER :: I,M,J,K,K2
+    INTEGER            :: I
     INTEGER, PARAMETER :: NTYPS_SIB=9
     
-    REAL :: rho_fs,DEGSZA,SD,SZASIN,COS50,SSALBV,SSALBN,AV,AN,   &
-         WSS, TS, FAC, FVEG, TOTDEP, SWE, DENS_EXC, AREASC,      &
-         DENSITY, ASNVDR_VEG, ASNNDR_VEG, ASNVDF_VEG,            &
-         ASNNDF_VEG, SUM1, SUM2, GK_B
+    REAL ::                                             &
+         FAC, FVEG, TOTDEP, SWE, DENS_EXC, AREASC,      &
+         DENSITY, ASNVDR_VEG, ASNNDR_VEG, ASNVDF_VEG,   &
+         ASNNDF_VEG, GK_B
     
     REAL, DIMENSION(NTYPS_SIB) :: SNWMID
     
@@ -1758,13 +1757,12 @@ contains
     ! RHO_FS: fresh snow density
     ! EFFG: effective ice thickness (m)
     
-    INTEGER :: I,M,J,K,K2
+    INTEGER :: M,K
     INTEGER, PARAMETER :: NTYPS_SIB=9
     
-    REAL :: rho_fs,DEGSZA,SD,SZASIN,COS50,SSALBV,SSALBN,AV,AN,   &
-         WSS, TS, FAC, FVEG, TOTDEP, SWE, DENS_EXC, AREASC,      &
-         DENSITY, ASNVDR_VEG, ASNNDR_VEG, ASNVDF_VEG,            &
-         ASNNDF_VEG, SUM1, SUM2
+    REAL :: rho_fs, DEGSZA, SZASIN, COS50,                 &
+         WSS, TS, FAC, TOTDEP, SWE, DENS_EXC, AREASC,      &
+         DENSITY, SUM1, SUM2
     
     REAL :: SZTH
     
@@ -1936,12 +1934,10 @@ contains
   SUBROUTINE WFSDEN(UM,RTS,RHO_FS)
     
     
-    REAL, INTENT(IN) :: UM,RTS
-    !      REAL, INTENT(IN) :: UM,RTS,TSNOW,RPRES,RQST
-    !      REAL, INTENT(IN),DIMENSION(3) :: TPSN
+    REAL, INTENT(IN)  :: UM,RTS
     REAL, INTENT(OUT) :: RHO_FS
-    REAL :: ARHOFS,V1,T2,SR,ESAT,TW,E
-    INTEGER :: IFG
+    REAL              :: ARHOFS
+    INTEGER           :: IFG
     
     !--------------------------------------------------------------!
     !          YOU CAN CHOOSE ONE OF 10 TYPES OF "RHOFS"           !

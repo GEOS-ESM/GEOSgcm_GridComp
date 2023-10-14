@@ -285,7 +285,7 @@
               dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
               QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
               EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
-              EVAPXS,SHFLUXXS,phi,rho_fs,WSS,sumdepth,                         &   
+              EVAPXS,SHFLUXXS,phi,rho_fs,sumdepth,                             &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
               mltwtr, wesnbot, dtss
 
@@ -835,7 +835,6 @@
 
       DO N=1,NCH
 
-        WSS    = UM(N)
         TS     = TM(N) 
         T1(1)  = TC1(N)-TF 
         T1(2)  = TC2(N)-TF 
@@ -917,13 +916,13 @@
 
         CALL StieglitzSnow_snowrt(                                             &
                    N_sm, N_snow, MAPL_Land,                                    &
-                   t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
-                   eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
-                   desdtc,hups,raddn,zc1, totdep1,  wss,                       &
-                   wesn,htsnn,sndz,fices,tpsn,RCONSTIT1, RMELT1,               &
-                   areasc,areasc0,pre,fhgnd,                                   &
-                   EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
-                   sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
+                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &
+                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &
+                   hups, raddn, zc1, totdep1,                                  &
+                   wesn, htsnn, sndz, fices, tpsn, RCONSTIT1, RMELT1,          &
+                   areasc, areasc0, pre, fhgnd,                                &
+                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &
+                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &   
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &
                    excs, drho0, wesnbot, tksno, dtss,                          &
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM )
