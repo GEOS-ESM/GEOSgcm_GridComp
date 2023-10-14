@@ -189,7 +189,7 @@ contains
   
   subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                     &
        t1, area, tkgnd, precip, snowf, ts, dts, eturb, dedtc, hsturb, dhsdtc,    &
-       hlwtc, dhlwtc, desdtc, hlwout, raddn, zc1, totdepos, wss,                 &
+       hlwtc, dhlwtc, hlwout, raddn, zc1, totdepos,                              &
        wesn, htsnn, sndz, fices, tpsn, rconstit, rmelt,                          &
        areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &
        sndzsc, wesnprec, sndzprec, sndz1perc,                                    &   
@@ -219,11 +219,9 @@ contains
     !  dhsdtc      : d(hsturb)/d(ts)  [W/m^2/K]
     !  hlwtc       : Emitted IR per unit area of snow  [W/m^2]
     !  dhlwtc      : d(hlwtc)/d(ts)  [W/m^2/K]
-    !  desdtc      : --- NOT USED ---
     !  raddn       : Net solar + incident terrestrial per unit area of snow [W/m^2]
     !  tkgnd       : Thermal diffusivity of soil in catchment zones [W/m/K]
     !  zc1         : Half-thickness (mid-point) of top soil layer [m]
-    !  wss         : --- NOT USED ---
     !***  Bin Zhao added *************************************************
     !  maxsndepth  :  Maximum snow depth beyond which snow gets thrown away
     !  rhofs       :  fresh snow density 
@@ -295,7 +293,7 @@ contains
     real,    dimension(N_zones),           intent(in )   :: t1, area, tkgnd
     real,    dimension(N_constit),         intent(in)    :: totdepos
     real,                                  intent(in )   :: ts, precip, snowf, dts, dedtc, raddn, hlwtc
-    real,                                  intent(in )   :: dhsdtc, desdtc, dhlwtc, eturb, hsturb, zc1, wss
+    real,                                  intent(in )   :: dhsdtc, dhlwtc, eturb, hsturb, zc1
 
     real,    dimension(N_snow),            intent(inout) :: wesn, htsnn, sndz
     real,    dimension(N_snow, N_constit), intent(inout) :: rconstit
