@@ -298,7 +298,8 @@ contains
     real,    dimension(N_snow),            intent(inout) :: wesn, htsnn, sndz
     real,    dimension(N_snow, N_constit), intent(inout) :: rconstit
 
-    real,    dimension(N_snow),            intent(out)   :: tpsn, fices, fhgnd
+    real,    dimension(N_snow),            intent(out)   :: tpsn, fices
+    real,    dimension(N_zones),           intent(out)   :: fhgnd
     real,                                  intent(out)   :: hlwout, lhflux, shflux, areasc0, evap, areasc, pre
     real,                                  intent(out)   :: hcorr
     real,    dimension(N_constit),         intent(out)   :: rmelt
