@@ -1066,7 +1066,7 @@ contains
     
     character(len=*), parameter              :: Iam = 'StieglitzSnow_relayer'
 
-    real,                                    :: thick_toplayer
+    real                                     :: thick_toplayer
     real,    dimension(N_snow-1)             :: thickdist
 
     real,    dimension(N_snow,  2+N_Constit) :: h, s
