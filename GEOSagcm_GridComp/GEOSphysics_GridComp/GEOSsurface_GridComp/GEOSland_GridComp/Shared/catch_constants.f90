@@ -181,7 +181,7 @@ contains
     write (logunit,*) 'CATCH_SNOW_MAXDEPTH        = ', CATCH_SNOW_MAXDEPTH    
     write (logunit,*) 'CATCH_DZTSURF              = ', CATCH_DZTSURF          
     write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT    
-    write (logunit,*) 'CATCH_SNOW_DZMAX           = ', CATCH_SNOW_DZMAX
+    write (logunit,*) 'CATCH_SNOW_DZPARAM         = ', CATCH_SNOW_DZPARAM
     write (logunit,*) 'CATCH_PHIGT                = ', CATCH_PHIGT         
     write (logunit,*) 'CATCH_ALHMGT               = ', CATCH_ALHMGT        
     write (logunit,*) 'CATCH_FSN                  = ', CATCH_FSN           
