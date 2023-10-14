@@ -24,7 +24,7 @@ module StieglitzSnow
   
   USE MAPL_BaseMod,      ONLY: MAPL_LANDICE
  
-  USE SurfParams,   ONLY: WEMIN, AICEV, AICEN
+  USE SurfParams,        ONLY: WEMIN, AICEV, AICEN
   
   implicit none
 
@@ -34,7 +34,6 @@ module StieglitzSnow
   public :: StieglitzSnow_calc_asnow       ! used by          Catchment[CN], LDAS
   public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment[CN], LDAS
   public :: StieglitzSnow_echo_constants   ! used by                         LDAS
-  public :: StieglitzSnow_targetthick_land ! used by          Catchment[CN], LDAS, land-atm DAS
   public :: StieglitzSnow_relayer          ! used by                               land-atm DAS
 
   public :: StieglitzSnow_RHOMA            ! used by                               land-atm DAS
@@ -61,8 +60,6 @@ module StieglitzSnow
   real,          parameter :: StieglitzSnow_RHOMA  = 500.    ! kg/m^3  maximum snow density
   real,          parameter :: StieglitzSnow_MINSWE = 0.013   ! kg/m^2  min SWE to avoid immediate melt
   real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
-
-  real, private, parameter :: DZ1MAX               = 0.08    ! m       target thickness of top snow layer for land (Catch)
 
   real, private, parameter :: SNWALB_VISMIN        = 0.5    
   real, private, parameter :: SNWALB_NIRMIN        = 0.3
@@ -190,14 +187,14 @@ module StieglitzSnow
   
 contains
   
-  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                            &
-       t1,area,tkgnd,precip,snowf,ts,dts, eturb,dedtc,hsturb,dhsdtc,      &
-       hlwtc,dhlwtc,desdtc,hlwout,raddn,zc1,totdepos,wss,                 &
-       wesn,htsnn,sndz,fices,tpsn, rconstit,rmelt,                        &
-       areasc,areasc0,pre,fhgnd,evap,shflux,lhflux,hcorr,ghfluxsno        &
-       , sndzsc, wesnprec, sndzprec,  sndz1perc                           &   
-       , wesnperc, wesndens, wesnrepar, mltwtr                            &   
-       , excs, drho0, wesnbot, tksno, dtss, maxsndepth, rhofs,            &
+  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                     &
+       t1, area, tkgnd, precip, snowf, ts, dts, eturb, dedtc, hsturb, dhsdtc,    &
+       hlwtc, dhlwtc, desdtc, hlwout, raddn, zc1, totdepos, wss,                 &
+       wesn, htsnn, sndz, fices, tpsn, rconstit, rmelt,                          &
+       areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &
+       sndzsc, wesnprec, sndzprec, sndz1perc,                                    &   
+       wesnperc, wesndens, wesnrepar, mltwtr,                                    &   
+       excs, drho0, wesnbot, tksno, dtss, maxsndepth, rhofs,                     &
        targetthick)
     
     !*********************************************************************
@@ -206,29 +203,31 @@ contains
     !*********
     ! INPUTS:
     !*********
-    !  N_zones   : number of zones in the horizontal dimension (eg, 3 for Catchment, 1 for LandIce)
-    !  N_snow : number of snow layers  
-    !  N_constit : Number of constituent tracers in snow
-    !  tileType : surface type of the tile
-    !  t1     : Temperature of catchment zones  [C]
-    !  ts     : Air temperature [K]
-    !  area   : Fraction of snow-free area in each catchment zone [0-1]
-    !  precip : Precipitation (Rain+snowfall) [kg/m^2/s == mm/s]
-    !  snowf  : Snowfall per unit area of catchment [kg/m^2/s == mm/s]
-    !  dts    : Time step  [s]
-    !  eturb  : Evaporation per unit area of snow [kg/m^2/s == mm/s]
-    !  dedtc  : d(eturb)/d(ts) [kg/m^2/s/K]
-    !  hsturb : Sensible heat flux per unit area of snow  [W/m^2]
-    !  dhsdtc : d(hsturb)/d(ts)  [W/m^2/K]
-    !  hlwtc  : Emitted IR per unit area of snow  [W/m^2]
-    !  dhlwtc : d(hlwtc)/d(ts)  [W/m^2/K]
-    !  raddn  : Net solar + incident terrestrial per unit area of snow [W/m^2]
-    !  tkgnd  : Thermal diffusivity of soil in catchment zones [W/m/K]
-    !  zc1    : Half-thickness of top soil layer [m]
+    !  N_zones     : number of zones in the horizontal dimension (eg, 3 for Catchment, 1 for LandIce)
+    !  N_snow      : number of snow layers  
+    !  N_constit   : Number of constituent tracers in snow
+    !  tileType    : surface type of the tile
+    !  t1          : Temperature of catchment zones  [C]
+    !  ts          : Air temperature [K]
+    !  area        : Fraction of snow-free area in each catchment zone [0-1]
+    !  precip      : Precipitation (Rain+snowfall) [kg/m^2/s == mm/s]
+    !  snowf       : Snowfall per unit area of catchment [kg/m^2/s == mm/s]
+    !  dts         : Time step  [s]
+    !  eturb       : Evaporation per unit area of snow [kg/m^2/s == mm/s]
+    !  dedtc       : d(eturb)/d(ts) [kg/m^2/s/K]
+    !  hsturb      : Sensible heat flux per unit area of snow  [W/m^2]
+    !  dhsdtc      : d(hsturb)/d(ts)  [W/m^2/K]
+    !  hlwtc       : Emitted IR per unit area of snow  [W/m^2]
+    !  dhlwtc      : d(hlwtc)/d(ts)  [W/m^2/K]
+    !  desdtc      : --- NOT USED ---
+    !  raddn       : Net solar + incident terrestrial per unit area of snow [W/m^2]
+    !  tkgnd       : Thermal diffusivity of soil in catchment zones [W/m/K]
+    !  zc1         : Half-thickness (mid-point) of top soil layer [m]
+    !  wss         : --- NOT USED ---
     !***  Bin Zhao added *************************************************
-    !  maxsndepth :  Maximum snow depth beyond which snow gets thrown away
-    !  rhofs      :  fresh snow density 
-    !  targetthick:  the target thickness distribution relayer redistribute mass 
+    !  maxsndepth  :  Maximum snow depth beyond which snow gets thrown away
+    !  rhofs       :  fresh snow density 
+    !  targetthick :  the target thickness distribution relayer redistribute mass 
     !                and energy to; currently its value is surface type dependent           
     !                for catchment, the 1st array element the target thickness
     !                               the rest define a sigma distribution;
@@ -236,42 +235,43 @@ contains
     !*********
     ! UPDATES:
     !*********
-    !  wesn   : Layer water contents per unit area of catchment [kg/m^2]
-    !  htsnn  : Layer heat contents relative to liquid water at 0 C [J/m^2]
-    !  sndz   : Layer depths [m]
-    !  rconstit :  Mass of constituents in snow layer [kg] (i.e., [kg m-2])
-    !  rmelt  : Flushed mass amount of constituents from the bottom snow layer [kg m-2 s-1 (kg/m^2/s)]
+    !  wesn        : Layer water contents per unit area of catchment [kg/m^2]
+    !  htsnn       : Layer heat contents relative to liquid water at 0 C [J/m^2]
+    !  sndz        : Layer depths [m]
+    !  rconstit    :  Mass of constituents in snow layer [kg] (i.e., [kg m-2])
+    !  rmelt       : Flushed mass amount of constituents from the bottom snow layer [kg m-2 s-1 (kg/m^2/s)]
     !*********
     ! OUTPUTS: 
     !*********
-    !  tpsn   : Layer temperatures [C]
-    !  fices  : Layer frozen fraction [0-1]
-    !  areasc : Areal snow coverage at beginning of step [0-1]
-    !  areasc0: Areal snow coverage at end of step [0-1]
-    !  pre    : Liquid water outflow from snow base [kg/m^2/s]
-    !  fhgnd  : Heat flux at snow base at catchment zones  [W/m^2]
-    !  hlwout : Final emitted IR flux per unit area of snow [W/m^2]
-    !  lhflux : Final latent heat flux per unit area of snow [W/m^2]
-    !  shflux : Final sensible heat flux per unit area of snow   [W/m^2]
-    !  evap   : Final evaporation per unit area of snow   [kg/m^2/s]
+    !  tpsn        : Layer temperatures [C]
+    !  fices       : Layer frozen fraction [0-1]
+    !  areasc      : Areal snow coverage at beginning of step [0-1]
+    !  areasc0     : Areal snow coverage at end of step [0-1]
+    !  pre         : Liquid water outflow from snow base [kg/m^2/s]
+    !  fhgnd       : Heat flux at snow base at catchment zones  [W/m^2]
+    !  hlwout      : Final emitted IR flux per unit area of snow [W/m^2]
+    !  lhflux      : Final latent heat flux per unit area of snow [W/m^2]
+    !  shflux      : Final sensible heat flux per unit area of snow   [W/m^2]
+    !  evap        : Final evaporation per unit area of snow   [kg/m^2/s]
     !***  Bin Zhao added *************************************************
-    !  sndzsc    :  top layer thickness change due to sublimation/condensation
-    !  wesnprec  :  top layer water content change due to precip (different from precip itself)
-    !  sndzprec  :  top layer thickness change due to precip 
-    !  sndz1perc :  top layer thickness change due to percolation
-    !  wesnperc  :  layer water content change due to percolation
-    !  wesndens  :  layer water content change due to densification
-    !  wesnrepar :  layer water content change due to relayer
-    !  mltwtr    :  total melt water production rate
-    !  excs      :  frozen part of water content from densification excess
-    !  drho0     :  layer density change due to densification
-    !  wesnbot   :  excessive water content due to thickness exceeding maximum depth
-    !  tksno     :  layer conductivity
-    !  dtss      :  top layer temperature change
-    !*********************************************************************
+    !  sndzsc      :  top layer thickness change due to sublimation/condensation
+    !  wesnprec    :  top layer water content change due to precip (different from precip itself)
+    !  sndzprec    :  top layer thickness change due to precip 
+    !  sndz1perc   :  top layer thickness change due to percolation
+    !  wesnperc    :  layer water content change due to percolation
+    !  wesndens    :  layer water content change due to densification
+    !  wesnrepar   :  layer water content change due to relayer
+    !  mltwtr      :  total melt water production rate
+    !  excs        :  frozen part of water content from densification excess
+    !  drho0       :  layer density change due to densification
+    !  wesnbot     :  excessive water content due to thickness exceeding maximum depth
+    !  tksno       :  layer conductivity
+    !  dtss        :  top layer temperature change
+    !
+    !******************************************************************************
     ! NOTA:  By convention, wesn is representative for a catchment area
-    ! equal to 1 whereas sndz is relative to the area covered by snow only.
-    !*********************************************************************
+    !        equal to 1 whereas sndz is relative to the area covered by snow only.
+    !******************************************************************************
     
     implicit none
     
@@ -290,37 +290,44 @@ contains
     real, parameter :: snfr   = 0.01       !  holding capacity
     real, parameter :: small  = 1.e-6      !  small number 
 
-    integer, intent(in)   :: N_zones, N_snow, tileType
-    real,    intent(in )  :: t1(N_zones),area(N_zones),tkgnd(N_zones)
-    real,    intent(in)   :: totdepos(N_constit)
-    real,    intent(in )  :: ts,precip,snowf,dts,dedtc,raddn,hlwtc
-    real,    intent(in )  :: dhsdtc,desdtc,dhlwtc,eturb,hsturb,zc1,wss
-    real,    intent(inout):: wesn(N_snow),htsnn(N_snow),sndz(N_snow)
-    real,    intent(inout):: rconstit(N_snow,N_constit)
-    real,    intent(out)  :: tpsn(N_snow),fices(N_snow),fhgnd(N_zones)
-    real,    intent(out)  :: hlwout,lhflux,shflux,areasc0,evap,areasc,pre
-    real,    intent(out)  :: rmelt(N_constit)
-    real,    intent(out)  :: ghfluxsno
-    
-    real,    intent(out)  ::  wesnprec
-    real,    intent(out)  :: sndzsc, sndzprec
-    real,    intent(out)  :: sndz1perc
-    real,    intent(out)  :: wesnperc(N_snow)
-    real,    intent(out)  :: wesndens(N_snow)
-    real,    intent(out)  :: wesnrepar(N_snow)
-    real,    intent(out)  :: mltwtr
-    real,    intent(out)  :: excs(N_snow)
-    real,    intent(out)  :: drho0(N_snow)
-    real,    intent(out)  :: wesnbot
-    real,    intent(out)  :: tksno(N_snow)
-    real,    intent(out)  :: dtss
-    real,    intent(in)   :: maxsndepth
-    real,    intent(in)   :: rhofs
-    real,    intent(in)   :: targetthick(N_snow)
+    integer,                               intent(in)    :: N_zones, N_snow, tileType
 
+    real,    dimension(N_zones),           intent(in )   :: t1, area, tkgnd
+    real,    dimension(N_constit),         intent(in)    :: totdepos
+    real,                                  intent(in )   :: ts, precip, snowf, dts, dedtc, raddn, hlwtc
+    real,                                  intent(in )   :: dhsdtc, desdtc, dhlwtc, eturb, hsturb, zc1, wss
+
+    real,    dimension(N_snow),            intent(inout) :: wesn, htsnn, sndz
+    real,    dimension(N_snow, N_constit), intent(inout) :: rconstit
+
+    real,    dimension(N_snow),            intent(out)   :: tpsn, fices, fhgnd
+    real,                                  intent(out)   :: hlwout, lhflux, shflux, areasc0, evap, areasc, pre
+    real,                                  intent(out)   :: hcorr
+    real,    dimension(N_constit),         intent(out)   :: rmelt
+    real,                                  intent(out)   :: ghfluxsno
+    
+    real,                                  intent(out)   :: wesnprec
+    real,                                  intent(out)   :: sndzsc, sndzprec
+    real,                                  intent(out)   :: sndz1perc
+    real,    dimension(N_snow),            intent(out)   :: wesnperc
+    real,    dimension(N_snow),            intent(out)   :: wesndens
+    real,    dimension(N_snow),            intent(out)   :: wesnrepar
+    real,                                  intent(out)   :: mltwtr
+    real,    dimension(N_snow),            intent(out)   :: excs
+    real,    dimension(N_snow),            intent(out)   :: drho0
+    real,                                  intent(out)   :: wesnbot
+    real,    dimension(N_snow),            intent(out)   :: tksno
+    real,                                  intent(out)   :: dtss
+
+    real,                                  intent(in)    :: maxsndepth
+    real,                                  intent(in)    :: rhofs
+    real,    dimension(N_snow),            intent(in)    :: targetthick
+
+    ! ----------------------------------------
+    !
     ! Locals
     
-    real :: tsx, mass,snowd,rainf,denom,alhv,lhturb,dlhdtc,hcorr,           &
+    real :: tsx, mass,snowd,rainf,denom,alhv,lhturb,dlhdtc,                 &
          enew,eold,tdum,fnew,tnew,icedens,densfac,hnew,scale,t1ave,         &
          flxnet,fdum,dw,waterin,waterout,snowin,snowout, mtwt,              &
          waterbal,precision,flow,term,dz,w(0:N_snow),HTSPRIME,              &
@@ -342,9 +349,7 @@ contains
     
     !============================================================================================
 
-    logical, dimension(size(wesn)  ) :: ice1, tzero, ice10, tzero0
-    real                             :: topthick
-    real,    dimension(size(wesn)-1) :: thickdist
+    logical, dimension(size(wesn)  ) :: ice1, tzero
     real,    dimension(size(wesn)  ) :: dens0
     real,    dimension(N_constit)    :: flow_r,rconc
     
@@ -424,20 +429,14 @@ contains
 
           hcorr  = hcorr - tsx*snowf           ! randy
           
-          select case (tileType)
-          case (MAPL_LANDICE)
-             call FindTargetThickDist_Landice(N_snow, sndz, targetthick, topthick, thickdist)
-          case default
-             topthick  = targetthick(1)
-             thickdist = targetthick(2:N_snow)    
-          end select
-          
           ! Add constituent to top snow layer, in area covered by snow.
           do k=1,N_constit
              rconstit(1,k)=rconstit(1,k)+areasc0*totdepos(k)*dts
           enddo
-          
-          call StieglitzSnow_relayer( N_snow, N_constit, topthick, thickdist, &
+
+          ! call relayer without heat content adjustment
+
+          call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick, &
                htsnn, wesn, sndz, rconstit )
           
           call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
@@ -905,62 +904,13 @@ contains
     !**** Restore layers to sigma values.
     
     wesnrepar = wesn
-    
-    do i=1,N_snow
-       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), .true. )
-    enddo
-    
-    select case (tileType)
-    case (MAPL_LANDICE)
-       call FindTargetThickDist_Landice(N_snow, sndz, targetthick, topthick, thickdist)
-    case default
-       topthick  = targetthick(1)
-       thickdist = targetthick(2:N_snow)     
-    end select
-    
-    call StieglitzSnow_relayer( N_snow, N_constit, topthick, thickdist, &
-         htsnn, wesn, sndz, rconstit )
+        
+    ! call relayer with adjustment of heat content and hcorr accounting
+
+    call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick, &
+         htsnn, wesn, sndz, rconstit, tpsn, fices, dts, hcorr  )
     
     wesnrepar = wesn - wesnrepar
-    
-    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
-    
-    !**** Check that (ice10,tzero) conditions are conserved through
-    !**** relayering process (or at least that (fices,tpsn) conditions don't 
-    !**** go through the (1,0) point); excess goes to hcorr.
-    
-    ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
-    !   before and after relayer; in select cases, adjust snow heat content and temp
-    !
-    ! NOTE: logicals before relayer are computed with    "buffer" (use_threshold_fac=.true. )
-    !       reals    after  relayer are computed without "buffer" (use_threshold_fac=.false.)
-
-    do i=1,N_snow                                                          
-
-       kflag = .false.                                                   ! default: do nothing
-
-       ! set klfag to .true. under certain conditions:
-
-       if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
-            (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
-       
-       if(.not.ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: partially frozen and at    0 deg
-            (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.      !    and after  relayer: fully     frozen and below 0 deg
-
-       if(     ice10(i) .and. .not.tzero0(i) .and.                   &   ! if     before relayer: fully frozen     and below 0 deg
-            (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.      !    and after  relayer: partially frozen and at    0 deg
-       
-       ! if needed, adjust snow heat content, frozen fraction, and temperature
-       
-       if(kflag) then
-          hnew    = -alhm*wesn(i)
-          hcorr   = hcorr+(htsnn(i)-hnew)/dts                            ! add "excess" heat content to hcorr
-          htsnn(i)= hnew
-          tpsn(i) = 0.
-          fices(i)= 1.
-       endif
-       
-    enddo
     
     !**** Reset fractional area coverage.
     
@@ -1082,35 +1032,55 @@ contains
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_relayer(N_snow, N_constit, thick_toplayer, thickdist, & 
-       htsnn, wesn, sndz, rconstit )
+  subroutine StieglitzSnow_relayer(N_snow, N_constit, tileType, targetthick, &
+       htsnn, wesn, sndz, rconstit, tpsn, fices, dts, hcorr )
     
     ! relayer for land and landice tiles
 
-    ! thick_toplayer: target thickness of topmost snow layer (m);
-    !        NOTE: thickness(1) [see below] is the final thickness of the topmost layer (m)
-    ! thickdist: the assigned (final) distribution of thickness in layers
-    !        2 through N_snow, in terms of fraction
-    
+    ! revised to included processing of target thickness parameters and 
+    !   optional snow heat content adjustment
+    !   
+    ! optional arguments        action
+    ! -----------------------------------------------------------
+    ! none                      original relayer
+    ! tpsn, fices               + adjust heat content (originally done externally)
+    ! tpsn, fices, dts, hcorr   + account for heat content adjustment in correction term
+
     implicit none
     
-    integer, intent(in)                         :: N_snow, N_constit
+    integer, intent(in)                                 :: N_snow, N_constit, tileType
+
+    real,    intent(in),    dimension(N_snow)           :: targetthick
+
+    real,    intent(inout), dimension(N_snow)           :: htsnn, wesn, sndz
+    real,    intent(inout), dimension(N_snow,N_constit) :: rconstit
     
-    real,    intent(in)                         :: thick_toplayer
-    real,    intent(in),    dimension(N_snow-1) :: thickdist
-    real,    intent(inout)                      :: htsnn(N_snow), wesn(N_snow), sndz(N_snow)
-    real,    intent(inout)                      :: rconstit(N_snow,N_constit)
-    
+    real,    intent(out),   dimension(N_snow), optional :: tpsn, fices
+
+    real,    intent(in),                       optional :: dts
+    real,    intent(inout),                    optional :: hcorr
+
+    ! ----------------------------
+    !
     ! local variables:
     
-    real,    dimension(size(sndz),2+N_Constit)  :: h, s
+    character(len=*), parameter              :: Iam = 'StieglitzSnow_relayer'
+
+    real,                                    :: thick_toplayer
+    real,    dimension(N_snow-1)             :: thickdist
+
+    real,    dimension(N_snow,  2+N_Constit) :: h, s
     
-    integer                                     :: i, j, k, ilow, ihigh
+    integer                                  :: i, j, k, ilow, ihigh
     
-    real                                        :: areasc, dz
-    real                                        :: totalthick
-    real, dimension(size(sndz))                 :: tol_old, bol_old, tol_new, bol_new
-    real, dimension(size(sndz))                 :: thickness
+    real                                     :: areasc, dz, hnew
+    real                                     :: totalthick
+    real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
+    real,    dimension(N_snow)               :: thickness, tdum, fdum
+
+    logical                                  :: adjust_htsnn, update_hcorr
+
+    logical, dimension(N_snow)               :: ice10, tzero0
     
     !**** thickness(1) : final thickness of topmost snow layer (m)
     !**** h            : array holding specific heat, water, and constituent contents
@@ -1127,10 +1097,73 @@ contains
     !****                  relayering
     !**** bol_old(i)   : depth (from surface) of the bottom of layer i, after        &
     !****                  relayering
+   
+    ! ---------------------------------------
+    !
+    ! process optional arguments (required to maintain 0-diff; reichle 13 Oct 2023)
     
-    !if(sum(sndz) .lt. thick_toplayer) &
-    !    write(*,*) 'Snow layer thickness inconsistency'
+    if     ( present(tpsn) .and. present(fices) ) then
+       
+       adjust_htsnn = .true.
+       
+    elseif ( present(tpsn) .or.  present(fices) ) then
+       
+       write(*,*) Iam, '(): bad optional arguments (tpsn, fices)'
+       stop
+       
+    else
+       
+       adjust_htsnn = .false.
+       
+    end if
     
+    if (adjust_htsnn) then
+       
+       if     ( present(dts) .and. present(hcorr) ) then
+          
+          update_hcorr = .true.
+          
+       elseif ( present(dts) .or.  present(hcorr) ) then
+          
+          write(*,*) Iam, '(): bad optional arguments (dts, hcorr)'
+          stop
+          
+       else
+          
+          update_hcorr = .false.
+          
+       end if
+       
+       ! determine frozen fraction and temperature before relayering
+       
+       do i=1,N_snow
+          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), .true. )
+       enddo
+
+    end if
+    
+    ! process "targetthick" snow depth parameters:
+    !
+    ! targetthick:     contents depend on tileType (Catch[CN] or Landice)
+    !
+    ! thick_toplayer:  *target* thickness of top snow layer (m);
+    !                    NOTE: thickness(1) [see below] is final thickness of top layer (m)
+    !
+    ! thickdist:       assigned (final) distribution of thickness in layers 2:N_snow,
+    !                    in terms of fraction
+    
+    select case (tileType)
+    case (MAPL_LANDICE)
+       call FindTargetThickDist_Landice(N_snow, sndz, targetthick, thick_toplayer, thickdist)
+    case default
+       thick_toplayer  = targetthick(1)
+       thickdist       = targetthick(2:N_snow)    
+    end select
+
+    ! ----------------------------------------------------------------------------------------
+    !
+    ! start of original relayer()
+
     totalthick   = sum(sndz)     ! total snow depth
 
     ! make sure thickness of top layer does not exceed total thickness
@@ -1216,6 +1249,58 @@ contains
        rconstit(:,k)=s(:,2+k)
     enddo
     sndz=thickness
+    
+    ! end of original relayer()
+    !
+    ! ----------------------------------------------------------------------------------------
+    
+    if (adjust_htsnn) then
+       
+       call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
+       
+       !**** Check that (ice10,tzero) conditions are conserved through
+       !**** relayering process (or at least that (fices,tpsn) conditions don't 
+       !**** go through the (1,0) point); excess goes to hcorr.
+       
+       ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
+       !   before and after relayer; in select cases, adjust snow heat content and temp
+       !
+       ! NOTE: logicals before relayer are computed with    "buffer" (use_threshold_fac=.true. )
+       !       reals    after  relayer are computed without "buffer" (use_threshold_fac=.false.)
+       
+       do i=1,N_snow                                                          
+          
+          kflag = .false.                                                   ! default: do nothing
+          
+          ! set klfag to .true. under certain conditions:
+          
+          if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
+               (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
+          
+          if(.not.ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: partially frozen and at    0 deg
+               (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.      !    and after  relayer: fully     frozen and below 0 deg
+          
+          if(     ice10(i) .and. .not.tzero0(i) .and.                   &   ! if     before relayer: fully frozen     and below 0 deg
+               (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.      !    and after  relayer: partially frozen and at    0 deg
+          
+          if(kflag) then                                                    
+             
+             ! make fully frozen and at 0 deg
+
+             hnew    = -alhm*wesn(i)
+             
+             ! add "excess" heat content to hcorr
+             
+             if (update_hcorr) hcorr = hcorr+(htsnn(i)-hnew)/dts          
+
+             htsnn(i)= hnew
+             tpsn(i) = 0.
+             fices(i)= 1.
+          endif
+       
+       enddo
+    
+    end if  ! (adjust_htsnn)
     
     return
     
@@ -1444,32 +1529,6 @@ contains
   end subroutine StieglitzSnow_calc_asnow_3
 
   ! ********************************************************************
-  
-  subroutine StieglitzSnow_targetthick_land( N_snow, targetthick )
-       
-    ! get snow layer target thicknesses to be used with relayer for *land* (Catch)
-    !
-    ! for landice, see FindTargetThickDist_Landice()
-    !
-    ! reichle, 28 Sep 2023
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                    intent(in)  :: N_snow
-    
-    real,    dimension(N_snow), intent(out) :: targetthick
-    
-    ! -----------------------------------------------------------
-    
-    targetthick(1)        = DZ1MAX
-    
-    targetthick(2:N_snow) = 1./(N_snow-1.)
-    
-  end subroutine StieglitzSnow_targetthick_land
-  
-  ! **********************************************************************
   
   SUBROUTINE StieglitzSnow_trid(X,DD,D,RD,B,N)
       IMPLICIT NONE
@@ -2088,7 +2147,6 @@ contains
     write (logunit,*) 'WEMIN                = ', WEMIN
     write (logunit,*) 'StieglitzSnow_CPW    = ', StieglitzSnow_CPW
     write (logunit,*) 'StieglitzSnow_RHOMA  = ', StieglitzSnow_RHOMA    
-    write (logunit,*) 'DZ1MAX               = ', DZ1MAX   
     write (logunit,*) 
     write (logunit,*) 'SNWALB_VISMIN        = ', SNWALB_VISMIN
     write (logunit,*) 'SNWALB_NIRMIN        = ', SNWALB_NIRMIN

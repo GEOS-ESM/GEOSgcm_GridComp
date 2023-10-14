@@ -33,7 +33,7 @@ MODULE lsm_routines
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
-       RHOFS             => CATCH_SNWALB_RHOFS,  &
+       RHOFS             => CATCH_SNOW_RHOFS,    &
        DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &

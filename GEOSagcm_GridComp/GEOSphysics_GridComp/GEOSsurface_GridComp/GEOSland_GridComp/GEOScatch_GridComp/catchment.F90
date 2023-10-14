@@ -81,9 +81,9 @@
       USE CATCH_CONSTANTS,   ONLY:                   &
            N_SNOW            => CATCH_N_SNOW,        &
            N_GT              => CATCH_N_GT,          &
-           RHOFS             => CATCH_SNWALB_RHOFS,  &
-           MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-           SCONST            => CATCH_SCONST,        &
+           CATCH_SNOW_RHOFS,                         &
+           CATCH_SNOW_MAXDEPTH,                      &
+           CATCH_SNOW_DZPARAM,                       &
            CSOIL_1           => CATCH_CSOIL_1,       &
            N_sm              => CATCH_N_ZONES,       &
            SATCAPFR          => CATCH_SATCAPFR,      &
@@ -109,8 +109,7 @@
            StieglitzSnow_snowrt,                     & 
            StieglitzSnow_calc_asnow,                 &
            StieglitzSnow_calc_tpsnow,                &
-           N_constit,                                &
-           StieglitzSnow_targetthick_land
+           N_constit
       
       IMPLICIT NONE
 
@@ -266,7 +265,7 @@
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
 
-      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices, targetthick, &
+      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices,               &
              wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
 
       REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
@@ -572,36 +571,36 @@
         RUNSRF(N)=0.
 
 
-!****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
-        IF(ITYP(N) .EQ. 9) THEN
-
-          ! This block of the code should no longer be used.
-          ! If it is, Randy wants to know about it.
-          ! reichle+koster, 12 Aug 2014
-          write (*,*) 'catchment() encountered ityp==9. STOPPING.'
-          stop 
-
-          if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
-              TSN1=tc1(n)-TF
-              TSN2=tc1(n)-TF
-              TSN3=tc1(n)-TF
-            else
-              TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
-              TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
-              TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
-            endif
-          WESNN(1,N)=.1
-          WESNN(2,N)=.2
-          WESNN(3,N)=.1
-          HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
-          HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
-          HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
-          SNDZN(1,N)=WESNN(1,N)/.9
-          SNDZN(2,N)=WESNN(2,N)/.9
-          SNDZN(3,N)=WESNN(3,N)/.9
-          POTFRC(N)=1.
-
-          ENDIF
+!! !****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
+!!         IF(ITYP(N) .EQ. 9) THEN
+!! 
+!!           ! This block of the code should no longer be used.
+!!           ! If it is, Randy wants to know about it.
+!!           ! reichle+koster, 12 Aug 2014
+!!           write (*,*) 'catchment() encountered ityp==9. STOPPING.'
+!!           stop 
+!! 
+!!           if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
+!!               TSN1=tc1(n)-TF
+!!               TSN2=tc1(n)-TF
+!!               TSN3=tc1(n)-TF
+!!             else
+!!               TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
+!!               TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
+!!               TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
+!!             endif
+!!           WESNN(1,N)=.1
+!!           WESNN(2,N)=.2
+!!           WESNN(3,N)=.1
+!!           HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
+!!           HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
+!!           HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
+!!           SNDZN(1,N)=WESNN(1,N)/.9
+!!           SNDZN(2,N)=WESNN(2,N)/.9
+!!           SNDZN(3,N)=WESNN(3,N)/.9
+!!           POTFRC(N)=1.
+!! 
+!!           ENDIF
 
 !****   RESET LAKE VARIABLES
         IF(ITYP(N) .EQ. 10) THEN
@@ -916,8 +915,6 @@
 
         sumdepth=sum(sndz)
 
-        call StieglitzSnow_targetthick_land( N_snow, targetthick )
-
         CALL StieglitzSnow_snowrt(                                             &
                    N_sm, N_snow, MAPL_Land,                                    &
                    t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
@@ -929,7 +926,7 @@
                    sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &
                    excs, drho0, wesnbot, tksno, dtss,                          &
-                   maxsndepth, rhofs, targetthick )
+                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM )
 
         FICESOUT(:,N)  = fices
 

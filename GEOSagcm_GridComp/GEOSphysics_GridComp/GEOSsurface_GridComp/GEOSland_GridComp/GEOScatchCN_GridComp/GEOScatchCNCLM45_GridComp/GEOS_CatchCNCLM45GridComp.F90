@@ -50,10 +50,10 @@ module GEOS_CatchCNCLM45GridCompMod
   USE CATCH_CONSTANTS, ONLY :                 &
        N_GT           => CATCH_N_GT,          &
        N_SNOW         => CATCH_N_SNOW,        &
-       RHOFS          => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       RHOFS          => CATCH_SNOW_RHOFS,    &
+       SNWALB_VISMAX  => CATCH_SNOW_VISMAX,   &
+       SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,   &
+       SLOPE          => CATCH_SNOW_SLOPE,    &
        PEATCLSM_POROS_THRESHOLD
 
   USE  clm_varpar, ONLY :                     &

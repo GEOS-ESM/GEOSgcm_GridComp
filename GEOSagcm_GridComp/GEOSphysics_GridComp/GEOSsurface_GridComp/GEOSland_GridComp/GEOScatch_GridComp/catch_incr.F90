@@ -6,10 +6,15 @@ module catch_incr
   ! reichle+csdraper,  3 Apr 2012
   ! reichle,          29 Sep 2023 - added snow checks 
 
+  use MAPL_BaseMod,      ONLY:               &
+       MAPL_Land
+
+
   use catch_constants, ONLY:                 &
        N_SNOW        => CATCH_N_SNOW,        &
        N_GT          => CATCH_N_GT,          &
-       CATCH_SNWALB_RHOFS
+       CATCH_SNOW_DZPARAM,                   &
+       CATCH_SNOW_RHOFS
 
   use lsm_routines,    ONLY: catch_calc_soil_moist
   
@@ -167,7 +172,7 @@ contains
 
     real                              :: asnow_tmp, snow_dens
 
-    real, dimension(N_snow)           :: targetthick   ! for snow model relayer
+    real, dimension(N_snow)           :: tpsn, fices           ! for snow model relayer
     real, dimension(N_snow,N_constit) :: rconstit
 
     logical                           :: check_sm, check_sno
@@ -214,10 +219,6 @@ contains
     
     if (check_sno) then  ! check snow states 
        
-       ! get target snow layer thicknesses for land tiles
-       
-       call StieglitzSnow_targetthick_land( N_snow, targetthick )
-       
        do ii=1,NTILES
           
           call StieglitzSnow_calc_asnow( N_snow, wesnn(1:N_snow,ii), asnow_tmp ) 
@@ -243,7 +244,7 @@ contains
                 snow_dens = (wesnn(kk,ii)/asnow_tmp)/sndzn(kk,ii)
                 
                 snow_dens = min( snow_dens, StieglitzSnow_RHOMA )
-                snow_dens = max( snow_dens, CATCH_SNWALB_RHOFS  )
+                snow_dens = max( snow_dens, CATCH_SNOW_RHOFS    )
                 
                 sndzn(kk,ii) = (wesnn(kk,ii)/asnow_tmp)/snow_dens
                 
@@ -252,16 +253,13 @@ contains
              ! relayer snow
              
              call StieglitzSnow_relayer(                 &
-                  N_snow, N_constit,                     &
-                  targetthick(1), targetthick(2:N_snow), &  
+                  N_snow, N_constit, MAPL_LAND,          &
+                  CATCH_SNOW_DZPARAM,                    &
                   htsnnn(1:N_snow,ii),                   &
                   wesnn( 1:N_snow,ii),                   &
                   sndzn( 1:N_snow,ii),                   &
-                  rconstit                       )
+                  rconstit, tpsn, fices )
              
-             ! AFTER CALL TO catch_incr() FROM GEOS_CatchGridComp, MAY NEED 
-             !   TO RE-DIAGNOSE SNOW TEMP AND ASNOW !!!!
-          
           else
              
              ! zero snow mass, make sure snow depth and snow heat content are also zero

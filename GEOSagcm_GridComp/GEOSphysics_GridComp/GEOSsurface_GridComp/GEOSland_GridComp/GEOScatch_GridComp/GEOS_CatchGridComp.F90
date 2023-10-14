@@ -45,10 +45,10 @@ module GEOS_CatchGridCompMod
   USE CATCH_CONSTANTS, ONLY :                  &
        N_SNOW         => CATCH_N_SNOW,         &
        N_GT           => CATCH_N_GT,           &
-       RHOFS          => CATCH_SNWALB_RHOFS,   &
-       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX,  &
-       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX,  &
-       SLOPE          => CATCH_SNWALB_SLOPE,   &
+       RHOFS          => CATCH_SNOW_RHOFS,     &
+       SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
+       SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
+       SLOPE          => CATCH_SNOW_SLOPE,     &
        PEATCLSM_POROS_THRESHOLD
 
 
@@ -1329,8 +1329,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
-    call MAPL_AddInternalSpec(GC                  ,&
-       LONG_NAME          = 'effective_snow_albedo'               ,&
+    call MAPL_AddInternalSpec(GC                        ,&
+       LONG_NAME          = 'effective_snow_albedo'     ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'SNOWALB'                   ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
