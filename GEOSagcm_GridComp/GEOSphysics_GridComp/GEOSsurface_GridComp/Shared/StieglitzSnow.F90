@@ -1074,13 +1074,13 @@ contains
     integer                                  :: i, j, k, ilow, ihigh
     
     real                                     :: areasc, dz, hnew
-    real                                     :: totalthick
+    real                                     :: totalthick, tdum, fdum
     real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
-    real,    dimension(N_snow)               :: thickness, tdum, fdum
+    real,    dimension(N_snow)               :: thickness
 
     logical                                  :: adjust_htsnn, update_hcorr
 
-    logical, dimension(N_snow)               :: ice10, tzero0
+    logical, dimension(N_snow)               :: ice10, tzero0, kflag
     
     !**** thickness(1) : final thickness of topmost snow layer (m)
     !**** h            : array holding specific heat, water, and constituent contents
