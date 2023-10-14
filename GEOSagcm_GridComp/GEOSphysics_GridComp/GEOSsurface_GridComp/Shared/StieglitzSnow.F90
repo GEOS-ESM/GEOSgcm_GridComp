@@ -964,8 +964,6 @@ contains
   subroutine FindTargetThickDist_Landice(N_snow, sndz, dzmax, topthick, thickdist)
     
     ! get snow layer target thicknesses to be used with relayer for *landice*
-    !
-    ! for *land*, see subroutine StieglitzSnow_targetthick_land()
 
     integer, intent(in)                       :: N_snow
     real,    intent(in)                       :: sndz(N_snow)

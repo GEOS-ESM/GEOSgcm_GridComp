@@ -22,8 +22,7 @@ module catch_incr
        N_constit,                            &
        StieglitzSnow_RHOMA,                  &
        StieglitzSnow_relayer,                &
-       StieglitzSnow_calc_asnow,             &
-       StieglitzSnow_targetthick_land
+       StieglitzSnow_calc_asnow
   
   implicit none
   
