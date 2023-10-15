@@ -33,7 +33,6 @@ MODULE lsm_routines
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
-       RHOFS             => CATCH_SNOW_RHOFS,    &
        DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &
@@ -44,8 +43,7 @@ MODULE lsm_routines
        PEATCLSM_ZBARMAX_4_SYSOIL
   
   USE SURFPARAMS,        ONLY:                   &
-       LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
-       FLWALPHA, ASTRFR, STEXP, RSWILT
+       LAND_FIX, FLWALPHA
   
   USE SIBALB_COEFF,      ONLY:                   &
        coeffsib
