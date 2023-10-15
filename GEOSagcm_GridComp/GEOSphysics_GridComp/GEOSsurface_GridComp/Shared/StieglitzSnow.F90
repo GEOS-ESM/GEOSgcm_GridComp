@@ -195,8 +195,8 @@ contains
        hlwout, fices, tpsn, rmelt,                                               &  ! out
        areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &  ! out
        sndzsc, wesnprec, sndzprec, sndz1perc,                                    &  ! out
-       wesnperc, wesndens, wesnrepar, mltwtr,                                    &  ! out
-       excs, drho0, wesnbot, tksno, dtss        )
+       wesnperc, wesndens, wesnrepar, mltwtr,                                    &  ! out  
+       excs, drho0, wesnbot, tksno, dtss        )                                   ! out
     
     !*********************************************************************
     ! AUTHORS:  M. Stieglitz, M. Suarez, R. Koster & S. Dery.
@@ -404,7 +404,7 @@ contains
        ! Melt off initial (very small) snowpack; new snow pack is based
        !   on new snowfall only (if any)
        
-       areasc = min(snowd/wemin,1.)
+       call StieglitzSnow_calc_asnow( snowd, areasc )
        areasc0 = 0.
        pre = snowd/dts + areasc*rainf       ! pre = melted snowpack plus rainfall
        wesn  = 0.
@@ -422,7 +422,7 @@ contains
           
           wesn    = snowf*dts/float(N_snow)  
           htsnn   = (tsx-alhm)*wesn
-          areasc0 = min((snowf*dts)/wemin,1.)
+          call StieglitzSnow_calc_asnow( snowf*dts, areasc0 )
 
           !*** should have fractional snow cover taken into account
           sndz = wesn/(max(areasc0,small)*rhofs)
@@ -453,7 +453,7 @@ contains
     
     !**** Determine the fractional snow coverage
     
-    areasc = min(snowd/wemin,1.)
+    call StieglitzSnow_calc_asnow( snowd, areasc )
     
     !**** Set the mean density & diffusivity of the layers
     
@@ -748,9 +748,9 @@ contains
        
        if(snowd > wemin) then
           
-          icedens=wesn(i)*fices(i)/(sndz(i)+1.e-20)
-          densfac=amax1(0., amin1(1., icedens/rhofs))
-          term=densfac*snfr*(sndz(i)*rhow-wesn(i)*fices(i))
+          icedens = wesn(i)*fices(i)/(sndz(i)+1.e-20)
+          densfac = amax1(0., amin1(1., icedens/rhofs))
+          term    = densfac*snfr*(sndz(i)*rhow-wesn(i)*fices(i))
           
           if(pre > term) then
              pre = min(pre - term, wesn(i))        ! when asnow=1, retain some liquid water in snow pack
@@ -881,7 +881,8 @@ contains
     excs = excs * fices / dts
     
     snowd=sum(wesn)
-    areasc0 = max(small, min(snowd/wemin,1.) )
+    call StieglitzSnow_calc_asnow( snowd, areasc0 )
+    areasc0 = max(small, areasc0 )
     sndz = (wesn/areasc0)/dens
     
     sndzsum = sum(sndz)
@@ -914,7 +915,7 @@ contains
     
     !**** Reset fractional area coverage.
     
-    areasc0 = min(sum(wesn)/wemin,1.)
+    call StieglitzSnow_calc_asnow( sum(wesn), areasc0 )
     
     !**** Final check for water balance.
     
@@ -1653,7 +1654,7 @@ contains
        SWE=SUM(WESN(:,I))
        
        TOTDEP=SNDZ(1,I)
-       AREASC = MIN(SWE/WEMIN,1.)
+       call StieglitzSnow_calc_asnow( SWE, AREASC )
        !DENSITY=(SWE/(AREASC+1.e-20)) / (TOTDEP+1.e-20)
        !*** only use top layer density to dentermine albedo 
        DENSITY=(WESN(1,I)/(AREASC+1.e-20)) / (TOTDEP+1.e-20)
@@ -1803,7 +1804,7 @@ contains
     
     SWE=SUM(WESN(:))
     TOTDEP=SUM(SNDZ(:))
-    AREASC = MIN(SWE/WEMIN,1.)
+    call StieglitzSnow_calc_asnow( SWE, AREASC )
     DENSITY=(SWE/(AREASC+1.e-20)) / (TOTDEP+1.e-20)
     
     WSS=UM

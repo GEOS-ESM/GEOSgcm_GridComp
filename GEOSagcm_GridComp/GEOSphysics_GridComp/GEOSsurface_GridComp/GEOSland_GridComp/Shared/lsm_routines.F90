@@ -1298,9 +1298,6 @@ CONTAINS
       REAL, PARAMETER :: ALVDRI = 0.700
       REAL, PARAMETER :: ALIDRI = 0.700
 
-
-!      REAL, PARAMETER :: WEMIN  = 13.0   ! [KG/M2]
-
 ! ALVDRS:  Albedo of soil for visible   direct  solar radiation.
 ! ALIDRS:  Albedo of soil for infra-red direct  solar radiation.
 ! ALVDFS:  Albedo of soil for visible   diffuse solar radiation.
