@@ -872,17 +872,19 @@ CONTAINS
         sumdepth=sum(sndz)
 
         CALL StieglitzSnow_snowrt(                                             &
-                   N_sm, N_snow, MAPL_Land,                                    &
-                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &
-                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &
-                   hups, raddn, zc1, totdep1,                                  &
-                   wesn, htsnn, sndz, fices, tpsn, RCONSTIT1, RMELT1,          &
-                   areasc, areasc0, pre, fhgnd,                                &
-                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &
-                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &   
-                   wesnperc, wesndens, wesnrepar, mltwtr,                      &
-                   excs, drho0, wesnbot, tksno, dtss,                          &
-                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM )
+                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
+                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
+                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
+                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
+                   raddn, zc1, totdep1,                                        &  ! in   
+                   wesn, htsnn, sndz, RCONSTIT1,                               &  ! inout 
+                   hups, fices, tpsn, RMELT1,                                  &  ! out  
+                   areasc, areasc0, pre, fhgnd,                                &  ! out  
+                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
+                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
+                   wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out  
+                   excs, drho0, wesnbot, tksno, dtss,                          &  ! out  
+
 
         FICESOUT(:,N)  = fices
 

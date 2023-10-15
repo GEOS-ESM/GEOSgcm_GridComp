@@ -34,9 +34,9 @@ module StieglitzSnow
   public :: StieglitzSnow_calc_asnow       ! used by          Catchment[CN], LDAS
   public :: StieglitzSnow_calc_tpsnow      ! used by          Catchment[CN], LDAS
   public :: StieglitzSnow_echo_constants   ! used by                         LDAS
-  public :: StieglitzSnow_relayer          ! used by                               land-atm DAS
+  public :: StieglitzSnow_relayer          ! used by                         LDAS, land-atm DAS
 
-  public :: StieglitzSnow_RHOMA            ! used by                               land-atm DAS
+  public :: StieglitzSnow_RHOMA            ! used by                         LDAS, land-atm DAS
   public :: StieglitzSnow_MINSWE           ! used by LandIce
   public :: StieglitzSnow_CPW              ! used by LandIce
 
@@ -187,15 +187,16 @@ module StieglitzSnow
   
 contains
   
-  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                     &
-       t1, area, tkgnd, precip, snowf, ts, dts, eturb, dedtc, hsturb, dhsdtc,    &
-       hlwtc, dhlwtc, hlwout, raddn, zc1, totdepos,                              &
-       wesn, htsnn, sndz, fices, tpsn, rconstit, rmelt,                          &
-       areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &
-       sndzsc, wesnprec, sndzprec, sndz1perc,                                    &   
-       wesnperc, wesndens, wesnrepar, mltwtr,                                    &   
-       excs, drho0, wesnbot, tksno, dtss, maxsndepth, rhofs,                     &
-       targetthick)
+  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                     &  ! in 
+       maxsndepth, rhofs, targetthick,                                           &  ! in 
+       t1, area, tkgnd, precip, snowf, ts, dts, eturb, dedtc, hsturb, dhsdtc,    &  ! in 
+       hlwtc, dhlwtc, raddn, zc1, totdepos,                                      &  ! in 
+       wesn, htsnn, sndz, rconstit,                                              &  ! inout
+       hlwout, fices, tpsn, rmelt,                                               &  ! out
+       areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &  ! out
+       sndzsc, wesnprec, sndzprec, sndz1perc,                                    &  ! out
+       wesnperc, wesndens, wesnrepar, mltwtr,                                    &  ! out
+       excs, drho0, wesnbot, tksno, dtss        )
     
     !*********************************************************************
     ! AUTHORS:  M. Stieglitz, M. Suarez, R. Koster & S. Dery.
@@ -290,9 +291,9 @@ contains
 
     integer,                               intent(in)    :: N_zones, N_snow, tileType
 
-    real,    dimension(N_zones),           intent(in )   :: t1, area, tkgnd
+    real,    dimension(N_zones),           intent(in)    :: t1, area, tkgnd
     real,    dimension(N_constit),         intent(in)    :: totdepos
-    real,                                  intent(in )   :: ts, precip, snowf, dts, dedtc, raddn, hlwtc
+    real,                                  intent(in)    :: ts, precip, snowf, dts, dedtc, raddn, hlwtc
     real,                                  intent(in )   :: dhsdtc, dhlwtc, eturb, hsturb, zc1
 
     real,    dimension(N_snow),            intent(inout) :: wesn, htsnn, sndz
@@ -1039,7 +1040,7 @@ contains
     !   
     ! optional arguments        action
     ! -----------------------------------------------------------
-    ! none                      original relayer
+    ! none                      original relayer() (redistribution only)
     ! tpsn, fices               + adjust heat content (originally done externally)
     ! tpsn, fices, dts, hcorr   + account for heat content adjustment in correction term
 
@@ -1262,8 +1263,8 @@ contains
        ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
        !   before and after relayer; in select cases, adjust snow heat content and temp
        !
-       ! NOTE: logicals before relayer are computed with    "buffer" (use_threshold_fac=.true. )
-       !       reals    after  relayer are computed without "buffer" (use_threshold_fac=.false.)
+       ! NOTE: logicals before relayer were computed with    "buffer" (use_threshold_fac=.true. )
+       !       reals    after  relayer were computed without "buffer" (use_threshold_fac=.false.)
        
        do i=1,N_snow                                                          
           
