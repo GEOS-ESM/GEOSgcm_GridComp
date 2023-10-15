@@ -26,13 +26,11 @@ module catch_constants
   !                      - added routing model constants  N_Pfafs_LandCatchs and N_Pfaf_Catchs
   ! Justin,  12 Apr 2018 - removed ifdef LAND_UPD, moved CSOIL_2 to SurfParams
   ! reichle, 27 Jan 2022 - cleanup: moved "public" constants from lsm_routines to here; added "CATCH_" prefix
-
-  ! ---------------------------------------------------------------------------
   !
-  
-  USE MAPL_ConstantsMod, ONLY:          &
-       MAPL_ALHF
+  ! ---------------------------------------------------------------------------
 
+  USE MAPL_ConstantsMod, ONLY:                   &
+       MAPL_ALHF
   
   ! use constants from SURFPARAMS in echo_catch_contants()
   
@@ -61,12 +59,17 @@ module catch_constants
   !
   ! constants for use with snowrt() and snow_albedo() of module StieglitzSnow
   
-  REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_RHOFS  = 150.     ! kg/m^3  
-  REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_VISMAX = 0.7      !  
-  REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_NIRMAX = 0.5      ! 
-  REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_SLOPE  = -0.0006  ! 
-  REAL,    PARAMETER, PUBLIC :: CATCH_MAXSNDEPTH    = 1.e20    ! 
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZ1MAX        = 0.08     ! m   
+  REAL,    PARAMETER, PUBLIC :: CATCH_SNOW_RHOFS    = 150.     ! kg/m^3  
+  REAL,    PARAMETER, PUBLIC :: CATCH_SNOW_VISMAX   = 0.7      !  
+  REAL,    PARAMETER, PUBLIC :: CATCH_SNOW_NIRMAX   = 0.5      ! 
+  REAL,    PARAMETER, PUBLIC :: CATCH_SNOW_SLOPE    = -0.0006  ! 
+  REAL,    PARAMETER, PUBLIC :: CATCH_SNOW_MAXDEPTH = 1.e20    ! 
+
+  REAL,    PARAMETER, PUBLIC, DIMENSION(CATCH_N_SNOW) :: CATCH_SNOW_DZPARAM  &
+       = (/                                                                  &
+       0.08,                                                                 &  ! m  top-layer target thickness
+       1./(CATCH_N_SNOW-1.), 1./(CATCH_N_SNOW-1.)                            &  ! -  "sigma" distribution 
+       /) 
   
   ! ---------------------------------------------------------------------------
   !
@@ -95,13 +98,13 @@ module catch_constants
   !   Catchment:    tc1, tc2, tc4  (CSOIL also includes veg canopy)
   !   CatchmentCN:  tg1, tg2, tg4  (tc[X] are separate canopy temperatures)
   
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZTSURF       = 0.05     ! m  layer depth for tc[X] or tg[X]
+  REAL,    PARAMETER, PUBLIC :: CATCH_DZTSURF       = 0.05               ! m  layer depth for tc[X] or tg[X]
 
   ! ---------------------------------------------------------------------------
   !
   ! layer depths and other associated with ground heat diffusion model (gndtp0() and gndtmp())
   
-  REAL,    PARAMETER, DIMENSION(CATCH_N_GT), PUBLIC :: CATCH_DZGT = &  ! m  layer depths
+  REAL,    PARAMETER, DIMENSION(CATCH_N_GT),   PUBLIC :: CATCH_DZGT = &  ! m  layer depths
        (/ 0.0988, 0.1952, 0.3859, 0.7626, 1.5071, 10.0 /)
   
   ! PHIGT and ALHMGT are needed for backward compatibility with
@@ -118,22 +121,20 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: CATCH_PHIGT         = -9999.
   REAL,    PARAMETER, PUBLIC :: CATCH_ALHMGT        = MAPL_ALHF
 
-  REAL,    PARAMETER, PUBLIC :: CATCH_FSN           = 1.e3*CATCH_ALHMGT ! unit change J/kg/K -> J/m/K
+  REAL,    PARAMETER, PUBLIC :: CATCH_FSN           = 1.e3*CATCH_ALHMGT  ! unit change J/kg/K -> J/m/K
 
   ! miscellaneous Catchment model constants
   
-  REAL,    PARAMETER, PUBLIC :: CATCH_SHR           = 2400.    ! J/kg/K  spec heat of rock 
-  !                                                              [where "per kg" is something like 
-  !                                                               "per kg of water equiv. density"]
-  
-  REAL,    PARAMETER, PUBLIC :: CATCH_SCONST        = 1.9E6/920.   ! some snow constant
+  REAL,    PARAMETER, PUBLIC :: CATCH_SHR           = 2400.              ! J/kg/K  spec heat of rock 
+  !                                                                         [where "per kg" is something like 
+  !                                                                          "per kg of water equiv. density"]
   
   REAL,    PARAMETER, PUBLIC :: CATCH_CSOIL_1       = 70000.   ! J/K - heat capacity associated w/ tsurf
-
+  
   REAL,    PARAMETER, PUBLIC :: CATCH_C_CANOP       = 200.     ! J/K - heat capacity associated w/ tc (CatchCN)
-
+  
   REAL,    PARAMETER, PUBLIC :: CATCH_SATCAPFR      = 0.2      ! SATCAP = SATCAPFR * LAI
-
+  
   
   ! peatCLSM implementation smahanam  3-16-2021
   !
@@ -147,11 +148,11 @@ module catch_constants
   !
   ! - reichle, 26 Jan 2022
   
-  REAL, PARAMETER, PUBLIC :: PEATCLSM_POROS_THRESHOLD  = 0.90    ! [m3/m3]
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_POROS_THRESHOLD  = 0.90  ! [m3/m3]
 
   ! max zbar for specific yield calc in PEATCLSM
   
-  REAL, PARAMETER, PUBLIC :: PEATCLSM_ZBARMAX_4_SYSOIL = 0.45    ! [m] 
+  REAL, PARAMETER, PUBLIC :: PEATCLSM_ZBARMAX_4_SYSOIL = 0.45  ! [m] 
 
 contains
 
@@ -173,19 +174,18 @@ contains
     write (logunit,*) 'CATCH_N_SNOW               = ', CATCH_N_SNOW        
     write (logunit,*) 'CATCH_N_GT                 = ', CATCH_N_GT          
     write (logunit,*) 'CATCH_N_ZONES              = ', CATCH_N_ZONES       
-    write (logunit,*) 'CATCH_SNWALB_RHOFS         = ', CATCH_SNWALB_RHOFS  
-    write (logunit,*) 'CATCH_SNWALB_VISMAX        = ', CATCH_SNWALB_VISMAX 
-    write (logunit,*) 'CATCH_SNWALB_NIRMAX        = ', CATCH_SNWALB_NIRMAX 
-    write (logunit,*) 'CATCH_SNWALB_SLOPE         = ', CATCH_SNWALB_SLOPE  
-    write (logunit,*) 'CATCH_MAXSNDEPTH           = ', CATCH_MAXSNDEPTH    
-    write (logunit,*) 'CATCH_DZ1MAX               = ', CATCH_DZ1MAX        
+    write (logunit,*) 'CATCH_SNOW_RHOFS           = ', CATCH_SNOW_RHOFS  
+    write (logunit,*) 'CATCH_SNOW_VISMAX          = ', CATCH_SNOW_VISMAX 
+    write (logunit,*) 'CATCH_SNOW_NIRMAX          = ', CATCH_SNOW_NIRMAX 
+    write (logunit,*) 'CATCH_SNOW_SLOPE           = ', CATCH_SNOW_SLOPE  
+    write (logunit,*) 'CATCH_SNOW_MAXDEPTH        = ', CATCH_SNOW_MAXDEPTH    
     write (logunit,*) 'CATCH_DZTSURF              = ', CATCH_DZTSURF          
-    write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT          
+    write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT    
+    write (logunit,*) 'CATCH_SNOW_DZPARAM         = ', CATCH_SNOW_DZPARAM
     write (logunit,*) 'CATCH_PHIGT                = ', CATCH_PHIGT         
     write (logunit,*) 'CATCH_ALHMGT               = ', CATCH_ALHMGT        
     write (logunit,*) 'CATCH_FSN                  = ', CATCH_FSN           
     write (logunit,*) 'CATCH_SHR                  = ', CATCH_SHR           
-    write (logunit,*) 'CATCH_SCONST               = ', CATCH_SCONST        
     write (logunit,*) 'CATCH_CSOIL_1              = ', CATCH_CSOIL_1       
     write (logunit,*) 'CATCH_C_CANOP              = ', CATCH_C_CANOP       
     write (logunit,*) 'CATCH_SATCAPFR             = ', CATCH_SATCAPFR

@@ -33,7 +33,6 @@ MODULE lsm_routines
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
-       RHOFS             => CATCH_SNWALB_RHOFS,  &
        DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &
@@ -44,14 +43,10 @@ MODULE lsm_routines
        PEATCLSM_ZBARMAX_4_SYSOIL
   
   USE SURFPARAMS,        ONLY:                   &
-       LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
-       FLWALPHA, ASTRFR, STEXP, RSWILT
+       LAND_FIX, FLWALPHA
   
   USE SIBALB_COEFF,      ONLY:                   &
        coeffsib
-
-  USE STIEGLITZSNOW,     ONLY:                   &
-       snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
 
   IMPLICIT NONE
 
@@ -1302,9 +1297,6 @@ CONTAINS
       REAL, PARAMETER :: ALIDRD = 0.350
       REAL, PARAMETER :: ALVDRI = 0.700
       REAL, PARAMETER :: ALIDRI = 0.700
-
-
-!      REAL, PARAMETER :: WEMIN  = 13.0   ! [KG/M2]
 
 ! ALVDRS:  Albedo of soil for visible   direct  solar radiation.
 ! ALIDRS:  Albedo of soil for infra-red direct  solar radiation.
