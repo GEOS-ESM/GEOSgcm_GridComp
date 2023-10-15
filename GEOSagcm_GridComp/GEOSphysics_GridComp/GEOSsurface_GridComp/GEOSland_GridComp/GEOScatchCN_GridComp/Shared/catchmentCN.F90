@@ -883,7 +883,7 @@ CONTAINS
                    EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
                    sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out  
-                   excs, drho0, wesnbot, tksno, dtss,                          &  ! out  
+                   excs, drho0, wesnbot, tksno, dtss                    )         ! out  
 
 
         FICESOUT(:,N)  = fices
