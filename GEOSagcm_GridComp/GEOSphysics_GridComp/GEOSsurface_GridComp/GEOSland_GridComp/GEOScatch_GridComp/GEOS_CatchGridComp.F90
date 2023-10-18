@@ -27,10 +27,14 @@ module GEOS_CatchGridCompMod
   use GEOS_Mod
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  use CATCHMENT_MODEL, ONLY :                 &
+
+  use CATCHMENT_MODEL, ONLY :                  &
        catchment
-  USE STIEGLITZSNOW,   ONLY :                 &
-       snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,  &
+  
+  USE STIEGLITZSNOW,   ONLY :                  &
+       StieglitzSnow_snow_albedo,              &
+       StieglitzSnow_calc_tpsnow,              &
+       N_CONSTIT,                              &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
        NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
@@ -38,12 +42,13 @@ module GEOS_CatchGridCompMod
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD, &
        StieglitzSnow_calc_asnow
 
-  USE CATCH_CONSTANTS, ONLY :                 &
-       N_SNOW         => CATCH_N_SNOW,        &
-       RHOFS          => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE,  &
+  USE CATCH_CONSTANTS, ONLY :                  &
+       N_SNOW         => CATCH_N_SNOW,         &
+       N_GT           => CATCH_N_GT,           &
+       RHOFS          => CATCH_SNOW_RHOFS,     &
+       SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
+       SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
+       SLOPE          => CATCH_SNOW_SLOPE,     &
        PEATCLSM_POROS_THRESHOLD
 
 
@@ -1324,8 +1329,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   if (CATCH_INTERNAL_STATE%SNOW_ALBEDO_INFO == 1) then
-    call MAPL_AddInternalSpec(GC                  ,&
-       LONG_NAME          = 'effective_snow_albedo'               ,&
+    call MAPL_AddInternalSpec(GC                        ,&
+       LONG_NAME          = 'effective_snow_albedo'     ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'SNOWALB'                   ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1664,6 +1669,33 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_1' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE1'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_2' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE2'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_3' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE3'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
@@ -1690,7 +1722,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
     VERIFY_(STATUS)
-
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'total_latent_energy_flux'  ,&
@@ -2936,7 +2967,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-    type(MAPL_MetaComp),pointer :: MAPL
+    type(MAPL_MetaComp),    pointer :: MAPL
     type(ESMF_State)                :: INTERNAL
     type(ESMF_Alarm)                :: ALARM
     type(ESMF_Config)               :: CF
@@ -2946,19 +2977,19 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! IMPORT Pointers
 ! ----------------------------------------------------  -
 
-    real, dimension(:),     pointer :: ITY
-    real, dimension(:),     pointer :: PS
-    real, dimension(:),     pointer :: TA
-    real, dimension(:),     pointer :: QA
-    real, dimension(:),     pointer :: UU
-    real, pointer, dimension(:)    :: UWINDLMTILE
-    real, pointer, dimension(:)    :: VWINDLMTILE
-    real, dimension(:),     pointer :: DZ
-    real, dimension(:),     pointer :: LAI
-    real, dimension(:),     pointer :: Z2CH
-    real, dimension(:),     pointer :: PCU
-    real, dimension(:),     pointer :: ASCATZ0
-    real, dimension(:),     pointer :: NDVI
+    real, dimension(:),   pointer :: ITY
+    real, dimension(:),   pointer :: PS
+    real, dimension(:),   pointer :: TA
+    real, dimension(:),   pointer :: QA
+    real, dimension(:),   pointer :: UU
+    real, dimension(:),   pointer :: UWINDLMTILE
+    real, dimension(:),   pointer :: VWINDLMTILE
+    real, dimension(:),   pointer :: DZ
+    real, dimension(:),   pointer :: LAI
+    real, dimension(:),   pointer :: Z2CH
+    real, dimension(:),   pointer :: PCU
+    real, dimension(:),   pointer :: ASCATZ0
+    real, dimension(:),   pointer :: NDVI
 
 ! -----------------------------------------------------
 ! INTERNAL Pointers
@@ -3024,37 +3055,37 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: ZQ(:)
     integer,allocatable :: VEG(:)
     real,   allocatable :: Z0T(:,:)
-    real, allocatable              :: U50M (:)
-    real, allocatable              :: V50M (:)
-    real, allocatable              :: T10M (:)
-    real, allocatable              :: Q10M (:)
-    real, allocatable              :: U10M (:)
-    real, allocatable              :: V10M (:)
-    real, allocatable              :: T2M (:)
-    real, allocatable              :: Q2M (:)
-    real, allocatable              :: U2M (:)
-    real, allocatable              :: V2M (:)
-    real, allocatable              :: RHOH(:)
-    real, allocatable              :: VKH(:)
-    real, allocatable              :: VKM(:)
-    real, allocatable              :: USTAR(:)
-    real, allocatable              :: XX(:)
-    real, allocatable              :: YY(:)
-    real, allocatable              :: CU(:)
-    real, allocatable              :: CT(:)
-    real, allocatable              :: RIB(:)
-    real, allocatable              :: ZETA(:)
-    real, allocatable              :: WS(:)
-    integer, allocatable           :: IWATER(:)
-    real, allocatable              :: PSMB(:)
-    real, allocatable              :: PSL(:)
-    integer                        :: niter
+    real,   allocatable :: U50M (:)
+    real,   allocatable :: V50M (:)
+    real,   allocatable :: T10M (:)
+    real,   allocatable :: Q10M (:)
+    real,   allocatable :: U10M (:)
+    real,   allocatable :: V10M (:)
+    real,   allocatable :: T2M (:)
+    real,   allocatable :: Q2M (:)
+    real,   allocatable :: U2M (:)
+    real,   allocatable :: V2M (:)
+    real,   allocatable :: RHOH(:)
+    real,   allocatable :: VKH(:)
+    real,   allocatable :: VKM(:)
+    real,   allocatable :: USTAR(:)
+    real,   allocatable :: XX(:)
+    real,   allocatable :: YY(:)
+    real,   allocatable :: CU(:)
+    real,   allocatable :: CT(:)
+    real,   allocatable :: RIB(:)
+    real,   allocatable :: ZETA(:)
+    real,   allocatable :: WS(:)
+    integer,allocatable :: IWATER(:)
+    real,   allocatable :: PSMB(:)
+    real,   allocatable :: PSL(:)
+    integer             :: niter
 
-    integer                        :: CHOOSEZ0
-    real                           :: SCALE4Z0
-    real                           :: SCALE4ZVG
-    real                           :: SCALE4Z0_u
-    real                           :: MIN_VEG_HEIGHT 
+    integer             :: CHOOSEZ0
+    real                :: SCALE4Z0
+    real                :: SCALE4ZVG
+    real                :: SCALE4Z0_u
+    real                :: MIN_VEG_HEIGHT 
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
@@ -3097,17 +3128,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters from generic state
 ! ---------------------------------
-
-    call MAPL_Get ( MAPL                          ,&
-                                INTERNAL_ESMF_STATE=INTERNAL   ,&
-                                                      RC=STATUS )
+    
+    call MAPL_Get ( MAPL               , &
+         INTERNAL_ESMF_STATE=INTERNAL  , &
+         RC=STATUS )
     VERIFY_(STATUS)
-
+    
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
-
+    
 ! Pointers to inputs
 !-------------------
 
@@ -3396,7 +3427,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
   
-        niter = 6   ! number of internal iterations in the helfand MO surface layer routine
+        niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
         IWATER = 3
   
         PSMB = PS * 0.01            ! convert to MB
@@ -3795,6 +3826,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: bflow
         real, dimension(:),   pointer :: runsurf
         real, dimension(:),   pointer :: smelt
+        real, dimension(:),   pointer :: fice1 
+        real, dimension(:),   pointer :: fice2 
+        real, dimension(:),   pointer :: fice3 
         real, dimension(:),   pointer :: accum
         real, dimension(:),   pointer :: hlwup
         real, dimension(:),   pointer :: swndsrf
@@ -3922,7 +3956,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
-        real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
  
 !       real*8,pointer,dimension(:) :: fsum
@@ -3931,6 +3965,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:,:) :: wesnn
         real,pointer,dimension(:,:) :: htsnnn
         real,pointer,dimension(:,:) :: sndzn
+        real,pointer,dimension(:,:) :: ficesout
         real,pointer,dimension(:,:) :: shsbt
         real,pointer,dimension(:,:) :: dshsbt
         real,pointer,dimension(:,:) :: evsbt
@@ -4336,6 +4371,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,BFLOW,  'BASEFLOW',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RUNSURF,'RUNSURF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT,  'SMELT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE1,  'FICE1'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE2,  'FICE2'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE3,  'FICE3'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,LWNDSRF,'LWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4428,10 +4466,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ALLOCATE LOCAL POINTERS
         ! --------------------------------------------------------------------------
 
-        allocate(GHTCNT (6,NTILES))
-        allocate(WESNN  (3,NTILES))
-        allocate(HTSNNN (3,NTILES))
-        allocate(SNDZN  (3,NTILES))
+        allocate(GHTCNT  (N_GT,  NTILES))
+        allocate(WESNN   (N_SNOW,NTILES))
+        allocate(HTSNNN  (N_SNOW,NTILES))
+        allocate(SNDZN   (N_SNOW,NTILES))
+        allocate(FICESOUT(N_SNOW,NTILES))
+
         allocate(TILEZERO (NTILES))
         allocate(DZSF     (NTILES))
         allocate(SWNETFREE(NTILES))
@@ -4487,7 +4527,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TPSN1OUT1 (NTILES))
         allocate(LHACC     (NTILES))
         allocate(SUMEV     (NTILES))
-        allocate(FICE1     (NTILES)) 
+        allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
         allocate(FSW_CHANGE(NTILES))
         
@@ -4849,10 +4889,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )    
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow, CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call StieglitzSnow_snow_albedo(NTILES, N_snow,               &
+                 CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB,           &
+                 VEG, LAI, ZTH,                                      &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -5359,10 +5401,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     DEALLOC_(mask)
 
                     ! consolidate increment arrays  
-                    allocate(ghtcnt_incr(6,NTILES))
-                    allocate(wesnn_incr( 3,NTILES))
-                    allocate(htsnnn_incr(3,NTILES))
-                    allocate(sndzn_incr( 3,NTILES))
+                    allocate(ghtcnt_incr(N_GT,  NTILES))
+                    allocate(wesnn_incr( N_SNOW,NTILES))
+                    allocate(htsnnn_incr(N_SNOW,NTILES))
+                    allocate(sndzn_incr( N_SNOW,NTILES))
                     
                     GHTCNT_INCR(1,:) = GHTCNT1_INCR
                     GHTCNT_INCR(2,:) = GHTCNT2_INCR
@@ -5392,6 +5434,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                          TC(:,FSAT),TC(:,FTRN), TC(:,FWLT), QC(:,FSAT), QC(:,FTRN), QC(:,FWLT),          &
                          CAPAC, CATDEF, RZEXC, SRFEXC,                                                   &
                          GHTCNT, WESNN, HTSNNN, SNDZN  )
+                    
+                    ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+                    !
+                    ! Should not need to re-compute diagnostics (e.g., TSURF, TPSN1) here because
+                    !   the immediate next step is to run catchment(), which should only depend
+                    !   on Catchment prognostic variables.
+                    ! However, TURBULENCE (and RADIATION?) presumably have seen the Catchment forecast
+                    !   (incl. surface temperature TC0 and might now be out of sync with the Catchment 
+                    !   analysis.  Move apply_catch_incr() into Run1() ???
+                    !
+                    ! @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
                     
                     deallocate(ghtcnt_incr,wesnn_incr,htsnnn_incr,sndzn_incr)
                     
@@ -5480,7 +5533,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-             TCSORIG1, TPSN1IN1, TPSN1OUT1,FSW_CHANGE             ,&
+             TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
@@ -5543,10 +5596,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
                        ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call StieglitzSnow_snow_albedo(NTILES, N_snow,  CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -5656,7 +5709,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(SMLAND)) SMLAND = SMELT
         if(associated(TWLAND)) TWLAND = WTOT
         if(associated(TELAND)) TELAND = ENTOT
-        if(associated(TSLAND)) TSLAND = WESNN (1,:) + WESNN (2,:) + WESNN (3,:)
+        if(associated(TSLAND)) TSLAND = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
         if(associated(DWLAND)) DWLAND = WCHANGE
         if(associated(DHLAND)) DHLAND = ECHANGE
         if(associated(SPLAND)) SPLAND = SHACC
@@ -5667,8 +5720,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FRUST )) FRUST  = max( min( FR(:,FTRN),1.0 ), 0.0 )
         if(associated(FRWLT )) FRWLT  = max( min( FR(:,FWLT),1.0 ), 0.0 )
 
-        if(associated(SNOMAS)) SNOMAS = WESNN (1,:) + WESNN (2,:) + WESNN (3,:)
-        if(associated(SNOWDP)) SNOWDP = SNDZN (1,:) + SNDZN (2,:) + SNDZN (3,:)
+        if(associated(SNOMAS)) SNOMAS = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
+        if(associated(SNOWDP)) SNOWDP = SNDZN(1,:) + SNDZN(2,:) + SNDZN(3,:)
+
+        if(associated(FICE1 )) FICE1  = max( min( FICESOUT(1,:),1.0 ), 0.0 )
+        if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
+        if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
         if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
         if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
@@ -5772,6 +5829,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(WESNN    )
         deallocate(HTSNNN   )
         deallocate(SNDZN    )
+        deallocate(FICESOUT )
         deallocate(TILEZERO )
         deallocate(DZSF     )
         deallocate(SWNETFREE)
@@ -5850,9 +5908,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(QA4_0    )
         deallocate(RCONSTIT )
         deallocate(TOTDEPOS )
-        deallocate(RMELT )
-        deallocate(FICE1 )
-        deallocate(SLDTOT )
+        deallocate(RMELT    )
+        deallocate(FICE1TMP )
+        deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
 
         RETURN_(ESMF_SUCCESS)
@@ -5970,7 +6028,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
-  ! Pointers to EXPOERTs
+  ! Pointers to EXPORTs
   call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
@@ -6053,12 +6111,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   WW = 0.
 
   ! Compute ASNOW and EMIS
-  allocate(wesnn(3,ntiles), stat=status)
+  allocate(wesnn(N_SNOW,ntiles), stat=status)
   VERIFY_(status)
   wesnn(1,:) = wesnn1
   wesnn(2,:) = wesnn2
   wesnn(3,:) = wesnn3
-  call StieglitzSnow_calc_asnow(3, ntiles, wesnn, asnow)
+  call StieglitzSnow_calc_asnow(N_snow, ntiles, wesnn, asnow)
   emis = EMSVEG(nint(ity)) + (EMSBARESOIL - EMSVEG(nint(ity)))*exp(-lai)
   emis = emis*(1.-asnow) + EMSSNO*asnow
 
