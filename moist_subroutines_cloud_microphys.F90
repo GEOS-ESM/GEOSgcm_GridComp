@@ -3567,19 +3567,22 @@ module moist_subroutines_cloud_microphys
             enddo
             !$acc end parallel loop
 
+            call terminal_fall_3d (dts, is, ie, js, je, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+                        dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
             !$acc parallel loop
             do j = js, je
                 do i = is, ie  
 
-                    call terminal_fall (dts, ktop, kbot, tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qgz(i,j,:), qsz(i,j,:), qiz(i,j,:), &
-                        dz1(i,j,:), dp1(i,j,:), den(i,j,:), vtgz(i,j,:), vtsz(i,j,:), vtiz(i,j,:), r1(i,j), g1(i,j), s1(i,j), i1(i,j), m1_sol(i,j,:), w1(i,j,:))
+                    ! call terminal_fall (dts, ktop, kbot, tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qgz(i,j,:), qsz(i,j,:), qiz(i,j,:), &
+                    !     dz1(i,j,:), dp1(i,j,:), den(i,j,:), vtgz(i,j,:), vtsz(i,j,:), vtiz(i,j,:), r1(i,j), g1(i,j), s1(i,j), i1(i,j), m1_sol(i,j,:), w1(i,j,:))
                     
                     rain (i,j) = rain (i,j) + r1(i,j) ! from melted snow & ice that reached the ground
                     snow (i,j) = snow (i,j) + s1(i,j)
                     graupel (i,j) = graupel (i,j) + g1(i,j)
                     ice (i,j) = ice (i,j) + i1(i,j)
                     
-!                     ! -----------------------------------------------------------------------
+                    ! -----------------------------------------------------------------------
                     ! heat transportation during sedimentation
                     ! -----------------------------------------------------------------------
                     
