@@ -1645,7 +1645,9 @@ module moist_subroutines_cloud_microphys
 
         real, intent (out), dimension (is:ie, js:je,ktop:kbot) :: subl1
 
-        real, intent (in) :: dts, cnv_fraction, srf_type
+        real, intent (in) :: dts
+
+        real, intent(in), dimension(is:ie, js:je) :: cnv_fraction, srf_type
 
         real, intent (in), dimension (is:ie, js:je,ktop:kbot) :: h_var, ccn
                 
@@ -1732,7 +1734,7 @@ module moist_subroutines_cloud_microphys
                         ! this is the 1st occurance of liquid water freezing in the split mp process
                         ! -----------------------------------------------------------------------
 
-                        sink = fac_frz * new_ice_condensate(tzk (i,j,k), qlk (i,j,k), qik (i,j,k), cnv_fraction, srf_type)
+                        sink = fac_frz * new_ice_condensate(tzk (i,j,k), qlk (i,j,k), qik (i,j,k), cnv_fraction(i,j), srf_type(i,j))
                         qi_crt = qi0_crt / den (i,j,k)
                         tmp = min (sink, dim (qi_crt, qik (i,j,k)))
 
@@ -1933,7 +1935,7 @@ module moist_subroutines_cloud_microphys
                         
             !!!!!!!!        qim = qi0_crt / den (k)
             ! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
-                            qim = ice_fraction(tz,cnv_fraction,srf_type) * qi0_crt / den (i,j,k)
+                            qim = ice_fraction(tz,cnv_fraction(i,j),srf_type(i,j)) * qi0_crt / den (i,j,k)
 
                             ! -----------------------------------------------------------------------
                             ! assuming linear subgrid vertical distribution of cloud ice
@@ -2585,7 +2587,9 @@ module moist_subroutines_cloud_microphys
         
         real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: p1, den, denfac
         
-        real, intent (in) :: dts, cnv_fraction, srf_type
+        real, intent (in) :: dts
+        
+        real, intent(in), dimension(is:ie, js:je) :: cnv_fraction, srf_type
 
         real, intent (in), dimension (is:ie, js:je,ktop:kbot) :: h_var, ccn
 
@@ -2794,7 +2798,7 @@ module moist_subroutines_cloud_microphys
                         endif
                         if (dq > 0.) then ! vapor - > ice
                             ! deposition
-                            ifrac = ice_fraction(tz (i,j,k),cnv_fraction,srf_type) 
+                            ifrac = ice_fraction(tz (i,j,k),cnv_fraction(i,j),srf_type(i,j)) 
                                 tmp = tice - tz (i,j,k)
                             qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
                             qi_crt = max (qi_crt, 1.82e-6) * qi_lim * ifrac / den (i,j,k)
@@ -2968,7 +2972,7 @@ module moist_subroutines_cloud_microphys
                             rqi = q_sol / q_cond
                         else
                         ! WMP impose CALIPSO ice polynomial from 0 C to -40 C 
-                            rqi = ice_fraction(tin,cnv_fraction,srf_type)
+                            rqi = ice_fraction(tin,cnv_fraction(i,j),srf_type(i,j))
                         endif
                         qstar = rqi * qsi + (1. - rqi) * qsw
                     endif
@@ -4990,15 +4994,19 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     ! ice - phase microphysics
                     ! -----------------------------------------------------------------------
-            !$acc parallel loop collapse(2)
-            do j = js, je
-                do i = is, ie 
-                    call icloud (ktop, kbot, tz(i,j,:), p1(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), qgz(i,j,:), dp1(i,j,:), den(i,j,:), &
-                        denfac(i,j,:), vtsz(i,j,:), vtgz(i,j,:), vtrz(i,j,:), qaz(i,j,:), dts, subl1(i,j,:), h_var1d(i,j,:), &
-                        ccn(i,j,:), cnv_fraction(i,j), srf_type(i,j))
-                enddo
-            enddo
-            !$acc end parallel loop
+            ! !$acc parallel loop collapse(2)
+            ! do j = js, je
+            !     do i = is, ie 
+            !         call icloud (ktop, kbot, tz(i,j,:), p1(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), qgz(i,j,:), dp1(i,j,:), den(i,j,:), &
+            !             denfac(i,j,:), vtsz(i,j,:), vtgz(i,j,:), vtrz(i,j,:), qaz(i,j,:), dts, subl1(i,j,:), h_var1d(i,j,:), &
+            !             ccn(i,j,:), cnv_fraction(i,j), srf_type(i,j))
+            !     enddo
+            ! enddo
+            ! !$acc end parallel loop
+
+            call icloud_3d (is, je, js, je, ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
+                        denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
+                        ccn, cnv_fraction, srf_type)
 
             !$acc parallel loop collapse(3)
             do k = ktop, kbot
