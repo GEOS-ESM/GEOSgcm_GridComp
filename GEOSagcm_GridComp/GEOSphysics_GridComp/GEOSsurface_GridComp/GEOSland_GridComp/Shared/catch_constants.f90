@@ -66,7 +66,6 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_NIRMAX = 0.5      ! 
   REAL,    PARAMETER, PUBLIC :: CATCH_SNWALB_SLOPE  = -0.0006  ! 
   REAL,    PARAMETER, PUBLIC :: CATCH_MAXSNDEPTH    = 1.e20    ! 
-  REAL,    PARAMETER, PUBLIC :: CATCH_DZ1MAX        = 0.08     ! m   
   
   ! ---------------------------------------------------------------------------
   !
@@ -178,7 +177,6 @@ contains
     write (logunit,*) 'CATCH_SNWALB_NIRMAX        = ', CATCH_SNWALB_NIRMAX 
     write (logunit,*) 'CATCH_SNWALB_SLOPE         = ', CATCH_SNWALB_SLOPE  
     write (logunit,*) 'CATCH_MAXSNDEPTH           = ', CATCH_MAXSNDEPTH    
-    write (logunit,*) 'CATCH_DZ1MAX               = ', CATCH_DZ1MAX        
     write (logunit,*) 'CATCH_DZTSURF              = ', CATCH_DZTSURF          
     write (logunit,*) 'CATCH_DZGT                 = ', CATCH_DZGT          
     write (logunit,*) 'CATCH_PHIGT                = ', CATCH_PHIGT         

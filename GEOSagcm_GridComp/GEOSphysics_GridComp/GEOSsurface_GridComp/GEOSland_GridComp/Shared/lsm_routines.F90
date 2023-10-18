@@ -50,9 +50,6 @@ MODULE lsm_routines
   USE SIBALB_COEFF,      ONLY:                   &
        coeffsib
 
-  USE STIEGLITZSNOW,     ONLY:                   &
-       snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
-
   IMPLICIT NONE
 
   PRIVATE
