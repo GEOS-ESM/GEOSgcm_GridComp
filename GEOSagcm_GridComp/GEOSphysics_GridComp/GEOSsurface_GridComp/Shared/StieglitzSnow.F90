@@ -1544,7 +1544,7 @@ contains
          J=N+1-I
          if(D(J+1).ne.0.) RSF=RD(J)/D(J+1)
          D(J)=D(J)-DD(J+1)*RSF
-      B(J)=B(J)- B(J+1)*RSF
+         B(J)=B(J)- B(J+1)*RSF
       enddo
       if(D(1).ne.0.) X(1)=B(1)/D(1)
       do J=2,N
