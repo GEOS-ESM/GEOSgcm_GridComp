@@ -561,7 +561,7 @@ module moist_subroutines_cloud_microphys
         real, intent (in), dimension (is:ie, js:je,ktop:kbot) :: dp, dz, den
         real, intent (in), dimension (is:ie, js:je,ktop:kbot) :: denfac, ccn, c_praut
 
-        real, intent (in) :: eis !< estimated inversion strength
+        real, intent (in) :: eis(is:ie, js:je) !< estimated inversion strength
         
         real, intent (inout), dimension (is:ie, js:je,ktop:kbot) :: tz, vtr
         real, intent (inout), dimension (is:ie, js:je,ktop:kbot) :: qv, ql, qr, qi, qs, qg, qa
@@ -617,8 +617,8 @@ module moist_subroutines_cloud_microphys
         ql = ql/qadum
         qi = qi/qadum
 
-        fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
-        fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
+        ! fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
+        ! fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
     
         if (irain_f /= 0) then
             
@@ -629,6 +629,8 @@ module moist_subroutines_cloud_microphys
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie
+                        fac_rc = min(1.0,eis(i,j)/10.0)**2 ! Estimated inversion strength determine stable regime
+                        fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
                         qc0 = fac_rc * ccn (i,j,k)
                         if (tz (i,j,k) > t_wfr) then
                             qc = qc0 / den (i,j,k)
@@ -655,6 +657,8 @@ module moist_subroutines_cloud_microphys
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie
+                        fac_rc = min(1.0,eis(i,j)/10.0)**2 ! Estimated inversion strength determine stable regime
+                        fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
                         qc0 = fac_rc * ccn (i,j,k)
                         if (tz (i,j,k) > t_wfr + dt_fr) then
                             dl (i,j,k) = min (max (qcmin, dl (i,j,k)), 0.5 * ql (i,j,k))
@@ -4007,15 +4011,22 @@ module moist_subroutines_cloud_microphys
                     ! if (do_sedi_heat) &
                     !     call sedi_heat (ktop, kbot, dp1(i,j,:), m1_sol(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), &
                     !         qsz(i,j,:), qgz(i,j,:), c_ice)
-                    
                     ! -----------------------------------------------------------------------
                     ! warm rain processes
                     ! -----------------------------------------------------------------------
-                    
-                    call warm_rain (dts, ktop, kbot, dp1(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), &
-                        qgz(i,j,:), qaz(i,j,:), eis(i,j), den(i,j,:), denfac(i,j,:), ccn(i,j,:), c_praut(i,j,:), vtrz(i,j,:),   &
-                        r1(i,j), evap1(i,j,:), m1_rain(i,j,:), w1(i,j,:), h_var1d(i,j,:))
+                enddo
+            enddo
 
+            call warm_rain_3d (dts, is, ie, js, je, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
+                        qgz, qaz, eis, den, denfac, ccn, c_praut, vtrz,   &
+                        r1, evap1, m1_rain, w1, h_var1d)
+
+            do j = js, je
+                do i = is, ie  
+                    ! call warm_rain (dts, ktop, kbot, dp1(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), &
+                    !     qgz(i,j,:), qaz(i,j,:), eis(i,j), den(i,j,:), denfac(i,j,:), ccn(i,j,:), c_praut(i,j,:), vtrz(i,j,:),   &
+                    !     r1(i,j), evap1(i,j,:), m1_rain(i,j,:), w1(i,j,:), h_var1d(i,j,:))
+            
                     rain (i,j) = rain (i,j) + r1(i,j)
                 enddo
             enddo
