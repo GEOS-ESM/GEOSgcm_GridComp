@@ -87,14 +87,10 @@ contains
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=status)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=status)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=status)
-    VERIFY_(STATUS)
-    !call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     RC=status)
-    !VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -905,6 +901,74 @@ contains
   end subroutine Run
 
 !BOP
+
+!====================================================================
+
+! !IROUTINE: Record -- Record method (write intermediate restarts)
+
+! !INTERFACE:
+
+  subroutine Record ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component
+  type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
+  type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: RC     ! Error code
+
+!EOP
+
+    type(MAPL_MetaComp),     pointer :: MAPL
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Locals
+    character(len=14)                :: timeStamp
+    logical                          :: doRecord
+
+    __Iam__('Record')
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
+    Iam = trim(COMP_NAME)//'::'//Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Disk, _RC)
+
+    if (doRecord) then
+
+! Get the private internal state
+!--------------------------------
+
+
+       call MAPL_DateStampGet(clock, timeStamp, _RC)
+
+! Write a restart
+!-----------------
+
+       call ice_checkpoint(timeStamp)
+
+    end if
+
+    call MAPL_TimerOff(MAPL,"TOTAL")
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Record
 
 !====================================================================
 
