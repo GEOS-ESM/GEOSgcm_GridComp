@@ -254,7 +254,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('-ig', '--inputgrid', default=None, required=False, help='source grid file')
     parser.add_argument('-o', '--outputfile', default=None, required=True, help='CICE restart file on target grid')
     parser.add_argument('-og', '--outputgrid', default=None, required=True, help='target grid file')
-    parser.add_argument('-fs', '--fixedsalin', default=False, required=False, help='whether use BL99 fixed salinity profile')
+    parser.add_argument('-fs', '--fixedsalin', action='store_true', help='use BL99 fixed salinity profile')
     return parser.parse_args()
 
 
@@ -266,7 +266,11 @@ def main() -> None:
    #print(args.inputfile)
    #print(args.outputfile)
 
-   print('fixed salin: ', args.fixedsalin) 
+   if args.fixedsalin:
+      print('fixed salinity profile as in BL99 ') 
+   else:
+      print('prognostic salinity as in Mushy-layer') 
+    
 
    LON, LAT, ULON, ULAT, wet = get_dst_grid(args.outputgrid)
 
