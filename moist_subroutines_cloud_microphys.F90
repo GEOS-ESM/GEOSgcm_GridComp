@@ -319,7 +319,6 @@ module moist_subroutines_cloud_microphys
     end subroutine sedi_heat
 
     subroutine sedi_heat_3d (is, ie, js, je, ktop, kbot, dm, m1, dz, tz, qv, ql, qr, qi, qs, qg, cw)
-        !$acc routine seq
             implicit none
         
             ! input q fields are dry mixing ratios, and dm is dry air mass
@@ -348,6 +347,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             
             k = ktop
+            !$acc parallel loop gang vector collapse(2) private(cvn)
             do j = js, je
                 do i = is, ie
                     cvn = dm (i,j,k) * (cv_air + qv (i,j,k) * cv_vap + (qr (i,j,k) + ql (i,j,k)) * &
@@ -355,13 +355,16 @@ module moist_subroutines_cloud_microphys
                     tz (i,j,k) = ((cvn + m1 (i,j,k) * cw) * tz (i,j,k) + m1 (i,j,k) * (- 0.5 * grav * dz (i,j,k))) / (cvn + m1 (i,j,k) * cw)
                 enddo
             enddo
+            !$acc end parallel loop
             
             ! -----------------------------------------------------------------------
             ! implicit algorithm: can't be vectorized
             ! needs an inner i - loop for vectorization
             ! -----------------------------------------------------------------------
-            
+            !$acc parallel 
+            !$acc loop seq
             do k = ktop + 1, kbot
+                !$acc loop gang vector collapse(2) private(dgz, cvn)
                 do j = js, je
                     do i = is, ie
                         dgz = - 0.5 * grav * dz (i,j,k) ! > 0
@@ -372,7 +375,7 @@ module moist_subroutines_cloud_microphys
                     enddo
                 enddo
             enddo
-            
+            !$acc end parallel
         end subroutine sedi_heat_3d
 
     ! -----------------------------------------------------------------------
@@ -606,8 +609,6 @@ module moist_subroutines_cloud_microphys
     subroutine warm_rain_3d (dt, is, ie, js, je, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         eis, &
         den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
-    !$acc routine vector
-        implicit none
     
         integer, intent (in) :: ktop, kbot, is, ie, js, je
         
@@ -646,6 +647,8 @@ module moist_subroutines_cloud_microphys
         
         logical, dimension(is:ie, js:je) :: no_fall
 
+        !$acc data create(dl, dm, revap, isubl, qadum, ze, zt, no_fall)
+
         zs = 0.
     
         dt5 = 0.5 * dt
@@ -653,9 +656,10 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! terminal speed of rain
         ! -----------------------------------------------------------------------
-        
+        !$acc kernels
         evap1 = 0.
         m1_rain = 0.
+        !$acc end kernels
         
         call check_column_3d (qr, no_fall)
     
@@ -667,12 +671,19 @@ module moist_subroutines_cloud_microphys
 
         ! Use In-Cloud condensates
         if (.not. do_qa) then
+            !$acc kernels
             qadum = max(qa,qcmin)
+            !$acc end kernels
         else
+            !$acc kernels
             qadum = 1.0
+            !$acc end kernels
         endif
+
+        !$acc kernels
         ql = ql/qadum
         qi = qi/qadum
+        !$acc end kernels
 
         ! fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
         ! fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
@@ -682,7 +693,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! no subgrid varaibility
             ! -----------------------------------------------------------------------
-!$acc loop vector private(qc0, qc, dq, sink)
+            !$acc parallel loop gang vector collapse(3) private(fac_rc, qc0, qc, dq, sink)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie
@@ -702,6 +713,7 @@ module moist_subroutines_cloud_microphys
                     enddo
                 enddo
             enddo
+            !$acc end parallel loop
         
         else
             
@@ -710,7 +722,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
 
             call linear_prof_3d (ie-is+1, je-js+1, kbot - ktop + 1, ql, dl, z_slope_liq, h_var)
-!$acc loop vector private(qc0, qc, dq, sink)
+            !$acc parallel loop gang vector collapse(3) private(fac_rc, qc0, qc, dq, sink)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie
@@ -741,16 +753,21 @@ module moist_subroutines_cloud_microphys
                     enddo
                 enddo
             enddo
+            !$acc end parallel loop
         endif
 
         ! Revert In-Cloud condensate
+        !$acc kernels
         ql = ql*qadum
         qi = qi*qadum
+        !$acc end kernels
  
         ! -----------------------------------------------------------------------
         ! fall speed of rain
         ! -----------------------------------------------------------------------
         
+        !$acc parallel
+        !$acc loop gang collapse(2)
         do j = js, je
             do i = is, ie
                 if (no_fall(i,j)) then
@@ -758,7 +775,7 @@ module moist_subroutines_cloud_microphys
                 elseif (const_vr) then
                     vtr (i,j,:) = vr_fac ! ifs_2016: 4.0
                 else
-        !$acc loop vector private(qden)
+                    !$acc loop vector private(qden)
                     do k = ktop, kbot
                         qden = qr (i,j,k) * den (i,j,k)
                         if (qr (i,j,k) < thr) then
@@ -772,42 +789,53 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel
         
+        !$acc kernels
         ze (:,:,kbot + 1) = zs
-!$acc loop seq
+        !$acc end kernels
+
+        !$acc parallel 
+        !$acc loop seq
         do k = kbot, ktop, - 1
             ze (:,:,k) = ze (:,:,k + 1) - dz (:,:,k) ! dz < 0
         enddo
+        !$acc end parallel
         
         ! -----------------------------------------------------------------------
         ! evaporation and accretion of rain for the first 1 / 2 time step
         ! -----------------------------------------------------------------------
         
         call revap_racc_3d (is, ie, js, je, ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+
+        !$acc kernels
         evap1 = revap
+        !$acc end kernels
  
         if (do_sedi_w) then
-!$acc loop vector
+        !$acc parallel loop gang
             do k = ktop, kbot
                 dm (:,:,k) = dp (:,:,k) * (1. + qv (:,:,k) + ql (:,:,k) + qr (:,:,k) + qi (:,:,k) + qs (:,:,k) + qg (:,:,k))
             enddo
         endif
+        !$acc end parallel loop
         
         ! -----------------------------------------------------------------------
         ! mass flux induced by falling rain
         ! -----------------------------------------------------------------------
+        !$acc parallel loop gang collapse(2)
         do j = js, je
             do i = is, ie
                 if (no_fall(i,j)) then
                     r1(i,j) = 0.0
                 elseif (use_ppm) then
                     zt (i,j,ktop) = ze (i,j,ktop)
-        !$acc loop vector
+                    !$acc loop vector
                     do k = ktop + 1, kbot
                         zt (i,j,k) = ze (i,j,k) - dt * (vtr (i,j,k - 1) + vtr (i,j,k))/2.0
                     enddo
                     zt (i,j,kbot + 1) = zs - dt * vtr (i,j,kbot)
-        !$acc loop seq
+                    !$acc loop seq
                     do k = ktop, kbot
                         if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
                     enddo
@@ -823,12 +851,15 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         if (do_sedi_w) then
+            !$acc kernels
             w1 (:,:,ktop) = (dm (:,:,ktop) * w1 (:,:,ktop) + m1_rain (:,:,ktop) * vtr (:,:,ktop)) / (dm (:,:,ktop) - m1_rain (:,:,ktop))
-!$acc loop vector
+            !$acc end kernels
+            !$acc parallel loop gang
             do k = ktop + 1, kbot
                 w1 (:,:,k) = (dm (:,:,k) * w1 (:,:,k) - m1_rain (:,:,k - 1) * vtr (:,:,k - 1) + m1_rain (:,:,k) * vtr (:,:,k)) &
                      / (dm (:,:,k) + m1_rain (:,:,k - 1) - m1_rain (:,:,k))
             enddo
+            !$acc end parallel loop
         endif
         
         ! -----------------------------------------------------------------------
@@ -846,7 +877,12 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
 
         call revap_racc_3d (is, ie, js, je, ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+
+        !$acc kernels
         evap1 = evap1 + revap
+        !$acc end kernels
+
+        !$acc end data
     end subroutine warm_rain_3d
 
     ! -----------------------------------------------------------------------
@@ -960,7 +996,6 @@ module moist_subroutines_cloud_microphys
     end subroutine revap_racc
 
     subroutine revap_racc_3d (is, ie, js, je, ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        !$acc routine seq
         implicit none
     
         integer, intent (in) :: is, ie, js, je, ktop, kbot
@@ -981,10 +1016,17 @@ module moist_subroutines_cloud_microphys
         real :: TOT_PREC_LS, AREA_LS_PRC, AREA_LS_PRC_K 
         integer :: i, j, k
     
+        !$acc kernels
         revap = 0.
+        !$acc end kernels
     
         TOT_PREC_LS = 0.
         AREA_LS_PRC = 0.
+        !$acc parallel loop gang vector collapse(3) &
+        !$acc               firstprivate(TOT_PREC_LS, AREA_LS_PRC) &
+        !$acc               private(fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
+        !$acc                       qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
+        !$acc                       sink)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -1066,6 +1108,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel loop
 
     end subroutine revap_racc_3d
 
@@ -1130,69 +1173,74 @@ module moist_subroutines_cloud_microphys
     end subroutine linear_prof
 
     subroutine linear_prof_3d (im, jm, km, q, dm, z_var, h_var)
-        !$acc routine vector
-            implicit none
-        
-            integer, intent (in) :: im, jm, km
-            
-            real, intent (in) :: q (im, jm, km), h_var(im, jm, km)
-            
-            real, intent (out) :: dm (im, jm, km)
-            
-            logical, intent (in) :: z_var
-            
-            real :: dq, dq_p1
-            
-            integer :: i, j, k
+        implicit none
     
-            if (z_var) then
-                dm (:,:,1) = 0.
-                
-                ! -----------------------------------------------------------------------
-                ! use twice the strength of the positive definiteness limiter (lin et al 1994)
-                ! -----------------------------------------------------------------------
-    !$acc loop vector private(dq, dq_p1)
-                do k = 2, km - 1
-                    do j = 1, jm
-                        do i = 1, im
-                            dq = 0.5 * (q (i,j,k) - q (i,j,k - 1))
-                            dq_p1 = 0.5 * (q (i,j,k + 1) - q (i,j,k))
-                            dm (i,j,k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (i,j,k))
-                            if (dq * dq_p1 <= 0.) then
-                                if (dq > 0.) then ! local max
-                                    dm (i,j,k) = min (dm (i,j,k), dq, - dq_p1)
-                                else
-                                    dm (i,j,k) = 0.
-                                endif
+        integer, intent (in) :: im, jm, km
+        
+        real, intent (in) :: q (im, jm, km), h_var(im, jm, km)
+        
+        real, intent (out) :: dm (im, jm, km)
+        
+        logical, intent (in) :: z_var
+        
+        real :: dq, dq_p1
+        
+        integer :: i, j, k
+
+        if (z_var) then
+            !$acc kernels
+            dm (:,:,1) = 0.
+            !$acc end kernels
+            ! -----------------------------------------------------------------------
+            ! use twice the strength of the positive definiteness limiter (lin et al 1994)
+            ! -----------------------------------------------------------------------
+            !$acc parallel loop gang vector collapse(3) private(dq, dq_p1)
+            do k = 2, km - 1
+                do j = 1, jm
+                    do i = 1, im
+                        dq = 0.5 * (q (i,j,k) - q (i,j,k - 1))
+                        dq_p1 = 0.5 * (q (i,j,k + 1) - q (i,j,k))
+                        dm (i,j,k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (i,j,k))
+                        if (dq * dq_p1 <= 0.) then
+                            if (dq > 0.) then ! local max
+                                dm (i,j,k) = min (dm (i,j,k), dq, - dq_p1)
+                            else
+                                dm (i,j,k) = 0.
                             endif
-                        enddo
+                        endif
                     enddo
                 enddo
-                dm (:,:,km) = 0.
-                
-                ! -----------------------------------------------------------------------
-                ! impose a presumed background horizontal variability that is proportional to the value itself
-                ! -----------------------------------------------------------------------
-    !$acc loop vector
-                do k = 1, km
-                    do j = 1, jm
-                        do i = 1, im
-                            dm (i,j,k) = max (dm (i,j,k), qvmin, h_var(i,j,k) * q (i,j,k))
-                        enddo
+            enddo
+            !$acc end parallel loop
+
+            !$acc kernels
+            dm (:,:,km) = 0.
+            !$acc end kernels               
+            ! -----------------------------------------------------------------------
+            ! impose a presumed background horizontal variability that is proportional to the value itself
+            ! -----------------------------------------------------------------------
+            !$acc parallel loop gang vector collapse(3)
+            do k = 1, km
+                do j = 1, jm
+                    do i = 1, im
+                        dm (i,j,k) = max (dm (i,j,k), qvmin, h_var(i,j,k) * q (i,j,k))
                     enddo
                 enddo
-            else
-    !$acc loop vector
-                do k = 1, km
-                    do j = 1, jm
-                        do i = 1, im
-                            dm (i,j,k) = max (qvmin, h_var(i,j,k) * q (i,j,k))
-                        enddo
+            enddo
+            !$acc end parallel loop
+        else
+            !$acc parallel loop gang vector collapse(3)
+            do k = 1, km
+                do j = 1, jm
+                    do i = 1, im
+                        dm (i,j,k) = max (qvmin, h_var(i,j,k) * q (i,j,k))
                     enddo
                 enddo
-            endif
-            
-        end subroutine linear_prof_3d
+            enddo
+            !$acc end parallel loop
+        endif
+        
+    end subroutine linear_prof_3d
 
     subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
@@ -1693,7 +1741,6 @@ module moist_subroutines_cloud_microphys
 
     subroutine icloud_3d (is, ie, js, je, ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
-    !$acc routine vector
         implicit none
 
         integer, intent (in) :: is, ie, js, je, ktop, kbot
@@ -1737,10 +1784,12 @@ module moist_subroutines_cloud_microphys
         fac_imlt = 1. - exp (- dts / tau_imlt)
         fac_frz  = 1. - exp (- dts / tau_frz)
 
+        !$acc data create(di, cvm, q_liq, q_sol)
+
         ! -----------------------------------------------------------------------
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
-    !$acc loop vector
+        !$acc parallel loop gang vector collapse(3)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -1750,6 +1799,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel
 
         ! -----------------------------------------------------------------------
         ! sources of cloud ice: pihom, cold rain, and the sat_adj
@@ -1760,7 +1810,7 @@ module moist_subroutines_cloud_microphys
     !*****
     ! Note : If 'sink' gets added as a private variable, the code will not verify
     !*****
-    !$acc loop vector private(lhi, icpk, melt, tmp)
+        !$acc parallel loop gang vector collapse(3) private(lhi, icpk, melt, tmp, sink, qi_crt)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -1813,6 +1863,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel loop
 
         ! -----------------------------------------------------------------------
         ! vertical subgrid variability
@@ -1824,8 +1875,14 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-    !$acc loop seq
+        !$acc parallel
+        !$acc loop seq
         do k = ktop, kbot
+            !$acc loop gang vector collapse(2) &
+            !$acc private(lhi, lhl, icpk, tcpk, tz, qv, ql, qi, qr, qs, qg, &
+            !$acc         pgacr, pgacw, tc, dqs0, factor, psacw, psacr, pracs, &
+            !$acc         psmlt, sink, tmp, qden, pgmlt, qim, q_plus, dq, psaut, &
+            !$acc         pgaci, pgfr, qsm, psaci)
             do j = js, je
                 do i = is, ie
                     lhi = li00 + dc_ice * tzk (i,j,k)
@@ -2200,6 +2257,7 @@ module moist_subroutines_cloud_microphys
         call subgrid_z_proc_3d (is, ie, js, je, ktop, kbot, p1, den, denfac, dts, tzk, qvk, &
             qlk, qrk, qik, qsk, qgk, qak, subl1, h_var, ccn, cnv_fraction, srf_type)
 
+        !$acc end data
     end subroutine icloud_3d
 
     ! =======================================================================
@@ -2639,7 +2697,6 @@ module moist_subroutines_cloud_microphys
 
     subroutine subgrid_z_proc_3d (is, ie, js, je, ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ql, qr, qi, qs, qg, qa, subl1, h_var, ccn, cnv_fraction, srf_type)
-    !$acc routine seq
         implicit none
     
         integer, intent (in) :: is, ie, js, je, ktop, kbot
@@ -2706,6 +2763,12 @@ module moist_subroutines_cloud_microphys
         !     tcp3 = lcpk + icpk * min (1., dim (tice, tz (k)) / (tice - t_wfr))
         ! enddo
         
+        !$acc parallel loop gang vector collapse(3) &
+        !$acc          private(lhl, lhi, q_liq, q_sol, cvm, rh_adj, rh_rain, &
+        !$acc                  sink, lcpk, icpk, tcpk, tcp3, qpz, rh, tin, qsw, dq0, &
+        !$acc                  factor, evap, dtmp, tc, qsi, dq, pidep, ifrac, &
+        !$acc                  qi_crt, qden, tmp, tsq, pssub, pgsub, q_cond, qstar, &
+        !$acc                  rqi, q_plus, q_minus)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -2861,7 +2924,7 @@ module moist_subroutines_cloud_microphys
                                 tmp = tice - tz (i,j,k)
                             qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp)))
                             qi_crt = max (qi_crt, 1.82e-6) * qi_lim * ifrac / den (i,j,k)
-                                sink = min (sink, max (qi_crt - qi (i,j,k), pidep), tmp / tcpk)
+                            sink = min (sink, max (qi_crt - qi (i,j,k), pidep), tmp / tcpk)
                         else ! ice -- > vapor
                             ! sublimation
                             if (do_subl) then
@@ -3412,8 +3475,6 @@ module moist_subroutines_cloud_microphys
 
     subroutine terminal_fall_3d (dtm, is, ie, js, je, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
         den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
-    !$acc routine vector
-        implicit none
 
         integer, intent (in) :: is, ie, js, je, ktop, kbot
         
@@ -3451,10 +3512,12 @@ module moist_subroutines_cloud_microphys
 
         fac_imlt = 1. - exp (- dtm / tau_imlt)
         
+        !$acc data create(ze, zt, icpk, cvm, m1, dm, k0, no_fall)
+
         ! -----------------------------------------------------------------------
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
-        !$acc loop vector private(lhi, q_liq, q_sol)
+        !$acc parallel loop gang vector collapse(3) private(lhi, q_liq, q_sol)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -3476,8 +3539,10 @@ module moist_subroutines_cloud_microphys
         
         k0 = kbot
 
+        !$acc parallel
         !$acc loop seq
         do k = ktop, kbot - 1
+            !$acc loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie
                     if (tz (i,j,k) > tice .and. k0(i,j).eq.kbot) then
@@ -3486,11 +3551,12 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel
 
         ! -----------------------------------------------------------------------
         ! melting of cloud_ice (before fall) :
         ! -----------------------------------------------------------------------
-        !$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
+        !$acc parallel loop gang vector collapse(3) private(tc, q_liq, q_sol, lhi, sink, tmp)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -3521,28 +3587,38 @@ module moist_subroutines_cloud_microphys
         ! turn off melting when cloud microphysics time step is small
         ! -----------------------------------------------------------------------
         
+        !$acc kernels
         if (dtm < 60.) k0 = kbot
         
         ! sjl, turn off melting of falling cloud ice, snow and graupel
         k0 = kbot
         ! sjl, turn off melting of falling cloud ice, snow and graupel
-        
+        !$acc end kernels
+
+        !$acc kernels
         ze (:,:,kbot + 1) = zs
+        !$acc end kernels
+
+        !$acc parallel
         !$acc loop seq
         do k = kbot, ktop, - 1
+            !$acc loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie
                     ze (i,j,k) = ze (i,j,k + 1) - dz (i,j,k) ! dz < 0
                 enddo
             enddo
         enddo
+        !$acc end parallel
 
+        !$acc kernels
         zt (:,:,ktop) = ze (:,:,ktop)
-        
+        !$acc end kernels
+
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
-        !$acc loop vector private(lhi)
+        !$acc parallel loop gang vector collapse(3) private(lhi)
         ! do k = k0, kbot
         do k = kbot, kbot
             do j = js, je
@@ -3559,23 +3635,24 @@ module moist_subroutines_cloud_microphys
         
         call check_column_3d (qi, no_fall)
         
+        !$acc parallel loop gang collapse(2)
         do j = js, je
             do i = is, ie
                 if (vi_fac < 1.e-5 .or. no_fall(i,j)) then
                     i1(i,j) = 0.
                 else
-                !$acc loop vector
+                    !$acc loop vector
                     do k = ktop + 1, kbot
                         zt (i,j,k) = ze (i,j,k) - dtm * (vti (i,j,k - 1) + vti (i,j,k))/2.0
                     enddo
                     zt (i,j,kbot + 1) = zs - dtm * vti (i,j,kbot)
-                !$acc loop seq
+                    !$acc loop seq
                     do k = ktop, kbot
                         if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
                     enddo
                     
                     if (k0(i,j) < kbot) then
-                !$acc loop seq
+                        !$acc loop seq
                         do k = kbot - 1, k0(i,j), - 1
                             if (qi (i,j,k) > qcmin) then
                                 exit_flag = .true.
@@ -3621,15 +3698,19 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel loop
 
         ! -----------------------------------------------------------------------
         ! melting of falling snow into rain
         ! -----------------------------------------------------------------------
         
+        !$acc kernels
         r1 = 0.
+        !$acc end kernels
         
         call check_column_3d (qs, no_fall)
         
+        !$acc parallel loop gang collapse(2)
         do j = js, je
             do i = is, ie
                 if (no_fall(i,j)) then
@@ -3686,14 +3767,14 @@ module moist_subroutines_cloud_microphys
                     else
                         call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vts(i,j,:), dp(i,j,:), qs(i,j,:), s1(i,j), m1(i,j,:))
                     endif
-            !$acc loop vector
+                    !$acc loop vector
                     do k = ktop, kbot
                         m1_sol (i,j,k) = m1_sol (i,j,k) + m1 (i,j,k)
                     enddo
                     
                     if (do_sedi_w) then
                         w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1 (i,j,ktop) * vts (i,j,ktop)) / (dm (i,j,ktop) - m1 (i,j,ktop))
-            !$acc loop vector
+                        !$acc loop vector
                         do k = ktop + 1, kbot
                             w1 (i,j,k) = (dm (i,j,k) * w1 (i,j,k) - m1 (i,j,k - 1) * vts (i,j,k - 1) + m1 (i,j,k) * vts (i,j,k)) &
                                 / (dm (i,j,k) + m1 (i,j,k - 1) - m1 (i,j,k))
@@ -3703,6 +3784,7 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel loop
 
         ! ----------------------------------------------
         ! melting of falling graupel into rain
@@ -3710,27 +3792,28 @@ module moist_subroutines_cloud_microphys
         
         call check_column_3d (qg, no_fall)
         
+        !$acc parallel loop gang collapse(2)
         do j = js, je
             do i = is, ie
                 if (no_fall(i,j)) then
                     g1(i,j) = 0.
                 else
-            !$acc loop vector
+                    !$acc loop vector
                     do k = ktop + 1, kbot
                         zt (i,j,k) = ze (i,j,k) - dtm * (vtg (i,j,k - 1) + vtg (i,j,k))/2.0
                     enddo
                     zt (i,j,kbot + 1) = zs - dtm * vtg (i,j,kbot)
-            !$acc loop seq
+                    !$acc loop seq
                     do k = ktop, kbot
                         if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
                     enddo
                     
                     if (k0(i,j) < kbot) then
-            !$acc loop seq
+                        !$acc loop seq
                         do k = kbot - 1, k0(i,j), - 1
                             if (qg (i,j,k) > qpmin) then
                                 exit_flag = .true.
-            !$acc loop seq
+                                !$acc loop seq
                                 do m = k + 1, kbot
                                     if (zt (i,j,k + 1) >= ze (i,j,m) .and. exit_flag) exit_flag = .false.
                                     if(exit_flag) then
@@ -3754,7 +3837,7 @@ module moist_subroutines_cloud_microphys
                     endif
                     
                     if (do_sedi_w) then
-            !$acc loop vector
+                        !$acc loop vector
                         do k = ktop, kbot
                             dm (i,j,k) = dp (i,j,k) * (1. + qv (i,j,k) + ql (i,j,k) + qr (i,j,k) + qi (i,j,k) + qs (i,j,k) + qg (i,j,k))
                         enddo
@@ -3765,14 +3848,14 @@ module moist_subroutines_cloud_microphys
                     else
                         call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vtg(i,j,:), dp(i,j,:), qg(i,j,:), g1(i,j), m1(i,j,:))
                     endif
-            !$acc loop vector 
+                    !$acc loop vector 
                     do k = ktop, kbot
                         m1_sol (i,j,k) = m1_sol (i,j,k) + m1 (i,j,k)
                     enddo
                     
                     if (do_sedi_w) then
                         w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1 (i,j,ktop) * vtg (i,j,ktop)) / (dm (i,j,ktop) - m1 (i,j,ktop))
-            !$acc loop vector
+                        !$acc loop vector
                         do k = ktop + 1, kbot
                             w1 (i,j,k) = (dm (i,j,k) * w1 (i,j,k) - m1 (i,j,k - 1) * vtg (i,j,k - 1) + m1 (i,j,k) * vtg (i,j,k)) &
                                 / (dm (i,j,k) + m1 (i,j,k - 1) - m1 (i,j,k))
@@ -3782,6 +3865,9 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel loop
+
+        !$acc end data
         
     end subroutine terminal_fall_3d
 
@@ -3814,9 +3900,7 @@ module moist_subroutines_cloud_microphys
     end subroutine check_column
 
     subroutine check_column_3d (q, no_fall)
-        !$acc routine seq
-        implicit none
-        
+       
         real, intent (in) :: q (:,:,:)
         
         logical, intent (out) :: no_fall(:,:)
@@ -3830,9 +3914,14 @@ module moist_subroutines_cloud_microphys
         ktop = lbound(q,3)
         kbot = ubound(q,3)
         
+        !$acc kernels
         no_fall = .true.
+        !$acc end kernels
         
+        !$acc parallel
+        !$acc loop seq
         do k = ktop, kbot
+            !$acc loop gang vector collapse(2)
             do j = js,je
                 do i = is, ie
                     if (q (i,j,k) > qpmin .and. no_fall(i,j)) then
@@ -3841,6 +3930,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel
         
     end subroutine check_column_3d
 
@@ -3851,7 +3941,7 @@ module moist_subroutines_cloud_microphys
     ! =======================================================================
 
     subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
-    !$acc routine vector
+        !$acc routine vector
         implicit none
     
         integer, intent (in) :: ktop, kbot
@@ -3871,7 +3961,7 @@ module moist_subroutines_cloud_microphys
         real, dimension (ktop:kbot) :: qm
 
         integer :: k
-!$acc loop vector
+        !$acc loop vector
         do k = ktop, kbot
             q (k) = q (k) * dp (k)
         enddo
@@ -3881,7 +3971,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
-!$acc loop seq
+        !$acc loop seq
         do k = ktop + 1, kbot
             qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
         enddo
@@ -3889,7 +3979,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! qm is density at this stage
         ! -----------------------------------------------------------------------
-!$acc loop vector
+        !$acc loop vector
         do k = ktop, kbot
             qm (k) = qm (k) * (ze (k) - ze (k + 1))
         enddo
@@ -3899,7 +3989,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         
         m1 (ktop) = q (ktop) - qm (ktop)
-!$acc loop seq
+        !$acc loop seq
         do k = ktop + 1, kbot
             m1 (k) = m1 (k - 1) + q (k) - qm (k)
         enddo
@@ -3908,7 +3998,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! update:
         ! -----------------------------------------------------------------------
-!$acc loop vector
+        !$acc loop vector
         do k = ktop, kbot
             q (k) = qm (k) / dp (k)
         enddo
@@ -4238,7 +4328,6 @@ module moist_subroutines_cloud_microphys
     subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                         den, qs, qi, qg, ql, tk, vts, vti, vtg)
     !$acc routine seq
-        implicit none
 
         integer, intent (in) :: ktop, kbot
         
@@ -4633,7 +4722,6 @@ module moist_subroutines_cloud_microphys
     end function iqs2
 
     subroutine neg_adj (pt, dp, qv, ql, qr, qi, qs, qg)
-    !!$acc routine vector
         implicit none
     
         ! integer, intent (in) :: ktop, kbot
@@ -4664,8 +4752,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latent heat coefficient
         ! -----------------------------------------------------------------------
-        !$acc parallel loop vector private(cvm, lcpk, icpk)
-
+        !$acc parallel loop gang vector collapse(3) private(cvm, lcpk, icpk)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -4717,8 +4804,10 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! fix water vapor; borrow from below
         ! -----------------------------------------------------------------------
-        !$acc parallel loop seq
+        !$acc parallel
+        !$acc loop seq
         do k = ktop, kbot - 1
+            !$acc loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie
                     if (qv (i,j,k) < 0.) then
@@ -4728,12 +4817,12 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
-        !$acc end parallel loop
+        !$acc end parallel
         
         ! -----------------------------------------------------------------------
         ! bottom layer; borrow from above
         ! -----------------------------------------------------------------------
-        !$acc parallel loop collapse(2) private(dq)
+        !$acc parallel loop gang vector collapse(2) private(dq)
         do j = js, je
             do i = is, ie
                 if (qv (i,j,kbot) < 0. .and. qv (i,j,kbot - 1) > 0.) then
@@ -4863,12 +4952,12 @@ module moist_subroutines_cloud_microphys
 !$acc              u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
 !$acc              revap, isubl, rain, snow, ice, graupel, cond, w_var, &
 !$acc              vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol) &
-!$acc       create(h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-!$acc         vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+!$acc       create(tz, h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+!$acc         dp1, dz1, w1, vtiz, vtsz, vtgz, vtrz, &
 !$acc         qv0, ql0, qr0, qi0, qs0, qg0, &
-!$acc         den, tz, p1, denfac, &
+!$acc         den, p1, denfac, &
 !$acc         ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-!$acc         w1, r1, s1, i1, g1, v1_km1, v1_k)
+!$acc         r1, s1, i1, g1)
         
 
         ! -----------------------------------------------------------------------
@@ -4968,7 +5057,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! dry air density
             ! -----------------------------------------------------------------------
-            !$acc parallel loop collapse(3) private(t0)
+            !$acc parallel loop gang vector collapse(3) private(t0)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie  
@@ -4995,7 +5084,7 @@ module moist_subroutines_cloud_microphys
             call terminal_fall_3d (dts, is, ie, js, je, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                         dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
 
-            !$acc parallel loop
+            !$acc parallel loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie  
 
@@ -5020,6 +5109,7 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                 enddo
             enddo
+            !$acc end parallel loop
 
             if(do_sedi_heat) &
                 call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
@@ -5029,6 +5119,7 @@ module moist_subroutines_cloud_microphys
                         qgz, qaz, eis, den, denfac, ccn, c_praut, vtrz,   &
                         r1, evap1, m1_rain, w1, h_var1d)
 
+            !$acc parallel loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie  
                     ! call warm_rain (dts, ktop, kbot, dp1(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), &
@@ -5040,7 +5131,7 @@ module moist_subroutines_cloud_microphys
             enddo
             !$acc end parallel loop
 
-            !$acc parallel loop collapse(3)
+            !$acc parallel loop gang vector collapse(3)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie  
@@ -5081,7 +5172,7 @@ module moist_subroutines_cloud_microphys
                                 
         enddo ! ntimes
 
-        !$acc parallel loop collapse(2)
+        !$acc parallel loop collapse(2) private(v1_km1, u1_km1, u1_k, v1_k)
         do j = js, je
             do i = is, ie
             
@@ -5182,7 +5273,7 @@ module moist_subroutines_cloud_microphys
                 ! qn2 (i, j, k) = ccn (k)
                 ! enddo
                 ! endif
-            enddo
+                enddo
             enddo
         enddo
         !$acc end parallel loop
