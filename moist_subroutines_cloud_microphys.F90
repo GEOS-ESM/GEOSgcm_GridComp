@@ -318,6 +318,63 @@ module moist_subroutines_cloud_microphys
         
     end subroutine sedi_heat
 
+    subroutine sedi_heat_3d (is, ie, js, je, ktop, kbot, dm, m1, dz, tz, qv, ql, qr, qi, qs, qg, cw)
+        !$acc routine seq
+            implicit none
+        
+            ! input q fields are dry mixing ratios, and dm is dry air mass
+            
+            integer, intent (in) :: is, ie, js, je, ktop, kbot
+            
+            real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: dm, m1, dz, qv, ql, qr, qi, qs, qg
+            
+            real, intent (inout), dimension (is:ie, js:je,ktop:kbot) :: tz
+            
+            real, intent (in) :: cw ! heat capacity
+            
+            real :: dgz, cvn
+            
+            real :: tmp
+            
+            integer :: i, j, k
+            
+            ! -----------------------------------------------------------------------
+            ! sjl, july 2014
+            ! assumption: the ke in the falling condensates is negligible compared to the potential energy
+            ! that was unaccounted for. local thermal equilibrium is assumed, and the loss in pe is transformed
+            ! into internal energy (to heat the whole grid box)
+            ! backward time - implicit upwind transport scheme:
+            ! dm here is dry air mass
+            ! -----------------------------------------------------------------------
+            
+            k = ktop
+            do j = js, je
+                do i = is, ie
+                    cvn = dm (i,j,k) * (cv_air + qv (i,j,k) * cv_vap + (qr (i,j,k) + ql (i,j,k)) * &
+                        c_liq + (qi (i,j,k) + qs (i,j,k) + qg (i,j,k)) * c_ice)
+                    tz (i,j,k) = ((cvn + m1 (i,j,k) * cw) * tz (i,j,k) + m1 (i,j,k) * (- 0.5 * grav * dz (i,j,k))) / (cvn + m1 (i,j,k) * cw)
+                enddo
+            enddo
+            
+            ! -----------------------------------------------------------------------
+            ! implicit algorithm: can't be vectorized
+            ! needs an inner i - loop for vectorization
+            ! -----------------------------------------------------------------------
+            
+            do k = ktop + 1, kbot
+                do j = js, je
+                    do i = is, ie
+                        dgz = - 0.5 * grav * dz (i,j,k) ! > 0
+                        cvn = dm (i,j,k) * (cv_air + qv (i,j,k) * cv_vap + (qr (i,j,k) + ql (i,j,k)) * &
+                            c_liq + (qi (i,j,k) + qs (i,j,k) + qg (i,j,k)) * c_ice)
+                        tz (i,j,k) = ((cvn + cw * (m1 (i,j,k) - m1 (i,j,k - 1))) * tz (i,j,k) + m1 (i,j,k - 1) * &
+                            cw * tz (i,j,k - 1) + dgz * (m1 (i,j,k - 1) + m1 (i,j,k))) / (cvn + cw * m1 (i,j,k))
+                    enddo
+                enddo
+            enddo
+            
+        end subroutine sedi_heat_3d
+
     ! -----------------------------------------------------------------------
     !> warm rain cloud microphysics
     ! -----------------------------------------------------------------------
@@ -778,10 +835,12 @@ module moist_subroutines_cloud_microphys
         ! heat transportation during sedimentation
         ! -----------------------------------------------------------------------
         
-        ! Note : Since do_sedi_heat is false with the current input set, I'll leave the porting out for now
         ! if (do_sedi_heat) &
         !     call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
-        
+
+        if (do_sedi_heat) &
+            call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+
         ! -----------------------------------------------------------------------
         ! evaporation and accretion of rain for the remaing 1 / 2 time step
         ! -----------------------------------------------------------------------
@@ -4953,8 +5012,6 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                     
 
-                    ! Note : Commenting out sedi_heat for now since current test data does not call it
-
                     ! if (do_sedi_heat) &
                     !     call sedi_heat (ktop, kbot, dp1(i,j,:), m1_sol(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), &
                     !         qsz(i,j,:), qgz(i,j,:), c_ice)
@@ -4963,6 +5020,10 @@ module moist_subroutines_cloud_microphys
                     ! -----------------------------------------------------------------------
                 enddo
             enddo
+
+            if(do_sedi_heat) &
+                call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
+                                   qsz, qgz, c_ice)
 
             call warm_rain_3d (dts, is, ie, js, je, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
                         qgz, qaz, eis, den, denfac, ccn, c_praut, vtrz,   &
