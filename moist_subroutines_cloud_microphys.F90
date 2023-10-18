@@ -1688,7 +1688,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
-!$acc loop vector private(lhi)
+!$acc loop vector private(lhi, q_liq, q_sol)
         do k = ktop, kbot
             m1_sol (k) = 0.
             ! lhl (k) = lv00 + d0_vap * tz (k)
@@ -1985,6 +1985,381 @@ module moist_subroutines_cloud_microphys
         
     end subroutine terminal_fall
 
+    subroutine terminal_fall_3d (dtm, is, ie, js, je, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
+        den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
+    !$acc routine vector
+        implicit none
+
+        integer, intent (in) :: is, ie, js, je, ktop, kbot
+        
+        real, intent (in) :: dtm ! time step (s)
+        
+        real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: vtg, vts, vti, den, dp, dz
+        
+        real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: qv, ql, qr, qg, qs, qi, tz, m1_sol, w1
+        
+        real, dimension(is:ie, js:je), intent(out) :: r1, g1, s1, i1
+
+        real, dimension (is:ie, js:je,ktop:kbot + 1) :: ze, zt
+        
+        real :: qsat, dqsdt, evap, dtime
+        real :: factor, frac
+        real :: tmp, precip, tc, sink
+        
+        real, dimension (is:ie, js:je,ktop:kbot) :: icpk, cvm
+        real, dimension (is:ie, js:je,ktop:kbot) :: m1, dm
+        
+        real :: q_liq, q_sol, lcpk, lhl, lhi
+
+        real :: zs
+        real :: fac_imlt
+        
+        integer :: i, j, k, m
+
+        integer, dimension(is:ie, js:je) :: k0
+        
+        logical :: exit_flag
+
+        logical, dimension(is:ie, js:je) :: no_fall
+
+        zs = 0.
+
+        fac_imlt = 1. - exp (- dtm / tau_imlt)
+        
+        ! -----------------------------------------------------------------------
+        ! define heat capacity and latend heat coefficient
+        ! -----------------------------------------------------------------------
+        !$acc loop vector private(lhi, q_liq, q_sol)
+        do k = ktop, kbot
+            do j = js, je
+                do i = is, ie
+                    m1_sol (i,j,k) = 0.
+                    ! lhl (k) = lv00 + d0_vap * tz (k)
+                    lhi = li00 + dc_ice * tz (i,j,k)
+                    q_liq = ql (i,j,k) + qr (i,j,k)
+                    q_sol = qi (i,j,k) + qs (i,j,k) + qg (i,j,k)
+                    cvm (i,j,k) = c_air + qv (i,j,k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                    ! lcpk = lhl (k) / cvm (k)
+                    icpk (i,j,k) = lhi / cvm (i,j,k)
+                enddo
+            enddo
+        enddo
+
+        ! -----------------------------------------------------------------------
+        ! find significant melting level
+        ! -----------------------------------------------------------------------
+        
+        k0 = kbot
+
+        !$acc loop seq
+        do k = ktop, kbot - 1
+            do j = js, je
+                do i = is, ie
+                    if (tz (i,j,k) > tice .and. k0(i,j).eq.kbot) then
+                        k0(i,j) = k
+                    endif
+                enddo
+            enddo
+        enddo
+
+        ! -----------------------------------------------------------------------
+        ! melting of cloud_ice (before fall) :
+        ! -----------------------------------------------------------------------
+        !$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
+        do k = ktop, kbot
+            do j = js, je
+                do i = is, ie
+                    if(k.ge.k0(i,j)) then
+                        tc = tz (i,j,k) - tice
+                        if (qi (i,j,k) > qcmin .and. tc > 0.) then
+                            q_liq = ql (i,j,k) + qr (i,j,k)
+                            q_sol = qi (i,j,k) + qs (i,j,k) + qg (i,j,k)
+                            lhi = li00 + dc_ice * tz (i,j,k)
+
+                            sink = min (qi (i,j,k), fac_imlt * tc / icpk (i,j,k))
+                            tmp = min (sink, dim (ql_mlt, ql (i,j,k)))
+                            ql (i,j,k) = ql (i,j,k) + tmp
+                            qr (i,j,k) = qr (i,j,k) + sink - tmp
+                            qi (i,j,k) = qi (i,j,k) - sink
+                            q_liq = q_liq + sink
+                            q_sol = q_sol - sink
+                            cvm (i,j,k) = c_air + qv (i,j,k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                            tz (i,j,k) = tz (i,j,k) - sink * lhi / cvm (i,j,k)
+                            tc = tz (i,j,k) - tice
+                        endif
+                    endif
+                enddo
+            enddo
+        enddo
+
+        ! -----------------------------------------------------------------------
+        ! turn off melting when cloud microphysics time step is small
+        ! -----------------------------------------------------------------------
+        
+        if (dtm < 60.) k0 = kbot
+        
+        ! sjl, turn off melting of falling cloud ice, snow and graupel
+        k0 = kbot
+        ! sjl, turn off melting of falling cloud ice, snow and graupel
+        
+        ze (:,:,kbot + 1) = zs
+        !$acc loop seq
+        do k = kbot, ktop, - 1
+            do j = js, je
+                do i = is, ie
+                    ze (i,j,k) = ze (i,j,k + 1) - dz (i,j,k) ! dz < 0
+                enddo
+            enddo
+        enddo
+
+        zt (:,:,ktop) = ze (:,:,ktop)
+        
+        ! -----------------------------------------------------------------------
+        ! update capacity heat and latend heat coefficient
+        ! -----------------------------------------------------------------------
+        !$acc loop vector private(lhi)
+        ! do k = k0, kbot
+        do k = kbot, kbot
+            do j = js, je
+                do i = is, ie
+                    lhi = li00 + dc_ice * tz (i,j,k)
+                    icpk (i,j,k) = lhi / cvm (i,j,k)
+                enddo
+            enddo
+        enddo
+
+        ! -----------------------------------------------------------------------
+        ! melting of falling cloud ice into rain
+        ! -----------------------------------------------------------------------
+        
+        call check_column_3d (qi, no_fall)
+        
+        do j = js, je
+            do i = is, ie
+                if (vi_fac < 1.e-5 .or. no_fall(i,j)) then
+                    i1(i,j) = 0.
+                else
+                !$acc loop vector
+                    do k = ktop + 1, kbot
+                        zt (i,j,k) = ze (i,j,k) - dtm * (vti (i,j,k - 1) + vti (i,j,k))/2.0
+                    enddo
+                    zt (i,j,kbot + 1) = zs - dtm * vti (i,j,kbot)
+                !$acc loop seq
+                    do k = ktop, kbot
+                        if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
+                    enddo
+                    
+                    if (k0(i,j) < kbot) then
+                !$acc loop seq
+                        do k = kbot - 1, k0(i,j), - 1
+                            if (qi (i,j,k) > qcmin) then
+                                exit_flag = .true.
+                                !$acc loop seq
+                                do m = k + 1, kbot
+                                    if (zt (i,j,k + 1) >= ze (i,j,m) .and. exit_flag) exit_flag = .false.
+                                    if (zt (i,j,k) < ze (i,j,m + 1) .and. tz (i,j,m) > tice .and. exit_flag) then
+                                        dtime = min (1.0, (ze (i,j,m) - ze (i,j,m + 1)) / (max (vr_min, vti (i,j,k)) * tau_imlt))
+                                        sink = min (qi (i,j,k) * dp (i,j,k) / dp (i,j,m), dtime * (tz (i,j,m) - tice) / icpk (i,j,m))
+                                        tmp = min (sink, dim (ql_mlt, ql (i,j,m)))
+                                        ql (i,j,m) = ql (i,j,m) + tmp
+                                        qr (i,j,m) = qr (i,j,m) - tmp + sink
+                                        tz (i,j,m) = tz (i,j,m) - sink * icpk (i,j,m)
+                                        qi (i,j,k) = qi (i,j,k) - sink * dp (i,j,m) / dp (i,j,k)
+                                    endif
+                                enddo
+                            endif
+                        enddo
+                    endif
+                    
+                    if (do_sedi_w) then
+                        !$acc loop vector
+                        do k = ktop, kbot
+                            dm (i,j,k) = dp (i,j,k) * (1. + qv (i,j,k) + ql (i,j,k) + qr (i,j,k) + qi (i,j,k) + qs (i,j,k) + qg (i,j,k))
+                        enddo
+                    endif
+                    
+                    if (use_ppm) then
+                        call lagrangian_fall_ppm (ktop, kbot, zs, ze(i,j,:), zt(i,j,:), dp(i,j,:), qi(i,j,:), i1(i,j), m1_sol(i,j,:), mono_prof)
+                    else
+                        call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vti(i,j,:), dp(i,j,:), qi(i,j,:), i1(i,j), m1_sol(i,j,:))
+                    endif
+                    
+                    if (do_sedi_w) then
+                        w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1_sol (i,j,ktop) * vti (i,j,ktop)) / (dm (i,j,ktop) - m1_sol (i,j,ktop))
+                        !$acc loop vector
+                        do k = ktop + 1, kbot
+                            w1 (i,j,k) = (dm (i,j,k) * w1 (i,j,k) - m1_sol (i,j,k - 1) * vti (i,j,k - 1) + m1_sol (i,j,k) * vti (i,j,k)) &
+                                / (dm (i,j,k) + m1_sol (i,j,k - 1) - m1_sol (i,j,k))
+                        enddo
+                    endif
+                    
+                endif
+            enddo
+        enddo
+
+        ! -----------------------------------------------------------------------
+        ! melting of falling snow into rain
+        ! -----------------------------------------------------------------------
+        
+        r1 = 0.
+        
+        call check_column_3d (qs, no_fall)
+        
+        do j = js, je
+            do i = is, ie
+                if (no_fall(i,j)) then
+                    s1(i,j) = 0.
+                else
+                    !$acc loop vector
+                    do k = ktop + 1, kbot
+                        zt (i,j,k) = ze (i,j,k) - dtm * (vts (i,j,k - 1) + vts (i,j,k))/2.0
+                    enddo
+                    zt (i,j,kbot + 1) = zs - dtm * vts (i,j,kbot)
+                    !$acc loop seq
+                    do k = ktop, kbot
+                        if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
+                    enddo
+                    
+                    if (k0(i,j) < kbot) then
+                        !$acc loop seq
+                        do k = kbot - 1, k0(i,j), - 1
+                            if (qs (i,j,k) > qpmin) then
+                                exit_flag = .true.
+                                !$acc loop seq
+                                do m = k + 1, kbot
+                                    if (zt (i,j,k + 1) >= ze (i,j,m) .and. exit_flag) exit_flag = .false.
+                                    if(exit_flag) then
+                                        dtime = min (dtm, (ze (i,j,m) - ze (i,j,m + 1)) / (vr_min + vts (i,j,k)))
+                                        if (zt (i,j,k) < ze (i,j,m + 1) .and. tz (i,j,m) > tice) then
+                                            dtime = min (1.0, dtime / tau_smlt)
+                                            sink = min (qs (i,j,k) * dp (i,j,k) / dp (i,j,m), dtime * (tz (i,j,m) - tice) / icpk (i,j,m))
+                                            tz (i,j,m) = tz (i,j,m) - sink * icpk (i,j,m)
+                                            qs (i,j,k) = qs (i,j,k) - sink * dp (i,j,m) / dp (i,j,k)
+                                            if (zt (i,j,k) < zs) then
+                                                r1(i,j) = r1(i,j) + sink * dp (i,j,m) ! precip as rain
+                                            else
+                                                ! qr source here will fall next time step (therefore, can evap)
+                                                qr (i,j,m) = qr (i,j,m) + sink
+                                            endif
+                                        endif
+                                    endif
+                                    if (qs (i,j,k) < qpmin .and. exit_flag) exit_flag = .false.
+                                enddo
+                            endif
+                        enddo
+                    endif
+                    
+                    if (do_sedi_w) then
+                        !$acc loop vector
+                        do k = ktop, kbot
+                            dm (i,j,k) = dp (i,j,k) * (1. + qv (i,j,k) + ql (i,j,k) + qr (i,j,k) + qi (i,j,k) + qs (i,j,k) + qg (i,j,k))
+                        enddo
+                    endif
+                    
+                    if (use_ppm) then
+                        call lagrangian_fall_ppm (ktop, kbot, zs, ze(i,j,:), zt(i,j,:), dp(i,j,:), qs(i,j,:), s1(i,j), m1(i,j,:), mono_prof)
+                    else
+                        call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vts(i,j,:), dp(i,j,:), qs(i,j,:), s1(i,j), m1(i,j,:))
+                    endif
+            !$acc loop vector
+                    do k = ktop, kbot
+                        m1_sol (i,j,k) = m1_sol (i,j,k) + m1 (i,j,k)
+                    enddo
+                    
+                    if (do_sedi_w) then
+                        w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1 (i,j,ktop) * vts (i,j,ktop)) / (dm (i,j,ktop) - m1 (i,j,ktop))
+            !$acc loop vector
+                        do k = ktop + 1, kbot
+                            w1 (i,j,k) = (dm (i,j,k) * w1 (i,j,k) - m1 (i,j,k - 1) * vts (i,j,k - 1) + m1 (i,j,k) * vts (i,j,k)) &
+                                / (dm (i,j,k) + m1 (i,j,k - 1) - m1 (i,j,k))
+                        enddo
+                    endif
+                    
+                endif
+            enddo
+        enddo
+
+        ! ----------------------------------------------
+        ! melting of falling graupel into rain
+        ! ----------------------------------------------
+        
+        call check_column_3d (qg, no_fall)
+        
+        do j = js, je
+            do i = is, ie
+                if (no_fall(i,j)) then
+                    g1(i,j) = 0.
+                else
+            !$acc loop vector
+                    do k = ktop + 1, kbot
+                        zt (i,j,k) = ze (i,j,k) - dtm * (vtg (i,j,k - 1) + vtg (i,j,k))/2.0
+                    enddo
+                    zt (i,j,kbot + 1) = zs - dtm * vtg (i,j,kbot)
+            !$acc loop seq
+                    do k = ktop, kbot
+                        if (zt (i,j,k + 1) >= zt (i,j,k)) zt (i,j,k + 1) = zt (i,j,k) - dz_min
+                    enddo
+                    
+                    if (k0(i,j) < kbot) then
+            !$acc loop seq
+                        do k = kbot - 1, k0(i,j), - 1
+                            if (qg (i,j,k) > qpmin) then
+                                exit_flag = .true.
+            !$acc loop seq
+                                do m = k + 1, kbot
+                                    if (zt (i,j,k + 1) >= ze (i,j,m) .and. exit_flag) exit_flag = .false.
+                                    if(exit_flag) then
+                                        dtime = min (dtm, (ze (i,j,m) - ze (i,j,m + 1)) / vtg (i,j,k))
+                                        if (zt (i,j,k) < ze (i,j,m + 1) .and. tz (i,j,m) > tice) then
+                                            dtime = min (1., dtime / tau_g2r)
+                                            sink = min (qg (i,j,k) * dp (i,j,k) / dp (i,j,m), dtime * (tz (i,j,m) - tice) / icpk (i,j,m))
+                                            tz (i,j,m) = tz (i,j,m) - sink * icpk (i,j,m)
+                                            qg (i,j,k) = qg (i,j,k) - sink * dp (i,j,m) / dp (i,j,k)
+                                            if (zt (i,j,k) < zs) then
+                                                r1(i,j) = r1(i,j) + sink * dp (i,j,m)
+                                            else
+                                                qr (i,j,m) = qr (i,j,m) + sink
+                                            endif
+                                        endif
+                                    endif
+                                    if (qg (i,j,k) < qpmin .and. exit_flag) exit_flag = .false.
+                                enddo
+                            endif
+                        enddo
+                    endif
+                    
+                    if (do_sedi_w) then
+            !$acc loop vector
+                        do k = ktop, kbot
+                            dm (i,j,k) = dp (i,j,k) * (1. + qv (i,j,k) + ql (i,j,k) + qr (i,j,k) + qi (i,j,k) + qs (i,j,k) + qg (i,j,k))
+                        enddo
+                    endif
+                
+                    if (use_ppm) then
+                        call lagrangian_fall_ppm (ktop, kbot, zs, ze(i,j,:), zt(i,j,:), dp(i,j,:), qg(i,j,:), g1(i,j), m1(i,j,:), mono_prof)
+                    else
+                        call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vtg(i,j,:), dp(i,j,:), qg(i,j,:), g1(i,j), m1(i,j,:))
+                    endif
+            !$acc loop vector 
+                    do k = ktop, kbot
+                        m1_sol (i,j,k) = m1_sol (i,j,k) + m1 (i,j,k)
+                    enddo
+                    
+                    if (do_sedi_w) then
+                        w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1 (i,j,ktop) * vtg (i,j,ktop)) / (dm (i,j,ktop) - m1 (i,j,ktop))
+            !$acc loop vector
+                        do k = ktop + 1, kbot
+                            w1 (i,j,k) = (dm (i,j,k) * w1 (i,j,k) - m1 (i,j,k - 1) * vtg (i,j,k - 1) + m1 (i,j,k) * vtg (i,j,k)) &
+                                / (dm (i,j,k) + m1 (i,j,k - 1) - m1 (i,j,k))
+                        enddo
+                    endif
+                    
+                endif
+            enddo
+        enddo
+        
+    end subroutine terminal_fall_3d
+
     ! =======================================================================
     !>@brief The subroutine 'check_column' checks
     !!       if the water species is large enough to fall.
@@ -2012,6 +2387,37 @@ module moist_subroutines_cloud_microphys
         enddo
         
     end subroutine check_column
+
+    subroutine check_column_3d (q, no_fall)
+        !$acc routine seq
+        implicit none
+        
+        real, intent (in) :: q (:,:,:)
+        
+        logical, intent (out) :: no_fall(:,:)
+        
+        integer :: i,j,k, is, ie, js, je, ktop, kbot
+
+        is = lbound(q,1)
+        ie = ubound(q,1)
+        js = lbound(q,2)
+        je = ubound(q,2)
+        ktop = lbound(q,3)
+        kbot = ubound(q,3)
+        
+        no_fall = .true.
+        
+        do k = ktop, kbot
+            do j = js,je
+                do i = is, ie
+                    if (q (i,j,k) > qpmin .and. no_fall(i,j)) then
+                        no_fall(i,j) = .false.
+                    endif
+                enddo
+            enddo
+        enddo
+        
+    end subroutine check_column_3d
 
     ! =======================================================================
     !>@brief The subroutine 'implicit_fall' computes the time-implicit monotonic 
@@ -2802,7 +3208,7 @@ module moist_subroutines_cloud_microphys
     end function iqs2
 
     subroutine neg_adj (pt, dp, qv, ql, qr, qi, qs, qg)
-    !$acc routine vector
+    !!$acc routine vector
         implicit none
     
         ! integer, intent (in) :: ktop, kbot
@@ -2833,7 +3239,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! define heat capacity and latent heat coefficient
         ! -----------------------------------------------------------------------
-!$acc loop vector private(cvm, lcpk, icpk)
+        !$acc parallel loop vector private(cvm, lcpk, icpk)
 
         do k = ktop, kbot
             do j = js, je
@@ -2881,11 +3287,12 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel loop
         
         ! -----------------------------------------------------------------------
         ! fix water vapor; borrow from below
         ! -----------------------------------------------------------------------
-!$acc loop seq
+        !$acc parallel loop seq
         do k = ktop, kbot - 1
             do j = js, je
                 do i = is, ie
@@ -2896,11 +3303,12 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
+        !$acc end parallel loop
         
         ! -----------------------------------------------------------------------
         ! bottom layer; borrow from above
         ! -----------------------------------------------------------------------
-        
+        !$acc parallel loop collapse(2) private(dq)
         do j = js, je
             do i = is, ie
                 if (qv (i,j,kbot) < 0. .and. qv (i,j,kbot - 1) > 0.) then
@@ -2910,6 +3318,7 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel loop
         
     end subroutine neg_adj
 
@@ -3000,8 +3409,10 @@ module moist_subroutines_cloud_microphys
         real, dimension(is:ie, js:je, ktop:kbot) :: den, p1, denfac
         real, dimension(is:ie, js:je, ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
         
+        real, dimension(is:ie, js:ie) :: r1, s1, i1, g1
+
         real :: cpaut, rh_adj, rh_rain, t0, den0
-        real :: r1, s1, i1, g1, rdt, ccn0
+        real :: rdt, ccn0
         real :: dts
         real :: s_leng, t_land, t_ocean, h_var
         real :: cvm, tmp, omq
@@ -3038,7 +3449,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! use local variables
         ! -----------------------------------------------------------------------
-
+        !$acc parallel loop gang vector collapse(3) private(t0, omq, den0)
         do k = ktop, kbot
             do j = js, je
                 do i = is, ie
@@ -3119,7 +3530,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
-            
+        !$acc end parallel loop
         ! -----------------------------------------------------------------------
         ! fix all negative water species
         ! -----------------------------------------------------------------------
@@ -3132,6 +3543,7 @@ module moist_subroutines_cloud_microphys
             ! -----------------------------------------------------------------------
             ! dry air density
             ! -----------------------------------------------------------------------
+            !$acc parallel loop collapse(3) private(t0)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie  
@@ -3153,17 +3565,19 @@ module moist_subroutines_cloud_microphys
                     enddo
                 enddo
             enddo
+            !$acc end parallel loop
 
+            !$acc parallel loop
             do j = js, je
                 do i = is, ie  
 
                     call terminal_fall (dts, ktop, kbot, tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qgz(i,j,:), qsz(i,j,:), qiz(i,j,:), &
-                        dz1(i,j,:), dp1(i,j,:), den(i,j,:), vtgz(i,j,:), vtsz(i,j,:), vtiz(i,j,:), r1, g1, s1, i1, m1_sol(i,j,:), w1(i,j,:))
+                        dz1(i,j,:), dp1(i,j,:), den(i,j,:), vtgz(i,j,:), vtsz(i,j,:), vtiz(i,j,:), r1(i,j), g1(i,j), s1(i,j), i1(i,j), m1_sol(i,j,:), w1(i,j,:))
                     
-                    rain (i,j) = rain (i,j) + r1 ! from melted snow & ice that reached the ground
-                    snow (i,j) = snow (i,j) + s1
-                    graupel (i,j) = graupel (i,j) + g1
-                    ice (i,j) = ice (i,j) + i1
+                    rain (i,j) = rain (i,j) + r1(i,j) ! from melted snow & ice that reached the ground
+                    snow (i,j) = snow (i,j) + s1(i,j)
+                    graupel (i,j) = graupel (i,j) + g1(i,j)
+                    ice (i,j) = ice (i,j) + i1(i,j)
                     
 !                     ! -----------------------------------------------------------------------
                     ! heat transportation during sedimentation
@@ -3179,12 +3593,14 @@ module moist_subroutines_cloud_microphys
                     
                     call warm_rain (dts, ktop, kbot, dp1(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), &
                         qgz(i,j,:), qaz(i,j,:), eis(i,j), den(i,j,:), denfac(i,j,:), ccn(i,j,:), c_praut(i,j,:), vtrz(i,j,:),   &
-                        r1, evap1(i,j,:), m1_rain(i,j,:), w1(i,j,:), h_var1d(i,j,:))
+                        r1(i,j), evap1(i,j,:), m1_rain(i,j,:), w1(i,j,:), h_var1d(i,j,:))
 
-                    rain (i,j) = rain (i,j) + r1
+                    rain (i,j) = rain (i,j) + r1(i,j)
                 enddo
             enddo
+            !$acc end parallel loop
 
+            !$acc parallel loop collapse(3)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie  
@@ -3194,10 +3610,12 @@ module moist_subroutines_cloud_microphys
                         m1 (i,j,k) = m1 (i,j,k) + m1_rain (i,j,k) + m1_sol (i,j,k)
                     enddo
                 enddo
-            enddo                 
+            enddo    
+            !$acc end parallel loop             
                     ! -----------------------------------------------------------------------
                     ! ice - phase microphysics
                     ! -----------------------------------------------------------------------
+            !$acc parallel loop collapse(2)
             do j = js, je
                 do i = is, ie 
                     call icloud (ktop, kbot, tz(i,j,:), p1(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), qgz(i,j,:), dp1(i,j,:), den(i,j,:), &
@@ -3205,8 +3623,9 @@ module moist_subroutines_cloud_microphys
                         ccn(i,j,:), cnv_fraction(i,j), srf_type(i,j))
                 enddo
             enddo
+            !$acc end parallel loop
 
-
+            !$acc parallel loop collapse(3)
             do k = ktop, kbot
                 do j = js, je
                     do i = is, ie
@@ -3214,10 +3633,11 @@ module moist_subroutines_cloud_microphys
                     enddo
                 enddo
             enddo
+            !$acc end parallel loop
                                 
         enddo ! ntimes
 
-
+        !$acc parallel loop collapse(2)
         do j = js, je
             do i = is, ie
             
@@ -3229,7 +3649,7 @@ module moist_subroutines_cloud_microphys
                 if (sedi_transport) then
                     v1_km1 = vin (i, j, ktop)
                     u1_km1 = uin (i, j, ktop)
-!$acc loop seq
+                    !$acc loop seq
                     do k = ktop + 1, kbot
                         u1_k = uin(i, j, k)
                         v1_k = vin(i, j, k)
@@ -3243,7 +3663,9 @@ module moist_subroutines_cloud_microphys
                 endif
             enddo
         enddo
+        !$acc end parallel loop
 
+        !$acc parallel loop collapse(3) private(t0, omq, cvm)
         do k = ktop,kbot
             do j = js, je
                 do i = is, ie
@@ -3319,7 +3741,7 @@ module moist_subroutines_cloud_microphys
             enddo
             enddo
         enddo
-!$acc end parallel
+        !$acc end parallel loop
 !$acc end data
     end subroutine mpdrv
 
