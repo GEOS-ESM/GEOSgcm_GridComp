@@ -72,6 +72,9 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! control for order of plumes
+  logical :: SH_MD_DP = .FALSE.
+
   ! option for cloud ice radii
   integer :: ICE_RADII_PARAM = 1
 
@@ -118,7 +121,7 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: ICE_RADII_PARAM
+  public :: SH_MD_DP, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: sigma 

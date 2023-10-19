@@ -14,7 +14,7 @@ MODULE ConvPar_GF2020
 USE module_gate
 USE MAPL
 USE ConvPar_GF_SharedParams
-USE GEOSmoist_Process_Library, only : sigma, ICE_FRACTION, make_DropletNumber, make_IceNumber
+USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_DropletNumber, make_IceNumber
 
  IMPLICIT NONE
  PRIVATE
@@ -136,7 +136,7 @@ USE GEOSmoist_Process_Library, only : sigma, ICE_FRACTION, make_DropletNumber, m
  INTEGER ::  USE_EXCESS        != default= 1   - use T,Q excess sub-grid scale variability
 
  !-- General internal controls for the diverse options in GF
- INTEGER            :: ENTRVERSION    = 2       != entr formulations
+ INTEGER            :: ENTRVERSION    = 1       != entr formulations
 
  LOGICAL, PARAMETER :: COUPL_MPHYSICS = .TRUE.  != coupling with cloud microphysics (do not change  to false)
 
@@ -526,15 +526,8 @@ CONTAINS
         curr_rvap(k,i,j) = Q1 (i,j,flip(k))!current rvap
 
         if (ENTRVERSION==0) then
-          if (temp(k,i,j) < MAPL_TICE) then
-            ! eq 16 of https://doi.org/10.1029/2021JD034881
-            ec3d(k,i,j) = max(0.1,0.08*max(0.5,W1(i,j,flip(k)))**(-0.19) * max(0.1,BYNCY(i,j,flip(k)))**(-0.44))
-          else
-            ! eq 10 of https://doi.org/10.1029/2021JD034881
-            ec3d(k,i,j) = max(0.1,1.04*max(0.5,W1(i,j,flip(k)))**(-1.40) * max(0.1,BYNCY(i,j,flip(k)))**(-0.30))
-          endif
-         !! eq 6 of https://doi.org/10.1029/2021JD034881
-         !ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
+          ! eq 6 of https://doi.org/10.1029/2021JD034881
+          ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
         else
           ec3d(k,i,j) = 1.0
         endif
@@ -594,15 +587,8 @@ CONTAINS
         curr_rvap  (k,i,j) = Q1         (i,j,flip(k)) ! current rvap (dyn+phys)
 
         if (ENTRVERSION==0) then
-          if (temp(k,i,j) < MAPL_TICE) then
-            ! eq 16 of https://doi.org/10.1029/2021JD034881  
-            ec3d(k,i,j) = max(0.1,0.08*max(0.5,W1(i,j,flip(k)))**(-0.19) * max(0.1,BYNCY(i,j,flip(k)))**(-0.44))
-          else                 
-            ! eq 10 of https://doi.org/10.1029/2021JD034881
-            ec3d(k,i,j) = max(0.1,1.04*max(0.5,W1(i,j,flip(k)))**(-1.40) * max(0.1,BYNCY(i,j,flip(k)))**(-0.30))
-          endif                
-         !! eq 6 of https://doi.org/10.1029/2021JD034881
-         !ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
+          ! eq 6 of https://doi.org/10.1029/2021JD034881
+          ec3d(k,i,j) = 0.71*max(0.5,W1(i,j,flip(k)))**(-1.17) * max(0.1,BYNCY(i,j,flip(k)))**(-0.36)
         else
           ec3d(k,i,j) = 1.0
         endif
@@ -1428,9 +1414,15 @@ CONTAINS
 !
 
      DO ii_plume = 1, maxiens
-       if(ii_plume == 1) plume = shal
-       if(ii_plume == 2) plume = deep
-       if(ii_plume == 3) plume = mid
+       if (SH_MD_DP) then
+         if(ii_plume == 1) plume = shal
+         if(ii_plume == 2) plume = mid
+         if(ii_plume == 3) plume = deep
+       else
+         if(ii_plume == 1) plume = shal
+         if(ii_plume == 2) plume = deep
+         if(ii_plume == 3) plume = mid
+       endif
 
        hei_down_land  =  cum_hei_down_land  (plume)
        hei_down_ocean =  cum_hei_down_ocean (plume)
@@ -2577,48 +2569,18 @@ loop0:       do k=kts,ktf
 !
 !--- determine the vertical entrainment/detrainment rates, the level of convective cloud base -kbcon-
 !--- and the scale dependence factor (sig).
-      SELECT CASE(ENTRVERSION)
-      CASE (1)
-         DO i=its,itf
-            if(ierr(i) /= 0) CYCLE
-            do k=kts,kte
-               frh = min(qo_cup(i,k)/qeso_cup(i,k),1.)
-               entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**1.25
-               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-            enddo
-         ENDDO                     
-      CASE (2)
-         DO i=its,itf
-            if(ierr(i) /= 0) CYCLE
-            do k=kts,kte
-               frh = min(qo_cup(i,k)/qeso_cup(i,k),1.)
-               if(k >= klcl(i)) then
-                  entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
-               else
-                  entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
-               endif
-               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-            enddo
-         ENDDO
-      CASE DEFAULT
-         DO i=its,itf
-            if(ierr(i) /= 0) CYCLE
-            do k=kts,kte
-               frh = max(0.5,min(1.0,qo_cup(i,k)/qeso_cup(i,k)))  ! RH
-               if (t(i,k)<MAPL_TICE) then
-                ! include RHe eq 16 of https://doi.org/10.1029/2021JD034881
-                 entr_rate(i,k)=entr_rate(i,k)*(frh**(-3.22))
-               else
-                ! include RHe eq 10 of https://doi.org/10.1029/2021JD034881
-                 entr_rate(i,k)=entr_rate(i,k)*(frh**(-0.18))
-               endif
-               if(k >= klcl(i)) then
-                  entr_rate(i,k)=entr_rate(i,k)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
-               endif
-               entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
-            enddo
-         ENDDO
-      END SELECT
+      DO i=its,itf
+         if(ierr(i) /= 0) CYCLE
+         do k=kts,kte
+            frh = min(qo_cup(i,k)/qeso_cup(i,k),1.)
+            if(k >= klcl(i)) then
+               entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
+            else
+               entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
+            endif
+            entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
+         enddo
+      ENDDO
       if(trim(cumulus) == 'deep'   ) cd=0.10*entr_rate
       if(trim(cumulus) == 'mid'    ) cd=0.50*entr_rate
       if(trim(cumulus) == 'shallow') cd=0.75*entr_rate
