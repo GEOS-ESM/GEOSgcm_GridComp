@@ -794,7 +794,13 @@ module moist_subroutines_cloud_microphys
         !$acc parallel 
         !$acc loop seq
         do k = kbot, ktop, - 1
-            ze (:,:,k) = ze (:,:,k + 1) - dz (:,:,k) ! dz < 0
+            ! ze (:,:,k) = ze (:,:,k + 1) - dz (:,:,k) ! dz < 0
+            !$acc loop gang vector collapse(2)
+            do j = js, je
+                do i = is, ie
+                    ze (i,j,k) = ze (i,j,k + 1) - dz (i,j,k) ! dz < 0
+                enddo
+            enddo
         enddo
         !$acc end parallel
         
@@ -3587,9 +3593,13 @@ module moist_subroutines_cloud_microphys
         ! sjl, turn off melting of falling cloud ice, snow and graupel
         !$acc end kernels
 
-        !$acc kernels
-        ze (:,:,kbot + 1) = zs
-        !$acc end kernels
+        !$acc parallel loop gang vector collapse(2)
+        do j = js,je
+            do i = is,ie
+                ze (i,j,kbot + 1) = zs
+            enddo
+        enddo
+        !$acc end parallel loop
 
         !$acc parallel
         !$acc loop seq
@@ -3676,28 +3686,25 @@ module moist_subroutines_cloud_microphys
             enddo
         enddo
 
-        !$acc parallel loop gang vector collapse(2) present(ze, vti, dp, qi, i1, m1_sol)
-        do j = js, je
-            do i = is, ie
-                if(.not.no_fall(i,j)) then
-                    
-                    if (use_ppm) then
+        if(use_ppm) then
+            !$acc parallel loop gang vector collapse(2) present(ze, vti, dp, qi, i1, m1_sol)
+            do j = js, je
+                do i = is, ie
+                    if(.not.no_fall(i,j)) then
                         call lagrangian_fall_ppm (ktop, kbot, zs, ze(i,j,:), zt(i,j,:), dp(i,j,:), qi(i,j,:), i1(i,j), m1_sol(i,j,:), mono_prof)
-                    else
-                        ! call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vti(i,j,:), dp(i,j,:), qi(i,j,:), i1(i,j), m1_sol(i,j,:))
                     endif
-                endif
+                enddo
             enddo
-        enddo
-        !$acc end parallel loop
+            !$acc end parallel loop
+        else
+            call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vti, dp, qi, i1, m1_sol, no_fall)
+        endif
 
-        call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vti, dp, qi, i1, m1_sol, no_fall)
-
-        !$acc parallel loop gang collapse(2)
-        do j = js, je
-            do i = is, ie
-                if(.not.no_fall(i,j)) then           
-                    if (do_sedi_w) then
+        if (do_sedi_w) then
+            !$acc parallel loop gang collapse(2)
+            do j = js, je
+                do i = is, ie
+                    if(.not.no_fall(i,j)) then           
                         w1 (i,j,ktop) = (dm (i,j,ktop) * w1 (i,j,ktop) + m1_sol (i,j,ktop) * vti (i,j,ktop)) / (dm (i,j,ktop) - m1_sol (i,j,ktop))
                         !$acc loop vector
                         do k = ktop + 1, kbot
@@ -3705,11 +3712,11 @@ module moist_subroutines_cloud_microphys
                                 / (dm (i,j,k) + m1_sol (i,j,k - 1) - m1_sol (i,j,k))
                         enddo
                     endif
-                    
-                endif
+                enddo
             enddo
-        enddo
-        !$acc end parallel loop
+            !$acc end parallel loop
+        endif
+        
 
         ! -----------------------------------------------------------------------
         ! melting of falling snow into rain
@@ -3777,23 +3784,19 @@ module moist_subroutines_cloud_microphys
         enddo
         !$acc end parallel
 
-        !$acc parallel loop gang vector collapse(2)
-        do j = js, je
-            do i = is, ie
-                if(.not.no_fall(i,j)) then
-                    if (use_ppm) then
+        if(use_ppm) then
+            !$acc parallel loop gang vector collapse(2)
+            do j = js, je
+                do i = is, ie
+                    if(.not.no_fall(i,j)) then
                         call lagrangian_fall_ppm (ktop, kbot, zs, ze(i,j,:), zt(i,j,:), dp(i,j,:), qs(i,j,:), s1(i,j), m1(i,j,:), mono_prof)
-                    else
-                        ! print*,i,j, 'calling implicit falls'
-                        ! call implicit_fall (dtm, ktop, kbot, ze(i,j,:), vts(i,j,:), dp(i,j,:), qs(i,j,:), s1(i,j), m1(i,j,:))
-                        ! print*,i,j, 'done calling implicit falls'
                     endif
-                endif
+                enddo
             enddo
-        enddo
-        !$acc end parallel loop
-
-        call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vts, dp, qs, s1, m1, no_fall)
+            !$acc end parallel loop
+        else
+            call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vts, dp, qs, s1, m1, no_fall)
+        endif
 
         !$acc parallel loop gang collapse(2)
         do j = js, je
@@ -5542,6 +5545,8 @@ module moist_subroutines_cloud_microphys
 
         real :: allmax
 
+        integer*8 :: ts, te, trate
+
         is = 1
         js = 1
         ks = 1
@@ -5625,6 +5630,8 @@ module moist_subroutines_cloud_microphys
 !$acc      copy(w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
 !$acc           ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
+        call system_clock(ts, trate)
+
         call mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg,&
             qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes,  &
             rain, snow, graupel, ice, m2_rain,     &
@@ -5636,6 +5643,9 @@ module moist_subroutines_cloud_microphys
             qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r,      &
             vt_s, vt_g, vt_i, qn2)
 
+        call system_clock(te)
+
+        print*,'mpdrv time = ', real(te-ts)/real(trate)
 !$acc end data
         ! -----------------------------------------------------------------------
         ! no clouds allowed above ktop
