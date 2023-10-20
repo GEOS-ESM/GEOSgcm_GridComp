@@ -510,7 +510,7 @@ contains
     !$acc     w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
     !$acc     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
-    print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
+    ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
          hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
          qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, dt_in, ntimes, &
@@ -522,8 +522,8 @@ contains
          udt, vdt, pt_dt, &
          qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
          vt_s, vt_g, vt_i, qn2)
-    call MPI_Barrier(MPI_COMM_WORLD, mpierr)
-    print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
+    ! call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+    ! print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
     !$acc end data
 
@@ -973,12 +973,12 @@ contains
              omq = dp1 (k) / delp (i, j, k)
              qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
              ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-             ! qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-             ! qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-             ! qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-             ! qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+             qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+             qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+             qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
              cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-             ! pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
+             pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
           enddo
 
           ! -----------------------------------------------------------------------

@@ -497,8 +497,8 @@ contains
        if(TE>MAPL_TICE .or. QC <=0.) then
           BB = -2.
        else
-          ! BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5) ! OFFENDING line
-          BB = -2. + log10(WC/50.)*(1.e-3*sqrt(MAPL_TICE-TE)**3)
+          BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5) ! OFFENDING line
+          ! BB = -2. + log10(WC/50.)*(1.e-3*sqrt(MAPL_TICE-TE)**3)
        endif
        BB     = MIN((MAX(BB,-6.)),-2.)
        RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
