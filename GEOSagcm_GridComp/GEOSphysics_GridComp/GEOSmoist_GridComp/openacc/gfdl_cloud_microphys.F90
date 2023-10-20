@@ -334,7 +334,6 @@ module gfdl2_cloud_microphys_mod
 
   !$acc declare create( &
 
-  !$acc     tables_are_initialized, &
   !$acc     des2, desw, table2, tablew, &
 
   !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
@@ -499,13 +498,17 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    !!$acc data copyin(uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
-    !!$acc             qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-    !!$acc             rhcrit, ntimes) &
-    !!$acc      copyout(m2_rain, m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
-    !!$acc              vt_i, qn2) &
-    !!$acc      copy(w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
-    !!$acc           ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+    !$acc data &
+    !$acc copyin( &
+    !$acc     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    !$acc     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    !$acc     rhcrit, ntimes) &
+    !$acc copyout( &
+    !$acc     m2_rain, m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    !$acc     vt_i, qn2) &
+    !$acc copy( &
+    !$acc     w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    !$acc     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
     print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
@@ -517,13 +520,12 @@ contains
          rhcrit, anv_icefall, lsc_icefall, &
          revap, isubl, &
          udt, vdt, pt_dt, &
-         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, &
-         vt_r(is:, js:, ks:), vt_s(is:, js:, ks:), vt_g(is:, js:, ks:), vt_i(is:, js:, ks:), &
-         qn2(is:, js:, ks:))
+         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
+         vt_s, vt_g, vt_i, qn2)
     call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
-    !!$acc end data
+    !$acc end data
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -735,23 +737,22 @@ contains
 
     !$acc data &
     !$acc copyin( &
-    !$acc     dts, rdt, cpaut, &
-    !$acc     hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    !$acc     dt_in, area1, land, cnv_fraction, srf_type, eis, rhcrit, &
-    !$acc     anv_icefall, lsc_icefall, uin, vin, delp, pt, dz, &
-    !$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
-    ! NOTE: gfortran doesn't seem to support private arrays
+    !$acc     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
+    ! !$acc   hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !$acc     is, ie, js, je, ks, ke, ktop, kbot, &
+    ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
     !$acc     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
     !$acc     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
     !$acc     qv0, ql0, qr0, qi0, qs0, qg0, &
     !$acc     den, den0, tz, p1, denfac, &
     !$acc     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1) &
-    !$acc copy( &
-    !$acc     u_dt, v_dt, w, pt_dt, qa_dt, &
-    !$acc     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$acc     rain, snow, ice, graupel, cond) &
-    !$acc copyout( &
-    !$acc     revap, isubl, w_var, vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+    !$acc present( &
+    !$acc     area1, land, cnv_fraction, srf_type, eis, &
+    !$acc     rhcrit, uin, vin, delp, pt, dz, &
+    !$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
+    !$acc     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !$acc     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
+    !$acc     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     ! Initialize
     !$acc parallel loop gang vector collapse(3)
@@ -765,6 +766,7 @@ contains
           enddo
        enddo
     enddo
+    !$acc end parallel loop
 
     !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
@@ -971,7 +973,7 @@ contains
              omq = dp1 (k) / delp (i, j, k)
              qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
              ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+             ! qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
              ! qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
              ! qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
              ! qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
@@ -1034,7 +1036,7 @@ contains
        enddo
 
     enddo
-
+    !$acc end parallel loop
     !$acc end data
 
   end subroutine mpdrv
