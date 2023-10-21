@@ -172,7 +172,7 @@ module gfdl2_cloud_microphys_mod
   ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
   ! dt_fr can be considered as the error bar
 
-  real :: p_min = 100. !< minimum pressure (pascal) for mp to operate
+  real, parameter :: p_min = 100. !< minimum pressure (pascal) for mp to operate
 
   ! slj, the following parameters are for cloud - resolving resolution: 1 - 5 km
 
@@ -339,7 +339,7 @@ module gfdl2_cloud_microphys_mod
   !$omp     d0_vap, lv00, c_vap, c_air, tau_revp, &
   !$omp     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
   !$omp     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
-  !$omp     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+  !$omp     tice, tice0, rh_inc, rh_inr, t_min, do_qa, t_sub, do_evap, &
   !$omp     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
   !$omp     c_paut, prog_ccn, fix_negative, p_nonhydro, sedi_transport, ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
   !$omp     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
@@ -450,6 +450,8 @@ contains
     lati = hlf
     lats = latv + lati
     lat2 = lats * lats
+
+    !$omp target update to(c_air, c_vap, p_nonhydro, d0_vap, lv00, do_sedi_w, lat2)
 
     lcp = latv / cp_air
     icp = lati / cp_air
@@ -742,23 +744,6 @@ contains
     cpaut = c_paut * 0.104 * grav / 1.717e-5
     !! slow autoconversion in stable regimes
     !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-
-    !$omp target update to( &
-    !$omp     d0_vap, lv00, c_vap, c_air, tau_revp, &
-    !$omp     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
-    !$omp     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
-    !$omp     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
-    !$omp     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
-    !$omp     c_paut, prog_ccn, fix_negative, p_nonhydro, sedi_transport, ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
-    !$omp     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
-    !$omp     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
-    !$omp     ql0_max, dt_fr, &
-
-    !$omp     table2(:), des2(:), tablew(:), desw(:), &
-
-    !$omp     ces0, cracs, cracw, &
-    !$omp     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
-    !$omp     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
 
     c_air = 0
     print *, 'c_air (host): ', c_air
@@ -3527,6 +3512,11 @@ contains
     es0 = 6.107799961e2 ! ~6.1 mb
     ces0 = eps * es0
 
+    !$omp target update to( &
+    !$omp     ces0, cracs, cracw, &
+    !$omp     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
+    !$omp     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
+
   end subroutine setupm
 
   ! =======================================================================
@@ -3578,6 +3568,17 @@ contains
        write (*, nml = gfdl_cloud_microphysics_nml)
        write (*, *) " ================================================================== "
     endif
+
+
+    !$omp target update to( &
+    !$omp     tau_revp, tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
+    !$omp     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
+    !$omp     tice, tice0, rh_inc, rh_inr, t_min, do_qa, t_sub, do_evap, &
+    !$omp     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, z_slope_ice, &
+    !$omp     c_paut, prog_ccn, fix_negative, sedi_transport, ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
+    !$omp     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
+    !$omp     use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
+    !$omp     ql0_max, dt_fr)
 
     ! write version number and namelist to log file
     !if (me == root_proc) then
@@ -3784,6 +3785,8 @@ contains
        desw (length) = desw (length - 1)
 
        tables_are_initialized = .true.
+
+    !$omp target update to(table2(:), des2(:), tablew(:), desw(:))
 
     endif
 
