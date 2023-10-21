@@ -721,11 +721,21 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call FILLQ2ZERO(RAD_QS, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QG, MASS, TMP2D)
          call FILLQ2ZERO(RAD_CF, MASS, TMP2D)
-         RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
-         RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
-         RAD_QR = MIN( RAD_QR , 0.01  )  ! value.
-         RAD_QS = MIN( RAD_QS , 0.01  )  ! value.
-         RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
+         where (RAD_QL > 0.001)
+            RAD_QL = 0.001
+         endwhere
+         where (RAD_QI > 0.001)
+            RAD_QI = 0.001
+         endwhere
+         where (RAD_QR > 0.01)
+            RAD_QR = 0.01
+         endwhere
+         where (RAD_QS > 0.01)
+            RAD_QS = 0.01
+         endwhere
+         where (RAD_QG > 0.01)
+            RAD_QG = 0.01
+         endwhere
          where (QILS+QICN .le. 0.0)
             CLDREFFI = 36.0e-6
          end where
@@ -779,7 +789,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR*RAD_CF,RAD_QS*RAD_CF,RAD_QG*RAD_CF,IM,JM,LM,1,0,0)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0

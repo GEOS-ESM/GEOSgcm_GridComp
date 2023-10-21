@@ -32,13 +32,13 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
   ! In anvil/convective clouds
-  real, parameter :: aT_ICE_ALL = 252.16
-  real, parameter :: aT_ICE_MAX = 268.16
+  real, parameter :: aT_ICE_ALL = 243.16
+  real, parameter :: aT_ICE_MAX = 265.66
   real, parameter :: aICEFRPWR  = 2.0
   ! Over snow/ice SRF_TYPE = 2
   real, parameter :: iT_ICE_ALL = 236.16
   real, parameter :: iT_ICE_MAX = 261.16
-  real, parameter :: iICEFRPWR  = 6.0
+  real, parameter :: iICEFRPWR  = 4.0
   ! Over Land     SRF_TYPE = 1
   real, parameter :: lT_ICE_ALL = 239.16
   real, parameter :: lT_ICE_MAX = 261.16
@@ -124,6 +124,8 @@ module GEOSmoist_Process_Library
   public :: SH_MD_DP, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
+  public :: pdf_alpha
+  
   public :: sigma 
  
   contains
@@ -1974,7 +1976,8 @@ module GEOSmoist_Process_Library
          WTHV2,      &
          WQL,        &
          needs_preexisting, &
-         USE_BERGERON )
+         USE_BERGERON, &
+         SC_ICE )
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: PDFSHAPE
@@ -1990,17 +1993,18 @@ module GEOSmoist_Process_Library
       real, intent(out)   :: WTHV2, WQL
       real, intent(out)   :: PDFITERS
       logical, intent(in) :: needs_preexisting, USE_BERGERON
+      real, optional , intent(in) :: SC_ICE
 
       ! internal arrays
       real :: TAU,HL
-      real :: QT, sigmaqt1, sigmaqt2
+      real :: QT, sigmaqt1, sigmaqt2, scice
 
       real :: QSx,DQsx,QS,DQs
 
       real :: TEp, QSp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
-      real :: QAo, QAx, QCx, QC, fQi
+      real :: QAo, QAx, QCx, QC, fQi, QCi, qsnx
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
 
       real :: tmpARR
@@ -2009,6 +2013,9 @@ module GEOSmoist_Process_Library
       integer :: N, nmax
 
       character*(10) :: Iam='Process_Library:hystpdf'
+      
+      scice =  1.0
+       
 
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
@@ -2018,6 +2025,7 @@ module GEOSmoist_Process_Library
 
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
+      QCi = (QILS)*tmpARR
       TEn = TE
 
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
@@ -2032,7 +2040,14 @@ module GEOSmoist_Process_Library
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         if (PDFSHAPE.lt.5) DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         
+         if(present(SC_ICE)) then
+         	scice = min(max(SC_ICE, 1.0), 1.7)
+            qsnx= Qsn*scice !
+            if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
+          end if  
+         
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
@@ -2223,6 +2238,51 @@ module GEOSmoist_Process_Library
 
    end subroutine hystpdf
 
+!==========Estimate RHcrit========================
+!==============================
+ subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, EIS, RHC_OPTION)  
+
+      real,    intent(in)  :: PP, P_LM !mbar
+      real,    intent(out) :: ALPHA
+      real,    intent(in)  :: FRLAND
+      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS
+      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)   
+      real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
+      real :: dw_ocean = 0.10 !< base value for ocean
+      real :: sloperhcrit =20.
+      real :: TURNRHCRIT_UPPER = 300.
+      real ::  aux1, aux2, maxalpha
+
+      IF (RHC_OPTION .lt. 1) then 
+    
+          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
+          !Reformulated by Donifan Barahona
+
+          maxalpha=1.0-MINRHCRIT
+          aux1 = min(max((pp- TURNRHCRIT)/sloperhcrit, -20.0), 20.0) 
+          aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
+
+          if (FRLAND > 0.05)  then           
+             aux1=1.0
+          else
+             aux1 = 1.0/(1.0+exp(aux1)) !this function reproduces the old Sligo function. 
+          end if
+
+          !aux2= 1.0/(1.0+exp(aux2)) !this function would reverse the profile P< TURNRHCRIT_UPPER   
+           aux2=1.0
+           ALPHA  = min(maxalpha*aux1*aux2, 0.3)
+    
+       ELSE      
+           ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
+             if (EIS > 5.0) then ! Stable
+                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
+             else ! Unstable
+                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
+             endif
+       END IF      
+        
+   end subroutine pdf_alpha
+   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

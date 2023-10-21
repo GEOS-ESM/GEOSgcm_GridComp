@@ -2579,11 +2579,9 @@ loop0:       do k=kts,ktf
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)
             endif
             entr_rate(i,k) = max(entr_rate(i,k),min_entr_rate)
+            cd(i,k)=0.75e-4*(1.6-frh)
          enddo
       ENDDO
-      if(trim(cumulus) == 'deep'   ) cd=0.10*entr_rate
-      if(trim(cumulus) == 'mid'    ) cd=0.50*entr_rate
-      if(trim(cumulus) == 'shallow') cd=0.75*entr_rate
 !
 !--- start_level
 !
@@ -2598,10 +2596,15 @@ loop0:       do k=kts,ktf
                              ,use_excess,zqexec,ztexec,x_add_buoy,xland,itf,ktf,its,ite, kts,kte)
 
 !--- define entrainment/detrainment profiles for downdrafts
-     cdd         = entr_rate*0.3
-     mentrd_rate = entr_rate*0.3
+     do i=its,itf
+        do k=kts,ktf
+           mentrd_rate(i,k) = entr_c(k,i)*entr_rate_plume*0.3
+        enddo
+     enddo
+     cdd = mentrd_rate
      !- scale dependence factor
-     if( DOWNDRAFT /= 0) sigd(:) = sig
+                         sigd(:) = 1.0
+     if( DOWNDRAFT /= 0) sigd(:) = 0.0
 
 !--- update hkb/hkbo in case of k22 is redefined in 'cup_kbon'
      do i=its,itf
@@ -3077,25 +3080,27 @@ loop0:       do k=kts,ktf
             dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
             if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
             if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
-            if(xland(i) > 0.99 ) then !- over water
-               umean= 2.0+sqrt(0.5*(US(i,1)**2+VS(i,1)**2+US(i,kbcon(i))**2+VS(i,kbcon(i))**2))
-               tau_bl(i) = (zo_cup(i,kbcon(i))- z1(i)) /umean
-            else !- over land
-               tau_bl(i) = dz / 3.0 ! 3.0 m/s is estimated wmean
-            endif
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
             dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)=  3600.0*(    sigma(dx(i))) + &
+            tau_ecmwf(i)=  5400.0*(    sigma(dx(i))) + &
                           43200.0*(1.0-sigma(dx(i))) + &
                           (dz / vvel1d(i))
             tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
-            tau_bl   (i)= tau_ecmwf(i) / 2.0
          ENDDO
       ENDIF
+      DO i=its,itf
+         if(ierr(i) /= 0) cycle
+         if(xland(i) > 0.99 ) then !- over water
+            umean= 2.0+sqrt(0.5*(US(i,1)**2+VS(i,1)**2+US(i,kbcon(i))**2+VS(i,kbcon(i))**2))
+            tau_bl(i) = (zo_cup(i,kbcon(i))- z1(i)) /umean
+         else !- over land
+            tau_bl(i) =( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / 3.0 ! 3.0 m/s is estimated wmean
+         endif
+      ENDDO
       tau_ec_ = tau_ecmwf
       tau_bl_ = tau_bl
 
@@ -6174,25 +6179,25 @@ ENDIF !- end of section for atmospheric composition
          endif
 
         !- mass entrainment and detrainment are defined on model levels
-         do k=kts,k_ent
+         do k=kts,k_ent-1
            !-- below location of maximum value zu -> change entrainment
 
-           dz_zuo_ave = (zo_cup(i,k+1)-zo_cup(i,k))*0.5*(zuo(i,k+1)+zuo(i,k))
+           dz_zuo_ave = (zo_cup(i,k+1)-zo_cup(i,k))*zuo(i,k)
 
            up_massdetro(i,k)=cd(i,k)*dz_zuo_ave
 
            up_massentro(i,k)=zuo(i,k+1)-zuo(i,k)+up_massdetro(i,k)
-           up_massentro(i,k)=max(up_massentro(i,k),min_entr_rate*dz_zuo_ave)
+           up_massentro(i,k)=max(up_massentro(i,k),0.0)
 
            !-- check dd_massdetro in case of dd_massentro has been changed above
            up_massdetro(i,k)=-zuo(i,k+1)+zuo(i,k)+up_massentro(i,k)
          enddo
 
-         do k=k_ent+1,ktop(i)-1
+         do k=k_ent,ktop(i)
            !-- above location of maximum value zu -> change detrainment
-            dz_zuo_ave = (zo_cup(i,k+1)-zo_cup(i,k))*0.5*(zuo(i,k+1)+zuo(i,k))
+           dz_zuo_ave = (zo_cup(i,k+1)-zo_cup(i,k))*zuo(i,k)
 
-            up_massentro(i,k)=entr_rate(i,k)*dz_zuo_ave
+           up_massentro(i,k)=entr_rate(i,k)*dz_zuo_ave
 
            up_massdetro(i,k)=zuo(i,k)+up_massentro(i,k)-zuo(i,k+1)
            up_massdetro(i,k)=max(up_massdetro(i,k),0.0)
