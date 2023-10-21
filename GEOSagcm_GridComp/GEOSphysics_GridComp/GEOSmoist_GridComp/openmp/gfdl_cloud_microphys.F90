@@ -781,26 +781,27 @@ contains
 
     ! Initialize
 
-    ! !$omp target data &
-    ! !$omp map(to: &
-    ! !$omp     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
-    ! !$omp     is, ie, js, je, ks, ke, ktop, kbot, &
-    ! ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
-    ! !$omp     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    ! !$omp     den, den0, tz, p1, denfac, &
-    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
-    ! !$omp     area1, land, cnv_fraction, srf_type, eis, &
-    ! !$omp     rhcrit, uin, vin, delp, pt, dz, &
-    ! !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
-    ! !$omp     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    ! !$omp     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
-    ! !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
-
     !$omp target data &
-    !$omp map(to: is, ie, js, je, ktop, kbot) &
-    !$omp map(from: m2_rain, m2_sol, revap, isubl)
+    !$omp map(to: &
+    !$omp     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
+    !$omp     is, ie, js, je, ks, ke, ktop, kbot, &
+    ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
+    !$omp     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    !$omp     den, den0, tz, p1, denfac, &
+    !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
+    !$omp     area1, land, cnv_fraction, srf_type, eis, &
+    !$omp     rhcrit, uin, vin, delp, pt, dz, &
+    !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
+    !$omp     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !$omp     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
+    !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+
+    ! !$omp target data &
+    ! !$omp map(to: is, ie, js, je, ktop, kbot) &
+    ! !$omp map(from: m2_rain, m2_sol, revap, isubl)
+
     !$omp target teams distribute parallel do
     do k = ktop, kbot
        do j = js, je
