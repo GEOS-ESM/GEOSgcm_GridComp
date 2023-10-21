@@ -813,7 +813,6 @@ contains
        enddo
     enddo
     !$omp end target teams distribute parallel do
-    !$omp end target data
 
     !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
@@ -1085,7 +1084,7 @@ contains
        enddo
 
     enddo
-    ! !$omp end target data
+    !$omp end target data
 
   end subroutine mpdrv
 
