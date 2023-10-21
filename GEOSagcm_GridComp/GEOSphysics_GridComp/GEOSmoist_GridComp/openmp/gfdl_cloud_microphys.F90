@@ -50,7 +50,7 @@ module gfdl2_cloud_microphys_mod
 
   use fms_mod, only: write_version_number, open_namelist_file
   use fms_mod, only: check_nml_error, close_file, file_exist, fms_init
-  use GEOSmoist_Process_Library, only: ice_fraction
+  use MAPL, only: MAPL_PI
 
   implicit none
 
@@ -499,7 +499,7 @@ contains
     !$omp map(tofrom: &
     !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
     !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
-   
+
     ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
          hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
@@ -727,7 +727,7 @@ contains
     !$omp end target
     if (initial_device) then
        print *, "Running on host"
-    else 
+    else
        print *, "Running on device with ", nteams, " teams in total and ", nthreads, " threads per team"
     end if
 
@@ -4785,5 +4785,89 @@ contains
     endif
 
   end function new_liq_condensate
+
+  function ICE_FRACTION (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
+    !$acc routine seq
+    !$omp declare target
+    real, intent(in) :: TEMP,CNV_FRACTION,SRF_TYPE
+    real             :: ICEFRCT
+    real             :: tc, ptc
+    real             :: ICEFRCT_C, ICEFRCT_M
+
+    ! In anvil/convective clouds
+    real, parameter :: aT_ICE_ALL = 252.16
+    real, parameter :: aT_ICE_MAX = 268.16
+    real, parameter :: aICEFRPWR  = 2.0
+    ! Over snow/ice SRF_TYPE = 2
+    real, parameter :: iT_ICE_ALL = 236.16
+    real, parameter :: iT_ICE_MAX = 261.16
+    real, parameter :: iICEFRPWR  = 6.0
+    ! Over Land     SRF_TYPE = 1
+    real, parameter :: lT_ICE_ALL = 239.16
+    real, parameter :: lT_ICE_MAX = 261.16
+    real, parameter :: lICEFRPWR  = 2.0
+    ! Over Oceans   SRF_TYPE = 0
+    real, parameter :: oT_ICE_ALL = 238.16
+    real, parameter :: oT_ICE_MAX = 263.16
+    real, parameter :: oICEFRPWR  = 4.0
+
+    ! Anvil clouds
+    ! Anvil-Convective sigmoidal function like figure 6(right)
+    ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+    ICEFRCT_C  = 0.00
+    if ( TEMP <= aT_ICE_ALL ) then
+       ICEFRCT_C = 1.000
+    else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
+       ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+    end if
+    ICEFRCT_C = MIN(ICEFRCT_C,1.00)
+    ICEFRCT_C = MAX(ICEFRCT_C,0.00)
+    ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+#ifdef MODIS_ICE_POLY
+    ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
+    tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+    ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+    ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+#else
+    ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+    if (SRF_TYPE == 2.0) then
+       ! Over snow/ice
+       ICEFRCT_M  = 0.00
+       if ( TEMP <= iT_ICE_ALL ) then
+          ICEFRCT_M = 1.000
+       else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+          ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+       end if
+       ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+       ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+       ICEFRCT_M = ICEFRCT_M**iICEFRPWR
+    else if (SRF_TYPE > 1.0) then
+       ! Over Land
+       ICEFRCT_M  = 0.00
+       if ( TEMP <= lT_ICE_ALL ) then
+          ICEFRCT_M = 1.000
+       else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
+          ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
+       end if
+       ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+       ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+       ICEFRCT_M = ICEFRCT_M**lICEFRPWR
+    else
+       ! Over Oceans
+       ICEFRCT_M  = 0.00
+       if ( TEMP <= oT_ICE_ALL ) then
+          ICEFRCT_M = 1.000
+       else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
+          ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
+       end if
+       ICEFRCT_M = MIN(ICEFRCT_M,1.00)
+       ICEFRCT_M = MAX(ICEFRCT_M,0.00)
+       ICEFRCT_M = ICEFRCT_M**oICEFRPWR
+    endif
+#endif
+    ! Combine the Convective and MODIS functions
+    ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+
+  end function ICE_FRACTION
 
 end module gfdl2_cloud_microphys_mod
