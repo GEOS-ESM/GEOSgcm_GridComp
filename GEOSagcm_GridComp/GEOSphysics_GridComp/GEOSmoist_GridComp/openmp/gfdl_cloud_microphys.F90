@@ -774,9 +774,10 @@ contains
     !$omp     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
     !$omp     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
 
-    ! print *, 'c_air (host): ', c_air
-    ! !$omp target update from(c_air)
-    ! print *, 'c_air (device): ', c_air
+    c_air = 0
+    print *, 'c_air (host): ', c_air
+    !$omp target update from(c_air)
+    print *, 'c_air (device): ', c_air
 
     ! Initialize
 
