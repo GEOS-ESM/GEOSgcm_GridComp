@@ -798,10 +798,10 @@ contains
     ! !$omp     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
     ! !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
-    ! !$omp target data &
-    ! !$omp map(to: is, ie, js, je, ktop, kbot) &
-    ! !$omp map(from: m2_rain, m2_sol, revap, isubl)
-    ! !$omp target teams distribute parallel do
+    !$omp target data &
+    !$omp map(to: is, ie, js, je, ktop, kbot) &
+    !$omp map(from: m2_rain, m2_sol, revap, isubl)
+    !$omp target teams distribute parallel do
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
@@ -812,7 +812,8 @@ contains
           enddo
        enddo
     enddo
-    ! !$omp end target teams distribute parallel do
+    !$omp end target teams distribute parallel do
+    !$omp end target data
 
     !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
