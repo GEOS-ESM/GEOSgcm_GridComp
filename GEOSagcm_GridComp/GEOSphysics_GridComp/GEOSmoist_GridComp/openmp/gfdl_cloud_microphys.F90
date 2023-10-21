@@ -721,24 +721,10 @@ contains
     print *, "Number of available devices", num_devices
 
     !$omp target map(initial_device, nteams, nthreads)
-
     initial_device = omp_is_initial_device()
     nteams = omp_get_num_teams()
     nthreads = omp_get_num_threads()
-    ! !$omp teams distribute parallel do
-    ! do k = ktop, kbot
-    !    do j = js, je
-    !       do i = is, ie
-    !          tmpex (i, j, k) = 72.187475
-    !          m2_rain (i, j, k) = -29.5
-    !       end do
-    !    end do
-    ! end do
-    ! !$omp end teams distribute parallel do
-
     !$omp end target
-    ! print *, 'm2_rain(5,8,23): ', m2_rain(1,1,1), m2_rain(5,8,23)
-    ! print *, 'tmpex(5,8,23): ', tmpex(1,1,1), tmpex(5,8,23)
     if (initial_device) then
        print *, "Running on host"
     else 
