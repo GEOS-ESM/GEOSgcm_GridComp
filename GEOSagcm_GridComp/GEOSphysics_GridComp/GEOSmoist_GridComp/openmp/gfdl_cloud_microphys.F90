@@ -37,6 +37,7 @@
 module gfdl2_cloud_microphys_mod
 
   use mpi
+  use omp_lib
   use mpp_mod, only: mpp_pe, mpp_root_pe
   ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
   ! mpp_clock_begin, mpp_clock_end, clock_routine, &
@@ -332,23 +333,22 @@ module gfdl2_cloud_microphys_mod
        preciprad, cld_min, use_ppm, mono_prof,         &
        do_sedi_heat, sedi_transport, do_sedi_w, dt_fr, de_ice, icloud_f, irain_f, mp_print
 
-  !$acc declare create( &
+  !$omp declare target( &
+  !$omp     des2, desw, table2, tablew, &
 
-  !$acc     des2, desw, table2, tablew, &
+  !$omp     d0_vap, lv00, c_vap, c_air, tau_revp, &
+  !$omp     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
+  !$omp     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
+  !$omp     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+  !$omp     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
+  !$omp     c_paut, prog_ccn, fix_negative, p_nonhydro, sedi_transport, ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
+  !$omp     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
+  !$omp     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
+  !$omp     ql0_max, dt_fr, &
 
-  !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
-  !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
-  !$acc     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
-  !$acc     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
-  !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
-  !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
-  !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
-  !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
-  !$acc     ql0_max, dt_fr, &
-
-  !$acc     ces0, cracs, cracw, &
-  !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
-  !$acc     cssub, crevp, csmlt, cgmlt, cgfr, acco)
+  !$omp     ces0, cracs, cracw, &
+  !$omp     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
+  !$omp     cssub, crevp, csmlt, cgmlt, cgfr, acco)
 
 contains
 
@@ -436,6 +436,7 @@ contains
        c_vap = cv_vap
        p_nonhydro = .true.
     endif
+
     d0_vap = c_vap - c_liq
     lv00 = hlv0 - d0_vap * t_ice
 
@@ -453,17 +454,6 @@ contains
     lcp = latv / cp_air
     icp = lati / cp_air
     tcp = (latv + lati) / cp_air
-
-    !$acc update device ( &
-    !$acc     d0_vap, lv00, c_vap, c_air, tau_revp, &
-    !$acc     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
-    !$acc     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
-    !$acc     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
-    !$acc     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
-    !$acc     ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
-    !$acc     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
-    !$acc     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
-    !$acc     ql0_max, dt_fr)
 
     ! tendency zero out for am moist processes should be done outside the driver
 
@@ -498,18 +488,18 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    !$acc data &
-    !$acc copyin( &
-    !$acc     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
-    !$acc     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-    !$acc     rhcrit, ntimes) &
-    !$acc copyout( &
-    !$acc     m2_rain, m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
-    !$acc     vt_i, qn2) &
-    !$acc copy( &
-    !$acc     w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
-    !$acc     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
-
+    !$omp target data &
+    !$omp map(to: &
+    !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    !$omp     rhcrit, ntimes) &
+    !$omp map(from: &
+    !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    !$omp     vt_i, qn2) &
+    !$omp map(tofrom: &
+    !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+   
     ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
          hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs, qg, &
@@ -525,7 +515,7 @@ contains
     ! call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     ! print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
-    !$acc end data
+    !$omp end target data
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -714,6 +704,7 @@ contains
     real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: w1
+    real, dimension (is:ie, js:je, ktop:kbot) :: tmpex
 
     real :: cpaut, t0
     real :: r1, s1, i1, g1, rdt
@@ -722,6 +713,37 @@ contains
     real :: u1_k, u1_km1, v1_k, v1_km1
 
     integer :: i, j, k, n
+
+    integer :: num_devices, nteams, nthreads
+    logical :: initial_device
+
+    num_devices = omp_get_num_devices()
+    print *, "Number of available devices", num_devices
+
+    !$omp target map(initial_device, nteams, nthreads)
+
+    initial_device = omp_is_initial_device()
+    nteams = omp_get_num_teams()
+    nthreads = omp_get_num_threads()
+    ! !$omp teams distribute parallel do
+    ! do k = ktop, kbot
+    !    do j = js, je
+    !       do i = is, ie
+    !          tmpex (i, j, k) = 72.187475
+    !          m2_rain (i, j, k) = -29.5
+    !       end do
+    !    end do
+    ! end do
+    ! !$omp end teams distribute parallel do
+
+    !$omp end target
+    ! print *, 'm2_rain(5,8,23): ', m2_rain(1,1,1), m2_rain(5,8,23)
+    ! print *, 'tmpex(5,8,23): ', tmpex(1,1,1), tmpex(5,8,23)
+    if (initial_device) then
+       print *, "Running on host"
+    else 
+       print *, "Running on device with ", nteams, " teams in total and ", nthreads, " threads per team"
+    end if
 
     dts = dt_in / real (ntimes)
     rdt = 1. / dt_in
@@ -735,27 +757,50 @@ contains
     !! slow autoconversion in stable regimes
     !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
 
-    !$acc data &
-    !$acc copyin( &
-    !$acc     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
-    ! !$acc   hydrostatic, is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    !$acc     is, ie, js, je, ks, ke, ktop, kbot, &
-    ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
-    !$acc     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    !$acc     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    !$acc     qv0, ql0, qr0, qi0, qs0, qg0, &
-    !$acc     den, den0, tz, p1, denfac, &
-    !$acc     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1) &
-    !$acc present( &
-    !$acc     area1, land, cnv_fraction, srf_type, eis, &
-    !$acc     rhcrit, uin, vin, delp, pt, dz, &
-    !$acc     qv, qi, ql, qr, qs, qg, qa, qn, &
-    !$acc     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$acc     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
-    !$acc     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+    !$omp target update to( &
+    !$omp     d0_vap, lv00, c_vap, c_air, tau_revp, &
+    !$omp     tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
+    !$omp     tau_v2g, tau_frz, tau_imlt, tau_smlt, tau_i2s, tau_g2r, &
+    !$omp     tice, tice0, rh_inc, rh_inr, p_min, t_min, do_qa, t_sub, do_evap, &
+    !$omp     do_bigg, qi_lim, do_subl, preciprad, icloud_f, qc_crt, lat2, z_slope_ice, &
+    !$omp     c_paut, prog_ccn, fix_negative, p_nonhydro, sedi_transport, ql_mlt, qs_mlt, qi0_crt, qs0_crt, &
+    !$omp     const_vi, vi_fac, vi_max, const_vs, vs_fac, vs_max, const_vg, vg_fac, vg_max, const_vr, vr_fac, vr_max, &
+    !$omp     do_sedi_w, use_ppm, mono_prof, rthreshs, rthreshu, irain_f, z_slope_liq, do_sedi_heat, &
+    !$omp     ql0_max, dt_fr, &
+
+    !$omp     table2(:), des2(:), tablew(:), desw(:), &
+
+    !$omp     ces0, cracs, cracw, &
+    !$omp     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
+    !$omp     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
+
+    ! print *, 'c_air (host): ', c_air
+    ! !$omp target update from(c_air)
+    ! print *, 'c_air (device): ', c_air
 
     ! Initialize
-    !$acc parallel loop gang vector collapse(3)
+
+    ! !$omp target data &
+    ! !$omp map(to: &
+    ! !$omp     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
+    ! !$omp     is, ie, js, je, ks, ke, ktop, kbot, &
+    ! ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
+    ! !$omp     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    ! !$omp     den, den0, tz, p1, denfac, &
+    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
+    ! !$omp     area1, land, cnv_fraction, srf_type, eis, &
+    ! !$omp     rhcrit, uin, vin, delp, pt, dz, &
+    ! !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
+    ! !$omp     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    ! !$omp     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
+    ! !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+
+    ! !$omp target data &
+    ! !$omp map(to: is, ie, js, je, ktop, kbot) &
+    ! !$omp map(from: m2_rain, m2_sol, revap, isubl)
+    ! !$omp target teams distribute parallel do
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
@@ -766,7 +811,7 @@ contains
           enddo
        enddo
     enddo
-    !$acc end parallel loop
+    ! !$omp end target teams distribute parallel do
 
     !$acc parallel loop seq & ! gang collapse(2)
     !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
@@ -775,6 +820,7 @@ contains
        do i = is, ie
 
           !$acc loop vector private(omq, t0)
+          ! !$omp target teams distribute parallel do
           do k = ktop, kbot
 
              t0 = pt (i, j, k)
@@ -848,6 +894,7 @@ contains
              endif
 
           enddo
+          ! !$omp end target teams distribute parallel do
 
           ! -----------------------------------------------------------------------
           ! fix all negative water species
@@ -1036,8 +1083,7 @@ contains
        enddo
 
     enddo
-    !$acc end parallel loop
-    !$acc end data
+    ! !$omp end target data
 
   end subroutine mpdrv
 
@@ -1048,7 +1094,7 @@ contains
   subroutine sedi_heat (ktop, kbot, dm, m1, dz, tz, qv, ql, qr, qi, qs, qg, cw)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     ! input q fields are dry mixing ratios, and dm is dry air mass
 
@@ -1105,7 +1151,7 @@ contains
        den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -1335,7 +1381,7 @@ contains
   subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -1450,7 +1496,7 @@ contains
   subroutine linear_prof (km, q, dm, z_var, h_var)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: km
 
@@ -1514,7 +1560,7 @@ contains
        den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -2025,7 +2071,7 @@ contains
        ql, qr, qi, qs, qg, qa, subl1, h_var, ccn, cnv_fraction, srf_type)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -2458,7 +2504,7 @@ contains
        den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -2810,7 +2856,7 @@ contains
   subroutine check_column (ktop, kbot, q, no_fall)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -2840,7 +2886,7 @@ contains
   subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -2914,7 +2960,7 @@ contains
   subroutine lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, q, precip, m1, mono)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -3014,7 +3060,7 @@ contains
   subroutine cs_profile (a4, del, km, do_mono)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: km !< vertical dimension
 
@@ -3192,7 +3238,7 @@ contains
   subroutine cs_limiters (km, a4)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: km
 
@@ -3234,7 +3280,7 @@ contains
        den, qs, qi, qg, ql, tk, vts, vti, vtg)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -3493,11 +3539,6 @@ contains
     es0 = 6.107799961e2 ! ~6.1 mb
     ces0 = eps * es0
 
-    !$acc update device( &
-    !$acc     ces0, cracs, cracw, &
-    !$acc     csaci, csacr, csacw, cgaci, cgacr, cgacs, cgacw, &
-    !$acc     cssub(:), crevp(:), csmlt(:), cgmlt(:), cgfr(:), acco(:,:))
-
   end subroutine setupm
 
   ! =======================================================================
@@ -3646,7 +3687,7 @@ contains
   real function acr3d (v1, v2, q1, q2, c, cac, rho)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     real, intent (in) :: v1, v2, c, rho
     real, intent (in) :: q1, q2 ! mixing ratio!!!
@@ -3681,7 +3722,7 @@ contains
   real function smlt (tc, dqs, qsrho, psacw, psacr, c, rho, rhofac)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     real, intent (in) :: tc, dqs, qsrho, psacw, psacr, c (5), rho, rhofac
 
@@ -3698,7 +3739,7 @@ contains
   real function gmlt (tc, dqs, qgrho, pgacw, pgacr, c, rho)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     real, intent (in) :: tc, dqs, qgrho, pgacw, pgacr, c (5), rho
 
@@ -3756,8 +3797,6 @@ contains
 
        tables_are_initialized = .true.
 
-       !$acc update device(table2(:), des2(:), tablew(:), desw(:))
-
     endif
 
   end subroutine qsmith_init
@@ -3771,7 +3810,7 @@ contains
   real function wqs1 (ta, den)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     !> pure water phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -3801,7 +3840,7 @@ contains
   real function wqs2 (ta, den, dqdt)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     !> pure water phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -3863,7 +3902,7 @@ contains
   real function iqs1 (ta, den)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     !> water - ice phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -3891,7 +3930,7 @@ contains
   real function iqs2 (ta, den, dqdt)
 
     implicit none
-    !$acc routine seq
+    !$omp declare target
 
     !> water - ice phase; universal dry / moist formular using air density
     !> input "den" can be either dry or moist air density
@@ -4428,8 +4467,7 @@ contains
   subroutine neg_adj (ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
 
     implicit none
-    !!$acc routine vector
-    !$acc routine seq
+    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -4584,7 +4622,7 @@ contains
 
     integer :: i, j, k
 
-    !$omp parallel do default (none) shared (is, ie, js, je, km, hgt, zl, a2, a3) private (zm)
+    ! !$omp parallel do default (none) shared (is, ie, js, je, km, hgt, zl, a2, a3) private (zm)
 
     do j = js, je
        do i = is, ie
@@ -4732,7 +4770,7 @@ contains
   end subroutine cloud_diagnosis
 
   real function new_ice_condensate(tk, qlk, qik, cnv_fraction, srf_type)
-    !$acc routine seq
+    !$omp declare target
 
     real, intent(in) :: tk, qlk, qik, cnv_fraction, srf_type
     real :: ptc, ifrac
