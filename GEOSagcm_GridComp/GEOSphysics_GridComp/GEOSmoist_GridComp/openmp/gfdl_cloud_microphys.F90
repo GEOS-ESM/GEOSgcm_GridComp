@@ -706,7 +706,6 @@ contains
     real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: w1
-    real, dimension (is:ie, js:je, ktop:kbot) :: tmpex
 
     real :: cpaut, t0
     real :: r1, s1, i1, g1, rdt
