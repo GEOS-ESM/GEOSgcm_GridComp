@@ -2079,11 +2079,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         icpk (k) = lhi (k) / cvm (k)
 
         ! -----------------------------------------------------------------------
-        ! enforce complete freezing below - t_wfr
+        ! enforce complete freezing when ice_fraction==1
         ! -----------------------------------------------------------------------
 
-        dtmp = t_wfr - tz (k)
-        if (dtmp > 0. .and. ql (k) > qcmin) then
+        ifrac = ice_fraction(tz (k),cnv_fraction,srf_type)
+        if (ifrac == 1. .and. ql (k) > qcmin) then
             sink = ql (k)
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
