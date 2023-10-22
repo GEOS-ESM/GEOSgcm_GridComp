@@ -775,19 +775,26 @@ contains
 
     ! Initialize
     !$omp target
-    !$omp teams distribute parallel do
+    !$omp teams default(none) shared(is, ie, js, je, ktop, kbot, m2_rain, m2_sol, revap, isubl)
+    !$omp distribute
     do k = ktop, kbot
        do j = js, je
+          !$omp parallel do
           do i = is, ie
-             m2_rain (i, j, k) = 0.
+             m2_rain (i, j, k) = -25876.2875
              m2_sol (i, j, k) = 0.
              revap (i, j, k) = 0.
              isubl (i, j, k) = 0.
           enddo
+          !$omp end parallel do
        enddo
     enddo
-    !$omp end teams distribute parallel do
+    !$omp end distribute
+    !$omp end teams
     !$omp end target
+
+    !$omp target update from(m2_rain)
+    print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
 
     !$omp target teams distribute private(omq, cvm, t0, cpaut)
     do j = js, je
