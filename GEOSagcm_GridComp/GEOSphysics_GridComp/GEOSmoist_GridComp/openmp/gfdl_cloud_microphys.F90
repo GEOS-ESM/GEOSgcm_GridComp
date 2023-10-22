@@ -774,7 +774,8 @@ contains
     !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     ! Initialize
-    !$omp target teams distribute parallel do
+    !$omp target
+    !$omp teams distribute parallel do
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
@@ -785,7 +786,8 @@ contains
           enddo
        enddo
     enddo
-    !$omp end target teams distribute parallel do
+    !$omp end teams distribute parallel do
+    !$omp end target
 
     !$omp target teams distribute private(omq, cvm, t0, cpaut)
     do j = js, je
