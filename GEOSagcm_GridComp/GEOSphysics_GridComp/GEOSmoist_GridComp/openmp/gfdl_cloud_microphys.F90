@@ -740,10 +740,6 @@ contains
     ! the following is based on klein eq. 15
     ! -----------------------------------------------------------------------
 
-    cpaut = c_paut * 0.104 * grav / 1.717e-5
-    !! slow autoconversion in stable regimes
-    !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-
     c_air = 0
     print *, 'c_air (host): ', c_air
     !$omp target update from(c_air)
@@ -751,16 +747,26 @@ contains
 
     !$omp target data &
     !$omp map(to: &
-    !$omp     dts, rdt, cpaut, &
+    !$omp     dts, rdt, &
     !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
     !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
+
     !$omp map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     rain, snow, ice, graupel, cond) &
+    !$omp     rain, snow, ice, graupel, cond, &
+    ! Local variables
+    !$omp     h_var1d, &
+    !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    !$omp     den, den0, tz, p1, denfac, &
+    !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
+    !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+
     !$omp map(from: &
     !$omp     revap, isubl, w_var, &
     !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
@@ -779,7 +785,7 @@ contains
     enddo
     !$omp end target teams distribute parallel do
 
-    ! !$omp target teams distribute &
+    ! !$omp target teams distribute parallel do &
     ! !$omp private( &
     ! !$omp     h_var1d, &
     ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
@@ -789,6 +795,100 @@ contains
     ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
     ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1, &
     ! !$omp     omq, cvm, t0)
+
+    !$omp target teams distribute private(omq, cvm, t0, cpaut)
+    do j = js, je
+
+       do i = is, ie
+
+          do k = ktop, kbot
+
+             cpaut = c_paut * 0.104 * grav / 1.717e-5
+             !! slow autoconversion in stable regimes
+             !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
+
+             t0 = pt (i, j, k)
+             tz (k) = t0
+             dp1 (k) = delp (i, j, k)
+
+             ! -----------------------------------------------------------------------
+             ! import horizontal subgrid variability with pressure dependence
+             ! total water subgrid deviation in horizontal direction
+             ! default area dependent form: use dx ~ 100 km as the base
+             ! -----------------------------------------------------------------------
+             h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
+
+             ! -----------------------------------------------------------------------
+             ! convert moist mixing ratios to dry mixing ratios
+             ! -----------------------------------------------------------------------
+
+             qvz (k) = qv (i, j, k)
+             qlz (k) = ql (i, j, k)
+             qiz (k) = qi (i, j, k)
+             qrz (k) = qr (i, j, k)
+             qsz (k) = qs (i, j, k)
+             qgz (k) = qg (i, j, k)
+
+             ! dp1: dry air_mass
+             ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
+             dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
+             omq = delp (i, j, k) / dp1 (k)
+
+             qvz (k) = qvz (k) * omq
+             qlz (k) = qlz (k) * omq
+             qrz (k) = qrz (k) * omq
+             qiz (k) = qiz (k) * omq
+             qsz (k) = qsz (k) * omq
+             qgz (k) = qgz (k) * omq
+
+             qaz (k) = qa (i, j, k)
+
+             den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
+             p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
+
+             ! -----------------------------------------------------------------------
+             ! save a copy of old value for computing tendencies
+             ! -----------------------------------------------------------------------
+
+             qv0 (k) = qvz (k)
+             ql0 (k) = qlz (k)
+             qr0 (k) = qrz (k)
+             qi0 (k) = qiz (k)
+             qs0 (k) = qsz (k)
+             qg0 (k) = qgz (k)
+
+             ! -----------------------------------------------------------------------
+             ! for sedi_momentum
+             ! -----------------------------------------------------------------------
+
+             m1 (k) = 0.
+
+             if (do_sedi_w) w1 (k) = w (i, j, k)
+
+             ! ok so far
+
+             ! ccn needs units #/m^3
+             if (prog_ccn) then
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             else
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             endif
+
+          enddo
+
+       enddo
+
+    enddo
+    !$omp end target teams distribute
+    !$omp end target data
+
     do j = js, je
 
        do i = is, ie
@@ -1057,7 +1157,6 @@ contains
 
     enddo
     ! !$omp end target teams distribute
-    !$omp end target data
 
   end subroutine mpdrv
 
