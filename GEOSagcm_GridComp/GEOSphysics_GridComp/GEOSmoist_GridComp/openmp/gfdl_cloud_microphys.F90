@@ -749,29 +749,23 @@ contains
     !$omp target update from(c_air)
     print *, 'c_air (device): ', c_air
 
-    ! Initialize
-
     !$omp target data &
     !$omp map(to: &
-    !$omp     dts, rdt, cpaut, anv_icefall, lsc_icefall, &
-    !$omp     is, ie, js, je, ks, ke, ktop, kbot, &
-    ! NOTE: gfortran doesn't seem to support private arrays - hence copyin
-    !$omp     h_var1d, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    !$omp     den, den0, tz, p1, denfac, &
-    !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
+    !$omp     dts, rdt, cpaut, &
+    !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
-    !$omp     rhcrit, uin, vin, delp, pt, dz, &
-    !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
-    !$omp     u_dt, v_dt, w, pt_dt, qa_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     revap, isubl, rain, snow, ice, graupel, cond, w_var, &
+    !$omp     rhcrit, anv_icefall, lsc_icefall, &
+    !$omp     uin, vin, delp, pt, dz, &
+    !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
+    !$omp map(tofrom: &
+    !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
+    !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !$omp     rain, snow, ice, graupel, cond) &
+    !$omp map(from: &
+    !$omp     revap, isubl, w_var, &
     !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
-    ! !$omp target data &
-    ! !$omp map(to: is, ie, js, je, ktop, kbot) &
-    ! !$omp map(from: m2_rain, m2_sol, revap, isubl)
-
+    ! Initialize
     !$omp target teams distribute parallel do
     do k = ktop, kbot
        do j = js, je
@@ -785,14 +779,21 @@ contains
     enddo
     !$omp end target teams distribute parallel do
 
-    !$acc parallel loop seq & ! gang collapse(2)
-    !$acc private(r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1)
+    ! !$omp target teams distribute &
+    ! !$omp private( &
+    ! !$omp     h_var1d, &
+    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    ! !$omp     den, den0, tz, p1, denfac, &
+    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
+    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1, &
+    ! !$omp     omq, cvm, t0)
     do j = js, je
 
        do i = is, ie
 
-          !$acc loop vector private(omq, t0)
-          ! !$omp target teams distribute parallel do
+          ! !$omp target parallel do
           do k = ktop, kbot
 
              t0 = pt (i, j, k)
@@ -866,7 +867,7 @@ contains
              endif
 
           enddo
-          ! !$omp end target teams distribute parallel do
+          ! !$omp end target parallel do
 
           ! -----------------------------------------------------------------------
           ! fix all negative water species
@@ -1055,6 +1056,7 @@ contains
        enddo
 
     enddo
+    ! !$omp end target teams distribute
     !$omp end target data
 
   end subroutine mpdrv
@@ -3567,7 +3569,6 @@ contains
        write (*, nml = gfdl_cloud_microphysics_nml)
        write (*, *) " ================================================================== "
     endif
-
 
     !$omp target update to( &
     !$omp     tau_revp, tau_v2l, tau_l2v, tau_i2v, tau_s2v, tau_v2s, tau_g2v, &
