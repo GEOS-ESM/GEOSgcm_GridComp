@@ -705,7 +705,7 @@ contains
     real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
     real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
     real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
-    real, dimension (ktop:kbot) :: w1
+    real, dimension (ktop:kbot) :: w1, tmp1, tmp2
 
     real :: cpaut, t0
     real :: r1, s1, i1, g1, rdt
@@ -717,6 +717,8 @@ contains
 
     integer :: num_devices, nteams, nthreads
     logical :: initial_device
+
+    print *, 'rhcrit: ', maxval(rhcrit), minval(rhcrit), sum(rhcrit)
 
     num_devices = omp_get_num_devices()
     print *, "Number of available devices", num_devices
@@ -765,7 +767,7 @@ contains
     !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
     !$omp     den, den0, tz, p1, denfac, &
     !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+    !$omp     w1, tmp1, tmp2, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
 
     !$omp map(from: &
     !$omp     revap, isubl, w_var, &
@@ -784,17 +786,6 @@ contains
        enddo
     enddo
     !$omp end target teams distribute parallel do
-
-    ! !$omp target teams distribute parallel do &
-    ! !$omp private( &
-    ! !$omp     h_var1d, &
-    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    ! !$omp     den, den0, tz, p1, denfac, &
-    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1, &
-    ! !$omp     omq, cvm, t0)
 
     !$omp target teams distribute private(omq, cvm, t0, cpaut)
     do j = js, je
@@ -816,7 +807,7 @@ contains
              ! total water subgrid deviation in horizontal direction
              ! default area dependent form: use dx ~ 100 km as the base
              ! -----------------------------------------------------------------------
-             h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
+             h_var1d (k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
 
              ! -----------------------------------------------------------------------
              ! convert moist mixing ratios to dry mixing ratios
@@ -883,15 +874,129 @@ contains
 
           enddo
 
+          ! -----------------------------------------------------------------------
+          ! fix all negative water species
+          ! -----------------------------------------------------------------------
+
+          if (fix_negative) then
+             call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
+          endif
+
+          do n = 1, ntimes
+
+             ! ! -----------------------------------------------------------------------
+             ! ! dry air density
+             ! ! -----------------------------------------------------------------------
+
+             ! !$acc loop vector private(t0)
+             ! do k = ktop, kbot
+             !    if (p_nonhydro) then
+             !       dz1 (k) = dz (i, j, k)
+             !       den (k) = den0 (k) ! dry air density remains the same
+             !       denfac (k) = sqrt (sfcrho / den (k))
+             !    else
+             !       t0 = pt (i, j, k)
+             !       dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
+             !       den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
+             !       denfac (k) = sqrt (sfcrho / den (k))
+             !    endif
+
+             !    ! ! -----------------------------------------------------------------------
+             !    ! ! sedimentation of cloud ice, snow, and graupel
+             !    ! ! -----------------------------------------------------------------------
+             !    ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+             !    !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+             ! end do
+
+             ! call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+             !      dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
+             ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
+             ! snow (i, j) = snow (i, j) + s1
+             ! graupel (i, j) = graupel (i, j) + g1
+             ! ice (i, j) = ice (i, j) + i1
+
+             ! ! -----------------------------------------------------------------------
+             ! ! heat transportation during sedimentation
+             ! ! -----------------------------------------------------------------------
+
+             ! if (do_sedi_heat) then
+             !    call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
+             !         qsz, qgz, c_ice)
+             ! endif
+
+             ! ! -----------------------------------------------------------------------
+             ! ! warm rain processes
+             ! ! -----------------------------------------------------------------------
+
+             ! call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
+             !      qgz, qaz, eis(i, j), den, denfac, ccn, c_praut, vtrz, &
+             !      r1, evap1, m1_rain, w1, h_var1d)
+
+             ! rain (i, j) = rain (i, j) + r1
+
+             ! !$acc loop vector
+             ! do k = ktop, kbot
+             !    revap (i,j,k) = revap (i,j,k) + evap1(k)
+             !    m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
+             !    m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
+             !    m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
+             ! enddo
+
+             ! ! -----------------------------------------------------------------------
+             ! ! ice - phase microphysics
+             ! ! -----------------------------------------------------------------------
+
+             ! call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
+             !      denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
+             !      ccn, cnv_fraction(i, j), srf_type(i, j))
+
+             ! !$acc loop vector
+             ! do k = ktop, kbot
+             !    isubl (i,j,k) = isubl (i,j,k) + subl1(k)
+             ! enddo
+
+          enddo ! ntimes
+
        enddo
 
     enddo
     !$omp end target teams distribute
     !$omp end target data
 
-    print *, 'w1(kbot): ', w1(kbot)
+    print *, 'tmp1(kbot): ', tmp1(kbot)
+    print *, 'tmp2(kbot): ', tmp2(kbot)
+    print *, 'h_var1d(kbot): ', h_var1d(kbot)
+    print *, 'qvz(kbot): ', qvz(kbot)
+    print *, 'qlz(kbot): ', qlz(kbot)
+    print *, 'qrz(kbot): ', qrz(kbot)
+    print *, 'qiz(kbot): ', qiz(kbot)
+    print *, 'qsz(kbot): ', qsz(kbot)
+    print *, 'qgz(kbot): ', qgz(kbot)
+    print *, 'qaz(kbot): ', qaz(kbot)
+    print *, 'vtiz(kbot): ', vtiz(kbot)
+    print *, 'vtsz(kbot): ', vtsz(kbot)
+    print *, 'vtgz(kbot): ', vtgz(kbot)
+    print *, 'vtrz(kbot): ', vtrz(kbot)
+    print *, 'qv0(kbot): ', qv0(kbot)
+    print *, 'ql0(kbot): ', ql0(kbot)
+    print *, 'qr0(kbot): ', qr0(kbot)
+    print *, 'qi0(kbot): ', qi0(kbot)
+    print *, 'qs0(kbot): ', qs0(kbot)
+    print *, 'qg0(kbot): ', qg0(kbot)
+    print *, 'den(kbot): ', den(kbot)
+    print *, 'den0(kbot): ', den0(kbot)
+    print *, 'tz(kbot): ', tz(kbot)
+    print *, 'p1(kbot): ', p1(kbot)
+    print *, 'denfac(kbot): ', denfac(kbot)
     print *, 'ccn(kbot): ', ccn(kbot)
     print *, 'c_praut(kbot): ', c_praut(kbot)
+    print *, 'm1_rain(kbot): ', m1_rain(kbot)
+    print *, 'm1_sol(kbot): ', m1_sol(kbot)
+    print *, 'm1(kbot): ', m1(kbot)
+    print *, 'evap1(kbot): ', evap1(kbot)
+    print *, 'subl1(kbot): ', subl1(kbot)
+    print *, 'w1(kbot): ', w1(kbot)
 
     do j = js, je
 
