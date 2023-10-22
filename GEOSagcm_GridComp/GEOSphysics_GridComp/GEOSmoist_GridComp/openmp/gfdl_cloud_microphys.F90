@@ -889,6 +889,10 @@ contains
     !$omp end target teams distribute
     !$omp end target data
 
+    print *, 'w1(kbot): ', w1(kbot)
+    print *, 'ccn(kbot): ', ccn(kbot)
+    print *, 'c_praut(kbot): ', c_praut(kbot)
+
     do j = js, je
 
        do i = is, ie
