@@ -759,15 +759,15 @@ contains
     !$omp map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2, &
+    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
     ! Local variables
-    !$omp     h_var1d, &
-    !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    !$omp     den, den0, tz, p1, denfac, &
-    !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+    ! !$omp     h_var1d, &
+    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    ! !$omp     den, den0, tz, p1, denfac, &
+    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
+    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
 
     !$omp map(from: &
     !$omp     revap, isubl, w_var, &
@@ -775,12 +775,15 @@ contains
 
     ! Initialize
     !$omp target
-    !$omp teams default(none) shared(is, ie, js, je, ktop, kbot, m2_rain, m2_sol, revap, isubl)
+    !$omp teams &
+    !$omp   default(none) &
+    !$omp   shared(is, ie, js, je, ktop, kbot, m2_rain, m2_sol, revap, isubl) &
+    !$omp   private(tz)
     !$omp distribute
-    do k = ktop, kbot
-       do j = js, je
+    do j = js, je
+       do i = is, ie
           !$omp parallel do
-          do i = is, ie
+          do k = ktop, kbot
              m2_rain (i, j, k) = -25876.2875
              m2_sol (i, j, k) = 0.
              revap (i, j, k) = 0.
@@ -798,20 +801,21 @@ contains
 
     !$omp target
 
-    !$omp teams &
-    !$omp   default(none) &
-    !$omp   shared( &
-    !$omp     is, ie, js, je, ktop, kbot, ntimes, &
-    !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
-    !$omp     pt, delp, rhcrit, &
-    !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, tmp1, tmp2, &
-    ! !$omp private( &
+    ! !$omp teams &
+    ! !$omp   default(none) &
+    ! !$omp   shared( &
+    ! !$omp     is, ie, js, je, ktop, kbot, ntimes, &
+    ! !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
+    ! !$omp     pt, delp, rhcrit, &
+    ! !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, tmp1, tmp2) &
+    ! !$omp   private( &
     ! !$omp     omq, cvm, t0, cpaut, &
-    !$omp     tz, dp1, h_var1d, &
-    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
-    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
+    ! ! !$omp allocate( &
+    ! !$omp     tz, dp1, h_var1d, &
+    ! !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+    ! !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
 
-    !$omp distribute private(omq, cvm, t0, cpaut)
+    ! !$omp distribute private(omq, cvm, t0, cpaut)
     do j = js, je
 
        do i = is, ie
@@ -985,8 +989,8 @@ contains
        enddo
 
     enddo
-    !$omp end distribute
-    !$omp end teams
+    ! !$omp end distribute
+    ! !$omp end teams
     !$omp end target
     ! !$omp end target teams distribute
     !$omp end target data
