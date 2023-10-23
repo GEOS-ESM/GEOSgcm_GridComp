@@ -712,13 +712,19 @@ contains
     real :: dts
     real :: cvm, omq
     real :: u1_k, u1_km1, v1_k, v1_km1
+    real :: tmpreal
 
     integer :: i, j, k, n
 
     integer :: num_devices, nteams, nthreads
     logical :: initial_device
 
-    print *, 'rhcrit: ', maxval(rhcrit), minval(rhcrit), sum(rhcrit)
+    ! print *, 'max/min/sum - rhcrit: ', maxval(rhcrit), minval(rhcrit), sum(rhcrit)
+    ! print *, 'max/min/sum - qi: ', maxval(qi(ie, je, :)), minval(qi(ie, je, :)), sum(qi(ie, je, :))
+    ! print *, 'max/min/sum - ql: ', maxval(ql(ie, je, :)), minval(ql(ie, je, :)), sum(ql(ie, je, :))
+    ! print *, 'max/min/sum - qr: ', maxval(qr(ie, je, :)), minval(qr(ie, je, :)), sum(qr(ie, je, :))
+    ! print *, 'max/min/sum - qs: ', maxval(qs(ie, je, :)), minval(qs(ie, je, :)), sum(qs(ie, je, :))
+    ! print *, 'max/min/sum - qg: ', maxval(qg(ie, je, :)), minval(qg(ie, je, :)), sum(qg(ie, je, :))
 
     num_devices = omp_get_num_devices()
     print *, "Number of available devices", num_devices
@@ -774,20 +780,22 @@ contains
     !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     ! Initialize
+    print *, 'max/min/sum - qv: ', maxval(qv(ie, je, :)), minval(qv(ie, je, :)), sum(qv(ie, je, :))
     !$omp target
     !$omp teams &
     !$omp   default(none) &
-    !$omp   shared(is, ie, js, je, ktop, kbot, m2_rain, m2_sol, revap, isubl) &
-    !$omp   private(tz)
+    !$omp   shared(is, ie, js, je, ktop, kbot, qv, m2_rain, m2_sol, revap, isubl)
     !$omp distribute
     do j = js, je
        do i = is, ie
-          !$omp parallel do
+          !$omp parallel do private(tz, tmpreal)
           do k = ktop, kbot
-             m2_rain (i, j, k) = -25876.2875
+             tmpreal = -25876.2875
+             tz (k) = tmpreal
+             m2_rain (i, j, k) = tz (k)
              m2_sol (i, j, k) = 0.
              revap (i, j, k) = 0.
-             isubl (i, j, k) = 0.
+             isubl (i, j, k) = qv (i, j, k)
           enddo
           !$omp end parallel do
        enddo
@@ -798,29 +806,30 @@ contains
 
     !$omp target update from(m2_rain)
     print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
+    print *, 'max/min/sum - isubl: ', maxval(isubl(ie, je, :)), minval(isubl(ie, je, :)), sum(isubl(ie, je, :))
 
     !$omp target
 
+    !$omp teams default(shared)
     ! !$omp teams &
     ! !$omp   default(none) &
     ! !$omp   shared( &
     ! !$omp     is, ie, js, je, ktop, kbot, ntimes, &
     ! !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
     ! !$omp     pt, delp, rhcrit, &
-    ! !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, tmp1, tmp2) &
+    ! !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, &
+    ! !$omp     m2_sol) &
     ! !$omp   private( &
-    ! !$omp     omq, cvm, t0, cpaut, &
-    ! ! !$omp allocate( &
     ! !$omp     tz, dp1, h_var1d, &
     ! !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
     ! !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
 
-    ! !$omp distribute private(omq, cvm, t0, cpaut)
+    !$omp distribute
     do j = js, je
 
        do i = is, ie
 
-          ! !$omp parallel do
+          !$omp parallel do private(omq, cvm, t0, cpaut)
           do k = ktop, kbot
 
              cpaut = c_paut * 0.104 * grav / 1.717e-5
@@ -843,74 +852,76 @@ contains
              ! -----------------------------------------------------------------------
 
              qvz (k) = qv (i, j, k)
-             qlz (k) = ql (i, j, k)
-             qiz (k) = qi (i, j, k)
-             qrz (k) = qr (i, j, k)
-             qsz (k) = qs (i, j, k)
-             qgz (k) = qg (i, j, k)
+             m2_sol (i, j, k) = qv (i, j, k)
+             ! qlz (k) = ql (i, j, k)
+             ! qiz (k) = qi (i, j, k)
+             ! qrz (k) = qr (i, j, k)
+             ! qsz (k) = qs (i, j, k)
+             ! qgz (k) = qg (i, j, k)
 
-             ! dp1: dry air_mass
-             ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
-             dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
-             omq = delp (i, j, k) / dp1 (k)
+             ! ! dp1: dry air_mass
+             ! ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
+             ! dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
+             ! omq = delp (i, j, k) / dp1 (k)
 
-             qvz (k) = qvz (k) * omq
-             qlz (k) = qlz (k) * omq
-             qrz (k) = qrz (k) * omq
-             qiz (k) = qiz (k) * omq
-             qsz (k) = qsz (k) * omq
-             qgz (k) = qgz (k) * omq
+             ! qvz (k) = qvz (k) * omq
+             ! qlz (k) = qlz (k) * omq
+             ! qrz (k) = qrz (k) * omq
+             ! qiz (k) = qiz (k) * omq
+             ! qsz (k) = qsz (k) * omq
+             ! qgz (k) = qgz (k) * omq
 
-             qaz (k) = qa (i, j, k)
+             ! qaz (k) = qa (i, j, k)
 
-             den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
-             p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
+             ! den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
+             ! m2_sol (i, j, k) = den0 (k)
+             ! p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
 
-             ! -----------------------------------------------------------------------
-             ! save a copy of old value for computing tendencies
-             ! -----------------------------------------------------------------------
+             ! ! -----------------------------------------------------------------------
+             ! ! save a copy of old value for computing tendencies
+             ! ! -----------------------------------------------------------------------
 
-             qv0 (k) = qvz (k)
-             ql0 (k) = qlz (k)
-             qr0 (k) = qrz (k)
-             qi0 (k) = qiz (k)
-             qs0 (k) = qsz (k)
-             qg0 (k) = qgz (k)
+             ! qv0 (k) = qvz (k)
+             ! ql0 (k) = qlz (k)
+             ! qr0 (k) = qrz (k)
+             ! qi0 (k) = qiz (k)
+             ! qs0 (k) = qsz (k)
+             ! qg0 (k) = qgz (k)
 
-             ! -----------------------------------------------------------------------
-             ! for sedi_momentum
-             ! -----------------------------------------------------------------------
+             ! ! -----------------------------------------------------------------------
+             ! ! for sedi_momentum
+             ! ! -----------------------------------------------------------------------
 
-             m1 (k) = 0.
+             ! m1 (k) = 0.
 
-             if (do_sedi_w) w1 (k) = w (i, j, k)
+             ! if (do_sedi_w) w1 (k) = w (i, j, k)
 
-             ! ccn needs units #/m^3
-             if (prog_ccn) then
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             else
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             endif
+             ! ! ccn needs units #/m^3
+             ! if (prog_ccn) then
+             !    ! qn has units # / m^3
+             !    ccn (k) = qn (i, j, k)
+             !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+             !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             ! else
+             !    ! qn has units # / m^3
+             !    ccn (k) = qn (i, j, k)
+             !    !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+             !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+             !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             ! endif
 
           enddo
-          ! !$omp end parallel do
+          !$omp end parallel do
 
-          ! -----------------------------------------------------------------------
-          ! fix all negative water species
-          ! -----------------------------------------------------------------------
+          ! ! -----------------------------------------------------------------------
+          ! ! fix all negative water species
+          ! ! -----------------------------------------------------------------------
 
-          if (fix_negative) then
-             call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
-          endif
+          ! if (fix_negative) then
+          !    call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
+          ! endif
 
-          do n = 1, ntimes
+          ! do n = 1, ntimes
 
              ! ! -----------------------------------------------------------------------
              ! ! dry air density
@@ -984,51 +995,18 @@ contains
              !    isubl (i,j,k) = isubl (i,j,k) + subl1(k)
              ! enddo
 
-          enddo ! ntimes
+          ! enddo ! ntimes
 
        enddo
 
     enddo
-    ! !$omp end distribute
-    ! !$omp end teams
+    !$omp end distribute
+    !$omp end teams
     !$omp end target
     ! !$omp end target teams distribute
     !$omp end target data
 
-    print *, 'tmp1(kbot): ', tmp1(kbot)
-    print *, 'tmp2(kbot): ', tmp2(kbot)
-    print *, 'h_var1d(kbot): ', h_var1d(kbot)
-    print *, 'qvz(kbot): ', qvz(kbot)
-    print *, 'qlz(kbot): ', qlz(kbot)
-    print *, 'qrz(kbot): ', qrz(kbot)
-    print *, 'qiz(kbot): ', qiz(kbot)
-    print *, 'qsz(kbot): ', qsz(kbot)
-    print *, 'qgz(kbot): ', qgz(kbot)
-    print *, 'qaz(kbot): ', qaz(kbot)
-    print *, 'vtiz(kbot): ', vtiz(kbot)
-    print *, 'vtsz(kbot): ', vtsz(kbot)
-    print *, 'vtgz(kbot): ', vtgz(kbot)
-    print *, 'vtrz(kbot): ', vtrz(kbot)
-    print *, 'qv0(kbot): ', qv0(kbot)
-    print *, 'ql0(kbot): ', ql0(kbot)
-    print *, 'qr0(kbot): ', qr0(kbot)
-    print *, 'qi0(kbot): ', qi0(kbot)
-    print *, 'qs0(kbot): ', qs0(kbot)
-    print *, 'qg0(kbot): ', qg0(kbot)
-    print *, 'den(kbot): ', den(kbot)
-    print *, 'den0(kbot): ', den0(kbot)
-    print *, 'tz(kbot): ', tz(kbot)
-    print *, 'p1(kbot): ', p1(kbot)
-    print *, 'dp1(kbot): ', dp1(kbot)
-    print *, 'denfac(kbot): ', denfac(kbot)
-    print *, 'ccn(kbot): ', ccn(kbot)
-    print *, 'c_praut(kbot): ', c_praut(kbot)
-    print *, 'm1_rain(kbot): ', m1_rain(kbot)
-    print *, 'm1_sol(kbot): ', m1_sol(kbot)
-    print *, 'm1(kbot): ', m1(kbot)
-    print *, 'evap1(kbot): ', evap1(kbot)
-    print *, 'subl1(kbot): ', subl1(kbot)
-    print *, 'w1(kbot): ', w1(kbot)
+    print *, 'max/min/sum - m2_sol: ', maxval(m2_sol(ie, je, :)), minval(m2_sol(ie, je, :)), sum(m2_sol(ie, je, :))
 
     do j = js, je
 
