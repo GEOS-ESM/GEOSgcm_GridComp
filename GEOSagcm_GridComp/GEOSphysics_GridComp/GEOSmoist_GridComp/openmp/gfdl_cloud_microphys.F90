@@ -759,7 +759,7 @@ contains
     !$omp map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     rain, snow, ice, graupel, cond, &
+    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2, &
     ! Local variables
     !$omp     h_var1d, &
     !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
@@ -767,7 +767,7 @@ contains
     !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
     !$omp     den, den0, tz, p1, denfac, &
     !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    !$omp     w1, tmp1, tmp2, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+    !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
 
     !$omp map(from: &
     !$omp     revap, isubl, w_var, &
@@ -796,11 +796,27 @@ contains
     !$omp target update from(m2_rain)
     print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
 
-    !$omp target teams distribute private(omq, cvm, t0, cpaut)
+    !$omp target
+
+    !$omp teams &
+    !$omp   default(none) &
+    !$omp   shared( &
+    !$omp     is, ie, js, je, ktop, kbot, ntimes, &
+    !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
+    !$omp     pt, delp, rhcrit, &
+    !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, tmp1, tmp2, &
+    ! !$omp private( &
+    !$omp     omq, cvm, t0, cpaut, &
+    !$omp     tz, dp1, h_var1d, &
+    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
+
+    !$omp distribute
     do j = js, je
 
        do i = is, ie
 
+          ! !$omp parallel do
           do k = ktop, kbot
 
              cpaut = c_paut * 0.104 * grav / 1.717e-5
@@ -865,8 +881,6 @@ contains
 
              if (do_sedi_w) w1 (k) = w (i, j, k)
 
-             ! ok so far
-
              ! ccn needs units #/m^3
              if (prog_ccn) then
                 ! qn has units # / m^3
@@ -882,6 +896,7 @@ contains
              endif
 
           enddo
+          ! !$omp end parallel do
 
           ! -----------------------------------------------------------------------
           ! fix all negative water species
@@ -970,7 +985,10 @@ contains
        enddo
 
     enddo
-    !$omp end target teams distribute
+    !$omp end distribute
+    !$omp end teams
+    !$omp end target
+    ! !$omp end target teams distribute
     !$omp end target data
 
     print *, 'tmp1(kbot): ', tmp1(kbot)
@@ -997,6 +1015,7 @@ contains
     print *, 'den0(kbot): ', den0(kbot)
     print *, 'tz(kbot): ', tz(kbot)
     print *, 'p1(kbot): ', p1(kbot)
+    print *, 'dp1(kbot): ', dp1(kbot)
     print *, 'denfac(kbot): ', denfac(kbot)
     print *, 'ccn(kbot): ', ccn(kbot)
     print *, 'c_praut(kbot): ', c_praut(kbot)
