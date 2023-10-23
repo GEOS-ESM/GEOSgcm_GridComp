@@ -806,12 +806,12 @@ contains
     !$omp     pt, delp, rhcrit, &
     !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, tmp1, tmp2, &
     ! !$omp private( &
-    !$omp     omq, cvm, t0, cpaut, &
+    ! !$omp     omq, cvm, t0, cpaut, &
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
 
-    !$omp distribute
+    !$omp distribute private(omq, cvm, t0, cpaut)
     do j = js, je
 
        do i = is, ie
