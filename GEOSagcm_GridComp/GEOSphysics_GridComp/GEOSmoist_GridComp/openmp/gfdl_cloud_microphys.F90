@@ -783,20 +783,24 @@ contains
     !$omp   default(none) &
     !$omp   shared( &
     !$omp     is, ie, js, je, ktop, kbot, &
-    !$omp     c_paut, do_sedi_w, &
-    !$omp     pt, delp, rhcrit, qv, ql, qi, qr, qs, qg, qa, &
-    !$omp     dz)
+    !$omp     c_paut, do_sedi_w, prog_ccn, &
+    !$omp     pt, delp, w, dz, rhcrit, qv, ql, qi, qr, qs, qg, qa, qn, &
+
+    !$omp     tz, dp1, h_var1d, &
+    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
+    !$omp     w1, ccn, c_praut)
 
     !$omp distribute
     do j = js, je
        do i = is, ie
           !$omp parallel do &
           !$omp   private( &
-          !$omp     cpaut, t0, &
-          !$omp     tz, dp1, h_var1d, &
-          !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
-          !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
-          !$omp     w1, ccn)
+          !$omp     cpaut, t0)
+          ! !$omp     tz, dp1, h_var1d, &
+          ! !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+          ! !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
+          ! !$omp     w1, ccn)
           do k = ktop, kbot
 
              ! tmpreal = -25876.2875
@@ -856,23 +860,22 @@ contains
              ! -----------------------------------------------------------------------
 
              m1 (k) = 0.
-             w1 (k) = 0.
-             ! if (do_sedi_w) w1 (k) = w (i, j, k)
+             ! w1 (k) = 0.
+             if (do_sedi_w) w1 (k) = w (i, j, k)
 
-             ! ! ccn needs units #/m^3
-             ! if (prog_ccn) then
-             !    ! qn has units # / m^3
-             !    ccn (k) = qn (i, j, k)
-             !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-             !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             ! else
-             !    ! qn has units # / m^3
-             !    ccn (k) = qn (i, j, k)
-             !    !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-             !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-             !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             ! endif
-             ! ccn (k) = 514.34 ! qn (i, j, k)
+             ! ccn needs units #/m^3
+             if (prog_ccn) then
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             else
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             endif
 
           enddo
           !$omp end parallel do
