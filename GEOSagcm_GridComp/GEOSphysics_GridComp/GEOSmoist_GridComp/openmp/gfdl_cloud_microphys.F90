@@ -783,7 +783,7 @@ contains
     !$omp   default(none) &
     !$omp   shared( &
     !$omp     is, ie, js, je, ktop, kbot, &
-    !$omp     c_paut, do_sedi_w, prog_ccn, &
+    !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
     !$omp     pt, delp, w, dz, rhcrit, qv, ql, qi, qr, qs, qg, qa, qn, &
 
     !$omp     tz, dp1, h_var1d, &
@@ -797,22 +797,8 @@ contains
           !$omp parallel do &
           !$omp   private( &
           !$omp     cpaut, t0)
-          ! !$omp     tz, dp1, h_var1d, &
-          ! !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
-          ! !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
-          ! !$omp     w1, ccn)
           do k = ktop, kbot
 
-             ! tmpreal = -25876.2875
-             ! tz (k) = tmpreal
-             ! m2_rain (i, j, k) = tz (k)
-             ! m2_sol (i, j, k) = 0.
-             ! revap (i, j, k) = 0.
-             ! qgz (k) = qg (i, j, k)
-             ! qg0 (k) = qgz (k) ! SOME ISSUE WITH THIS LINE
-             ! m1 (k) = 0.
-             ! ! if (do_sedi_w) w1 (k) = w (i, j, k)
-             ! isubl (i, j, k) = qv (i, j, k)
              cpaut = c_paut * 0.104 * grav / 1.717e-5
              !! slow autoconversion in stable regimes
              !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
@@ -860,7 +846,6 @@ contains
              ! -----------------------------------------------------------------------
 
              m1 (k) = 0.
-             ! w1 (k) = 0.
              if (do_sedi_w) w1 (k) = w (i, j, k)
 
              ! ccn needs units #/m^3
@@ -879,6 +864,16 @@ contains
 
           enddo
           !$omp end parallel do
+
+          ! -----------------------------------------------------------------------
+          ! fix all negative water species
+          ! -----------------------------------------------------------------------
+
+          if (fix_negative) then
+             ! We don't need `omp target` inside a target region
+             call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
+          endif
+
        enddo
     enddo
     !$omp end distribute
@@ -4581,7 +4576,7 @@ contains
     ! define heat capacity and latent heat coefficient
     ! -----------------------------------------------------------------------
 
-    !!$acc loop vector private(cvm, lcpk, icpk)
+    !$omp parallel do private(cvm, lcpk, icpk)
     do k = ktop, kbot
        cvm = c_air + qv (k) * c_vap + (qr (k) + ql (k)) * c_liq + (qi (k) + qs (k) + qg (k)) * c_ice
        lcpk = (lv00 + d0_vap * pt (k)) / cvm
@@ -4625,28 +4620,28 @@ contains
        endif
 
     enddo
+    !$omp end parallel do
 
-    ! -----------------------------------------------------------------------
-    ! fix water vapor; borrow from below
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! fix water vapor; borrow from below
+    ! ! -----------------------------------------------------------------------
 
-    !!$acc loop seq
-    do k = ktop, kbot - 1
-       if (qv (k) < 0.) then
-          qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
-          qv (k) = 0.
-       endif
-    enddo
+    ! do k = ktop, kbot - 1
+    !    if (qv (k) < 0.) then
+    !       qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
+    !       qv (k) = 0.
+    !    endif
+    ! enddo
 
-    ! -----------------------------------------------------------------------
-    ! bottom layer; borrow from above
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! bottom layer; borrow from above
+    ! ! -----------------------------------------------------------------------
 
-    if (qv (kbot) < 0. .and. qv (kbot - 1) > 0.) then
-       dq = min (- qv (kbot) * dp (kbot), qv (kbot - 1) * dp (kbot - 1))
-       qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
-       qv (kbot) = qv (kbot) + dq / dp (kbot)
-    endif
+    ! if (qv (kbot) < 0. .and. qv (kbot - 1) > 0.) then
+    !    dq = min (- qv (kbot) * dp (kbot), qv (kbot - 1) * dp (kbot - 1))
+    !    qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
+    !    qv (kbot) = qv (kbot) + dq / dp (kbot)
+    ! endif
 
   end subroutine neg_adj
 
