@@ -419,6 +419,33 @@ contains
       call getExtraFieldNames(other_fields,GigaTrajInternalPtr%ExtraFieldNames)
 
       do i = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
+
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bcphobic') /=0 .or. &
+             index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bcphilic') /=0) then
+           call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
+           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
+           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
+           if( .not. associated(ptr3d)) then
+              call MAPL_AllocateCoupling(tmp_field, _RC)
+           endif
+           call ESMF_StateAddReplace(import, [tmp_field], _RC)
+           call create_extra_var(fieldname)
+           cycle
+         endif
+
+         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.ocphobic') /=0 .or. &
+             index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.ocphilic') /=0) then
+           call MAPL_ExportStateGet([import], 'CA.oc', leaf_export, _RC)
+           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
+           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
+           if( .not. associated(ptr3d)) then
+              call MAPL_AllocateCoupling(tmp_field, _RC)
+           endif
+           call ESMF_StateAddReplace(import, [tmp_field], _RC)
+           call create_extra_var(fieldname)
+           cycle
+         endif
+
          if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bc') /=0) then
            call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
            call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
@@ -449,43 +476,43 @@ contains
            cycle
          endif
 
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'TRI') /=0) then
-           call ESMF_StateGet(import, 'PHYSICS_Exports/TURBULENCE_Exports/TRI', TRI, _RC)
-           !call ESMF_FieldBundleGet(TRI, fieldCount=nitems, _RC)
-           !allocate(itemNameList(nitems))
-           !call ESMF_FieldBundleGet(TRI,fieldnamelist=itemNameList,rc=status)
-           allocate(fieldnames(4))
-           fieldnames(1) = "CA.bc::CA.bcphilicIT"
-           fieldnames(2) = "CA.bc::CA.bcphobicIT"
-           fieldnames(3) = "CA.oc::CA.ocphilicIT"
-           fieldnames(4) = "CA.oc::CA.ocphobicIT"
-           do k = 1, 4
-             !call ESMF_FieldBundleGet(TRI, trim(itemNameList(k)), field=tmp_field, _RC)
-             !call ESMF_FieldBundleGet(TRI, trim(fieldnames(k)), field=tmp_field, _RC)
-             fieldname = trim(fieldnames(k))
-             call ESMF_FieldBundleGet(TRI, fieldname, field=tmp_field, _RC)
-
-             !call MAPL_AllocateCoupling(tmp_field, _RC)
-
-             call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d, rc=status)
-             !if (MAPL_AM_I_Root()) then
-             if ( status /=0 )then
-               print*, 'status, associated(ptr3d)', status, associated(ptr3d)
-               print*, "not created: ", fieldname 
-               print*, "Add to historty.rc to triger the allocation" 
-               _FAIL(" Not allocated diffusion tendency")
-             !else
-             !   print*, "createded: ", itemNameList(k)
-             !   print*, "assocated: ", associated(ptr3d), itemNameList(k)    
-             endif
-             !endif
-             call create_extra_var(fieldname(8:))
-           enddo
-           deallocate(fieldnames)
-           cycle
-         endif
-         call create_extra_var(trim(GigaTrajInternalPtr%ExtraFieldNames(i)))
-      enddo
+!         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'TRI') /=0) then
+!           call ESMF_StateGet(import, 'PHYSICS_Exports/TURBULENCE_Exports/TRI', TRI, _RC)
+!           !call ESMF_FieldBundleGet(TRI, fieldCount=nitems, _RC)
+!           !allocate(itemNameList(nitems))
+!           !call ESMF_FieldBundleGet(TRI,fieldnamelist=itemNameList,rc=status)
+!           allocate(fieldnames(4))
+!           fieldnames(1) = "CA.bc::CA.bcphilicIT"
+!           fieldnames(2) = "CA.bc::CA.bcphobicIT"
+!           fieldnames(3) = "CA.oc::CA.ocphilicIT"
+!           fieldnames(4) = "CA.oc::CA.ocphobicIT"
+!           do k = 1, 4
+!             !call ESMF_FieldBundleGet(TRI, trim(itemNameList(k)), field=tmp_field, _RC)
+!             !call ESMF_FieldBundleGet(TRI, trim(fieldnames(k)), field=tmp_field, _RC)
+!             fieldname = trim(fieldnames(k))
+!             call ESMF_FieldBundleGet(TRI, fieldname, field=tmp_field, _RC)
+!
+!             !call MAPL_AllocateCoupling(tmp_field, _RC)
+!
+!             call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d, rc=status)
+!             !if (MAPL_AM_I_Root()) then
+!             if ( status /=0 )then
+!               print*, 'status, associated(ptr3d)', status, associated(ptr3d)
+!               print*, "not created: ", fieldname 
+!               print*, "Add to historty.rc to triger the allocation" 
+!               _FAIL(" Not allocated diffusion tendency")
+!             !else
+!             !   print*, "createded: ", itemNameList(k)
+!             !   print*, "assocated: ", associated(ptr3d), itemNameList(k)    
+!             endif
+!             !endif
+!             call create_extra_var(fieldname(8:))
+!           enddo
+!           deallocate(fieldnames)
+!           cycle
+!         endif
+        call create_extra_var(trim(GigaTrajInternalPtr%ExtraFieldNames(i)))
+     enddo
    endif
 
    if (MAPL_AM_I_Root()) then
