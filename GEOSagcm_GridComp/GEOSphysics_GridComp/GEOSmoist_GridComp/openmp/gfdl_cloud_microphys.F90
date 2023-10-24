@@ -490,17 +490,17 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    !$omp target data &
-    !$omp map(to: &
-    !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
-    !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-    !$omp     rhcrit, ntimes) &
-    !$omp map(from: &
-    !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
-    !$omp     vt_i, qn2) &
-    !$omp map(tofrom: &
-    !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
-    !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+    ! !$omp target data &
+    ! !$omp map(to: &
+    ! !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    ! !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    ! !$omp     rhcrit, ntimes) &
+    ! !$omp map(from: &
+    ! !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    ! !$omp     vt_i, qn2) &
+    ! !$omp map(tofrom: &
+    ! !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    ! !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
     ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
@@ -517,7 +517,7 @@ contains
     ! call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     ! print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
-    !$omp end target data
+    ! !$omp end target data
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -719,12 +719,12 @@ contains
     integer :: num_devices, nteams, nthreads
     logical :: initial_device
 
-    ! print *, 'max/min/sum - rhcrit: ', maxval(rhcrit), minval(rhcrit), sum(rhcrit)
+    print *, 'max/min/sum - w: ', maxval(w), minval(w), sum(w), shape(w)
     ! print *, 'max/min/sum - qi: ', maxval(qi(ie, je, :)), minval(qi(ie, je, :)), sum(qi(ie, je, :))
     ! print *, 'max/min/sum - ql: ', maxval(ql(ie, je, :)), minval(ql(ie, je, :)), sum(ql(ie, je, :))
     ! print *, 'max/min/sum - qr: ', maxval(qr(ie, je, :)), minval(qr(ie, je, :)), sum(qr(ie, je, :))
     ! print *, 'max/min/sum - qs: ', maxval(qs(ie, je, :)), minval(qs(ie, je, :)), sum(qs(ie, je, :))
-    ! print *, 'max/min/sum - qg: ', maxval(qg(ie, je, :)), minval(qg(ie, je, :)), sum(qg(ie, je, :))
+    print *, 'max/min/sum - qg: ', maxval(qg(ie, je, :)), minval(qg(ie, je, :)), sum(qg(ie, je, :))
 
     num_devices = omp_get_num_devices()
     print *, "Number of available devices", num_devices
@@ -753,85 +753,62 @@ contains
     !$omp target update from(c_air)
     print *, 'c_air (device): ', c_air
 
-    !$omp target data &
-    !$omp map(to: &
-    !$omp     dts, rdt, &
-    !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    !$omp     area1, land, cnv_fraction, srf_type, eis, &
-    !$omp     rhcrit, anv_icefall, lsc_icefall, &
-    !$omp     uin, vin, delp, pt, dz, &
-    !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
+    print *, 'do_sedi_w (host): ', do_sedi_w
+    !omp taget update from(do_sedi_w)
+    print *, 'do_sedi_w (device): ', do_sedi_w
 
-    !$omp map(tofrom: &
-    !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
-    !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
-    ! Local variables
-    ! !$omp     h_var1d, &
-    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    ! !$omp     den, den0, tz, p1, denfac, &
-    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+    ! !$omp target data &
+    ! !$omp map(to: &
+    ! !$omp     dts, rdt, &
+    ! !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    ! !$omp     area1, land, cnv_fraction, srf_type, eis, &
+    ! !$omp     rhcrit, anv_icefall, lsc_icefall, &
+    ! !$omp     uin, vin, delp, pt, dz, &
+    ! !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
 
-    !$omp map(from: &
-    !$omp     revap, isubl, w_var, &
-    !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+    ! !$omp map(tofrom: &
+    ! !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
+    ! !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    ! !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
+
+    ! !$omp map(from: &
+    ! !$omp     revap, isubl, w_var, &
+    ! !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     ! Initialize
+
     print *, 'max/min/sum - qv: ', maxval(qv(ie, je, :)), minval(qv(ie, je, :)), sum(qv(ie, je, :))
     !$omp target
     !$omp teams &
     !$omp   default(none) &
-    !$omp   shared(is, ie, js, je, ktop, kbot, qv, m2_rain, m2_sol, revap, isubl)
-    !$omp distribute
-    do j = js, je
-       do i = is, ie
-          !$omp parallel do private(tz, tmpreal)
-          do k = ktop, kbot
-             tmpreal = -25876.2875
-             tz (k) = tmpreal
-             m2_rain (i, j, k) = tz (k)
-             m2_sol (i, j, k) = 0.
-             revap (i, j, k) = 0.
-             isubl (i, j, k) = qv (i, j, k)
-          enddo
-          !$omp end parallel do
-       enddo
-    enddo
-    !$omp end distribute
-    !$omp end teams
-    !$omp end target
-
-    !$omp target update from(m2_rain)
-    print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
-    print *, 'max/min/sum - isubl: ', maxval(isubl(ie, je, :)), minval(isubl(ie, je, :)), sum(isubl(ie, je, :))
-
-    !$omp target
-
-    !$omp teams default(shared)
-    ! !$omp teams &
-    ! !$omp   default(none) &
-    ! !$omp   shared( &
-    ! !$omp     is, ie, js, je, ktop, kbot, ntimes, &
-    ! !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
-    ! !$omp     pt, delp, rhcrit, &
-    ! !$omp     qv, ql, qi, qr, qs, qg, qa, qn, dz, w, &
-    ! !$omp     m2_sol) &
-    ! !$omp   private( &
-    ! !$omp     tz, dp1, h_var1d, &
-    ! !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
-    ! !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, w1, ccn, c_praut)
+    !$omp   shared( &
+    !$omp     is, ie, js, je, ktop, kbot, &
+    !$omp     c_paut, do_sedi_w, &
+    !$omp     pt, delp, rhcrit, qv, ql, qi, qr, qs, qg, qa, &
+    !$omp     dz)
 
     !$omp distribute
     do j = js, je
-
        do i = is, ie
-
-          !$omp parallel do private(omq, cvm, t0, cpaut)
+          !$omp parallel do &
+          !$omp   private( &
+          !$omp     cpaut, t0, &
+          !$omp     tz, dp1, h_var1d, &
+          !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+          !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
+          !$omp     w1, ccn)
           do k = ktop, kbot
 
+             ! tmpreal = -25876.2875
+             ! tz (k) = tmpreal
+             ! m2_rain (i, j, k) = tz (k)
+             ! m2_sol (i, j, k) = 0.
+             ! revap (i, j, k) = 0.
+             ! qgz (k) = qg (i, j, k)
+             ! qg0 (k) = qgz (k) ! SOME ISSUE WITH THIS LINE
+             ! m1 (k) = 0.
+             ! ! if (do_sedi_w) w1 (k) = w (i, j, k)
+             ! isubl (i, j, k) = qv (i, j, k)
              cpaut = c_paut * 0.104 * grav / 1.717e-5
              !! slow autoconversion in stable regimes
              !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
@@ -852,48 +829,34 @@ contains
              ! -----------------------------------------------------------------------
 
              qvz (k) = qv (i, j, k)
-             m2_sol (i, j, k) = qv (i, j, k)
-             ! qlz (k) = ql (i, j, k)
-             ! qiz (k) = qi (i, j, k)
-             ! qrz (k) = qr (i, j, k)
-             ! qsz (k) = qs (i, j, k)
-             ! qgz (k) = qg (i, j, k)
+             qlz (k) = ql (i, j, k)
+             qiz (k) = qi (i, j, k)
+             qrz (k) = qr (i, j, k)
+             qsz (k) = qs (i, j, k)
+             qgz (k) = qg (i, j, k)
 
-             ! ! dp1: dry air_mass
-             ! ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
-             ! dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
-             ! omq = delp (i, j, k) / dp1 (k)
+             qaz (k) = qa (i, j, k)
 
-             ! qvz (k) = qvz (k) * omq
-             ! qlz (k) = qlz (k) * omq
-             ! qrz (k) = qrz (k) * omq
-             ! qiz (k) = qiz (k) * omq
-             ! qsz (k) = qsz (k) * omq
-             ! qgz (k) = qgz (k) * omq
+             den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
+             p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
 
-             ! qaz (k) = qa (i, j, k)
+             ! -----------------------------------------------------------------------
+             ! save a copy of old value for computing tendencies
+             ! -----------------------------------------------------------------------
 
-             ! den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
-             ! m2_sol (i, j, k) = den0 (k)
-             ! p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
+             qv0 (k) = qvz (k)
+             ql0 (k) = qlz (k)
+             qr0 (k) = qrz (k)
+             qi0 (k) = qiz (k)
+             qs0 (k) = qsz (k)
+             qg0 (k) = qgz (k) ! SOME ISSUE WITH THIS LINE
 
-             ! ! -----------------------------------------------------------------------
-             ! ! save a copy of old value for computing tendencies
-             ! ! -----------------------------------------------------------------------
+             ! -----------------------------------------------------------------------
+             ! for sedi_momentum
+             ! -----------------------------------------------------------------------
 
-             ! qv0 (k) = qvz (k)
-             ! ql0 (k) = qlz (k)
-             ! qr0 (k) = qrz (k)
-             ! qi0 (k) = qiz (k)
-             ! qs0 (k) = qsz (k)
-             ! qg0 (k) = qgz (k)
-
-             ! ! -----------------------------------------------------------------------
-             ! ! for sedi_momentum
-             ! ! -----------------------------------------------------------------------
-
-             ! m1 (k) = 0.
-
+             m1 (k) = 0.
+             w1 (k) = 0.
              ! if (do_sedi_w) w1 (k) = w (i, j, k)
 
              ! ! ccn needs units #/m^3
@@ -909,104 +872,25 @@ contains
              !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
              !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
              ! endif
+             ! ccn (k) = 514.34 ! qn (i, j, k)
 
           enddo
           !$omp end parallel do
-
-          ! ! -----------------------------------------------------------------------
-          ! ! fix all negative water species
-          ! ! -----------------------------------------------------------------------
-
-          ! if (fix_negative) then
-          !    call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
-          ! endif
-
-          ! do n = 1, ntimes
-
-             ! ! -----------------------------------------------------------------------
-             ! ! dry air density
-             ! ! -----------------------------------------------------------------------
-
-             ! !$acc loop vector private(t0)
-             ! do k = ktop, kbot
-             !    if (p_nonhydro) then
-             !       dz1 (k) = dz (i, j, k)
-             !       den (k) = den0 (k) ! dry air density remains the same
-             !       denfac (k) = sqrt (sfcrho / den (k))
-             !    else
-             !       t0 = pt (i, j, k)
-             !       dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
-             !       den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
-             !       denfac (k) = sqrt (sfcrho / den (k))
-             !    endif
-
-             !    ! ! -----------------------------------------------------------------------
-             !    ! ! sedimentation of cloud ice, snow, and graupel
-             !    ! ! -----------------------------------------------------------------------
-             !    ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
-             !    !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
-             ! end do
-
-             ! call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
-             !      dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
-
-             ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
-             ! snow (i, j) = snow (i, j) + s1
-             ! graupel (i, j) = graupel (i, j) + g1
-             ! ice (i, j) = ice (i, j) + i1
-
-             ! ! -----------------------------------------------------------------------
-             ! ! heat transportation during sedimentation
-             ! ! -----------------------------------------------------------------------
-
-             ! if (do_sedi_heat) then
-             !    call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
-             !         qsz, qgz, c_ice)
-             ! endif
-
-             ! ! -----------------------------------------------------------------------
-             ! ! warm rain processes
-             ! ! -----------------------------------------------------------------------
-
-             ! call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-             !      qgz, qaz, eis(i, j), den, denfac, ccn, c_praut, vtrz, &
-             !      r1, evap1, m1_rain, w1, h_var1d)
-
-             ! rain (i, j) = rain (i, j) + r1
-
-             ! !$acc loop vector
-             ! do k = ktop, kbot
-             !    revap (i,j,k) = revap (i,j,k) + evap1(k)
-             !    m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
-             !    m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
-             !    m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
-             ! enddo
-
-             ! ! -----------------------------------------------------------------------
-             ! ! ice - phase microphysics
-             ! ! -----------------------------------------------------------------------
-
-             ! call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-             !      denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
-             !      ccn, cnv_fraction(i, j), srf_type(i, j))
-
-             ! !$acc loop vector
-             ! do k = ktop, kbot
-             !    isubl (i,j,k) = isubl (i,j,k) + subl1(k)
-             ! enddo
-
-          ! enddo ! ntimes
-
        enddo
-
     enddo
     !$omp end distribute
+
     !$omp end teams
     !$omp end target
-    ! !$omp end target teams distribute
-    !$omp end target data
+    ! !$omp end target data
 
-    print *, 'max/min/sum - m2_sol: ', maxval(m2_sol(ie, je, :)), minval(m2_sol(ie, je, :)), sum(m2_sol(ie, je, :))
+    ! !$omp target update from(m2_rain, isubl)
+    ! print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
+    ! print *, 'max/min/sum - isubl: ', maxval(isubl(ie, je, :)), minval(isubl(ie, je, :)), sum(isubl(ie, je, :))
+
+
+    ! !$omp target update from(m2_sol)
+    ! print *, 'max/min/sum - m2_sol: ', maxval(m2_sol(ie, je, :)), minval(m2_sol(ie, je, :)), sum(m2_sol(ie, je, :))
 
     do j = js, je
 
