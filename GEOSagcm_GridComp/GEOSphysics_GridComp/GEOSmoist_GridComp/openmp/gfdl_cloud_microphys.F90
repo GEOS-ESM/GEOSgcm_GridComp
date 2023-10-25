@@ -490,7 +490,6 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    ! abc
     ! !$omp target data &
     ! !$omp map(to: &
     ! !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
@@ -795,12 +794,11 @@ contains
     !$omp   shared(&
     !$omp     is, ie, js, je, ktop, kbot, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
-    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, &
+    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
-    !$omp     den0, p1, &
-    !$omp     m2_rain, m2_sol)
+    !$omp     den0, p1, ccn, c_praut)
 
     !$omp distribute
     do j = js, je
@@ -877,22 +875,19 @@ contains
              ! ccn (k) = 200000000.
              ! c_praut = 1000.
 
-             ! ! ! ccn needs units #/m^3
-             ! ! if (prog_ccn) then
-             ! !    ! qn has units # / m^3
-             ! !    ccn (k) = qn (i, j, k)
-             ! !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
-             ! !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             ! ! else
-             ! !    ! qn has units # / m^3
-             ! !    ccn (k) = qn (i, j, k)
-             ! !    !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-             ! !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
-             ! !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             ! ! endif
-
-             ! m2_rain (i, j, k) = m1 (k)
-             ! m2_sol (i, j, k) = w1 (k)
+             ! ccn needs units #/m^3
+             if (prog_ccn) then
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             else
+                ! qn has units # / m^3
+                ccn (k) = qn (i, j, k)
+                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
+                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             endif
 
           enddo
           !$omp end parallel do
@@ -901,23 +896,54 @@ contains
           ! fix all negative water species
           ! -----------------------------------------------------------------------
 
-          m2_rain (i, j, :) = qvz
           if (fix_negative) then
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
-          m2_sol (i, j, :) = qvz
+
+          ! !omp single private(ntimes)
+          ! do n = 1, ntimes
+
+          !    ! -----------------------------------------------------------------------
+          !    ! dry air density
+          !    ! -----------------------------------------------------------------------
+
+          !    !$acc loop vector private(t0)
+          !    !$omp parallel do private(t0)
+          !    do k = ktop, kbot
+          !       if (p_nonhydro) then
+          !          dz1 (k) = dz (i, j, k)
+          !          den (k) = den0 (k) ! dry air density remains the same
+          !          denfac (k) = sqrt (sfcrho / den (k))
+          !       else
+          !          t0 = pt (i, j, k)
+          !          dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
+          !          den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
+          !          denfac (k) = sqrt (sfcrho / den (k))
+          !       endif
+
+          !       ! ! -----------------------------------------------------------------------
+          !       ! ! sedimentation of cloud ice, snow, and graupel
+          !       ! ! -----------------------------------------------------------------------
+          !       ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+          !       !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+          !    enddo
+          !    !$omp end parallel do
+
+          ! enddo ! ntimes
+          ! !$omp end single
 
        enddo
 
     enddo
+
     !$omp end distribute
     !$omp end teams
     !$omp end target
     !$omp end target data
 
-    !$omp target update from(m2_rain, m2_sol)
-    print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
-    print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
+    ! !$omp target update from(m2_rain, m2_sol)
+    ! print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    ! print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
 
     ! do j = js, je
 
@@ -4656,7 +4682,6 @@ contains
     ! -----------------------------------------------------------------------
 
     !$omp single private(dq)
-!!$acc loop seq
     do k = ktop, kbot - 1
        if (qv (k) < 0.) then
           qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
