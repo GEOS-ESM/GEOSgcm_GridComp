@@ -792,13 +792,13 @@ contains
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
-    !$omp     is, ie, js, je, ktop, kbot, &
-    !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
+    !$omp     is, ie, js, je, ktop, kbot, ntimes, &
+    !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
     !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
-    !$omp     den0, p1, ccn, c_praut)
+    !$omp     den0, p1, ccn, c_praut, dz1, den, denfac)
 
     !$omp distribute
     do j = js, je
@@ -900,37 +900,36 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
-          ! !omp single private(ntimes)
-          ! do n = 1, ntimes
+          !$omp single private(t0)
+          do n = 1, ntimes
 
-          !    ! -----------------------------------------------------------------------
-          !    ! dry air density
-          !    ! -----------------------------------------------------------------------
+             ! -----------------------------------------------------------------------
+             ! dry air density
+             ! -----------------------------------------------------------------------
 
-          !    !$acc loop vector private(t0)
-          !    !$omp parallel do private(t0)
-          !    do k = ktop, kbot
-          !       if (p_nonhydro) then
-          !          dz1 (k) = dz (i, j, k)
-          !          den (k) = den0 (k) ! dry air density remains the same
-          !          denfac (k) = sqrt (sfcrho / den (k))
-          !       else
-          !          t0 = pt (i, j, k)
-          !          dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
-          !          den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
-          !          denfac (k) = sqrt (sfcrho / den (k))
-          !       endif
+             !$omp parallel do private(t0)
+             do k = ktop, kbot
+                if (p_nonhydro) then
+                   dz1 (k) = dz (i, j, k)
+                   den (k) = den0 (k) ! dry air density remains the same
+                   denfac (k) = sqrt (sfcrho / den (k))
+                else
+                   t0 = pt (i, j, k)
+                   dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
+                   den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
+                   denfac (k) = sqrt (sfcrho / den (k))
+                endif
 
-          !       ! ! -----------------------------------------------------------------------
-          !       ! ! sedimentation of cloud ice, snow, and graupel
-          !       ! ! -----------------------------------------------------------------------
-          !       ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
-          !       !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
-          !    enddo
-          !    !$omp end parallel do
+                ! ! -----------------------------------------------------------------------
+                ! ! sedimentation of cloud ice, snow, and graupel
+                ! ! -----------------------------------------------------------------------
+                ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+                !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+             enddo
+             !$omp end parallel do
 
-          ! enddo ! ntimes
-          ! !$omp end single
+          enddo ! ntimes
+          !$omp end single
 
        enddo
 
