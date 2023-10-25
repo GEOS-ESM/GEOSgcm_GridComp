@@ -490,17 +490,18 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    !$omp target data &
-    !$omp map(to: &
-    !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
-    !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-    !$omp     rhcrit, ntimes) &
-    !$omp map(from: &
-    !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
-    !$omp     vt_i, qn2) &
-    !$omp map(tofrom: &
-    !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
-    !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+    ! abc
+    ! !$omp target data &
+    ! !$omp map(to: &
+    ! !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    ! !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    ! !$omp     rhcrit, ntimes) &
+    ! !$omp map(from: &
+    ! !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    ! !$omp     vt_i, qn2) &
+    ! !$omp map(tofrom: &
+    ! !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    ! !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
     ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
@@ -517,7 +518,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     ! print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
-    !$omp end target data
+    ! !$omp end target data
 
     ! call MPI_Abort(MPI_COMM_WORLD, 0, mpierr)
 
@@ -788,6 +789,7 @@ contains
     print *, 'w min/max/sum: ', minval(w), maxval(w), sum(w)
 
     !$omp target
+
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
@@ -799,6 +801,7 @@ contains
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
     !$omp     den0, p1, &
     !$omp     m2_rain, m2_sol)
+
     !$omp distribute
     do j = js, je
 
