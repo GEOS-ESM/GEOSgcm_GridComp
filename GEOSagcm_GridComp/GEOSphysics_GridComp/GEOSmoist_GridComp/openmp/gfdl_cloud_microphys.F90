@@ -793,9 +793,9 @@ contains
     !$omp   shared(&
     !$omp     is, ie, js, je, ktop, kbot, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
-    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, qa, &
+    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, &
     !$omp     tz, dp1, h_var1d, &
-    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
+    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
     !$omp     den0, p1, &
     !$omp     m2_rain, m2_sol)
@@ -844,7 +844,7 @@ contains
              qsz (k) = qsz (k) * omq
              qgz (k) = qgz (k) * omq
 
-             qaz (k) = qa (i, j, k)
+             ! qaz (k) = qa (i, j, k) ! SAVING MEMORY
 
              den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
              p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
@@ -4652,7 +4652,7 @@ contains
     ! fix water vapor; borrow from below
     ! -----------------------------------------------------------------------
 
-    !$omp single
+    !$omp single private(dq)
 !!$acc loop seq
     do k = ktop, kbot - 1
        if (qv (k) < 0.) then
@@ -4661,15 +4661,15 @@ contains
        endif
     enddo
 
-    ! ! -----------------------------------------------------------------------
-    ! ! bottom layer; borrow from above
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! bottom layer; borrow from above
+    ! -----------------------------------------------------------------------
 
-    ! if (qv (kbot) < 0. .and. qv (kbot - 1) > 0.) then
-    !    dq = min (- qv (kbot) * dp (kbot), qv (kbot - 1) * dp (kbot - 1))
-    !    qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
-    !    qv (kbot) = qv (kbot) + dq / dp (kbot)
-    ! endif
+    if (qv (kbot) < 0. .and. qv (kbot - 1) > 0.) then
+       dq = min (- qv (kbot) * dp (kbot), qv (kbot - 1) * dp (kbot - 1))
+       qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
+       qv (kbot) = qv (kbot) + dq / dp (kbot)
+    endif
     !$omp end single
 
   end subroutine neg_adj
