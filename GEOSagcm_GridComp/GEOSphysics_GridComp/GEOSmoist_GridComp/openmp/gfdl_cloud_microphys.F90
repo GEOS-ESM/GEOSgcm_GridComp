@@ -490,17 +490,17 @@ contains
     ! major cloud microphysics
     ! -----------------------------------------------------------------------
 
-    ! !$omp target data &
-    ! !$omp map(to: &
-    ! !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
-    ! !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
-    ! !$omp     rhcrit, ntimes) &
-    ! !$omp map(from: &
-    ! !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
-    ! !$omp     vt_i, qn2) &
-    ! !$omp map(tofrom: &
-    ! !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
-    ! !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
+    !$omp target data &
+    !$omp map(to: &
+    !$omp     uin, vin, delp, pt, qv, ql, qr, qi, qs, qg, &
+    !$omp     qa, qn, dz, area, land, cnv_fraction, srf_type, eis, &
+    !$omp     rhcrit, ntimes) &
+    !$omp map(from: &
+    !$omp     m2_sol, revap, isubl, w_var, vt_r, vt_s, vt_g, &
+    !$omp     vt_i, qn2) &
+    !$omp map(tofrom: &
+    !$omp     m2_rain, w, rain, snow, graupel, ice, cond, udt, vdt, pt_dt, qv_dt, &
+    !$omp     ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt)
 
     ! print *, 'gfdl_cloud_microphys_driver - calling mpdrv'
     call mpdrv ( &
@@ -514,10 +514,12 @@ contains
          udt, vdt, pt_dt, &
          qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r, &
          vt_s, vt_g, vt_i, qn2)
-    ! call MPI_Barrier(MPI_COMM_WORLD, mpierr)
+    call MPI_Barrier(MPI_COMM_WORLD, mpierr)
     ! print *, 'gfdl_cloud_microphys_driver - completed mpdrv'
 
-    ! !$omp end target data
+    !$omp end target data
+
+    ! call MPI_Abort(MPI_COMM_WORLD, 0, mpierr)
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -719,13 +721,6 @@ contains
     integer :: num_devices, nteams, nthreads
     logical :: initial_device
 
-    print *, 'max/min/sum - w: ', maxval(w), minval(w), sum(w), shape(w)
-    ! print *, 'max/min/sum - qi: ', maxval(qi(ie, je, :)), minval(qi(ie, je, :)), sum(qi(ie, je, :))
-    ! print *, 'max/min/sum - ql: ', maxval(ql(ie, je, :)), minval(ql(ie, je, :)), sum(ql(ie, je, :))
-    ! print *, 'max/min/sum - qr: ', maxval(qr(ie, je, :)), minval(qr(ie, je, :)), sum(qr(ie, je, :))
-    ! print *, 'max/min/sum - qs: ', maxval(qs(ie, je, :)), minval(qs(ie, je, :)), sum(qs(ie, je, :))
-    print *, 'max/min/sum - qg: ', maxval(qg(ie, je, :)), minval(qg(ie, je, :)), sum(qg(ie, je, :))
-
     num_devices = omp_get_num_devices()
     print *, "Number of available devices", num_devices
 
@@ -753,149 +748,67 @@ contains
     !$omp target update from(c_air)
     print *, 'c_air (device): ', c_air
 
-    print *, 'do_sedi_w (host): ', do_sedi_w
-    !omp taget update from(do_sedi_w)
-    print *, 'do_sedi_w (device): ', do_sedi_w
+    !$omp target data &
+    !$omp map(to: &
+    !$omp     dts, rdt, &
+    !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
+    !$omp     area1, land, cnv_fraction, srf_type, eis, &
+    !$omp     rhcrit, anv_icefall, lsc_icefall, &
+    !$omp     uin, vin, delp, pt, dz, &
+    !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
 
-    ! !$omp target data &
-    ! !$omp map(to: &
-    ! !$omp     dts, rdt, &
-    ! !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
-    ! !$omp     area1, land, cnv_fraction, srf_type, eis, &
-    ! !$omp     rhcrit, anv_icefall, lsc_icefall, &
-    ! !$omp     uin, vin, delp, pt, dz, &
-    ! !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
+    !$omp map(tofrom: &
+    !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
+    !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
+    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
 
-    ! !$omp map(tofrom: &
-    ! !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
-    ! !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    ! !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
+    ! LOCAL VARIABLES
+    ! !$omp     h_var1d, &
+    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
+    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    ! !$omp     den, den0, tz, p1, denfac, &
+    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
+    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
 
-    ! !$omp map(from: &
-    ! !$omp     revap, isubl, w_var, &
-    ! !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
+    !$omp map(from: &
+    !$omp     revap, isubl, w_var, &
+    !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
     ! Initialize
+    print *, 'pt: ', minval(pt), maxval(pt), sum(pt)
+    print *, 'delp: ', minval(delp), maxval(delp), sum(delp)
+    print *, 'qv: ', minval(qv), maxval(qv), sum(qv)
+    print *, 'ql: ', minval(ql), maxval(ql), sum(ql)
+    print *, 'qi: ', minval(qi), maxval(qi), sum(qi)
+    print *, 'qr: ', minval(qr), maxval(qr), sum(qr)
+    print *, 'qs: ', minval(qs), maxval(qs), sum(qs)
+    print *, 'qg: ', minval(qg), maxval(qg), sum(qg)
+    print *, 'qn: ', minval(qn), maxval(qn), sum(qn)
+    print *, 'w min/max/sum: ', minval(w), maxval(w), sum(w)
 
-    print *, 'max/min/sum - qv: ', maxval(qv(ie, je, :)), minval(qv(ie, je, :)), sum(qv(ie, je, :))
     !$omp target
     !$omp teams &
     !$omp   default(none) &
-    !$omp   shared( &
+    !$omp   shared(&
     !$omp     is, ie, js, je, ktop, kbot, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, &
-    !$omp     pt, delp, w, dz, rhcrit, qv, ql, qi, qr, qs, qg, qa, qn, &
-
+    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, qa, &
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, qaz, &
-    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, den0, p1, m1, &
-    !$omp     w1, ccn, c_praut)
-
+    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
+    !$omp     den0, p1, &
+    !$omp     m2_rain, m2_sol)
     !$omp distribute
     do j = js, je
-       do i = is, ie
-          !$omp parallel do &
-          !$omp   private( &
-          !$omp     cpaut, t0)
-          do k = ktop, kbot
 
+       do i = is, ie
+
+          !$omp parallel do private(cpaut, t0, omq)
+          do k = ktop, kbot
              cpaut = c_paut * 0.104 * grav / 1.717e-5
              !! slow autoconversion in stable regimes
              !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-
-             t0 = pt (i, j, k)
-             tz (k) = t0
-             dp1 (k) = delp (i, j, k)
-
-             ! -----------------------------------------------------------------------
-             ! import horizontal subgrid variability with pressure dependence
-             ! total water subgrid deviation in horizontal direction
-             ! default area dependent form: use dx ~ 100 km as the base
-             ! -----------------------------------------------------------------------
-             h_var1d (k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
-
-             ! -----------------------------------------------------------------------
-             ! convert moist mixing ratios to dry mixing ratios
-             ! -----------------------------------------------------------------------
-
-             qvz (k) = qv (i, j, k)
-             qlz (k) = ql (i, j, k)
-             qiz (k) = qi (i, j, k)
-             qrz (k) = qr (i, j, k)
-             qsz (k) = qs (i, j, k)
-             qgz (k) = qg (i, j, k)
-
-             qaz (k) = qa (i, j, k)
-
-             den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
-             p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
-
-             ! -----------------------------------------------------------------------
-             ! save a copy of old value for computing tendencies
-             ! -----------------------------------------------------------------------
-
-             qv0 (k) = qvz (k)
-             ql0 (k) = qlz (k)
-             qr0 (k) = qrz (k)
-             qi0 (k) = qiz (k)
-             qs0 (k) = qsz (k)
-             qg0 (k) = qgz (k) ! SOME ISSUE WITH THIS LINE
-
-             ! -----------------------------------------------------------------------
-             ! for sedi_momentum
-             ! -----------------------------------------------------------------------
-
-             m1 (k) = 0.
-             if (do_sedi_w) w1 (k) = w (i, j, k)
-
-             ! ccn needs units #/m^3
-             if (prog_ccn) then
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             else
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-                ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-                c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
-             endif
-
-          enddo
-          !$omp end parallel do
-
-          ! -----------------------------------------------------------------------
-          ! fix all negative water species
-          ! -----------------------------------------------------------------------
-
-          if (fix_negative) then
-             ! We don't need `omp target` inside a target region
-             call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
-          endif
-
-       enddo
-    enddo
-    !$omp end distribute
-
-    !$omp end teams
-    !$omp end target
-    ! !$omp end target data
-
-    ! !$omp target update from(m2_rain, isubl)
-    ! print *, 'm2_rain(ie, je, kbot): ', m2_rain(ie, je, kbot)
-    ! print *, 'max/min/sum - isubl: ', maxval(isubl(ie, je, :)), minval(isubl(ie, je, :)), sum(isubl(ie, je, :))
-
-
-    ! !$omp target update from(m2_sol)
-    ! print *, 'max/min/sum - m2_sol: ', maxval(m2_sol(ie, je, :)), minval(m2_sol(ie, je, :)), sum(m2_sol(ie, je, :))
-
-    do j = js, je
-
-       do i = is, ie
-
-          ! !$omp target parallel do
-          do k = ktop, kbot
 
              t0 = pt (i, j, k)
              tz (k) = t0
@@ -951,213 +864,326 @@ contains
              ! for sedi_momentum
              ! -----------------------------------------------------------------------
 
-             m1 (k) = 0.
+             ! m1 (k) = 0.
 
-             if (do_sedi_w) w1 (k) = w (i, j, k)
+             ! w1 (k) = 0.
+             ! if (do_sedi_w) w1 (k) = w (i, j, k)
 
-             ! ccn needs units #/m^3
-             if (prog_ccn) then
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-             else
-                ! qn has units # / m^3
-                ccn (k) = qn (i, j, k)
-                !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-                c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
-             endif
+             ! RUNNING OUT OF MEMORY?
+             ! libgomp: Copying of host object [0x30a83040..0x30a834a8) to dev object [0x2ba213a00000..0x2ba213a00468) failed
+             ! ccn (k) = 200000000.
+             ! c_praut = 1000.
+
+             ! ! ! ccn needs units #/m^3
+             ! ! if (prog_ccn) then
+             ! !    ! qn has units # / m^3
+             ! !    ccn (k) = qn (i, j, k)
+             ! !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
+             ! !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             ! ! else
+             ! !    ! qn has units # / m^3
+             ! !    ccn (k) = qn (i, j, k)
+             ! !    !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+             ! !    ! c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
+             ! !    c_praut (k) = cpaut / sqrt (ccn (k) * rhor)
+             ! ! endif
+
+             ! m2_rain (i, j, k) = m1 (k)
+             ! m2_sol (i, j, k) = w1 (k)
 
           enddo
-          ! !$omp end target parallel do
+          !$omp end parallel do
 
           ! -----------------------------------------------------------------------
           ! fix all negative water species
           ! -----------------------------------------------------------------------
 
+          m2_rain (i, j, :) = qvz
           if (fix_negative) then
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
-
-          !$acc loop seq
-          do n = 1, ntimes
-
-             ! -----------------------------------------------------------------------
-             ! dry air density
-             ! -----------------------------------------------------------------------
-
-             !$acc loop vector private(t0)
-             do k = ktop, kbot
-                if (p_nonhydro) then
-                   dz1 (k) = dz (i, j, k)
-                   den (k) = den0 (k) ! dry air density remains the same
-                   denfac (k) = sqrt (sfcrho / den (k))
-                else
-                   t0 = pt (i, j, k)
-                   dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
-                   den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
-                   denfac (k) = sqrt (sfcrho / den (k))
-                endif
-
-                ! -----------------------------------------------------------------------
-                ! sedimentation of cloud ice, snow, and graupel
-                ! -----------------------------------------------------------------------
-                call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
-                     den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
-             end do
-
-             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
-                  dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
-
-             rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
-             snow (i, j) = snow (i, j) + s1
-             graupel (i, j) = graupel (i, j) + g1
-             ice (i, j) = ice (i, j) + i1
-
-             ! -----------------------------------------------------------------------
-             ! heat transportation during sedimentation
-             ! -----------------------------------------------------------------------
-
-             if (do_sedi_heat) then
-                call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
-                     qsz, qgz, c_ice)
-             endif
-
-             ! -----------------------------------------------------------------------
-             ! warm rain processes
-             ! -----------------------------------------------------------------------
-
-             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
-                  qgz, qaz, eis(i, j), den, denfac, ccn, c_praut, vtrz, &
-                  r1, evap1, m1_rain, w1, h_var1d)
-
-             rain (i, j) = rain (i, j) + r1
-
-             !$acc loop vector
-             do k = ktop, kbot
-                revap (i,j,k) = revap (i,j,k) + evap1(k)
-                m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
-                m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
-                m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
-             enddo
-
-             ! -----------------------------------------------------------------------
-             ! ice - phase microphysics
-             ! -----------------------------------------------------------------------
-
-             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-                  denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
-                  ccn, cnv_fraction(i, j), srf_type(i, j))
-
-             !$acc loop vector
-             do k = ktop, kbot
-                isubl (i,j,k) = isubl (i,j,k) + subl1(k)
-             enddo
-
-          enddo ! ntimes
-
-          ! -----------------------------------------------------------------------
-          ! momentum transportation during sedimentation
-          ! note: dp1 is dry mass; delp(i, j, :) is the old moist (total) mass
-          ! -----------------------------------------------------------------------
-
-          if (sedi_transport) then
-             v1_km1 = vin (i, j, ktop)
-             u1_km1 = uin (i, j, ktop)
-             !$acc loop seq
-             do k = ktop + 1, kbot
-                u1_k = uin (i, j, k)
-                v1_k = vin (i, j, k)
-                u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
-                v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
-                u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
-                v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
-                u1_km1 = u1_k ! store for next iteration
-                v1_km1 = v1_k
-             enddo
-          endif
-
-          if (do_sedi_w) then
-             !$acc loop vector
-             do k = ktop, kbot
-                w (i, j, k) = w1 (k)
-             enddo
-          endif
-
-          ! -----------------------------------------------------------------------
-          ! update moist air mass (actually hydrostatic pressure)
-          ! convert to dry mixing ratios
-          ! -----------------------------------------------------------------------
-
-          !$acc loop vector private(omq, cvm, t0)
-          do k = ktop, kbot
-             t0 = pt (i, j, k)
-             omq = dp1 (k) / delp (i, j, k)
-             qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
-             ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-             qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-             qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-             qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-             qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
-             cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-             pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
-          enddo
-
-          ! -----------------------------------------------------------------------
-          ! update cloud fraction tendency
-          ! -----------------------------------------------------------------------
-          if (.not. do_qa) then
-             !$acc loop vector
-             do k = ktop, kbot
-                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                           &
-                     qa(i, j, k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
-                     qa(i, j, k) )                                                      ! Old Cloud
-             enddo
-          endif
-
-          ! -----------------------------------------------------------------------
-          ! fms diagnostics:
-          ! -----------------------------------------------------------------------
-
-          ! if (id_cond > 0) then
-          ! do k = ktop, kbot ! total condensate
-          ! cond (i) = cond (i) + dp1 (k) * (qlz (k) + qrz (k) + qsz (k) + qiz (k) + qgz (k))
-          ! enddo
-          ! endif
-          !
-          ! if (id_vtr > 0) then
-          ! do k = ktop, kbot
-          ! vt_r (i, j, k) = vtrz (k)
-          ! enddo
-          ! endif
-          !
-          ! if (id_vts > 0) then
-          ! do k = ktop, kbot
-          ! vt_s (i, j, k) = vtsz (k)
-          ! enddo
-          ! endif
-          !
-          ! if (id_vtg > 0) then
-          ! do k = ktop, kbot
-          ! vt_g (i, j, k) = vtgz (k)
-          ! enddo
-          ! endif
-          !
-          ! if (id_vts > 0) then
-          ! do k = ktop, kbot
-          ! vt_i (i, j, k) = vtiz (k)
-          ! enddo
-          ! endif
-          !
-          ! if (id_droplets > 0) then
-          ! do k = ktop, kbot
-          ! qn2 (i, j, k) = ccn (k)
-          ! enddo
-          ! endif
+          m2_sol (i, j, :) = qvz
 
        enddo
 
     enddo
-    ! !$omp end target teams distribute
+    !$omp end distribute
+    !$omp end teams
+    !$omp end target
+    !$omp end target data
+
+    !$omp target update from(m2_rain, m2_sol)
+    print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
+
+    ! do j = js, je
+
+    !    do i = is, ie
+
+    !       ! !$omp target parallel do
+    !       do k = ktop, kbot
+
+    !          t0 = pt (i, j, k)
+    !          tz (k) = t0
+    !          dp1 (k) = delp (i, j, k)
+
+    !          ! -----------------------------------------------------------------------
+    !          ! import horizontal subgrid variability with pressure dependence
+    !          ! total water subgrid deviation in horizontal direction
+    !          ! default area dependent form: use dx ~ 100 km as the base
+    !          ! -----------------------------------------------------------------------
+    !          h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
+
+    !          ! -----------------------------------------------------------------------
+    !          ! convert moist mixing ratios to dry mixing ratios
+    !          ! -----------------------------------------------------------------------
+
+    !          qvz (k) = qv (i, j, k)
+    !          qlz (k) = ql (i, j, k)
+    !          qiz (k) = qi (i, j, k)
+    !          qrz (k) = qr (i, j, k)
+    !          qsz (k) = qs (i, j, k)
+    !          qgz (k) = qg (i, j, k)
+
+    !          ! dp1: dry air_mass
+    !          ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
+    !          dp1 (k) = dp1 (k) * (1. - qvz (k)) ! gfs
+    !          omq = delp (i, j, k) / dp1 (k)
+
+    !          qvz (k) = qvz (k) * omq
+    !          qlz (k) = qlz (k) * omq
+    !          qrz (k) = qrz (k) * omq
+    !          qiz (k) = qiz (k) * omq
+    !          qsz (k) = qsz (k) * omq
+    !          qgz (k) = qgz (k) * omq
+
+    !          qaz (k) = qa (i, j, k)
+
+    !          den0 (k) = - dp1 (k) / (grav * dz (i, j, k)) ! density of dry air
+    !          p1 (k) = den0 (k) * rdgas * t0 ! dry air pressure
+
+    !          ! -----------------------------------------------------------------------
+    !          ! save a copy of old value for computing tendencies
+    !          ! -----------------------------------------------------------------------
+
+    !          qv0 (k) = qvz (k)
+    !          ql0 (k) = qlz (k)
+    !          qr0 (k) = qrz (k)
+    !          qi0 (k) = qiz (k)
+    !          qs0 (k) = qsz (k)
+    !          qg0 (k) = qgz (k)
+
+    !          ! -----------------------------------------------------------------------
+    !          ! for sedi_momentum
+    !          ! -----------------------------------------------------------------------
+
+    !          m1 (k) = 0.
+
+    !          if (do_sedi_w) w1 (k) = w (i, j, k)
+
+    !          ! ccn needs units #/m^3
+    !          if (prog_ccn) then
+    !             ! qn has units # / m^3
+    !             ccn (k) = qn (i, j, k)
+    !             c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+    !          else
+    !             ! qn has units # / m^3
+    !             ccn (k) = qn (i, j, k)
+    !             !!! use GEOS ccn: ccn (k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
+    !             c_praut (k) = cpaut * (ccn (k) * rhor) ** (- 1. / 3.)
+    !          endif
+
+    !       enddo
+    !       ! !$omp end target parallel do
+
+    !       ! -----------------------------------------------------------------------
+    !       ! fix all negative water species
+    !       ! -----------------------------------------------------------------------
+
+    !       if (fix_negative) then
+    !          call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
+    !       endif
+
+    !       !$acc loop seq
+    !       do n = 1, ntimes
+
+    !          ! -----------------------------------------------------------------------
+    !          ! dry air density
+    !          ! -----------------------------------------------------------------------
+
+    !          !$acc loop vector private(t0)
+    !          do k = ktop, kbot
+    !             if (p_nonhydro) then
+    !                dz1 (k) = dz (i, j, k)
+    !                den (k) = den0 (k) ! dry air density remains the same
+    !                denfac (k) = sqrt (sfcrho / den (k))
+    !             else
+    !                t0 = pt (i, j, k)
+    !                dz1 (k) = dz (i, j, k) * tz (k) / t0 ! hydrostatic balance
+    !                den (k) = den0 (k) * dz (i, j, k) / dz1 (k)
+    !                denfac (k) = sqrt (sfcrho / den (k))
+    !             endif
+
+    !             ! -----------------------------------------------------------------------
+    !             ! sedimentation of cloud ice, snow, and graupel
+    !             ! -----------------------------------------------------------------------
+    !             call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+    !                  den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+    !          end do
+
+    !          call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+    !               dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
+    !          rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
+    !          snow (i, j) = snow (i, j) + s1
+    !          graupel (i, j) = graupel (i, j) + g1
+    !          ice (i, j) = ice (i, j) + i1
+
+    !          ! -----------------------------------------------------------------------
+    !          ! heat transportation during sedimentation
+    !          ! -----------------------------------------------------------------------
+
+    !          if (do_sedi_heat) then
+    !             call sedi_heat (ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
+    !                  qsz, qgz, c_ice)
+    !          endif
+
+    !          ! -----------------------------------------------------------------------
+    !          ! warm rain processes
+    !          ! -----------------------------------------------------------------------
+
+    !          call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
+    !               qgz, qaz, eis(i, j), den, denfac, ccn, c_praut, vtrz, &
+    !               r1, evap1, m1_rain, w1, h_var1d)
+
+    !          rain (i, j) = rain (i, j) + r1
+
+    !          !$acc loop vector
+    !          do k = ktop, kbot
+    !             revap (i,j,k) = revap (i,j,k) + evap1(k)
+    !             m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
+    !             m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
+    !             m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
+    !          enddo
+
+    !          ! -----------------------------------------------------------------------
+    !          ! ice - phase microphysics
+    !          ! -----------------------------------------------------------------------
+
+    !          call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
+    !               denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
+    !               ccn, cnv_fraction(i, j), srf_type(i, j))
+
+    !          !$acc loop vector
+    !          do k = ktop, kbot
+    !             isubl (i,j,k) = isubl (i,j,k) + subl1(k)
+    !          enddo
+
+    !       enddo ! ntimes
+
+    !       ! -----------------------------------------------------------------------
+    !       ! momentum transportation during sedimentation
+    !       ! note: dp1 is dry mass; delp(i, j, :) is the old moist (total) mass
+    !       ! -----------------------------------------------------------------------
+
+    !       if (sedi_transport) then
+    !          v1_km1 = vin (i, j, ktop)
+    !          u1_km1 = uin (i, j, ktop)
+    !          !$acc loop seq
+    !          do k = ktop + 1, kbot
+    !             u1_k = uin (i, j, k)
+    !             v1_k = vin (i, j, k)
+    !             u1_k = (delp (i, j, k) * u1_k + m1 (k - 1) * u1_km1) / (delp (i, j, k) + m1 (k - 1))
+    !             v1_k = (delp (i, j, k) * v1_k + m1 (k - 1) * v1_km1) / (delp (i, j, k) + m1 (k - 1))
+    !             u_dt (i, j, k) = u_dt (i, j, k) + (u1_k - uin (i, j, k)) * rdt
+    !             v_dt (i, j, k) = v_dt (i, j, k) + (v1_k - vin (i, j, k)) * rdt
+    !             u1_km1 = u1_k ! store for next iteration
+    !             v1_km1 = v1_k
+    !          enddo
+    !       endif
+
+    !       if (do_sedi_w) then
+    !          !$acc loop vector
+    !          do k = ktop, kbot
+    !             w (i, j, k) = w1 (k)
+    !          enddo
+    !       endif
+
+    !       ! -----------------------------------------------------------------------
+    !       ! update moist air mass (actually hydrostatic pressure)
+    !       ! convert to dry mixing ratios
+    !       ! -----------------------------------------------------------------------
+
+    !       !$acc loop vector private(omq, cvm, t0)
+    !       do k = ktop, kbot
+    !          t0 = pt (i, j, k)
+    !          omq = dp1 (k) / delp (i, j, k)
+    !          qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
+    !          ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
+    !          qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+    !          qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+    !          qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+    !          qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+    !          cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
+    !          pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0) * cvm / cp_air
+    !       enddo
+
+    !       ! -----------------------------------------------------------------------
+    !       ! update cloud fraction tendency
+    !       ! -----------------------------------------------------------------------
+    !       if (.not. do_qa) then
+    !          !$acc loop vector
+    !          do k = ktop, kbot
+    !             qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                           &
+    !                  qa(i, j, k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
+    !                  qa(i, j, k) )                                                      ! Old Cloud
+    !          enddo
+    !       endif
+
+    !       ! -----------------------------------------------------------------------
+    !       ! fms diagnostics:
+    !       ! -----------------------------------------------------------------------
+
+    !       ! if (id_cond > 0) then
+    !       ! do k = ktop, kbot ! total condensate
+    !       ! cond (i) = cond (i) + dp1 (k) * (qlz (k) + qrz (k) + qsz (k) + qiz (k) + qgz (k))
+    !       ! enddo
+    !       ! endif
+    !       !
+    !       ! if (id_vtr > 0) then
+    !       ! do k = ktop, kbot
+    !       ! vt_r (i, j, k) = vtrz (k)
+    !       ! enddo
+    !       ! endif
+    !       !
+    !       ! if (id_vts > 0) then
+    !       ! do k = ktop, kbot
+    !       ! vt_s (i, j, k) = vtsz (k)
+    !       ! enddo
+    !       ! endif
+    !       !
+    !       ! if (id_vtg > 0) then
+    !       ! do k = ktop, kbot
+    !       ! vt_g (i, j, k) = vtgz (k)
+    !       ! enddo
+    !       ! endif
+    !       !
+    !       ! if (id_vts > 0) then
+    !       ! do k = ktop, kbot
+    !       ! vt_i (i, j, k) = vtiz (k)
+    !       ! enddo
+    !       ! endif
+    !       !
+    !       ! if (id_droplets > 0) then
+    !       ! do k = ktop, kbot
+    !       ! qn2 (i, j, k) = ccn (k)
+    !       ! enddo
+    !       ! endif
+
+    !    enddo
+
+    ! enddo
+    ! ! !$omp end target teams distribute
 
   end subroutine mpdrv
 
@@ -4622,16 +4648,18 @@ contains
     enddo
     !$omp end parallel do
 
-    ! ! -----------------------------------------------------------------------
-    ! ! fix water vapor; borrow from below
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! fix water vapor; borrow from below
+    ! -----------------------------------------------------------------------
 
-    ! do k = ktop, kbot - 1
-    !    if (qv (k) < 0.) then
-    !       qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
-    !       qv (k) = 0.
-    !    endif
-    ! enddo
+    !$omp single
+!!$acc loop seq
+    do k = ktop, kbot - 1
+       if (qv (k) < 0.) then
+          qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
+          qv (k) = 0.
+       endif
+    enddo
 
     ! ! -----------------------------------------------------------------------
     ! ! bottom layer; borrow from above
@@ -4642,6 +4670,7 @@ contains
     !    qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
     !    qv (kbot) = qv (kbot) + dq / dp (kbot)
     ! endif
+    !$omp end single
 
   end subroutine neg_adj
 
