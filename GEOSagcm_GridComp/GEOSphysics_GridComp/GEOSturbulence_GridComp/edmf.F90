@@ -434,6 +434,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
             do k=kts,kte
             ENT(k,i) = (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
                     + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1))
+               ! Increase ent above 2000m to limit deepest plumes
+               if (ZW(k).gt.2500.) ENT(k,i) = ENT(k,i)*(1.+(ZW(k)-2500.)/500.)
             enddo
           enddo
         else if (MFPARAMS%ENTRAIN==1 ) then

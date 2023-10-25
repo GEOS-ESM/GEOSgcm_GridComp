@@ -185,7 +185,7 @@ module shoc
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth
   real, dimension(nx,ny,nz)  :: brunt_edge
 
-  real, dimension(nx,ny)     :: l_inf, l_mix, zcb!, l_par!, denom, numer, cldarr
+  real, dimension(nx,ny)     :: l_inf, l_mix, zcb, lts!, l_par!, denom, numer, cldarr
 
   real lstarn,    depth,    omn,      betdz, betdze,    bbb,        &
        term,      qsatt,    dqsat,    thedz,    conv_var,   &
@@ -195,6 +195,7 @@ module shoc
        tkeavg,    dtqw,     dtqi,     l_par
 
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
+  integer, dimension(nx,ny) :: cldbasek
 
   real, parameter :: bruntmin = 1e-7
   real, parameter :: vonk = 0.4
@@ -388,7 +389,7 @@ contains
           Cee = Cek* (pt19 + pt51*smix/grd)
 
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
-          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.0001)    ! TKE shear production term
+          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.01)    ! TKE shear production term
 
 ! Semi-implicitly integrate TKE equation forward in time
           wtke = tke(i,j,k)
@@ -441,6 +442,10 @@ contains
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
 !            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*0.5*(brunt(i,j,k)+brunt(i,j,k-1))*wrk*wrk)))
           endif
+!          if (k.ge.cldbasek(i,j) .and. maxval(brunt(i,j,cldbasek(i,j):cldbasek(i,j)+5)).lt.5e-4) then
+          if (k.ge.cldbasek(i,j)) then
+            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
+          end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -648,6 +653,7 @@ contains
 !    brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
 
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
+    cldbasek(:,:) = 1
     do j=1,ny
       do i=1,nx
 
@@ -665,21 +671,29 @@ contains
 !           l_inf(i,j) = 100.
 !         endif
 
-        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.3 K
+        ! Identify mixed layer top as level where THV exceeds THV(3) + 0.4 K
         ! Interpolate for final height based on gradient
         ! Ignore single isolated levels
         kk = 4
-        do while (thv(i,j,3)+0.3 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.3 .gt. thv(i,j,kk+1))
+        do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.4 .gt. thv(i,j,kk+1))
           kk = kk+1
         end do
         dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
         if (abs(dum) .gt. 1e-3) then
-          l_mix(i,j) = max(zl(i,j,kk-1)+(thv(i,j,3)+0.3-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
+          l_mix(i,j) = max(zl(i,j,kk-1)+(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
         else
           l_mix(i,j) = max(zl(i,j,kk-1),100.)
         end if
 
+        do while ((zl(i,j,cldbasek(i,j)).lt.300.) .or. (cld_sgs(i,j,cldbasek(i,j)).lt.0.01 .and. cldbasek(i,j).lt.nzm))
+          cldbasek(i,j) = cldbasek(i,j) + 1
+        end do
 
+        kk = 1
+        do while (zl(i,j,kk) .lt. 3000. .or. kk.eq.nzm)
+          kk = kk + 1
+        end do
+        lts(i,j) = thv(i,j,kk) - thv(i,j,1)
 !        tep = tabs(i,j,1)
 !        qsp = MAPL_EQsat(tabs(i,j,1),prsl(i,j,1),dtqw)
 !        kk = 1
@@ -811,14 +825,14 @@ contains
 !         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))   ! use avg of lowest 3 levs
 !         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
 !         brunt_smooth(:,:,3) = brunt_smooth(:,:,1)
-         do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
+!         do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
 !            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
 !            where (brunt(:,:,kk+1).lt.1e-4)
-              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
+!              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
 !              brunt_smooth(:,:,kk) = 0.5*(brunt(:,:,kk)+brunt(:,:,kk+1))   ! smooth up only
 !            end where
 !            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
-         end do
+!         end do
          brunt_smooth = max( bruntmin, brunt_smooth )
 
 
@@ -920,7 +934,7 @@ contains
 !                 if (zl(i,j,k).lt.zpbl(i,j)) then
                  if (zl(i,j,k).lt.l_mix(i,j)) then
 !                   smixt2(i,j,k) = sqrt(0.1*zpbl(i,j)*400.*tkes)*shocparams%LENFAC2
-                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*shocparams%LENFAC2
+                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*(shocparams%LENFAC2+0.7*(0.5+0.5*tanh(0.3*(lts(i,j)-19.))))
                  else
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
                  end if
