@@ -5326,33 +5326,25 @@ module moist_subroutines_cloud_microphys
             !$acc parallel loop gang vector collapse(2)
             do j = js, je
                 do i = is, ie  
-
-                    ! call terminal_fall (dts, ktop, kbot, tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qgz(i,j,:), qsz(i,j,:), qiz(i,j,:), &
-                    !     dz1(i,j,:), dp1(i,j,:), den(i,j,:), vtgz(i,j,:), vtsz(i,j,:), vtiz(i,j,:), r1(i,j), g1(i,j), s1(i,j), i1(i,j), m1_sol(i,j,:), w1(i,j,:))
-                    
                     rain (i,j) = rain (i,j) + r1(i,j) ! from melted snow & ice that reached the ground
                     snow (i,j) = snow (i,j) + s1(i,j)
                     graupel (i,j) = graupel (i,j) + g1(i,j)
                     ice (i,j) = ice (i,j) + i1(i,j)
-
-                    ! -----------------------------------------------------------------------
-                    ! heat transportation during sedimentation
-                    ! -----------------------------------------------------------------------
-                    
-
-                    ! if (do_sedi_heat) &
-                    !     call sedi_heat (ktop, kbot, dp1(i,j,:), m1_sol(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), &
-                    !         qsz(i,j,:), qgz(i,j,:), c_ice)
-                    ! -----------------------------------------------------------------------
-                    ! warm rain processes
-                    ! -----------------------------------------------------------------------
                 enddo
             enddo
             !$acc end parallel loop 
 
+            ! -----------------------------------------------------------------------
+            ! heat transportation during sedimentation
+            ! -----------------------------------------------------------------------
+
             if(do_sedi_heat) &
                 call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, &
                                    qsz, qgz, c_ice)
+
+            ! -----------------------------------------------------------------------
+            ! warm rain processes
+            ! -----------------------------------------------------------------------
 
             call warm_rain_3d (dts, is, ie, js, je, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
                         qgz, qaz, eis, den, denfac, ccn, c_praut, vtrz,   &
@@ -5360,11 +5352,7 @@ module moist_subroutines_cloud_microphys
 
             !$acc parallel loop gang vector collapse(2)
             do j = js, je
-                do i = is, ie  
-                    ! call warm_rain (dts, ktop, kbot, dp1(i,j,:), dz1(i,j,:), tz(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), &
-                    !     qgz(i,j,:), qaz(i,j,:), eis(i,j), den(i,j,:), denfac(i,j,:), ccn(i,j,:), c_praut(i,j,:), vtrz(i,j,:),   &
-                    !     r1(i,j), evap1(i,j,:), m1_rain(i,j,:), w1(i,j,:), h_var1d(i,j,:))
-            
+                do i = is, ie
                     rain (i,j) = rain (i,j) + r1(i,j)
                 enddo
             enddo
@@ -5383,19 +5371,10 @@ module moist_subroutines_cloud_microphys
             enddo    
             !$acc end parallel loop
             
-                    ! -----------------------------------------------------------------------
-                    ! ice - phase microphysics
-                    ! -----------------------------------------------------------------------
-            ! !$acc parallel loop collapse(2)
-            ! do j = js, je
-        !     do i = is, ie  
-        !         call icloud (ktop, kbot, tz(i,j,:), p1(i,j,:), qvz(i,j,:), qlz(i,j,:), qrz(i,j,:), qiz(i,j,:), qsz(i,j,:), qgz(i,j,:), dp1(i,j,:), den(i,j,:), &
-            !             denfac(i,j,:), vtsz(i,j,:), vtgz(i,j,:), vtrz(i,j,:), qaz(i,j,:), dts, subl1(i,j,:), h_var1d(i,j,:), &
-        !             ccn(i,j,:), cnv_fraction(i,j), srf_type(i,j))
-        !     enddo
-        ! enddo
-            ! !$acc end parallel loop
-            
+            ! -----------------------------------------------------------------------
+            ! ice - phase microphysics
+            ! -----------------------------------------------------------------------
+
             call icloud_3d (is, je, js, je, ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                             denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                             ccn, cnv_fraction, srf_type)
