@@ -56,6 +56,7 @@ module GEOS_GFDL_1M_InterfaceMod
   real    :: MAX_RI
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
+  logical :: LMELTFRZ
 
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
@@ -225,6 +226,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
@@ -614,6 +617,21 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+             endif
+             if (LMELTFRZ) then
+           ! meltfrz new condensates
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLCN(I,J,L)  , &
+                            QICN(I,J,L) )
+             call MELTFRZ ( DT_MOIST     , &
+                            CNV_FRC(I,J) , &
+                            SRF_TYPE(I,J), &
+                            T(I,J,L)     , &
+                            QLLS(I,J,L)  , &
+                            QILS(I,J,L) )
              endif
            ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL

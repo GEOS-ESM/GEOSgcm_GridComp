@@ -5712,7 +5712,7 @@ contains
        endif
 
        ! all deep convective precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(CN_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
@@ -5723,19 +5723,23 @@ contains
        ! all large-scale precip (rain+snow)
        call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
        if (associated(LS_PRCP)) then
-          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'ICE'      , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR'     , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
        endif
 
        ! all anvil precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(AN_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) AN_PRCP = AN_PRCP + PTR2D
        endif
 
        ! all shallow precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(SC_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) SC_PRCP = SC_PRCP + PTR2D

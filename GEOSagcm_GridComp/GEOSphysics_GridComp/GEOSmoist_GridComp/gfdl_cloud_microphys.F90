@@ -1498,7 +1498,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         melt = fac_imlt * max(0.0,newliq - qlk (k)) 
         frez = fac_frz  * max(0.0,newice - qik (k))
 
-        if (melt > 0.0 .and. qik (k) > qcmin) then
+        if (melt > 0.0 .and. tzk (k) > tice .and. qik (k) > qcmin) then
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
@@ -1515,9 +1515,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_sol (k) = q_sol (k) - melt
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
-        endif
-
-        if (frez > 0.0 .and. qlk (k) > qcmin) then
+        elseif (frez > 0.0 .and. tzk (k) <= tice .and. qlk (k) > qcmin) then
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
