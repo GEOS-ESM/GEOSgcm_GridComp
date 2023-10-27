@@ -759,8 +759,6 @@ contains
 
     !$omp target data &
     !$omp map(to: &
-    !$omp     dts, rdt, &
-    !$omp     is, ie, js, je, ks, ke, ntimes, ktop, kbot, &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
@@ -792,17 +790,17 @@ contains
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
-    !$omp     is, ie, js, je, ktop, kbot, ntimes, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
     !$omp     pt, delp, dz, w, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     anv_icefall, cnv_fraction, lsc_icefall, &
     !$omp     m2_rain, &
-    ! LOCAL VARIABLES
+    ! LOCAL VARIABLES - making them private results in libgomp crash
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
     !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
-    !$omp     vtrz, vtsz, vtiz, vtgz)
+    !$omp     vtrz, vtsz, vtiz, vtgz) &
+    !$omp   firstprivate(dts, rdt, is, ie, js, je, ntimes, ktop, kbot)
 
     !$omp distribute
     do j = js, je
@@ -935,6 +933,16 @@ contains
 
              enddo
              !$omp end parallel do
+
+             ! m2_rain (i, j, :) = dts
+
+             ! call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+             !      dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
+             ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
+             ! snow (i, j) = snow (i, j) + s1
+             ! graupel (i, j) = graupel (i, j) + g1
+             ! ice (i, j) = ice (i, j) + i1
 
           enddo ! ntimes
           !$omp end single
