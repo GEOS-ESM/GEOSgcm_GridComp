@@ -799,7 +799,7 @@ contains
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
     !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
-    !$omp     vtrz, vtsz, vtiz, vtgz) &
+    !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol) &
     !$omp   firstprivate(dts, rdt, is, ie, js, je, ntimes, ktop, kbot)
 
     !$omp distribute
@@ -936,8 +936,8 @@ contains
 
              ! m2_rain (i, j, :) = dts
 
-             ! call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
-             !      dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+                  dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
 
              ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
              ! snow (i, j) = snow (i, j) + s1
@@ -2704,291 +2704,292 @@ contains
 
     k0 = kbot
     exit_flag = .true.
-    !!$acc loop seq
+    !$omp critical
     do k = ktop, kbot - 1
        if (tz (k) > tice .and. exit_flag) then
           k0 = k
           exit_flag = .false.
        endif
     enddo
+    !$omp end critical
 
-    ! -----------------------------------------------------------------------
-    ! melting of cloud_ice (before fall) :
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! melting of cloud_ice (before fall) :
+    ! ! -----------------------------------------------------------------------
 
-    !!$acc loop vector private(tc, q_liq, q_sol, lhi, sink, tmp)
-    do k = k0, kbot
-       tc = tz (k) - tice
-       if (qi (k) > qcmin .and. tc > 0.) then
-          q_liq = ql (k) + qr (k)
-          q_sol = qi (k) + qs (k) + qg (k)
-          lhi = li00 + dc_ice * tz (k)
+    ! !$omp parallel do private(tc, q_liq, q_sol, lhi, sink, tmp)
+    ! do k = k0, kbot
+    !    tc = tz (k) - tice
+    !    if (qi (k) > qcmin .and. tc > 0.) then
+    !       q_liq = ql (k) + qr (k)
+    !       q_sol = qi (k) + qs (k) + qg (k)
+    !       lhi = li00 + dc_ice * tz (k)
 
-          sink = min (qi (k), fac_imlt * tc / icpk (k))
-          tmp = min (sink, dim (ql_mlt, ql (k)))
-          ql (k) = ql (k) + tmp
-          qr (k) = qr (k) + sink - tmp
-          qi (k) = qi (k) - sink
-          q_liq = q_liq + sink
-          q_sol = q_sol - sink
-          cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-          tz (k) = tz (k) - sink * lhi / cvm (k)
-          tc = tz (k) - tice
-       endif
-    enddo
+    !       sink = min (qi (k), fac_imlt * tc / icpk (k))
+    !       tmp = min (sink, dim (ql_mlt, ql (k)))
+    !       ql (k) = ql (k) + tmp
+    !       qr (k) = qr (k) + sink - tmp
+    !       qi (k) = qi (k) - sink
+    !       q_liq = q_liq + sink
+    !       q_sol = q_sol - sink
+    !       cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+    !       tz (k) = tz (k) - sink * lhi / cvm (k)
+    !       tc = tz (k) - tice
+    !    endif
+    ! enddo
 
-    ! -----------------------------------------------------------------------
-    ! turn off melting when cloud microphysics time step is small
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! turn off melting when cloud microphysics time step is small
+    ! ! -----------------------------------------------------------------------
 
-    if (dtm < 60.) k0 = kbot
+    ! if (dtm < 60.) k0 = kbot
 
-    ! sjl, turn off melting of falling cloud ice, snow and graupel
-    k0 = kbot
-    ! sjl, turn off melting of falling cloud ice, snow and graupel
+    ! ! sjl, turn off melting of falling cloud ice, snow and graupel
+    ! k0 = kbot
+    ! ! sjl, turn off melting of falling cloud ice, snow and graupel
 
-    ze (kbot + 1) = zs
-    !!$acc loop seq
-    do k = kbot, ktop, - 1
-       ze (k) = ze (k + 1) - dz (k) ! dz < 0
-    enddo
+    ! ze (kbot + 1) = zs
+    ! !!$acc loop seq
+    ! do k = kbot, ktop, - 1
+    !    ze (k) = ze (k + 1) - dz (k) ! dz < 0
+    ! enddo
 
-    zt (ktop) = ze (ktop)
+    ! zt (ktop) = ze (ktop)
 
-    ! -----------------------------------------------------------------------
-    ! update capacity heat and latend heat coefficient
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! update capacity heat and latend heat coefficient
+    ! ! -----------------------------------------------------------------------
 
-    !!$acc loop vector private(lhi)
-    do k = k0, kbot
-       lhi = li00 + dc_ice * tz (k)
-       icpk (k) = lhi / cvm (k)
-    enddo
+    ! !!$acc loop vector private(lhi)
+    ! do k = k0, kbot
+    !    lhi = li00 + dc_ice * tz (k)
+    !    icpk (k) = lhi / cvm (k)
+    ! enddo
 
-    ! -----------------------------------------------------------------------
-    ! melting of falling cloud ice into rain
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! melting of falling cloud ice into rain
+    ! ! -----------------------------------------------------------------------
 
-    call check_column (ktop, kbot, qi, no_fall)
+    ! call check_column (ktop, kbot, qi, no_fall)
 
-    if (vi_fac < 1.e-5 .or. no_fall) then
+    ! if (vi_fac < 1.e-5 .or. no_fall) then
 
-       i1 = 0.
+    !    i1 = 0.
 
-    else
+    ! else
 
-       !!$acc loop vector
-       do k = ktop + 1, kbot
-          zt (k) = ze (k) - dtm * (vti (k - 1) + vti (k))/2.0
-       enddo
-       zt (kbot + 1) = zs - dtm * vti (kbot)
+    !    !!$acc loop vector
+    !    do k = ktop + 1, kbot
+    !       zt (k) = ze (k) - dtm * (vti (k - 1) + vti (k))/2.0
+    !    enddo
+    !    zt (kbot + 1) = zs - dtm * vti (kbot)
 
-       !!$acc loop seq
-       do k = ktop, kbot
-          if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-       enddo
+    !    !!$acc loop seq
+    !    do k = ktop, kbot
+    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+    !    enddo
 
-       if (k0 < kbot) then
-          !!$acc loop seq
-          do k = kbot - 1, k0, - 1
-             if (qi (k) > qcmin) then
-                exit_flag = .true.
-                !!$acc loop seq
-                do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
-                   if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
-                      dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vr_min, vti (k)) * tau_imlt))
-                      sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                      tmp = min (sink, dim (ql_mlt, ql (m)))
-                      ql (m) = ql (m) + tmp
-                      qr (m) = qr (m) - tmp + sink
-                      tz (m) = tz (m) - sink * icpk (m)
-                      qi (k) = qi (k) - sink * dp (m) / dp (k)
-                   endif
-                enddo
-             endif
-          enddo
-       endif
+    !    if (k0 < kbot) then
+    !       !!$acc loop seq
+    !       do k = kbot - 1, k0, - 1
+    !          if (qi (k) > qcmin) then
+    !             exit_flag = .true.
+    !             !!$acc loop seq
+    !             do m = k + 1, kbot
+    !                if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+    !                if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
+    !                   dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vr_min, vti (k)) * tau_imlt))
+    !                   sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+    !                   tmp = min (sink, dim (ql_mlt, ql (m)))
+    !                   ql (m) = ql (m) + tmp
+    !                   qr (m) = qr (m) - tmp + sink
+    !                   tz (m) = tz (m) - sink * icpk (m)
+    !                   qi (k) = qi (k) - sink * dp (m) / dp (k)
+    !                endif
+    !             enddo
+    !          endif
+    !       enddo
+    !    endif
 
-       if (do_sedi_w) then
-          !!$acc loop vector
-          do k = ktop, kbot
-             dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       !!$acc loop vector
+    !       do k = ktop, kbot
+    !          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+    !       enddo
+    !    endif
 
-       if (use_ppm) then
-          call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qi, i1, m1_sol, mono_prof)
-       else
-          call implicit_fall (dtm, ktop, kbot, ze, vti, dp, qi, i1, m1_sol)
-       endif
+    !    if (use_ppm) then
+    !       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qi, i1, m1_sol, mono_prof)
+    !    else
+    !       call implicit_fall (dtm, ktop, kbot, ze, vti, dp, qi, i1, m1_sol)
+    !    endif
 
-       if (do_sedi_w) then
-          w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
-          !!$acc loop vector
-          do k = ktop + 1, kbot
-             w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
-                  / (dm (k) + m1_sol (k - 1) - m1_sol (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
+    !       !!$acc loop vector
+    !       do k = ktop + 1, kbot
+    !          w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
+    !               / (dm (k) + m1_sol (k - 1) - m1_sol (k))
+    !       enddo
+    !    endif
 
-    endif
+    ! endif
 
-    ! -----------------------------------------------------------------------
-    ! melting of falling snow into rain
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! melting of falling snow into rain
+    ! ! -----------------------------------------------------------------------
 
-    r1 = 0.
+    ! r1 = 0.
 
-    call check_column (ktop, kbot, qs, no_fall)
+    ! call check_column (ktop, kbot, qs, no_fall)
 
-    if (no_fall) then
-       s1 = 0.
-    else
-       !!$acc loop vector
-       do k = ktop + 1, kbot
-          zt (k) = ze (k) - dtm * (vts (k - 1) + vts (k))/2.0
-       enddo
-       zt (kbot + 1) = zs - dtm * vts (kbot)
-       !!$acc loop seq
-       do k = ktop, kbot
-          if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-       enddo
+    ! if (no_fall) then
+    !    s1 = 0.
+    ! else
+    !    !!$acc loop vector
+    !    do k = ktop + 1, kbot
+    !       zt (k) = ze (k) - dtm * (vts (k - 1) + vts (k))/2.0
+    !    enddo
+    !    zt (kbot + 1) = zs - dtm * vts (kbot)
+    !    !!$acc loop seq
+    !    do k = ktop, kbot
+    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+    !    enddo
 
-       if (k0 < kbot) then
-          !!$acc loop seq
-          do k = kbot - 1, k0, - 1
-             if (qs (k) > qpmin) then
-                exit_flag = .true.
-                !!$acc loop seq
-                do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
-                   if (exit_flag) then
-                      dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
-                      if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                         dtime = min (1.0, dtime / tau_smlt)
-                         sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                         tz (m) = tz (m) - sink * icpk (m)
-                         qs (k) = qs (k) - sink * dp (m) / dp (k)
-                         if (zt (k) < zs) then
-                            r1 = r1 + sink * dp (m) ! precip as rain
-                         else
-                            ! qr source here will fall next time step (therefore, can evap)
-                            qr (m) = qr (m) + sink
-                         endif
-                      endif
-                   endif
-                   if (qs (k) < qpmin .and. exit_flag) exit_flag = .false.
-                enddo
-             endif
-          enddo
-       endif
+    !    if (k0 < kbot) then
+    !       !!$acc loop seq
+    !       do k = kbot - 1, k0, - 1
+    !          if (qs (k) > qpmin) then
+    !             exit_flag = .true.
+    !             !!$acc loop seq
+    !             do m = k + 1, kbot
+    !                if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+    !                if (exit_flag) then
+    !                   dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
+    !                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+    !                      dtime = min (1.0, dtime / tau_smlt)
+    !                      sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+    !                      tz (m) = tz (m) - sink * icpk (m)
+    !                      qs (k) = qs (k) - sink * dp (m) / dp (k)
+    !                      if (zt (k) < zs) then
+    !                         r1 = r1 + sink * dp (m) ! precip as rain
+    !                      else
+    !                         ! qr source here will fall next time step (therefore, can evap)
+    !                         qr (m) = qr (m) + sink
+    !                      endif
+    !                   endif
+    !                endif
+    !                if (qs (k) < qpmin .and. exit_flag) exit_flag = .false.
+    !             enddo
+    !          endif
+    !       enddo
+    !    endif
 
-       if (do_sedi_w) then
-          !!$acc loop vector
-          do k = ktop, kbot
-             dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       !!$acc loop vector
+    !       do k = ktop, kbot
+    !          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+    !       enddo
+    !    endif
 
-       if (use_ppm) then
-          call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qs, s1, m1, mono_prof)
-       else
-          call implicit_fall (dtm, ktop, kbot, ze, vts, dp, qs, s1, m1)
-       endif
+    !    if (use_ppm) then
+    !       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qs, s1, m1, mono_prof)
+    !    else
+    !       call implicit_fall (dtm, ktop, kbot, ze, vts, dp, qs, s1, m1)
+    !    endif
 
-       !!$acc loop vector
-       do k = ktop, kbot
-          m1_sol (k) = m1_sol (k) + m1 (k)
-       enddo
+    !    !!$acc loop vector
+    !    do k = ktop, kbot
+    !       m1_sol (k) = m1_sol (k) + m1 (k)
+    !    enddo
 
-       if (do_sedi_w) then
-          w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vts (ktop)) / (dm (ktop) - m1 (ktop))
-          !!$acc loop vector
-          do k = ktop + 1, kbot
-             w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vts (k - 1) + m1 (k) * vts (k)) &
-                  / (dm (k) + m1 (k - 1) - m1 (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vts (ktop)) / (dm (ktop) - m1 (ktop))
+    !       !!$acc loop vector
+    !       do k = ktop + 1, kbot
+    !          w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vts (k - 1) + m1 (k) * vts (k)) &
+    !               / (dm (k) + m1 (k - 1) - m1 (k))
+    !       enddo
+    !    endif
 
-    endif
+    ! endif
 
-    ! ----------------------------------------------
-    ! melting of falling graupel into rain
-    ! ----------------------------------------------
+    ! ! ----------------------------------------------
+    ! ! melting of falling graupel into rain
+    ! ! ----------------------------------------------
 
-    call check_column (ktop, kbot, qg, no_fall)
+    ! call check_column (ktop, kbot, qg, no_fall)
 
-    if (no_fall) then
-       g1 = 0.
-    else
-       !!$acc loop vector
-       do k = ktop + 1, kbot
-          zt (k) = ze (k) - dtm * (vtg (k - 1) + vtg (k))/2.0
-       enddo
-       zt (kbot + 1) = zs - dtm * vtg (kbot)
+    ! if (no_fall) then
+    !    g1 = 0.
+    ! else
+    !    !!$acc loop vector
+    !    do k = ktop + 1, kbot
+    !       zt (k) = ze (k) - dtm * (vtg (k - 1) + vtg (k))/2.0
+    !    enddo
+    !    zt (kbot + 1) = zs - dtm * vtg (kbot)
 
-       !!$acc loop seq
-       do k = ktop, kbot
-          if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-       enddo
+    !    !!$acc loop seq
+    !    do k = ktop, kbot
+    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+    !    enddo
 
-       if (k0 < kbot) then
-          !!$acc loop seq
-          do k = kbot - 1, k0, - 1
-             if (qg (k) > qpmin) then
-                exit_flag = .true.
-                !!$acc loop seq
-                do m = k + 1, kbot
-                   if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
-                   if (exit_flag) then
-                      dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
-                      if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-                         dtime = min (1., dtime / tau_g2r)
-                         sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-                         tz (m) = tz (m) - sink * icpk (m)
-                         qg (k) = qg (k) - sink * dp (m) / dp (k)
-                         if (zt (k) < zs) then
-                            r1 = r1 + sink * dp (m)
-                         else
-                            qr (m) = qr (m) + sink
-                         endif
-                      endif
-                   endif
-                   if (qg (k) < qpmin .and. exit_flag) exit_flag = .false.
-                enddo
-             endif
-          enddo
-       endif
+    !    if (k0 < kbot) then
+    !       !!$acc loop seq
+    !       do k = kbot - 1, k0, - 1
+    !          if (qg (k) > qpmin) then
+    !             exit_flag = .true.
+    !             !!$acc loop seq
+    !             do m = k + 1, kbot
+    !                if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
+    !                if (exit_flag) then
+    !                   dtime = min (dtm, (ze (m) - ze (m + 1)) / vtg (k))
+    !                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
+    !                      dtime = min (1., dtime / tau_g2r)
+    !                      sink = min (qg (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
+    !                      tz (m) = tz (m) - sink * icpk (m)
+    !                      qg (k) = qg (k) - sink * dp (m) / dp (k)
+    !                      if (zt (k) < zs) then
+    !                         r1 = r1 + sink * dp (m)
+    !                      else
+    !                         qr (m) = qr (m) + sink
+    !                      endif
+    !                   endif
+    !                endif
+    !                if (qg (k) < qpmin .and. exit_flag) exit_flag = .false.
+    !             enddo
+    !          endif
+    !       enddo
+    !    endif
 
-       if (do_sedi_w) then
-          !!$acc loop vector
-          do k = ktop, kbot
-             dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       !!$acc loop vector
+    !       do k = ktop, kbot
+    !          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+    !       enddo
+    !    endif
 
-       if (use_ppm) then
-          call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qg, g1, m1, mono_prof)
-       else
-          call implicit_fall (dtm, ktop, kbot, ze, vtg, dp, qg, g1, m1)
-       endif
+    !    if (use_ppm) then
+    !       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qg, g1, m1, mono_prof)
+    !    else
+    !       call implicit_fall (dtm, ktop, kbot, ze, vtg, dp, qg, g1, m1)
+    !    endif
 
-       !!$acc loop vector
-       do k = ktop, kbot
-          m1_sol (k) = m1_sol (k) + m1 (k)
-       enddo
+    !    !!$acc loop vector
+    !    do k = ktop, kbot
+    !       m1_sol (k) = m1_sol (k) + m1 (k)
+    !    enddo
 
-       if (do_sedi_w) then
-          w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vtg (ktop)) / (dm (ktop) - m1 (ktop))
-          !!$acc loop vector
-          do k = ktop + 1, kbot
-             w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vtg (k - 1) + m1 (k) * vtg (k)) &
-                  / (dm (k) + m1 (k - 1) - m1 (k))
-          enddo
-       endif
+    !    if (do_sedi_w) then
+    !       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vtg (ktop)) / (dm (ktop) - m1 (ktop))
+    !       !!$acc loop vector
+    !       do k = ktop + 1, kbot
+    !          w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vtg (k - 1) + m1 (k) * vtg (k)) &
+    !               / (dm (k) + m1 (k - 1) - m1 (k))
+    !       enddo
+    !    endif
 
-    endif
+    ! endif
 
   end subroutine terminal_fall
 
