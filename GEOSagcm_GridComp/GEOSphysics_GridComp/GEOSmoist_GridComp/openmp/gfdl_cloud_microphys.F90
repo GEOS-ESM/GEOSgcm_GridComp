@@ -519,7 +519,7 @@ contains
 
     ! !$omp end target data
 
-    ! call MPI_Abort(MPI_COMM_WORLD, 0, mpierr)
+    call MPI_Abort(MPI_COMM_WORLD, 0, mpierr)
 
     ! -----------------------------------------------------------------------
     ! no clouds allowed above ktop
@@ -700,14 +700,23 @@ contains
 
     real, intent (out), dimension (is:, js:, ks:) :: m2_rain, m2_sol
 
-    real, dimension (ktop:kbot) :: h_var1d
-    real, dimension (ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
-    real, dimension (ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
-    real, dimension (ktop:kbot) :: dp1, dz1
-    real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
-    real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
-    real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
-    real, dimension (ktop:kbot) :: w1, tmp1, tmp2
+    ! real, dimension (ktop:kbot) :: h_var1d
+    ! real, dimension (ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
+    ! real, dimension (ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
+    ! real, dimension (ktop:kbot) :: dp1, dz1
+    ! real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
+    ! real, dimension (ktop:kbot) :: den, den0, tz, p1, denfac
+    ! real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
+    ! real, dimension (ktop:kbot) :: w1, tmp1, tmp2
+
+    real, dimension (1:72) :: h_var1d
+    real, dimension (1:72) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
+    real, dimension (1:72) :: vtiz, vtsz, vtgz, vtrz
+    real, dimension (1:72) :: dp1, dz1
+    real, dimension (1:72) :: qv0, ql0, qr0, qi0, qs0, qg0
+    real, dimension (1:72) :: den, den0, tz, p1, denfac
+    real, dimension (1:72) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
+    real, dimension (1:72) :: w1, tmp1, tmp2
 
     real :: cpaut, t0
     real :: r1, s1, i1, g1, rdt
@@ -760,16 +769,7 @@ contains
     !$omp map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
-    !$omp     rain, snow, ice, graupel, cond, tmp1, tmp2) &
-
-    ! LOCAL VARIABLES
-    ! !$omp     h_var1d, &
-    ! !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
-    ! !$omp     vtiz, vtsz, vtgz, vtrz, dp1, dz1, &
-    ! !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
-    ! !$omp     den, den0, tz, p1, denfac, &
-    ! !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, &
-    ! !$omp     w1, r1, s1, i1, g1, u1_k, u1_km1, v1_k, v1_km1) &
+    !$omp     rain, snow, ice, graupel, cond) &
 
     !$omp map(from: &
     !$omp     revap, isubl, w_var, &
@@ -794,11 +794,15 @@ contains
     !$omp   shared(&
     !$omp     is, ie, js, je, ktop, kbot, ntimes, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
-    !$omp     pt, delp, dz, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
+    !$omp     pt, delp, dz, w, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
+    !$omp     anv_icefall, cnv_fraction, lsc_icefall, &
+    !$omp     m2_rain, &
+    ! LOCAL VARIABLES
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
-    !$omp     den0, p1, ccn, c_praut, dz1, den, denfac)
+    !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
+    !$omp     vtrz, vtsz, vtiz, vtgz)
 
     !$omp distribute
     do j = js, je
@@ -865,16 +869,17 @@ contains
              ! for sedi_momentum
              ! -----------------------------------------------------------------------
 
-             ! m1 (k) = 0.
+             m1 (k) = 0.
 
-             ! w1 (k) = 0.
-             ! if (do_sedi_w) w1 (k) = w (i, j, k)
+             w1 (k) = 0.
+             if (do_sedi_w) w1 (k) = w (i, j, k)
 
-             ! RUNNING OUT OF MEMORY?
+             ! running OUT OF MEMORY?
              ! libgomp: Copying of host object [0x30a83040..0x30a834a8) to dev object [0x2ba213a00000..0x2ba213a00468) failed
              ! ccn (k) = 200000000.
              ! c_praut = 1000.
 
+             ! SO WE DONT RUN OUT OF MEMORY
              ! ccn needs units #/m^3
              if (prog_ccn) then
                 ! qn has units # / m^3
@@ -900,7 +905,7 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
-          !$omp single private(t0)
+          !$omp single private(t0, r1, g1, s1, i1)
           do n = 1, ntimes
 
              ! -----------------------------------------------------------------------
@@ -909,6 +914,7 @@ contains
 
              !$omp parallel do private(t0)
              do k = ktop, kbot
+
                 if (p_nonhydro) then
                    dz1 (k) = dz (i, j, k)
                    den (k) = den0 (k) ! dry air density remains the same
@@ -920,11 +926,13 @@ contains
                    denfac (k) = sqrt (sfcrho / den (k))
                 endif
 
-                ! ! -----------------------------------------------------------------------
-                ! ! sedimentation of cloud ice, snow, and graupel
-                ! ! -----------------------------------------------------------------------
-                ! call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
-                !      den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+                ! -----------------------------------------------------------------------
+                ! sedimentation of cloud ice, snow, and graupel
+                ! -----------------------------------------------------------------------
+                call fall_speed(ktop, kbot, p1(k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+                     den(k), qsz(k), qiz(k), qgz(k), qlz(k), tz(k), vtsz(k), vtiz(k), vtgz(k))
+                m2_rain (i, j, k) = vtsz (k) + vtiz (k) + vtgz (k)
+
              enddo
              !$omp end parallel do
 
@@ -934,14 +942,14 @@ contains
        enddo
 
     enddo
-
     !$omp end distribute
+
     !$omp end teams
     !$omp end target
     !$omp end target data
 
     ! !$omp target update from(m2_rain, m2_sol)
-    ! print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
     ! print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
 
     ! do j = js, je
@@ -2670,7 +2678,7 @@ contains
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    !!$acc loop vector private(lhi)
+    !$omp parallel do private(lhi)
     do k = ktop, kbot
        m1_sol (k) = 0.
        ! lhl (k) = lv00 + d0_vap * tz (k)
@@ -3469,40 +3477,42 @@ contains
        if (qi < thi) then ! this is needed as the fall - speed maybe problematic for small qi
           vti = vf_min
        else
-          tc = tk - tice ! deg C
-          IWC = qi * den * 1.e3 ! Units are g/m3
-          ! -----------------------------------------------------------------------
-          ! use deng and mace (2008, grl)
-          ! https://doi.org/10.1029/2008GL035054
-          ! -----------------------------------------------------------------------
-          viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
-          viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
-          ! -----------------------------------------------------------------------
-          ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
-          !                               ice clouds: Results from SPartICus'
-          ! -----------------------------------------------------------------------
-          !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
-          !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
-          ! Combine
-          vti = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-          ! Update units from cm/s to m/s
-          vti = vi1 * vti
-          ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-          !------ice cloud effective radius ----- [klaus wyser, 1998]
-          !if(tk(k)>t_ice) then
-          !   rBB  = -2.
-          !else
-          !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
-          !endif
-          !rBB   = MIN((MAX(rBB,-6.)),-2.)
-          !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-          !lnP   = log(pl(k)/100.0)
-          !C0    = -1.04 + 0.298*lnP
-          !C1    =  0.67 - 0.097*lnP
-          ! apply pressure scaling
-          !vti = vti * (C0 + C1*log(DIAM))
-          ! Limits
-          vti = min (vi_max, max (vf_min, vti))
+          ! tc = tk - tice ! deg C
+          ! IWC = qi * den * 1.e3 ! Units are g/m3
+          ! ! -----------------------------------------------------------------------
+          ! ! use deng and mace (2008, grl)
+          ! ! https://doi.org/10.1029/2008GL035054
+          ! ! -----------------------------------------------------------------------
+          ! viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
+          ! viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
+          ! ! -----------------------------------------------------------------------
+          ! ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
+          ! !                               ice clouds: Results from SPartICus'
+          ! ! -----------------------------------------------------------------------
+          ! !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+          ! !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
+          ! ! Combine
+          ! vti = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+          ! ! Update units from cm/s to m/s
+          ! vti = vi1 * vti
+          ! ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+          ! !------ice cloud effective radius ----- [klaus wyser, 1998]
+          ! !if(tk(k)>t_ice) then
+          ! !   rBB  = -2.
+          ! !else
+          ! !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
+          ! !endif
+          ! !rBB   = MIN((MAX(rBB,-6.)),-2.)
+          ! !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+          ! !lnP   = log(pl(k)/100.0)
+          ! !C0    = -1.04 + 0.298*lnP
+          ! !C1    =  0.67 - 0.097*lnP
+          ! ! apply pressure scaling
+          ! !vti = vti * (C0 + C1*log(DIAM))
+          ! ! Limits
+          ! vti = min (vi_max, max (vf_min, vti))
+          ! TODO: WE NEED A POWER OPERATOR FIRST
+          vti = vf_min
        endif
     endif
 
