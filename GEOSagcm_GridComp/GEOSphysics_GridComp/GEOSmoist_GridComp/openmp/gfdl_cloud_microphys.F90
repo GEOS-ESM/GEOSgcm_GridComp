@@ -938,7 +938,7 @@ contains
              call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                   dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
 
-             ! m2_rain (i, j, :) = r1
+             m2_rain (i, j, :) = r1
 
              ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
              ! snow (i, j) = snow (i, j) + s1
@@ -2661,14 +2661,14 @@ contains
 
     real, intent (out) :: r1, g1, s1, i1
 
-    real, dimension (ktop:kbot + 1) :: ze, zt
+    real, dimension (1:72 + 1) :: ze, zt
 
     real :: qsat, dqsdt, evap, dtime
     real :: factor, frac
     real :: tmp, precip, tc, sink
 
-    real, dimension (ktop:kbot) :: icpk, cvm
-    real, dimension (ktop:kbot) :: m1, dm
+    real, dimension (1:72) :: icpk, cvm
+    real, dimension (1:72) :: m1, dm
 
     real :: q_liq, q_sol, lcpk, lhl, lhi
 
@@ -2715,7 +2715,7 @@ contains
     ! enddo
     ! !$omp end critical
 
-    ! r1 = dtm
+    r1 = -1.234
     ! g1 = 0
 
     ! ! -----------------------------------------------------------------------
