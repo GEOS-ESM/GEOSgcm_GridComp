@@ -744,9 +744,6 @@ contains
        print *, "Running on device with ", nteams, " teams in total and ", nthreads, " threads per team"
     end if
 
-    dts = dt_in / real (ntimes)
-    rdt = 1. / dt_in
-
     ! -----------------------------------------------------------------------
     ! calculate cloud condensation nuclei (ccn)
     ! the following is based on klein eq. 15
@@ -758,7 +755,7 @@ contains
     print *, 'c_air (device): ', c_air
 
     !$omp target data &
-    !$omp map(to: &
+    !$omp   map(to: &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
@@ -790,6 +787,7 @@ contains
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
+    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
     !$omp     pt, delp, dz, w, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     anv_icefall, cnv_fraction, lsc_icefall, &
@@ -799,8 +797,7 @@ contains
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
     !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
-    !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol) &
-    !$omp   firstprivate(dts, rdt, is, ie, js, je, ntimes, ktop, kbot)
+    !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol)
 
     !$omp distribute
     do j = js, je
@@ -809,6 +806,7 @@ contains
 
           !$omp parallel do private(cpaut, t0, omq)
           do k = ktop, kbot
+
              cpaut = c_paut * 0.104 * grav / 1.717e-5
              !! slow autoconversion in stable regimes
              !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
@@ -903,8 +901,11 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
-          !$omp single private(t0, r1, g1, s1, i1)
+          !$omp single private(dts, rdt, r1, i1, s1, g1)
           do n = 1, ntimes
+
+             dts = dt_in / real (ntimes)
+             rdt = 1. / dt_in
 
              ! -----------------------------------------------------------------------
              ! dry air density
@@ -934,10 +935,10 @@ contains
              enddo
              !$omp end parallel do
 
-             ! m2_rain (i, j, :) = dts
-
              call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                   dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
+
+             ! m2_rain (i, j, :) = r1
 
              ! rain (i, j) = rain (i, j) + r1 ! from melted snow & ice that reached the ground
              ! snow (i, j) = snow (i, j) + s1
@@ -2697,21 +2698,25 @@ contains
        ! lcpk = lhl (k) / cvm (k)
        icpk (k) = lhi / cvm (k)
     enddo
+    !$omp end parallel do
 
     ! -----------------------------------------------------------------------
     ! find significant melting level
     ! -----------------------------------------------------------------------
 
-    k0 = kbot
-    exit_flag = .true.
-    !$omp critical
-    do k = ktop, kbot - 1
-       if (tz (k) > tice .and. exit_flag) then
-          k0 = k
-          exit_flag = .false.
-       endif
-    enddo
-    !$omp end critical
+    ! k0 = kbot
+    ! exit_flag = .true.
+    ! !$omp critical
+    ! do k = ktop, kbot - 1
+    !    if (tz (k) > tice .and. exit_flag) then
+    !       k0 = k
+    !       exit_flag = .false.
+    !    endif
+    ! enddo
+    ! !$omp end critical
+
+    ! r1 = dtm
+    ! g1 = 0
 
     ! ! -----------------------------------------------------------------------
     ! ! melting of cloud_ice (before fall) :
@@ -2725,16 +2730,17 @@ contains
     !       q_sol = qi (k) + qs (k) + qg (k)
     !       lhi = li00 + dc_ice * tz (k)
 
-    !       sink = min (qi (k), fac_imlt * tc / icpk (k))
-    !       tmp = min (sink, dim (ql_mlt, ql (k)))
-    !       ql (k) = ql (k) + tmp
-    !       qr (k) = qr (k) + sink - tmp
-    !       qi (k) = qi (k) - sink
-    !       q_liq = q_liq + sink
-    !       q_sol = q_sol - sink
-    !       cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-    !       tz (k) = tz (k) - sink * lhi / cvm (k)
-    !       tc = tz (k) - tice
+    !       sink = min ( qi(k), fac_imlt * tc / icpk (k))
+    !       ! sink = min (qi (k), fac_imlt * tc / icpk (k))
+    !       ! tmp = min (sink, dim (ql_mlt, ql (k)))
+    !       ! ql (k) = ql (k) + tmp
+    !       ! qr (k) = qr (k) + sink - tmp
+    !       ! qi (k) = qi (k) - sink
+    !       ! q_liq = q_liq + sink
+    !       ! q_sol = q_sol - sink
+    !       ! cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+    !       ! tz (k) = tz (k) - sink * lhi / cvm (k)
+    !       ! tc = tz (k) - tice
     !    endif
     ! enddo
 
