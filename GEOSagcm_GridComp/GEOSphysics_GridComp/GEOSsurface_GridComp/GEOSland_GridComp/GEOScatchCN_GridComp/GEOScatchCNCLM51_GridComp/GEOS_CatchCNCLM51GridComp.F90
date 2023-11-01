@@ -7588,7 +7588,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 TSURF                                                ,&
                 SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
                 LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICEOUT   ,&
+                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT   ,&
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
