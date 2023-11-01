@@ -754,8 +754,13 @@ contains
     !$omp target update from(c_air)
     print *, 'c_air (device): ', c_air
 
+    dts = dt_in / real (ntimes)
+    rdt = 1. / dt_in
+
     !$omp target data &
     !$omp   map(to: &
+    !$omp     is, ie, js, je, ktop, kbot, &
+    !$omp     ntimes, dt_in, dts, rdt, &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
@@ -787,7 +792,7 @@ contains
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
-    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, &
+    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, dts, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
     !$omp     pt, delp, dz, w, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     anv_icefall, cnv_fraction, lsc_icefall, &
@@ -901,11 +906,8 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
-          !$omp single private(dts, rdt, r1, i1, s1, g1)
+          !$omp single private(r1, i1, s1, g1)
           do n = 1, ntimes
-
-             dts = dt_in / real (ntimes)
-             rdt = 1. / dt_in
 
              ! -----------------------------------------------------------------------
              ! dry air density
@@ -2679,44 +2681,48 @@ contains
 
     logical :: no_fall, exit_flag
 
+    r1 = dtm + ktop + kbot ! WORKS
+    r1 = sum(qv + ql + qr + qg + qs + qi + tz + m1_sol + w1) ! WORKS
+    r1 = sum(vtg + vts + vti + den + dp + dz)
+
     zs = 0.
 
     fac_imlt = 1. - exp (- dtm / tau_imlt)
+    r1 = fac_imlt
 
-    ! -----------------------------------------------------------------------
-    ! define heat capacity and latend heat coefficient
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! define heat capacity and latend heat coefficient
+    ! ! -----------------------------------------------------------------------
 
-    !$omp parallel do private(lhi)
-    do k = ktop, kbot
-       m1_sol (k) = 0.
-       ! lhl (k) = lv00 + d0_vap * tz (k)
-       lhi = li00 + dc_ice * tz (k)
-       q_liq = ql (k) + qr (k)
-       q_sol = qi (k) + qs (k) + qg (k)
-       cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-       ! lcpk = lhl (k) / cvm (k)
-       icpk (k) = lhi / cvm (k)
-    enddo
-    !$omp end parallel do
+    ! !$omp parallel do private(lhi)
+    ! do k = ktop, kbot
+    !    m1_sol (k) = 0.
+    !    ! lhl (k) = lv00 + d0_vap * tz (k)
+    !    lhi = li00 + dc_ice * tz (k)
+    !    q_liq = ql (k) + qr (k)
+    !    q_sol = qi (k) + qs (k) + qg (k)
+    !    cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+    !    ! lcpk = lhl (k) / cvm (k)
+    !    icpk (k) = lhi / cvm (k)
+    ! enddo
+    ! !$omp end parallel do
 
-    ! -----------------------------------------------------------------------
-    ! find significant melting level
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! find significant melting level
+    ! ! -----------------------------------------------------------------------
 
     ! k0 = kbot
-    ! exit_flag = .true.
-    ! !$omp critical
+    ! exit_flag = .false.
+    ! !$omp single
     ! do k = ktop, kbot - 1
-    !    if (tz (k) > tice .and. exit_flag) then
+    !    if (tz (k) > tice .and. .not. exit_flag) then
     !       k0 = k
-    !       exit_flag = .false.
+    !       exit_flag = .true.
     !    endif
     ! enddo
-    ! !$omp end critical
+    ! !$omp end single
 
-    r1 = -1.234
-    ! g1 = 0
+    ! r1 = k0
 
     ! ! -----------------------------------------------------------------------
     ! ! melting of cloud_ice (before fall) :
@@ -2725,24 +2731,24 @@ contains
     ! !$omp parallel do private(tc, q_liq, q_sol, lhi, sink, tmp)
     ! do k = k0, kbot
     !    tc = tz (k) - tice
-    !    if (qi (k) > qcmin .and. tc > 0.) then
-    !       q_liq = ql (k) + qr (k)
-    !       q_sol = qi (k) + qs (k) + qg (k)
-    !       lhi = li00 + dc_ice * tz (k)
-
-    !       sink = min ( qi(k), fac_imlt * tc / icpk (k))
-    !       ! sink = min (qi (k), fac_imlt * tc / icpk (k))
-    !       ! tmp = min (sink, dim (ql_mlt, ql (k)))
-    !       ! ql (k) = ql (k) + tmp
-    !       ! qr (k) = qr (k) + sink - tmp
-    !       ! qi (k) = qi (k) - sink
-    !       ! q_liq = q_liq + sink
-    !       ! q_sol = q_sol - sink
-    !       ! cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-    !       ! tz (k) = tz (k) - sink * lhi / cvm (k)
-    !       ! tc = tz (k) - tice
-    !    endif
+    !    ! if (qi (k) > qcmin .and. tc > 0.) then
+    !    !    q_liq = ql (k) + qr (k)
+    !    !    q_sol = qi (k) + qs (k) + qg (k)
+    !    !    lhi = li00 + dc_ice * tz (k)
+    !    !    sink = min (qi (k), fac_imlt * tc / icpk (k))
+    !    !    tmp = min (sink, dim (ql_mlt, ql (k)))
+    !    !    ql (k) = ql (k) + tmp
+    !    !    qr (k) = qr (k) + sink - tmp
+    !    !    qi (k) = qi (k) - sink
+    !    !    q_liq = q_liq + sink
+    !    !    q_sol = q_sol - sink
+    !    !    cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+    !    !    tz (k) = tz (k) - sink * lhi / cvm (k)
+    !    !    tc = tz (k) - tice
+    !    ! endif
     ! enddo
+    ! !$omp end parallel do
+    ! r1 = tc
 
     ! ! -----------------------------------------------------------------------
     ! ! turn off melting when cloud microphysics time step is small
