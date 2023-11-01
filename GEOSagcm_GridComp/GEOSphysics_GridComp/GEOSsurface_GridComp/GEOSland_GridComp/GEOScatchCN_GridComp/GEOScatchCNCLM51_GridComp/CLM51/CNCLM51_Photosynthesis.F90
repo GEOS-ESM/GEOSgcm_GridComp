@@ -273,7 +273,7 @@
     do nz = 1,num_zon
        n = n + 1
        atm2lnd_inst%forc_pbot_downscaled_col (n)  = pbot(nc)
-       atm2lnd_inst%forc_rho_downscaled_col  (n)  = pbot(nc)-0.378*eair(nc,nz)/(rair*tc(nc,nz)) 
+       atm2lnd_inst%forc_rho_downscaled_col  (n)  = (pbot(nc)-0.378*eair(nc,nz))/(rair*tc(nc,nz)) 
 
        soilstate_inst%hksat_col (n,1:nlevgrnd) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
@@ -427,6 +427,13 @@
  call PhotosynthesisTotal (filter(1)%num_exposedvegp, filter(1)%exposedvegp, &
        atm2lnd_inst, canopystate_inst, photosyns_inst)
 
+ laisun_out = 0.
+ laisha_out = 0.
+ psnsun_out = 0.
+ psnsha_out = 0.
+ lmrsun_out = 0.
+ lmrsha_out = 0.
+
    np = 0
     do nc = 1,nch        ! catchment tile loop
        do nz = 1,num_zon    ! CN zone loop 
@@ -454,13 +461,22 @@
                  laisun_out(nc,nv,nz) = laisun(np)
                  laisha_out(nc,nv,nz) = laisha(np)
 
+                 if (isnan(laisun(np))) laisun_out(nc,nv,nz) = 0.
+                 if (isnan(laisha(np))) laisha_out(nc,nv,nz) = 0.
+
                  ! Photosynthesis
                  psnsun_out(nc,nv,nz) = photosyns_inst%psnsun_patch(np)
                  psnsha_out(nc,nv,nz) = photosyns_inst%psnsha_patch(np)
 
+                 if (isnan(psnsun_out(nc,nv,nz))) psnsun_out(nc,nv,nz) = 0.
+                 if (isnan(psnsha_out(nc,nv,nz))) psnsha_out(nc,nv,nz) = 0.
+
                  ! Leaf maintenance respiration
                  lmrsun_out(nc,nv,nz) = photosyns_inst%lmrsun_patch(np)
                  lmrsha_out(nc,nv,nz) = photosyns_inst%lmrsha_patch(np)
+
+                 if (isnan(lmrsun_out(nc,nv,nz))) lmrsun_out(nc,nv,nz) = 0.
+                 if (isnan(lmrsha_out(nc,nv,nz))) lmrsha_out(nc,nv,nz) = 0.
 
                  ! total absorbed PAR
                  tmp_parsun = 0.
