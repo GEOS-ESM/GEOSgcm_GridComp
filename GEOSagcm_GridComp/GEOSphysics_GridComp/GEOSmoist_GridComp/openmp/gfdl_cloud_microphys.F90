@@ -792,7 +792,7 @@ contains
     !$omp teams &
     !$omp   default(none) &
     !$omp   shared(&
-    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, dts, &
+    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, dts, rdt, &
     !$omp     c_paut, do_sedi_w, prog_ccn, fix_negative, p_nonhydro, &
     !$omp     pt, delp, dz, w, rhcrit, qv, ql, qi, qr, qs, qg, qn, &
     !$omp     anv_icefall, cnv_fraction, lsc_icefall, &
@@ -2688,13 +2688,18 @@ contains
     zs = 0.
 
     fac_imlt = 1. - exp (- dtm / tau_imlt)
-    r1 = fac_imlt
+    ! r1 = fac_imlt
 
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    ! !$omp parallel do private(lhi)
+    ! !$omp parallel do &
+    ! !$omp   default(none) &
+    ! !$omp   shared( &
+    ! !$omp     m1_sol, tz, qr, qi, ql, qs, qg, qv, cvm, icpk) &
+    ! !$omp   lastprivate(k, lhi, q_liq, q_sol) &
+    ! !$omp   firstprivate(ktop, kbot, c_vap, c_air)
     ! do k = ktop, kbot
     !    m1_sol (k) = 0.
     !    ! lhl (k) = lv00 + d0_vap * tz (k)
@@ -2707,20 +2712,20 @@ contains
     ! enddo
     ! !$omp end parallel do
 
+    ! r1 = maxval(cvm)
+
     ! -----------------------------------------------------------------------
     ! find significant melting level
     ! -----------------------------------------------------------------------
 
     k0 = kbot
     exit_flag = .false.
-    ! !$omp critical
     do k = ktop, kbot - 1
        if (tz (k) > tice .and. .not. exit_flag) then
           k0 = k
           exit_flag = .true.
        endif
     enddo
-    ! !$omp end critical
     r1 = k0
 
     ! -----------------------------------------------------------------------
@@ -2730,33 +2735,39 @@ contains
     !$omp parallel do &
     !$omp   default(none) &
     !$omp   shared( &
-    !$omp     k0, kbot, tc, tz, tice, c_vap, c_air, fac_imlt, ql_mlt, &
+    !$omp     dtm, k0, kbot, tc, tz, tice, c_vap, c_air, ql_mlt, tau_imlt, &
     !$omp     qv, qi, ql, qr, qs, qg, &
     !$omp     q_liq, q_sol, lhi, cvm, icpk, sink, tmp) &
-    !$omp   private(k)
+    !$omp   private(k, fac_imlt)
     do k = k0, kbot
        tc = tz (k) - tice
-       if (qi (k) > qcmin .and. tc > 0) then
-          q_liq = 0.
+       ! if (qi (k) > qcmin .and. tc > 0.) then
           q_liq = ql (k) + qr (k)
           q_sol = qi (k) + qs (k) + qg (k)
           lhi = li00 + dc_ice * tz (k)
+
+          fac_imlt = 1. - exp (- dtm / tau_imlt)
+
           cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
           icpk = lhi / cvm
-          ! sink = min (qi (k), fac_imlt * tc / icpk)
-          ! tmp = min (sink, dim (ql_mlt, ql (k)))
+          sink = min (qi (k), fac_imlt * tc / icpk)
+
+          ! sink = min (qi (k), fac_imlt * tc / icpk (k))
+
+          tmp = min (sink, dim (ql_mlt, ql (k)))
           ! ql (k) = ql (k) + tmp
           ! qr (k) = qr (k) + sink - tmp
           ! qi (k) = qi (k) - sink
+
           ! q_liq = q_liq + sink
           ! q_sol = q_sol - sink
-          ! cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-          ! tz (k) = tz (k) - sink * lhi / cvm (k)
+          ! cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+          ! tz (k) = tz (k) - sink * lhi / cvm
           ! tc = tz (k) - tice
-       endif
+       ! endif
     enddo
     !$omp end parallel do
-    r1 = lhi
+    r1 = sum(ql)
 
     ! ! -----------------------------------------------------------------------
     ! ! turn off melting when cloud microphysics time step is small
@@ -4655,9 +4666,9 @@ contains
 
     integer, intent (in) :: ktop, kbot
 
-    real, intent (in), dimension (ktop:kbot) :: dp
+    real, intent (in), dimension (1:72) :: dp
 
-    real, intent (inout), dimension (ktop:kbot) :: pt, qv, ql, qr, qi, qs, qg
+    real, intent (inout), dimension (1:72) :: pt, qv, ql, qr, qi, qs, qg
 
     real :: lcpk, icpk
 
