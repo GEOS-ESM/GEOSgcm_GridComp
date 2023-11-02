@@ -65,6 +65,7 @@ contains
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
+                      psnsunm, psnsham, lmrsunm, lmrsham,         &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -113,6 +114,11 @@ contains
  real, dimension(nch), intent(in) :: sndzn5d   ! 5-day running mean of total snow depth
  type(water_type),     intent(in) :: water_inst
  logical,              intent(in) :: first
+ real, dimension(nch,num_veg,num_zon), intent(in) :: psnsunm
+ real, dimension(nch,num_veg,num_zon), intent(in) :: psnsham
+ real, dimension(nch,num_veg,num_zon), intent(in) :: lmrsunm
+ real, dimension(nch,num_veg,num_zon), intent(in) :: lmrsham
+
 
  ! OUTPUT
 
@@ -273,6 +279,14 @@ contains
            water_inst%wateratm2lndbulk_inst%prec10_patch(p) = prec10d(nc)
            water_inst%wateratm2lndbulk_inst%rh30_patch(p) = rh30(nc)
            frictionvel_inst%forc_hgt_u_patch(p) = 30. ! following CNCLM45 implementation, but this should be available from the GridComp
+
+           if(ityp(nc,nv,nz)==np .and. fveg(nc,nv,nz)>1.e-4) then
+              photosyns_inst%psnsun_patch(p) = psnsunm(nc)
+              photosyns_inst%psnsha_patch(p) = psnsham(nc)
+              photosyns_inst%lmrsun_patch(p) = lmrsunm(nc)
+              photosyns_inst%lmrsha_patch(p) = lmrsham(nc)
+           end if 
+       
         end do ! np
      end do ! nz
   end do ! nc

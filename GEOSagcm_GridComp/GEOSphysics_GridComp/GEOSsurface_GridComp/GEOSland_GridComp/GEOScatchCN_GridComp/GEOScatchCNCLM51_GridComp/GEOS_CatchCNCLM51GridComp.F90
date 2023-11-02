@@ -7027,6 +7027,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, first_cn, &
+                      psnsunm, psnsham, lmrsunm, lmrsham,                 &
                       elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
                       fire_nloss,leafn,leafc,gross_nmin,net_nmin,&
