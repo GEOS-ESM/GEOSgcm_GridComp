@@ -804,7 +804,7 @@ contains
     !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
     !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol)
 
-    !$omp distribute
+    !$omp distribute private(r1, i1, s1, g1)
     do j = js, je
 
        do i = is, ie
@@ -906,7 +906,7 @@ contains
              call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
           endif
 
-          !$omp single private(r1, i1, s1, g1)
+          ! !$omp single private(r1, i1, s1, g1)
           do n = 1, ntimes
 
              ! -----------------------------------------------------------------------
@@ -948,7 +948,7 @@ contains
              ! ice (i, j) = ice (i, j) + i1
 
           enddo ! ntimes
-          !$omp end single
+          ! !$omp end single
 
        enddo
 
@@ -2651,15 +2651,15 @@ contains
        den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
 
     implicit none
-    !$omp declare target
+    !$omp declare target(terminal_fall)
 
     integer, intent (in) :: ktop, kbot
 
     real, intent (in) :: dtm ! time step (s)
 
-    real, intent (in), dimension (ktop:kbot) :: vtg, vts, vti, den, dp, dz
+    real, intent (in), dimension (1:72) :: vtg, vts, vti, den, dp, dz
 
-    real, intent (inout), dimension (ktop:kbot) :: qv, ql, qr, qg, qs, qi, tz, m1_sol, w1
+    real, intent (inout), dimension (1:72) :: qv, ql, qr, qg, qs, qi, tz, m1_sol, w1
 
     real, intent (out) :: r1, g1, s1, i1
 
@@ -2669,7 +2669,7 @@ contains
     real :: factor, frac
     real :: tmp, precip, tc, sink
 
-    real, dimension (1:72) :: icpk, cvm
+    real :: icpk, cvm
     real, dimension (1:72) :: m1, dm
 
     real :: q_liq, q_sol, lcpk, lhl, lhi
@@ -2690,9 +2690,9 @@ contains
     fac_imlt = 1. - exp (- dtm / tau_imlt)
     r1 = fac_imlt
 
-    ! ! -----------------------------------------------------------------------
-    ! ! define heat capacity and latend heat coefficient
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! define heat capacity and latend heat coefficient
+    ! -----------------------------------------------------------------------
 
     ! !$omp parallel do private(lhi)
     ! do k = ktop, kbot
@@ -2707,48 +2707,56 @@ contains
     ! enddo
     ! !$omp end parallel do
 
-    ! ! -----------------------------------------------------------------------
-    ! ! find significant melting level
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! find significant melting level
+    ! -----------------------------------------------------------------------
 
-    ! k0 = kbot
-    ! exit_flag = .false.
-    ! !$omp single
-    ! do k = ktop, kbot - 1
-    !    if (tz (k) > tice .and. .not. exit_flag) then
-    !       k0 = k
-    !       exit_flag = .true.
-    !    endif
-    ! enddo
-    ! !$omp end single
+    k0 = kbot
+    exit_flag = .false.
+    ! !$omp critical
+    do k = ktop, kbot - 1
+       if (tz (k) > tice .and. .not. exit_flag) then
+          k0 = k
+          exit_flag = .true.
+       endif
+    enddo
+    ! !$omp end critical
+    r1 = k0
 
-    ! r1 = k0
+    ! -----------------------------------------------------------------------
+    ! melting of cloud_ice (before fall) :
+    ! -----------------------------------------------------------------------
 
-    ! ! -----------------------------------------------------------------------
-    ! ! melting of cloud_ice (before fall) :
-    ! ! -----------------------------------------------------------------------
-
-    ! !$omp parallel do private(tc, q_liq, q_sol, lhi, sink, tmp)
-    ! do k = k0, kbot
-    !    tc = tz (k) - tice
-    !    ! if (qi (k) > qcmin .and. tc > 0.) then
-    !    !    q_liq = ql (k) + qr (k)
-    !    !    q_sol = qi (k) + qs (k) + qg (k)
-    !    !    lhi = li00 + dc_ice * tz (k)
-    !    !    sink = min (qi (k), fac_imlt * tc / icpk (k))
-    !    !    tmp = min (sink, dim (ql_mlt, ql (k)))
-    !    !    ql (k) = ql (k) + tmp
-    !    !    qr (k) = qr (k) + sink - tmp
-    !    !    qi (k) = qi (k) - sink
-    !    !    q_liq = q_liq + sink
-    !    !    q_sol = q_sol - sink
-    !    !    cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-    !    !    tz (k) = tz (k) - sink * lhi / cvm (k)
-    !    !    tc = tz (k) - tice
-    !    ! endif
-    ! enddo
-    ! !$omp end parallel do
-    ! r1 = tc
+    !$omp parallel do &
+    !$omp   default(none) &
+    !$omp   shared( &
+    !$omp     k0, kbot, tc, tz, tice, c_vap, c_air, fac_imlt, ql_mlt, &
+    !$omp     qv, qi, ql, qr, qs, qg, &
+    !$omp     q_liq, q_sol, lhi, cvm, icpk, sink, tmp) &
+    !$omp   private(k)
+    do k = k0, kbot
+       tc = tz (k) - tice
+       if (qi (k) > qcmin .and. tc > 0) then
+          q_liq = 0.
+          q_liq = ql (k) + qr (k)
+          q_sol = qi (k) + qs (k) + qg (k)
+          lhi = li00 + dc_ice * tz (k)
+          cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+          icpk = lhi / cvm
+          ! sink = min (qi (k), fac_imlt * tc / icpk)
+          ! tmp = min (sink, dim (ql_mlt, ql (k)))
+          ! ql (k) = ql (k) + tmp
+          ! qr (k) = qr (k) + sink - tmp
+          ! qi (k) = qi (k) - sink
+          ! q_liq = q_liq + sink
+          ! q_sol = q_sol - sink
+          ! cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
+          ! tz (k) = tz (k) - sink * lhi / cvm (k)
+          ! tc = tz (k) - tice
+       endif
+    enddo
+    !$omp end parallel do
+    r1 = lhi
 
     ! ! -----------------------------------------------------------------------
     ! ! turn off melting when cloud microphysics time step is small
@@ -4711,7 +4719,7 @@ contains
     ! fix water vapor; borrow from below
     ! -----------------------------------------------------------------------
 
-    !$omp single private(dq)
+    ! !$omp single private(dq)
     do k = ktop, kbot - 1
        if (qv (k) < 0.) then
           qv (k + 1) = qv (k + 1) + qv (k) * dp (k) / dp (k + 1)
@@ -4728,7 +4736,7 @@ contains
        qv (kbot - 1) = qv (kbot - 1) - dq / dp (kbot - 1)
        qv (kbot) = qv (kbot) + dq / dp (kbot)
     endif
-    !$omp end single
+    ! !$omp end single
 
   end subroutine neg_adj
 
