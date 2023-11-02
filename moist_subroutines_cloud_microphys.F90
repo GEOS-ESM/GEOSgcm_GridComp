@@ -2311,7 +2311,7 @@ module moist_subroutines_cloud_microphys
                 enddo
             enddo
         enddo
-        !$acc end parallel
+        !$acc end parallel loop
 
         ! -----------------------------------------------------------------------
         ! subgrid cloud microphysics
