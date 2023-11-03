@@ -329,17 +329,18 @@ subroutine outlets_to_ocean(file,lons,lats,nx,ny)
   character*100          :: file_ocn_lnd
   character*100          :: fileT_ocn_lnd, fileR_ocn_lnd
   character*100          :: res_MAPL
+  character*100          :: nx_str,ny_str  
   integer, allocatable,dimension(:,:)   :: rst_ocn,rst_ocn_lnd
   real :: num1,num2,num3,num4
   integer :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
   integer, allocatable,dimension(:)  :: t2lati,t2loni
   real*8,allocatable,dimension(:) :: lon30s,lat30s
   real*8 :: dx,dy
-  integer :: ns
+  integer :: ns,nstr1,nstr2
   integer,allocatable,dimension(:,:)   :: ns_map
   real*8,allocatable,dimension(:) :: lat_lnd,lon_lnd
 
-  integer :: i,j,l,k,status,type,np
+  integer :: i,j,l,k,status,type,np,flag,flag2
 
   do i=1,100
     if(file(i:i).eq."T".and.file(i+1:i+1).eq."M")then
@@ -354,22 +355,55 @@ subroutine outlets_to_ocean(file,lons,lats,nx,ny)
   file_ocn_lnd(14:25)="-Pfafstetter"
   !print *,trim(file_ocn_lnd)    
 
-  if(trim(file_ocn).eq."TM0072xTM0036")then
-    res_MAPL="72x36"
-    nx_MAPL=72
-    ny_MAPL=36
-  else if(trim(file_ocn).eq."TM0540xTM0458")then
-    res_MAPL="540x458"
-    nx_MAPL=540
-    ny_MAPL=458
-  else if(trim(file_ocn).eq."TM1440xTM1080")then
-    res_MAPL="1440x1080"
-    nx_MAPL=1440
-    ny_MAPL=1080
-  else
-    print *,"ocean resolution is not supported!"
-    stop
-  endif
+  nx_str=""
+  ny_str=""
+  res_MAPL=""
+  flag=0
+  k=1
+  do i=1,100
+    if(flag==0)then
+      if(file_ocn(i:i).ne."T".and.file_ocn(i:i).ne."M".and.file_ocn(i:i).ne."0")then
+        flag=1
+        nx_str(k:k)=file_ocn(i:i)
+        k=k+1
+      endif
+    else if(flag==1)then
+      if(file_ocn(i:i).eq."x")exit
+      nx_str(k:k)=file_ocn(i:i)
+      k=k+1   
+    endif
+  enddo
+!  print *,trim(nx_str)
+  nstr1=k-1
+!  print *,nstr1
+
+  flag=0
+  flag2=0
+  k=1
+  do i=1,100
+    IF(flag2==1)THEN
+    if(flag==0)then
+      if(file_ocn(i:i).ne."T".and.file_ocn(i:i).ne."M".and.file_ocn(i:i).ne."0")then
+        flag=1
+        ny_str(k:k)=file_ocn(i:i)
+        k=k+1
+      endif
+    else if(flag==1)then
+      if(file_ocn(i:i).eq." ")exit
+      ny_str(k:k)=file_ocn(i:i)
+      k=k+1   
+    endif
+    ELSE
+      if(file_ocn(i:i).eq."x")flag2=1
+    ENDIF
+  enddo
+!  print *,trim(ny_str)
+  nstr2=k-1
+!  print *,nstr2
+  res_MAPL(1:nstr1+nstr2+1)=trim(nx_str)//"x"//trim(ny_str)
+  !print *,trim(res_MAPL)
+  read(nx_str,*)nx_MAPL
+  read(ny_str,*)ny_MAPL 
 
   fileT_ocn = "til/"//trim(file_ocn)//".til" ! input
   fileR_ocn = "rst/"//trim(file_ocn)//".rst" ! input
