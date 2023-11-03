@@ -725,6 +725,9 @@ contains
     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
     if(associated(PL0)) deallocate(PL0)
+    deallocate(U_latlon, V_latlon, W_latlon, P_latlon)
+    deallocate(U_inter,  V_inter,  W_inter,  P_inter)
+    deallocate(haloU, haloV, haloW, haloP)
     RETURN_(ESMF_SUCCESS)
     
  end subroutine init_metsrc_field0
@@ -755,8 +758,6 @@ contains
     type (GigatrajInternalWrap)   :: wrap
   
     integer :: num_parcels, my_rank,lm, l, d1,d2
-    real, allocatable, target :: lats(:), lons(:), zs(:)
-    real, allocatable, target :: U(:), V(:), W(:)
     integer ::counts(3), DIMS(3), rank, comm, ierror
     type (ESMF_VM)   :: vm
   
@@ -769,14 +770,11 @@ contains
 
     real(ESMF_KIND_R8) :: DT
 
-    type(ESMF_Field)   :: halo_field
-    type(ESMF_RouteHandle) :: rh
     character(len=20), target :: ctime, ctime0
     type(ESMF_State)            :: INTERNAL
     type(MAPL_MetaComp),pointer :: MPL  
     character(len=ESMF_MAXSTR) :: parcels_file
 
-    !RETURN_(ESMF_SUCCESS)
     call ESMF_VMGetCurrent(vm, _RC)
     call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
@@ -868,13 +866,11 @@ contains
       call esmf_halo(grid_, V_inter, haloV, _RC)
       call esmf_halo(grid_, W_inter, haloW, _RC)
       call esmf_halo(grid_, P_inter, haloP, _RC)
-
     endif
 
 !---------------
 ! Step 3) Update
 !---------------
-   
     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
 !---------------
@@ -884,7 +880,6 @@ contains
                        c_loc(GigaTrajInternalPtr%parcels%lons), &
                        c_loc(GigaTrajInternalPtr%parcels%lats), &
                        c_loc(GigaTrajInternalPtr%parcels%zs))
- 
 !---------------
 ! Step 4) Update internal 
 !---------------
@@ -912,41 +907,9 @@ contains
 !---------------
 
     call write_parcels(GC, import, clock, currentTime, _RC)
-
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Run
-
-  subroutine mapl_halo(grid, U, V, W, P,  haloU, haloV, haloW, haloP, rc)
-    type(ESMF_Grid), intent(in) :: grid
-    real, dimension(:,:,:), intent(in) :: U, V, W, P
-    real, dimension(:,:,:), intent(inout) :: haloU, haloV, haloW, haloP
-    integer, optional,   intent(  out) :: RC
-
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer :: counts(3), dims(3), k
-    integer :: status
-    class(AbstractGridFactory), pointer  :: factory
-    
-    Iam = "Gigatraj Halo"
-    call MAPL_GridGet(grid, localCellCountPerDim=counts, &
-                      globalCellCountPerDim=DIMS, _RC)
-
-    haloU(2:counts(1)+1, 2:counts(2)+1, :) = U
-    haloV(2:counts(1)+1, 2:counts(2)+1, :) = V
-    haloW(2:counts(1)+1, 2:counts(2)+1, :) = W
-    haloP(2:counts(1)+1, 2:counts(2)+1, :) = P
-
-    factory =>grid_manager%get_factory(grid)
-    do k =1, counts(3)
-      call factory%halo(haloU(:,:,k), halo_width=1, _RC)
-      call factory%halo(haloV(:,:,k), halo_width=1, _RC)
-      call factory%halo(haloW(:,:,k), halo_width=1, _RC)
-      call factory%halo(haloP(:,:,k), halo_width=1, _RC)
-    enddo
-
-    RETURN_(ESMF_SUCCESS)
-  end subroutine
 
   subroutine esmf_halo(grid, Field,haloField, rc)
     type(ESMF_Grid), intent(in) :: grid
@@ -959,7 +922,7 @@ contains
     integer :: status
     type(ESMF_Field)   :: halo_field
     type(ESMF_RouteHandle) :: rh
-    real, dimension(:,:,:), pointer  :: with_halo
+    real, dimension(:,:), pointer  :: with_halo
 
     Iam = "Gigatraj ESMF Halo"
     call MAPL_GridGet(grid, localCellCountPerDim=counts, _RC)
@@ -967,7 +930,7 @@ contains
     count3 = size(field,3) ! may be nbins
 
     halo_field = ESMF_FieldCreate(grid, ESMF_TYPEKIND_R4, name='halo_field',  &
-                                ungriddedLBound=[1],ungriddedUBound=[count3], &
+                                !ungriddedLBound=[1],ungriddedUBound=[count3], &
                                 totalLWidth=[1,1],totalUWidth=[1,1])
     call ESMF_FieldHaloStore(halo_field, rh, _RC)
 
@@ -975,11 +938,14 @@ contains
     !
     ! W.Y note, the pointer with_halo's lbound is 0
     !
-    with_halo(1:counts(1), 1:counts(2), :) = Field
-    call ESMF_FieldHalo(halo_field, rh, _RC)
-    haloField = with_halo
+    do k = 1, count3
+       with_halo(1:counts(1), 1:counts(2)) = Field(:,:,k)
+       call ESMF_FieldHalo(halo_field, rh, _RC)
+       haloField(:,:,k) = with_halo
+    enddo
 
     call ESMF_FieldDestroy( halo_field)
+    call ESMF_FieldHaloRelease(rh, _RC)
 
     RETURN_(ESMF_SUCCESS)
   end subroutine esmf_halo
@@ -1712,7 +1678,7 @@ contains
                  c_loc(values(1,i)))
 
     enddo
-    deallocate(field_latlon, haloField)
+    deallocate(field_latlon, haloField, field_)
     RETURN_(ESMF_SUCCESS)
 
   end subroutine get_metsrc_data2d
