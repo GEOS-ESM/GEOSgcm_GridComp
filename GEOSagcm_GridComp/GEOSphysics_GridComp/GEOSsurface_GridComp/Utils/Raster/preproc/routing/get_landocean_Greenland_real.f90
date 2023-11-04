@@ -14,9 +14,9 @@ integer,parameter :: loni_max=20400
 integer,parameter :: lati_min=16801
 integer,parameter :: lati_max=21600
 
-integer,parameter :: id_glac=286926
-integer,parameter :: id_lake=286925
-integer,parameter :: id_landend=284954
+integer,parameter :: id_glac=290191
+integer,parameter :: id_lake=290190
+integer,parameter :: id_landend=290188
 
 real*8,allocatable,dimension(:) :: lon,lat,lon_G,lat_G
 integer,allocatable,dimension(:,:) :: landocean,Greenland
@@ -26,9 +26,9 @@ integer :: i,j
 
 allocate(landocean(nlon,nlat))
 allocate(lon(nlon),lat(nlat))
-call read_ncfile_double1d("inputs/TM0072xTM0036-Pfafstetter.nc","lon",lon,nlon)
-call read_ncfile_double1d("inputs/TM0072xTM0036-Pfafstetter.nc","lat",lat,nlat)
-call read_ncfile_int2d("inputs/TM0072xTM0036-Pfafstetter.nc","data",landocean,nlon,nlat)
+call read_ncfile_double1d("inputs/Pfafstetter.nc","lon",lon,nlon)
+call read_ncfile_double1d("inputs/Pfafstetter.nc","lat",lat,nlat)
+call read_ncfile_int2d("inputs/Pfafstetter.nc","data",landocean,nlon,nlat)
 
 allocate(Greenland(nlon_G,nlat_G))
 allocate(lon_G(nlon_G),lat_G(nlat_G))
@@ -45,7 +45,7 @@ where(landocean>id_landend.and.landocean<id_lake) landocean=-9999
 where(landocean==id_lake.or.landocean==id_glac) landocean=0
 
 allocate(Pfaf_real(id_landend))
-open(77,file="inputs/TM0072xTM0036-Pfaf_real.txt")
+open(77,file="inputs/Pfaf_real.txt")
 read(77,*)Pfaf_real
 
 do i=1,nlon
@@ -60,7 +60,7 @@ enddo
 
 
 
-call create_ncfile_int2d("outputs/TM0072xTM0036-Pfafstetter_Greenland_real.nc","data",landocean,lon,lat,nlon,nlat)
+call create_ncfile_int2d("outputs/Pfafstetter_Greenland_real.nc","data",landocean,lon,lat,nlon,nlat)
 
 
 end

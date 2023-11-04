@@ -4,9 +4,9 @@ use omp_lib
 use rwncfile
 implicit none
 
-character(len=100) :: var1="outlet_sinky_allcat_TM0072xTM0036_mask"
-character(len=100) :: var2="outlet_sinkx_allcat_TM0072xTM0036_mask"
-character(len=100) :: map="TM0072xTM0036-Pfafstetter_Greenland_real.nc"
+character(len=100) :: var1="outlet_sinky_allcat"
+character(len=100) :: var2="outlet_sinkx_allcat"
+character(len=100) :: map="Pfafstetter_Greenland_real.nc"
 integer,parameter :: nc=291809
 integer,parameter :: nlon=43200
 integer,parameter :: nlat=21600

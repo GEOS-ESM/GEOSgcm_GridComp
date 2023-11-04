@@ -5,8 +5,8 @@ use rwncfile
 
 implicit none
 
-character(len=100) :: lonfile="outlet_sinkx_allcat_TM0072xTM0036_mask_2d.nc"
-character(len=100) :: latfile="outlet_sinky_allcat_TM0072xTM0036_mask_2d.nc"
+character(len=100) :: lonfile="outlet_sinkx_allcat_2d.nc"
+character(len=100) :: latfile="outlet_sinky_allcat_2d.nc"
 integer, parameter :: nx=43200, ny=21600
 integer, allocatable  :: lats(:,:), lons(:,:)
 integer i,j

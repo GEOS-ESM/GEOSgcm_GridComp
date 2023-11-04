@@ -20,9 +20,9 @@ open(77,file="outputs/Pfaf_finalID_all.txt")
 read(77,*)id_final
 open(77,file="outputs/outlet_catchindex.txt")
 read(77,*)id_outlet
-open(77,file="outputs/outlet_sinky_TM0072xTM0036_mask.txt")
+open(77,file="outputs/outlet_sinky.txt")
 read(77,*)lati_outlet
-open(77,file="outputs/outlet_sinkx_TM0072xTM0036_mask.txt")
+open(77,file="outputs/outlet_sinkx.txt")
 read(77,*)loni_outlet
 open(77,file="outputs/Pfaf_msk_all.txt")
 read(77,*)msk
@@ -45,11 +45,11 @@ do i=1,nall
   endif
 end do
 
-open(88,file="outputs/outlet_sinky_allcat_TM0072xTM0036_mask.txt")
+open(88,file="outputs/outlet_sinky_allcat.txt")
 do i=1,nall
   write(88,*)lati_full(i)
 enddo
-open(88,file="outputs/outlet_sinkx_allcat_TM0072xTM0036_mask.txt")
+open(88,file="outputs/outlet_sinkx_allcat.txt")
 do i=1,nall
   write(88,*)loni_full(i)
 enddo
