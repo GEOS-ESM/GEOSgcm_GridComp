@@ -4284,7 +4284,7 @@ module moist_subroutines_cloud_microphys
         ! -----------------------------------------------------------------------
         ! density:
         ! -----------------------------------------------------------------------
-        !$acc loop vector
+        !!$acc loop vector
         do k = ktop, kbot
             dz (k) = zt (k) - zt (k + 1) ! note: dz is positive
             q (k) = q (k) * dp (k)
