@@ -783,6 +783,7 @@ contains
              t0 = pt (i, j, k)
              tz (i, j, k) = t0
              dp1 (i, j, k) = delp (i, j, k)
+             ! dp0 (k) = dp1 (k) ! moist air mass * grav
 
              ! import horizontal subgrid variability with pressure dependence
              ! total water subgrid deviation in horizontal direction
@@ -791,7 +792,8 @@ contains
           end do
        end do
     end do
-    !$omp end target teams distribute parallel do
+
+    ! Convert moist mixing ratios to dry mixing ratios
 
     !$omp target teams distribute parallel do collapse(3) default(shared)
     do k = ktop, kbot
@@ -803,10 +805,11 @@ contains
              qrz (i, j, k) = qr (i, j, k)
              qsz (i, j, k) = qs (i, j, k)
              qgz (i, j, k) = qg (i, j, k)
+
+             qaz (i, j, k) = qa (i, j, k)
           end do
        end do
     end do
-    !$omp end target teams distribute parallel do
 
     !$omp target teams distribute parallel do collapse(3) default(shared) private(omq, den0)
     do k = ktop, kbot
@@ -822,8 +825,6 @@ contains
              qiz (i, j, k) = qiz (i, j, k) * omq
              qsz (i, j, k) = qsz (i, j, k) * omq
              qgz (i, j, k) = qgz (i, j, k) * omq
-
-             qaz (i, j, k) = qa (i, j, k)
 
              den0 = - dp1 (i, j, k) / (grav * dz (i, j, k)) ! density of dry air
              p1 (i, j, k) = den0 * rdgas * t0 ! dry air pressure
@@ -842,22 +843,18 @@ contains
           end do
        end do
     end do
-    !$omp end target teams distribute parallel do
 
-    ! TODO: NOT SURE WHY, BUT THIS NEEDS TO BE A SEPARATE KERNEL FOR GCC
+    ! for sedi_momentum
+
     !$omp target teams distribute parallel do collapse(3) default(shared) private(cpaut)
     do k = ktop, kbot
        do i = is, ie
           do j = js, je
-             ! -----------------------------------------------------------------------
-             ! for sedi_momentum
-             ! -----------------------------------------------------------------------
              m1 (i, j, k) = 0.
              if (do_sedi_w) w1 (i, j, k) = w (i, j, k)
           end do
        end do
     end do
-    !$omp end target teams distribute parallel do
 
     !$omp target teams distribute parallel do collapse(3) default(shared) private(cpaut)
     do k = ktop, kbot
@@ -879,7 +876,6 @@ contains
           end do
        end do
     end do
-    !$omp end target teams distribute parallel do
 
     ! -----------------------------------------------------------------------
     ! fix all negative water species
@@ -889,9 +885,65 @@ contains
        call neg_adj (ie, ie, js, je, ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)
     endif
 
+    do n = 1, ntimes
+
+       ! dry air density
+
+       !$omp target teams distribute parallel do collapse(3) default(shared) private(t0)
+       do k = ktop, kbot
+          do j = js, je
+             do i = is, ie
+                if (p_nonhydro) then
+                   dz1 (i, j, k) = dz (i, j, k)
+                   den(i,j,k) = - dp1 (i,j,k) / (grav * dz (i, j, k)) ! density of dry air
+                   ! denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
+                else
+                   t0 = pt (i, j, k)
+                   dz1 (i, j, k) = dz (i, j, k) * tz (i, j, k) / t0 ! hydrostatic balance
+                   den(i,j,k) = (- dp1 (i,j,k) / (grav * dz (i, j, k))) * dz(i,j,k) / dz1(i,j,k) ! density of dry air
+                   ! denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
+                end if
+                m2_rain (i, j, k) = den (i, j, k)
+             end do
+          end do
+       end do
+
+       !$omp target teams distribute parallel do collapse(3) default(shared) private(t0)
+       do k = ktop, kbot
+          do j = js, je
+             do i = is, ie
+                ! sedimentation of cloud ice, snow, and graupel
+                call fall_speed ( &
+                     ktop, kbot, p1(i, j, k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
+                     den(i, j, k), qsz(i, j, k), qiz(i, j, k), qgz(i, j, k), qlz(i, j, k), tz(i, j, k), &
+                     vtsz(i, j, k), vtiz(i, j, k), vtgz(i, j, k)) ! output
+             end do
+          end do
+       end do
+
+       call terminal_fall_3d ( &
+            dts, is, ie, js, je, ktop, kbot, &
+            tz, qvz, qlz, qrz, qgz, qsz, qiz, &
+            dz1, dp1, den, vtgz, vtsz, vtiz, &
+            r1, g1, s1, i1, & ! output
+            m1_sol, w1)
+
+       !$omp target teams distribute parallel do
+       do i = is, ie
+          do j = js, je
+             rain (i, j) = rain (i, j) + r1 (i, j) ! from melted snow & ice that reached the ground
+             ! snow (i, j) = snow (i, j) + s1
+             ! graupel (i, j) = graupel (i, j) + g1
+             ! ice (i, j) = ice (i, j) + i1
+          end do
+       end do
+
+    end do
+
     !$omp end target data
 
     print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'rain: ', minval(rain), maxval(rain), sum(rain)
 
     ! do j = js, je
 
@@ -2577,227 +2629,258 @@ contains
   !>@details It considers cloud ice, snow, and graupel's melting during fall.
   ! =======================================================================
 
-  subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
-       den, vtg, vts, vti, r1, g1, s1, i1, m1_sol, w1)
+  subroutine terminal_fall_3d ( &
+       dtm, is, ie, js, je, ktop, kbot, & ! in
+       tz, qv, ql, qr, qg, qs, qi, & !in/out
+       dz, dp, den, vtg, vts, vti, & ! in
+       r1, g1, s1, i1, & ! out
+       m1_sol, w1) ! in/out
 
     implicit none
     !$omp declare target
 
-    integer, intent (in) :: ktop, kbot
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
 
     real, intent (in) :: dtm ! time step (s)
 
-    real, intent (in), dimension (1:72) :: vtg, vts, vti, den, dp, dz
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: vtg, vts, vti, den, dp, dz
 
-    real, intent (inout), dimension (1:72) :: qv, ql, qr, qg, qs, qi, tz, m1_sol, w1
-    real, dimension (1:72) :: ql_local
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: qv, ql, qr, qg, qs, qi, tz, m1_sol, w1
 
-    real, intent (out) :: r1, g1, s1, i1
+    real, intent (out), dimension(is:ie, js:je) :: r1, g1, s1, i1
 
-    real, dimension (1:72 + 1) :: ze, zt
+    real, dimension (is:ie, js:je, ktop:kbot + 1) :: ze, zt
 
     real :: qsat, dqsdt, evap, dtime
     real :: factor, frac
     real :: tmp, precip, tc, sink
 
-    ! real, dimension (1:72) :: icpk, cvm
-    real :: icpk, cvm
-    real, dimension (1:72) :: m1, dm
+    real, dimension (is:ie, js:je, ktop:kbot) :: icpk, cvm
+    real, dimension (is:ie, js:je, ktop:kbot) :: m1, dm
 
     real :: q_liq, q_sol, lcpk, lhl, lhi
 
     real :: zs
     real :: fac_imlt
 
-    integer :: k, k0, m
+    integer :: i, j, k, m
+    integer, dimension (is:ie, js:je) :: k0
 
-    logical :: no_fall, exit_flag
-
-    r1 = dtm + ktop + kbot ! WORKS
-    r1 = sum(qv + ql + qr + qg + qs + qi + tz + m1_sol + w1) ! WORKS
-    r1 = sum(vtg + vts + vti + den + dp + dz)
+    logical :: exit_flag
+    logical, dimension (is:ie, js:je) :: no_fall
 
     zs = 0.
 
     fac_imlt = 1. - exp (- dtm / tau_imlt)
-    ! r1 = fac_imlt
 
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
 
-    ! !$omp parallel do &
-    ! !$omp   default(none) &
-    ! !$omp   shared( &
-    ! !$omp     m1_sol, tz, qr, qi, ql, qs, qg, qv, cvm, icpk) &
-    ! !$omp   lastprivate(k, lhi, q_liq, q_sol) &
-    ! !$omp   firstprivate(ktop, kbot, c_vap, c_air)
-    ! do k = ktop, kbot
-    !    m1_sol (k) = 0.
-    !    ! lhl (k) = lv00 + d0_vap * tz (k)
-    !    lhi = li00 + dc_ice * tz (k)
-    !    q_liq = ql (k) + qr (k)
-    !    q_sol = qi (k) + qs (k) + qg (k)
-    !    cvm (k) = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-    !    ! lcpk = lhl (k) / cvm (k)
-    !    icpk (k) = lhi / cvm (k)
-    ! enddo
-    ! !$omp end parallel do
-
-    ! r1 = maxval(cvm)
+    !$omp target teams distribute parallel do default(shared) private(lhi, q_liq, q_sol)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             m1_sol (i, j, k) = 0.
+             ! lhl (k) = lv00 + d0_vap * tz (k)
+             lhi = li00 + dc_ice * tz (i, j, k)
+             q_liq = ql (i, j, k) + qr (i, j, k)
+             q_sol = qi (i, j, k) + qs (i, j, k) + qg (i, j, k)
+             cvm (i, j, k) = c_air + qv (i, j, k) * c_vap + q_liq * c_liq + q_sol * c_ice
+             ! lcpk = lhl (k) / cvm (k)
+             icpk (i, j, k) = lhi / cvm (i, j, k)
+          end do
+       end do
+    end do
 
     ! -----------------------------------------------------------------------
     ! find significant melting level
     ! -----------------------------------------------------------------------
 
-    k0 = kbot
-    exit_flag = .false.
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          k0 (i, j) = kbot
+       end do
+    end do
+
+    !$omp single
     do k = ktop, kbot - 1
-       if (tz (k) > tice .and. .not. exit_flag) then
-          k0 = k
-          exit_flag = .true.
-       endif
+       do i = is, ie
+          do j = js, je
+             if (tz (i, j, k) > tice .and. k0 (i, j) == kbot) then
+                k0 (i, j) = k
+             endif
+          end do
+       end do
     enddo
     r1 = k0
+    !$omp end single
 
     ! -----------------------------------------------------------------------
     ! melting of cloud_ice (before fall) :
     ! -----------------------------------------------------------------------
 
-    ! !$omp parallel do &
-    ! !$omp   default(none) &
-    ! !$omp   shared( &
-    ! !$omp     dtm, k0, kbot, tc, tz, tice, c_vap, c_air, ql_mlt, tau_imlt, &
-    ! !$omp     qv, qi, ql, qr, qs, qg, &
-    ! !$omp     ql_local, &
-    ! !$omp     q_liq, q_sol, lhi, cvm, icpk, sink, tmp) &
-    ! !$omp   private(k, fac_imlt)
-    do k = k0, kbot
-       tc = tz (k) - tice
-       ! if (qi (k) > qcmin .and. tc > 0.) then
-          q_liq = ql (k) + qr (k)
-          q_sol = qi (k) + qs (k) + qg (k)
-          lhi = li00 + dc_ice * tz (k)
+    !$omp target teams distribute parallel do default(shared) private(tc, q_liq, q_sol, lhi, sink, tmp)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             if (k > k0 (i, j)) then
+                tc = tz (i, j, k) - tice
+                if (qi (i, j, k) > qcmin .and. tc > 0.) then
+                   q_liq = ql (i, j, k) + qr (i, j, k)
+                   q_sol = qi (i, j, k) + qs (i, j, k) + qg (i, j, k)
+                   lhi = li00 + dc_ice * tz (i, j, k)
+                   sink = min (qi (i, j, k), fac_imlt * tc / icpk (i, j, k))
+                   tmp = min (sink, dim (ql_mlt, ql (i, j, k)))
+                   ql (i, j, k) = ql (i, j, k) + tmp
+                   qr (i, j, k) = qr (i, j, k) + sink - tmp
+                   qi (i, j, k) = qi (i, j, k) - sink
+                   q_liq = q_liq + sink
+                   q_sol = q_sol - sink
 
-          fac_imlt = 1. - exp (- dtm / tau_imlt)
+                   cvm (i, j, k) = c_air + qv (i, j, k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                   tz (i, j, k) = tz (i, j, k) - sink * lhi / cvm (i, j, k)
+                   tc = tz (i, j, k) - tice
+                end if
+             end if
+          end do
+       end do
+    end do
 
-          cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-          icpk = lhi / cvm
-          sink = min (qi (k), fac_imlt * tc / icpk)
+    ! -----------------------------------------------------------------------
+    ! turn off melting when cloud microphysics time step is small
+    ! -----------------------------------------------------------------------
 
-          ! sink = min (qi (k), fac_imlt * tc / icpk (k))
+    if (dtm < 60.) then
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             k0 (i, j) = kbot
+          end do
+       end do
+    end if
 
-          tmp = min (sink, dim (ql_mlt, ql (k)))
-          ql (k) = ql (k) + tmp
-          ! qr (k) = qr (k) + sink - tmp
-          ! qi (k) = qi (k) - sink
+    ! sjl, turn off melting of falling cloud ice, snow and graupel
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          k0 (i, j) = kbot
+       end do
+    end do
+    ! sjl, turn off melting of falling cloud ice, snow and graupel
 
-          ! q_liq = q_liq + sink
-          ! q_sol = q_sol - sink
-          ! cvm = c_air + qv (k) * c_vap + q_liq * c_liq + q_sol * c_ice
-          ! tz (k) = tz (k) - sink * lhi / cvm
-          ! tc = tz (k) - tice
-       ! endif
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          ze (i, j, kbot + 1) = zs
+       end do
+    end do
+    r1 = sum(ze, dim=3)
+
+    ! TODO: Figure out how to do this
+    do k = kbot, ktop, - 1
+       ! !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             ze (i, j, k) = ze (i, j, k + 1) - dz (i, j, k) ! dz < 0
+          end do
+       end do
     enddo
-    ! ! !$omp end parallel do
-    ! r1 = sum(ql)
 
-    ! ! -----------------------------------------------------------------------
-    ! ! turn off melting when cloud microphysics time step is small
-    ! ! -----------------------------------------------------------------------
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          zt (i, j, ktop) = ze (i, j, ktop)
+       end do
+    end do
 
-    ! if (dtm < 60.) k0 = kbot
+    ! -----------------------------------------------------------------------
+    ! update capacity heat and latend heat coefficient
+    ! -----------------------------------------------------------------------
 
-    ! ! sjl, turn off melting of falling cloud ice, snow and graupel
-    ! k0 = kbot
-    ! ! sjl, turn off melting of falling cloud ice, snow and graupel
-
-    ! ze (kbot + 1) = zs
-    ! !!$acc loop seq
-    ! do k = kbot, ktop, - 1
-    !    ze (k) = ze (k + 1) - dz (k) ! dz < 0
-    ! enddo
-
-    ! zt (ktop) = ze (ktop)
-
-    ! ! -----------------------------------------------------------------------
-    ! ! update capacity heat and latend heat coefficient
-    ! ! -----------------------------------------------------------------------
-
-    ! !!$acc loop vector private(lhi)
+    !$omp target teams distribute parallel do collapse(3) private(lhi)
     ! do k = k0, kbot
-    !    lhi = li00 + dc_ice * tz (k)
-    !    icpk (k) = lhi / cvm (k)
-    ! enddo
+    do k = kbot, kbot
+       do i = is, ie
+          do j = js, je
+             lhi = li00 + dc_ice * tz (i, j, k)
+             icpk (i, j, k) = lhi / cvm (i, j, k)
+          end do
+       end do
+    enddo
 
-    ! ! -----------------------------------------------------------------------
-    ! ! melting of falling cloud ice into rain
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! melting of falling cloud ice into rain
+    ! -----------------------------------------------------------------------
 
-    ! call check_column (ktop, kbot, qi, no_fall)
+    call check_column_3d (is, ie, js, je, ktop, kbot, qi, no_fall)
 
-    ! if (vi_fac < 1.e-5 .or. no_fall) then
+    ! !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
 
-    !    i1 = 0.
+          if (vi_fac < 1.e-5 .or. no_fall (i, j)) then
 
-    ! else
+             i1 (i, j) = 0.
 
-    !    !!$acc loop vector
-    !    do k = ktop + 1, kbot
-    !       zt (k) = ze (k) - dtm * (vti (k - 1) + vti (k))/2.0
-    !    enddo
-    !    zt (kbot + 1) = zs - dtm * vti (kbot)
+          else
 
-    !    !!$acc loop seq
-    !    do k = ktop, kbot
-    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-    !    enddo
+             do k = ktop + 1, kbot
+                zt (i, j, k) = ze (i, j, k) - dtm * (vti (i, j, k - 1) + vti (i, j, k))/2.0
+             enddo
+             zt (i, j, kbot + 1) = zs - dtm * vti (i, j, kbot)
 
-    !    if (k0 < kbot) then
-    !       !!$acc loop seq
-    !       do k = kbot - 1, k0, - 1
-    !          if (qi (k) > qcmin) then
-    !             exit_flag = .true.
-    !             !!$acc loop seq
-    !             do m = k + 1, kbot
-    !                if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
-    !                if (zt (k) < ze (m + 1) .and. tz (m) > tice .and. exit_flag) then
-    !                   dtime = min (1.0, (ze (m) - ze (m + 1)) / (max (vr_min, vti (k)) * tau_imlt))
-    !                   sink = min (qi (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-    !                   tmp = min (sink, dim (ql_mlt, ql (m)))
-    !                   ql (m) = ql (m) + tmp
-    !                   qr (m) = qr (m) - tmp + sink
-    !                   tz (m) = tz (m) - sink * icpk (m)
-    !                   qi (k) = qi (k) - sink * dp (m) / dp (k)
-    !                endif
-    !             enddo
-    !          endif
-    !       enddo
-    !    endif
+             do k = ktop, kbot
+                if (zt (i, j, k + 1) >= zt (i, j, k)) zt (i, j, k + 1) = zt (i, j, k) - dz_min
+             enddo
 
-    !    if (do_sedi_w) then
-    !       !!$acc loop vector
-    !       do k = ktop, kbot
-    !          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-    !       enddo
-    !    endif
+             if (k0 (i, j) < kbot) then
+                do k = kbot - 1, k0 (i, j), - 1
+                   if (qi (i, j, k) > qcmin) then
+                      exit_flag = .true.
+                      do m = k + 1, kbot
+                         if (zt (i, j, k + 1) >= ze (i, j, m) .and. exit_flag) exit_flag = .false.
+                         if (zt (i, j, k) < ze (i, j, m + 1) .and. tz (i, j, m) > tice .and. exit_flag) then
+                            dtime = min (1.0, (ze (i, j, m) - ze (i, j, m + 1)) / (max (vr_min, vti (i, j, k)) * tau_imlt))
+                            sink = min (qi (i, j, k) * dp (i, j, k) / dp (i, j, m), dtime * (tz (i, j, m) - tice) / icpk (i, j, m))
+                            tmp = min (sink, dim (ql_mlt, ql (i, j, m)))
+                            ql (i, j, m) = ql (i, j, m) + tmp
+                            qr (i, j, m) = qr (i, j, m) - tmp + sink
+                            tz (i, j, m) = tz (i, j, m) - sink * icpk (i, j, m)
+                            qi (i, j, k) = qi (i, j, k) - sink * dp (i, j, m) / dp (i, j, k)
+                         endif
+                      enddo
+                   endif
+                enddo
+             endif
 
-    !    if (use_ppm) then
-    !       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qi, i1, m1_sol, mono_prof)
-    !    else
-    !       call implicit_fall (dtm, ktop, kbot, ze, vti, dp, qi, i1, m1_sol)
-    !    endif
+             if (do_sedi_w) then
+                do k = ktop, kbot
+                   dm (i, j, k) = &
+                        dp (i, j, k) * &
+                        (1. + qv (i, j, k) + ql (i, j, k) + qr (i, j, k) + qi (i, j, k) + qs (i, j, k) + qg (i, j, k))
+                enddo
+             endif
+          end if
 
-    !    if (do_sedi_w) then
-    !       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
-    !       !!$acc loop vector
-    !       do k = ktop + 1, kbot
-    !          w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
-    !               / (dm (k) + m1_sol (k - 1) - m1_sol (k))
-    !       enddo
-    !    endif
+       end do
+    end do
 
-    ! endif
+!     if (use_ppm) then
+!        call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qi, i1, m1_sol, mono_prof)
+!     else
+!        call implicit_fall (dtm, ktop, kbot, ze, vti, dp, qi, i1, m1_sol)
+!     endif
+
+!     if (do_sedi_w) then
+!        w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
+! !!$acc loop vector
+!        do k = ktop + 1, kbot
+!           w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
+!                / (dm (k) + m1_sol (k - 1) - m1_sol (k))
+!        enddo
+!     endif
 
     ! ! -----------------------------------------------------------------------
     ! ! melting of falling snow into rain
@@ -2955,7 +3038,7 @@ contains
 
     ! endif
 
-  end subroutine terminal_fall
+  end subroutine terminal_fall_3d
 
   ! =======================================================================
   !>@brief The subroutine 'check_column' checks
@@ -2986,6 +3069,38 @@ contains
 
   end subroutine check_column
 
+  subroutine check_column_3d (is, ie, js, je, ktop, kbot, q, no_fall)
+
+    implicit none
+    !$omp declare target
+
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
+
+    real, intent (in) :: q (is:ie, js:je, ktop:kbot)
+
+    logical, intent (out) :: no_fall (is:ie, js:je)
+
+    integer :: i, j, k
+
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          no_fall (i, j) = .true.
+       end do
+    end do
+
+    do k = ktop, kbot
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (q (i, j, k) > qpmin .and. no_fall(i, j)) then
+                no_fall (i, j) = .false.
+             end if
+          end do
+       end do
+    end do
+
+  end subroutine check_column_3d
   ! =======================================================================
   !>@brief The subroutine 'implicit_fall' computes the time-implicit monotonic
   !! scheme.
@@ -3450,42 +3565,40 @@ contains
        if (qi < thi) then ! this is needed as the fall - speed maybe problematic for small qi
           vti = vf_min
        else
-          ! tc = tk - tice ! deg C
-          ! IWC = qi * den * 1.e3 ! Units are g/m3
-          ! ! -----------------------------------------------------------------------
-          ! ! use deng and mace (2008, grl)
-          ! ! https://doi.org/10.1029/2008GL035054
-          ! ! -----------------------------------------------------------------------
-          ! viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
-          ! viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
-          ! ! -----------------------------------------------------------------------
-          ! ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
-          ! !                               ice clouds: Results from SPartICus'
-          ! ! -----------------------------------------------------------------------
-          ! !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
-          ! !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
-          ! ! Combine
-          ! vti = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-          ! ! Update units from cm/s to m/s
-          ! vti = vi1 * vti
-          ! ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-          ! !------ice cloud effective radius ----- [klaus wyser, 1998]
-          ! !if(tk(k)>t_ice) then
-          ! !   rBB  = -2.
-          ! !else
-          ! !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
-          ! !endif
-          ! !rBB   = MIN((MAX(rBB,-6.)),-2.)
-          ! !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-          ! !lnP   = log(pl(k)/100.0)
-          ! !C0    = -1.04 + 0.298*lnP
-          ! !C1    =  0.67 - 0.097*lnP
-          ! ! apply pressure scaling
-          ! !vti = vti * (C0 + C1*log(DIAM))
-          ! ! Limits
-          ! vti = min (vi_max, max (vf_min, vti))
-          ! TODO: WE NEED A POWER OPERATOR FIRST
-          vti = vf_min
+          tc = tk - tice ! deg C
+          IWC = qi * den * 1.e3 ! Units are g/m3
+          ! -----------------------------------------------------------------------
+          ! use deng and mace (2008, grl)
+          ! https://doi.org/10.1029/2008GL035054
+          ! -----------------------------------------------------------------------
+          viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
+          viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
+          ! -----------------------------------------------------------------------
+          ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
+          !                               ice clouds: Results from SPartICus'
+          ! -----------------------------------------------------------------------
+          !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+          !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
+          ! Combine
+          vti = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+          ! Update units from cm/s to m/s
+          vti = vi1 * vti
+          ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+          !------ice cloud effective radius ----- [klaus wyser, 1998]
+          !if(tk(k)>t_ice) then
+          !   rBB  = -2.
+          !else
+          !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
+          !endif
+          !rBB   = MIN((MAX(rBB,-6.)),-2.)
+          !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+          !lnP   = log(pl(k)/100.0)
+          !C0    = -1.04 + 0.298*lnP
+          !C1    =  0.67 - 0.097*lnP
+          ! apply pressure scaling
+          !vti = vti * (C0 + C1*log(DIAM))
+          ! Limits
+          vti = min (vi_max, max (vf_min, vti))
        endif
     endif
 
@@ -4637,7 +4750,6 @@ contains
           enddo
        enddo
     enddo
-    !$omp end target teams distribute parallel do
 
     ! -----------------------------------------------------------------------
     ! fix water vapor; borrow from below
@@ -4670,7 +4782,6 @@ contains
           endif
        enddo
     enddo
-    !$omp end target teams distribute parallel do
 
   end subroutine neg_adj
 
