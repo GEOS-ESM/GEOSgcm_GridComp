@@ -1,7 +1,8 @@
  module CNCLM_Photosynthesis
 
  use MAPL_ConstantsMod
- use clm_varpar,         only : numpft, numrad, num_veg, num_zon
+ use clm_varpar,         only : numpft, numrad, num_veg, num_zon, &
+                                nlevcan
  use decompMod
  use PatchType
  use filterMod
@@ -102,7 +103,7 @@
 ! type(clumpfilter)              :: filter
 
  ! temporary and loop variables                                                                                        
- integer :: n, p, pft_num, nv, nc, nz, np, ib, nl
+ integer :: n, p, pft_num, nv, nc, nz, np, ib, nl, iv
  real    :: bare, tmp_albgrd_vis,tmp_albgrd_nir,&
             tmp_albgri_vis,tmp_albgri_nir, &
             tmp_parsun, tmp_parsha
@@ -175,9 +176,6 @@
        rhos                    => pftcon%rhos                     , & ! Input:  stem reflectance: 1=vis, 2=nir        
        taul                    => pftcon%taul                     , & ! Input:  leaf transmittance: 1=vis, 2=nir      
        taus                    => pftcon%taus                     , & ! Input:  stem transmittance: 1=vis, 2=nir   
-       vcmaxcintsun            => surfalb_inst%vcmaxcintsun_patch , &
-       vcmaxcintsha            => surfalb_inst%vcmaxcintsha_patch , &
-       f_sun_z                 => surfalb_inst%fsun_z_patch       , &
        xl                      => pftcon%xl                       , & 
        leafn                   => bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_patch , &
        froot_carbon            => bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch  , &
@@ -341,6 +339,32 @@
           else
               num_novegsol = num_novegsol + 1
               filter_novegsol(num_novegsol) = p
+          end if
+
+          if (nlevcan == 1) then   ! jk: currently only coded for one canopy layer
+             surfalb_inst%tlai_z_patch(p,1) = elai(p)
+             surfalb_inst%tsai_z_patch(p,1) = esai(p)
+          end if
+  
+          do iv = 1, surfalb_inst%nrad_patch(p)
+             surfalb_inst%fabd_sun_z_patch(p,iv) = 0._r8
+             surfalb_inst%fabd_sha_z_patch(p,iv) = 0._r8
+             surfalb_inst%fabi_sun_z_patch(p,iv) = 0._r8
+             surfalb_inst%fabi_sha_z_patch(p,iv) = 0._r8
+             surfalb_inst%fsun_z_patch(p,iv)     = 0._r8
+          end do               
+       
+          if (nlevcan == 1) then
+             surfalb_inst%vcmaxcintsun_patch(p) = 0._r8
+             surfalb_inst%vcmaxcintsha_patch(p) = (1._r8 - exp(-extkn*elai(p))) / extkn
+             if (elai(p) > 0._r8) then
+                surfalb_inst%vcmaxcintsha_patch(p) = surfalb_inst%vcmaxcintsha_patch(p) / elai(p)
+             else
+                surfalb_inst%vcmaxcintsha_patch(p) = 0._r8
+             end if            
+          else if (nlevcan > 1) then
+             surfalb_inst%vcmaxcintsun_patch(p) = 0._r8
+             surfalb_inst%vcmaxcintsha_patch(p) = 0._r8
           end if
 
           water_inst%waterdiagnosticbulk_inst%fdry_patch(p)    = (1-fwet(nc))*elai(p)/max( elai(p)+esai(p), 1.e-06_r8 )
