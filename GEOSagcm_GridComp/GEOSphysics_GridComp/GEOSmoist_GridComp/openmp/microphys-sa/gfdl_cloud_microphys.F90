@@ -684,14 +684,14 @@ contains
     ! real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     ! real, dimension (ktop:kbot) :: w1, tmp1, tmp2
 
-    real, dimension (ie:ie, js:je, ktop:kbot) :: h_var1d
-    real, dimension (ie:ie, js:je, ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
-    real, dimension (ie:ie, js:je, ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
-    real, dimension (ie:ie, js:je, ktop:kbot) :: dp1, dz1
-    real, dimension (ie:ie, js:je, ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
-    real, dimension (ie:ie, js:je, ktop:kbot) :: den, tz, p1, denfac
-    real, dimension (ie:ie, js:je, ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
-    real, dimension (ie:ie, js:je, ktop:kbot) :: w1, tmp1, tmp2
+    real, dimension (is:ie, js:je, ktop:kbot) :: h_var1d
+    real, dimension (is:ie, js:je, ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qgz, qaz
+    real, dimension (is:ie, js:je, ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
+    real, dimension (is:ie, js:je, ktop:kbot) :: dp1, dz1
+    real, dimension (is:ie, js:je, ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0
+    real, dimension (is:ie, js:je, ktop:kbot) :: den, tz, p1, denfac
+    real, dimension (is:ie, js:je, ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
+    real, dimension (is:ie, js:je, ktop:kbot) :: w1
 
     real :: cpaut, t0, dts, rdt, den0
     real, dimension(is:ie, js:je) :: r1, s1, i1, g1
@@ -767,19 +767,13 @@ contains
     !$omp     tz, dp1, h_var1d, &
     !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
     !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
-    !$omp     m1, w1, den0, p1, ccn, c_praut, dz1, den, denfac, &
+    !$omp     m1, w1, p1, ccn, c_praut, dz1, den, denfac, &
     !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol)
 
-    !$omp target
-    !$omp teams distribute parallel do collapse(3) default(shared) private(cpaut, t0, omq, den0)
+    !$omp target teams distribute parallel do collapse(3) default(shared) private(t0)
     do k = ktop, kbot
        do i = is, ie
           do j = js, je
-
-             cpaut = c_paut * 0.104 * grav / 1.717e-5
-             !! slow autoconversion in stable regimes
-             !cpaut = cpaut * (0.5 + 0.5*(1.0-max(0.0,min(1.0,eis(i)/10.0))**2))
-
              ! Initialize
              m2_rain (i, j, k) = 0.
              m2_sol (i, j, k) = 0.
@@ -790,29 +784,38 @@ contains
              tz (i, j, k) = t0
              dp1 (i, j, k) = delp (i, j, k)
 
-             ! -----------------------------------------------------------------------
              ! import horizontal subgrid variability with pressure dependence
              ! total water subgrid deviation in horizontal direction
              ! default area dependent form: use dx ~ 100 km as the base
-             ! -----------------------------------------------------------------------
              h_var1d (i, j, k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
-             ! -----------------------------------------------------------------------
-             ! convert moist mixing ratios to dry mixing ratios
-             ! -----------------------------------------------------------------------
-
+    !$omp target teams distribute parallel do collapse(3) default(shared)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
              qvz (i, j, k) = qv (i, j, k)
              qlz (i, j, k) = ql (i, j, k)
              qiz (i, j, k) = qi (i, j, k)
              qrz (i, j, k) = qr (i, j, k)
              qsz (i, j, k) = qs (i, j, k)
              qgz (i, j, k) = qg (i, j, k)
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
+    !$omp target teams distribute parallel do collapse(3) default(shared) private(omq, den0)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
              ! dp1: dry air_mass
              ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
              dp1 (i, j, k) = dp1 (i, j, k) * (1. - qvz (i, j, k)) ! gfs
              omq = delp (i, j, k) / dp1 (i, j, k)
-
              qvz (i, j, k) = qvz (i, j, k) * omq
              qlz (i, j, k) = qlz (i, j, k) * omq
              qrz (i, j, k) = qrz (i, j, k) * omq
@@ -820,7 +823,7 @@ contains
              qsz (i, j, k) = qsz (i, j, k) * omq
              qgz (i, j, k) = qgz (i, j, k) * omq
 
-             qaz (i, j, k) = qa (i, j, k) ! SAVING MEMORY
+             qaz (i, j, k) = qa (i, j, k)
 
              den0 = - dp1 (i, j, k) / (grav * dz (i, j, k)) ! density of dry air
              p1 (i, j, k) = den0 * rdgas * t0 ! dry air pressure
@@ -836,35 +839,47 @@ contains
              qs0 (i, j, k) = qsz (i, j, k)
              qg0 (i, j, k) = qgz (i, j, k)
 
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
+
+    ! TODO: NOT SURE WHY, BUT THIS NEEDS TO BE A SEPARATE KERNEL FOR GCC
+    !$omp target teams distribute parallel do collapse(3) default(shared) private(cpaut)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
              ! -----------------------------------------------------------------------
              ! for sedi_momentum
              ! -----------------------------------------------------------------------
-
              m1 (i, j, k) = 0.
-
-             w1 (i, j, k) = 0.
              if (do_sedi_w) w1 (i, j, k) = w (i, j, k)
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
+    !$omp target teams distribute parallel do collapse(3) default(shared) private(cpaut)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             cpaut = c_paut * 0.104 * grav / 1.717e-5
              ! ccn needs units #/m^3
              if (prog_ccn) then
                 ! qn has units # / m^3
                 ccn (i, j, k) = qn (i, j, k)
-                c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
-                ! c_praut (i, j, k) = cpaut / sqrt (ccn (i, j, k) * rhor)
+                c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.)
              else
                 ! qn has units # / m^3
                 ccn (i, j, k) = qn (i, j, k)
                 !!! use GEOS ccn: ccn (i, j, k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
-                c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.) ! POWER OPERATOR DOES NOT WORK
-                ! c_praut (i, j, k) = cpaut / sqrt (ccn (i, j, k) * rhor)
+                c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.)
              endif
-             m2_rain (i, j, k) = cpaut
-
+             m2_rain (i, j, k) = c_praut (i,j, k)
           end do
        end do
     end do
-    !$omp end teams distribute parallel do
-    !$omp end target
+    !$omp end target teams distribute parallel do
 
     ! -----------------------------------------------------------------------
     ! fix all negative water species
@@ -876,9 +891,7 @@ contains
 
     !$omp end target data
 
-    ! !$omp target update from(m2_rain, m2_sol)
     print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
-    ! print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
 
     ! do j = js, je
 
@@ -4569,7 +4582,8 @@ contains
     ! define heat capacity and latent heat coefficient
     ! -----------------------------------------------------------------------
 
-    !$omp target teams distribute parallel do collapse(3) private(cvm, lcpk, icpk)
+    !$omp target teams distribute parallel do collapse(3)
+    ! private(cvm, lcpk, icpk)
     do k = ktop, kbot
        do i = is, ie
           do j = js, je
@@ -4645,7 +4659,8 @@ contains
     ! bottom layer; borrow from above
     ! -----------------------------------------------------------------------
 
-    !$omp target teams distribute parallel do collapse(2) private(dq)
+    !$omp target teams distribute parallel do collapse(2)
+    ! private(dq)
     do i = is, ie
        do j = js, je
           if (qv (i, j, kbot) < 0. .and. qv (i, j, kbot - 1) > 0.) then
