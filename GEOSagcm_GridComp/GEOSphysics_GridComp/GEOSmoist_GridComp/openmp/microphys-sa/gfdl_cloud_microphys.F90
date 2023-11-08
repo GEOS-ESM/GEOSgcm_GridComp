@@ -2816,6 +2816,7 @@ contains
 
     call check_column_3d (is, ie, js, je, ktop, kbot, qi, no_fall)
 
+    ! TODO: Kernel is too big - causes libgomp crash
     ! !$omp target teams distribute parallel do collapse(2)
     do i = is, ie
        do j = js, je
@@ -2867,20 +2868,43 @@ contains
        end do
     end do
 
-!     if (use_ppm) then
-!        call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qi, i1, m1_sol, mono_prof)
-!     else
-!        call implicit_fall (dtm, ktop, kbot, ze, vti, dp, qi, i1, m1_sol)
-!     endif
+    if (use_ppm) then
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall(i, j)) then
+                call lagrangian_fall_ppm ( &
+                     ktop, kbot, zs, ze (i, j, :), zt (i, j, :), dp (i, j, :), &
+                     qi (i, j, :), i1 (i, j), m1_sol (i, j, :), mono_prof)
+             end if
+          end do
+       end do
+    else
+       call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vti, dp, qi, i1, m1_sol, no_fall)
+    endif
 
-!     if (do_sedi_w) then
-!        w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_sol (ktop) * vti (ktop)) / (dm (ktop) - m1_sol (ktop))
-! !!$acc loop vector
-!        do k = ktop + 1, kbot
-!           w1 (k) = (dm (k) * w1 (k) - m1_sol (k - 1) * vti (k - 1) + m1_sol (k) * vti (k)) &
-!                / (dm (k) + m1_sol (k - 1) - m1_sol (k))
-!        enddo
-!     endif
+    if (do_sedi_w) then
+       !$omp target teams distribute collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                w1 (i, j, ktop) = &
+                     (dm (i, j, ktop) * w1 (i, j, ktop) + m1_sol (i, j, ktop) * vti (i, j, ktop)) / &
+                     (dm (i, j, ktop) - m1_sol (i, j, ktop))
+                !$omp parallel do
+                do k = ktop + 1, kbot
+                   w1 (i, j, k) = &
+                        ( &
+                        dm (i, j, k) * w1 (i, j, k) - &
+                        m1_sol (i, j, k - 1) * vti (i, j, k - 1) + &
+                        m1_sol (i, j, k) * vti (i, j, k) &
+                        ) / &
+                        (dm (i, j, k) + m1_sol (i, j, k - 1) - m1_sol (i, j, k))
+                enddo
+             end if
+          end do
+       end do
+    endif
 
     ! ! -----------------------------------------------------------------------
     ! ! melting of falling snow into rain
@@ -3107,74 +3131,130 @@ contains
   !>@author Shian-Jiann Lin, 2016
   ! =======================================================================
 
-  subroutine implicit_fall (dt, ktop, kbot, ze, vt, dp, q, precip, m1)
+  subroutine implicit_fall_3d (dt, is, ie, js, je, ktop, kbot, ze, vt, dp, q, precip, m1, no_fall)
 
     implicit none
     !$omp declare target
 
-    integer, intent (in) :: ktop, kbot
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
 
     real, intent (in) :: dt
 
-    real, intent (in), dimension (ktop:kbot + 1) :: ze
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot + 1) :: ze
 
-    real, intent (in), dimension (ktop:kbot) :: vt, dp
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: vt, dp
 
-    real, intent (inout), dimension (ktop:kbot) :: q
+    logical, intent (in), dimension (is:ie, js:je) :: no_fall
 
-    real, intent (out), dimension (ktop:kbot) :: m1
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: q
 
-    real, intent (out) :: precip
+    real, intent (out), dimension (is:ie, js:je, ktop:kbot) :: m1
 
-    real, dimension (ktop:kbot) :: qm
+    real, intent (out), dimension (is:ie, js:je) :: precip
 
-    integer :: k
+    real, dimension (is:ie, js:je, ktop:kbot) :: qm
 
-    !!$acc loop vector
+    integer :: i, j, k
+
+    !$omp target teams distribute parallel do collapse(3)
     do k = ktop, kbot
-       q (k) = q (k) * dp (k)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i,j)) q (i, j, k) = q (i, j, k) * dp (i, j, k)
+          end do
+       end do
     enddo
 
     ! -----------------------------------------------------------------------
     ! sedimentation: non - vectorizable loop
     ! -----------------------------------------------------------------------
 
-    qm (ktop) = q (ktop) / ((ze (ktop) - ze (ktop + 1)) + (dt * vt (ktop)))
-    !!$acc loop seq
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          if (.not. no_fall (i, j)) then
+             qm (i, j, ktop) = q (i, j, ktop) / ((ze (i, j, ktop) - ze (i, j, ktop + 1)) + (dt * vt (i, j, ktop)))
+          end if
+       end do
+    end do
+
     do k = ktop + 1, kbot
-       qm (k) = (q (k) + (dt * vt (k-1)) * qm (k - 1)) / ((ze (k) - ze (k + 1)) + (dt * vt (k)))
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                qm (i, j, k) = &
+                     (q (i, j, k) + (dt * vt (i, j, k-1)) * qm (i, j, k - 1)) / &
+                     ((ze (i, j, k) - ze (i, j, k + 1)) + (dt * vt (i, j, k)))
+             end if
+          end do
+       end do
     enddo
 
     ! -----------------------------------------------------------------------
     ! qm is density at this stage
     ! -----------------------------------------------------------------------
 
-    !!$acc loop vector
+    !$omp target teams distribute parallel do collapse(3)
     do k = ktop, kbot
-       qm (k) = qm (k) * (ze (k) - ze (k + 1))
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                qm (i, j, k) = qm (i, j, k) * (ze (i, j, k) - ze (i, j, k + 1))
+             end if
+          end do
+       end do
     enddo
 
     ! -----------------------------------------------------------------------
     ! output mass fluxes: non - vectorizable loop
     ! -----------------------------------------------------------------------
 
-    m1 (ktop) = q (ktop) - qm (ktop)
-    !!$acc loop seq
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          if (.not. no_fall (i, j)) then
+             m1 (i, j, ktop) = q (i, j, ktop) - qm (i, j, ktop)
+          end if
+       end do
+    end do
+
     do k = ktop + 1, kbot
-       m1 (k) = m1 (k - 1) + q (k) - qm (k)
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                m1 (i, j, k) = m1 (i, j, k - 1) + q (i, j, k) - qm (i, j, k)
+             end if
+          end do
+       end do
     enddo
-    precip = m1 (kbot)
+
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          if (.not. no_fall (i, j)) then
+             precip (i, j) = m1 (i, j, kbot)
+          end if
+       end do
+    end do
 
     ! -----------------------------------------------------------------------
     ! update:
     ! -----------------------------------------------------------------------
 
-    !!$acc loop vector
+    !$omp target teams distribute parallel do collapse(3)
     do k = ktop, kbot
-       q (k) = qm (k) / dp (k)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                q (i, j, k) = qm (i, j, k) / dp (i, j, k)
+             end if
+          end do
+       end do
     enddo
 
-  end subroutine implicit_fall
+  end subroutine implicit_fall_3d
 
   ! =======================================================================
   !> lagrangian scheme
