@@ -22,3 +22,11 @@ target_include_directories(${this} PRIVATE
 # We need the SHELL prefix to get around the error where the flags are quoted as in
 # gfortran: error: unrecognized command-line option '-fopenacc -foffload=nvptx-none’
 target_compile_options(${this} PRIVATE SHELL:${GEOS_Fortran_OpenMP_Offload_Flags})
+
+ecbuild_add_executable (
+  TARGET microphys_driver.x
+  SOURCES
+  microphys-sa/driver.F90
+  microphys-sa/gfdl_cloud_microphys.F90)
+target_compile_options(microphys_driver.x PRIVATE SHELL:${GEOS_Fortran_OpenMP_Offload_Flags})
+target_link_options(microphys_driver.x PRIVATE SHELL:${GEOS_Fortran_OpenMP_Offload_Flags_Libs})
