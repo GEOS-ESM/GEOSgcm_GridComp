@@ -29,6 +29,7 @@ module GEOS_GigatrajGridCompMod
     type(horde) :: parcels
     type(c_ptr) :: metSrc
     type(ESMF_Time) :: startTime
+    type(ESMF_TimeInterval)  :: Integrate_DT
     character(len=ESMF_MAXSTR), allocatable :: ExtraFieldNames(:)
     type(VerticalData) :: vdata
     logical :: regrid_to_latlon
@@ -142,11 +143,12 @@ contains
     type (ESMF_TIME) :: CurrentTime
     character(len=20), target :: ctime 
     character(len=:), allocatable, target :: name_, unit_
-    type(ESMF_Alarm)  :: GigaTrajOutAlarm, GigaTrajRebalanceAlarm
-    type(ESMF_TimeInterval)      :: parcels_DT, Rebalance_DT
+    type(ESMF_Alarm)  :: GigaTrajOutAlarm, GigaTrajRebalanceAlarm, GigaTrajIntegrateAlarm
+    type(ESMF_TimeInterval)      :: parcelsOut_DT, Rebalance_DT, Integrate_DT
     type(ESMF_TimeInterval)      :: ModelTimeStep
     type(ESMF_State)             :: INTERNAL
-    integer :: minutes_, imc, jmc
+    integer :: imc, jmc, HH, MM, SS
+    integer :: integrate_time, r_time, o_time
     character(len=ESMF_MAXSTR) :: parcels_file
     character(len=ESMF_MAXSTR) :: grid_name
     character(len=ESMF_MAXSTR) :: regrid_to_latlon
@@ -166,27 +168,49 @@ contains
     call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
 
-    call MAPL_GetResource(MPL, minutes_, "GIGATRAJ_REBALANCE_MINUTES:", default=30, _RC) 
-    call ESMF_TimeIntervalSet(Rebalance_DT, m= minutes_, _RC)
-    call MAPL_GetResource(MPL, minutes_, "GIGATRAJ_OUTPUT_MINUTES:", default=30, _RC)
-    call ESMF_TimeIntervalSet(parcels_DT,   m= minutes_, _RC)
+    call ESMF_TimeIntervalGet(ModelTimeStep, h = hh, m = mm, s = ss, _RC)
+    
+    call MAPL_GetResource(MPL, integrate_time, "GIGATRAJ_INTEGRATE_DT:", default = hh*10000+mm*100+ss, _RC) 
+    hh = integrate_time/10000
+    mm = mod(integrate_time, 10000)/100
+    ss = mod(integrate_time, 100)
+    call ESMF_TimeIntervalSet(Integrate_DT,  h = hh, m = mm, s = ss, _RC)
+
+    call MAPL_GetResource(MPL, r_time, "GIGATRAJ_REBALANCE_DT:", default = integrate_time, _RC) 
+    hh = r_time/10000
+    mm = mod(r_time, 10000)/100
+    ss = mod(r_time, 100)
+    call ESMF_TimeIntervalSet(Rebalance_DT, h = hh, m = mm, s = ss, _RC)
+
+    call MAPL_GetResource(MPL, o_time, "GIGATRAJ_OUTPUT_DT:", default = integrate_time, _RC)
+    hh = o_time/10000
+    mm = mod(o_time, 10000)/100
+    ss = mod(o_time, 100)
+    call ESMF_TimeIntervalSet(parcelsOut_DT, h = hh, m = mm, s = ss, _RC)
 
     GigaTrajOutAlarm = ESMF_AlarmCreate(                   &
          clock,                                            &
          name='GigatrajOut',                               &
-         ringTime= CurrentTime + parcels_DT-ModelTimeStep, &
-         ringInterval=parcels_DT,                          &
+         ringTime= CurrentTime + parcelsOut_DT-ModelTimeStep, &
+         ringInterval=parcelsOut_DT,                          &
          ringTimeStepCount=1,                              &
          sticky=.false., _RC)
 
-    GigaTrajRebalanceAlarm = ESMF_AlarmCreate(                   &
+    GigaTrajRebalanceAlarm = ESMF_AlarmCreate(             &
          clock,                                            &
-         name='GigatrajRebalance',                               &
-         ringTime= CurrentTime + parcels_DT-ModelTimeStep, &
-         ringInterval=parcels_DT,                          &
+         name='GigatrajRebalance',                         &
+         ringTime= CurrentTime + Rebalance_DT-ModelTimeStep, &
+         ringInterval=Rebalance_DT,                          &
          ringTimeStepCount=1,                              &
          sticky=.false., _RC)
 
+    GigaTrajIntegrateAlarm = ESMF_AlarmCreate(             &
+         clock,                                            &
+         name='GigatrajIntegrate',                         &
+         ringTime= CurrentTime + integrate_DT-ModelTimeStep, &
+         ringInterval=integrate_DT,                          &
+         ringTimeStepCount=1,                              &
+         sticky=.false., _RC)
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  _RC)
 
@@ -207,6 +231,7 @@ contains
                    1., 0.7, 0.5, 0.4,  0.3, 0.2, 0.1, 0.07, 0.05, 0.04, 0.03, 0.02]
     npz = size(levs_center, 1)
     GigaTrajInternalPtr%npz = npz
+    GigaTrajInternalPtr%Integrate_DT = Integrate_DT
 
     call MAPL_GetResource(MPL, NX, "NX:", _RC)
     call MAPL_GetResource(MPL, grid_name, "AGCM_GRIDNAME:", _RC)
@@ -751,13 +776,13 @@ contains
     character(19)  :: begdate, enddate
     character(64)  :: format_string
     type(ESMF_TimeInterval) :: ModelTimeStep
-    type(ESMF_Time)         :: CurrentTime
+    type(ESMF_Time)         :: CurrentTime, preTime
     type(ESMF_Grid)         :: grid_
   
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
   
-    integer :: num_parcels, my_rank,lm, l, d1,d2
+    integer :: num_parcels, lm, l, d1,d2
     integer ::counts(3), DIMS(3), rank, comm, ierror
     type (ESMF_VM)   :: vm
   
@@ -774,39 +799,63 @@ contains
     type(ESMF_State)            :: INTERNAL
     type(MAPL_MetaComp),pointer :: MPL  
     character(len=ESMF_MAXSTR) :: parcels_file
-
-    call ESMF_VMGetCurrent(vm, _RC)
-    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
-    call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
-
-    call MAPL_GetObjectFromGC ( GC, MPL, _RC)
-    call MAPL_Get (MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
-
-    call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
-    call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
- 
-    ! W.J note: this run is after agcm's run. The clock is not yet ticked
-    !           So the values we are using are at (CurrentTime + ModelTimeStep)
-    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime0) 
-    ctime0(20:20) = c_null_char
-    CurrentTime = CurrentTime + ModelTimeStep
-    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
-    ctime(20:20) = c_null_char
-
-    call ESMF_TimeIntervalGet(ModelTimeStep,d_r8=DT, _RC)
+    type(ESMF_Alarm)  :: GigaTrajIntegrateAlarm
 
 !---------------
-! Step 1) Regrid the metData field from cubed to lat-lon
+!  Update internal 
 !---------------
-
     call MAPL_GetPointer(Import, U_cube, "U", _RC)
     call MAPL_GetPointer(Import, V_cube, "V", _RC)
     call MAPL_GetPointer(Import, W_cube, "OMEGA", _RC)
     call MAPL_GetPointer(Import, P_cube, "PL", _RC)
     call MAPL_GetPointer(Import, PLE_cube, "PLE", _RC)
 
+    call MAPL_GetObjectFromGC ( GC, MPL, _RC)
+    call MAPL_Get (MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+
+    call MAPL_GetPointer(INTERNAL, U_internal, "U", _RC)
+    call MAPL_GetPointer(INTERNAL, V_internal, "V", _RC)
+    call MAPL_GetPointer(INTERNAL, W_internal, "OMEGA", _RC)
+    call MAPL_GetPointer(INTERNAL, P_internal, "PL", _RC)
+    call MAPL_GetPointer(INTERNAL, PLE_internal, "PLE", _RC)
+ 
+    U_internal = U_cube
+    V_internal = V_cube
+    W_internal = W_cube
+    P_internal = P_cube
+    PLE_internal = PLE_cube
+
+    call ESMF_ClockGetAlarm(clock, 'GigatrajIntegrate', GigaTrajIntegrateAlarm, _RC)
+
+    if ( .not. ESMF_AlarmIsRinging(GigaTrajIntegrateAlarm)) then
+       RETURN_(ESMF_SUCCESS)
+    endif
+
+    call ESMF_VMGetCurrent(vm, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
+
+
+    call ESMF_ClockGet(clock, currTime=CurrentTime, _RC)
+    call ESMF_ClockGet(clock, timeStep=ModelTimeStep, _RC)
+ 
+    ! W.J note: this run is after agcm's run. The clock is not yet ticked
+    !           So the values we are using are at (CurrentTime + ModelTimeStep)
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
+
+    CurrentTime = CurrentTime + ModelTimeStep
+    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
+    ctime(20:20) = c_null_char
+
+    preTime = CurrentTime - GigaTrajInternalPtr%Integrate_DT 
+    call ESMF_TimeGet(preTime, timeStringISOFrac=ctime0) 
+    ctime0(20:20) = c_null_char
+
+    call ESMF_TimeIntervalGet(GigaTrajInternalPtr%Integrate_DT, d_r8=DT, _RC)
+
+!---------------
+! Step 1) Regrid the metData field from cubed to lat-lon
+!---------------
 
     lm = size(GigaTrajInternalPtr%vdata%levs)
     d1 = size(u_cube,1)
@@ -846,7 +895,6 @@ contains
     call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(P_cube, P_inter,rc=status)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
-
        call GigaTrajInternalPtr%cube2latlon%regrid(U_inter,V_inter, U_latlon, V_latlon, _RC)
        call GigaTrajInternalPtr%cube2latlon%regrid(W_inter, W_latlon, _RC)
        call GigaTrajInternalPtr%cube2latlon%regrid(P_inter, P_latlon, _RC)
@@ -880,20 +928,6 @@ contains
                        c_loc(GigaTrajInternalPtr%parcels%lons), &
                        c_loc(GigaTrajInternalPtr%parcels%lats), &
                        c_loc(GigaTrajInternalPtr%parcels%zs))
-!---------------
-! Step 4) Update internal 
-!---------------
-    call MAPL_GetPointer(INTERNAL, U_internal, "U", _RC)
-    call MAPL_GetPointer(INTERNAL, V_internal, "V", _RC)
-    call MAPL_GetPointer(INTERNAL, W_internal, "OMEGA", _RC)
-    call MAPL_GetPointer(INTERNAL, P_internal, "PL", _RC)
-    call MAPL_GetPointer(INTERNAL, PLE_internal, "PLE", _RC)
- 
-    U_internal = U_cube
-    V_internal = V_cube
-    W_internal = W_cube
-    P_internal = P_cube
-    PLE_internal = PLE_cube
    
     if (allocated(U_Latlon)) deallocate( U_Latlon, V_latlon, W_latlon, P_latlon) 
     deallocate(haloU, haloV, haloW, haloP)
