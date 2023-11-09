@@ -896,14 +896,13 @@ contains
                 if (p_nonhydro) then
                    dz1 (i, j, k) = dz (i, j, k)
                    den(i,j,k) = - dp1 (i,j,k) / (grav * dz (i, j, k)) ! density of dry air
-                   ! denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
+                   denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
                 else
                    t0 = pt (i, j, k)
                    dz1 (i, j, k) = dz (i, j, k) * tz (i, j, k) / t0 ! hydrostatic balance
                    den(i,j,k) = (- dp1 (i,j,k) / (grav * dz (i, j, k))) * dz(i,j,k) / dz1(i,j,k) ! density of dry air
-                   ! denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
+                   denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
                 end if
-                m2_rain (i, j, k) = den (i, j, k)
              end do
           end do
        end do
@@ -938,14 +937,30 @@ contains
           end do
        end do
 
-       ! -----------------------------------------------------------------------
        ! heat transportation during sedimentation
-       ! -----------------------------------------------------------------------
 
        if (do_sedi_heat) then
           call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, qsz, qgz, c_ice)
        endif
-       m2_rain = tz
+
+       ! warm rain processes
+
+       call warm_rain_3d ( &
+            dts, is, ie, js, je, ktop, kbot, &
+            dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+            eis, den, denfac, ccn, c_praut, vtrz, &
+            r1, evap1, m1_rain, w1, h_var1d)
+       m2_rain = qlz + qrz
+
+       ! rain (i, j) = rain (i, j) + r1
+
+       ! !$acc loop vector
+       ! do k = ktop, kbot
+       !    revap (i,j,k) = revap (i,j,k) + evap1(k)
+       !    m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
+       !    m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
+       !    m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
+       ! enddo
 
     end do
 
@@ -1311,41 +1326,43 @@ contains
   !> warm rain cloud microphysics
   ! -----------------------------------------------------------------------
 
-  subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
-       eis, &
-       den, denfac, ccn, c_praut, vtr, r1, evap1, m1_rain, w1, h_var)
+  subroutine warm_rain_3d ( &
+       dt, is, ie, js, je, ktop, kbot, &
+       dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
+       eis, den, denfac, ccn, c_praut, vtr, &
+       r1, evap1, m1_rain, w1, h_var)
 
     implicit none
     !$omp declare target
 
-    integer, intent (in) :: ktop, kbot
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
 
     real, intent (in) :: dt !< time step (s)
 
-    real, intent (in), dimension (ktop:kbot) :: h_var
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: h_var
 
-    real, intent (in), dimension (ktop:kbot) :: dp, dz, den
-    real, intent (in), dimension (ktop:kbot) :: denfac, ccn, c_praut
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: dp, dz, den
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: denfac, ccn, c_praut
 
-    real, intent (in) :: eis !< estimated inversion strength
+    real, intent (in), dimension (is:ie, js:je) :: eis !< estimated inversion strength
 
-    real, intent (inout), dimension (ktop:kbot) :: tz, vtr
-    real, intent (inout), dimension (ktop:kbot) :: qv, ql, qr, qi, qs, qg, qa
-    real, intent (inout), dimension (ktop:kbot) :: evap1, m1_rain, w1
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: tz, vtr
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: qv, ql, qr, qi, qs, qg, qa
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: evap1, m1_rain, w1
 
-    real, intent (out) :: r1
+    real, intent (out), dimension (is:ie, js:je) :: r1
 
     real, parameter :: so3 = 7. / 3.
 
-    real, dimension (ktop:kbot) :: dl, dm, revap, isubl, qadum
-    real, dimension (ktop:kbot + 1) :: ze, zt
+    real, dimension (is:ie, js:je, ktop:kbot) :: dl, dm, revap, isubl, qadum
+    real, dimension (is:ie, js:je, ktop:kbot + 1) :: ze, zt
 
     real :: sink, dq, qc0, qc
     real :: fac_rc, qden
     real :: zs
     real :: dt5
 
-    integer :: k
+    integer :: i, j, k
 
     ! fall velocity constants:
 
@@ -1353,7 +1370,7 @@ contains
     real, parameter :: normr = 25132741228.7183
     real, parameter :: thr = 1.e-8
 
-    logical :: no_fall
+    logical, dimension(is:ie, js:je) :: no_fall
 
     zs = 0.
     dt5 = 0.5 * dt
@@ -1362,10 +1379,17 @@ contains
     ! terminal speed of rain
     ! -----------------------------------------------------------------------
 
-    evap1 (:) = 0.
-    m1_rain (:) = 0.
+    !$omp target teams distribute parallel do collapse(3)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             evap1 (i, j, k) = 0.
+             m1_rain (i, j, k) = 0.
+          end do
+       end do
+    end do
 
-    call check_column (ktop, kbot, qr, no_fall)
+    call check_column_3d (is, ie, js, je, ktop, kbot, qr, no_fall)
 
     ! -----------------------------------------------------------------------
     ! auto - conversion
@@ -1374,170 +1398,191 @@ contains
     ! -----------------------------------------------------------------------
 
     ! Use In-Cloud condensates
-    if (.not. do_qa) then
-       qadum = max(qa,qcmin)
-    else
-       qadum = 1.0
-    endif
-    ql = ql/qadum
-    qi = qi/qadum
+    !$omp target teams distribute parallel do collapse(3)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             if (.not. do_qa) then
+                qadum (i, j, k) = max(qa (i, j, k) ,qcmin)
+             else
+                qadum (i, j, k) = 1.0
+             endif
+             ql (i, j, k) = ql (i, j, k) / qadum (i, j, k)
+             qi (i, j, k) = qi (i, j, k) / qadum (i, j, k)
+          end do
+       end do
+    end do
 
-    fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
-    fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
+    ! fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
+    ! fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
 
     if (irain_f /= 0) then
 
        ! -----------------------------------------------------------------------
-       ! no subgrid varaibility
+       ! no subgrid variability
        ! -----------------------------------------------------------------------
 
-       !!$acc loop vector private(qc0, qc, dq, sink)
+       !$omp target teams distribute parallel do collapse(3) private(fac_rc, qc0, qv, dq, sink)
        do k = ktop, kbot
-          qc0 = fac_rc * ccn (k)
-          if (tz (k) > t_wfr) then
-             qc = qc0 / den (k)
-             dq = ql (k) - qc
-             if (dq > 0.) then
-                sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
-                sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
-                ql (k) = ql (k) - sink
-                qr (k) = qr (k) + sink*qadum(k)
-             endif
-          endif
-       enddo
+          do i = is, ie
+             do j = js, je
+                fac_rc = min (1.0, eis (i, j) / 10.0) ** 2 ! Estimated inversion strength determine stable regime
+                fac_rc = rc * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
+                qc0 = fac_rc * ccn (i, j, k)
+                if (tz (i, j, k) > t_wfr) then
+                   qc = qc0 / den (i, j, k)
+                   dq = ql (i, j, k) - qc
+                   if (dq > 0.) then
+                      sink = min (dq, dt * c_praut (i, j, k) * den (i, j, k) * exp (so3 * log (ql (i, j, k))))
+                      sink = min (ql0_max / qadum(i, j, k), ql(i, j, k), max(0., sink))
+                      ql (i, j, k) = ql (i, j, k) - sink
+                      qr (i, j, k) = qr (i, j, k) + sink * qadum(i, j, k)
+                   end if
+                end if
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
 
-    else
+    else ! irain_f
 
        ! -----------------------------------------------------------------------
        ! with subgrid variability
        ! -----------------------------------------------------------------------
 
-       call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
+       call linear_prof_3d (ie - is + 1, je - js + 1, kbot - ktop + 1, ql, dl, z_slope_liq, h_var)
 
-       !!$acc loop vector private(qc0, qc, dq, sink)
+       !$omp target teams distribute parallel do collapse(3) private(fac_rc, qc0, qc, dq, sink)
        do k = ktop, kbot
-          qc0 = fac_rc * ccn (k)
-          if (tz (k) > t_wfr + dt_fr) then
-             dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
-             ! --------------------------------------------------------------------
-             ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
-             ! --------------------------------------------------------------------
-             qc = qc0 / den (k)
-             dq = 0.5 * (ql (k) + dl (k) - qc)
-             ! --------------------------------------------------------------------
-             ! dq = dl if qc == q_minus = ql - dl
-             ! dq = 0 if qc == q_plus = ql + dl
-             ! --------------------------------------------------------------------
-             if (dq > 0.) then ! q_plus > qc
-                ! --------------------------------------------------------------------
-                ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
-                ! --------------------------------------------------------------------
-                sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
-                ql (k) = ql (k) - sink
-                qr (k) = qr (k) + sink*qadum(k)
-             endif
-          endif
-       enddo
-    endif
+          do i = is, ie
+             do j = js, je
+                fac_rc = min (1.0, eis (i, j) / 10.0) ** 2 ! Estimated inversion strength determine stable regime
+                fac_rc = rc * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
+                qc0 = fac_rc * ccn (i, j, k)
+                if (tz (i, j, k) > t_wfr + dt_fr) then
+                   dl (i, j, k) = min (max (qcmin, dl (i, j, k)), 0.5 * ql (i, j, k))
+                   ! --------------------------------------------------------------------
+                   ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
+                   ! --------------------------------------------------------------------
+                   qc = qc0 / den (i, j, k)
+                   dq = 0.5 * (ql (i, j, k) + dl (i, j, k) - qc)
+                   ! --------------------------------------------------------------------
+                   ! dq = dl if qc == q_minus = ql - dl
+                   ! dq = 0 if qc == q_plus = ql + dl
+                   ! --------------------------------------------------------------------
+                   if (dq > 0.) then ! q_plus > qc
+                      ! --------------------------------------------------------------------
+                      ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
+                      ! --------------------------------------------------------------------
+                      sink = min (1., dq / dl (i, j, k)) * dt * c_praut (i, j, k) * den (i, j, k) * exp (so3 * log (ql (i, j, k)))
+                      sink = min(ql0_max / qadum(i, j, k), ql(i, j, k), max(0., sink))
+                      ql (i, j, k) = ql (i, j, k) - sink
+                      qr (i, j, k) = qr (i, j, k) + sink*qadum(i, j, k)
+                   end if
+                end if
+             end do
+          end do
+       end do
 
-    ! Revert In-Cloud condensate
-    ql = ql*qadum
-    qi = qi*qadum
+    end if ! irain_f
 
-    ! -----------------------------------------------------------------------
-    ! fall speed of rain
-    ! -----------------------------------------------------------------------
+    ! ! Revert In-Cloud condensate
+    ! ql = ql*qadum
+    ! qi = qi*qadum
 
-    if (no_fall) then
-       vtr (:) = vf_min
-    elseif (const_vr) then
-       vtr (:) = vr_fac ! ifs_2016: 4.0
-    else
-       !!$acc loop vector private(qden)
-       do k = ktop, kbot
-          qden = qr (k) * den (k)
-          if (qr (k) < thr) then
-             vtr (k) = vr_min
-          else
-             vtr (k) = vr_fac * vconr * sqrt (min (10., sfcrho / den (k))) * &
-                  exp (0.2 * log (qden / normr))
-             vtr (k) = min (vr_max, max (vr_min, vtr (k)))
-          endif
-       enddo
-    endif
+    ! ! -----------------------------------------------------------------------
+    ! ! fall speed of rain
+    ! ! -----------------------------------------------------------------------
 
-    ze (kbot + 1) = zs
-    !!$acc loop seq
-    do k = kbot, ktop, - 1
-       ze (k) = ze (k + 1) - dz (k) ! dz < 0
-    enddo
-
-    ! -----------------------------------------------------------------------
-    ! evaporation and accretion of rain for the first 1 / 2 time step
-    ! -----------------------------------------------------------------------
-
-    call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-    evap1 = revap
-
-    if (do_sedi_w) then
-       !!$acc loop vector
-       do k = ktop, kbot
-          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-       enddo
-    endif
-
-    ! -----------------------------------------------------------------------
-    ! mass flux induced by falling rain
-    ! -----------------------------------------------------------------------
-
-    if (no_fall) then
-       r1 = 0.0
-    elseif (use_ppm) then
-       zt (ktop) = ze (ktop)
-       !!$acc loop vector
-       do k = ktop + 1, kbot
-          zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-       enddo
-       zt (kbot + 1) = zs - dt * vtr (kbot)
-
-       !!$acc loop seq
-       do k = ktop, kbot
-          if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-       enddo
-       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+    ! if (no_fall) then
+    !    vtr (:) = vf_min
+    ! elseif (const_vr) then
+    !    vtr (:) = vr_fac ! ifs_2016: 4.0
     ! else
-    !    call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-    endif
+    !    !!$acc loop vector private(qden)
+    !    do k = ktop, kbot
+    !       qden = qr (k) * den (k)
+    !       if (qr (k) < thr) then
+    !          vtr (k) = vr_min
+    !       else
+    !          vtr (k) = vr_fac * vconr * sqrt (min (10., sfcrho / den (k))) * &
+    !               exp (0.2 * log (qden / normr))
+    !          vtr (k) = min (vr_max, max (vr_min, vtr (k)))
+    !       endif
+    !    enddo
+    ! endif
 
-    ! -----------------------------------------------------------------------
-    ! vertical velocity transportation during sedimentation
-    ! -----------------------------------------------------------------------
+    ! ze (kbot + 1) = zs
+    ! !!$acc loop seq
+    ! do k = kbot, ktop, - 1
+    !    ze (k) = ze (k + 1) - dz (k) ! dz < 0
+    ! enddo
 
-    if (do_sedi_w) then
-       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-       !!$acc loop vector
-       do k = ktop + 1, kbot
-          w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-               / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-       enddo
-    endif
+    ! ! -----------------------------------------------------------------------
+    ! ! evaporation and accretion of rain for the first 1 / 2 time step
+    ! ! -----------------------------------------------------------------------
 
-    ! -----------------------------------------------------------------------
-    ! heat transportation during sedimentation
-    ! -----------------------------------------------------------------------
+    ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+    ! evap1 = revap
 
-    ! if (do_sedi_heat) &
-    !      call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+    ! if (do_sedi_w) then
+    !    !!$acc loop vector
+    !    do k = ktop, kbot
+    !       dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+    !    enddo
+    ! endif
 
-    ! -----------------------------------------------------------------------
-    ! evaporation and accretion of rain for the remaing 1 / 2 time step
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! mass flux induced by falling rain
+    ! ! -----------------------------------------------------------------------
 
-    call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-    evap1 = evap1 + revap
+    ! if (no_fall) then
+    !    r1 = 0.0
+    ! elseif (use_ppm) then
+    !    zt (ktop) = ze (ktop)
+    !    !!$acc loop vector
+    !    do k = ktop + 1, kbot
+    !       zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
+    !    enddo
+    !    zt (kbot + 1) = zs - dt * vtr (kbot)
 
-  end subroutine warm_rain
+    !    !!$acc loop seq
+    !    do k = ktop, kbot
+    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+    !    enddo
+    !    call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+    ! ! else
+    ! !    call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+    ! endif
+
+    ! ! -----------------------------------------------------------------------
+    ! ! vertical velocity transportation during sedimentation
+    ! ! -----------------------------------------------------------------------
+
+    ! if (do_sedi_w) then
+    !    w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+    !    !!$acc loop vector
+    !    do k = ktop + 1, kbot
+    !       w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
+    !            / (dm (k) + m1_rain (k - 1) - m1_rain (k))
+    !    enddo
+    ! endif
+
+    ! ! -----------------------------------------------------------------------
+    ! ! heat transportation during sedimentation
+    ! ! -----------------------------------------------------------------------
+
+    ! ! if (do_sedi_heat) &
+    ! !      call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+
+    ! ! -----------------------------------------------------------------------
+    ! ! evaporation and accretion of rain for the remaing 1 / 2 time step
+    ! ! -----------------------------------------------------------------------
+
+    ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+    ! evap1 = evap1 + revap
+
+  end subroutine warm_rain_3d
 
   ! -----------------------------------------------------------------------
   !> evaporation of rain
@@ -1658,60 +1703,92 @@ contains
   !! edges: qe == qbar + / - dm
   ! -----------------------------------------------------------------------
 
-  subroutine linear_prof (km, q, dm, z_var, h_var)
+  subroutine linear_prof_3d (im, jm, km, q, dm, z_var, h_var)
 
     implicit none
     !$omp declare target
 
-    integer, intent (in) :: km
+    integer, intent (in) :: im, jm, km
 
-    real, intent (in) :: q (km), h_var(km)
+    real, intent (in) :: q (im, jm, km), h_var(im, jm, km)
 
-    real, intent (out) :: dm (km)
+    real, intent (out) :: dm (im, jm, km)
 
     logical, intent (in) :: z_var
 
     real :: dq, dq_p1
 
-    integer :: k
+    integer :: i, j, k
 
     if (z_var) then
-       dm (1) = 0.
+
+       !$omp target teams distribute parallel do collapse(2)
+       do i = 1, im
+          do j = 1, jm
+             dm (i, j, 1) = 0.
+          end do
+       end do
 
        ! -----------------------------------------------------------------------
        ! use twice the strength of the positive definiteness limiter (lin et al 1994)
        ! -----------------------------------------------------------------------
-       !!$acc loop vector private(dq, dq_p1)
+
+       !$omp target teams distribute parallel do collapse(3) private(dq, dq_p1)
        do k = 2, km - 1
-          dq = 0.5 * (q (k) - q (k - 1))
-          dq_p1 = 0.5 * (q (k + 1) - q (k))
-          dm (k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (k))
-          if (dq * dq_p1 <= 0.) then
-             if (dq > 0.) then ! local max
-                dm (k) = min (dm (k), dq, - dq_p1)
-             else
-                dm (k) = 0.
-             endif
-          endif
-       enddo
-       dm (km) = 0.
+          do i = 1, im
+             do j = 1, jm
+                dq = 0.5 * (q (i, j, k) - q (i, j, k - 1))
+                dq_p1 = 0.5 * (q (i, j, k + 1) - q (i, j, k))
+                dm (i, j, k) = 0.5 * min (abs (dq + dq_p1), 0.5 * q (i, j, k))
+                if (dq * dq_p1 <= 0.) then
+                   if (dq > 0.) then ! local max
+                      dm (i, j, k) = min (dm (i, j, k), dq, - dq_p1)
+                   else
+                      dm (i, j, k) = 0.
+                   endif
+                endif
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+
+       !$omp target teams distribute parallel do collapse(2)
+       do i = 1, im
+          do j = 1, jm
+             dm (i, j, km) = 0.
+          end do
+       end do
 
        ! -----------------------------------------------------------------------
        ! impose a presumed background horizontal variability that is proportional to the value itself
        ! -----------------------------------------------------------------------
 
-       !!$acc loop vector
+       !$omp target teams distribute parallel do collapse(3)
        do k = 1, km
-          dm (k) = max (dm (k), qvmin, h_var(k) * q (k))
-       enddo
-    else
-       !!$acc loop vector
+          do i = 1, im
+             do j = 1, jm
+                dm (i, j, k) = max (dm (i, j, k), qvmin, h_var(i, j, k) * q (i, j, k))
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+
+    else ! z_var
+
+
+       !$omp target teams distribute parallel do collapse(3)
        do k = 1, km
-          dm (k) = max (qvmin, h_var(k) * q (k))
-       enddo
+          do i = 1, im
+             do j = 1, jm
+                dm (i, j, k) = max (qvmin, h_var(i, j, k) * q (i, j, k))
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+
     endif
 
-  end subroutine linear_prof
+  end subroutine linear_prof_3d
 
   ! =======================================================================
   !> ice cloud microphysics processes
@@ -1842,11 +1919,11 @@ contains
 
     enddo
 
-    ! -----------------------------------------------------------------------
-    ! vertical subgrid variability
-    ! -----------------------------------------------------------------------
+    ! ! -----------------------------------------------------------------------
+    ! ! vertical subgrid variability
+    ! ! -----------------------------------------------------------------------
 
-    call linear_prof (kbot - ktop + 1, qik (ktop), di (ktop), z_slope_ice, h_var)
+    ! call linear_prof (kbot - ktop + 1, qik (ktop), di (ktop), z_slope_ice, h_var)
 
     ! -----------------------------------------------------------------------
     ! update capacity heat and latend heat coefficient
