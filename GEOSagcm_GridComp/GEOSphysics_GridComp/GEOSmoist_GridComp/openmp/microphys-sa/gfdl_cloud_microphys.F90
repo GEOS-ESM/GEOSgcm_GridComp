@@ -938,6 +938,15 @@ contains
           end do
        end do
 
+       ! -----------------------------------------------------------------------
+       ! heat transportation during sedimentation
+       ! -----------------------------------------------------------------------
+
+       if (do_sedi_heat) then
+          call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp1, m1_sol, dz1, tz, qvz, qlz, qrz, qiz, qsz, qgz, c_ice)
+       endif
+       m2_rain = tz
+
     end do
 
     !$omp end target data
@@ -1223,18 +1232,18 @@ contains
   !> sedimentation of heat
   ! -----------------------------------------------------------------------
 
-  subroutine sedi_heat (ktop, kbot, dm, m1, dz, tz, qv, ql, qr, qi, qs, qg, cw)
+  subroutine sedi_heat_3d (is, ie, js, je, ktop, kbot, dm, m1, dz, tz, qv, ql, qr, qi, qs, qg, cw)
 
     implicit none
     !$omp declare target
 
     ! input q fields are dry mixing ratios, and dm is dry air mass
 
-    integer, intent (in) :: ktop, kbot
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
 
-    real, intent (in), dimension (ktop:kbot) :: dm, m1, dz, qv, ql, qr, qi, qs, qg
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: dm, m1, dz, qv, ql, qr, qi, qs, qg
 
-    real, intent (inout), dimension (ktop:kbot) :: tz
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: tz
 
     real, intent (in) :: cw ! heat capacity
 
@@ -1242,7 +1251,7 @@ contains
 
     real :: tmp
 
-    integer :: k
+    integer :: i, j, k
 
     ! -----------------------------------------------------------------------
     ! sjl, july 2014
@@ -1254,10 +1263,21 @@ contains
     ! -----------------------------------------------------------------------
 
     k = ktop
-    cvn = dm (k) * (cv_air + qv (k) * cv_vap + (qr (k) + ql (k)) * &
-         c_liq + (qi (k) + qs (k) + qg (k)) * c_ice)
-    dgz = - 0.5 * grav * dz (k) ! > 0
-    tz (k) = ((cvn + m1 (k) * cw) * tz (k) + m1 (k) * dgz) / (cvn + m1 (k) * cw)
+    !$omp target teams distribute parallel do collapse(2) private(cvn, dgz)
+    do i = is, ie
+       do j = js, je
+          cvn = &
+               dm (i, j, k) * (cv_air + qv (i, j, k) * cv_vap + &
+               (qr (i, j, k) + ql (i, j, k)) * c_liq + &
+               (qi (i, j, k) + qs (i, j, k) + qg (i, j, k)) * c_ice)
+          dgz = - 0.5 * grav * dz (i, j, k) ! > 0
+          tz (i, j, k) = ( &
+               (cvn + m1 (i, j, k) * cw) * tz (i, j, k) + &
+               m1 (i, j, k) * dgz &
+               ) / (cvn + m1 (i, j, k) * cw)
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
     ! -----------------------------------------------------------------------
     ! implicit algorithm: can't be vectorized
@@ -1265,14 +1285,27 @@ contains
     ! -----------------------------------------------------------------------
 
     do k = ktop + 1, kbot
-       dgz = - 0.5 * grav * dz (k) ! > 0
-       cvn = dm (k) * (cv_air + qv (k) * cv_vap + (qr (k) + ql (k)) * &
-            c_liq + (qi (k) + qs (k) + qg (k)) * c_ice)
-       tz (k) = ((cvn + cw * (m1 (k) - m1 (k - 1))) * tz (k) + m1 (k - 1) * &
-            cw * tz (k - 1) + dgz * (m1 (k - 1) + m1 (k))) / (cvn + cw * m1 (k))
-    enddo
+       !$omp target teams distribute parallel do collapse(2) private(cvn, dgz)
+       do j = js, je
+          do i = is, ie
+             dgz = - 0.5 * grav * dz (i, j, k) ! > 0
+             cvn = dm (i, j, k) * ( &
+                  cv_air + &
+                  qv (i, j, k) * cv_vap + &
+                  (qr (i, j, k) + ql (i, j, k)) * c_liq + &
+                  (qi (i, j, k) + qs (i, j, k) + qg (i, j, k)) * c_ice &
+                  )
+             tz (i, j, k) = ( &
+                  (cvn + cw * (m1 (i, j, k) - m1 (i, j, k - 1))) * tz (i, j, k) + &
+                  m1 (i, j, k - 1) * cw * tz (i, j, k - 1) + &
+                  dgz * (m1 (i, j, k - 1) + m1 (i, j, k)) &
+                  ) / (cvn + cw * m1 (i, j, k))
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+    end do
 
-  end subroutine sedi_heat
+  end subroutine sedi_heat_3d
 
   ! -----------------------------------------------------------------------
   !> warm rain cloud microphysics
@@ -1494,8 +1527,8 @@ contains
     ! heat transportation during sedimentation
     ! -----------------------------------------------------------------------
 
-    if (do_sedi_heat) &
-         call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+    ! if (do_sedi_heat) &
+    !      call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
 
     ! -----------------------------------------------------------------------
     ! evaporation and accretion of rain for the remaing 1 / 2 time step
