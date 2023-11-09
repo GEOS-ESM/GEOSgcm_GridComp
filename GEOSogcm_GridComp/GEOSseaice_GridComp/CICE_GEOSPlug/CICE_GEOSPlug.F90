@@ -943,17 +943,14 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
-! Profilers
-!----------
-
     call MAPL_TimerOn(MAPL,"TOTAL")
+
+    call MAPL_GenericRecord (GC, IMPORT, EXPORT, CLOCK, _RC)
+
 
     doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Disk, _RC)
 
     if (doRecord) then
-
-! Get the private internal state
-!--------------------------------
 
 
        call MAPL_DateStampGet(clock, timeStamp, _RC)
@@ -962,6 +959,17 @@ contains
 !-----------------
 
        call ice_checkpoint(timeStamp)
+
+    end if
+
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Ram, _RC)
+
+    if (doRecord) then
+
+! Save thermo states for replay corrector
+!-----------------
+
+       !call ice_checkpoint(timeStamp)
 
     end if
 
