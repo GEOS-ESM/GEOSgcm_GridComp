@@ -1470,8 +1470,8 @@ contains
           if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
        enddo
        call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-    else
-       call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+    ! else
+    !    call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
     endif
 
     ! -----------------------------------------------------------------------
@@ -2714,7 +2714,6 @@ contains
           end do
        end do
     enddo
-    r1 = k0
     !$omp end single
 
     ! -----------------------------------------------------------------------
@@ -2816,8 +2815,7 @@ contains
 
     call check_column_3d (is, ie, js, je, ktop, kbot, qi, no_fall)
 
-    ! TODO: Kernel is too big - causes libgomp crash
-    ! !$omp target teams distribute parallel do collapse(2)
+    !$omp target teams distribute collapse(2)
     do i = is, ie
        do j = js, je
 
@@ -2827,19 +2825,26 @@ contains
 
           else
 
+             !$omp parallel do
              do k = ktop + 1, kbot
                 zt (i, j, k) = ze (i, j, k) - dtm * (vti (i, j, k - 1) + vti (i, j, k))/2.0
              enddo
+             !$omp end parallel do
+
              zt (i, j, kbot + 1) = zs - dtm * vti (i, j, kbot)
 
+             ! !$omp ordered
              do k = ktop, kbot
                 if (zt (i, j, k + 1) >= zt (i, j, k)) zt (i, j, k + 1) = zt (i, j, k) - dz_min
              enddo
+             ! !$omp end ordered
 
              if (k0 (i, j) < kbot) then
+                ! !$omp ordered
                 do k = kbot - 1, k0 (i, j), - 1
                    if (qi (i, j, k) > qcmin) then
                       exit_flag = .true.
+                      !$omp parallel do
                       do m = k + 1, kbot
                          if (zt (i, j, k + 1) >= ze (i, j, m) .and. exit_flag) exit_flag = .false.
                          if (zt (i, j, k) < ze (i, j, m + 1) .and. tz (i, j, m) > tice .and. exit_flag) then
@@ -2852,21 +2857,33 @@ contains
                             qi (i, j, k) = qi (i, j, k) - sink * dp (i, j, m) / dp (i, j, k)
                          endif
                       enddo
+                      !$omp end parallel do
                    endif
                 enddo
+                ! !$omp end ordered
              endif
 
              if (do_sedi_w) then
+                !$omp parallel do
                 do k = ktop, kbot
                    dm (i, j, k) = &
-                        dp (i, j, k) * &
-                        (1. + qv (i, j, k) + ql (i, j, k) + qr (i, j, k) + qi (i, j, k) + qs (i, j, k) + qg (i, j, k))
+                        dp (i, j, k) * ( &
+                        1. + &
+                        qv (i, j, k) + &
+                        ql (i, j, k) + &
+                        qr (i, j, k) + &
+                        qi (i, j, k) + &
+                        qs (i, j, k) + &
+                        qg (i, j, k) &
+                        )
                 enddo
-             endif
-          end if
+             endif ! do_sedi_w
+
+          end if ! vi_fac
 
        end do
     end do
+    !$omp end target teams distribute
 
     if (use_ppm) then
        !$omp target teams distribute parallel do collapse(2)
@@ -2889,8 +2906,10 @@ contains
           do j = js, je
              if (.not. no_fall (i, j)) then
                 w1 (i, j, ktop) = &
-                     (dm (i, j, ktop) * w1 (i, j, ktop) + m1_sol (i, j, ktop) * vti (i, j, ktop)) / &
-                     (dm (i, j, ktop) - m1_sol (i, j, ktop))
+                     ( &
+                     dm (i, j, ktop) * w1 (i, j, ktop) + &
+                     m1_sol (i, j, ktop) * vti (i, j, ktop) &
+                     ) / (dm (i, j, ktop) - m1_sol (i, j, ktop))
                 !$omp parallel do
                 do k = ktop + 1, kbot
                    w1 (i, j, k) = &
@@ -2898,92 +2917,161 @@ contains
                         dm (i, j, k) * w1 (i, j, k) - &
                         m1_sol (i, j, k - 1) * vti (i, j, k - 1) + &
                         m1_sol (i, j, k) * vti (i, j, k) &
-                        ) / &
-                        (dm (i, j, k) + m1_sol (i, j, k - 1) - m1_sol (i, j, k))
+                        ) / (dm (i, j, k) + m1_sol (i, j, k - 1) - m1_sol (i, j, k))
                 enddo
+                !$omp end parallel do
+             end if ! no_fall
+          end do
+       end do
+       !$omp end target teams distribute
+    endif
+
+    ! -----------------------------------------------------------------------
+    ! melting of falling snow into rain
+    ! -----------------------------------------------------------------------
+
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          r1 (i, j) = 0.
+       end do
+    end do
+
+    call check_column_3d (is, ie, js, je, ktop, kbot, qs, no_fall)
+
+    !$omp target teams distribute collapse(2)
+    do i = is, ie
+       do j = js, je
+
+          if (no_fall (i, j)) then
+
+             s1 (i, j) = 0.
+
+          else
+
+             !$omp parallel do
+             do k = ktop + 1, kbot
+                zt (i, j, k) = ze (i, j, k) - dtm * (vts (i, j, k - 1) + vts (i, j, k))/2.0
+             enddo
+             !$omp end parallel do
+             zt (i, j, kbot + 1) = zs - dtm * vts (i, j, kbot)
+
+             ! !$omp ordered
+             do k = ktop, kbot
+                if (zt (i, j, k + 1) >= zt (i, j, k)) then
+                   zt (i, j, k + 1) = zt (i, j, k) - dz_min
+                end if
+             enddo
+             ! !$omp end ordered
+
+             if (k0 (i, j) < kbot) then
+                ! !$omp ordered
+                do k = kbot - 1, k0 (i, j), - 1
+                   if (qs (i, j, k) > qpmin) then
+                      exit_flag = .true.
+                      ! !$omp ordered
+                      do m = k + 1, kbot
+                         if (zt (i, j, k + 1) >= ze (i, j, m) .and. exit_flag) exit_flag = .false.
+                         if (exit_flag) then
+                            dtime = min (dtm, (ze (i, j, m) - ze (i, j, m + 1)) / (vr_min + vts (i, j, k)))
+                            if (zt (i, j, k) < ze (i, j, m + 1) .and. tz (i, j, m) > tice) then
+                               dtime = min (1.0, dtime / tau_smlt)
+                               sink = min ( &
+                                    qs (i, j, k) * dp (i, j, k) / dp (i, j, m), &
+                                    dtime * (tz (i, j, m) - tice) / icpk (i, j, m) &
+                                    )
+                               tz (i, j, m) = tz (i, j, m) - sink * icpk (i, j, m)
+                               qs (i, j, k) = qs (i, j, k) - sink * dp (i, j, m) / dp (i, j, k)
+                               if (zt (i, j, k) < zs) then
+                                  r1 (i, j) = r1 (i,j) + sink * dp (i, j, m) ! precip as rain
+                               else
+                                  ! qr source here will fall next time step (therefore, can evap)
+                                  qr (i, j, m) = qr (i, j, m) + sink
+                               endif
+                            endif
+                         endif ! exit_flag
+                         if (qs (i, j, k) < qpmin .and. exit_flag) exit_flag = .false.
+                      enddo
+                      ! !$omp end ordered
+                   endif ! qs (i, j, k) > qpmin
+                enddo ! k
+                ! !$omp end ordered
+             endif ! k0 < kbot
+
+             if (do_sedi_w) then
+                !$omp parallel do
+                do k = ktop, kbot
+                   dm (i, j, k) = &
+                        dp (i, j, k) * ( &
+                        1. + &
+                        qv (i, j, k) + &
+                        ql (i, j, k) + &
+                        qr (i, j, k) + &
+                        qi (i, j, k) + &
+                        qs (i, j, k) + &
+                        qg (i, j, k) &
+                        )
+                enddo
+                !$omp end parallel do
+             endif ! do_sedi_w
+
+          end if ! no_fall
+
+       end do
+    end do
+    !$omp end target teams distribute
+
+    if (use_ppm) then
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                call lagrangian_fall_ppm ( &
+                     ktop, kbot, zs, ze (i, j, :), zt (i, j, :), dp (i, j, :), &
+                     qs (i, j, :), s1 (i, j), m1 (i, j, :), mono_prof)
              end if
           end do
        end do
+       !$omp end target teams distribute parallel do
+    else
+       call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vts, dp, qs, s1, m1, no_fall)
     endif
 
-    ! ! -----------------------------------------------------------------------
-    ! ! melting of falling snow into rain
-    ! ! -----------------------------------------------------------------------
+    !$omp target teams distribute collapse(2)
+    do i = is, ie
+       do j = js, je
 
-    ! r1 = 0.
+          if (.not. no_fall (i, j)) then
 
-    ! call check_column (ktop, kbot, qs, no_fall)
+             !$omp parallel do
+             do k = ktop, kbot
+                m1_sol (i, j, k) = m1_sol (i, j, k) + m1 (i, j, k)
+             enddo
+             !$omp end parallel do
 
-    ! if (no_fall) then
-    !    s1 = 0.
-    ! else
-    !    !!$acc loop vector
-    !    do k = ktop + 1, kbot
-    !       zt (k) = ze (k) - dtm * (vts (k - 1) + vts (k))/2.0
-    !    enddo
-    !    zt (kbot + 1) = zs - dtm * vts (kbot)
-    !    !!$acc loop seq
-    !    do k = ktop, kbot
-    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-    !    enddo
+             if (do_sedi_w) then
+                w1 (i, j, ktop) = &
+                     ( &
+                     dm (i, j, ktop) * w1 (i, j, ktop) + &
+                     m1 (i, j, ktop) * vts (i, j, ktop) &
+                     ) / (dm (i, j, ktop) - m1 (i, j, ktop))
+                !$omp parallel do
+                do k = ktop + 1, kbot
+                   w1 (i, j, k) = &
+                        ( &
+                        dm (i, j, k) * w1 (i, j, k) - &
+                        m1 (i, j, k - 1) * vts (i, j, k - 1) + &
+                        m1 (i, j, k) * vts (i, j, k) &
+                        ) / (dm (i, j, k) + m1 (i, j, k - 1) - m1 (i, j, k))
+                end do
+                !$omp end parallel do
+             end if ! do_sedi_w
 
-    !    if (k0 < kbot) then
-    !       !!$acc loop seq
-    !       do k = kbot - 1, k0, - 1
-    !          if (qs (k) > qpmin) then
-    !             exit_flag = .true.
-    !             !!$acc loop seq
-    !             do m = k + 1, kbot
-    !                if (zt (k + 1) >= ze (m) .and. exit_flag) exit_flag = .false.
-    !                if (exit_flag) then
-    !                   dtime = min (dtm, (ze (m) - ze (m + 1)) / (vr_min + vts (k)))
-    !                   if (zt (k) < ze (m + 1) .and. tz (m) > tice) then
-    !                      dtime = min (1.0, dtime / tau_smlt)
-    !                      sink = min (qs (k) * dp (k) / dp (m), dtime * (tz (m) - tice) / icpk (m))
-    !                      tz (m) = tz (m) - sink * icpk (m)
-    !                      qs (k) = qs (k) - sink * dp (m) / dp (k)
-    !                      if (zt (k) < zs) then
-    !                         r1 = r1 + sink * dp (m) ! precip as rain
-    !                      else
-    !                         ! qr source here will fall next time step (therefore, can evap)
-    !                         qr (m) = qr (m) + sink
-    !                      endif
-    !                   endif
-    !                endif
-    !                if (qs (k) < qpmin .and. exit_flag) exit_flag = .false.
-    !             enddo
-    !          endif
-    !       enddo
-    !    endif
+          end if ! no_fall
 
-    !    if (do_sedi_w) then
-    !       !!$acc loop vector
-    !       do k = ktop, kbot
-    !          dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-    !       enddo
-    !    endif
-
-    !    if (use_ppm) then
-    !       call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qs, s1, m1, mono_prof)
-    !    else
-    !       call implicit_fall (dtm, ktop, kbot, ze, vts, dp, qs, s1, m1)
-    !    endif
-
-    !    !!$acc loop vector
-    !    do k = ktop, kbot
-    !       m1_sol (k) = m1_sol (k) + m1 (k)
-    !    enddo
-
-    !    if (do_sedi_w) then
-    !       w1 (ktop) = (dm (ktop) * w1 (ktop) + m1 (ktop) * vts (ktop)) / (dm (ktop) - m1 (ktop))
-    !       !!$acc loop vector
-    !       do k = ktop + 1, kbot
-    !          w1 (k) = (dm (k) * w1 (k) - m1 (k - 1) * vts (k - 1) + m1 (k) * vts (k)) &
-    !               / (dm (k) + m1 (k - 1) - m1 (k))
-    !       enddo
-    !    endif
-
-    ! endif
+       end do
+    end do
+    !$omp end target teams distribute
 
     ! ! ----------------------------------------------
     ! ! melting of falling graupel into rain
