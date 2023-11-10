@@ -1579,55 +1579,107 @@ contains
        !$omp end target teams distribute parallel do
     endif
 
-    ! ! -----------------------------------------------------------------------
-    ! ! mass flux induced by falling rain
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! mass flux induced by falling rain
+    ! -----------------------------------------------------------------------
 
-    ! if (no_fall) then
-    !    r1 = 0.0
-    ! elseif (use_ppm) then
-    !    zt (ktop) = ze (ktop)
-    !    !!$acc loop vector
-    !    do k = ktop + 1, kbot
-    !       zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-    !    enddo
-    !    zt (kbot + 1) = zs - dt * vtr (kbot)
+    !$omp target teams distribute parallel do collapse(2)
+    do j = js, je
+       do i = is, ie
+          if (no_fall (i, j)) then
+             r1 (i, j) = 0.0
+          end if
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
-    !    !!$acc loop seq
-    !    do k = ktop, kbot
-    !       if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-    !    enddo
-    !    call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-    ! ! else
-    ! !    call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-    ! endif
+    if (use_ppm) then
 
-    ! ! -----------------------------------------------------------------------
-    ! ! vertical velocity transportation during sedimentation
-    ! ! -----------------------------------------------------------------------
+       !$omp target teams distribute collapse(2)
+       do i = is, ie
+          do j = js, je
+             if (.not. no_fall (i, j)) then
+                zt (i, j, ktop) = ze (i, j, ktop)
+                !$omp parallel do
+                do k = ktop + 1, kbot
+                   zt (i, j, k) = ze (i, j, k) - dt * (vtr (i, j, k - 1) + vtr (i, j, k)) / 2.0
+                enddo
+                !$omp end parallel do
+                zt (i, j, kbot + 1) = zs - dt * vtr (i, j, kbot)
+                ! !$omp ordered
+                do k = ktop, kbot
+                   if (zt (i, j, k + 1) >= zt (i, j, k)) zt (i, j, k + 1) = zt (i, j, k) - dz_min
+                enddo
+                ! !$omp end ordered
+                call lagrangian_fall_ppm ( &
+                     ktop, kbot, zs, ze (i, j, :), zt (i, j, :), &
+                     dp (i, j, :), qr (i, j, :), r1 (i, j), m1_rain (i, j, :), mono_prof)
+             end if ! not no_fall
+          end do
+       end do
+       !$omp end target teams distribute
 
-    ! if (do_sedi_w) then
-    !    w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-    !    !!$acc loop vector
-    !    do k = ktop + 1, kbot
-    !       w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-    !            / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-    !    enddo
-    ! endif
+    else
 
-    ! ! -----------------------------------------------------------------------
-    ! ! heat transportation during sedimentation
-    ! ! -----------------------------------------------------------------------
+       call implicit_fall_3d (dt, is, ie, js, je, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain, no_fall)
 
-    ! ! if (do_sedi_heat) &
-    ! !      call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+    endif
 
-    ! ! -----------------------------------------------------------------------
-    ! ! evaporation and accretion of rain for the remaing 1 / 2 time step
-    ! ! -----------------------------------------------------------------------
+    ! -----------------------------------------------------------------------
+    ! vertical velocity transportation during sedimentation
+    ! -----------------------------------------------------------------------
 
-    ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-    ! evap1 = evap1 + revap
+    if (do_sedi_w) then
+
+       !$omp target teams distribute collapse(2)
+       do i = is, ie
+          do j = js, je
+             w1 (i, j, ktop) = ( &
+                  dm (i, j, ktop) * w1 (i, j, ktop) + &
+                  m1_rain (i, j, ktop) * vtr (i, j, ktop) &
+                  ) / (dm (i, j, ktop) - m1_rain (i, j, ktop))
+          end do
+       end do
+       !$omp end target teams distribute
+
+       !$omp target teams distribute parallel do collapse(3)
+       do k = ktop + 1, kbot
+          do i = is, ie
+             do j = js, je
+                w1 (i, j, k) = ( &
+                     dm (i, j, k) * w1 (i, j, k) - &
+                     m1_rain (i, j, k - 1) * vtr (i, j, k - 1) + &
+                     m1_rain (i, j, k) * vtr (i, j, k) &
+                     ) / (dm (i, j, k) + m1_rain (i, j, k - 1) - m1_rain (i, j, k))
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+
+    end if
+
+    ! -----------------------------------------------------------------------
+    ! heat transportation during sedimentation
+    ! -----------------------------------------------------------------------
+
+    if (do_sedi_heat) then
+       call sedi_heat_3d (is, ie, js, je, ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+    end if
+
+    ! -----------------------------------------------------------------------
+    ! evaporation and accretion of rain for the remaing 1 / 2 time step
+    ! -----------------------------------------------------------------------
+
+    call revap_racc_3d (is, ie, js, je, ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+    !$omp target teams distribute parallel do collapse(3)
+    do k = ktop + 1, kbot
+       do i = is, ie
+          do j = js, je
+             evap1 (i, j, k) = evap1 (i, j, k) + revap (i, j, k)
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
   end subroutine warm_rain_3d
 
