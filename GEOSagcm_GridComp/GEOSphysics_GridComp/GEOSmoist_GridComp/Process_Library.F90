@@ -32,13 +32,13 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
   ! In anvil/convective clouds
-  real, parameter :: aT_ICE_ALL = 243.16
-  real, parameter :: aT_ICE_MAX = 265.66
+  real, parameter :: aT_ICE_ALL = 252.16
+  real, parameter :: aT_ICE_MAX = 268.16
   real, parameter :: aICEFRPWR  = 2.0
   ! Over snow/ice SRF_TYPE = 2
   real, parameter :: iT_ICE_ALL = 236.16
   real, parameter :: iT_ICE_MAX = 261.16
-  real, parameter :: iICEFRPWR  = 4.0
+  real, parameter :: iICEFRPWR  = 6.0
   ! Over Land     SRF_TYPE = 1
   real, parameter :: lT_ICE_ALL = 239.16
   real, parameter :: lT_ICE_MAX = 261.16
