@@ -23,6 +23,7 @@ module CICE_GEOSPlugMod
   use CICE_FinalMod                 
   use CICE_RunMod                 
   use ice_import_export
+  use ice_record_mod
 
 
   implicit none
@@ -435,6 +436,7 @@ contains
     integer                                :: OGCM_NX, OGCM_NY
     integer                                :: BLK_NX,  BLK_NY
     integer                                :: counts(7)
+    character(len=ESMF_MAXSTR)             :: ReplayMode
 
 ! Locals with ESMF and MAPL types
 
@@ -499,6 +501,7 @@ contains
 
     call MAPL_GetResource(MAPL,DT_SEAICE,  Label="RUN_DT:",    _RC)             ! Get AGCM Heartbeat
     call MAPL_GetResource(MAPL,DT_SEAICE,  Label="OCEAN_DT:",  DEFAULT=DT_SEAICE, _RC) ! set Default OCEAN_DT to AGCM Heartbeat
+    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", _RC)
 
 ! Set the time for CICE
 !---------------------
@@ -574,6 +577,9 @@ contains
     !=====================================================================================
 
 
+    if(adjustl(ReplayMode)=="Regular") then
+       call alloc_record_state
+    endif
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
@@ -969,7 +975,7 @@ contains
 ! Save thermo states for replay corrector
 !-----------------
 
-       !call ice_checkpoint(timeStamp)
+       call save_record_state
 
     end if
 
