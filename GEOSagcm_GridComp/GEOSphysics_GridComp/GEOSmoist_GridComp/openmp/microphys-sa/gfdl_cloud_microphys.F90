@@ -950,23 +950,33 @@ contains
             dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
             eis, den, denfac, ccn, c_praut, vtrz, &
             r1, evap1, m1_rain, w1, h_var1d)
-       m2_rain = qlz + qrz
 
-       ! rain (i, j) = rain (i, j) + r1
+       !$omp target teams distribute collapse(2)
+       do i = is, ie
+          do j = js, je
+             rain (i, j) = rain (i, j) + r1 (i, j)
+          end do
+       end do
 
-       ! !$acc loop vector
-       ! do k = ktop, kbot
-       !    revap (i,j,k) = revap (i,j,k) + evap1(k)
-       !    m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (k)
-       !    m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (k)
-       !    m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
-       ! enddo
+       !$omp target teams distribute parallel do collapse(3)
+       do k = ktop, kbot
+          do i = is, ie
+             do j = js, je
+                revap (i,j,k) = revap (i,j,k) + evap1(i, j, k)
+                m2_rain (i, j, k) = m2_rain (i, j, k) + m1_rain (i, j, k)
+                m2_sol (i, j, k) = m2_sol (i, j, k) + m1_sol (i, j, k)
+                m1 (i, j, k) = m1 (i, j, k) + m1_rain (i, j, k) + m1_sol (i, j, k)
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
 
     end do
 
     !$omp end target data
 
-    print *, 'm2_rain: ', shape(m2_rain), minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'm2_sol: ', minval(m2_sol), maxval(m2_sol), sum(m2_sol)
     print *, 'rain: ', minval(rain), maxval(rain), sum(rain)
     print *, 'snow: ', minval(snow), maxval(snow), sum(snow)
     print *, 'graupel: ', minval(graupel), maxval(graupel), sum(graupel)
