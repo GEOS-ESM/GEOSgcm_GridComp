@@ -966,7 +966,7 @@ contains
 
     !$omp end target data
 
-    print *, 'm2_rain: ', minval(m2_rain), maxval(m2_rain), sum(m2_rain)
+    print *, 'm2_rain: ', shape(m2_rain), minval(m2_rain), maxval(m2_rain), sum(m2_rain)
     print *, 'rain: ', minval(rain), maxval(rain), sum(rain)
     print *, 'snow: ', minval(snow), maxval(snow), sum(snow)
     print *, 'graupel: ', minval(graupel), maxval(graupel), sum(graupel)
@@ -1413,9 +1413,6 @@ contains
        end do
     end do
 
-    ! fac_rc = min(1.0,eis/10.0)**2 ! Estimated inversion strength determine stable regime
-    ! fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
-
     if (irain_f /= 0) then
 
        ! -----------------------------------------------------------------------
@@ -1674,15 +1671,16 @@ contains
     TOT_PREC_LS = 0.
     AREA_LS_PRC = 0.
 
-    !$omp target teams distribute parallel do collapse(3) &
-    !$omp   firstprivate( &
-    !$omp     TOT_PREC_LS, AREA_LS_PRC) &
-    !$omp   private( &
-    !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
-    !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
-    !$omp     sink, dqsdt)
+    !$omp target teams distribute collapse(2)
     do k = ktop, kbot
        do i = is, ie
+
+          !$omp parallel do firstprivate( &
+          !$omp     TOT_PREC_LS, AREA_LS_PRC) &
+          !$omp   private( &
+          !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
+          !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
+          !$omp     sink, dqsdt)
           do j = js, je
 
              TOT_PREC_LS = TOT_PREC_LS  + ( ( qr (i, j, k) + qs (i, j, k) + qg (i, j, k) ) * den (i, j, k) )
@@ -1761,9 +1759,11 @@ contains
              end if ! warm - rain
 
           end do
+          !$omp end parallel do
+
        end do
     end do
-    !$omp end target teams distribute parallel do
+    !$omp end target teams distribute
 
   end subroutine revap_racc_3d
 
