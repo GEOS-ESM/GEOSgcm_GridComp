@@ -450,6 +450,11 @@
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
+      call MAPL_GetPointer(EXPORT,PTR2,'DELTAVOL1', _RC)
+      if ( associated(PTR2) ) then
+         call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
+         L1 = L1 + NUMMAX*size(PTR2,2)
+      end if
       call MAPL_GetPointer(EXPORT,PTR2,'TINZ', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)

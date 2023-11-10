@@ -223,7 +223,7 @@ program  mk_CatchCNRestarts
   integer, parameter :: ntiles_cn = 1684725
   character(len=300), parameter :: &
        InCNRestart = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
-       InCNTilFile = '/discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'     
+       InCNTilFile = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'     
 
   character(len=256), parameter :: CatNames   (57) = &
        (/'BF1    ','BF2    ','BF3    ','VGWMAX ','CDCR1  ', &

@@ -2047,7 +2047,6 @@ module GEOSmoist_Process_Library
             qsnx= Qsn*scice !
             if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
           end if  
-         
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn

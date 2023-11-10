@@ -28,7 +28,6 @@
       integer                 :: N
       integer                 :: nxt
       REAL(kind=RKIND), POINTER      :: XG(:,:), YG(:,:)
-      REAL(kind=RKIND), POINTER      :: rA(:,:)
       real(kind=RKIND), pointer      :: XT(:,:  ), YT(:,:  )
       real(kind=RKIND), allocatable  :: XV(:,:,:), YV(:,:,:)
 
@@ -102,7 +101,6 @@
 
       real(kind=RKIND) :: areamin, xc, yc
       character(len=128)      :: Iam = "mkMITAquaRaster"
-
       NAMELIST /W2_EXCH2_PARM01/   sNx, SNy,  blankList
 
 ! Get source grid directory and destination raster file names
@@ -239,7 +237,7 @@
       nTotal = dot_product(scaleX*pNX,scaleY*pNY)
       nCPU = ntotal-BLNKSZ
 
-      write(RasterFile,'(A2,I9.9,A3,I9.9)') "LLC",nCPU*sNX,"xLLC",sNY
+      write(RasterFile,'(A2,I4.4,A3,I4.4)') "LLC",nCPU*sNX,"xLLC",sNY
       if(DoZip) RasterFile = trim(RasterFile)//'.gz'
 
 !  Initialize the raster array
@@ -289,8 +287,6 @@
 ! Allocate space for symmetric version of coordinates
 !----------------------------------------------------
 
-      allocate(rA(scaleX(k)*NX+1, scaleY(k)*NY+1),stat=STATUS)
-      VERIFY_(STATUS)
       allocate(XG(scaleX(k)*NX+1, scaleY(k)*NY+1),stat=STATUS)
       VERIFY_(STATUS)
       allocate(YG(scaleX(k)*NX+1, scaleY(k)*NY+1),stat=STATUS)
@@ -300,6 +296,7 @@
       yg=0.0
 
       LENGTH = size(XG)*rkind
+!      print *,'DEBUG:length=',length, rkind
 
 ! Read vertcies for each face
 !----------------------------
@@ -307,31 +304,16 @@
       open (IUNIT, FILE=trim(GridDir)//trim(FACEFILE), &
             ACCESS='DIRECT', RECL=LENGTH, STATUS='OLD',convert='big_endian')
 
-      read (IUNIT,REC=5) rA 
+!      read (IUNIT,REC=5) rA 
       read (IUNIT,REC=6) XG
       read (IUNIT,REC=7) YG
 
-#if 1
-!      areamin = 1.e15
-      do i=1,size(xg,1) 
-         do j=1,size(xg,2)
-            if (rA(i,j) <=0.0) cycle
-!            areamin = min(areamin,rA(i,j))
-!            xc = (XG(i,j)+XG(i+1,j))/2
-!            yc = (YG(i,j)+YG(i+1,j))/2
-            xc = XG(i,j)
-            yc = YG(i,j)
-            write(*,"(f6.1,a1,f6.1,a1,i3)") xc,",",yc,",", nint(100*rA(i,j)/11896090857.)
-         end do
-      end do
-#endif
 
       close(IUNIT)
 
       if(Verb) then
          PRINT *, 'MIN/MAXVAL(XG) = ', MINVAL(XG), MAXVAL(XG)
          PRINT *, 'MIN/MAXVAL(YG) = ', MINVAL(YG), MAXVAL(YG)
-         PRINT *, 'MAXVAL(rA) = ', MAXVAL(rA)
       end if
 
       DO J = 1, scaleY(k)*pNY
@@ -380,16 +362,15 @@
    if(Verb) then
       print *,'KP=',kp
    end if
-   STOP
 
-!   open(unit=9, file='mit-llc1080.ascii', form='formatted', status='new')
-!   write(9,*) XV(:,:,1)
-!   write(9,*) YV(:,:,1)
-!   close(9)
-!   stop 'writing coordinates only, exiting...'
+   open(unit=9, file='mit-llc90.ascii', form='formatted', status='new')
+   write(9,*) XV(:,:,1)
+   write(9,*) YV(:,:,1)
+   close(9)
+   !stop 'writing coordinates only, exiting...'
 
-   call LRRasterize(rasterFile,xv,yv,nc=ncol,nr=nrow,&
-        SurfaceType=0,Verb=Verb)
+   call LRRasterize(RASTERFILE,XV,YV,nc=ncol,nr=nrow,&
+                    SurfaceType=0,Verb=Verb)
 
    call exit(0)
 

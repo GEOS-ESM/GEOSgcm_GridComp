@@ -79,13 +79,9 @@ MODULE CATCHMENT_CN_MODEL
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
-       RHOFS             => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX     => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
-       SLOPE             => CATCH_SNWALB_SLOPE,  &
-       MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-       DZ1MAX            => CATCH_DZ1MAX,        &  
-       SCONST            => CATCH_SCONST,        &
+       CATCH_SNOW_RHOFS,                         &
+       CATCH_SNOW_MAXDEPTH,                      &
+       CATCH_SNOW_DZPARAM,                       &
        C_CANOP           => CATCH_C_CANOP,       &
        N_sm              => CATCH_N_ZONES,       &
        SATCAPFR          => CATCH_SATCAPFR,      &
@@ -106,19 +102,18 @@ MODULE CATCHMENT_CN_MODEL
        catch_calc_wtotl, dampen_tc_oscillations, &
        SRUNOFF
   
-  USE SIBALB_COEFF,  ONLY: coeffsib
-  
   USE STIEGLITZSNOW, ONLY: &
-       snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d, N_constit
+       StieglitzSnow_snowrt,                     &
+       StieglitzSnow_calc_asnow,                 &
+       StieglitzSnow_calc_tpsnow,                &
+       N_constit
+
   
   IMPLICIT NONE
   
   private
   
   public :: catchcn
-  public :: catchcn_calc_tsurf
-  public :: catchcn_calc_tsurf_excl_snow
-  public :: catchcn_calc_etotl
 
   ! -----------------------------------------------------------------------------
   
@@ -148,7 +143,7 @@ CONTAINS
        ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
        ETURBS, DEDQAS, DEDTCS, HSTURBS,DHSDQAS, DHSDTCS,         &
        TM, QM, ra1, ra2, ra4, raS, SUNANG,                       &
-       SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,             &
+       SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,             &  ! HLWDWN = *absorbed* longwave only (excl reflected)
        SQSCAT, RSOIL1, RSOIL2,   RDC,                            &
        QSAT1, DQS1, ALW1, BLW1,  QSAT2, DQS2, ALW2, BLW2,        &
        QSAT4, DQS4, ALW4, BLW4,  QSATS, DQSS, ALWS, BLWS,        &
@@ -162,16 +157,16 @@ CONTAINS
        CATDEF, RZEXC, srfexc, GHTCNT,                            &
        WESNN, HTSNNN, SNDZN,     EVAP, SHFLUX, RUNOFF,           &
        EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &
-       HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
+       HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
        GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
        TP1, TP2, TP3, TP4, TP5, TP6,                             &
        sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
        EVACC, SHACC, TSURF,                                      &
        SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
        LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
-       TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE,                    &
-       TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-       RCONSTIT, RMELT, TOTDEPOS, LHACC                          &
+       TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
+       TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
+       RCONSTIT, RMELT, TOTDEPOS, LHACC                          &  ! OPTIONAL
        )
     
     IMPLICIT NONE
@@ -238,6 +233,7 @@ CONTAINS
     REAL, INTENT(OUT), DIMENSION(:) :: TCSORIG, TPSN1IN, TPSN1OUT, &
          FSW_CHANGE
     
+    REAL, INTENT(OUT), DIMENSION(:, :) :: FICESOUT
     
     REAL, INTENT(OUT), DIMENSION(:), OPTIONAL :: LHACC
     
@@ -251,30 +247,30 @@ CONTAINS
     
     INTEGER I,K,N,LAYER
     
-    REAL, DIMENSION(NCH) :: CSOIL, CCANOP, ASNOW, traincx, trainlx,         &
-         RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
-         HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
-         QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4,                       &
-         FCAN, THRUL_VOL, THRUC_VOL, RZEQOL, frice, srfmx,                  &
-         srfmn, RCST1, RCST2, EVAPFR, RDCX, EVAP1, EVAP2,                   &
-         EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
-         GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
-         ar2old, ar4old, GHFLUXS, DEDQA1X, DEDTC1X,                         &
-         DHSDQA1X, DHSDTC1X, DEDQA2X, DEDTC2X, DHSDQA2X, DHSDTC2X,          &
-         DEDQA4X, DEDTC4X, DHSDQA4X, DHSDTC4X, werror, sfmcun, rzmcun,      &
-         prmcun,WTOT_ORIG,ENTOT_ORIG,                                       &
-         TC1_00, TC2_00, TC4_00, EACC_00,                                   &
-         qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,             &
-         tgs_orig,TG1SF,TG2SF,TG4SF,RCUN1,RCUN2,                            &
-         tg1_orig,tg2_orig,tg4_orig,                                        &
-         EVROOT1, EVROOT2, EVROOT4, EVSURF1, EVSURF2, EVSURF4,              &
-         EVINT1, EVINT2, EVINT4, ESATFR, ECORR, DRCST1DT, DRCST1DQ,         &
+    REAL, DIMENSION(NCH) :: CSOIL, CCANOP, ASNOW, traincx, trainlx,       &
+         RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,    &
+         HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,              &
+         QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4,                     &
+         FCAN, THRUL_VOL, THRUC_VOL, RZEQOL, frice, srfmx,                &
+         srfmn, RCST1, RCST2, EVAPFR, RDCX, EVAP1, EVAP2,                 &
+         EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,        &
+         GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,     &
+         ar2old, ar4old, GHFLUXS, DEDQA1X, DEDTC1X,                       &
+         DHSDQA1X, DHSDTC1X, DEDQA2X, DEDTC2X, DHSDQA2X, DHSDTC2X,        &
+         DEDQA4X, DEDTC4X, DHSDQA4X, DHSDTC4X, werror, sfmcun, rzmcun,    &
+         prmcun,WTOT_ORIG,ENTOT_ORIG,                                     &
+         TC1_00, TC2_00, TC4_00, EACC_00,                                 &
+         qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,           &
+         tgs_orig,TG1SF,TG2SF,TG4SF,RCUN1,RCUN2,                          &
+         tg1_orig,tg2_orig,tg4_orig,                                      &
+         EVROOT1, EVROOT2, EVROOT4, EVSURF1, EVSURF2, EVSURF4,            &
+         EVINT1, EVINT2, EVINT4, ESATFR, ECORR, DRCST1DT, DRCST1DQ,       &
          DRCST2DT, DRCST2DQ, FVEG, RD, RCST, DRCSTDT, DRCSTDQ, RSURF
     
     
     REAL, DIMENSION(N_gt) :: HT, TP, soilice
     
-    REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices, targetthick, &
+    REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices,            &
          wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
     
     REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
@@ -293,7 +289,7 @@ CONTAINS
          QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
          EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
          EVAPXS,SHFLUXXS,DTC1SN,DTC2SN,DTC4SN,TCANOP,                     &
-         ZLAI0, phi,rho_fs,WSS,sumdepth,                                  &   
+         ZLAI0, phi,rho_fs,sumdepth,                                      &   
          sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
          mltwtr, wesnbot, dtss
     
@@ -577,36 +573,36 @@ CONTAINS
         RUNSRF(N)=0.
 
 
-!****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
-        IF(ITYP1(N) .EQ. 9) THEN
-
-          ! This block of the code should no longer be used.
-          ! If it is, Randy wants to know about it.
-          ! reichle+koster, 12 Aug 2014
-          write (*,*) 'catchment() encountered ityp==9. STOPPING.'
-          stop 
-
-          if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
-              TSN1=tc1(n)-TF
-              TSN2=tc1(n)-TF
-              TSN3=tc1(n)-TF
-            else
-              TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
-              TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
-              TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
-            endif
-          WESNN(1,N)=.1
-          WESNN(2,N)=.2
-          WESNN(3,N)=.1
-          HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
-          HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
-          HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
-          SNDZN(1,N)=WESNN(1,N)/.9
-          SNDZN(2,N)=WESNN(2,N)/.9
-          SNDZN(3,N)=WESNN(3,N)/.9
-          POTFRC(N)=1.
-
-          ENDIF
+!! !****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
+!!        IF(ITYP1(N) .EQ. 9) THEN
+!!
+!!          ! This block of the code should no longer be used.
+!!          ! If it is, Randy wants to know about it.
+!!          ! reichle+koster, 12 Aug 2014
+!!          write (*,*) 'catchment() encountered ityp==9. STOPPING.'
+!!          stop 
+!!
+!!          if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
+!!              TSN1=tc1(n)-TF
+!!              TSN2=tc1(n)-TF
+!!              TSN3=tc1(n)-TF
+!!            else
+!!              TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
+!!              TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
+!!              TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
+!!            endif
+!!          WESNN(1,N)=.1
+!!          WESNN(2,N)=.2
+!!          WESNN(3,N)=.1
+!!          HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
+!!          HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
+!!          HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
+!!          SNDZN(1,N)=WESNN(1,N)/.9
+!!          SNDZN(2,N)=WESNN(2,N)/.9
+!!          SNDZN(3,N)=WESNN(3,N)/.9
+!!          POTFRC(N)=1.
+!!
+!!          ENDIF
 
 !****   RESET LAKE VARIABLES
         IF(ITYP1(N) .EQ. 10) THEN
@@ -794,7 +790,6 @@ CONTAINS
 
       DO N=1,NCH
 
-        WSS    = UM(N)
         TS     = TM(N) 
         T1(1)  = TG1(N)-TF
         T1(2)  = TG2(N)-TF
@@ -853,7 +848,7 @@ CONTAINS
 !     in process
 !     reichle, 29 May 03
 
-        call get_tf0d(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
         tgs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tgs_orig(n)=                       &
                   amin1( tf, tg1_orig(n)*ar1(n)+tg2_orig(n)*ar2(n)+            &
@@ -873,30 +868,29 @@ CONTAINS
         tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tgs_orig?  - reichle, 8/8/2014
 
         sumdepth=sum(sndz)
-        targetthick(1)=dz1max
 
-        do i=2,N_snow
-           targetthick(i)=1./(N_snow-1.)
-           enddo
+        CALL StieglitzSnow_snowrt(                                             &
+                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
+                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
+                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
+                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
+                   raddn, zc1, totdep1,                                        &  ! in   
+                   wesn, htsnn, sndz, RCONSTIT1,                               &  ! inout 
+                   hups, fices, tpsn, RMELT1,                                  &  ! out  
+                   areasc, areasc0, pre, fhgnd,                                &  ! out  
+                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
+                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
+                   wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out  
+                   excs, drho0, wesnbot, tksno, dtss                    )         ! out  
 
-        CALL SNOWRT(                                                           &
-                   N_sm, N_snow, MAPL_Land,                                    &
-                   t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
-                   eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
-                   desdtc,hups,raddn,zc1, totdep1, wss,                        &
-                   wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &
-                   areasc,areasc0,pre,fhgnd,                                   &
-                   EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
-                   sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
-                   wesnperc, wesndens, wesnrepar, mltwtr,                      &
-                   excs, drho0, wesnbot, tksno, dtss,                          &
-                   maxsndepth,  rhofs, targetthick )
 
-        LH_SNOW(N)=areasc*EVSN*ALHS
-        SH_SNOW(N)=areasc*SHFLS
-        LWUP_SNOW(N)=areasc*HUPS
-        LWDOWN_SNOW(N)=areasc*HLWDWN(N)
-        NETSW_SNOW(N)=areasc*SWNETS(N)
+        FICESOUT(:,N)  = fices
+
+        LH_SNOW(N)     = areasc*EVSN*ALHS
+        SH_SNOW(N)     = areasc*SHFLS
+        LWUP_SNOW(N)   = areasc*HUPS
+        LWDOWN_SNOW(N) = areasc*HLWDWN(N)
+        NETSW_SNOW(N)  = areasc*SWNETS(N)
 
         TPSN1(N) = TPSN(1)+TF 
 
@@ -1465,19 +1459,19 @@ CONTAINS
         SHACC(N)=SHFLUX(N)-SHACC(N)
 
 
-
-
-
 ! **** SPECIAL DIAGNOSTICS FOR AR5 DECADAL RUNS
 
-           CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        ! the following assumes that fices is unchanged, otherwise may need to update FICESOUT
+        ! - reichle,  4 Oct 2023
 
-           !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
-           !     (TPSN(3)+TF)*WESNN(3,N)
-
-           tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
-
-           AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
+        CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        
+        !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
+        !     (TPSN(3)+TF)*WESNN(3,N)
+        
+        tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
+        
+        AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
            
         WAT_10CM(N)=0.1*(RZEQ(N)+RZEXC(N))+SRFEXC(N)
 
@@ -1486,7 +1480,7 @@ CONTAINS
         TOTICE_SOIL(N)=TOTWAT_SOIL(N)*FRICE(N)
 
 
-        ENDDO     
+        ENDDO  ! N=1,NCH (PROCESS DATA AS NECESSARY PRIOR TO RETURN)     
 
       if(numout.ne.0) then
        do i = 1,numout
@@ -2323,186 +2317,7 @@ CONTAINS
 
       RETURN
       END SUBROUTINE RSURFP2
-!****
-!**** [ END RSURFP2 ]
-!****
-
-!**** -----------------------------------------------------------------
-!**** /////////////////////////////////////////////////////////////////
-!**** -----------------------------------------------------------------
-
-  subroutine catchcn_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
-       ar1, ar2, ar4, tsurf )
-        
-    ! Calculate diagnostic surface temperature "tsurf" from prognostics
-    !
-    ! reichle, Aug 31, 2004
-    ! reichle, Jan  4, 2012 - optionally "ignore_snow"
-    ! reichle, Apr  2, 2012 - revised for use without catch_types structures and
-    !                          to avoid duplicate calls to rzequil() and partition()
-    ! reichle, Oct 20, 2014 - removed option to "ignore_snow"; 
-    !                          use subroutine catch_calc_tsurf_excl_snow() instead
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)           :: NTILES
-    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
-    real,    dimension(N_snow,NTILES), intent(in)           :: wesnn, htsnn
-    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
-    real,    dimension(       NTILES), intent(out)          :: tsurf
-    
-    ! ----------------------------
-    !    
-    ! local variables
-    
-    integer                 :: n
-    
-    real, dimension(NTILES) :: asnow
-    
-    real, dimension(1)      :: tpsn1, real_dummy
-
-    ! ------------------------------------------------------------------
-        
-    ! Compute tsurf excluding snow
-    
-    call catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, tsurf )
-
-    ! Compute snow covered area
-    
-    call StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
-    
-    ! Add contribution of snow temperature 
-    
-    do n=1,NTILES
-       
-       if (asnow(n)>0.) then
-          
-          ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
-          
-          call StieglitzSnow_calc_tpsnow( 1, htsnn(1,n), wesnn(1,n), tpsn1, real_dummy ) 
-          
-          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1(1) + TF)
-          
-       end if
-       
-    end do
-    
-  end subroutine catchcn_calc_tsurf
-  
-  ! *******************************************************************
-
-  subroutine catchcn_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, &
-       tsurf_excl_snow )
-    
-    ! Calculate diagnostic surface temperature "tsurf" ignoring snow
-    !
-    ! reichle, 20 Oct 2014
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)           :: NTILES
-    real,    dimension(       NTILES), intent(in)           :: tc1, tc2, tc4
-    real,    dimension(       NTILES), intent(in)           :: ar1, ar2, ar4    
-    real,    dimension(       NTILES), intent(out)          :: tsurf_excl_snow
-        
-    ! ------------------------------------------------------------------
-
-    tsurf_excl_snow = ar1*tc1 + ar2*tc2 + ar4*tc4
-    
-  end subroutine catchcn_calc_tsurf_excl_snow
-
-
-  ! *******************************************************************
-
-  subroutine catchcn_calc_etotl( NTILES, dzsf, vgwmax, cdcr1, cdcr2,         &
-       psis, bee, poros, wpwet,bf1, bf2,                                     &
-       ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,     &
-       srfexc, rzexc, catdef, tc1, tc2, tc4, tg1, tg2, tg4,                  &
-       wesnn, htsnn, ghtcnt,                                                 &
-       etotl )
-    
-    ! compute total energy stored in land tiles
-    !
-    ! reichle,  4 Jan 2012
-    ! reichle,  2 Apr 2012 - revised for use without catch_types structures
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    integer,                           intent(in)  :: NTILES
-    
-    real,    dimension(       NTILES), intent(in)  :: dzsf
-    real,    dimension(       NTILES), intent(in)  :: vgwmax
-    real,    dimension(       NTILES), intent(in)  :: cdcr1, cdcr2, bf1, bf2
-    real,    dimension(       NTILES), intent(in)  :: psis, bee, poros, wpwet    
-    real,    dimension(       NTILES), intent(in)  :: ars1, ars2, ars3
-    real,    dimension(       NTILES), intent(in)  :: ara1, ara2, ara3, ara4
-    real,    dimension(       NTILES), intent(in)  :: arw1, arw2, arw3, arw4
-    real,    dimension(       NTILES), intent(in)  :: srfexc, rzexc, catdef
-    real,    dimension(       NTILES), intent(in)  :: tc1, tc2, tc4
-    real,    dimension(       NTILES), intent(in)  :: tg1, tg2, tg4
-    real,    dimension(N_snow,NTILES), intent(in)  :: wesnn, htsnn
-    real,    dimension(N_gt  ,NTILES), intent(in)  :: ghtcnt
-    
-    real,    dimension(       NTILES), intent(out) :: etotl
-    
-    ! ----------------------------
-    !    
-    ! local variables
-    
-    integer :: n
-
-    real    :: tot_htsn, tot_ght, csoil
-    
-    real, dimension(NTILES) :: srfexc_tmp, rzexc_tmp, catdef_tmp
-        
-    real, dimension(NTILES) :: ar1, ar2, ar4, avg_tc, avg_tg
-
-    ! ----------------------------------------------------------------
-    !
-    ! diagnose ar1, ar2, ar4 prior to catchcn_calc_tsurf()
-    
-    srfexc_tmp = srfexc   ! srfexc is "inout" in catch_calc_soil_moist()
-    rzexc_tmp  = rzexc    ! rzexc  is "inout" in catch_calc_soil_moist()
-    catdef_tmp = catdef   ! catdef is "inout" in catch_calc_soil_moist()
-    
-    call catch_calc_soil_moist(                                                    &
-         NTILES, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,              &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,bf1, bf2,&
-         srfexc_tmp, rzexc_tmp, catdef_tmp, ar1, ar2, ar4 )
-    
-    ! compute snow-free tsurf
-    
-    call catchcn_calc_tsurf_excl_snow(                                           &
-         NTILES, tc1, tc2, tc4, ar1, ar2, ar4, avg_tc )
-    
-    ! compute snow-free tg
-    
-    call catchcn_calc_tsurf_excl_snow(                                           &
-         NTILES, tg1, tg2, tg4, ar1, ar2, ar4, avg_tg )
-
-    do n=1,NTILES
-       
-       ! total snow heat content
-       
-       tot_htsn = sum( htsnn(1:N_snow,n) )
-       
-       ! total ground heat content
-       
-       tot_ght  = sum( ghtcnt(1:N_gt,n))
-       
-       ! total energy
-       
-       etotl(n) = C_CANOP*avg_tc(n) + CSOIL_2*avg_tg(n) + tot_htsn + tot_ght 
-
-    end do
-    
-  end subroutine catchcn_calc_etotl
-  
 
 END MODULE CATCHMENT_CN_MODEL
+
+! ================================== EOF ============================================

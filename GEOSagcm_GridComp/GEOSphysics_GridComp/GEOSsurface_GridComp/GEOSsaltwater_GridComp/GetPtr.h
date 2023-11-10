@@ -140,6 +140,7 @@
    ! category dimensional exports
    call MAPL_GetPointer(EXPORT,FCONDBOTN,  'FCONDBOTN' ,  _RC)
    call MAPL_GetPointer(EXPORT,FCONDTOPN,  'FCONDTOPN' ,  _RC)
+   call MAPL_GetPointer(EXPORT,DELTAVOL1,  'DELTAVOL1' ,  _RC)
    call MAPL_GetPointer(EXPORT,TINZ     ,  'TINZ'      ,  _RC)
    call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  _RC)
    call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  _RC)

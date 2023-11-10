@@ -7,8 +7,10 @@ import sys
 import argparse
 import textwrap
 import ruamel.yaml
-from bcs_utils import *
-from make_ease_bcs import *
+from make_bcs_questionary import *
+from make_bcs_ease import *
+from make_bcs_latlon import *
+from make_bcs_cube import *
 
 # Define the argument parser
 def parse_args():
@@ -55,23 +57,28 @@ def parse_args():
 def main():
 
   question_flag = False
-  config        = ''
 
   # Parse the command line arguments from parse_args() capturing the arguments and the rest
   command_line_args, extra_args = parse_args()
   print(f'command_line_args: {command_line_args}')
   config_yaml = command_line_args.config_file
 
+  configs = []
   if config_yaml:
       config = yaml_to_config(config_yaml)
+      configs = [config]
   else:
       answers = ask_questions()
-      config = get_config_from_answers(answers)
-   
-  make_ease_bcs(config)
- 
+      configs = get_configs_from_answers(answers)
+  for config in configs :
+      if 'EASE' in config['grid_type']:
+         make_bcs_ease(config)    
+      if 'Lat-Lon' in config['grid_type']:
+         make_bcs_latlon(config)    
+      if 'Cubed-Sphere' in config['grid_type'] or 'Stretched_CS' in config['grid_type']:
+         make_bcs_cube(config)    
 
 if __name__ == '__main__' :
-  exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
+  #exit("The python version of make_bcs is not yet ready for general use.  Until further notice, please use csh script make_bcs")
   main()
 

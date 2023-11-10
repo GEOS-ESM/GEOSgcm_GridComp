@@ -352,6 +352,7 @@
          79                                +   & ! 79 total single slice exports
          NUM_ICE_CATEGORIES                +   & ! FCONDBOTN
          NUM_ICE_CATEGORIES                +   & ! FCONDTOPN
+         NUM_ICE_CATEGORIES                +   & ! DELTAVOL1
          NUM_ICE_LAYERS*NUM_ICE_CATEGORIES +   & ! TINZ
          NUM_ICE_CATEGORIES                +   & ! SHICEN
          NUM_ICE_CATEGORIES                +   & ! HLWUPN
@@ -914,6 +915,13 @@
          LN = L1 + NUMMAX*size(PTR2,2) -1
          PTR2(1:NUMMAX,1:size(PTR2,2)) => BUFEXP(L1:LN)
          FCONDTOPN => PTR2(1:NT,:)
+         L1 = LN + 1
+      end if
+      call MAPL_GetPointer(EXPORT,PTR2,'DELTAVOL1', _RC)
+      if ( associated(PTR2) ) then
+         LN = L1 + NUMMAX*size(PTR2,2) -1
+         PTR2(1:NUMMAX,1:size(PTR2,2)) => BUFEXP(L1:LN)
+         DELTAVOL1 => PTR2(1:NT,:)
          L1 = LN + 1
       end if
       call MAPL_GetPointer(EXPORT,PTR2,'TINZ', _RC)

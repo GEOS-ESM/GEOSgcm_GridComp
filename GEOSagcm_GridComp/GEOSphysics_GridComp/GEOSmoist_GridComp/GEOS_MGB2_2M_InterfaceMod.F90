@@ -281,9 +281,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
          DIMS       = MAPL_DimsHorzVert,                        &
          VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
-    
-    
-    
+        
     call MAPL_TimerAdd(GC, name="--MGB2_2M", __RC__)
     VERIFY_(STATUS)
 
@@ -2372,7 +2370,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
             END DO
          END DO
-         
+
       call MAPL_GetPointer(EXPORT, PTR2D, 'CLDREFFI_TOP', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR2D)) PTR2D =  CLDREFFI_TOP_X
       
