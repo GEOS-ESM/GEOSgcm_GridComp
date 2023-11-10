@@ -34,6 +34,7 @@ module CICE_GEOSPlugMod
 
   integer            :: NUM_ICE_CATEGORIES
   logical, private   :: ice_grid_init2 
+  logical, private   :: running_regular_replay 
 
 contains
 
@@ -81,6 +82,7 @@ contains
     Iam = trim(COMP_NAME) // Iam
 
     ice_grid_init2 = .false.
+    running_regular_replay = .false.
 
     call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
     VERIFY_(STATUS)
@@ -92,6 +94,7 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_READRESTART,  Refresh,    _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -578,6 +581,7 @@ contains
 
 
     if(adjustl(ReplayMode)=="Regular") then
+       running_regular_replay = .true.
        call alloc_record_state
     endif
 
@@ -984,6 +988,58 @@ contains
 
   end subroutine Record
 
+! !IROUTINE: Refresh -- Refresh method (regular replay)
+
+! !INTERFACE:
+
+  subroutine Refresh ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component
+  type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
+  type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: RC     ! Error code
+
+!EOP
+
+    type(MAPL_MetaComp),     pointer :: MAPL
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Locals
+    character(len=14)                :: timeStamp
+    logical                          :: doRecord
+
+    __Iam__('Restore')
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
+    Iam = trim(COMP_NAME)//'::'//Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+
+! Restore thermo states for replay corrector
+!-----------------
+
+    call restore_record_state
+
+
+    call MAPL_TimerOff(MAPL,"TOTAL")
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Refresh
+
 !====================================================================
 
 ! !IROUTINE: Finalize        -- Finalize method for CICE wrapper
@@ -1091,6 +1147,9 @@ contains
         call ice_import_grid(FRO, rc=STATUS)
         VERIFY_(STATUS)
         call cice_init2
+        if (running_regular_replay) then
+           call save_record_state
+        endif
         ice_grid_init2 = .TRUE.
      endif
 
