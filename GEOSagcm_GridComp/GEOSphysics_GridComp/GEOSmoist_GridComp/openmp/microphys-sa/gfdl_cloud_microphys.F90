@@ -1675,7 +1675,8 @@ contains
     do k = ktop, kbot
        do i = is, ie
 
-          !$omp parallel do firstprivate( &
+          !$omp parallel do &
+          !$omp   firstprivate( &
           !$omp     TOT_PREC_LS, AREA_LS_PRC) &
           !$omp   private( &
           !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
