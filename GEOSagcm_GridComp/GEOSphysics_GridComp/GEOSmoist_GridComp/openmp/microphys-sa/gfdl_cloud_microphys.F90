@@ -980,12 +980,17 @@ contains
             qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, denfac, &
             vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, ccn, cnv_fraction, srf_type)
 
-       ! !$acc loop vector
-       ! do k = ktop, kbot
-       !    isubl (i,j,k) = isubl (i,j,k) + subl1(k)
-       ! enddo
+       !$omp target teams distribute parallel do collapse(3)
+       do k = ktop, kbot
+          do i = is, ie
+             do j = js, je
+                isubl (i,j,k) = isubl (i,j,k) + subl1(i, j, k)
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
 
-    end do
+    end do ! ntimes
 
     !$omp end target data
 
