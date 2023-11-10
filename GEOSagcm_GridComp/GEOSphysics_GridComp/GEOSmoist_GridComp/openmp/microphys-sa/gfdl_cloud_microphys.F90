@@ -1486,51 +1486,101 @@ contains
 
     end if ! irain_f
 
-    ! ! Revert In-Cloud condensate
-    ! ql = ql*qadum
-    ! qi = qi*qadum
+    ! Revert In-Cloud condensate
 
-    ! ! -----------------------------------------------------------------------
-    ! ! fall speed of rain
-    ! ! -----------------------------------------------------------------------
+    !$omp target teams distribute parallel do collapse(3)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             ql (i, j, k) = ql (i, j, k) * qadum (i, j, k)
+             qi (i, j, k) = qi (i, j, k) * qadum (i, j, k)
+          end do
+       end do
+    end do
 
-    ! if (no_fall) then
-    !    vtr (:) = vf_min
-    ! elseif (const_vr) then
-    !    vtr (:) = vr_fac ! ifs_2016: 4.0
-    ! else
-    !    !!$acc loop vector private(qden)
-    !    do k = ktop, kbot
-    !       qden = qr (k) * den (k)
-    !       if (qr (k) < thr) then
-    !          vtr (k) = vr_min
-    !       else
-    !          vtr (k) = vr_fac * vconr * sqrt (min (10., sfcrho / den (k))) * &
-    !               exp (0.2 * log (qden / normr))
-    !          vtr (k) = min (vr_max, max (vr_min, vtr (k)))
-    !       endif
-    !    enddo
-    ! endif
+    ! -----------------------------------------------------------------------
+    ! fall speed of rain
+    ! -----------------------------------------------------------------------
 
-    ! ze (kbot + 1) = zs
-    ! !!$acc loop seq
-    ! do k = kbot, ktop, - 1
-    !    ze (k) = ze (k + 1) - dz (k) ! dz < 0
-    ! enddo
+    !$omp target teams distribute parallel do collapse(3) private(qden)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             if (no_fall (i, j)) then
+                vtr (i, j, k) = vf_min
+             else if (const_vr) then
+                vtr (i, j, k) = vr_fac ! ifs_2016: 4.0
+             else
+                qden = qr (i, j, k) * den (i, j, k)
+                if (qr (i, j, k) < thr) then
+                   vtr (i, j, k) = vr_min
+                else
+                   vtr (i, j, k) = &
+                        vr_fac * &
+                        vconr * &
+                        sqrt (min (10., sfcrho / den (i, j, k))) * &
+                        exp (0.2 * log (qden / normr))
+                   vtr (i, j, k) = min (vr_max, max (vr_min, vtr (i, j, k)))
+                end if
+             end if
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
-    ! ! -----------------------------------------------------------------------
-    ! ! evaporation and accretion of rain for the first 1 / 2 time step
-    ! ! -----------------------------------------------------------------------
+    !$omp target teams distribute parallel do collapse(2)
+    do i = is, ie
+       do j = js, je
+          ze (i, j, kbot + 1) = zs
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
-    ! call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-    ! evap1 = revap
+    !$omp ordered
+    do k = kbot, ktop, - 1
+       !$omp target teams distribute parallel do collapse(2)
+       do i = is, ie
+          do j = js, je
+             ze (i, j, k) = ze (i, j, k + 1) - dz (i, j, k) ! dz < 0
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+    end do
+    !$omp end ordered
 
-    ! if (do_sedi_w) then
-    !    !!$acc loop vector
-    !    do k = ktop, kbot
-    !       dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-    !    enddo
-    ! endif
+    ! -----------------------------------------------------------------------
+    ! evaporation and accretion of rain for the first 1 / 2 time step
+    ! -----------------------------------------------------------------------
+    call revap_racc_3d (is, ie, js, je, ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+
+    !$omp target teams distribute parallel do collapse(3) private(qden)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             evap1 (i, j, k) = revap (i, j, k)
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
+
+    if (do_sedi_w) then
+       !$omp target teams distribute parallel do collapse(3)
+       do k = ktop, kbot
+          do i = is, ie
+             do j = js, je
+                dm (i, j, k) = dp (i, j, k) * ( &
+                     1. + &
+                     qv (i, j, k) + &
+                     ql (i, j, k) + &
+                     qr (i, j, k) + &
+                     qi (i, j, k) + &
+                     qs (i, j, k) + &
+                     qg (i, j, k))
+             end do
+          end do
+       end do
+       !$omp end target teams distribute parallel do
+    endif
 
     ! ! -----------------------------------------------------------------------
     ! ! mass flux induced by falling rain
@@ -1588,113 +1638,134 @@ contains
   !> evaporation of rain
   ! -----------------------------------------------------------------------
 
-  subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+  subroutine revap_racc_3d (is, ie, js, je, ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
 
     implicit none
     !$omp declare target
 
-    integer, intent (in) :: ktop, kbot
+    integer, intent (in) :: is, ie, js, je, ktop, kbot
 
     real, intent (in) :: dt ! time step (s)
 
-    real, intent (in), dimension (ktop:kbot) :: h_var
-    real, intent (in), dimension (ktop:kbot) :: den, denfac
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: h_var
+    real, intent (in), dimension (is:ie, js:je, ktop:kbot) :: den, denfac
 
-    real, intent (inout), dimension (ktop:kbot) :: tz, qv, qr, ql, qi, qs, qg, qa
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: tz, qv, qr, ql, qi, qs, qg, qa
 
-    real, intent (inout), dimension (ktop:kbot) :: revap
+    real, intent (inout), dimension (is:ie, js:je, ktop:kbot) :: revap
 
-    real, dimension (ktop:kbot) :: lhl, cvm, q_liq, q_sol, lcpk
-
+    real :: lhl, cvm, q_liq, q_sol, lcpk
     real :: dqv, qsat, dqsdt, evap, t2, qden, q_plus, q_minus, sink
     real :: qpz, dq, dqh, tin
     real :: fac_revp
     real :: TOT_PREC_LS, AREA_LS_PRC, AREA_LS_PRC_K
-    integer :: k
+    integer :: i, j, k
 
-    revap(:) = 0.
+    !$omp target teams distribute parallel do collapse(3)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+             revap(i, j, k) = 0.
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
 
     TOT_PREC_LS = 0.
     AREA_LS_PRC = 0.
+
+    !$omp target teams distribute parallel do collapse(3) &
+    !$omp   firstprivate( &
+    !$omp     TOT_PREC_LS, AREA_LS_PRC) &
+    !$omp   private( &
+    !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
+    !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
+    !$omp     sink, dqsdt)
     do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
 
-       TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )
-       AREA_LS_PRC = AREA_LS_PRC  + ( qa (k) * ( qr (k) + qs (k) + qg (k) ) * den (k) )
+             TOT_PREC_LS = TOT_PREC_LS  + ( ( qr (i, j, k) + qs (i, j, k) + qg (i, j, k) ) * den (i, j, k) )
+             AREA_LS_PRC = AREA_LS_PRC  + ( qa (i, j, k) * ( qr (i, j, k) + qs (i, j, k) + qg (i, j, k) ) * den (i, j, k) )
 
-       if (tz (k) > t_wfr .and. qr (k) > qpmin) then
+             if (tz (i, j, k) > t_wfr .and. qr (i, j, k) > qpmin) then
 
-          !! area and timescale efficiency on revap
-          !                       AREA_LS_PRC_K = 0.0
-          !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
-          !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
-          fac_revp = 1. - exp (- dt / tau_revp)
+                !! area and timescale efficiency on revap
+                !                       AREA_LS_PRC_K = 0.0
+                !if (TOT_PREC_LS > 0.0) AREA_LS_PRC_K = MAX( AREA_LS_PRC/TOT_PREC_LS, 1.E-6 )
+                !fac_revp = 1. - exp (- AREA_LS_PRC_K * dt / tau_revp)
+                fac_revp = 1. - exp (- dt / tau_revp)
 
-          ! -----------------------------------------------------------------------
-          ! define heat capacity and latent heat coefficient
-          ! -----------------------------------------------------------------------
-
-          lhl (k) = lv00 + d0_vap * tz (k)
-          q_liq (k) = ql (k) + qr (k)
-          q_sol (k) = qi (k) + qs (k) + qg (k)
-          cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-          lcpk (k) = lhl (k) / cvm (k)
-
-          tin = tz (k) - lcpk (k) * ql (k) ! presence of clouds suppresses the rain evap
-          qpz = qv (k) + ql (k)
-          qsat = wqs2 (tin, den (k), dqsdt)
-          dqh = max (ql (k), h_var(k) * max (qpz, qcmin))
-          dqh = min (dqh, 0.2 * qpz) ! new limiter
-          dqv = qsat - qv (k) ! use this to prevent super - sat the gird box
-          q_minus = qpz - dqh
-          q_plus = qpz + dqh
-
-          ! -----------------------------------------------------------------------
-          ! qsat must be > q_minus to activate evaporation
-          ! qsat must be < q_plus to activate accretion
-          ! -----------------------------------------------------------------------
-
-          ! -----------------------------------------------------------------------
-          ! rain evaporation
-          ! -----------------------------------------------------------------------
-
-          if (dqv > qvmin .and. qsat > q_minus) then
-             if (qsat > q_plus) then
-                dq = qsat - qpz
-             else
                 ! -----------------------------------------------------------------------
-                ! q_minus < qsat < q_plus
-                ! dq == dqh if qsat == q_minus
+                ! define heat capacity and latent heat coefficient
                 ! -----------------------------------------------------------------------
-                dq = 0.25 * (q_minus - qsat) ** 2 / dqh
-             endif
-             qden = qr (k) * den (k)
-             t2 = tin * tin
-             evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
-                  exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (k))
-             evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk (k) * dqsdt))
-             qr (k) = qr (k) - evap
-             qv (k) = qv (k) + evap
-             q_liq (k) = q_liq (k) - evap
-             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-             tz (k) = tz (k) - evap * lhl (k) / cvm (k)
-             revap(k) = evap / dt
-          endif
 
-          ! -----------------------------------------------------------------------
-          ! accretion: pracc
-          ! -----------------------------------------------------------------------
+                lhl = lv00 + d0_vap * tz (i, j, k)
+                q_liq = ql (i, j, k) + qr (i, j, k)
+                q_sol = qi (i, j, k) + qs (i, j, k) + qg (i, j, k)
+                cvm = c_air + qv (i, j, k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                lcpk = lhl / cvm
 
-          if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
-             sink = dt * denfac (k) * cracw * exp (0.95 * log (qr (k) * den (k)))
-             sink = sink / (1. + sink) * ql (k)
-             ql (k) = ql (k) - sink
-             qr (k) = qr (k) + sink
-          endif
+                tin = tz (i, j, k) - lcpk * ql (i, j, k) ! presence of clouds suppresses the rain evap
+                qpz = qv (i, j, k) + ql (i, j, k)
+                qsat = wqs2 (tin, den (i, j, k), dqsdt)
+                dqh = max (ql (i, j, k), h_var(i, j, k) * max (qpz, qcmin))
+                dqh = min (dqh, 0.2 * qpz) ! new limiter
+                dqv = qsat - qv (i, j, k) ! use this to prevent super - sat the gird box
+                q_minus = qpz - dqh
+                q_plus = qpz + dqh
 
-       endif ! warm - rain
-    enddo
+                ! -----------------------------------------------------------------------
+                ! qsat must be > q_minus to activate evaporation
+                ! qsat must be < q_plus to activate accretion
+                ! -----------------------------------------------------------------------
 
-  end subroutine revap_racc
+                ! -----------------------------------------------------------------------
+                ! rain evaporation
+                ! -----------------------------------------------------------------------
+
+                if (dqv > qvmin .and. qsat > q_minus) then
+                   if (qsat > q_plus) then
+                      dq = qsat - qpz
+                   else
+                      ! -----------------------------------------------------------------------
+                      ! q_minus < qsat < q_plus
+                      ! dq == dqh if qsat == q_minus
+                      ! -----------------------------------------------------------------------
+                      dq = 0.25 * (q_minus - qsat) ** 2 / dqh
+                   endif
+                   qden = qr (i, j, k) * den (i, j, k)
+                   t2 = tin * tin
+                   evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
+                        exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (i, j, k))
+                   evap = min (qr (i, j, k), dt * fac_revp * evap, dqv / (1. + lcpk * dqsdt))
+                   qr (i, j, k) = qr (i, j, k) - evap
+                   qv (i, j, k) = qv (i, j, k) + evap
+                   q_liq = q_liq - evap
+                   cvm = c_air + qv (i, j, k) * c_vap + q_liq * c_liq + q_sol * c_ice
+                   tz (i, j, k) = tz (i, j, k) - evap * lhl / cvm
+                   revap (i, j, k) = evap / dt
+                endif
+
+                ! -----------------------------------------------------------------------
+                ! accretion: pracc
+                ! -----------------------------------------------------------------------
+
+                if (qr (i, j, k) > qpmin .and. ql (i, j, k) > qcmin .and. qsat < q_minus) then
+                   sink = dt * denfac (i, j, k) * cracw * exp (0.95 * log (qr (i, j, k) * den (i, j, k)))
+                   sink = sink / (1. + sink) * ql (i, j, k)
+                   ql (i, j, k) = ql (i, j, k) - sink
+                   qr (i, j, k) = qr (i, j, k) + sink
+                endif
+
+             end if ! warm - rain
+
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do
+
+  end subroutine revap_racc_3d
 
   ! -----------------------------------------------------------------------
   !> definition of vertical subgrid variability
