@@ -629,6 +629,24 @@ end if
 ! 
 
     call MAPL_AddExportSpec(GC,                                                &
+       LONG_NAME      = 'EDMF_rain_tendency',                                  &
+       UNITS          = 'kg kg-1 s-1',                                         &
+       SHORT_NAME     = 'EDMF_DQRDT',                                          &
+       DIMS           = MAPL_DimsHorzVert,                                     &
+       VLOCATION      = MAPL_VLocationCenter,                                  &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                &
+       LONG_NAME      = 'EDMF_snow_tendency',                                  &
+       UNITS          = 'kg kg-1 s-1',                                         &
+       SHORT_NAME     = 'EDMF_DQSDT',                                          &
+       DIMS           = MAPL_DimsHorzVert,                                     &
+       VLOCATION      = MAPL_VLocationCenter,                                  &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                &
        LONG_NAME      = 'Vertical_velocity_of_individual_EDMF_plumes',         &
        UNITS          = 'm s-1',                                               &
        SHORT_NAME     = 'EDMF_PLUMES_W'     ,                                  &
@@ -2829,7 +2847,7 @@ end if
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke, slflxmf, &
-                                            qtflxmf, mfaw
+                                            qtflxmf, mfaw, edmf_dqrdt, edmf_dqsdt
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
 
@@ -3189,6 +3207,10 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, EDMF_PLUMES_THL, 'EDMF_PLUMES_THL', RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dqrdt,  'EDMF_DQRDT', ALLOC=.true., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_dqsdt,  'EDMF_DQSDT', ALLOC=.true., RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_buoyf, 'EDMF_BUOYF',  RC=STATUS)
      VERIFY_(STATUS)
 !     call MAPL_GetPointer(EXPORT,  edmf_sl2,  'EDMF_SL2', RC=STATUS)
@@ -3463,6 +3485,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%STOCHFRAC, "EDMF_STOCHASTIC:",    default=0.5,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%DISCRETE,  "EDMF_DISCRETE_TYPE:", default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
 
       ! Future options
 !      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
@@ -3610,6 +3633,7 @@ end if
                     buoyf,                    &
                     edmf_mf,                  & ! needed for ADG PDF
                     edmfdrya, edmfmoista,     & ! outputs for ADG PDF
+                    edmf_dqrdt, edmf_dqsdt,   & ! output for micro
                     !== Diagnostics, not used elsewhere ==
                     edmf_dry_w,               &
                     edmf_moist_w,             &

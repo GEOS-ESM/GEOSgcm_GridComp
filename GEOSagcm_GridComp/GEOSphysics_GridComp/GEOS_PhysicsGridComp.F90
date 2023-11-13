@@ -901,6 +901,22 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'TRB_MSE',                                        &
+         LONG_NAME  = 'turbulence_moist_static_energy_tendency',      &
+         UNITS      = 'W m-2',                                        &
+         DIMS       =  MAPL_DimsHorzOnly,                             &
+         VLOCATION  =  MAPL_VLocationNone,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'TRB_QT',                                        &
+         LONG_NAME  = 'turbulence_total_water_tendency',              &
+         UNITS      = 'kg s-1',                                       &
+         DIMS       =  MAPL_DimsHorzOnly,                             &
+         VLOCATION  =  MAPL_VLocationNone,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Ozone (ppmv) and Odd Oxygen (mol/mol)
 !   Note: GMI currently provides just O3 as Odd Oxygen
@@ -1292,7 +1308,8 @@ contains
                          'TKE          ', 'TKESHOC      ', 'PDF_A        ',     &
                          'SL2          ', 'SL3          ', 'W2           ',     &
                          'W3           ', 'SLQT         ', 'WQT          ',     &
-                         'WSL          ', 'QT2          ', 'QT3          '/),    &
+                         'WSL          ', 'QT2          ', 'QT3          ',     &
+                         'EDMF_DQRDT   ', 'EDMF_DQSDT   '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
@@ -2100,6 +2117,7 @@ contains
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
+   real, pointer, dimension(:,:)       :: PTR2D
 
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
@@ -2620,6 +2638,27 @@ contains
        DTDT_BL=(TFORRAD-DTDT_BL)/DT
        DQDT_BL=(QV-DQDT_BL)/DT
     endif
+
+    call MAPL_GetPointer(EXPORT, PTR2D, 'TRB_MSE', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) then
+       ! column integral of Turb moist static energy tendency
+       PTR2D = 0.
+       DO L = 1,LM
+          PTR2D = PTR2D + (MAPL_CP  * TIT(:,:,L) &
+                        +  MAPL_ALHL*DQVDTTRB(:,:,L) &
+                        -  MAPL_ALHF*DQIDTTRB(:,:,L))*DM(:,:,L)
+       END DO
+    end if
+
+    call MAPL_GetPointer(EXPORT, PTR2D, 'TRB_QT', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) then
+       ! column integral of Turb total water tendency
+       PTR2D = 0.
+       DO L = 1,LM
+          PTR2D = PTR2D + (DQVDTTRB(:,:,L) + DQLDTTRB(:,:,L) + DQIDTTRB(:,:,L))*DM(:,:,L)
+       END DO
+    end if
+
 
 ! Aerosol/Chemistry Stage 2
 !--------------------------

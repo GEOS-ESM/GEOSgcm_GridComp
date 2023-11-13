@@ -53,6 +53,7 @@ real, parameter ::     &
     real    :: C_KH_MF
     real    :: MFLIMFAC
     real    :: ICE_RAMP
+    real    :: PRCPCRIT
  endtype EDMFPARAMS_TYPE
  type (EDMFPARAMS_TYPE) :: MFPARAMS
 
@@ -104,6 +105,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     edmfmf,                        &
                     dry_a3,                        &
                     moist_a3,                      &
+                    dqrdt,                         &
+                    dqsdt,                         &
                     ! Diagnostic outputs - updraft properties
                     dry_w3,                        &
                     moist_w3,                      &
@@ -166,7 +169,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                              mftke
 
    REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
-                                                        mfhlqt
+                                                        mfhlqt,dqrdt,dqsdt
 
 
   ! Diagnostic outputs
@@ -195,10 +198,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    INTEGER :: K,I,IH,JH,NUP2
    REAL :: wthv,wstar,qstar,thstar,sigmaW,sigmaQT,sigmaTH,z0, &
            wmin,wmax,wlv,wtv,wp
-   REAL :: B,QTn,THLn,THVn,QCn,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
+   REAL :: B,QTn,THLn,THVn,QCn,QP,Un,Vn,Wn2,EntEXP,EntEXPU,EntW,wf
 
 ! internal flipped variables (GEOS5)
-   REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
+   REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO,QR,QS
    REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
    REAL,DIMENSION(KTS-1:KTE) :: UI, VI, QVI, QLI, QII
 
@@ -284,6 +287,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    mfwhl =0.
    mftke =0.
    edmfmf=0.
+   dqrdt =0.
+   dqsdt =0.
    !      mfqt2 =0.
    !      mfhl2 =0.
 
@@ -329,6 +334,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       UPQI=0.
       UPQL=0.
       ENT=0.
+      QR = 0.
+      QS = 0.
 
       ! Estimate scale height for entrainment calculation
       if (mfparams%ET == 2 ) then
@@ -507,7 +514,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPTHV(kts-1,I)=THV(kts)+0.58*UPW(kts-1,I)*sigmaTH/sigmaW
         end if
 
-      ENDDO
+      ENDDO ! NUP
 
       !
       ! If needed, rescale UPW to ensure that the mass-flux does not exceed layer mass
@@ -581,6 +588,16 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
             ! Calculate condensation
             call condensation_edmf(QTn,THLn,P(K),THVn,QCn,wf,mfparams%ice_ramp)
+
+            ! Calculate and remove precipitation
+            if (MFPARAMS%PRCPCRIT.gt.0.) then
+              QP = max(0.,QCn-MFPARAMS%PRCPCRIT)
+              QCn = QCn - QP
+              QTn = QTn - QP
+              THLn = THLn + (MAPL_ALHL*wf+(1.-wf)*MAPL_ALHS)/mapl_cp*QP/EXFH(k)
+              QR(K) = QR(K) + UPA(K-1,I)*QP*wf
+              QS(K) = QS(K) + UPA(K-1,I)*QP*(1.-wf)
+            end if
 
             ! vertical velocity
             B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
@@ -658,6 +675,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ENDDO
       ! if (factor.ne.1.0) print *,'*** CFL rescale by factor: ',factor
       UPA = factor*UPA
+      QR  = factor*QR
+      QS  = factor*QS
 
   ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
   ! Prevents instability due to MF without KH
@@ -670,18 +689,21 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 !         UPW(K,:) = UPW(K,:)*exp(-(100.-ZW(K))**2/1e4)
          K = K+1
       END DO
-      if (tmp.gt.0.5*tmp2) UPA = UPA*(0.5*tmp2/tmp)
-
+      if (tmp.gt.0.5*tmp2) then
+        UPA = UPA*(0.5*tmp2/tmp)
+        QR  = QR*(0.5*tmp2/tmp)
+        QS  = QS*(0.5*tmp2/tmp)
+      end if
 
       DO k=KTS,KTE
         edmfmf(IH,JH,KTE-k+KTS-1) = rhoe(K)*SUM(upa(K,:)*upw(K,:))
       ENDDO
-
+      DQRDT(IH,JH,KTS:KTE) = QR(KTE:KTS:-1)/DT
+      DQSDT(IH,JH,KTS:KTE) = QS(KTE:KTS:-1)/DT
       !
       ! writing updraft properties for output
       ! all variables, except Areas are now multipled by the area
       !
-
 
       dry_a     = 0.
       moist_a   = 0.
@@ -894,7 +916,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
   ENDDO ! JH loop over horizontal area
   ENDDO ! IH
-
 
 END SUBROUTINE run_edmf
 

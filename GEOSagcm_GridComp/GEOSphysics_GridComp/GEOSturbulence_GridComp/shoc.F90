@@ -445,6 +445,7 @@ contains
 !          if (k.ge.cldbasek(i,j) .and. maxval(brunt(i,j,cldbasek(i,j):cldbasek(i,j)+5)).lt.5e-4) then
           if (k.ge.cldbasek(i,j)) then
             isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
+!            isotropy(i,j,k) = min(200.,isotropy(i,j,k))
           end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
@@ -495,7 +496,7 @@ contains
 
      DU  = (U(:,:,1:nzm-1) - U(:,:,2:nzm))**2 + &    ! shear on edges
            (V(:,:,1:nzm-1) - V(:,:,2:nzm))**2
-     DU  = MAX( SQRT(DU) / adzi(:,:,1:nzm-1), 0.003 )
+     DU  = MAX( SQRT(DU) / adzi(:,:,1:nzm-1), 0.005 )
 
      RI = 0.0
      RI(:,:,2:nz-1) = ggr*( (THV(:,:,2:nzm) - THV(:,:,1:nzm-1)) / adzi(:,:,1:nzm-1) ) &
@@ -504,13 +505,13 @@ contains
      if (SHOCPARAMS%PRNUM.lt.0.) then
 !        where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-6)
         where (RI.le.0. .or. tke_mf(:,:,nz:1:-1).gt.1e-4)
-          PRNUM = 0.9
+          PRNUM = -1.*SHOCPARAMS%PRNUM
         elsewhere
           ! He et al 2019
 !             tmp3de = RI*(1.+6.*RI)
 !          PRNUM = (0.9+4.*tmp3de*SQRT(1.-SHOCPARAMS%PRNUM*8.*tmp3de/3.))/(1.+4.*tmp3de)
         ! Han and Bretherton 2019
-          PRNUM = 0.9+2.1*MIN(10.,RI) ! limit RI to avoid instability
+          PRNUM = -1.*SHOCPARAMS%PRNUM+2.1*MIN(10.,RI) ! limit RI to avoid instability
         end where
      else
         PRNUM = SHOCPARAMS%PRNUM

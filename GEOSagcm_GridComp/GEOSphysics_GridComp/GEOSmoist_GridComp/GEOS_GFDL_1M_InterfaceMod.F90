@@ -305,7 +305,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
     real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
-    real, pointer, dimension(:,:,:) :: WTHV2
+    real, pointer, dimension(:,:,:) :: WTHV2,MF_DQRDT,MF_DQSDT
     real, pointer, dimension(:,:,:) :: OMEGA
     ! Local
     real, allocatable, dimension(:,:,:) :: U0, V0
@@ -408,6 +408,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MF_DQRDT,'EDMF_DQRDT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MF_DQSDT,'EDMF_DQSDT', RC=STATUS); VERIFY_(STATUS)
 
     ! Allocatables
      ! Edge variables
@@ -544,6 +546,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then 
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
+        QRAIN = QRAIN + MF_DQRDT*DT_MOIST
+        QSNOW = QSNOW + MF_DQSDT*DT_MOIST
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         do L=1,LM

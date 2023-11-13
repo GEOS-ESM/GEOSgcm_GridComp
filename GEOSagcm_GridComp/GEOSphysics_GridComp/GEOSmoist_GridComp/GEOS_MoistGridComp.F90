@@ -324,6 +324,28 @@ contains
             RC=STATUS )
        VERIFY_(STATUS)
 
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME = 'EDMF_DQRDT',                                &
+            LONG_NAME  = 'EDMF_rain_tendency',                        &
+            UNITS      = 'kg kg-1 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,                        &
+            AVERAGING_INTERVAL = AVRGNINT,                            &
+            REFRESH_INTERVAL   = RFRSHINT,                            &
+            RC=STATUS )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME = 'EDMF_DQSDT',                                &
+            LONG_NAME  = 'EDMF_snow_tendency',                        &
+            UNITS      = 'kg kg-1 s-1',                               &
+            DIMS       = MAPL_DimsHorzVert,                           &
+            VLOCATION  = MAPL_VLocationCenter,                        &
+            AVERAGING_INTERVAL = AVRGNINT,                            &
+            REFRESH_INTERVAL   = RFRSHINT,                            &
+            RC=STATUS )
+       VERIFY_(STATUS)
+
        call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME = 'PDF_A',                                     &
             LONG_NAME  = 'ADG_PDF_first_plume_fractional_area',       &
