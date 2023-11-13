@@ -102,8 +102,6 @@ MODULE CATCHMENT_CN_MODEL
        catch_calc_wtotl, dampen_tc_oscillations, &
        SRUNOFF
   
-  USE SIBALB_COEFF,  ONLY: coeffsib
-  
   USE STIEGLITZSNOW, ONLY: &
        StieglitzSnow_snowrt,                     &
        StieglitzSnow_calc_asnow,                 &
