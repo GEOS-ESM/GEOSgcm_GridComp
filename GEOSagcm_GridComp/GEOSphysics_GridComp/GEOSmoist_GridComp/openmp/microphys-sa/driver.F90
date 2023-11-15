@@ -1,14 +1,18 @@
 program MicrophysicsDriver
 
   use gfdl2_cloud_microphys_mod, only: gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver
+  use gfdl2_cloud_microphys_orig_mod, only: &
+       gfdl_cloud_microphys_orig_init => gfdl_cloud_microphys_init, &
+       gfdl_cloud_microphys_orig_driver => gfdl_cloud_microphys_driver
 
   implicit none
-  
+
   integer, parameter :: irank = 4
 
   character(len=256) :: file_name
   integer :: file_handle
-  
+  real :: start, finish
+
   ! microphysics variabls
   ! -scalars-
   logical :: hydrostatic, phys_hydrostatic
@@ -77,6 +81,36 @@ program MicrophysicsDriver
 
   call gfdl_cloud_microphys_init()
 
+  call cpu_time(start)
+  call gfdl_cloud_microphys_orig_driver ( &
+       ! intent (in)
+       qv, ql, qr, &
+       ! intent (inout)
+       qi, qs, &
+       ! intent (in)
+       qg, qa, qn, &
+       ! intent (inout)
+       qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, &
+       ! intent (in)
+       pt, &
+       ! intent (inout)
+       w, &
+       ! intent (in)
+       uin, vin, &
+       ! intent (inout)
+       udt, vdt, &
+       ! intent (in)
+       dz, delp, &
+       area, dt_in, land, cnv_fraction, srf_type, eis, rhcrit, anv_icefall, lsc_icefall, &
+       ! intent (out)
+       revap, isubl, rain, snow, ice, graupel, m2_rain, m2_sol, &
+       ! intent (in)
+       hydrostatic, phys_hydrostatic, &
+       iis, iie, jjs, jje, kks, kke, ktop, kbot)
+  call cpu_time(finish)
+  print *, 'Time taken (cpu): ', finish - start, 's'
+
+  call cpu_time(start)
   call gfdl_cloud_microphys_driver ( &
        ! intent (in)
        qv, ql, qr, &
@@ -102,5 +136,7 @@ program MicrophysicsDriver
        ! intent (in)
        hydrostatic, phys_hydrostatic, &
        iis, iie, jjs, jje, kks, kke, ktop, kbot)
+  call cpu_time(finish)
+  print *, 'Time taken (gpu): ', finish - start, 's'
 
 end program MicrophysicsDriver

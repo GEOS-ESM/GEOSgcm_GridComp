@@ -34,9 +34,7 @@
 ! developer: shian-jiann lin, linjiong zhou
 ! =======================================================================
 
-module gfdl2_cloud_microphys_mod
-
-  use GEOSmoist_Process_Library, only: ice_fraction
+module gfdl2_cloud_microphys_orig_mod
 
   implicit none
 
@@ -859,53 +857,53 @@ contains
 
        enddo ! ntimes
 
-       ! -----------------------------------------------------------------------
-       ! momentum transportation during sedimentation
-       ! note: dp1 is dry mass; dp0 is the old moist (total) mass
-       ! -----------------------------------------------------------------------
+       ! ! -----------------------------------------------------------------------
+       ! ! momentum transportation during sedimentation
+       ! ! note: dp1 is dry mass; dp0 is the old moist (total) mass
+       ! ! -----------------------------------------------------------------------
 
-       if (sedi_transport) then
-          do k = ktop + 1, kbot
-             u1 (k) = (dp0 (k) * u1 (k) + m1 (k - 1) * u1 (k - 1)) / (dp0 (k) + m1 (k - 1))
-             v1 (k) = (dp0 (k) * v1 (k) + m1 (k - 1) * v1 (k - 1)) / (dp0 (k) + m1 (k - 1))
-             u_dt (i, j, k) = u_dt (i, j, k) + (u1 (k) - u0 (k)) * rdt
-             v_dt (i, j, k) = v_dt (i, j, k) + (v1 (k) - v0 (k)) * rdt
-          enddo
-       endif
+       ! if (sedi_transport) then
+       !    do k = ktop + 1, kbot
+       !       u1 (k) = (dp0 (k) * u1 (k) + m1 (k - 1) * u1 (k - 1)) / (dp0 (k) + m1 (k - 1))
+       !       v1 (k) = (dp0 (k) * v1 (k) + m1 (k - 1) * v1 (k - 1)) / (dp0 (k) + m1 (k - 1))
+       !       u_dt (i, j, k) = u_dt (i, j, k) + (u1 (k) - u0 (k)) * rdt
+       !       v_dt (i, j, k) = v_dt (i, j, k) + (v1 (k) - v0 (k)) * rdt
+       !    enddo
+       ! endif
 
-       if (do_sedi_w) then
-          do k = ktop, kbot
-             w (i, j, k) = w1 (k)
-          enddo
-       endif
+       ! if (do_sedi_w) then
+       !    do k = ktop, kbot
+       !       w (i, j, k) = w1 (k)
+       !    enddo
+       ! endif
 
-       ! -----------------------------------------------------------------------
-       ! update moist air mass (actually hydrostatic pressure)
-       ! convert to dry mixing ratios
-       ! -----------------------------------------------------------------------
+       ! ! -----------------------------------------------------------------------
+       ! ! update moist air mass (actually hydrostatic pressure)
+       ! ! convert to dry mixing ratios
+       ! ! -----------------------------------------------------------------------
 
-       do k = ktop, kbot
-          omq = dp1 (k) / dp0 (k)
-          qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
-          ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
-          qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
-          qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
-          qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
-          qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
-          cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
-          pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0 (k)) * cvm / cp_air
-       enddo
+       ! do k = ktop, kbot
+       !    omq = dp1 (k) / dp0 (k)
+       !    qv_dt (i, j, k) = qv_dt (i, j, k) + rdt * (qvz (k) - qv0 (k)) * omq
+       !    ql_dt (i, j, k) = ql_dt (i, j, k) + rdt * (qlz (k) - ql0 (k)) * omq
+       !    qr_dt (i, j, k) = qr_dt (i, j, k) + rdt * (qrz (k) - qr0 (k)) * omq
+       !    qi_dt (i, j, k) = qi_dt (i, j, k) + rdt * (qiz (k) - qi0 (k)) * omq
+       !    qs_dt (i, j, k) = qs_dt (i, j, k) + rdt * (qsz (k) - qs0 (k)) * omq
+       !    qg_dt (i, j, k) = qg_dt (i, j, k) + rdt * (qgz (k) - qg0 (k)) * omq
+       !    cvm = c_air + qvz (k) * c_vap + (qrz (k) + qlz (k)) * c_liq + (qiz (k) + qsz (k) + qgz (k)) * c_ice
+       !    pt_dt (i, j, k) = pt_dt (i, j, k) + rdt * (tz (k) - t0 (k)) * cvm / cp_air
+       ! enddo
 
-       ! -----------------------------------------------------------------------
-       ! update cloud fraction tendency
-       ! -----------------------------------------------------------------------
-       if (.not. do_qa) then
-          do k = ktop, kbot
-             qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
-                  qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
-                  qa0(k) )                                                      ! Old Cloud
-          enddo
-       endif
+       ! ! -----------------------------------------------------------------------
+       ! ! update cloud fraction tendency
+       ! ! -----------------------------------------------------------------------
+       ! if (.not. do_qa) then
+       !    do k = ktop, kbot
+       !       qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (                          &
+       !            qa0(k)*SQRT( (qiz(k)+qlz(k)) / max(qi0(k)+ql0(k),qcmin) ) - & ! New Cloud -
+       !            qa0(k) )                                                      ! Old Cloud
+       !    enddo
+       ! endif
 
        ! -----------------------------------------------------------------------
        ! fms diagnostics:
@@ -3358,10 +3356,11 @@ contains
 
     inquire (file = trim (file_name), exist = exists)
     if (.not. exists) then
-       error stop 'gfdl - mp :: namelist file: ', trim (file_name), ' does not exist'
+       write (6, *) 'gfdl - mp :: namelist file: ', trim (file_name), ' does not exist'
+       stop
     else
        open(newunit = file_handle, file = file_name, status = 'old')
-       read(nml = gfdl_cloud_microphysics_nml, unit = file_handle, istat = rc)
+       read(nml = gfdl_cloud_microphysics_nml, unit = file_handle, iostat = rc)
        if (rc /= 0) error stop "Could not read input namelist file"
        close(file_handle)
     end if
@@ -4731,4 +4730,4 @@ contains
 
   end function ICE_FRACTION
     
-end module gfdl2_cloud_microphys_mod
+end module gfdl2_cloud_microphys_orig_mod
