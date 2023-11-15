@@ -844,7 +844,17 @@ contains
 
              den0 = - dp1 (i, j, k) / (grav * dz (i, j, k)) ! density of dry air
              p1 (i, j, k) = den0 * rdgas * t0 ! dry air pressure
+#ifdef __GFORTRAN__
+          end do
+       end do
+    end do
+    !$omp end target teams distribute parallel do simd
 
+    !$omp target teams distribute parallel do simd collapse(3) default(shared) private(omq, den0)
+    do k = ktop, kbot
+       do i = is, ie
+          do j = js, je
+#endif
              ! -----------------------------------------------------------------------
              ! save a copy of old value for computing tendencies
              ! -----------------------------------------------------------------------
@@ -931,9 +941,10 @@ contains
        end do
        !$omp end target teams distribute parallel do simd
 
-       !$omp target teams distribute parallel do simd collapse(3) private(t0)
+       !$omp target teams distribute collapse(2)
        do k = ktop, kbot
           do j = js, je
+             !$omp parallel do simd private(t0)
              do i = is, ie
 #endif
                 ! sedimentation of cloud ice, snow, and graupel
@@ -944,7 +955,6 @@ contains
              end do
           end do
        end do
-       !$omp end target teams distribute parallel do simd
 
        call terminal_fall_3d ( &
             dts, is, ie, js, je, ktop, kbot, &
@@ -1620,12 +1630,12 @@ contains
     real :: TOT_PREC_LS, AREA_LS_PRC, AREA_LS_PRC_K
     integer :: i, j, k
 
-    TOT_PREC_LS = 0.
-    AREA_LS_PRC = 0.
-
     !$omp target data &
     !$omp   map(to: h_var, den, denfac) &
     !$omp   map(tofrom: tz, qv, qr, ql, qi, qs, qg, qa, revap)
+
+    TOT_PREC_LS = 0.
+    AREA_LS_PRC = 0.
 
     !$omp target teams distribute parallel do simd collapse(3)
     do k = ktop, kbot
@@ -1637,17 +1647,14 @@ contains
     end do
     !$omp end target teams distribute parallel do simd
 
-    !$omp target teams distribute collapse(2)
+    ! TODO: This loop does not work for gfortran
+    !$omp target teams distribute parallel do simd collapse(2) &
+    !$omp   private( &
+    !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
+    !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
+    !$omp     sink, dqsdt)
     do k = ktop, kbot
        do i = is, ie
-
-          !$omp parallel do simd &
-          !$omp   firstprivate( &
-          !$omp     TOT_PREC_LS, AREA_LS_PRC) &
-          !$omp   private( &
-          !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
-          !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
-          !$omp     sink, dqsdt)
           do j = js, je
 
              TOT_PREC_LS = TOT_PREC_LS  + ( ( qr (i, j, k) + qs (i, j, k) + qg (i, j, k) ) * den (i, j, k) )
@@ -1726,11 +1733,9 @@ contains
              end if ! warm - rain
 
           end do
-          !$omp end parallel do
-
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     !$omp end target data
 
@@ -2947,7 +2952,7 @@ contains
     end if
 
     ! sjl, turn off melting of falling cloud ice, snow and graupel
-    !$omp target teams distribute parallel do collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do i = is, ie
        do j = js, je
           k0 (i, j) = kbot
@@ -3049,7 +3054,7 @@ contains
                             qi (i, j, k) = qi (i, j, k) - sink * dp (i, j, m) / dp (i, j, k)
                          endif
                       enddo
-                      !$omp end parallel do
+                      !$omp end parallel do simd
                    endif
                 enddo
                 ! !$omp end ordered
