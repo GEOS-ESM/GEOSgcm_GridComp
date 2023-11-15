@@ -842,17 +842,17 @@ contains
              m1 (k) = m1 (k) + m1_rain (k) + m1_sol (k)
           enddo
 
-          ! -----------------------------------------------------------------------
-          ! ice - phase microphysics
-          ! -----------------------------------------------------------------------
+          ! ! -----------------------------------------------------------------------
+          ! ! ice - phase microphysics
+          ! ! -----------------------------------------------------------------------
 
-          call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-               denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
-               ccn, cnv_fraction(i), srf_type(i))
+          ! call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
+          !      denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
+          !      ccn, cnv_fraction(i), srf_type(i))
 
-          do k = ktop, kbot
-             isubl (i,j,k) = isubl (i,j,k) + subl1(k)
-          enddo
+          ! do k = ktop, kbot
+          !    isubl (i,j,k) = isubl (i,j,k) + subl1(k)
+          ! enddo
 
 
        enddo ! ntimes

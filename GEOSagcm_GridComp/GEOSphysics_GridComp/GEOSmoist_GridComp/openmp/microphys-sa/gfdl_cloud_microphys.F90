@@ -903,7 +903,6 @@ contains
                 !!! use GEOS ccn: ccn (i, j, k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
                 c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.)
              endif
-             m2_rain (i, j, k) = c_praut (i,j, k)
           end do
        end do
     end do
@@ -1008,24 +1007,24 @@ contains
        end do
        !$omp end target teams distribute parallel do simd
 
-       ! -----------------------------------------------------------------------
-       ! ice - phase microphysics
-       ! -----------------------------------------------------------------------
+       ! ! -----------------------------------------------------------------------
+       ! ! ice - phase microphysics
+       ! ! -----------------------------------------------------------------------
 
-       call icloud_3d ( &
-            is, ie, js, je, ktop, kbot, tz, p1, &
-            qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, denfac, &
-            vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, ccn, cnv_fraction, srf_type)
+       ! call icloud_3d ( &
+       !      is, ie, js, je, ktop, kbot, tz, p1, &
+       !      qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, denfac, &
+       !      vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, ccn, cnv_fraction, srf_type)
 
-       !$omp target teams distribute parallel do simd collapse(3)
-       do k = ktop, kbot
-          do j = js, je
-             do i = is, ie
-                isubl (i,j,k) = isubl (i,j,k) + subl1(i, j, k)
-             end do
-          end do
-       end do
-       !$omp end target teams distribute parallel do simd
+       ! !$omp target teams distribute parallel do simd collapse(3)
+       ! do k = ktop, kbot
+       !    do j = js, je
+       !       do i = is, ie
+       !          isubl (i,j,k) = isubl (i,j,k) + subl1(i, j, k)
+       !       end do
+       !    end do
+       ! end do
+       ! !$omp end target teams distribute parallel do simd
 
     end do ! ntimes
 
