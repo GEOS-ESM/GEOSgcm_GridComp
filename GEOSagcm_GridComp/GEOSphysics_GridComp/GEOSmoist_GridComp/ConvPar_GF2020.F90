@@ -85,8 +85,6 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  INTEGER :: USE_SMOOTH_TEND     = 0      != 0 => OFF, > 0 produces smoother tendencies (e.g.: for 1=> makes average between k-1,k,k+1)
  !---                                              deep, shallow, congestus
- REAL,   DIMENSION(maxiens) :: CUM_CD_FACTOR     =(/0.10,  0.75,  0.50/)!= detrainment scaling factor (eq 10b of https://doi.org/10.5194/gmd-14-5393-2021)
-
  REAL,   DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND =(/0.30,  0.20,  0.20/)!= [0.2,0.8] height of the max Z Downdraft , default = 0.50
  REAL,   DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN=(/0.30,  0.20,  0.20/)!= [0.2,0.8] height of the max Z Downdraft , default = 0.50
 
@@ -110,8 +108,6 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  INTEGER :: OUTPUT_SOUND   = 0
 
- REAL    :: MIN_ENTR_FACTOR = 0.1
-
  REAL    :: tau_ocea_cp    = 6.*3600.
  REAL    :: tau_land_cp    = 6.*3600.
 
@@ -127,8 +123,6 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  !-- turn ON/OFF deep/shallow/mid plumes
  INTEGER, PARAMETER :: ON=1, OFF=0
-
- REAL    ::  CD_FACTOR         != detrainment factor
 
  REAL    ::  HEI_DOWN_LAND     != [0.2,0.8] height of the max Z Downdraft , default = 0.50
  REAL    ::  HEI_DOWN_OCEAN    != [0.2,0.8] height of the max Z Downdraft , default = 0.50
@@ -1430,7 +1424,6 @@ CONTAINS
          if(ii_plume == 3) plume = mid
        endif
 
-       cd_factor      =  cum_cd_factor      (plume)
        hei_down_land  =  cum_hei_down_land  (plume)
        hei_down_ocean =  cum_hei_down_ocean (plume)
        hei_updf_land  =  cum_hei_updf_land  (plume)
@@ -1529,7 +1522,7 @@ CONTAINS
                   ,us                               &
                   ,vs                               &
                   ,ws                               &
-                  ,entr_c                           &
+                  ,entr_c(:,:,j)                    &
                   ,dm2d                             &
                   ,se_chem                          &
                   ,zws                              &
@@ -2668,7 +2661,7 @@ loop0:       do k=kts,ktf
         !
         do i=its,itf
            if(ierr(i) /= 0)cycle
-           if(po_cup(i,ktop(i)) < 850) then
+           if(po_cup(i,ktop(i)) < 700) then
                ierr(i)=23
                ierrc(i)='shallow convection with cloud top too high'
            endif

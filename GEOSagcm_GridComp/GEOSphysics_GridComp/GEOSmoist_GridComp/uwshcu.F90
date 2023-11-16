@@ -1139,7 +1139,8 @@ contains
       do i = 1, idim
 
          id_exit = .false.
-         frc_rasn        = (1.0-frland_in(i)) * shlwparams%frc_rasn
+
+         frc_rasn        = shlwparams%frc_rasn
 
          frc_rasn        = shlwparams%frc_rasn
 
