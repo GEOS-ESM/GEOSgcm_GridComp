@@ -2572,7 +2572,7 @@ loop0:       do k=kts,ktf
       DO i=its,itf
          if(ierr(i) /= 0) CYCLE
          do k=kts,kte
-            frh = min(qo_cup(i,k)/qeso_cup(i,k),1.)
+            frh = min(qo_cup(i,k)/max(qeso_cup(i,k),smallerQV),1.)
             if(k >= klcl(i)) then
                entr_rate(i,k)=entr_rate(i,k)*(1.3-frh)*(qeso_cup(i,k)/qeso_cup(i,klcl(i)))**3
             else
