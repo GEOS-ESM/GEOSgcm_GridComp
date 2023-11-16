@@ -1139,7 +1139,8 @@ contains
       do i = 1, idim
 
          id_exit = .false.
-         frc_rasn        = (1.0-frland_in(i)) * shlwparams%frc_rasn
+
+         frc_rasn        = shlwparams%frc_rasn
 
          pifc0(0:k0)     = pifc0_in(i,0:k0)
          zifc0(0:k0)     = zifc0_in(i,0:k0)
