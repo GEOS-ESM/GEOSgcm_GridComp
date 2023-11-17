@@ -117,14 +117,6 @@ contains
          arr%pt_dt, arr%qa_dt, arr%udt, arr%vdt, arr%w, &
          arr%qv_dt, arr%ql_dt, arr%qr_dt, arr%qi_dt, arr%qs_dt, arr%qg_dt
     close(file_handle)
-    arr%rain = 0.
-    arr%snow = 0.
-    arr%ice = 0.
-    arr%graupel = 0.
-    arr%m2_rain = 0.
-    arr%m2_sol = 0.
-    arr%revap = 0.
-    arr%isubl = 0.
     
   end subroutine get_data_from_file
   
