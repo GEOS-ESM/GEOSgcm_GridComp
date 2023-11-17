@@ -34,7 +34,7 @@
 ! developer: shian-jiann lin, linjiong zhou
 ! =======================================================================
 
-module gfdl2_cloud_microphys_orig_mod
+module gfdl2_cloud_microphys_cpu_mod
 
   implicit none
 
@@ -4730,4 +4730,4 @@ contains
 
   end function ICE_FRACTION
     
-end module gfdl2_cloud_microphys_orig_mod
+end module gfdl2_cloud_microphys_cpu_mod

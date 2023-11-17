@@ -2,8 +2,8 @@ program MicrophysicsDriver
 
   use input_mod, only: InputScalars_T, InputArrays_T, get_data_from_file
   use gfdl2_cloud_microphys_mod, only: gfdl_cloud_microphys_init, gfdl_cloud_microphys_driver
-  use gfdl2_cloud_microphys_orig_mod, only: gfdl_cloud_microphys_cpu_init => gfdl_cloud_microphys_init
-  use gfdl2_cloud_microphys_orig_mod, only: gfdl_cloud_microphys_cpu_driver => gfdl_cloud_microphys_driver
+  use gfdl2_cloud_microphys_cpu_mod, only: gfdl_cloud_microphys_cpu_init => gfdl_cloud_microphys_init
+  use gfdl2_cloud_microphys_cpu_mod, only: gfdl_cloud_microphys_cpu_driver => gfdl_cloud_microphys_driver
 
   implicit none
 
