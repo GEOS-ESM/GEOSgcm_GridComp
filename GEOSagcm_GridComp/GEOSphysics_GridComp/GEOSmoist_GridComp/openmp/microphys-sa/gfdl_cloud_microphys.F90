@@ -940,17 +940,16 @@ contains
        end do
        !$omp end target teams distribute parallel do simd
 
-       !$omp target teams distribute collapse(2)
+       !$omp target teams distribute parallel do simd collapse(3)
        do k = ktop, kbot
           do j = js, je
-             !$omp parallel do simd private(t0)
              do i = is, ie
 #endif
                 ! sedimentation of cloud ice, snow, and graupel
                 call fall_speed ( &
-                     ktop, kbot, p1(i, j, k), cnv_fraction(i, j), anv_icefall, lsc_icefall, &
-                     den(i, j, k), qsz(i, j, k), qiz(i, j, k), qgz(i, j, k), qlz(i, j, k), tz(i, j, k), &
-                     vtsz(i, j, k), vtiz(i, j, k), vtgz(i, j, k)) ! output
+                     ktop, kbot, p1 (i, j, k), cnv_fraction (i, j), anv_icefall, lsc_icefall, &
+                     den (i, j, k), qsz (i, j, k), qiz (i, j, k), qgz (i, j, k), qlz (i, j, k), tz (i, j, k), &
+                     vtsz (i, j, k), vtiz (i, j, k), vtgz (i, j, k)) ! output
              end do
           end do
        end do
@@ -2840,7 +2839,7 @@ contains
 
     real :: q_liq, q_sol, lcpk, lhl, lhi
 
-    real :: zs
+    real :: zs = 0
     real :: fac_imlt
 
     integer :: i, j, k, m
@@ -2848,8 +2847,6 @@ contains
 
     logical :: exit_flag
     logical, dimension (is:ie, js:je) :: no_fall
-
-    zs = 0.
 
     fac_imlt = 1. - exp (- dtm / tau_imlt)
 
@@ -3033,7 +3030,7 @@ contains
                    zt (i, j, k + 1) = zt (i, j, k) - dz_min
                 end if
              enddo
-             ! !$omp end ordered
+             !! $omp end ordered
 
              if (k0 (i, j) < kbot) then
                 ! !$omp ordered
@@ -3086,6 +3083,7 @@ contains
        do j = js, je
           do i = is, ie
              if (.not. no_fall(i, j)) then
+                !TODO: handle no_fall inside langrangian_fall_ppm
                 call lagrangian_fall_ppm ( &
                      ktop, kbot, zs, ze (i, j, :), zt (i, j, :), dp (i, j, :), &
                      qi (i, j, :), i1 (i, j), m1_sol (i, j, :), mono_prof)
@@ -3503,7 +3501,7 @@ contains
 
     real, intent (out), dimension (is:ie, js:je) :: precip
 
-    real, dimension (is:ie, js:je, ktop:kbot) :: qm
+    real, dimension (is:ie, js:je, ktop:kbot) :: dz, qm, dd
 
     integer :: i, j, k
 
@@ -3511,13 +3509,18 @@ contains
     !$omp   map(to: ze, vt, dp, no_fall) &
     !$omp   map(tofrom: q) &
     !$omp   map(from: m1, precip) &
-    !$omp   map(alloc: qm)
+    !$omp   map(alloc: dz, qm, dd)
 
+    ! Shorthands - dz, dd
     !$omp target teams distribute parallel do simd collapse(3)
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
-             if (.not. no_fall (i,j)) q (i, j, k) = q (i, j, k) * dp (i, j, k)
+             if (.not. no_fall (i,j)) then
+                dz (i, j, k) = ze (i, j, k) - ze (i, j, k+1)
+                dd (i, j, k) = dt * vt (i, j, k)
+                q (i, j, k) = q (i, j, k) * dp (i, j, k)
+             end if
           end do
        end do
     enddo
@@ -3527,11 +3530,12 @@ contains
     ! sedimentation: non - vectorizable loop
     ! -----------------------------------------------------------------------
 
+    ! qm (ktop) = q (ktop) / (dz (ktop) + dd (ktop))
     !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
           if (.not. no_fall (i, j)) then
-             qm (i, j, ktop) = q (i, j, ktop) / ((ze (i, j, ktop) - ze (i, j, ktop + 1)) + (dt * vt (i, j, ktop)))
+             qm (i, j, ktop) = q (i, j, ktop) / (dz (i, j, ktop) + dd (i, j, ktop))
           end if
        end do
     end do
@@ -3542,9 +3546,7 @@ contains
        do i = is, ie
           do j = js, je
              if (.not. no_fall (i, j)) then
-                qm (i, j, k) = &
-                     (q (i, j, k) + (dt * vt (i, j, k-1)) * qm (i, j, k - 1)) / &
-                     ((ze (i, j, k) - ze (i, j, k + 1)) + (dt * vt (i, j, k)))
+                qm (i, j, k) = (q (i, j, k) + dd (i, j, k - 1) * qm (i, j, k - 1)) / (dz (i, j, k) + dd (i, j, k))
              end if
           end do
        end do
@@ -3560,7 +3562,7 @@ contains
        do j = js, je
           do i = is, ie
              if (.not. no_fall (i, j)) then
-                qm (i, j, k) = qm (i, j, k) * (ze (i, j, k) - ze (i, j, k + 1))
+                qm (i, j, k) = qm (i, j, k) * dz (i, j, k)
              end if
           end do
        end do
@@ -3953,7 +3955,6 @@ contains
        den, qs, qi, qg, ql, tk, vts, vti, vtg)
 
     implicit none
-    !$omp declare target
 
     integer, intent (in) :: ktop, kbot
 
@@ -4226,11 +4227,11 @@ contains
   ! =======================================================================
 
   subroutine gfdl_cloud_microphys_init ()
-    implicit none
-    integer :: file_handle
-    character (len = 64) :: file_name = 'input-data/input.nml'
 
-    integer :: rc
+    implicit none
+
+    integer :: file_handle, rc
+    character (len = 64) :: file_name = 'input-data/input.nml'
     logical :: exists
 
     inquire (file = trim (file_name), exist = exists)

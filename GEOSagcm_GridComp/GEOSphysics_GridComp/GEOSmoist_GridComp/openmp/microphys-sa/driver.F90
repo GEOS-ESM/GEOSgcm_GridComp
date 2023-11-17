@@ -56,7 +56,7 @@ program MicrophysicsDriver
   read(file_handle) &
        iis, iie, jjs, jje, kks, kke, ktop, kbot, dt_in, &
        anv_icefall, lsc_icefall, hydrostatic, phys_hydrostatic
-  ! print *, 'iis/iie/jjs/jje/kks/kke/ktop/kbot: ', iis, iie, jjs, jje, kks, kke, ktop, kbot
+  print *, 'iis/iie/jjs/jje/kks/kke/ktop/kbot: ', iis, iie, jjs, jje, kks, kke, ktop, kbot
   ! -arrays-
   ! --first, allocate memory--
   allocate(area1(iis:iie, jjs:jje))
@@ -94,7 +94,7 @@ program MicrophysicsDriver
   ! print *, 'pt_dt (shape/min/max/sum): ', shape(pt_dt1), minval(pt_dt1), maxval(pt_dt1), sum(pt_dt1)
   ! print *, 'qv_dt (shape/min/max/sum): ', shape(qv_dt1), minval(qv_dt1), maxval(qv_dt1), sum(qv_dt1)
 
-  call gfdl_cloud_microphys_init()
+  call gfdl_cloud_microphys_orig_init()
 
   call cpu_time(start)
   call gfdl_cloud_microphys_orig_driver ( &
