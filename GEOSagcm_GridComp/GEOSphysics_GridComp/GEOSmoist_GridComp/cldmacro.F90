@@ -713,17 +713,15 @@ contains
    subroutine pdf_spread ( &
          PP,ALPHA,&
          ALPHT_DIAG, &
-         FRLAND )  
+         FRLAND, MINRHCRIT,  USE_SLINGO, EIS)  
 
       real,    intent(in)  :: PP
       real,    intent(out) :: ALPHA
-      real,    intent(out) :: ALPHT_DIAG
-      real,    intent(in)  :: FRLAND
-
+      real,    intent(in)  :: FRLAND, MINRHCRIT, TURNRHCRIT
       real :: slope_up, aux1, aux2, maxalpha
 
       slope_up = 20.0
-      maxalpha=1.0-CLDPARAMS%MINRHCRIT
+      maxalpha=1.0-MINRHCRIT
 
       ! alpha is the 1/2*width so RH_crit=1.0-alpha
 
