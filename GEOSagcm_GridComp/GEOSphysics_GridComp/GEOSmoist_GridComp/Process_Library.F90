@@ -2007,13 +2007,8 @@ module GEOSmoist_Process_Library
       real :: TEp, QSp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
-<<<<<<< HEAD
-      real :: QAo, QAx, QCx, QC, fQi
-      real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv
-=======
       real :: QAo, QAx, QCx, QC, fQi, QCi, qsnx
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
->>>>>>> develop
 
       real :: tmpARR
       real :: alhxbcp, DQCALL
