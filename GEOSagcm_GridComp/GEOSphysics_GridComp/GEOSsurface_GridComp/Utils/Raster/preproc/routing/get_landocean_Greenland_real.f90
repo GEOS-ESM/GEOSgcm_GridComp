@@ -1,40 +1,48 @@
 program main
 
-use omp_lib
-use rwncfile
+use constant, only : nlon,nlat,nlon_G,nlat_G,loni_min,loni_max,lati_min,lati_max,id_glac,id_lake,id_landend
+
 implicit none
+include 'netcdf.inc'
 
-integer,parameter :: nc=291809
-integer,parameter :: nlon=43200
-integer,parameter :: nlat=21600
-integer,parameter :: nlon_G=8400
-integer,parameter :: nlat_G=4800
-integer,parameter :: loni_min=12001
-integer,parameter :: loni_max=20400
-integer,parameter :: lati_min=16801
-integer,parameter :: lati_max=21600
-
-integer,parameter :: id_glac=290191
-integer,parameter :: id_lake=290190
-integer,parameter :: id_landend=290188
-
-real*8,allocatable,dimension(:) :: lon,lat,lon_G,lat_G
+real*8,allocatable,dimension(:)    :: lon,lat,lon_G,lat_G
 integer,allocatable,dimension(:,:) :: landocean,Greenland
-integer,allocatable,dimension(:) :: Pfaf_real, countc
+integer,allocatable,dimension(:)   :: Pfaf_real, countc
 
-integer :: i,j
+integer :: i,j,ret,ncid,varid
 
 allocate(landocean(nlon,nlat))
 allocate(lon(nlon),lat(nlat))
-call read_ncfile_double1d("inputs/Pfafstetter.nc","lon",lon,nlon)
-call read_ncfile_double1d("inputs/Pfafstetter.nc","lat",lat,nlat)
-call read_ncfile_int2d("inputs/Pfafstetter.nc","data",landocean,nlon,nlat)
+
+ret=nf_open("inputs/Pfafstetter.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lon",varid)
+ret=nf_get_var_double(ncid,varid,lon)
+ret=nf_close(ncid)
+ret=nf_open("inputs/Pfafstetter.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lat",varid)
+ret=nf_get_var_double(ncid,varid,lat)
+ret=nf_close(ncid)
+ret=nf_open("inputs/Pfafstetter.nc",0,ncid)
+ret=nf_inq_varid(ncid,"data",varid)
+ret=nf_get_var_int(ncid,varid,landocean)
+ret=nf_close(ncid)
+
 
 allocate(Greenland(nlon_G,nlat_G))
 allocate(lon_G(nlon_G),lat_G(nlat_G))
-call read_ncfile_double1d("inputs/GreenlandID_30s.nc","lon",lon_G,nlon_G)
-call read_ncfile_double1d("inputs/GreenlandID_30s.nc","lat",lat_G,nlat_G)
-call read_ncfile_int2d("inputs/GreenlandID_30s.nc","data",Greenland,nlon_G,nlat_G)
+ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lon",varid)
+ret=nf_get_var_double(ncid,varid,lon_G)
+ret=nf_close(ncid)
+ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lat",varid)
+ret=nf_get_var_double(ncid,varid,lat_G)
+ret=nf_close(ncid)
+ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+ret=nf_inq_varid(ncid,"data",varid)
+ret=nf_get_var_int(ncid,varid,Greenland)
+ret=nf_close(ncid)
+
 
 where(Greenland/=-9999.and.(landocean(loni_min:loni_max,lati_min:lati_max)<=id_landend.or.&
 	landocean(loni_min:loni_max,lati_min:lati_max)==id_glac ))&
@@ -58,9 +66,9 @@ do i=1,nlon
   enddo
 enddo
 
-
-
-call create_ncfile_int2d("outputs/Pfafstetter_Greenland_real.nc","data",landocean,lon,lat,nlon,nlat)
-
+open(30,file="outputs/Pfafstetter_Greenland_real",form="unformatted")
+do j = 1,nlat
+  write (30) landocean(:,j)
+end do
 
 end

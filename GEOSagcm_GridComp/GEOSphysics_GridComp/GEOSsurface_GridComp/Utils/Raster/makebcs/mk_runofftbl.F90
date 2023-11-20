@@ -89,8 +89,7 @@ program Runoff
   close(30)
 
   print *, " "
-  print *, "Accounting for any mismatch between land-sea masks:"
-  print *, "- Of GEOS land and external ocean model."
+  print *, "Determining river outlets to ocean:"
   print *, "- Output file: ", fileB
   print *, " "
   call outlets_to_ocean(file,lons,lats,nx,ny)
@@ -312,35 +311,34 @@ contains
 !------------------------------------------------------------------------
 subroutine outlets_to_ocean(file,lons,lats,nx,ny)
 
-  integer, intent(in) :: nx,ny
-  character(len=*) :: file
-  integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
+  integer, intent(in)                :: nx,ny
+  character(len=*)                   :: file
+  integer,intent(inout)              :: lons(nx,ny),lats(nx,ny)
 
-  integer,allocatable,dimension(:) :: lati_lnd,loni_lnd  
-  integer,allocatable,dimension(:) :: msk1d
+  integer,allocatable,dimension(:)   :: lati_lnd,loni_lnd  
+  integer,allocatable,dimension(:)   :: msk1d
   integer,allocatable,dimension(:,:) :: msk2d  
   integer,allocatable,dimension(:,:) :: mask  
   integer,allocatable,dimension(:,:) :: boundary  
-  real*8, allocatable,dimension(:) :: lonsh,latsh
-  real*8,allocatable,dimension(:) :: lons_adj,lats_adj
-  integer,allocatable,dimension(:) :: lati_ocn,loni_ocn   
-  character*100          :: file_ocn
-  character*100          :: fileT_ocn, fileR_ocn
-  character*100          :: file_ocn_lnd
-  character*100          :: fileT_ocn_lnd, fileR_ocn_lnd
-  character*100          :: res_MAPL
-  character*100          :: nx_str,ny_str  
-  integer, allocatable,dimension(:,:)   :: rst_ocn,rst_ocn_lnd
-  real :: num1,num2,num3,num4
-  integer :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
+  real*8, allocatable,dimension(:)   :: lonsh,latsh
+  real*8,allocatable,dimension(:)    :: lons_adj,lats_adj
+  integer,allocatable,dimension(:)   :: lati_ocn,loni_ocn   
+  character*100                      :: file_ocn
+  character*100                      :: fileT_ocn, fileR_ocn
+  character*100                      :: file_ocn_lnd
+  character*100                      :: fileT_ocn_lnd, fileR_ocn_lnd
+  character*100                      :: res_MAPL
+  character*100                      :: nx_str,ny_str  
+  integer, allocatable,dimension(:,:):: rst_ocn,rst_ocn_lnd
+  real                               :: num1,num2,num3,num4
+  integer                            :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
   integer, allocatable,dimension(:)  :: t2lati,t2loni
-  real*8,allocatable,dimension(:) :: lon30s,lat30s
-  real*8 :: dx,dy
-  integer :: ns,nstr1,nstr2
-  integer,allocatable,dimension(:,:)   :: ns_map
-  real*8,allocatable,dimension(:) :: lat_lnd,lon_lnd
-
-  integer :: i,j,l,k,status,type,np,flag,flag2
+  real*8,allocatable,dimension(:)    :: lon30s,lat30s
+  real*8                             :: dx,dy
+  integer                            :: ns,nstr1,nstr2
+  integer,allocatable,dimension(:,:) :: ns_map
+  real*8,allocatable,dimension(:)    :: lat_lnd,lon_lnd
+  integer                            :: i,j,l,k,status,type,np,flag,flag2
 
   do i=1,100
     if(file(i:i).eq."T".and.file(i+1:i+1).eq."M")then
@@ -518,15 +516,14 @@ end subroutine outlets_to_ocean
 !-------------------------------------------------------------------------
 subroutine outlets_num(rst_ocn_lnd,nl,nt,lons,lats,nx,ny,ns)
 
-integer,intent(in) :: nx,ny,nl,nt
-integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
-integer,intent(in) :: rst_ocn_lnd(nx,ny)
-integer,intent(out) :: ns
+integer,intent(in)                 :: nx,ny,nl,nt
+integer,intent(inout)              :: lons(nx,ny),lats(nx,ny)
+integer,intent(in)                 :: rst_ocn_lnd(nx,ny)
+integer,intent(out)                :: ns
 
-integer,allocatable,dimension(:) :: lonp,latp
+integer,allocatable,dimension(:)   :: lonp,latp
 integer,allocatable,dimension(:,:) :: acc,np_map
-
-integer :: i,j,k,l,lonc,latc,flag,maxbak,status,num
+integer                            :: i,j,k,l,lonc,latc,flag,maxbak,status,num
 
 !print *,"running outlets_num() ..."
 
@@ -563,17 +560,15 @@ end subroutine outlets_num
 !------------------------------------------------------------------------
 subroutine retrieve_outlets(lons,lats,lon30s,lat30s,lonp,latp,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
 
-integer,intent(in) :: nx,ny,ns
-integer,intent(in) :: lons(nx,ny),lats(nx,ny)
-real*8,intent(in) :: lon30s(nx),lat30s(ny)
-integer,intent(out) :: lonp(ns),latp(ns)
-real*8,intent(out) :: lon_lnd(ns),lat_lnd(ns)
-integer,intent(out) :: ns_map(nx,ny)
-
+integer,intent(in)                 :: nx,ny,ns
+integer,intent(in)                 :: lons(nx,ny),lats(nx,ny)
+real*8,intent(in)                  :: lon30s(nx),lat30s(ny)
+integer,intent(out)                :: lonp(ns),latp(ns)
+real*8,intent(out)                 :: lon_lnd(ns),lat_lnd(ns)
+integer,intent(out)                :: ns_map(nx,ny)
 
 integer,allocatable,dimension(:,:) :: acc
-
-integer :: i,j,k,l,lonc,latc
+integer                            :: i,j,k,l,lonc,latc
 
 !print *,"running retrieve_outlets() ..."
 
@@ -610,15 +605,13 @@ end subroutine retrieve_outlets
 !------------------------------------------------------------------------
 subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
 
-integer,intent(in) :: nt,nlon,nlat
-integer,intent(in) :: t2loni(nt),t2lati(nt)
-character(len=*) :: res_MAPL
-integer,intent(out) :: msk_tile(nt)
-
+integer,intent(in)              :: nt,nlon,nlat
+integer,intent(in)              :: t2loni(nt),t2lati(nt)
+character(len=*)                :: res_MAPL
+integer,intent(out)             :: msk_tile(nt)
 
 real,allocatable,dimension(:,:) :: msk_MAPL
-
-integer :: i
+integer                         :: i
 
 !print *,"running mask_MAPL_1d() ..."
 
@@ -636,11 +629,11 @@ end subroutine mask_MAPL_1d
   subroutine read_oceanModel_mapl(mask_file,wetMask,nx,ny)
   implicit none
   character(len=*),    intent(in)  :: mask_file
-  integer,intent(in) :: nx, ny
-  real :: wetMask(nx,ny)
+  integer,intent(in)               :: nx, ny
+  real                             :: wetMask(nx,ny)
 
-  integer :: ncid, varid
-  character(len=4) :: subname="read"
+  integer                          :: ncid, varid
+  character(len=4)                 :: subname="read"
 
   !print *, "Reading ocean model mask from : ", mask_file
 
@@ -654,7 +647,7 @@ end subroutine mask_MAPL_1d
   subroutine check_ret(ret, calling)
     implicit none
     integer, intent(in) :: ret
-    character(len=*) :: calling
+    character(len=*)    :: calling
 
     if (ret /= NF_NOERR) then !Èç¹û´ò¿ªncÎÄ¼þ³ö´í£¬ÔòÌáÊ¾³ö´íÐÅÏ¢
        write(6,*)'netcdf error from ',trim(calling)
@@ -684,14 +677,13 @@ end subroutine endrun
 !------------------------------------------------------------------------
 subroutine mask_MAPL_2d(landocean,mask1d,msk2d,nt,nlon,nlat)
 
-integer,intent(in) :: nt,nlon,nlat
-integer,intent(in) :: landocean(nlon,nlat)
-integer,intent(in) :: mask1d(nt)
-integer,intent(out) :: msk2d(nlon,nlat)
+integer,intent(in)              :: nt,nlon,nlat
+integer,intent(in)              :: landocean(nlon,nlat)
+integer,intent(in)              :: mask1d(nt)
+integer,intent(out)             :: msk2d(nlon,nlat)
 
 real*8,allocatable,dimension(:) :: lon,lat
-
-integer :: i,j,xi,yi,tid
+integer                         :: i,j,xi,yi,tid
 
 !print *,"running mask_MAPL_2d() ..."
 do i=1,nlon
@@ -705,9 +697,9 @@ end subroutine mask_MAPL_2d
 !------------------------------------------------------------------------
 subroutine mask_MAPL_bcs(rst_ocn_lnd,mask_mapl,mask,nlon,nlat,nl,nt)
 
-integer,intent(in) :: nlon,nlat,nl,nt
-integer,intent(in) :: rst_ocn_lnd(nlon,nlat)
-integer,intent(in) :: mask_mapl(nlon,nlat)
+integer,intent(in)  :: nlon,nlat,nl,nt
+integer,intent(in)  :: rst_ocn_lnd(nlon,nlat)
+integer,intent(in)  :: mask_mapl(nlon,nlat)
 integer,intent(out) :: mask(nlon,nlat)
 
 !print *,"running mask_MAPL_bcs() ..."
@@ -718,15 +710,13 @@ end subroutine mask_MAPL_bcs
 !------------------------------------------------------------------------
 subroutine ocean_boundary(mask,boundary,nlon,nlat)
 
-integer,intent(in) :: nlon,nlat
-integer,intent(in) :: mask(nlon,nlat)
+integer,intent(in)  :: nlon,nlat
+integer,intent(in)  :: mask(nlon,nlat)
 integer,intent(out) :: boundary(nlon,nlat)
 
-real*8,allocatable :: lon(:),lat(:)
-
-
-integer :: xi,yi,id
-integer :: xp1,xm1,yp1,ym1
+real*8,allocatable  :: lon(:),lat(:)
+integer             :: xi,yi,id
+integer             :: xp1,xm1,yp1,ym1
 
 !print *,"running ocean_boundary() ..."
 
@@ -756,8 +746,8 @@ end subroutine ocean_boundary
 !------------------------------------------------------------------------
 subroutine ocean_boundary_num(mskh,nlon,nlat,nsh)
 
-integer,intent(in) :: nlon,nlat
-integer,intent(in) :: mskh(nlon,nlat)
+integer,intent(in)  :: nlon,nlat
+integer,intent(in)  :: mskh(nlon,nlat)
 integer,intent(out) :: nsh
 
 integer i,xi,yi,k
@@ -778,7 +768,7 @@ subroutine ocean_boundary_points(mskh,lon30s,lat30s,lonsh,latsh,nlon,nlat,nsh)
 
 integer,intent(in) :: nlon,nlat,nsh
 integer,intent(in) :: mskh(nlon,nlat)
-real*8,intent(in) :: lon30s(nlon),lat30s(nlat)
+real*8,intent(in)  :: lon30s(nlon),lat30s(nlat)
 real*8,intent(out) :: lonsh(nsh),latsh(nsh)
 integer i,xi,yi,k
 
@@ -799,9 +789,9 @@ subroutine move_to_ocean(lonsi,latsi,lons,lats,mask,lonsh,latsh,lons_adj,lats_ad
 
 integer,intent(in) :: ns,nlon,nlat,nsh
 integer,intent(in) :: lonsi(ns),latsi(ns)
-real*8,intent(in) :: lons(ns),lats(ns)
+real*8,intent(in)  :: lons(ns),lats(ns)
 integer,intent(in) :: mask(nlon,nlat)
-real*8,intent(in) :: lonsh(nsh),latsh(nsh)
+real*8,intent(in)  :: lonsh(nsh),latsh(nsh)
 real*8,intent(out) :: lons_adj(ns),lats_adj(ns)
 
 !integer,allocatable :: catid(:),flag(:)
@@ -843,14 +833,12 @@ end subroutine move_to_ocean
 !------------------------------------------------------------------------
 subroutine sinkxy_ocean(lons,lats,lon30s,lat30s,loni,lati,ns,nlon,nlat)
 
-integer,intent(in) :: ns,nlon,nlat
-real*8,intent(in) :: lons(ns),lats(ns)
-real*8,intent(in) :: lon30s(nlon),lat30s(nlat)
-integer,intent(out) :: loni(ns),lati(ns)
-
+integer,intent(in)              :: ns,nlon,nlat
+real*8,intent(in)               :: lons(ns),lats(ns)
+real*8,intent(in)               :: lon30s(nlon),lat30s(nlat)
+integer,intent(out)             :: loni(ns),lati(ns)
 real*8,allocatable,dimension(:) :: lat_dis,lon_dis
-
-integer :: i,temp(1)
+integer                         :: i,temp(1)
 
 !print *,"running sinkxy_ocean() ..."
 
@@ -873,9 +861,9 @@ end subroutine sinkxy_ocean
 !------------------------------------------------------------------------
 subroutine update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
 
-integer,intent(in) :: nx,ny,ns
-integer,intent(in) :: loni_ocn(ns),lati_ocn(ns)
-integer,intent(in) :: ns_map(nx,ny)
+integer,intent(in)    :: nx,ny,ns
+integer,intent(in)    :: loni_ocn(ns),lati_ocn(ns)
+integer,intent(in)    :: ns_map(nx,ny)
 integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
 
 integer :: i,j,lonc,latc,ind

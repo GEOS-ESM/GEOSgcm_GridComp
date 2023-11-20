@@ -1,13 +1,9 @@
 program main
 
-use rwncfile
+use constant,only : ns,nlon,nlat
 implicit none
 
-integer,parameter :: ns=22612
-integer,parameter :: nlat=21600
-integer,parameter :: nlon=43200
-
-real*8,allocatable,dimension(:) :: lats,lons,lat30s,lon30s,lat_dis,lon_dis
+real*8,allocatable,dimension(:)  :: lats,lons,lat30s,lon30s,lat_dis,lon_dis
 integer,allocatable,dimension(:) :: lati,loni
 
 integer :: i,temp(1)

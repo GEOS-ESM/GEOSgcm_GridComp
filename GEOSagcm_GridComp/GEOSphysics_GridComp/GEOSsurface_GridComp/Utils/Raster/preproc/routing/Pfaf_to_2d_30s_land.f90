@@ -1,58 +1,59 @@
 program main
 
-use omp_lib
-use rwncfile
+use constant,only : nall,nlon,nlat
 implicit none
 
-character(len=100) :: var1="outlet_sinky_allcat"
-character(len=100) :: var2="outlet_sinkx_allcat"
-character(len=100) :: map="Pfafstetter_Greenland_real.nc"
-integer,parameter :: nc=291809
-integer,parameter :: nlon=43200
-integer,parameter :: nlat=21600
+character(len=100)  :: var1="outlet_sinky_allcat"
+character(len=100)  :: var2="outlet_sinkx_allcat"
+character(len=100)  :: map="Pfafstetter_Greenland_real"
 
-real*8,allocatable :: lon(:),lat(:)
+real*8,allocatable  :: lon(:),lat(:)
 integer,allocatable :: catchind(:,:)
-integer,allocatable :: data2d(:,:)
+integer,allocatable :: lons(:,:),lats(:,:)
 integer,allocatable :: data_Pfaf(:)
 
-integer :: xi,yi,id
+integer :: i,j,xi,yi,id
 
 
-allocate(catchind(nlon,nlat),data2d(nlon,nlat))
+allocate(catchind(nlon,nlat),lons(nlon,nlat),lats(nlon,nlat))
 allocate(lon(nlon),lat(nlat))
-call read_ncfile_double1d("outputs/"//trim(map),"lon",lon,nlon)
-call read_ncfile_double1d("outputs/"//trim(map),"lat",lat,nlat)
-call read_ncfile_int2d("outputs/"//trim(map),"data",catchind,nlon,nlat)
 
-allocate(data_Pfaf(nc))
+open(30,file="outputs/"//trim(map),form="unformatted")
+do j = 1,nlat
+  read (30) catchind(:,j)
+end do
+
+allocate(data_Pfaf(nall))
 
 open(77,file="outputs/"//trim(var1)//".txt")
 read(77,*)data_Pfaf
-data2d=-999
+lats=-999
 do xi=1,nlon
   do yi=1,nlat
-    if(catchind(xi,yi)>=1.and.catchind(xi,yi)<=nc)then
+    if(catchind(xi,yi)>=1.and.catchind(xi,yi)<=nall)then
       id=catchind(xi,yi)
-      data2d(xi,yi)=data_Pfaf(id)
+      lats(xi,yi)=data_Pfaf(id)
     endif 
   enddo
 enddo
-call create_ncfile_int2d_fill("outputs/"//trim(var1)//"_2d.nc","data",data2d,lon,lat,nlon,nlat,-999.)
 
 open(77,file="outputs/"//trim(var2)//".txt")
 read(77,*)data_Pfaf
-data2d=-999
+lons=-999
 do xi=1,nlon
   do yi=1,nlat
-    if(catchind(xi,yi)>=1.and.catchind(xi,yi)<=nc)then
+    if(catchind(xi,yi)>=1.and.catchind(xi,yi)<=nall)then
       id=catchind(xi,yi)
-      data2d(xi,yi)=data_Pfaf(id)
+      lons(xi,yi)=data_Pfaf(id)
     endif 
   enddo
 enddo
-call create_ncfile_int2d_fill("outputs/"//trim(var2)//"_2d.nc","data",data2d,lon,lat,nlon,nlat,-999.)
 
+open(30,file="Outlet_latlon.43200x21600",form="unformatted")
+do j = 1, nlat
+  write (30) lons(:,j)
+  write (30) lats(:,j)
+end do
 
 
 

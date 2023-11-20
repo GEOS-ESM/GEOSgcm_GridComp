@@ -1,10 +1,7 @@
 program main
 
+use constant,only : nc,ns,ng
 implicit none
-
-integer,parameter :: nc=291284
-integer,parameter :: ns=22612
-integer,parameter :: ng=525
 
 integer,allocatable,dimension(:) :: msk,outid,mskall,final,finalall
 

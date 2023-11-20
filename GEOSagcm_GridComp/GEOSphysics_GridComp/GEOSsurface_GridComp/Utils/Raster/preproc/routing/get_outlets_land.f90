@@ -1,22 +1,16 @@
 program main
 
-use omp_lib
-use rwncfile
+use constant,only : nc,nl,ng,nlon=>nlon1m,nlat=>nlat1m
 implicit none
+include 'netcdf.inc'
 
-integer,parameter :: nc=291284
-integer,parameter :: nl=22087
-integer,parameter :: ng=525
-integer,parameter :: nlon=21600
-integer,parameter :: nlat=10800
-
-real*8,allocatable :: lon(:),lat(:),long(:),latg(:),lons(:),lats(:)
+real*8,allocatable  :: lon(:),lat(:),long(:),latg(:),lons(:),lats(:)
 integer,allocatable :: catchind(:,:)
-real,allocatable :: acah(:,:)
+real,allocatable    :: acah(:,:)
 integer,allocatable :: down(:),sx(:),sy(:),msk(:)
-real,allocatable :: acas(:)
+real,allocatable    :: acas(:)
 
-integer :: id,xi,yi,i,k,xis,yis,ntot
+integer :: id,xi,yi,i,k,xis,yis,ntot,ncid,ret,varid
 
 ntot=nl+ng
 allocate(catchind(nlon,nlat),acah(nlon,nlat))
@@ -24,11 +18,25 @@ allocate(lon(nlon),lat(nlat))
 allocate(sx(nc),sy(nc),acas(nc),down(nc),msk(nc))
 allocate(long(ng),latg(ng),lons(ntot),lats(ntot))
 
-call read_ncfile_double1d("inputs/CatchIndex.nc","lon",lon,nlon)
-call read_ncfile_double1d("inputs/CatchIndex.nc","lat",lat,nlat)
-call read_ncfile_int2d("inputs/CatchIndex.nc","data",catchind,nlon,nlat)
-call read_ncfile_real2d("inputs/HydroSHEDS_drainage_area.nc","data",acah,nlon,nlat)
 
+ret=nf_open("inputs/CatchIndex.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lon",varid)
+ret=nf_get_var_double(ncid,varid,lon)
+ret=nf_close(ncid)
+ret=nf_open("inputs/CatchIndex.nc",0,ncid)
+ret=nf_inq_varid(ncid,"lat",varid)
+ret=nf_get_var_double(ncid,varid,lat)
+ret=nf_close(ncid)
+
+ret=nf_open("inputs/CatchIndex.nc",0,ncid)
+ret=nf_inq_varid(ncid,"data",varid)
+ret=nf_get_var_int(ncid,varid,catchind)
+ret=nf_close(ncid)
+
+ret=nf_open("inputs/HydroSHEDS_drainage_area.nc",0,ncid)
+ret=nf_inq_varid(ncid,"data",varid)
+ret=nf_get_var_real(ncid,varid,acah)
+ret=nf_close(ncid)
 
 open(77,file="inputs/downstream_1D_new_noadj.txt")
 read(77,*)down
@@ -61,7 +69,6 @@ do i=1,nc
     lats(k)=lat(sy(i))
   endif
 enddo
-!print *,k
 
 open(77,file="inputs/Greenland_outlets_lat.txt")
 read(77,*)latg

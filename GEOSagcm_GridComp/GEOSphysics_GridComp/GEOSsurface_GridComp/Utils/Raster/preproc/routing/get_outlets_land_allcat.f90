@@ -1,20 +1,16 @@
 program main
 
-use omp_lib
-
+use constant,only : nall,ns
 implicit none
 
-integer,parameter :: nall=291809
-integer,parameter :: nc=22612
-
 integer, allocatable, dimension(:) :: id_final,id_outlet,msk 
-integer,allocatable,dimension(:) :: lati_outlet,loni_outlet
-integer,allocatable,dimension(:) :: lati_full,loni_full
+integer,allocatable,dimension(:)   :: lati_outlet,loni_outlet
+integer,allocatable,dimension(:)   :: lati_full,loni_full
 
 integer :: i,j
 
-allocate(id_final(nall),id_outlet(nc),msk(nall),&
-	lati_outlet(nc),loni_outlet(nc),lati_full(nall),loni_full(nall))
+allocate(id_final(nall),id_outlet(ns),msk(nall),&
+	lati_outlet(ns),loni_outlet(ns),lati_full(nall),loni_full(nall))
 
 open(77,file="outputs/Pfaf_finalID_all.txt")
 read(77,*)id_final
@@ -33,7 +29,7 @@ loni_full=-999
 do i=1,nall
   !if(mod(i,1000)==0) print *,i
   if(msk(id_final(i)).eq.2)then
-    do j=1,nc
+    do j=1,ns
       if(id_outlet(j).eq.id_final(i))then 
         lati_full(i)=lati_outlet(j)
         loni_full(i)=loni_outlet(j)
