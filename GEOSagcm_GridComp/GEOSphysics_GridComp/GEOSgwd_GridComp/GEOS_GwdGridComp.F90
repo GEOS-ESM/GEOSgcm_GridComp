@@ -778,6 +778,7 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
 
+    logical :: JASON_GWD
     logical :: NCAR_TAU_TOP_ZERO
     real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
@@ -845,8 +846,8 @@ contains
 
 ! Gravity wave drag
 ! -----------------
-
-    if (LM .eq. 72) then
+      call MAPL_GetResource(MAPL,JASON_GWD,'JASON_GWD:', default=(LM==72), _RC)
+      if (JASON_GWD) then
                                          GEOS_PGWV = 4
        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
@@ -857,7 +858,7 @@ contains
        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
        call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=0.0, _RC)
        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
-    else
+      else
                                          GEOS_PGWV = NINT(32*LM/181.0)
        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
@@ -868,7 +869,7 @@ contains
        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
        call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=50.0, _RC)
        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
-    endif
+      endif
 
 ! Topographic Form Drag [Beljaars et al (2004)]
 ! ---------------------------------------------
