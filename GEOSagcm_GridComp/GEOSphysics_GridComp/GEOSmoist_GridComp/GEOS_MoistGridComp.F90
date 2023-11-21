@@ -5848,7 +5848,7 @@ contains
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MIN(CLLS+CLCN,1.0)
+       if (associated(PTR3D)) PTR3D = QLLS+QLCN+QILS+QICN
 
        ! Cloud condensate exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX1', RC=STATUS); VERIFY_(STATUS)
