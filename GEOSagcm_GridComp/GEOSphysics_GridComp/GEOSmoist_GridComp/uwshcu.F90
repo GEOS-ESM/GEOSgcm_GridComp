@@ -1142,6 +1142,8 @@ contains
 
          frc_rasn        = shlwparams%frc_rasn
 
+         frc_rasn        = shlwparams%frc_rasn
+
          pifc0(0:k0)     = pifc0_in(i,0:k0)
          zifc0(0:k0)     = zifc0_in(i,0:k0)
          pmid0(:k0)      = pmid0_in(i,:k0)

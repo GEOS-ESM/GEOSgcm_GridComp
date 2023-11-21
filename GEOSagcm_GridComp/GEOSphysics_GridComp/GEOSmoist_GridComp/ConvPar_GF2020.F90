@@ -6286,7 +6286,7 @@ ENDIF !- end of section for atmospheric composition
      do i=its,itf
         if(ierr(i) /= 0) cycle
 
-        cdd(i,1:jmin(i)-1) =mentrd_rate(i,1:jmin(i)-1)
+        cdd           (i,1:jmin(i)-1) =mentrd_rate(i,1:jmin(i)-1)
         mentrd_rate(i,1)=0.
 
         do ki=jmin(i)   ,maxloc(zdo(i,:),1),-1

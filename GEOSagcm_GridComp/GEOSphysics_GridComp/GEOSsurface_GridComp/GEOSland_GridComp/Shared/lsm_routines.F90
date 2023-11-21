@@ -1655,8 +1655,6 @@ CONTAINS
          MODIS_SCALE_ = .FALSE.
       END IF
 
-!FPP$ EXPAND (COEFFSIB)
-
       DO I=1,NCH
 
         ALA = AMIN1 (AMAX1 (ZERO, VLAI(I)), ALATRM)
