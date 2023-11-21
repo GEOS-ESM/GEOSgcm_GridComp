@@ -637,10 +637,10 @@ end subroutine mask_MAPL_1d
 
   !print *, "Reading ocean model mask from : ", mask_file
 
-  call check_ret(nf_open(mask_file,0,ncid),subname)
-  call check_ret(nf_inq_varid(ncid,"mask",varid),subname)
-  call check_ret(nf_get_var_real(ncid,varid,wetMask),subname)
-  call check_ret(nf_close(ncid), subname)    
+  call check_ret(nf90_open(mask_file,0,ncid),subname)
+  call check_ret(nf90_inq_varid(ncid,"mask",varid),subname)
+  call check_ret(nf90_get_var(ncid,varid,wetMask),subname)
+  call check_ret(nf90_close(ncid), subname)    
 
   end subroutine read_oceanModel_mapl 
 !------------------------------------------------------------------------
