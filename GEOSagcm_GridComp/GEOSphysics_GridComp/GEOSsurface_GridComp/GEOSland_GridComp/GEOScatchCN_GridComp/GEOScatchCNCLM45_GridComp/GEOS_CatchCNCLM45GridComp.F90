@@ -6572,7 +6572,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       ! we need to use the PSO to do load our EF of Ksat and g1
       ! set your PSO choice
-      pso_choice = 1
+      pso_choice = 0
       ksat_ef_choice = 0
       ! if we are running the PSO
       if (pso_choice == 1) then
@@ -6602,7 +6602,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ! MANUALLY ASSIGN the number of parameters and particles
               ! this needs to match what is told the model during setup
               num_params = 10
-              pso_vals%total_ens = 10
+              pso_vals%total_ens = 1
               ! allocate and assign the tiles that are running on this cpu
               allocate(pso_vals%local_tile_nums(size(CAT_ID)))
               pso_vals%local_tile_nums = CAT_ID
@@ -6624,7 +6624,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ! allocate our parameter values and get their values
               allocate(pso_vals%param_vals(num_params,pso_vals%total_ens))
               ! read the current PSO vals
-              open(unit = 8, file='/lustre/catchment/exps/GEOSldas_CN45_pso_g1_et_v2/positions.csv',IOSTAT = reason)
+              open(unit = 8, file='/lustre/catchment/exps/GEOSldas_CN45_pso_g1_et_strm_ai_2002/positions.csv',IOSTAT = reason)
               read(8, *,IOSTAT = reason) pso_vals%param_vals
               close(8)
           endif
@@ -6644,13 +6644,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           k0_val_tile = pso_vals%k0_vals(this_env_idx)
           k0_val_tile_real = k0_val_tile(1)
           ! get the pso parameter values
-          alpha = pso_vals%param_vals(6,this_particle)
-          beta = pso_vals%param_vals(7,this_particle)
-          const_1 = pso_vals%param_vals(8,this_particle)
-          const_2 = pso_vals%param_vals(9,this_particle)
-          sand_exp = pso_vals%param_vals(10,this_particle)
-          ks_max = k0_val_tile_real*(10**(const_1 - (const_2*(sand_val_tile_real**sand_exp))))
-          !ks_max = k0_val_tile_real*(10**(3.5 - (1.5*(sand_val_tile_real**0.13))))
+          !alpha = pso_vals%param_vals(6,this_particle)
+          !beta = pso_vals%param_vals(7,this_particle)
+          !const_1 = pso_vals%param_vals(8,this_particle)
+          !const_2 = pso_vals%param_vals(9,this_particle)
+          !sand_exp = pso_vals%param_vals(10,this_particle)
+          !ks_max = k0_val_tile_real*(10**(const_1 - (const_2*(sand_val_tile_real**sand_exp))))
+          !!ks_max = k0_val_tile_real*(10**(3.5 - (1.5*(sand_val_tile_real**0.13))))
           if ( ksat_ef_choice == 1 ) then
               cond(n) = ks_max - ((ks_max - k0_val_tile_real)/(1 + ((lai_val_tile_real/alpha)**beta)))
               !cond(n) = ks_max - ((ks_max - k0_val_tile_real)/(1 + ((lai_val_tile_real/4.5)**5)))

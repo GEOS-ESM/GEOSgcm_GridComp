@@ -771,7 +771,8 @@
    integer:: fake_num_ensemble
    integer:: reason
    integer:: pso_pft
-   real   :: pso_val, offline_const, offline_int
+   integer:: g0_pso_pft
+   real   :: pso_val, offline_const, offline_int, g1_pso_val, g0_pso_val
    real   :: pso_intercept, pso_slope
    real,dimension(1) :: map_val_tile
    real :: map_val_tile_real
@@ -901,7 +902,7 @@
       end if
 
       ! C3 and C4 dependent parameters
-      g1_ef_choice = 1
+      g1_ef_choice = 0
       if (g1_ef_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8
@@ -933,10 +934,16 @@
 
          !!!!! UNCOMMENT BELOW FOR PFT-BASED PSO OPTIMIZATION !!!!!!
          call pft_clm_to_pso(ityp(p, nv), pso_pft)
-         pso_val = pso_vals%param_vals(pso_pft, this_particle)
-         offline_const = 0.025
-         offline_int = -0.163747
-         mbbopt(p) = pso_val*(offline_int + map_val_tile_real*offline_const)
+         g1_pso_val = pso_vals%param_vals(pso_pft, this_particle)
+         g0_pso_pft = pso_pft + 5
+         g0_pso_val = pso_vals%param_vals(g0_pso_pft, this_particle)
+         !offline_const = 0.025
+         !offline_int = -0.163747
+         !mbbopt(p) = pso_val*(offline_int + map_val_tile_real*offline_const)
+         ! for experiment to just set g1 equal to ai
+         mbbopt(p) = g1_pso_val
+         ! for experiment where both g0 and g1 are optimized
+         !mbbopt(p) = g0_pso_val + g1_pso_val*map_val_tile_real
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          !!!!! UNCOMMENT BELOW FOR C1 C2 BASED PSO OPTIMIZATION !!!!!
