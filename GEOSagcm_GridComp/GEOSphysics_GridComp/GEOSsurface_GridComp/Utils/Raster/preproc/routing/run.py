@@ -4,7 +4,7 @@ import os
 import subprocess
 
 input_path = "/discover/nobackup/yzeng3/work/outlets/inputs"
-netcdf_path = "/discover/nobackup/yzeng3/apps/netcdf-4.2.1.1"
+baselib = "/discover/swdev/gmao_SIteam/Baselibs/ESMA-Baselibs-7.8.1/x86_64-pc-linux-gnu/ifort_2021.6.0-intelmpi_2021.6.0/Linux"
 
 # Remove files and directories
 os.system("rm -rf inputs >& /dev/null")
@@ -12,6 +12,16 @@ os.system("rm -rf outputs >& /dev/null")
 os.system("rm -f *.mod >& /dev/null")
 os.system("rm -f *.out >& /dev/null")
 os.system("rm -f Outlet_latlon.43200x21600 >& /dev/null")
+
+# Link basedir
+base_lib_path = baselib + "/lib"
+for file in os.listdir(base_lib_path):
+  os.system(f"rm -f {file} >& /dev/null")
+  os.symlink(os.path.join(base_lib_path, file), os.path.join(os.getcwd(), file))
+base_inc_path = baselib + "/include/netcdf"
+for file in os.listdir(base_inc_path):
+  os.system(f"rm -f {file} >& /dev/null")
+  os.symlink(os.path.join(base_inc_path, file), os.path.join(os.getcwd(), file))
 
 # Create directories and symbolic links
 os.makedirs("inputs", exist_ok=True)
@@ -32,7 +42,7 @@ programs = [
 for program in programs:
     print(f"Building {program} ...")
     #subprocess.run(["./build", program])
-    subprocess.run(f"ifort constant.f90 {program}.f90 -I{netcdf_path}/include -L{netcdf_path}/lib -lnetcdf -lnetcdff -o {program}.out",shell=True)
+    subprocess.run(f"ifort constant.f90 {program}.f90 -lnetcdf -lnetcdff -o {program}.out",shell=True)
 
 out_programs = [
     "get_outlets_catchindex.out",
@@ -56,5 +66,10 @@ os.system("rm -rf inputs")
 print("Removing *.out files ...")
 os.system("rm -f *.out")
 os.system("rm -f *.mod")
-
+base_lib_path = os.getenv("BASELIB") + "/lib/"
+for file in os.listdir(base_lib_path):
+  os.system(f"rm -f {file} >& /dev/null")
+base_inc_path = os.getenv("BASELIB") + "/include/netcdf"
+for file in os.listdir(base_inc_path):
+  os.system(f"rm -f {file} >& /dev/null")
 
