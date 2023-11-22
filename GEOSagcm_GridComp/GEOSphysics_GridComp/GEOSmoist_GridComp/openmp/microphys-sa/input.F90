@@ -4,7 +4,9 @@ module input_mod
 
   private
 
-  public InputScalars_T, InputArrays_T, get_data_from_file
+  public InputScalars_T, InputArrays_T, get_data_from_file, write_difference
+
+  character(len=*), parameter :: fmt_diff = '(1x, a10, 1x, a1, 1x, e15.9)'
 
   type InputScalars_T
      logical :: hydrostatic, phys_hydrostatic
@@ -25,10 +27,10 @@ module input_mod
      real, allocatable, dimension (:, :, :) :: qi, qs
      real, allocatable, dimension (:, :, :) :: pt_dt, qa_dt, udt, vdt, w
      real, allocatable, dimension (:, :, :) :: qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt
-     real, allocatable, dimension (:, :) :: rain, snow, ice, graupel
-     real, allocatable, dimension (:, :, :) :: m2_rain, m2_sol ! Rain and Ice fluxes (Pa kg/kg)
-     real, allocatable, dimension (:, :, :) :: revap ! Rain evaporation
-     real, allocatable, dimension (:, :, :) :: isubl ! Ice sublimation
+     ! real, allocatable, dimension (:, :) :: rain, snow, ice, graupel
+     ! real, allocatable, dimension (:, :, :) :: m2_rain, m2_sol ! Rain and Ice fluxes (Pa kg/kg)
+     ! real, allocatable, dimension (:, :, :) :: revap ! Rain evaporation
+     ! real, allocatable, dimension (:, :, :) :: isubl ! Ice sublimation
    contains
      procedure :: write_arrays
   end type InputArrays_T
@@ -104,8 +106,8 @@ contains
          arr%pt_dt, arr%qa_dt, arr%udt, arr%vdt, arr%w, &
          arr%qv_dt, arr%ql_dt, arr%qr_dt, arr%qi_dt, arr%qs_dt, arr%qg_dt, &
          mold=arr%rhcrit)
-    allocate(arr%rain, arr%snow, arr%ice, arr%graupel, mold=arr%area)
-    allocate(arr%m2_rain, arr%m2_sol, arr%revap, arr%isubl, mold=arr%rhcrit)
+    ! allocate(arr%rain, arr%snow, arr%ice, arr%graupel, mold=arr%area)
+    ! allocate(arr%m2_rain, arr%m2_sol, arr%revap, arr%isubl, mold=arr%rhcrit)
     ! --now, read--
     read(file_handle) &
          ! intent(in)
@@ -119,5 +121,31 @@ contains
     close(file_handle)
     
   end subroutine get_data_from_file
-  
+
+  subroutine write_difference(arr1, arr2)
+
+    ! Arguments
+    type(InputArrays_T), intent(in) :: arr1, arr2
+
+    ! Start
+    print *, ''
+    print *, '-----------|-----------------'
+    print *, ' inout var |  abs error'
+    print *, '-----------|-----------------'
+    write(*, fmt_diff) 'qi', '|', norm2(arr2%qi-arr1%qi)
+    write(*, fmt_diff) 'qs', '|', norm2(arr2%qs-arr1%qs)
+    write(*, fmt_diff) 'qv_dt', '|', norm2(arr2%qv_dt-arr1%qv_dt)
+    write(*, fmt_diff) 'ql_dt', '|', norm2(arr2%ql_dt-arr1%ql_dt)
+    write(*, fmt_diff) 'qr_dt', '|', norm2(arr2%qr_dt-arr1%qr_dt)
+    write(*, fmt_diff) 'qi_dt', '|', norm2(arr2%qi_dt-arr1%qi_dt)
+    write(*, fmt_diff) 'qs_dt', '|', norm2(arr2%qs_dt-arr1%qs_dt)
+    write(*, fmt_diff) 'qg_dt', '|', norm2(arr2%qg_dt-arr1%qg_dt)
+    write(*, fmt_diff) 'qa_dt', '|', norm2(arr2%qa_dt-arr1%qa_dt)
+    write(*, fmt_diff) 'w', '|', norm2(arr2%w-arr1%w)
+    write(*, fmt_diff) 'udt', '|', norm2(arr2%udt-arr1%udt)
+    write(*, fmt_diff) 'vdt', '|', norm2(arr2%vdt-arr1%vdt)
+    print *, '-----------|-----------------'
+
+  end subroutine write_difference
+
 end module input_mod
