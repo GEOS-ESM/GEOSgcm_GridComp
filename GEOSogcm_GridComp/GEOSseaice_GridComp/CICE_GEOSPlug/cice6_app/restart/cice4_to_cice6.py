@@ -214,6 +214,44 @@ def lon_lat_to_cartesian(lon, lat, R = 1):
     z = R * np.sin(lat_r)
     return x,y,z
 
+class saltwatertile:
+
+    def __init__(self, file): 
+         
+       header = np.genfromtxt(file, dtype='i4', usecols=(0), max_rows=8)
+       #print header
+       self.atm = 'x'.join([str(x) for x in header[3:5]])
+       self.ocn = 'x'.join([str(x) for x in header[6:]])
+       self.nx, self.ny = header[6], header[7]
+       print(self.atm, self.ocn) 
+       tile=np.genfromtxt(file, dtype=[('type','i1'), ('area','f8'), ('lon','f8'),('lat','f8'), ('gi1','i4'),
+                           ('gj1','i4'), ('gw1','f8'),
+                           ('idum','i4'), ('gi2','i4'), ('gj2','i4'), ('gw2','f8')], skip_header=8)
+       n1 = 0
+       n2 = -1
+       for n in range(1, tile.shape[0]+1, 1):
+           if tile[n-1][0] == 0:
+               n1 = n
+               break
+       #print('n1 = ',n1)
+       for n in range(n1, tile.shape[0]+1, 1):
+           if tile[n-1][0] != 0:
+               n2 = n
+               break
+       #print('n2 = ',n2)
+       if n2 == -1:
+          icetile=tile[n1-1:]
+       else:
+          icetile=tile[n1-1:n2-1]
+       #print(icetile.shape)
+       #print('hhh: ',icetile[0][2], icetile[-1][2])
+       self.size = icetile.shape[0]
+       self.gi = icetile['gi2'][:]
+       self.gj = icetile['gj2'][:]
+       self.lons = icetile['lon'][:]
+       self.lats = icetile['lat'][:]
+       #print 'hhh: ',self.size,self.gi[-1],self.gj[-1]
+       #return icetile
 
 def get_src_grid(fname): #reads lat lon for tripolar ocean grid 
     ncfile  = Dataset(fname, "r")
@@ -250,14 +288,17 @@ missing=np.float32(-32767.0)
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--inputfile', default=None, required=True, help='CICE restart file on source grid')
-    parser.add_argument('-ig', '--inputgrid', default=None, required=False, help='source grid file')
+    parser.add_argument('-i', '--inputfile', default=None, required=True, help='GEOS seaice thermo restart file on tile grid')
+    parser.add_argument('-ig', '--inputgrid', default=None, required=True, help='source tile file')
     parser.add_argument('-o', '--outputfile', default=None, required=True, help='CICE restart file on target grid')
+    parser.add_argument('-ot', '--outputtemplate', default=None, required=True, help='CICE restart file on target output grid servign as a template')
     parser.add_argument('-og', '--outputgrid', default=None, required=True, help='target grid file')
-    parser.add_argument('-fs', '--fixedsalin', action='store_true', help='use BL99 fixed salinity profile')
     return parser.parse_args()
 
 
+     
+
+   
 
 def main() -> None:
 
@@ -266,18 +307,12 @@ def main() -> None:
    #print(args.inputfile)
    #print(args.outputfile)
 
-   if args.fixedsalin:
-      print('fixed salinity profile as in BL99 ') 
-   else:
-      print('prognostic salinity as in Mushy-layer') 
-    
-
    LON, LAT, ULON, ULAT, wet = get_dst_grid(args.outputgrid)
 
    jm, im = LON.shape
    #print(im, jm)
-   if args.inputgrid:
-       lons, lats, mask = get_src_grid(args.inputgrid)
+   #lons, lats, mask = get_src_grid(args.inputgrid)
+   sw = saltwatertile(args.inputgrid) 
 
    #zSin = np.zeros(5, dtype='float64')
    #zQin = np.zeros(5, dtype='float64')
@@ -285,21 +320,38 @@ def main() -> None:
    #print(zTin)   
 
 
-   if args.fixedsalin:
-      with Dataset(args.inputfile) as src:
-          nilyr, nslyr = 0, 0
-          qi, si = [], []
-          for name in src.variables:
-             if 'qice' in name:
-                 nilyr += 1
-                 qi.append(src[name][:])
-             if 'sice' in name:
-                 si.append(src[name][:])
-             if 'qsno' in name:
-                 nslyr += 1
-      ti = []
-      for q,s in zip(qi, si):
-         ti.append(icepack_mushy_temperature_mush(q, s))       
+   def interp(varin):
+       lon_in = sw.lons[slmask < 0.5]
+       lat_in = sw.lats[slmask < 0.5]
+       var = varin[:,:]
+       qin = []
+       for i in range(var.shape[0]):
+           h_in = var[i,slmask<0.5]
+           hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+           qin.append(hout)  
+           qin[i][wet<0.5] = 0.0
+       return qin 
+
+   def check() -> None:
+       with Dataset(args.outputfile) as src:
+           aicen = src['aicen'][:]
+           ncat, jm, im = aicen.shape
+           for i in range(im):
+              for j in range(jm):
+                 aice = sum(aicen[:,j,i])
+                 if aice > c1 + puny:
+                     print(i, j, aice)
+                     print(aicen[:,j,i])
+
+   with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst, \
+        Dataset(args.outputtemplate) as tpl:
+     # copy global attributes all at once via dictionary
+      dst.setncatts(tpl.__dict__)
+
+      ncat = src.dimensions['subtile'].size
+      nilyr = src.dimensions['unknown_dim2'].size
+      nslyr = src.dimensions['unknown_dim1'].size
+
       saltmax = np.float64(3.2)
       nsal =  np.float64(0.407)
       msal = np.float64(0.573)
@@ -308,26 +360,35 @@ def main() -> None:
       for k in range(nilyr):
          zn = np.float64((k+1-0.5)/nilyr)
          salinz[k] = (saltmax/2.0)*(1.0-np.cos(np.pi*np.power(zn, nsal/(msal+zn))))
-         Tmlt[k] = -depressT * salinz[k] 
+         Tmlt[k] = -depressT * salinz[k]
       print(salinz)
 
+      aicen =  src['FR'][:]   
+      Tsfcn =  src['TSKINI'][:]   
+      iage  =  src['TAUAGE'][:]   
+      eicen =  src['ERGICE'][:]   
+      esnon =  src['ERGSNO'][:]   
+      vicen =  src['VOLICE'][:]   
+      vsnon =  src['VOLSNO'][:]   
+      slmask = src['SLMASK'][:]
 
-   with Dataset(args.inputfile) as src, Dataset(args.outputfile, "w") as dst:
-     # copy global attributes all at once via dictionary
-      dst.setncatts(src.__dict__)
     # copy dimensions
-      for name, dimension in src.dimensions.items():
+      for name, dimension in tpl.dimensions.items():
          if name == 'ni':  
             dst.createDimension(name, (im))
          elif name == 'nj':  
             dst.createDimension(name, (jm))
          else:
-            dst.createDimension(
-                 name, (len(dimension) if not dimension.isunlimited() else None))
+            dst.createDimension(name, (ncat))
+            #dst.createDimension(
+            #     name, (len(dimension) if not dimension.isunlimited() else None))
          #print(name, (len(dimension) if not dimension.isunlimited() else None)) 
       #print(dst.dimensions) 
     # copy all file data except for the excluded
-      for name, variable in src.variables.items():
+      for name, variable in tpl.variables.items():
+        if 'sice' in name and int(name[4:]) > nilyr: continue
+        if 'qice' in name and int(name[4:]) > nilyr: continue
+        if 'qsno' in name and int(name[4:]) > nslyr: continue
         if len(variable.dimensions) == 3:
             x = dst.createVariable(name, variable.datatype,  ('ncat', 'nj', 'ni',))
         else:
@@ -345,44 +406,67 @@ def main() -> None:
            dst[name][:] = LON
         elif 'tlat' == name:
            dst[name][:] = LAT
-        elif args.fixedsalin and 'sice' in name:
+        elif 'sice' in name:
            k = int(name[4:]) - 1 # layer index
-           var = src[name][:]
+           var = tpl[name][:]
            for i in range(var.shape[0]):
               dst[name][i,:,:] = salinz[k]
               dst[name][i][wet<0.5] = 0.0
-        elif args.fixedsalin and 'qice' in name:
+        elif 'aicen' in name:
+            dst[name][:] = np.array(interp(aicen[:,:]))
+            for i in range(im):
+               for j in range(jm):
+                  aice = sum(dst[name][:,j,i])
+                  if aice > c1 + puny:  # remove excessive roundoff ice area
+                     dif = aice - c1
+                     for k in range(ncat):
+                         if dst[name][k,j,i] > dif:
+                              dst[name][k,j,i] -= dif
+                              break
+        elif 'vicen' in name:
+            dst[name][:] = np.array(interp(vicen[:,:]))
+        elif 'vsnon' in name:
+            dst[name][:] = np.array(interp(vsnon[:,:]))
+        elif 'Tsfcn' in name:
+            dst[name][:] = np.array(interp(Tsfcn[:,:]))
+        elif 'iage' in name:
+            dst[name][:] = np.array(interp(iage[:,:]))
+        elif 'qice' in name:
            k = int(name[4:]) - 1 # layer index
-           msk = mask.mask 
-           lon_in = lons[~msk]  
-           lat_in = lats[~msk]  
-           var = ti[k]
+           lon_in = sw.lons[slmask < 0.5]
+           lat_in = sw.lats[slmask < 0.5]
+           var1 = eicen[:,k,:]
+           var2 = vicen[:,:]
            for i in range(var.shape[0]):
-               h_in = var[i][~msk]  
-               hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-               qin = icepack_enthalpy_temperature_bl99(hout, Tmlt[k]) 
+               h_in = var1[i,slmask < 0.5]
+               hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               h_in = var2[i,slmask < 0.5]
+               hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               qin = hout1
+               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nilyr / hout2[hout2 > 0.0]  
+               qin[wet<0.5] = 0.0
+               dst[name][i,:,:] = qin    
+        elif 'qsno' in name:
+           k = int(name[4:]) - 1 # layer index
+           lon_in = sw.lons[slmask < 0.5]
+           lat_in = sw.lats[slmask < 0.5]
+           var1 = esnon[:,k,:]
+           var2 = vsnon[:,:]
+           for i in range(var.shape[0]):
+               h_in = var1[i,slmask < 0.5]
+               hout1 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               h_in = var2[i,slmask < 0.5]
+               hout2 = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
+               qin = hout1
+               qin[hout2 > 0.0] = qin[hout2 > 0.0] * nslyr / hout2[hout2 > 0.0]
                qin[wet<0.5] = 0.0
                dst[name][i,:,:] = qin    
         else:
-           msk = mask.mask 
-           lon_in = lons[~msk]  
-           lat_in = lats[~msk]  
-           if len(variable.dimensions) == 3:
-              var = src[name][:]
-              for k in range(var.shape[0]):
-                  h_in = var[k][~msk]  
-                  #print('interpolating time slice:', k)
-                  hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-                  hout[wet<0.5] = 0.0
-                  dst[name][k,:,:] = hout    
-           else:
-              var = src[name][:]
-              h_in = var[~msk]  
-              hout = nearest_interp_new(lon_in, lat_in, h_in, LON, LAT)
-              hout[wet<0.5] = 0.0
-              dst[name][:] = hout    
+           dst[name][:] = c0 
         # copy variable attributes all at once via dictionary
-        dst[name].setncatts(src[name].__dict__)
+        dst[name].setncatts(tpl[name].__dict__)
+   
+   check()
 
 
 if __name__=="__main__":

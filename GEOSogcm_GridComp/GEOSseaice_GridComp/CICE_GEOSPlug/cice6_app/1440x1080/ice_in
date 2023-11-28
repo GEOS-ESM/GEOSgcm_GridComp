@@ -270,8 +270,8 @@
 
 &domain_nml
     nprocs = -1
-    nx_global         = 540
-    ny_global         = 458
+    nx_global         = 1440
+    ny_global         = 1080
     block_size_x      = -1
     block_size_y      = -1
     max_blocks        = 1
