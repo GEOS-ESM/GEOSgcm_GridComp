@@ -21,6 +21,7 @@
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
+      public :: make_cnv_ice_drop_number
     
        integer, parameter ::  &
         nsmx_par = 20, npgauss=10 !maximum number of 	
@@ -111,7 +112,7 @@
        grav_ice, pi_ice ,alfa_ice, beta_ice, shom_ice, koft_ice, &
        dliq_ice, normv_ice, g1_ice, g2_ice, gdoin_ice, z_ice, doin_ice, & 
        vmin_ice, vmax_ice, miuv_ice, sigmav_ice, smax_ice, &
-       norg_ice, sigorg_ice, dorg_ice, dbc_ice, sigbc_ice 
+       norg_ice, sigorg_ice, dorg_ice, dbc_ice, sigbc_ice, S_CCN(3) 
      
      
         real*8:: lambda_ice, kdust_ice, kbc_ice, shdust_ice, & 
@@ -185,6 +186,8 @@
       DATA Tmin_ice /185.d0/     ! Min freezing T (K) for prop correlations
       DATA Pmin_ice /100.0d0/     ! Minimum pressure (Pa)
       DATA Thom /236.0d0/   !Homogeneous freezing T (K)
+      
+      DATA S_CCN /.001, 0.004, 0.01/ !CCN at supersaturation diagnostics 
 
 
       !=======end of decalarations================================================================
@@ -246,8 +249,6 @@
 ! Aer_Props = AerProps  structure containing the aerosol properties Aerosol number concentration (Kg-1)
 ! npre_in =  number concentration of prexisting ice crystals (#/Kg)
 ! dpre_in =  mass-weighted diameter of prexisting ice crystals (m)
-! ccn_diagr8 = array of supersaturations for CCN diagnostics (in-out) 
-                           !also returns ccn concentration at the given supersat (m-3)
 ! Ndropr8 = Current droplet number concentration (Kg -1)
 ! qc = Liquid water mixing ratio (Kg/Kg)
 ! use_average_v =  .false. integrate over the updraft distribution. True: use the mean vertical velocity
@@ -263,6 +264,7 @@
 ! INimmr8 =  Nucleated nc by droplet immersion freezing in mixed-phase clouds (Kg-1)
 ! dINimmr8 = Ice crystal number tendency by immersion freezing (Kg-1 s-1)
 ! Ncdepr8 = Nucleated nc by deposition ice nucleation (Kg-1)
+! ccn_diagr8 = returns ccn concentration at the given supersat defined by S_CCN = /.001, 0.004, 0.01/ (m-3)
 
 ! sc_icer8 = Critical saturation ratio in cirrus 
 ! ndust_depr8 = deposition ice nuclei particles that are dust 
@@ -353,6 +355,7 @@
       ndust_imm = zero_par
       ndust_dep = zero_par
       pfrz_inc_r8 = zero_par
+      ccn_diagr8 =  zero_par
       
       nact=zero_par
       smax=zero_par                    
@@ -365,7 +368,7 @@
       
       if (sum(Aer_Props%num) .le. 1.0e2) then  !Just get out if too few aerosol 
        return 
-     end if 				   
+      end if 				   
 					   
     !get input into local variables
     
@@ -474,7 +477,7 @@
          
 	  				   
          do k =1, 3!  size (ccn_diagr8)	
-	     	call ccn_at_super (ccn_diagr8(k), ccn_at_s)
+	     	call ccn_at_super (S_CCN(k), ccn_at_s)
             ccn_diagr8 (k) = ccn_at_s!m-3
 	 	 end do
 	
@@ -1238,14 +1241,14 @@ end subroutine getINsubset
       !ACTIVATE STUFF      
       
 	  SMI=MAX(SMI, 1.0e-5)
-          aux =alfa*wparc*G
+      aux =alfa*wparc*G
 	  aux = aux*sqrt(aux)/(2.d0*pi_par*980.d0*beta)
 	  citai = 0.667*Akoh*SQRT(alfa*wparc*G)
 
 	  auxx=0.0 
 	  DO INDEX =1, nmd_par
-	   if (tp_par(INDEX) .gt. 0.0) then 
-		   fi=0.5*exp(2.5*sig_par(INDEX)) !remember: isg is actually log(sig)
+	   if (tp_par(INDEX) .gt. 0.0) then !BUG corrected in fi, DONIF 2023. 
+		   fi=0.5*exp(2.5*sig_par(INDEX)*sig_par(INDEX)) !remember: sigpar is actually log(sig)
 		   gi=1.0+0.25*sig_par(INDEX)		   
 		   nui=aux/tp_par(INDEX)		   		   
 		   aux1=fi*((citai/nui)*sqrt(citai/nui)) + gi*(SMI(INDEX)*SMI(INDEX) &
@@ -1291,8 +1294,8 @@ end subroutine getINsubset
   subroutine ccn_at_super (super, ccn_at_s)
 
       integer :: j, I
-      real*8  :: dlgsg,  dlgsp, orism5, ndl, nds, &
-      super, ccn_at_s   
+
+      real*8  :: dlgsg,  dlgsp, orism5, ndl, nds, ccn_at_s, super   
 
        ndl=0d0 
 
@@ -4039,7 +4042,82 @@ end function
 
 
 
+subroutine make_cnv_ice_drop_number(Nd, Ni, Nad, z, zcb, T, qlcn, qicn, cf, nimm, rl_scale, ri_scale)
 
+	! estimate convective Nd and Ni profiles.      
+    !Written by Donifan Barahona
+
+    real, intent (in) :: Nad, z, zcb !Nadiabatic, Z, Zcb  
+    real, intent (in) :: T, qlcn, qicn, cf, rl_scale, ri_scale, nimm 
+    real, intent (out) :: Nd, Ni
+     
+    real :: r3ad, Z12, alf, bet, gam_ad, LWCad 
+    real :: rei3, mui, zkm 
+    real, parameter :: max_rel3 =  22.e-6**3.
+    real, parameter :: min_rel3 =  4.e-6**3.
+    real, parameter :: max_rei3 =  300.e-6**3.
+    real, parameter :: min_rei3 =  5.e-6**3.
+    real, parameter :: ice_den =  900.
+    
+    
+      !========liquid droplet concentration
+      !Loosely based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+     
+     alf=2.8915E-08*(T*T) - 2.1328E-05*T + 4.2523E-03
+     bet=exp(3.49996E-04*T*T - 2.27938E-01*T + 4.20901E+01)
+     gam_ad =  alf/bet
+     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC
+     
+     r3ad = max(min(3.63e-4*LWCad*rl_scale/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+     Z12  =  4.8e-12*Nad/gam_ad !      
+      
+     if (z-zcb .lt. z12) then
+     	Nd  = Nad
+     else
+     	Nd =  min(Nad, 3.6e-4*qlcn/r3ad)
+     end if      
+     
+      !=========ice crystal concentration
+    
+      zkm =  z/1000. !to km
+      rei3 =  0.3667*zkm*zkm - 12.014*zkm + 113.86 !based on van Diedenhoven et al. 2016, GRL, Fig 2
+      rei3 =  min(max((1.e-6*rei3*ri_scale)**3., min_rei3), max_rei3)
+      mui = MUI_HEMP(T)
+      !assume gamma distribution
+      Ni = (mui+3.)*(mui+3.)/(mui+2.)/(mui+1.)
+      Ni = 2.15*Ni*qicn/ice_den/rei3/max(cf, 0.001) 
+      Ni =  max(Ni, nimm) 
+
+    
+end subroutine make_cnv_ice_drop_number     
+    
+
+
+!cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
+         !Returns the value of the dispersion parameter according to Heymsfield et al 2002, Table3.
+         !T is in K
+         ! Written by Donifan Barahona donifan.barahona@nasa.gov
+         !**********************************
+         FUNCTION MUI_HEMP(T)
+
+
+            real :: MUI_HEMP
+            REAL, intent(in)  :: T
+            REAL              :: TC, mui, lambdai
+            TC=T-273.15
+
+            TC=MIN(MAX(TC, -70.0), -15.0)
+
+            if (TC .gt. -27.0) then 
+               lambdai=6.8*exp(-0.096*TC)
+            else
+               lambdai=24.8*exp(-0.049*TC)
+            end if
+
+            mui=(0.13*(lambdai**0.64))-2.
+            MUI_HEMP=max(mui, 1.5_r8)
+
+         END FUNCTION MUI_HEMP
 
 !    END ICE PARAMETERIZATION DONIF
 !
