@@ -752,7 +752,17 @@ contains
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
-    !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
+    !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
+
+    ! LOCAL ARRAYS - map(alloc: ...) does not seem to work yet
+    !$omp     h_var1d, &
+    !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
+    !$omp     vtiz, vtsz, vtgz, vtrz, &
+    !$omp     dp1, dz1, &
+    !$omp     qv0, ql0, qr0, qi0, qs0, qg0, &
+    !$omp     den, tz, p1, denfac, &
+    !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
+    !$omp     r1, i1, s1, g1)
 
     !$omp   map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
@@ -761,19 +771,13 @@ contains
 
     !$omp   map(from: &
     !$omp     revap, isubl, w_var, &
-    !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol) &
+    !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
 
-    !$omp   map(alloc: &
-    !$omp     tz, dp1, h_var1d, &
-    !$omp     qvz, qlz, qiz, qrz, qsz, qgz, &
-    !$omp     qv0, ql0, qi0, qr0, qs0, qg0, &
-    !$omp     m1, w1, p1, ccn, c_praut, dz1, den, denfac, &
-    !$omp     vtrz, vtsz, vtiz, vtgz, m1_sol)
-
-    !$omp target teams distribute parallel do simd collapse(3) private(t0)
+    !$omp target teams distribute parallel do simd collapse(3) private(t0, omq, den0, cpaut)
     do k = ktop, kbot
        do j = js, je
           do i = is, ie
+
              ! Initialize
              m2_rain (i, j, k) = 0.
              m2_sol (i, j, k) = 0.
@@ -789,48 +793,16 @@ contains
              ! total water subgrid deviation in horizontal direction
              ! default area dependent form: use dx ~ 100 km as the base
              h_var1d (i, j, k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    ! Convert moist mixing ratios to dry mixing ratios
-
-    !$omp target teams distribute parallel do simd collapse(3)
-    do k = ktop, kbot
-       do j = js, je
-          do i = is, ie
-#endif
              qvz (i, j, k) = qv (i, j, k)
              qlz (i, j, k) = ql (i, j, k)
              qiz (i, j, k) = qi (i, j, k)
              qrz (i, j, k) = qr (i, j, k)
              qsz (i, j, k) = qs (i, j, k)
              qgz (i, j, k) = qg (i, j, k)
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    !$omp target teams distribute parallel do simd collapse(3)
-    do k = ktop, kbot
-       do j = js, je
-          do i = is, ie
-#endif
              qaz (i, j, k) = qa (i, j, k)
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    !$omp target teams distribute parallel do simd collapse(3) default(shared) private(omq, den0)
-    do k = ktop, kbot
-       do j = js, je
-          do i = is, ie
-#endif
              ! dp1: dry air_mass
              ! dp1 (k) = dp1 (k) * (1. - (qvz (k) + qlz (k) + qrz (k) + qiz (k) + qsz (k) + qgz (k)))
              dp1 (i, j, k) = dp1 (i, j, k) * (1. - qvz (i, j, k)) ! gfs
@@ -844,17 +816,7 @@ contains
 
              den0 = - dp1 (i, j, k) / (grav * dz (i, j, k)) ! density of dry air
              p1 (i, j, k) = den0 * rdgas * t0 ! dry air pressure
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    !$omp target teams distribute parallel do simd collapse(3) default(shared) private(omq, den0)
-    do k = ktop, kbot
-       do j = js, je
-          do i = is, ie
-#endif
              ! -----------------------------------------------------------------------
              ! save a copy of old value for computing tendencies
              ! -----------------------------------------------------------------------
@@ -865,32 +827,11 @@ contains
              qi0 (i, j, k) = qiz (i, j, k)
              qs0 (i, j, k) = qsz (i, j, k)
              qg0 (i, j, k) = qgz (i, j, k)
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    ! for sedi_momentum
-
-    !$omp target teams distribute parallel do simd collapse(3) default(shared) private(cpaut)
-    do k = ktop, kbot
-       do i = is, ie
-          do j = js, je
-#endif
+             ! for sedi_momentum
              m1 (i, j, k) = 0.
              if (do_sedi_w) w1 (i, j, k) = w (i, j, k)
-#ifdef __GFORTRAN__
-          end do
-       end do
-    end do
-    !$omp end target teams distribute parallel do simd
 
-    !$omp target teams distribute parallel do simd collapse(3) default(shared) private(cpaut)
-    do k = ktop, kbot
-       do j = js, je
-          do i = is, ie
-#endif
              cpaut = c_paut * 0.104 * grav / 1.717e-5
              ! ccn needs units #/m^3
              if (prog_ccn) then
@@ -903,6 +844,7 @@ contains
                 !!! use GEOS ccn: ccn (i, j, k) = (ccn_l * land (i) + ccn_o * (1. - land (i))) * 1.e6
                 c_praut (i, j, k) = cpaut * (ccn (i, j, k) * rhor) ** (- 1. / 3.)
              endif
+
           end do
        end do
     end do
@@ -934,17 +876,7 @@ contains
                    den(i,j,k) = (- dp1 (i,j,k) / (grav * dz (i, j, k))) * dz(i,j,k) / dz1(i,j,k) ! density of dry air
                    denfac (i, j, k) = sqrt (sfcrho / den (i, j, k))
                 end if
-#ifdef __GFORTRAN__
-             end do
-          end do
-       end do
-       !$omp end target teams distribute parallel do simd
 
-       !$omp target teams distribute parallel do simd collapse(3)
-       do k = ktop, kbot
-          do j = js, je
-             do i = is, ie
-#endif
                 ! sedimentation of cloud ice, snow, and graupel
                 call fall_speed ( &
                      ktop, kbot, p1 (i, j, k), cnv_fraction (i, j), anv_icefall, lsc_icefall, &
@@ -1204,10 +1136,11 @@ contains
     ! needs an inner i - loop for vectorization
     ! -----------------------------------------------------------------------
 
-    do k = ktop + 1, kbot
-       !$omp target teams distribute parallel do collapse(2) private(cvn, dgz)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do collapse(2) private(cvn, dgz)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop
+          do k = ktop + 1, kbot
              dgz = - 0.5 * grav * dz (i, j, k) ! > 0
              cvn = dm (i, j, k) * ( &
                   cv_air + &
@@ -1222,8 +1155,8 @@ contains
                   ) / (cvn + cw * m1 (i, j, k))
           end do
        end do
-       !$omp end target teams distribute parallel do
     end do
+    !$omp end target teams distribute parallel do
 
   end subroutine sedi_heat_3d
 
@@ -1447,17 +1380,16 @@ contains
     end do
     !$omp end target teams distribute parallel do simd
 
-    ! !$omp ordered
-    do k = kbot, ktop, - 1
-       !$omp target teams distribute parallel do simd collapse(2)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop
+          do k = kbot, ktop, - 1
              ze (i, j, k) = ze (i, j, k + 1) - dz (i, j, k) ! dz < 0
           end do
        end do
-       !$omp end target teams distribute parallel do simd
     end do
-    ! !$omp end ordered
+    !$omp end target teams distribute parallel do simd
 
     ! -----------------------------------------------------------------------
     ! evaporation and accretion of rain for the first 1 / 2 time step
@@ -1646,7 +1578,7 @@ contains
     !$omp end target teams distribute parallel do simd
 
     ! TODO: This loop does not work for gfortran
-    !$omp target teams distribute parallel do simd collapse(2) &
+    !$omp target teams distribute parallel do simd collapse(3) &
     !$omp   private( &
     !$omp     fac_revp, lhl, q_liq, q_sol, cvm, lcpk, tin, qpz, &
     !$omp     qsat, dqh, dqv, q_minus, q_plus, dq, qden, t2, evap, &
@@ -2889,16 +2821,19 @@ contains
     end do
     !$omp end target teams distribute parallel do simd
 
-    do k = ktop, kbot - 1
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop?
+          do k = ktop, kbot - 1
              if (tz (i, j, k) > tice .and. k0 (i, j) == kbot) then
                 k0 (i, j) = k
              endif
           end do
        end do
     enddo
-    !$omp target update to(k0)
+    !$omp end target teams distribute parallel do simd
+    ! !$omp target update to(k0)
 
     ! -----------------------------------------------------------------------
     ! melting of cloud_ice (before fall) :
@@ -2966,16 +2901,16 @@ contains
     !$omp end target teams distribute parallel do simd
     ! r1 = sum(ze, dim=3)
 
-    ! TODO: Figure out how to do this
-    do k = kbot, ktop, - 1
-       !$omp target teams distribute parallel do simd collapse(2)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop
+          do k = kbot, ktop, - 1
              ze (i, j, k) = ze (i, j, k + 1) - dz (i, j, k) ! dz < 0
           end do
        end do
-       !$omp end target teams distribute parallel do simd
     enddo
+    !$omp end target teams distribute parallel do simd
 
     !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
@@ -3006,7 +2941,7 @@ contains
 
     call check_column_3d (is, ie, js, je, ktop, kbot, qi, no_fall)
 
-    !$omp target teams distribute collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
 
@@ -3016,11 +2951,11 @@ contains
 
           else
 
-             !$omp parallel do simd
+             ! !$omp parallel do simd
              do k = ktop + 1, kbot
                 zt (i, j, k) = ze (i, j, k) - dtm * (vti (i, j, k - 1) + vti (i, j, k))/2.0
              enddo
-             !$omp end parallel do simd
+             ! !$omp end parallel do simd
 
              zt (i, j, kbot + 1) = zs - dtm * vti (i, j, kbot)
 
@@ -3037,7 +2972,7 @@ contains
                 do k = kbot - 1, k0 (i, j), - 1
                    if (qi (i, j, k) > qcmin) then
                       exit_flag = .true.
-                      !$omp parallel do simd
+                      ! !$omp parallel do simd
                       do m = k + 1, kbot
                          if (zt (i, j, k + 1) >= ze (i, j, m) .and. exit_flag) exit_flag = .false.
                          if (zt (i, j, k) < ze (i, j, m + 1) .and. tz (i, j, m) > tice .and. exit_flag) then
@@ -3050,14 +2985,14 @@ contains
                             qi (i, j, k) = qi (i, j, k) - sink * dp (i, j, m) / dp (i, j, k)
                          endif
                       enddo
-                      !$omp end parallel do simd
+                      ! !$omp end parallel do simd
                    endif
                 enddo
                 ! !$omp end ordered
              endif
 
              if (do_sedi_w) then
-                !$omp parallel do
+                ! !$omp parallel do simd
                 do k = ktop, kbot
                    dm (i, j, k) = &
                         dp (i, j, k) * ( &
@@ -3070,13 +3005,14 @@ contains
                         qg (i, j, k) &
                         )
                 enddo
+                ! !$omp end parallel do simd
              endif ! do_sedi_w
 
           end if ! vi_fac
 
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     if (use_ppm) then
        !$omp target teams distribute parallel do collapse(2)
@@ -3134,7 +3070,7 @@ contains
 
     call check_column_3d (is, ie, js, je, ktop, kbot, qs, no_fall)
 
-    !$omp target teams distribute collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
 
@@ -3144,11 +3080,11 @@ contains
 
           else
 
-             !$omp parallel do
+             ! !$omp parallel do
              do k = ktop + 1, kbot
                 zt (i, j, k) = ze (i, j, k) - dtm * (vts (i, j, k - 1) + vts (i, j, k))/2.0
              enddo
-             !$omp end parallel do
+             ! !$omp end parallel do
              zt (i, j, kbot + 1) = zs - dtm * vts (i, j, kbot)
 
              ! !$omp ordered
@@ -3194,7 +3130,7 @@ contains
              endif ! k0 < kbot
 
              if (do_sedi_w) then
-                !$omp parallel do
+                ! !$omp parallel do simd
                 do k = ktop, kbot
                    dm (i, j, k) = &
                         dp (i, j, k) * ( &
@@ -3207,14 +3143,14 @@ contains
                         qg (i, j, k) &
                         )
                 enddo
-                !$omp end parallel do
+                ! !$omp end parallel do simd
              endif ! do_sedi_w
 
           end if ! no_fall
 
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     if (use_ppm) then
        !$omp target teams distribute parallel do collapse(2)
@@ -3232,17 +3168,17 @@ contains
        call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vts, dp, qs, s1, m1, no_fall)
     endif
 
-    !$omp target teams distribute collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
 
           if (.not. no_fall (i, j)) then
 
-             !$omp parallel do
+             ! !$omp parallel do simd
              do k = ktop, kbot
                 m1_sol (i, j, k) = m1_sol (i, j, k) + m1 (i, j, k)
              enddo
-             !$omp end parallel do
+             ! !$omp end parallel do simd
 
              if (do_sedi_w) then
                 w1 (i, j, ktop) = &
@@ -3250,7 +3186,7 @@ contains
                      dm (i, j, ktop) * w1 (i, j, ktop) + &
                      m1 (i, j, ktop) * vts (i, j, ktop) &
                      ) / (dm (i, j, ktop) - m1 (i, j, ktop))
-                !$omp parallel do simd
+                ! !$omp parallel do simd
                 do k = ktop + 1, kbot
                    w1 (i, j, k) = &
                         ( &
@@ -3259,14 +3195,14 @@ contains
                         m1 (i, j, k) * vts (i, j, k) &
                         ) / (dm (i, j, k) + m1 (i, j, k - 1) - m1 (i, j, k))
                 end do
-                !$omp end parallel do simd
+                ! !$omp end parallel do simd
              end if ! do_sedi_w
 
           end if ! no_fall
 
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     ! ----------------------------------------------
     ! melting of falling graupel into rain
@@ -3274,7 +3210,7 @@ contains
 
     call check_column_3d (is, ie, js, je, ktop, kbot, qg, no_fall)
 
-    !$omp target teams distribute collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
 
@@ -3284,11 +3220,11 @@ contains
 
           else
 
-             !$omp parallel do simd
+             ! !$omp parallel do simd
              do k = ktop + 1, kbot
                 zt (i, j, k) = ze (i, j, k) - dtm * (vtg (i, j, k - 1) + vtg (i, j, k))/2.0
              enddo
-             !$omp end parallel do simd
+             ! !$omp end parallel do simd
              zt (i, j, kbot + 1) = zs - dtm * vtg (i, j, kbot)
 
              ! !$omp ordered
@@ -3332,7 +3268,7 @@ contains
              endif ! k0 < kbot
 
              if (do_sedi_w) then
-                !$omp parallel do simd
+                ! !$omp parallel do simd
                 do k = ktop, kbot
                    dm (i, j, k) = dp (i, j, k) * ( &
                         1. + &
@@ -3343,14 +3279,14 @@ contains
                         qs (i, j, k) + &
                         qg (i, j, k))
                 end do
-                !$omp end parallel do simd
+                ! !$omp end parallel do simd
              end if ! do_sedi_w
 
           end if ! no_fall
 
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     if (use_ppm) then
        !$omp target teams distribute parallel do simd collapse(2)
@@ -3368,23 +3304,23 @@ contains
        call implicit_fall_3d (dtm, is, ie, js, je, ktop, kbot, ze, vtg, dp, qg, g1, m1, no_fall)
     endif
 
-    !$omp target teams distribute collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
        do i = is, ie
 
           if (.not. no_fall (i, j)) then
-             !$omp parallel do simd
+             ! !$omp parallel do simd
              do k = ktop, kbot
                 m1_sol (i, j, k) = m1_sol (i, j, k) + m1 (i, j, k)
              enddo
-             !$omp end parallel do simd
+             ! !$omp end parallel do simd
 
              if (do_sedi_w) then
                 w1 (i, j, ktop) = ( &
                      dm (i, j, ktop) * w1 (i, j, ktop) + &
                      m1 (i, j, ktop) * vtg (i, j, ktop) &
                      ) / (dm (i, j, ktop) - m1 (i, j, ktop))
-                !$omp parallel do
+                ! !$omp parallel do simd
                 do k = ktop + 1, kbot
                    w1 (i, j, k) = ( &
                         dm (i, j, k) * w1 (i, j, k) - &
@@ -3392,14 +3328,14 @@ contains
                         m1 (i, j, k) * vtg (i, j, k) &
                         ) / (dm (i, j, k) + m1 (i, j, k - 1) - m1 (i, j, k))
                 enddo
-                !$omp end parallel do
+                ! !$omp end parallel do simd
              endif ! do_sedi_w
 
           endif ! no_fall
 
        end do
     end do
-    !$omp end target teams distribute
+    !$omp end target teams distribute parallel do simd
 
     !$omp end target data
 
@@ -3460,10 +3396,11 @@ contains
        end do
     end do
 
-    do k = ktop, kbot
-       !$omp target teams distribute parallel do collapse(2)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop TODO: is it?
+          do k = ktop, kbot
              if (q (i, j, k) > qpmin .and. no_fall(i, j)) then
                 no_fall (i, j) = .false.
              end if
@@ -3541,17 +3478,18 @@ contains
     end do
     !$omp end target teams distribute parallel do simd
 
-    do k = ktop + 1, kbot
-       !$omp target teams distribute parallel do simd collapse(2)
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
        do i = is, ie
-          do j = js, je
+          ! non-vectorizable loop
+          do k = ktop + 1, kbot
              if (.not. no_fall (i, j)) then
                 qm (i, j, k) = (q (i, j, k) + dd (i, j, k - 1) * qm (i, j, k - 1)) / (dz (i, j, k) + dd (i, j, k))
              end if
           end do
        end do
-       !$omp end target teams distribute parallel do simd
     enddo
+    !$omp end target teams distribute parallel do simd
 
     ! -----------------------------------------------------------------------
     ! qm is density at this stage
@@ -3583,17 +3521,18 @@ contains
     end do
     !$omp end target teams distribute parallel do simd
 
-    do k = ktop + 1, kbot
-       !$omp target teams distribute parallel do simd collapse(2)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop
+          do k = ktop + 1, kbot
              if (.not. no_fall (i, j)) then
                 m1 (i, j, k) = m1 (i, j, k - 1) + q (i, j, k) - qm (i, j, k)
              end if
           end do
        end do
-       !$omp end target teams distribute parallel do simd
     enddo
+    !$omp end target teams distribute parallel do simd
 
     !$omp target teams distribute parallel do simd collapse(2)
     do j = js, je
@@ -5127,6 +5066,7 @@ contains
   subroutine neg_adj (is, ie, js, je, ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
 
     implicit none
+    !$omp declare target
 
     integer, intent (in) :: is, ie, js, je, ktop, kbot
 
@@ -5140,7 +5080,7 @@ contains
 
     integer :: i, j, k
 
-    !$omp target data map(to: dp) map(tofrom: pt, qv, ql, qr, qi, qs, qg)
+    ! !$omp target data map(to: dp) map(tofrom: pt, qv, ql, qr, qi, qs, qg)
 
     ! -----------------------------------------------------------------------
     ! define heat capacity and latent heat coefficient
@@ -5206,18 +5146,19 @@ contains
     ! fix water vapor; borrow from below
     ! -----------------------------------------------------------------------
 
-    do k = ktop, kbot - 1
-       !$omp target teams distribute parallel do simd collapse(2)
-       do j = js, je
-          do i = is, ie
+    !$omp target teams distribute parallel do simd collapse(2)
+    do j = js, je
+       do i = is, ie
+          ! non-vectorizable loop ! TODO: is it?
+          do k = ktop, kbot - 1
              if (qv (i, j, k) < 0.) then
                 qv (i, j, k + 1) = qv (i, j, k + 1) + qv (i, j, k) * dp (i, j, k) / dp (i, j, k + 1)
                 qv (i, j, k) = 0.
              endif
           enddo
        enddo
-       !$omp end target teams distribute parallel do simd
     enddo
+    !$omp end target teams distribute parallel do simd
 
     ! -----------------------------------------------------------------------
     ! bottom layer; borrow from above
@@ -5235,7 +5176,7 @@ contains
     enddo
     !$omp end target teams distribute parallel do simd
 
-    !$omp end target data
+    ! !$omp end target data
 
   end subroutine neg_adj
 
