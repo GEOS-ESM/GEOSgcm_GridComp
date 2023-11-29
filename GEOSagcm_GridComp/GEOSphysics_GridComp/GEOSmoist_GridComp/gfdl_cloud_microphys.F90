@@ -49,7 +49,7 @@ module gfdl2_cloud_microphys_mod
     !use fms_mod,             only: write_version_number, open_namelist_file, &
     !                               check_nml_error, close_file, file_exist,  &
     !                               fms_init
-    use GEOSmoist_Process_Library, only: ice_fraction
+    use GEOSmoist_Process_Library, only: sigma, ice_fraction
     use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
@@ -398,7 +398,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     real, dimension (iie - iis + 1, jje - jjs + 1, kke - kks + 1) :: vt_r, vt_s, vt_g, vt_i, qn2
 
     real :: allmax
-
     is = 1
     js = 1
     ks = 1
