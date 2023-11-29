@@ -747,14 +747,16 @@ contains
     ! -----------------------------------------------------------------------
 
     !$omp target data &
+    ! IN
     !$omp   map(to: &
-    !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, dts, rdt, &
+    ! !$omp     is, ie, js, je, ktop, kbot, ntimes, dt_in, dts, rdt, &
     !$omp     area1, land, cnv_fraction, srf_type, eis, &
     !$omp     rhcrit, anv_icefall, lsc_icefall, &
     !$omp     uin, vin, delp, pt, dz, &
-    !$omp     qv, qi, ql, qr, qs, qg, qa, qn, &
+    !$omp     qv, qi, ql, qr, qs, qg, qa, qn) &
 
-    ! LOCAL ARRAYS - map(alloc: ...) does not seem to work yet
+    ! LOCAL
+    !$omp   map(alloc: &
     !$omp     h_var1d, &
     !$omp     qvz, qlz, qrz, qiz, qsz, qgz, qaz, &
     !$omp     vtiz, vtsz, vtgz, vtrz, &
@@ -764,11 +766,13 @@ contains
     !$omp     ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, w1, &
     !$omp     r1, i1, s1, g1)
 
+    ! IN/OUT
     !$omp   map(tofrom: &
     !$omp     u_dt, v_dt, w, pt_dt, qa_dt, &
     !$omp     qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, &
     !$omp     rain, snow, ice, graupel, cond) &
 
+    ! OUT
     !$omp   map(from: &
     !$omp     revap, isubl, w_var, &
     !$omp     vt_r, vt_s, vt_g, vt_i, qn2, m2_rain, m2_sol)
