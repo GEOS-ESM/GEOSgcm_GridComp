@@ -1077,7 +1077,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        iflxr8 = iflxr8_accum/num_steps_micro 
        rflxr8 = rflxr8_accum/num_steps_micro
        sflxr8 = sflxr8_accum/num_steps_micro
-       gflxr8 = rflxr8_accum/num_steps_micro
+       gflxr8 = gflxr8_accum/num_steps_micro
 
        
        
@@ -2124,10 +2124,7 @@ subroutine micro_mg_tend ( &
 
   ! output activated liquid and ice (convert from #/kg -> #/m3)
   !--------------------------------------------------
-  where (qc >= qsmall)
-  
-        
-               
+  where (qc >= qsmall)               
      nc = max(nc + npccn*deltat, 0._r8)
      ncal = nc*rho/lcldm ! sghan minimum in #/cm3
   elsewhere
@@ -2162,8 +2159,6 @@ subroutine micro_mg_tend ( &
         !nnuccd = max(nnuccd,0._r8)
          nnuccd = naai ! only pass tendencies 
         !nimax = naai*icldm
-        
-      
         
         !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
         ni = max(ni + naai*deltat, 0._r8)
@@ -3340,10 +3335,13 @@ subroutine micro_mg_tend ( &
         ! maximum (existing N + source terms*dt), which is possible if mtime < deltat
         ! note that currently mtime = deltat
         !================================================================
+        
+        !Don't do this, we taake care of it somewhere else.
+        !Donifan 2023 
 
-        if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
-           nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
-        end if
+       ! if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
+       !    nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
+       ! end if
 
      end do
 
