@@ -211,6 +211,7 @@ contains
          VLOCATION  = MAPL_VLocationEdge,                           &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -222,6 +223,7 @@ contains
          VLOCATION  = MAPL_VLocationEdge,                           &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -233,6 +235,7 @@ contains
          VLOCATION  =  MAPL_VLocationEdge,                         &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -376,6 +379,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -387,6 +391,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -398,6 +403,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -409,6 +415,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -517,6 +524,7 @@ contains
          SHORT_NAME = 'TAUOROX',                                   &
          LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
          UNITS      = 'N m-2',                                     &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -525,6 +533,7 @@ contains
          SHORT_NAME = 'TAUOROY',                                   &
          LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
          UNITS      = 'N m-2',                                     &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -534,6 +543,7 @@ contains
          SHORT_NAME = 'OMEGA',                                     &
          LONG_NAME  = 'vertical_pressure_velocity',                &
          UNITS      = 'Pa s-1',                                  &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -570,6 +580,7 @@ contains
          SHORT_NAME = 'DTDTDYN',                                     &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_dynamics', &
          UNITS      = 'K s-1',                                     &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS    )
      VERIFY_(STATUS)
@@ -578,6 +589,7 @@ contains
          SHORT_NAME = 'DQVDTDYN',                                      &
          LONG_NAME  = 'tendency_of_specific_humidity_due_to_dynamics', &
          UNITS      = 'kg/kg/s',                                     &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 RC=STATUS  )
      VERIFY_(STATUS)
@@ -586,6 +598,7 @@ contains
          SHORT_NAME = 'QV_DYN_IN',                                 &
          LONG_NAME  = 'spec_humidity_at_begin_of_time_step',       &
          UNITS      = 'kg kg-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -594,6 +607,7 @@ contains
          SHORT_NAME = 'T_DYN_IN',                                 &
          LONG_NAME  = 'temperature_at_begin_of_time_step',       &
          UNITS      = 'K',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -602,6 +616,7 @@ contains
          SHORT_NAME = 'U_DYN_IN',                                 &
          LONG_NAME  = 'u_wind_at_begin_of_time_step',       &
          UNITS      = 'm s-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -610,6 +625,7 @@ contains
          SHORT_NAME = 'V_DYN_IN',                                 &
          LONG_NAME  = 'v_wind_at_begin_of_time_step',       &
          UNITS      = 'm s-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -618,6 +634,7 @@ contains
          SHORT_NAME = 'PLE_DYN_IN',                                 &
          LONG_NAME  = 'edge_pressure_at_begin_of_time_step',       &
          UNITS      = 'Pa',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -711,6 +728,7 @@ contains
         LONG_NAME          = 'surface geopotential height',       &
         UNITS              = 'm+2 s-2',                           &
         SHORT_NAME         = 'PHIS',                              &
+        RESTART    = MAPL_RestartSkip,                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
@@ -5830,7 +5848,7 @@ contains
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MIN(CLLS+CLCN,1.0)
+       if (associated(PTR3D)) PTR3D = QLLS+QLCN+QILS+QICN
 
        ! Cloud condensate exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX1', RC=STATUS); VERIFY_(STATUS)

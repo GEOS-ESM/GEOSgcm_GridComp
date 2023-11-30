@@ -23,6 +23,7 @@ module CICE_GEOSPlugMod
   use CICE_FinalMod                 
   use CICE_RunMod                 
   use ice_import_export
+  use ice_record_mod
 
 
   implicit none
@@ -33,6 +34,7 @@ module CICE_GEOSPlugMod
 
   integer            :: NUM_ICE_CATEGORIES
   logical, private   :: ice_grid_init2 
+  logical, private   :: running_regular_replay 
 
 contains
 
@@ -80,6 +82,7 @@ contains
     Iam = trim(COMP_NAME) // Iam
 
     ice_grid_init2 = .false.
+    running_regular_replay = .false.
 
     call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
     VERIFY_(STATUS)
@@ -91,6 +94,7 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_READRESTART,  Refresh,    _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -435,6 +439,7 @@ contains
     integer                                :: OGCM_NX, OGCM_NY
     integer                                :: BLK_NX,  BLK_NY
     integer                                :: counts(7)
+    character(len=ESMF_MAXSTR)             :: ReplayMode
 
 ! Locals with ESMF and MAPL types
 
@@ -499,6 +504,7 @@ contains
 
     call MAPL_GetResource(MAPL,DT_SEAICE,  Label="RUN_DT:",    _RC)             ! Get AGCM Heartbeat
     call MAPL_GetResource(MAPL,DT_SEAICE,  Label="OCEAN_DT:",  DEFAULT=DT_SEAICE, _RC) ! set Default OCEAN_DT to AGCM Heartbeat
+    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", _RC)
 
 ! Set the time for CICE
 !---------------------
@@ -574,6 +580,10 @@ contains
     !=====================================================================================
 
 
+    if(adjustl(ReplayMode)=="Regular") then
+       running_regular_replay = .true.
+       call alloc_record_state
+    endif
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
@@ -943,17 +953,14 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
-! Profilers
-!----------
-
     call MAPL_TimerOn(MAPL,"TOTAL")
+
+    call MAPL_GenericRecord (GC, IMPORT, EXPORT, CLOCK, _RC)
+
 
     doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Disk, _RC)
 
     if (doRecord) then
-
-! Get the private internal state
-!--------------------------------
 
 
        call MAPL_DateStampGet(clock, timeStamp, _RC)
@@ -965,10 +972,73 @@ contains
 
     end if
 
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Ram, _RC)
+
+    if (doRecord) then
+
+! Save thermo states for replay corrector
+!-----------------
+
+       call save_record_state
+
+    end if
+
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Record
+
+! !IROUTINE: Refresh -- Refresh method (regular replay)
+
+! !INTERFACE:
+
+  subroutine Refresh ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component
+  type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
+  type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: RC     ! Error code
+
+!EOP
+
+    type(MAPL_MetaComp),     pointer :: MAPL
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Locals
+    character(len=14)                :: timeStamp
+    logical                          :: doRecord
+
+    __Iam__('Restore')
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
+    Iam = trim(COMP_NAME)//'::'//Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
+
+    call MAPL_TimerOn(MAPL,"TOTAL")
+
+! Restore thermo states for replay corrector
+!-----------------
+
+    call restore_record_state
+
+
+    call MAPL_TimerOff(MAPL,"TOTAL")
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Refresh
 
 !====================================================================
 
@@ -1077,6 +1147,9 @@ contains
         call ice_import_grid(FRO, rc=STATUS)
         VERIFY_(STATUS)
         call cice_init2
+        if (running_regular_replay) then
+           call save_record_state
+        endif
         ice_grid_init2 = .TRUE.
      endif
 
