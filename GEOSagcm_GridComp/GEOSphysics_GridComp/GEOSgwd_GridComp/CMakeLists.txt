@@ -1,6 +1,6 @@
 esma_set_this ()
 
-set subdirs(
+set (subdirs
   ncar_gwd
   )
 
