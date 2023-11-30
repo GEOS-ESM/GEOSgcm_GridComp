@@ -106,6 +106,7 @@ list( APPEND CICE6_SRCS
    cicecore/drivers/mapl/geos/ice_import_export.F90
    cicecore/drivers/mapl/geos/ice_shr_methods.F90
    cicecore/drivers/mapl/geos/ice_prescribed_mod.F90
+   cicecore/drivers/mapl/geos/ice_record_mod.F90
 )
 
 
