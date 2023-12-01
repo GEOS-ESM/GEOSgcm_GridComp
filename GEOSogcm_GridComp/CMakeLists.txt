@@ -1,5 +1,9 @@
 esma_set_this ()
 
+set (GEOS_OCEAN MOM6 CACHE STRING "Options for ocean model: MOM5, MOM6, MIT")
+
+message (STATUS "Selected ocean model: " ${GEOS_OCEAN})
+
 set (alldirs
   GEOS_OceanBioGeoChemGridComp
   GEOS_OradGridComp
@@ -9,7 +13,7 @@ set (alldirs
 
 set (dependencies GEOS_Seaice_GridComp MAPL CICE4 esmf)
 
-if ( BUILD_MIT_OCEAN )
+if ( GEOS_OCEAN STREQUAL "MIT")
   add_compile_definitions(BUILD_MIT_OCEAN)
 endif()
 
