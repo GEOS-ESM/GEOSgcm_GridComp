@@ -908,12 +908,20 @@
             qe(p) = 0._r8
             theta_cj(p) = 0.98_r8
             bbbopt(p) = 10000._r8
-            mbbopt(p) = 4
+            if (stomatal_model_choice == 0) then
+               mbbopt(p) = 9._r8
+            else
+               mbbopt(p) = 8._r8
+            endif
          else
             qe(p) = 0.05_r8
             theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
-            mbbopt(p) = 4
+            if (stomatal_model_choice == 0) then
+               mbbopt(p) = 4._r8
+            else
+               mbbopt(p) = 8._r8
+            endif
          endif
       elseif (g1_ef_choice == 1) then
          if (c3flag(p)) then
@@ -1495,7 +1503,18 @@
    real(r8):: svp                  ! saturation vapor pressure
    real(r8):: t_veg_C              ! vegitation temperature in Celcius
    integer :: this_particle
-
+   real(r8) :: e_0
+   real(r8) :: Lv
+   real(r8) :: Rv
+   real(r8) :: T0
+   real(r8) :: e_star
+   real(r8) :: e_act
+   real(r8) :: vpd
+   real(r8) :: gs_mol_bb
+   real(r8) :: mbb_fake
+   real(r8) :: gs_mol_bb_norm
+   real(r8) :: gs_mol_norm
+   real(r8) :: term
    ! Miscellaneous parameters, from Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
    fnps = 0.15_r8
    theta_psii = 0.7_r8
@@ -1564,33 +1583,88 @@
    else if (stomatal_model_choice == 0)then  ! WHERE twr BEGINS EDITING!!!!
      cs = cair-1.4_r8/gb_mol*an*forc_pbot  ! divide by gb_mol because 1/gb_mol = rb, an is net photynthesis, forc_pbot is atoms. pressure (pa)
      cs = max(cs, 1.e-06_r8)  ! make sure cs is greater than 1e-06
+     !mbb_fake = 9._r8
      aquad = cs
      bquad = cs*(gb_mol-bbb) - mbb*an*forc_pbot
      cquad = -gb_mol*(cs*bbb+mbb*an*forc_pbot*rh_can)
      call quadratic (aquad, bquad, cquad, r1, r2)
      gs_mol = max(r1, r2)
+     !gs_mol_bb_norm = bbb + mbb_fake*(an*(10**5))/cs*rh_can
      ! Derive new estimate for ci
-     fval = ci-cair+an*forc_pbot * (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
+     !fval = ci-cair+an*forc_pbot * (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
+    !endif
    else if (stomatal_model_choice == 1)then
-    !calculate g1 from environmental filtering (here refered to as mbb, in line with original CLM45 terminology)
-    !for EF, use mean annual temperature, mean annual precipitation, and Precip/PET (How to import these into the model????)
-    !mbb = 4.1  ! TWR TESTING G1 ESTIMATE FROM Li 2022
+    ! calculate leaf internal co2
     cs = cair-1.4_r8/gb_mol*an*forc_pbot  ! divide by gb_mol because 1/gb_mol = rb, an is net photynthesis, forc_pbot is atoms. pressure (pa)
     cs = max(cs, 1.e-06_r8)  ! make sure cs is greater than 1e-06
-    !aquad = cs
-    aquad = 1.0_r8
-    !bquad = cs*(gb_mol-bbb) - mbb*an*forc_pbot
-    d = (1.6_r8*an)/(cs/forc_pbot)
-    t_veg_C = t_veg-273.15  ! convert canopy temp from K to C
-    svp = 610.78*exp(t_veg_C/((t_veg_C+238.3)*17.2694))  ! calculate saturated vapor pressure
-    Da = svp * (1 - (rh_can/100))  ! this is VPD
-    Da = min(Da, 5000._r8)  ! constraint on VPD
-    bquad = -(2._r8 * (bbb*btran+d) + (((mbb**2)*(d)**2)/(gb_mol*Da)))
-    !cquad = -gb_mol*(cs*bbb+mbb*an*forc_pbot*rh_can)
-    cquad = (bbb*btran)**2 + (2._r8*bbb*btran+d*(1 - (mbb**2/Da))) * d
-    call quadratic (aquad, bquad, cquad, r1, r2)
-    gs_mol = max(r1, r2)
+    ! implement Medlyn following FATES/CLM4.5
+    ! first cacluate VPD
+    !mbb_fake = 3.7_r8
+    e_0 = 0.6113 ! kPa
+    Lv = 2.5*(10**5) ! J/kg
+    Rv = 461._r8 ! J/kg
+    T0 = 273.15 ! K
+    e_star = (e_0*(exp((Lv/Rv)*((1/T0) - (1/t_veg)))))*1000 ! Pa
+    e_act = e_star*rh_can
+    vpd = e_star - e_act
+    vpd = max(vpd, 50._r8)
+    vpd = vpd*0.001
+    !vpd = (e_star - e_act)*0.001_r8
+    !vpd = max((e_star - e_act), 50._r8)*0.001_r8 ! from CLM5, put a constraint on VPD    
+    !write(*,*) 'rh_can, should be fractional'
+    !write(*,*) rh_can
+    !write(*,*) 'canopy temperature, K'
+    !write(*,*) t_veg
+    !write (*,*) 'e_star, should be in Pa'
+    !write(*,*) e_star
+    !write(*,*) 'e_act, should be in Pa'
+    !write(*,*) e_act
+    !write(*,*) 'vpd, should be in kPa'
+    !write(*,*) vpd
+    !write(*,*) 'an'
+    !write(*,*) an
+    !write(*,*) 'bbb'
+    !write(*,*) bbb
+    !write(*,*) 'cs'
+    !write(*,*) cs
+    !write(*,*) 'mbb'
+    !write(*,*) mbb
+    !d = (1.6_r8*an)/(cs/forc_pbot)
+
+    !aquad = 1.0_r8
+    !bquad = -(2.0 * (bbb+ d) + (mbb * d)**2 / (gb_mol * vpd ))
+    !cquad = bbb*bbb + (2.0*bbb + d * (1.0 - mbb*mbb / vpd)) * d
+
+
+    !!aquad = 1.0_r8
+    !!bquad = -(2._r8 * (bbb*btran+d) + ((mbb_fake*d)**2)/(gb_mol*vpd))
+    !!cquad = (bbb*btran)**2 + (2._r8*bbb*btran+d*(1 - (mbb_fake**2/vpd)))*d
+    !call quadratic (aquad, bquad, cquad, r1, r2)
+    !gs_mol = max(r1, r2)
+    !gs_mol_norm = bbb + 1.6*(1 + mbb_fake/sqrt(vpd))*an*(10**6)/cs
     
+
+    term = 1.6*an/(cs/forc_pbot)
+    aquad = 1.0_r8
+    bquad = -(2.0 * (bbb + term) + (mbb * term)**2 / (gb_mol * vpd))
+    cquad = bbb*bbb + (2.0_r8 * bbb + term * (1.0_r8 - mbb*mbb/vpd)) * term
+    call quadratic(aquad,bquad,cquad,r1,r2)
+    gs_mol = max(r1,r2)
+    !write(*,*) 'medlyn implicit'
+    !write(*,*) gs_mol
+
+    !gs_mol = bbb + 1.6*(1+(mbb/sqrt(vpd)))*an/(cs/forc_pbot)
+    !write(*,*) 'medlyn explicit'
+    !write(*,*) gs_mol
+
+    !write(*,*) 'ball berry prediction:'
+    !write(*,*) gs_mol_bb
+    !write(*,*) 'ball berry norm prediction:'
+    !write(*,*) gs_mol_bb_norm
+    !write(*,*) 'medlyn prediction:'
+    !write(*,*) gs_mol
+    !write(*,*) 'medlyn norm prediction:'
+    !write(*,*) gs_mol_norm
     this_particle = pso_vals%particle_num
     !write(*,*) 'inside medlyn'
     !write(*,*) 'this_particle'
@@ -1635,8 +1709,8 @@
     !write(*,*) 'gs_mol'
     !write(*,*) gs_mol
     ! Derive new estimate for ci
-    fval = ci-cair+an*forc_pbot * (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
    endif
+   fval = ci-cair+an*forc_pbot * (1.4_r8*gs_mol+1.6_r8*gb_mol) / (gb_mol*gs_mol)
    
    end subroutine ci_func
 
