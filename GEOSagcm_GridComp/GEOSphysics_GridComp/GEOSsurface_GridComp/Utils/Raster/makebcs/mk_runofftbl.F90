@@ -339,69 +339,84 @@ subroutine outlets_to_ocean(file,lons,lats,nx,ny)
   integer,allocatable,dimension(:,:) :: ns_map
   real*8,allocatable,dimension(:)    :: lat_lnd,lon_lnd
   integer                            :: i,j,l,k,status,type,np,flag,flag2
-
-  do i=1,100
-    if(file(i:i).eq."T".and.file(i+1:i+1).eq."M")then
-      exit
-    endif
-  enddo
-  file_ocn=""
-  file_ocn(1:13)=file(i:i+12)  
-  !print *,trim(file_ocn)
-  file_ocn_lnd=""
-  file_ocn_lnd(1:13)=file_ocn
-  file_ocn_lnd(14:25)="-Pfafstetter"
-  !print *,trim(file_ocn_lnd)    
+  integer                            :: px,plats,plate,plons,plone,plonss,pocns,pocne
 
   nx_str=""
   ny_str=""
-  res_MAPL=""
-  flag=0
-  k=1
-  do i=1,100
-    if(flag==0)then
-      if(file_ocn(i:i).ne."T".and.file_ocn(i:i).ne."M".and.file_ocn(i:i).ne."0")then
-        flag=1
-        nx_str(k:k)=file_ocn(i:i)
-        k=k+1
-      endif
-    else if(flag==1)then
-      if(file_ocn(i:i).eq."x")exit
-      nx_str(k:k)=file_ocn(i:i)
-      k=k+1   
+  px=0;plats=0;plate=0;plons=0;plone=0;plonss=0
+  do i=100,1,-1
+    if(file(i:i).eq."x")then
+      px=i
+      exit
     endif
   enddo
-!  print *,trim(nx_str)
-  nstr1=k-1
-!  print *,nstr1
+  do i=px+1,100
+    if(file(i:i).eq."1".or.file(i:i).eq."2".or.file(i:i).eq."3".or.file(i:i).eq."4".or.file(i:i).eq."5"&
+      .or.file(i:i).eq."6".or.file(i:i).eq."7".or.file(i:i).eq."8".or.file(i:i).eq."9")then
+      plats=i
+      exit
+    endif
+  enddo
+  do i=plats+1,100
+    if(file(i:i).ne."1".and.file(i:i).ne."2".and.file(i:i).ne."3".and.file(i:i).ne."4".and.file(i:i).ne."5"&
+      .and.file(i:i).ne."6".and.file(i:i).ne."7".and.file(i:i).ne."8".and.file(i:i).ne."9".and.file(i:i).ne."0")then
+      plate=i-1
+      exit
+    endif    
+  enddo
+  ny_str(1:plate-plats+1)=file(plats:plate)
+  !print *,trim(ny_str)
+  nstr1=plate-plats+1
 
-  flag=0
-  flag2=0
-  k=1
-  do i=1,100
-    IF(flag2==1)THEN
-    if(flag==0)then
-      if(file_ocn(i:i).ne."T".and.file_ocn(i:i).ne."M".and.file_ocn(i:i).ne."0")then
-        flag=1
-        ny_str(k:k)=file_ocn(i:i)
-        k=k+1
-      endif
-    else if(flag==1)then
-      if(file_ocn(i:i).eq." ")exit
-      ny_str(k:k)=file_ocn(i:i)
-      k=k+1   
-    endif
-    ELSE
-      if(file_ocn(i:i).eq."x")flag2=1
-    ENDIF
+  plone=px-1   
+  do i=plone,1,-1
+    if(file(i:i).ne."1".and.file(i:i).ne."2".and.file(i:i).ne."3".and.file(i:i).ne."4".and.file(i:i).ne."5"&
+      .and.file(i:i).ne."6".and.file(i:i).ne."7".and.file(i:i).ne."8".and.file(i:i).ne."9".and.file(i:i).ne."0")then
+      plonss=i+1
+      exit
+    endif   
   enddo
-!  print *,trim(ny_str)
-  nstr2=k-1
-!  print *,nstr2
+  do i=plonss,plone
+    if(file(i:i).eq."1".or.file(i:i).eq."2".or.file(i:i).eq."3".or.file(i:i).eq."4".or.file(i:i).eq."5"&
+      .or.file(i:i).eq."6".or.file(i:i).eq."7".or.file(i:i).eq."8".or.file(i:i).eq."9")then
+      plons=i
+      exit
+    endif    
+  enddo
+  nx_str(1:plone-plons+1)=file(plons:plone)
+  !print *,trim(nx_str)
+  nstr2=plone-plons+1
+
+
+  do i=1,100
+    if(file(i:i).eq."_")then
+      pocns=i+1
+      exit
+    endif
+  enddo
+
+  do i=1,100
+    if(file(i:i+10).eq."Pfafstetter")then
+      pocne=i-2
+      exit
+    endif
+  enddo
+
+  file_ocn=""
+  file_ocn(1:pocne-pocns+1)=file(pocns:pocne)  
+  !print *,trim(file_ocn)
+  file_ocn_lnd=""
+  file_ocn_lnd(1:pocne-pocns+1)=file_ocn(1:pocne-pocns+1)
+  file_ocn_lnd(pocne-pocns+2:pocne-pocns+13)="-Pfafstetter"
+  !print *,trim(file_ocn_lnd)    
+
+  res_MAPL=""
   res_MAPL(1:nstr1+nstr2+1)=trim(nx_str)//"x"//trim(ny_str)
   !print *,trim(res_MAPL)
   read(nx_str,*)nx_MAPL
-  read(ny_str,*)ny_MAPL 
+  read(ny_str,*)ny_MAPL  
+  !print *,nx_MAPL
+  !print *,ny_MAPL
 
   fileT_ocn = "til/"//trim(file_ocn)//".til" ! input
   fileR_ocn = "rst/"//trim(file_ocn)//".rst" ! input
