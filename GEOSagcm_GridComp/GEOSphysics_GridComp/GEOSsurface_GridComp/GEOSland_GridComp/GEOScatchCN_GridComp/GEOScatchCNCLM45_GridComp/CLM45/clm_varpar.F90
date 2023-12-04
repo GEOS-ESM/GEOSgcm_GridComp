@@ -10,6 +10,9 @@ module clm_varpar
 !
 ! !USES:
 !
+ use clm_varpar_shared, only : VAR_COL =>VAR_COL_45, VAR_PFT => VAR_PFT_45, &
+                               numpft => numpft_CN, NUM_ZON => NUM_ZON_CN, &
+                               NUM_VEG => NUM_VEG_CN
 ! !PUBLIC TYPES:
   implicit none
   save
@@ -26,7 +29,6 @@ module clm_varpar
 ! Define indices used in surface file read
 ! maxpatch_pft     = max number of plant functional types in naturally vegetated landunit
 
-  integer, parameter :: numpft         = 19   ! actual # of pfts (without bare), same as in Catchment-CN.clm4
   integer            :: maxpatch_pft
 
 ! clm_varpar_init seems to do something similar; less prone to error to move
@@ -85,10 +87,6 @@ module clm_varpar
 ! 8:  DESERT                     =>  0
 ! 9:  ICE                        => n/a  
 
-  integer, parameter, PUBLIC :: NUM_ZON=3   ! number of CN hydrology zones per tile
-  integer, parameter, PUBLIC :: NUM_VEG=4   ! number of CN PFTs per zone
-  integer, parameter, PUBLIC :: VAR_COL=35  ! number of CN column restart variables
-  integer, parameter, PUBLIC :: VAR_PFT=75  ! number of CN PFT variables per column  
   real, parameter, PUBLIC, dimension(NUM_ZON) :: CN_zone_weight = (/0.10,0.45,0.45/) ! gkw: tunable; must sum to 1
   integer, parameter, PUBLIC :: map_cat(0:numpft) = (/4,3,3,3,1,1,2,2,2,5,5,5,6,4,4,4,4,4,4,4/) 
   

@@ -21,6 +21,9 @@ MODULE lsm_routines
   !                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
   ! reichle, 27 Jan 2022 - moved "public" constants & subroutine echo_catch_constants() to catch_constants.f90
   
+  use MAPL, ONLY:                                &
+       MAPL_UNDEF
+
   USE MAPL_ConstantsMod, ONLY:                   &
        PIE               => MAPL_PI,             &  ! -
        TF                => MAPL_TICE,           &  ! K
@@ -30,7 +33,6 @@ MODULE lsm_routines
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
-       RHOFS             => CATCH_SNWALB_RHOFS,  &
        DZTSURF           => CATCH_DZTSURF,       &
        DZGT              => CATCH_DZGT,          &
        PHIGT             => CATCH_PHIGT,         &
@@ -41,21 +43,17 @@ MODULE lsm_routines
        PEATCLSM_ZBARMAX_4_SYSOIL
   
   USE SURFPARAMS,        ONLY:                   &
-       LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
-       FLWALPHA, ASTRFR, STEXP, RSWILT
+       LAND_FIX, FLWALPHA
   
   USE SIBALB_COEFF,      ONLY:                   &
        coeffsib
-
-  USE STIEGLITZSNOW,     ONLY:                   &
-       snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
 
   IMPLICIT NONE
 
   PRIVATE
 
   PUBLIC :: INTERC, SRUNOFF, RZDRAIN, BASE, PARTITION, RZEQUIL, gndtp0
-  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_watertabled
+  PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_peatclsm_waterlevel
   PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
   PUBLIC :: dampen_tc_oscillations, irrigation_rate
@@ -1300,9 +1298,6 @@ CONTAINS
       REAL, PARAMETER :: ALVDRI = 0.700
       REAL, PARAMETER :: ALIDRI = 0.700
 
-
-!      REAL, PARAMETER :: WEMIN  = 13.0   ! [KG/M2]
-
 ! ALVDRS:  Albedo of soil for visible   direct  solar radiation.
 ! ALIDRS:  Albedo of soil for infra-red direct  solar radiation.
 ! ALVDFS:  Albedo of soil for visible   diffuse solar radiation.
@@ -1660,8 +1655,6 @@ CONTAINS
          MODIS_SCALE_ = .FALSE.
       END IF
 
-!FPP$ EXPAND (COEFFSIB)
-
       DO I=1,NCH
 
         ALA = AMIN1 (AMAX1 (ZERO, VLAI(I)), ALATRM)
@@ -1969,6 +1962,20 @@ CONTAINS
   
   ! Calculate zbar for Catchment[CN] model.
   !
+  ! For mineral tiles, zbar is a fitted function that approximates the  
+  !   water table depth EXCEPT for wet conditions.  For low values of 
+  !   catdef, negative values on the order of -1 meter can be encountered,
+  !   which would imply crazy water tables well above the surface.
+  !   For this reason, zbar is not suitable for general estimation 
+  !   of water table depth.
+  !
+  ! For PEATCLSM, zbar is a well-fitted function that describes the 
+  !   water table depth for all wetness conditions.  At zbar=0, half of 
+  !   the microtopography is flooeded.  Slightly negative values of
+  !   up to -14 cm (-bf2) are theoretically possible but are not realized.
+  !   Lesser negative values would represent slightly elevated water levels
+  !   that imply more than half of the microtopography is flooded. 
+  !
   ! Convention: zbar positive below ground (downward).
   !             
   ! This convention applies to water calculations, incl. subroutines RZDRAIN(),
@@ -1979,7 +1986,8 @@ CONTAINS
   !   diffusion model, incl. subroutines GNDTP0(), GNDTMP(), GNDTMP_CN().
   !
   ! - reichle, 29 Jan 2022
-  
+  ! - reichle,  3 Jun 2022 (updated documentation above)
+
   function catch_calc_zbar_scalar( bf1, bf2, catdef ) result(zbar)
     
     implicit none
@@ -2008,18 +2016,30 @@ CONTAINS
   
   ! *******************************************************************
 
-  function catch_calc_watertabled( bf1, bf2, cdcr2, poros, wpwet, catdef ) result(wtd)
+  function catch_calc_peatclsm_waterlevel( bf1, bf2, cdcr2, poros, wpwet, catdef ) result(waterlevel)
     
-    ! calculate water table depth [m]
+    ! calculate water level (a.k.a. water table depth) for PEATCLSM only [m]
+    !
+    ! Convention: water leve positive above ground (opposite of zbar convention!)
 
     implicit none
     
     real, dimension(:),         intent(in) :: bf1, bf2, cdcr2, poros, wpwet, catdef
-    real, dimension(size(bf1))             :: wtd
+    real, dimension(size(bf1))             :: waterlevel
     
-    wtd = MIN( catch_calc_zbar(BF1,BF2,CATDEF), CDCR2/(1.-WPWET)/POROS/1000. )
-    
-  end function catch_calc_watertabled
+    WHERE (POROS >= PEATCLSM_POROS_THRESHOLD)
+       
+       ! note change of sign from zbar
+
+       waterlevel = -1.*MIN( catch_calc_zbar(BF1,BF2,CATDEF), CDCR2/(1.-WPWET)/POROS/1000. )
+       
+    ELSEWHERE
+       
+       waterlevel = MAPL_UNDEF
+
+    ENDWHERE       
+       
+  end function catch_calc_peatclsm_waterlevel
   
   ! *******************************************************************
 

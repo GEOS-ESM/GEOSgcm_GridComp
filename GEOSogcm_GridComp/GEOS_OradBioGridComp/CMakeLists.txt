@@ -19,6 +19,5 @@ set (SRCS
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES MAPL
-  INCLUDES ${INC_ESMF})
+  DEPENDENCIES MAPL esmf)
 

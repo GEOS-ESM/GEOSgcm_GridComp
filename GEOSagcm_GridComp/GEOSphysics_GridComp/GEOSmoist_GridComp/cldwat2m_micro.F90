@@ -65,7 +65,7 @@ module cldwat2m_micro
    real(r8), parameter :: latice      = MAPL_ALHF !!!!!big BUGGGG 03/06/14 
    real(r8), parameter :: epsilon     = MAPL_VIREPS
    
-   real, parameter :: deltat_micro     = 300.0 ! Donif hardcoded for now
+  
    
 
 
@@ -453,7 +453,7 @@ contains
    !microphysics routine for each timestep goes here...
 
    subroutine mmicro_pcond (                   &
-         lchnk, ncol, deltatin, tn, ttend,        &
+         lchnk, ncol, deltatin, deltat_micro, tn, ttend,        &
 
          pcols, pver,                             &
          qn, qtend, cwtend, qc, qi,               &
@@ -477,7 +477,7 @@ contains
          nsoot, rnsoot, ui_scale, dcrit, mtimesc, &
          nnuccdo, nnuccco, nsacwio, nsubio, nprcio, &
          npraio, npccno, npsacwso, nsubco, nprao, nprc1o, nbincontactdust,  &
-         ts_auto_ice, rflx, sflx)
+         ts_auto_ice, rflx, sflx, accre_enhan, accre_enhan_ice)
 
 
       !Author: Hugh Morrison, Andrew Gettelman, NCAR
@@ -497,8 +497,9 @@ contains
 #ifdef GEOS5
       integer,  intent (in) :: pcols, pver    
       real(r8), intent (in) :: nimm (pcols,pver)    ! immersion ice nuclei concentration tendency (kg-1 s-1) 
-      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
+      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
       real(r8), intent (in) :: nsoot (pcols,pver) , rnsoot (pcols,pver)  
+       real(r8), intent (in) :: accre_enhan(pcols,pver), accre_enhan_ice(pcols,pver)
 
 
       !!integer,  parameter  :: pverp=pver+1
@@ -533,8 +534,8 @@ contains
       real(r8), intent(out) :: rate1ord_cw2pr_st(pcols,pver) ! 1st order rate for direct cw to precip conversion 
       ! used for scavenging
       ! Inputs for aerosol activation
-      real(r8), intent(in) :: naai(pcols,pver)      ! ice nulceation number (from microp_aero_ts) %this is not a tendency
-      real(r8), intent(inout) :: npccnin(pcols,pver)   ! ccn activated number  (from microp_aero_ts) !This is a  tendency! DONIF (#/(Kg s))
+      real(r8), intent(in) :: naai(pcols,pver)      ! grid averaged ice nulceation number  tendency (Kg-1 s-1)
+      real(r8), intent(inout) :: npccnin(pcols,pver)   ! grid averaged ccn activated number tendency (Kg-1 s-1) 
       integer :: nbincontactdust !DONIF
       real(r8), intent(in),  dimension(:) :: rndst(pcols,pver, 10)   ! radius of 4 dust bins for contact freezing (from microp_aero_ts)
       real(r8), intent(in),  dimension(:) :: nacon(pcols,pver, 10)   ! number in 4 dust bins for contact freezing  (from microp_aero_ts)
@@ -953,7 +954,7 @@ contains
 
       integer              ::   auto_option !0, kk, default DONIF 
       real(r8)             :: beta6, xs, nssoot, nsdust, taux, psc, Bh, vaux, aux, auxx, LW, NW !DONIF constants for LIu autoconversion
-
+      real, intent(in) :: deltat_micro   !  = 300.0 ! Donif hardcoded for now
       ! hm add 6/2/11 switch for specification of droplet and crystal number
       ! note: number will be adjusted as needed to keep mean size within bounds,
       ! even when cosntant droplet or ice number is used
@@ -1089,12 +1090,13 @@ contains
             ! be rewwritten and this parameters can be removed
             
             !************ Donifan            
-            !It might be unrealistic to apply full microphysics to droplet form on this time step
+            !It might be unrealistic to apply full microphysics to droplet formed on this time step
 
             lcldm(i,k)=max(liqcldf(i,k),mincld)
+            cldm(i,k)=max(cldn(i,k),mincld)
             if (qc(i,k).ge.qsmall) then                
-               npccn(k)=(lcldm(i,k)*npccnin(i,k)-nc(i,k))/max(deltat, 150.0)         
-               npccn(k) = max(0._r8,npccn(k))         
+              ! npccn(k)=(cldm(i,k)*npccnin(i,k)-nc(i,k))/max(deltat, 150.0)   !use cldm to avoid cleaning up clouds at low T      
+               npccn(k) = max(0._r8,npccnin(i, k))         
                ! hm update with activation tendency, keep old nc for later
                ncold(i,k)=nc(i,k)              
                nc(i,k)=nc(i,k)+npccn(k)*deltat                        ! *****************DONIF19*******************
@@ -1215,21 +1217,25 @@ contains
             endif
 
             if (t(i,k).lt.tmelt - 5._r8) then
+               
+               dumnnuc =  0.
                if (liu_in) then 
-
                   ! if aerosols interact with ice set number of activated ice nuclei
                   dum2=naai(i,k)
-
+                  dumnnuc = dum2 ! make sure we pass tendencies
                else
                   ! cooper curve (factor of 1000 is to convert from L-1 to m-3) 
                   dum2=0.005_r8*exp(0.304_r8*(273.15_r8-t(i,k)))*1000._r8  !DONIF, this is only heterogeneous
                   ! put limit on number of nucleated crystals, set to number at T=-30 C
                   ! cooper (limit to value at -35 C)
                   dum2=min(dum2,208.9e3_r8)/rho(i,k) ! convert from m-3 to kg-1
+                    dumnnuc=(dum2-ni(i,k)/cldm(i,k))/max(deltat, 150.0)*cldm(i,k)  !DONIFF put a limit to nucleated crystals
+
                endif
 
-               dumnnuc=(dum2-ni(i,k)/icldm(i,k))/max(deltat, 150.0)*icldm(i,k)  !DONIFF put a limit to nucleated crystals
                dumnnuc=max(dumnnuc,0._r8)
+               
+               !use cldm for this instead
 
 
                ! get provisional ni and qi after nucleation in order to calculate
@@ -2246,7 +2252,7 @@ contains
                   taux=max(taux-273.15, -40.0)
 
                   nsdust=max(exp(-0.517*taux + 8.934) -3.76e6, 0.0) !From Niemand 2012 (restricts nuc to T<-12 C)
-                  nssoot=max(1.0e4*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
+                  nssoot=7.463*max(exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012, updated to Ullrich2017)
 
                   do ind_aux  = 1,  nbincontactdust
                      nslip(ind_aux) = 1.0_r8+(mfp/rndst(i,k,ind_aux))*(1.257_r8+(0.4_r8*Exp(-(1.1_r8*rndst(i,k,ind_aux)/mfp))))
@@ -2390,18 +2396,18 @@ contains
                if (qric(i,k).ge.1.e-8_r8 .and. qniic(i,k).ge.1.e-8_r8 .and. & 
                      t(i,k).le.273.15_r8) then
 
-                  pracs(k) = pi*pi*ecr*(((1.2_r8*umr(k)-0.95_r8*ums(k))**2+ &  !!BUGGGGG (11/05/15)
+                  pracs(k) = (pi*pi*ecr*(((1.2_r8*umr(k)-0.95_r8*ums(k))**2+ &  !!BUGGGGG (11/05/15)
                         0.08_r8*ums(k)*umr(k))**0.5_r8*(rhow/rho(i,k))* &
                         n0r(k)*n0s(k)* &
                         (5._r8/(lamr(k)**6*lams(k))+ &
                         2._r8/(lamr(k)**5*lams(k)**2)+ &
-                        0.5_r8/(lamr(k)**4*lams(k)**3)))
+                        0.5_r8/(lamr(k)**4*lams(k)**3))))*accre_enhan_ice(i, k)
 
-                  npracs(k) = pi/2._r8*ecr*(1.7_r8*(unr(k)-uns(k))**2+ &
+                  npracs(k) = (pi/2._r8*ecr*(1.7_r8*(unr(k)-uns(k))**2+ &
                         0.3_r8*unr(k)*uns(k))**0.5_r8*n0r(k)*n0s(k)* &
                         (1._r8/(lamr(k)**3*lams(k))+ &
                         1._r8/(lamr(k)**2*lams(k)**2)+ &
-                        1._r8/(lamr(k)*lams(k)**3))
+                        1._r8/(lamr(k)*lams(k)**3)))*accre_enhan_ice(i, k)
 
                else
                   pracs(k)=0._r8
@@ -2436,10 +2442,9 @@ contains
 
                   ! include sub-grid distribution of cloud water
 
-                  pra(k) = cons12/(cons3*cons20)* &
-                        67._r8*(qcic(i,k)*qric(i,k))**1.15_r8
-                  npra(k) = pra(k)/(qcic(i,k)/ncic(i,k))
-
+                  pra(k) = accre_enhan(i, k)*(cons12/(cons3*cons20)* &
+                        67._r8*(qcic(i,k)*qric(i,k))**1.15_r8)
+                  npra(k) = accre_enhan(i, k)*pra(k)/(qcic(i,k)/ncic(i,k))
                else
                   pra(k)=0._r8
                   npra(k)=0._r8

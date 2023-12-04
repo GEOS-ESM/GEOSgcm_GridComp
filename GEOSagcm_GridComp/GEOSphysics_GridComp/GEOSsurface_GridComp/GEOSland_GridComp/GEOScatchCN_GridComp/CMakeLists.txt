@@ -4,10 +4,9 @@ add_subdirectory (GEOScatchCNCLM40_GridComp)
 add_subdirectory (GEOScatchCNCLM45_GridComp)
 
 esma_add_library (${this}
-  SRCS GEOS_CatchCNGridComp.F90 
-  SUBDIRS Shared 
-  DEPENDENCIES GEOS_SurfaceShared GEOS_LandShared GEOS_CatchCNShared MAPL
-  INCLUDES ${INC_ESMF})
+  SRCS GEOS_CatchCNGridComp.F90
+  SUBDIRS Shared
+  DEPENDENCIES GEOS_SurfaceShared GEOS_LandShared GEOS_CatchCNShared MAPL esmf)
 
 # Special case for GEOScatch and GEOScatchCN components - build with / without openmp
 if (USE_OPENMP)

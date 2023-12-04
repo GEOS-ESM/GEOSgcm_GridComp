@@ -72,7 +72,7 @@ PROGRAM mk_GEOSldasRestarts
   integer, parameter :: ntiles_cn = 1684725, ntiles_cat = 1653157
   character(len=300), parameter :: &
        InCNRestart = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
-       InCNTilFile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                        &
+       InCNTilFile = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                        &
        InCatRestart= '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTilFile= '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
                       //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                                                   &        
@@ -1421,7 +1421,7 @@ contains
           if(clm45) then
             open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
             do n=1,ntiles
-              read (30,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+              read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
             end do
             CLOSE (30, STATUS = 'KEEP')
@@ -1478,7 +1478,7 @@ contains
                 read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
                      CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
                 
-                read (30,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+                read (30, *) i, j, abm(n), peatf(n), &
                      gdp(n), hdm(n), fc(n)
              endif
           endif          

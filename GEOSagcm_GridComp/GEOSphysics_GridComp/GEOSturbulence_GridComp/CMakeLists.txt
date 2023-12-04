@@ -6,11 +6,8 @@ set (srcs
   shoc.F90
   edmf.F90
   scm_surface.F90
-  shocparams.F90
-  edmfparams.F90
   )
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL)
-target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+  DEPENDENCIES GEOS_Shared MAPL esmf NetCDF::NetCDF_Fortran)

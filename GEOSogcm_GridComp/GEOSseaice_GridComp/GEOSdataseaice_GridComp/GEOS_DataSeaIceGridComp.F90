@@ -11,7 +11,7 @@
 
 module GEOS_DataSeaIceGridCompMod
 
-! !USES: 
+! !USES:
 
   use ESMF
   use MAPL
@@ -34,13 +34,15 @@ module GEOS_DataSeaIceGridCompMod
   integer            :: NUM_ICE_LAYERS_ALL
   integer            :: NUM_SNOW_LAYERS_ALL
   integer            :: DO_CICE_THERMO
-! integer            :: DO_SKIN_LAYER
+
+  logical            :: ocean_extData
+  logical            :: seaIceT_extData
 
 ! !DESCRIPTION:
-! 
-!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the 
-!   ocean\_bcs file 
-!   This module interpolates the sea ice fraction data from 
+!
+!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the
+!   ocean\_bcs file
+!   This module interpolates the sea ice fraction data from
 !   either daily or monthly values to the correct time of the simulation.
 !   Data are read only if the simulation time is not in the save interval.
 !
@@ -64,7 +66,7 @@ module GEOS_DataSeaIceGridCompMod
 
 !  !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -110,9 +112,13 @@ module GEOS_DataSeaIceGridCompMod
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-!   call MAPL_GetResource ( MAPL,    DO_SKIN_LAYER,      Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
-!   VERIFY_(STATUS)
-   
+    call MAPL_GetResource ( MAPL,    ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+    if (seaIceT_extData) then
+      if(MAPL_AM_I_ROOT()) print *, 'You have set SEAICE_THICKNESS_EXT_DATA: .TRUE. For this feature, a _newer_: version-2 of data sea ice must be used.'
+      _FAIL('Recompile and try.')
+    endif
+
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
@@ -140,6 +146,17 @@ module GEOS_DataSeaIceGridCompMod
 !BOS
 
 ! !Import state:
+
+  if (ocean_extData) then
+    call MAPL_AddImportSpec(GC,                  &
+      SHORT_NAME         = 'DATA_ICE',           &
+      LONG_NAME          = 'sea_ice_concentration',        &
+      UNITS              = '1',                  &
+      DIMS               = MAPL_DimsHorzOnly,    &
+      VLOCATION          = MAPL_VLocationNone,   &
+      RC=STATUS)
+    VERIFY_(status)
+  endif
 
   call MAPL_AddImportSpec(GC,                                 &
     SHORT_NAME         = 'HI',                                &
@@ -329,7 +346,7 @@ module GEOS_DataSeaIceGridCompMod
   VERIFY_(STATUS)
 
   RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -347,7 +364,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -370,12 +387,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: FRIENDLY
   type(ESMF_FIELD)                    :: FIELD
   type (ESMF_Time)                    :: CurrentTime
-  character(len=ESMF_MAXSTR)          :: DATAFRTFILE
+  character(len=ESMF_MAXSTR)          :: DataFrtFile
   integer                             :: IFCST
   logical                             :: FCST
-! real, pointer, dimension(:,:)       :: MELT   => null()
-! real, pointer, dimension(:,:)       :: F1     => null()
-! real, pointer, dimension(:,:)       :: TNEW   => null()
   real                                :: TAU_SIT
   real                                :: DT
   real                                :: RUN_DT
@@ -406,7 +420,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: UI   => null()
    real, pointer, dimension(:,:)  :: VI   => null()
    real, pointer, dimension(:,:)  :: FR   => null()
-!  real, pointer, dimension(:,:)  :: MQ   => null()
 
 ! pointers to import
 
@@ -429,11 +442,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: LATS    => null()
    real, pointer, dimension(:,:)  :: LONS    => null()
 
-   real, allocatable, dimension(:,:)  :: FRT 
+   real, allocatable, dimension(:,:)  :: FRT
    real :: f
 
+   real, pointer :: DATA_ice(:,:) => null()
 ! above were for CICE Thermo
 
+   logical :: STRICT_ICE_FRACTION
+   real :: ICE_FRACTION_TOLERANCE
 
 !  Begin...
 !----------
@@ -468,6 +484,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to Imports
 !--------------------
 
+   if (ocean_extData) then
+     call MAPL_GetPointer(IMPORT, DATA_ice     ,  'DATA_ICE', __RC__)
+   endif
+
    if (DO_CICE_THERMO == 0) then
       call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
       VERIFY_(STATUS)
@@ -475,7 +495,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(IMPORT, TI8   ,  'TI'   , RC=STATUS)
       VERIFY_(STATUS)
    end if
-   call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
+   call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
    VERIFY_(STATUS)
@@ -509,11 +529,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
     VERIFY_(STATUS)
 
-! Get the file name from the resource file
-!-----------------------------------------
-
-    call MAPL_GetResource(MAPL,DATAFRTFILE,LABEL="DATA_FRT_FILE:", RC=STATUS)
+   if (.not. ocean_extData) then
+    ! Get the file name from the resource file
+    !-----------------------------------------
+    call MAPL_GetResource(MAPL,DataFrtFile,LABEL="DATA_FRT_FILE:", RC=STATUS)
     VERIFY_(STATUS)
+  endif
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
 !---------------------------------------------------------------
@@ -536,7 +557,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
 ! If using CICE Thermodynamics in AMIP mode, get prescribed ice thickness
-! FOR NOW, following way sets thickness to a constant value in either hemisphere- 
+! FOR NOW, following way sets thickness to a constant value in either hemisphere-
 ! And in future (>04/2016) we will explore "other" ideas. [BZ/SA/MT]
 !----------------------------------------------------------------------------------
     if (DO_CICE_THERMO /= 0) then
@@ -559,35 +580,49 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
-       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FR, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+       if (ocean_extData) then
+         FR = data_ice ! netcdf variable
+       else ! binary
+         call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FR, INIT_ONLY=FCST, __RC__)
+       end if
 
-       if (any(FR < 0.0) .or. any(FR > 1.0)) then
-          if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          _ASSERT(.FALSE.,'needs informative message')
-       endif
+       call MAPL_GetResource ( MAPL, STRICT_ICE_FRACTION, Label="STRICT_ICE_FRACTION:", DEFAULT=.TRUE., __RC__)
+       if (STRICT_ICE_FRACTION) then
+          _ASSERT(all(FR >= 0.0), 'Error in fraci file. Negative fraction found')
+          _ASSERT(all(FR <= 1.0), 'Error in fraci file. Fraction larger than one found')
+       else
+          call MAPL_GetResource ( MAPL, ICE_FRACTION_TOLERANCE, Label="ICE_FRACTION_TOLERANCE:", DEFAULT=1.0e-2, __RC__)
+          ! First we look to see if we fail even with a tolerance
+          _ASSERT(all(FR > (0.0 - ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Negative fraction found with tolerance allowed')
+          _ASSERT(all(FR < (1.0 + ICE_FRACTION_TOLERANCE)), 'Error in fraci file. Fraction larger than one found with tolerance allowed')
+          ! If we get past those, we can just force FR to be in the range [0,1]
+          FR = max(0.0, min(1.0, FR))
+       end if
+
      end if
    else
-       call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+     if (ocean_extData) then
+       frt = data_ice ! netcdf variable
+     else ! binary
+       call MAPL_ReadForcing(MAPL,'FRT',DataFrtFile, CURRENTTIME, FRT, INIT_ONLY=FCST, __RC__)
+     end if
 
 ! Sanity checks
-       do I=1, size(FRT,1)
-          do J=1, size(FRT,2)
-             f=FRT(I,J)
-             if (f==MAPL_UNDEF) cycle
-             if ((f < 0.0) .or. (f > 1.0)) then
-                print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-                _ASSERT(.FALSE.,'needs informative message')
-             end if
-          end do
-       end do
+     do I=1, size(FRT,1)
+        do J=1, size(FRT,2)
+           f=FRT(I,J)
+           if (f==MAPL_UNDEF) cycle
+           if ((f < 0.0) .or. (f > 1.0)) then
+              _FAIL('Error in fraci file. Negative or larger-than-one fraction found')
+           end if
+        end do
+     end do
 
-       if(associated(FR)) FR = FRT
+     if(associated(FR)) FR = FRT
    end if ! (DO_CICE_THERMO == 0)
 
    if (DO_CICE_THERMO == 0) then
-  
+
      where (TI /= MAPL_Undef)
        TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
      end where
@@ -596,58 +631,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    end if
 
    SI   = 30.0
-
-!  if (DO_SKIN_LAYER < 2) then
-!     allocate(MELT(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!     allocate(F1(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!     allocate(TNEW(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
-!
-!     TICE=MAPL_TICE-1.8
-!     TNEW=0.0
-!     F1=0.0
-!
-!     ! TW below freezing point is set to freezing temperature
-!     TNEW   = max(TW,TICE)
-!  
-!     if (DO_CICE_THERMO == 0) then
-!        where(FR == 1.0)
-!          ! if fraction of ice is 1, set TW to freezing temperature
-!          TNEW   =  TICE
-!        elsewhere
-!          F1=FR*CTB*MAPL_RHOWTR/(HW*(1-FR))
-!          TNEW=(TNEW+TICE*F1*DT)/(1+F1*DT)
-!        end where
-!     else
-!        where(FRT == 1.0)
-!          ! if fraction of ice is 1, set TW to freezing temperature
-!          TNEW   =  TICE
-!        elsewhere
-!          F1=FRT*CTB*MAPL_RHOWTR/(HW*(1-FRT))
-!          TNEW=(TNEW+TICE*F1*DT)/(1+F1*DT)
-!        end where
-!     end if
-!
-!     MELT=(TW-TNEW)*HW*CW/DT
-!
-!     where(TW == MAPL_UNDEF)
-!       MELT=MAPL_UNDEF
-!       TNEW=MAPL_UNDEF
-!     end where
-!   
-!     ! Updated Sea-Ice Melting (non-zero diff to Fortuna-2_5_p6)
-!     ! ---------------------------------------------------------
-!     TW=TNEW
-!  
-!     if(associated(MQ)) MQ = MELT
-!
-!     if (DO_CICE_THERMO /= 0) then
-!       TW   = max(TW,MAPL_TICE)
-!       where(FR>0.0) TW = MAPL_TICE
-!     end if
-!   end if ! (DO_SKIN_LAYER < 2)
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
@@ -660,7 +643,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Clean-up
 !---------
 
-!  if (DO_SKIN_LAYER < 2) deallocate(MELT,F1,TNEW)
    if (DO_CICE_THERMO /= 0) then
      deallocate(FRT)
      deallocate(FRCICE)

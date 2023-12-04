@@ -6,15 +6,14 @@ set (alldirs
    GEOSland_GridComp
    GEOSsaltwater_GridComp
    )
-  
+
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
   esma_add_library (${this}
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
     SUBDIRS Shared
-    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu
-    INCLUDES ${INC_ESMF})
+    DEPENDENCIES GEOS_SurfaceShared MAPL GMAO_mpeu esmf)
 
 else ()
 
