@@ -1002,28 +1002,6 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-!      call MAPL_AddImportSpec(GC,                             &
-!           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-!           UNITS              = 'W m-2'                      ,&
-!           SHORT_NAME         = 'FSWBAND'                    ,&
-!           DIMS               = MAPL_DimsTileOnly            ,&
-!           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-!           VLOCATION          = MAPL_VLocationNone           ,&
-!           RESTART            = MAPL_RestartSkip             ,&
-!           RC=STATUS  ) 
-!      VERIFY_(STATUS)
-     
-!      call MAPL_AddImportSpec(GC,                             &
-!           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-!           UNITS              = 'W m-2'                      ,&
-!           SHORT_NAME         = 'FSWBANDNA'                  ,&
-!           DIMS               = MAPL_DimsTileOnly            ,&
-!           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-!           VLOCATION          = MAPL_VLocationNone           ,&
-!           RESTART            = MAPL_RestartSkip             ,&
-!           RC=STATUS  ) 
-!      VERIFY_(STATUS)
-
 !     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
         ! Ocean to OceanBio
         call MAPL_AddConnectivity ( GC,   &
@@ -1389,8 +1367,6 @@ contains
     real, pointer, dimension(:,:) :: OCWT => null()
     real, pointer, dimension(:,:) :: DRBAND => null()          
     real, pointer, dimension(:,:) :: DFBAND => null()
-    real, pointer, dimension(:,:) :: FSWBAND => null()
-    real, pointer, dimension(:,:) :: FSWBANDNA => null()
     real, pointer, dimension(:)   :: TI => null()
     real, pointer, dimension(:)   :: FR => null()
     real, pointer, dimension(:,:) :: TI8 => null()
@@ -1440,8 +1416,6 @@ contains
     real, pointer, dimension(:,:,:) :: OCWTB => null()
     real, pointer, dimension(:,:,:) :: DRBANDR => null()
     real, pointer, dimension(:,:,:) :: DFBANDR => null()
-    real, pointer, dimension(:,:,:) :: FSWBANDR   => null()
-    real, pointer, dimension(:,:,:) :: FSWBANDNAR => null()
     real, pointer, dimension(:,:) :: PENUVRO => null()
     real, pointer, dimension(:,:) :: PENUVFO => null()
     real, pointer, dimension(:,:) :: PENPARO => null()
@@ -2293,10 +2267,6 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, OCWT      , 'OCWT'      , RC=STATUS)
         VERIFY_(STATUS)
-!        call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'   , RC=STATUS)
-!        VERIFY_(STATUS)
-!        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
-!        VERIFY_(STATUS)
       end if
 
       if(associated(UUB)) then
@@ -2361,8 +2331,6 @@ contains
         call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-!        call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-!        call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
       end if
 
       if(DO_DATA_ATM4OCN==0) then
@@ -2389,18 +2357,6 @@ contains
              call MAPL_LocStreamTransform( ExchGrid, OCWTB(:,:,N), OCWT(:,N), RC=STATUS )
              VERIFY_(STATUS)
           end do
-       endif
-       if(associated(FSWBANDR)) then
-!          do N = 1, NB_CHOU
-!             call MAPL_LocStreamTransform( ExchGrid, FSWBANDR(:,:,N),   FSWBAND(:,N),   RC=STATUS )
-!             VERIFY_(STATUS)
-!          end do
-       endif
-       if(associated(FSWBANDNAR)) then
-!          do N = 1, NB_CHOU
-!             call MAPL_LocStreamTransform( ExchGrid, FSWBANDNAR(:,:,N), FSWBANDNA(:,N), RC=STATUS )
-!             VERIFY_(STATUS)
-!          end do
        endif
       end if
 

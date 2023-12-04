@@ -740,8 +740,6 @@ module GEOS_SaltwaterGridCompMod
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
-!       call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
-!       call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
      endif
   end if
 
