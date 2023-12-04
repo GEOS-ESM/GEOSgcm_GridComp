@@ -811,8 +811,6 @@ module GEOS_OceanbiogeochemGridCompMod
     type (MAPL_MetaComp),   pointer     :: MAPL => null()
     type (T_OBIO_STATE),    pointer     :: State => null()
     type (OBIO_wrap)                    :: WRAP
-!    type (ESMF_Bundle)                  :: BUNDLE
-!    integer                             :: DoBio
 
 ! Begin
 !------
@@ -830,12 +828,6 @@ module GEOS_OceanbiogeochemGridCompMod
 !----------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-
-! Initialize Full Ocean biology, Get DEBUG parameter from configuration
-!----------------------------------------------------------------------
-
-!    call MAPL_GetResource( MAPL, DoBio, 'UseFullBiology:', DEFAULT=0, RC=STATUS )
-!    call MAPL_GetResource( MAPL, DEBUG, 'OBIO_DEBUG:',     DEFAULT=0, RC=STATUS )
 
 ! Start Total timer
 !------------------
