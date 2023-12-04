@@ -1179,13 +1179,6 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'FSWBAND  ', 'FSWBANDNA'/),               &
-         SRC_ID      = RAD,                                        &
-         DST_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                    &

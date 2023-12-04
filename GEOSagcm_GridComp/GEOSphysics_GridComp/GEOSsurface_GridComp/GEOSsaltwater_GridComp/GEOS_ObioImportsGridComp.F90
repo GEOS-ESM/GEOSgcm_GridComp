@@ -173,24 +173,6 @@ module GEOS_ObioImportsGridCompMod
            VLOCATION          = MAPL_VLocationNone                ,&
            _RC  ) 
 
-
-!      call MAPL_AddExportSpec(GC,                    &
-!           SHORT_NAME         = 'FSWBAND'                         ,                   &
-!           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-!           UNITS              = 'W m-2'                           ,&
-!           DIMS               = MAPL_DimsTileOnly                 ,&
-!           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-!           VLOCATION          = MAPL_VLocationNone                ,&
-!           _RC  ) 
-
-!      call MAPL_AddExportSpec(GC,                    &
-!           SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-!           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-!           UNITS              = 'W m-2'                           ,&
-!           DIMS               = MAPL_DimsTileOnly                 ,&
-!           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-!           VLOCATION          = MAPL_VLocationNone                ,&
-!           _RC  ) 
     endif 
 
 ! Following OBIO related imports are
@@ -298,25 +280,6 @@ module GEOS_ObioImportsGridCompMod
           RESTART            = MAPL_RestartSkip                  ,&
           _RC  ) 
 
-!     call MAPL_AddImportSpec(GC,                    &
-!          SHORT_NAME         = 'FSWBAND'                         ,                   &
-!          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-!          UNITS              = 'W m-2'                           ,&
-!          DIMS               = MAPL_DimsTileOnly                 ,&
-!          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-!          VLOCATION          = MAPL_VLocationNone                ,&
-!          RESTART            = MAPL_RestartSkip                  ,&
-!          _RC  ) 
-
-!     call MAPL_AddImportSpec(GC,                    &
-!          SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-!          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-!          UNITS              = 'W m-2'                           ,&
-!          DIMS               = MAPL_DimsTileOnly                 ,&
-!          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-!          VLOCATION          = MAPL_VLocationNone                ,&
-!          RESTART            = MAPL_RestartSkip                  ,&
-!          _RC  ) 
     endif 
 
 ! Set the Profiling timers
@@ -512,8 +475,6 @@ contains
    real, pointer, dimension(:,:)  :: OCWTEX      => null()
    real, pointer, dimension(:,:)  :: DRBANDEX    => null()
    real, pointer, dimension(:,:)  :: DFBANDEX    => null()
-   real, pointer, dimension(:,:)  :: FSWBANDEX   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNAEX => null()
 
 ! pointers to import
    real, pointer, dimension(:)    :: CO2SC     => null()
@@ -526,8 +487,6 @@ contains
    real, pointer, dimension(:,:)  :: OCWT      => null()
    real, pointer, dimension(:,:)  :: DRBAND    => null()
    real, pointer, dimension(:,:)  :: DFBAND    => null()
-   real, pointer, dimension(:,:)  :: FSWBAND   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNA => null()
 
 !  Begin...
 !----------
@@ -548,8 +507,6 @@ contains
       call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    _RC)
       call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    _RC)
       call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    _RC)
-!      call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND',    _RC)
-!      call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', _RC)
     endif
 ! Pointers to outputs
 !--------------------
@@ -565,8 +522,6 @@ contains
       call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    _RC)
       call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    _RC)
       call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    _RC)
-!      call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND' ,    _RC)
-!      call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   _RC)
     endif
 
     if  (  associated(CO2SCEX)      )  CO2SCEX      =  CO2SC
@@ -580,8 +535,6 @@ contains
       if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
       if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
       if  (  associated(OCWTEX)       )  OCWTEX       =  OCWT
-!      if  (  associated(FSWBANDEX)    )  FSWBANDEX    =  FSWBAND
-!      if  (  associated(FSWBANDNAEX)  )  FSWBANDNAEX  =  FSWBANDNA
     endif
 !  All done
 !-----------

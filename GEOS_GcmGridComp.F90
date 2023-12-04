@@ -1,4 +1,5 @@
-! $Id: GEOS_GcmGridComp.F90,v 1.30.2.1.4.4.2.2.2.1.2.11.6.1.4.1.2.1.2.1.14.2 2019/12/18 20:23:25 ltakacs Exp $
+
+ $Id: GEOS_GcmGridComp.F90,v 1.30.2.1.4.4.2.2.2.1.2.11.6.1.4.1.2.1.2.1.14.2 2019/12/18 20:23:25 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -725,11 +726,6 @@ contains
                RC=STATUS  )
           VERIFY_(STATUS)
 
-!          call MAPL_TerminateImport    ( GC,                         &
-!               SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),            &
-!               CHILD      = OGCM,                                    &
-!               RC=STATUS  )
-!          VERIFY_(STATUS)
         end if
 
         RETURN_(ESMF_SUCCESS)
@@ -1493,10 +1489,6 @@ contains
              RC=STATUS )
         VERIFY_(STATUS)
 
-!        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-!             (/'FSWBAND  ', 'FSWBANDNA'/),               &
-!             RC=STATUS )
-!        VERIFY_(STATUS)
      endif
 
      RETURN_(ESMF_SUCCESS)
@@ -2223,10 +2215,6 @@ contains
        call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
        VERIFY_(STATUS)
 
-!       call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
-!       VERIFY_(STATUS)
-!       call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
-!       VERIFY_(STATUS)
      endif
 
      RETURN_(ESMF_SUCCESS)
