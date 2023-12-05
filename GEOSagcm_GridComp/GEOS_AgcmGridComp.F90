@@ -1558,6 +1558,10 @@ contains
    real, allocatable, target :: zero(:,:,:)
 !   real, pointer :: zero(:,:,:) => null()
 
+!CAK: chemistry family verbose statement
+   integer, save :: verbflag = -999
+   logical, save :: FamChemVerb = .true.
+
 !=============================================================================
 
 ! Begin... 
@@ -2386,7 +2390,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 !-------------------------------------
     call Compute_IncBundle(GEX(PHYS), EXPORT, DYNinc, STATE, __RC__)
 
-    call Unpack_Chem_Groups( GEX(PHYS), PLE, AREA )  ! Finish transporting chemical families
+    ! check for verbose flag if not yet done so
+    if ( verbflag == -999 ) then
+       call MAPL_GetResource( STATE, verbflag, Label="FAM_CHEM_VERBOSE:", default=1, RC=STATUS); VERIFY_(STATUS)
+       FamChemVerb = ( verbflag == 1 )
+    endif
+    call Unpack_Chem_Groups( GEX(PHYS), PLE, AREA, verbose=FamChemVerb )  ! Finish transporting chemical families
 
 !   call SYSTEM_CLOCK(START_TIME)
     call MAPL_TimerOn (STATE,"PHYSICS"  )
