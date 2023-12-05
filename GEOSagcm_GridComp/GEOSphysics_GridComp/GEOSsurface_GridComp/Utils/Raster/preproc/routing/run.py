@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-input_path = "/discover/nobackup/yzeng3/work/outlets/inputs"
+input_path = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing"
 baselib = "/discover/swdev/gmao_SIteam/Baselibs/ESMA-Baselibs-7.8.1/x86_64-pc-linux-gnu/ifort_2021.6.0-intelmpi_2021.6.0/Linux"
 
 # Remove files and directories
