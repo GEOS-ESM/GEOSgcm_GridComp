@@ -13,8 +13,6 @@ module GEOS_SeaIceGridCompMod
   use MAPL
 #ifdef BUILD_MIT_OCEAN
   use GEOS_MITDynaGridCompMod,           only : GEOSMITSeaIceSetServices  => SetServices
-#else
-  use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices    => SetServices
 #endif
   use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices     => SetServices
   use ice_prescribed_mod,                only : ice_nudging
@@ -123,12 +121,12 @@ contains
        call MAPL_GetResource ( MAPL, SEAICE_NAME, Label="SEAICE_NAME:", DEFAULT="CICE4", __RC__ )
        select case (trim(SEAICE_NAME))
           case ("CICE4")
-             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOSCICEDyna_GridComp:", DEFAULT="libGEOSCICEDyna_GridComp.so", __RC__ )
+             ICE = MAPL_AddChild(SEAICE_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
           case ("CICE6")
              call MAPL_GetResource ( MAPL, sharedObj,  Label="CICE_GEOSPLUG:", DEFAULT="libCICE_GEOSPlug.so", __RC__ )
              ICE = MAPL_AddChild(SEAICE_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
 
-             !ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE6SeaIceSetServices, __RC__)
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
