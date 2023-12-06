@@ -43,231 +43,231 @@ module GEOS_GF_InterfaceMod
 
 contains
 
-subroutine GF_Setup (GC, CF, RC)
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    type(ESMF_Config),   intent(inout) :: CF
-    integer, optional                  :: RC  ! return code
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
+! subroutine GF_Setup (GC, CF, RC)
+!     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
+!     type(ESMF_Config),   intent(inout) :: CF
+!     integer, optional                  :: RC  ! return code
+!     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
-    IAm = "GEOS_GF_InterfaceMod"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
+!     IAm = "GEOS_GF_InterfaceMod"
+!     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+!     VERIFY_(STATUS)
+!     Iam = trim(COMP_NAME) // Iam
 
-    call ESMF_ConfigGetAttribute( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
-    if (CONVECTION_TRACER == 1) then
-       FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
-    else
-       FRIENDLIES%CNV_TR   = trim(COMP_NAME)
-    endif
-    call MAPL_AddInternalSpec(GC,                                  &
-         SHORT_NAME ='CNV_TR',                                     &
-         LONG_NAME  ='convection_tracer',                          &
-         UNITS      ='1',                                          &
-         FRIENDLYTO = trim(FRIENDLIES%CNV_TR),                     &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RESTART    = MAPL_RestartSkip,                            &
-         DEFAULT    = 0.0,   RC=STATUS  )
-         VERIFY_(STATUS)
+!     call ESMF_ConfigGetAttribute( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
+!     if (CONVECTION_TRACER == 1) then
+!        FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
+!     else
+!        FRIENDLIES%CNV_TR   = trim(COMP_NAME)
+!     endif
+!     call MAPL_AddInternalSpec(GC,                                  &
+!          SHORT_NAME ='CNV_TR',                                     &
+!          LONG_NAME  ='convection_tracer',                          &
+!          UNITS      ='1',                                          &
+!          FRIENDLYTO = trim(FRIENDLIES%CNV_TR),                     &
+!          DIMS       = MAPL_DimsHorzVert,                           &
+!          VLOCATION  = MAPL_VLocationCenter,                        &
+!          RESTART    = MAPL_RestartSkip,                            &
+!          DEFAULT    = 0.0,   RC=STATUS  )
+!          VERIFY_(STATUS)
 
-    call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
-    VERIFY_(STATUS)
+!     call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
+!     VERIFY_(STATUS)
 
-end subroutine GF_Setup
+! end subroutine GF_Setup
 
-subroutine GF_Initialize (MAPL, CLOCK, RC)
-    type (MAPL_MetaComp), intent(inout) :: MAPL
-    type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional                   :: RC  ! return code
-    integer :: LM
-    type (ESMF_Alarm   )            :: ALARM
-    type (ESMF_TimeInterval)        :: TINT
-    real(ESMF_KIND_R8)              :: DT_R8
-    real                            :: MOIST_DT
-    real                            :: GF_DT
+! subroutine GF_Initialize (MAPL, CLOCK, RC)
+!     type (MAPL_MetaComp), intent(inout) :: MAPL
+!     type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+!     integer, optional                   :: RC  ! return code
+!     integer :: LM
+!     type (ESMF_Alarm   )            :: ALARM
+!     type (ESMF_TimeInterval)        :: TINT
+!     real(ESMF_KIND_R8)              :: DT_R8
+!     real                            :: MOIST_DT
+!     real                            :: GF_DT
 
-    type(ESMF_Calendar)     :: calendar
-    type(ESMF_Time)         :: currentTime
-    type(ESMF_Alarm)        :: GF_RunAlarm
-    type(ESMF_Time)         :: ringTime
-    type(ESMF_TimeInterval) :: ringInterval
-    integer                 :: year, month, day, hh, mm, ss
+!     type(ESMF_Calendar)     :: calendar
+!     type(ESMF_Time)         :: currentTime
+!     type(ESMF_Alarm)        :: GF_RunAlarm
+!     type(ESMF_Time)         :: ringTime
+!     type(ESMF_TimeInterval) :: ringInterval
+!     integer                 :: year, month, day, hh, mm, ss
 
-    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
-    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)           
-    MOIST_DT = DT_R8
-    call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
+!     call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)           
+!     MOIST_DT = DT_R8
+!     call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
 
-    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
     
-    GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
-                                   Name         = 'GF_RunAlarm',&
-                                   RingInterval = ringInterval, &
-                                   RingTime     = currentTime,  &
-                                   Enabled      = .true.   ,    &
-                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+!     GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
+!                                    Name         = 'GF_RunAlarm',&
+!                                    RingInterval = ringInterval, &
+!                                    RingTime     = currentTime,  &
+!                                    Enabled      = .true.   ,    &
+!                                    Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
 
-    if (LM .eq. 72) then
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-    else
-      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-    endif
-    IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 2.e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP         , 'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN         , 'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, OUTPUT_SOUND              , 'OUTPUT_SOUND:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_MEMORY                , 'USE_MEMORY:'            ,default=-1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_OCEA_CP               , 'TAU_OCEA_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_LAND_CP               , 'TAU_LAND_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_FLUX_FORM             , 'USE_FLUX_FORM:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_EVAP           , 'USE_TRACER_EVAP:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, APPLY_SUB_MP              , 'APPLY_SUB_MP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_CLOUD_DISSIPATION     , 'USE_CLOUD_DISSIPATION:' ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= -1.e6, RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
-      if (AUTOCONV == 1) then 
-         call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      else        
-         call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-      endif
-      call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.,    RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-    ELSE
-      ! Inititialize parameters of convection scheme GF (circa 2019)
-      call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, icumulus_gf(shal)   ,'SHALLOW:'          ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, icumulus_gf(mid)    ,'CONGESTUS:'        ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, closure_choice(deep),'CLOSURE_DEEP:'     ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, closure_choice(shal),'CLOSURE_SHALLOW:'  ,default= 7 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, closure_choice(mid) ,'CLOSURE_CONGESTUS:',default= 3 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP) ,'ENTR_DP:'          ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL) ,'ENTR_SH:'          ,default= 1.4e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)  ,'ENTR_MD:'          ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C1                  ,'C1:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, DICYCLE             ,'DICYCLE:'          ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, STOCHASTIC_CNV      ,'STOCHASTIC_CNV:'   ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_MIN_AREA         ,'GF_MIN_AREA:'      ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_DEEP            ,'TAU_DEEP:'         ,default= 5400.0, RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, TAU_MID             ,'TAU_MID:'          ,default= 3600.0, RC=STATUS ); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_FLUX_FORM       ,'USE_FLUX_FORM:'    ,default= 1 , RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_FCT             ,'USE_FCT:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, USE_TRACER_EVAP     ,'USE_TRACER_EVAP:'  ,default= 1 , RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, ALP1                ,'ALP1:'             ,default= 1., RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, BC_METH             ,'BC_METH:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_DEEP             ,'C0_DEEP:'          ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_MID              ,'C0_MID:'           ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, C0_SHAL             ,'C0_SHAL:'          ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
-    ENDIF
+!     if (LM .eq. 72) then
+!       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!     else
+!       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!     endif
+!     IF (USE_GF2020==1) THEN
+!       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.e-4,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 2.e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.e-4,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_TRANSP         , 'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN         , 'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, OUTPUT_SOUND              , 'OUTPUT_SOUND:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_MEMORY                , 'USE_MEMORY:'            ,default=-1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_OCEA_CP               , 'TAU_OCEA_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_LAND_CP               , 'TAU_LAND_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_FLUX_FORM             , 'USE_FLUX_FORM:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_EVAP           , 'USE_TRACER_EVAP:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, APPLY_SUB_MP              , 'APPLY_SUB_MP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_CLOUD_DISSIPATION     , 'USE_CLOUD_DISSIPATION:' ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= -1.e6, RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL ,MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL ,USE_SMOOTH_PROF           , 'USE_SMOOTH_PROF:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
+!       if (AUTOCONV == 1) then 
+!          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 0.    ,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+!       else        
+!          call MAPL_GetResource(MAPL, C0_DEEP                , 'C0_DEEP:'               ,default= 1.5e-3,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, C0_MID                 , 'C0_MID:'                ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, C0_SHAL                , 'C0_SHAL:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+!          call MAPL_GetResource(MAPL, QRC_CRIT               , 'QRC_CRIT:'              ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+!       endif
+!       call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.,    RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+!     ELSE
+!       ! Inititialize parameters of convection scheme GF (circa 2019)
+!       call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, icumulus_gf(shal)   ,'SHALLOW:'          ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, icumulus_gf(mid)    ,'CONGESTUS:'        ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, closure_choice(deep),'CLOSURE_DEEP:'     ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, closure_choice(shal),'CLOSURE_SHALLOW:'  ,default= 7 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, closure_choice(mid) ,'CLOSURE_CONGESTUS:',default= 3 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP) ,'ENTR_DP:'          ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL) ,'ENTR_SH:'          ,default= 1.4e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)  ,'ENTR_MD:'          ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, C1                  ,'C1:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, DICYCLE             ,'DICYCLE:'          ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, STOCHASTIC_CNV      ,'STOCHASTIC_CNV:'   ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, GF_MIN_AREA         ,'GF_MIN_AREA:'      ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_DEEP            ,'TAU_DEEP:'         ,default= 5400.0, RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, TAU_MID             ,'TAU_MID:'          ,default= 3600.0, RC=STATUS ); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_FLUX_FORM       ,'USE_FLUX_FORM:'    ,default= 1 , RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_FCT             ,'USE_FCT:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, USE_TRACER_EVAP     ,'USE_TRACER_EVAP:'  ,default= 1 , RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, ALP1                ,'ALP1:'             ,default= 1., RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, BC_METH             ,'BC_METH:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, C0_DEEP             ,'C0_DEEP:'          ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, C0_MID              ,'C0_MID:'           ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, C0_SHAL             ,'C0_SHAL:'          ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
+!       call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+!     ENDIF
  
-end subroutine GF_Initialize
+! end subroutine GF_Initialize
 
 
-subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-    integer, optional,   intent(  out) :: RC     ! Error code:
+subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
+   !  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+   !  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+   !  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+   !  type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+   !  integer, optional,   intent(  out) :: RC     ! Error code:
 
     ! Local derived type aliases
 
-    type (MAPL_MetaComp), pointer   :: MAPL
-    type (ESMF_Config  )            :: CF
-    type (ESMF_State   )            :: INTERNAL
-    type (ESMF_TimeInterval)        :: TINT
+   !  type (MAPL_MetaComp), pointer   :: MAPL
+   !  type (ESMF_Config  )            :: CF
+   !  type (ESMF_State   )            :: INTERNAL
+   !  type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
     real                            :: GF_DT
-    type(ESMF_Alarm)                :: alarm
-    logical                         :: alarm_is_ringing
+   !  type(ESMF_Alarm)                :: alarm
+   !  logical                         :: alarm_is_ringing
 
     ! Local variables
     integer                         :: I, J, L
@@ -323,36 +323,36 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
-    call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
-    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+!     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
 
-    if (alarm_is_ringing) then
+!     if (alarm_is_ringing) then
 
-!!! call WRITE_PARALLEL('GF is Running')
-    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-    GF_DT = DT_R8
+! !!! call WRITE_PARALLEL('GF is Running')
+!     call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+!     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+!     GF_DT = DT_R8
 
-    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
+!     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
-    ! Get my internal MAPL_Generic state
-    !-----------------------------------
+!     ! Get my internal MAPL_Generic state
+!     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
+!     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_TimerOn (MAPL,"--GF")
+!     call MAPL_TimerOn (MAPL,"--GF")
 
-    ! Get parameters from generic state.
-    !-----------------------------------
+!     ! Get parameters from generic state.
+!     !-----------------------------------
 
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         CF       = CF,                &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         RC=STATUS )
-    VERIFY_(STATUS)
+!     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+!          CF       = CF,                &
+!          LONS     = LONS,              &
+!          LATS     = LATS,              &
+!          INTERNAL_ESMF_STATE=INTERNAL, &
+!          RC=STATUS )
+!     VERIFY_(STATUS)
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -394,6 +394,547 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, RADSW     ,'RADSW'     ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
+
+    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ICUMULUS_GF(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ICUMULUS_GF(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ICUMULUS_GF(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLOSURE_CHOICE(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLOSURE_CHOICE(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLOSURE_CHOICE(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_ENTR_RATE(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_ENTR_RATE(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_ENTR_RATE(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_FADJ_MASSFLX(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_FADJ_MASSFLX(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_FADJ_MASSFLX(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_TRACER_TRANSP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_SCAVEN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_TRACER_SCAVEN
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_SCALE_DEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_SCALE_DEP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_MOMENTUM_TRANSP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/DICYCLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DICYCLE
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) OUTPUT_SOUND
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_MEMORY
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/TAU_OCEA_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) TAU_OCEA_CP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/TAU_LAND_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) TAU_LAND_CP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DOWNDRAFT
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_FLUX_FORM_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_FLUX_FORM
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_TRACER_EVAP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) APPLY_SUB_MP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/ALP1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ALP1
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) LIGHTNING_DIAG
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) OVERSHOOT
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_WETBULB
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) LAMBAU_SHDN
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) MAX_TQ_TEND
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_CLOUD_DISSIPATION_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_CLOUD_DISSIPATION
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_SMOOTH_TEND
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/BETA_SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) BETA_SH
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_LINEAR_SUBCL_MF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_LINEAR_SUBCL_MF
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CAP_MAXS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CAP_MAXS
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ZERO_DIFF
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/GF_ENV_SETTING_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) GF_ENV_SETTING
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/STOCH_TOP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) STOCH_TOP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/STOCH_BOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) STOCH_BOT
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/STOCHASTIC_CNV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) STOCHASTIC_CNV
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/GF_MIN_AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) GF_MIN_AREA
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/TAU_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) TAU_MID
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/TAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) TAU_DEEP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLEV_GRID
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) VERT_DISCR
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_FCT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_FCT
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SATUR_CALC
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/BC_METH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) BC_METH
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_REBCB
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) AUTOCONV
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) LAMBAU_DEEP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) MOIST_TRIGGER
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SGS_W_TIMESCALE
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) FRAC_MODIS
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) USE_SMOOTH_PROF
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) EVAP_FIX
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ADV_TRIGGER
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_AVE_LAYER(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_AVE_LAYER(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_AVE_LAYER(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_USE_EXCESS(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_USE_EXCESS(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_USE_EXCESS(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/C0_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) C0_DEEP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/C0_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) C0_MID
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/C0_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) C0_SHAL
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/QRC_CRIT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QRC_CRIT
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/C1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) C1
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_LAND(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_LAND(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_LAND(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_OCEAN(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_OCEAN(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_DOWN_OCEAN(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_LAND(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_LAND(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_LAND(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_OCEAN(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_OCEAN(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_HEI_UPDF_OCEAN(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_LAND(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_LAND(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_LAND(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_OCEAN(DEEP)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_OCEAN(SHAL)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CUM_MAX_EDT_OCEAN(MID)
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/SCLM_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SCLM_DEEP
+    close(fileID)
+     
+    open(newunit=fileID, file=trim(dirName) // '/FIX_CNV_CLOUD_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) FIX_CNV_CLOUD
+    close(fileID)
+
+    allocate(Q(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) Q
+    close(fileID)
+     
+    allocate(QLLS(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/QLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QLLS
+    close(fileID)
+     
+    allocate(QLCN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/QLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QLCN
+    close(fileID)
+     
+    allocate(CLLS(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/CLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLLS
+    close(fileID)
+     
+    allocate(CLCN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/CLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CLCN
+    close(fileID)
+     
+    allocate(QILS(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/QILS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QILS
+    close(fileID)
+   
+    allocate(QICN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/QICN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QICN
+    close(fileID)
+     
+    allocate(CNV_TR(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/CNV_TR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) CNV_TR
+    close(fileID)
+     
+    allocate(ZLE(IM, JM, 0:LM))
+    open(newunit=fileID, file=trim(dirName) // '/ZLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) ZLE
+    close(fileID)
+     
+    allocate(PLE(IM, JM, 0:LM))
+    open(newunit=fileID, file=trim(dirName) // '/PLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) PLE
+    close(fileID)
+     
+    allocate(T(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/T_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) T
+    close(fileID)
+     
+    allocate(U(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/U_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) U
+    close(fileID)
+     
+    allocate(V(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/V_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) V
+    close(fileID)
+     
+    allocate(W(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/W_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) W
+    close(fileID)
+     
+    allocate(KH(IM, JM, 0:LM))
+    open(newunit=fileID, file=trim(dirName) // '/KH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) KH
+    close(fileID)
+
+    allocate(SH(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) SH
+    close(fileID)
+
+    allocate(EVAP(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) EVAP
+    close(fileID)
+     
+    allocate(T2M(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/T2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) T2M
+    close(fileID)
+
+    allocate(Q2M(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/Q2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) Q2M
+    close(fileID)
+
+    allocate(TA(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/TA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) TA
+    close(fileID)
+
+    allocate(QA(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/QA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QA
+    close(fileID)
+
+    allocate(PHIS(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/PHIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) PHIS
+    close(fileID)
+
+    allocate(OMEGA(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/OMEGA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) OMEGA
+    close(fileID)
+     
+    allocate(FRLAND(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/FRLAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) FRLAND
+    close(fileID)
+     
+    allocate(AREA(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) AREA
+    close(fileID)
+     
+    allocate(DQVDTDYN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/DQVDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DQVDTDYN
+    close(fileID)
+
+    allocate(DTDTDYN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/DTDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DTDTDYN
+    close(fileID)
+     
+    allocate(QV_DYN_IN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/QV_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) QV_DYN_IN
+    close(fileID)
+     
+    allocate(U_DYN_IN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/U_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) U_DYN_IN
+    close(fileID)
+     
+    allocate(V_DYN_IN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/V_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) V_DYN_IN
+    close(fileID)
+     
+    allocate(T_DYN_IN(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/T_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) T_DYN_IN
+    close(fileID)
+     
+    allocate(PLE_DYN_IN(IM, JM, 0:LM))
+    open(newunit=fileID, file=trim(dirName) // '/PLE_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) PLE_DYN_IN
+    close(fileID)
+     
+    allocate(DTDT_BL(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/DTDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DTDT_BL
+    close(fileID)
+     
+    allocate(DQDT_BL(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/DQDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) DQDT_BL
+    close(fileID)
+     
+    allocate(KPBL(IM, JM))
+    open(newunit=fileID, file=trim(dirName) // '/KPBL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) KPBL
+    close(fileID)
+     
+    allocate(RADSW(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/RADSW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) RADSW
+    close(fileID)
+     
+    allocate(RADLW(IM, JM, LM))
+    open(newunit=fileID, file=trim(dirName) // '/RADLW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+    read(fileID) RADLW
+    close(fileID)
 
     ! Allocatables
      ! Edge variables 
@@ -616,7 +1157,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call MAPL_TimerOff (MAPL,"--GF")
 
-    endif
+   !  endif
 
 end subroutine GF_Run
 
