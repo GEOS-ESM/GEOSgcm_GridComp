@@ -622,7 +622,7 @@ subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
 
 integer,intent(in)              :: nt,nlon,nlat
 integer,intent(in)              :: t2loni(nt),t2lati(nt)
-character(len=*)                :: res_MAPL
+character(len=*),intent(in)     :: res_MAPL
 integer,intent(out)             :: msk_tile(nt)
 
 real,allocatable,dimension(:,:) :: msk_MAPL
@@ -631,7 +631,7 @@ integer                         :: i
 !print *,"running mask_MAPL_1d() ..."
 
 allocate(msk_MAPL(nlon,nlat))
-call read_oceanModel_mapl("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ocean/MOM6/"//trim(res_MAPL)//"/MAPL_Tripolar.nc",msk_MAPL,nlon,nlat)
+call read_oceanModel_mapl(res_MAPL,msk_MAPL,nlon,nlat)
 
 do i=1,nt
   msk_tile(i)=int(msk_MAPL(t2loni(i),t2lati(i)))
@@ -641,18 +641,22 @@ deallocate(msk_MAPL)
 
 end subroutine mask_MAPL_1d
 !------------------------------------------------------------------------
-  subroutine read_oceanModel_mapl(mask_file,wetMask,nx,ny)
+  subroutine read_oceanModel_mapl(res_MAPL,wetMask,nx,ny)
   implicit none
-  character(len=*),    intent(in)  :: mask_file
+  character(len=*),    intent(in)  :: res_MAPL
   integer,intent(in)               :: nx, ny
   real                             :: wetMask(nx,ny)
 
-  integer                          :: ncid, varid
+  integer                          :: ncid, varid, ret
   character(len=4)                 :: subname="read"
 
   !print *, "Reading ocean model mask from : ", mask_file
 
-  call check_ret(nf90_open(mask_file,0,ncid),subname)
+
+  ret=nf90_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ocean/MOM6/"//trim(res_MAPL)//"/MAPL_Tripolar.nc",0,ncid)
+  if(ret /= NF_NOERR)then
+    call check_ret(nf90_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/ocean/MOM5/"//trim(res_MAPL)//"/MAPL_Tripolar.nc",0,ncid),subname)
+  endif
   call check_ret(nf90_inq_varid(ncid,"mask",varid),subname)
   call check_ret(nf90_get_var(ncid,varid,wetMask),subname)
   call check_ret(nf90_close(ncid), subname)    
@@ -664,7 +668,7 @@ end subroutine mask_MAPL_1d
     integer, intent(in) :: ret
     character(len=*)    :: calling
 
-    if (ret /= NF_NOERR) then !Èç¹û´ò¿ªncÎÄ¼þ³ö´í£¬ÔòÌáÊ¾³ö´íÐÅÏ¢
+    if (ret /= NF_NOERR) then 
        write(6,*)'netcdf error from ',trim(calling)
        call endrun(nf_strerror(ret))
     end if
