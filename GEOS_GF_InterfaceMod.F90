@@ -252,7 +252,7 @@ contains
 ! end subroutine GF_Initialize
 
 
-subroutine GF_Run (IM, JM, LM)!(GC, IMPORT, EXPORT, CLOCK, RC)
+subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC)
    !  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
    !  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
    !  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
@@ -270,8 +270,11 @@ subroutine GF_Run (IM, JM, LM)!(GC, IMPORT, EXPORT, CLOCK, RC)
    !  type(ESMF_Alarm)                :: alarm
    !  logical                         :: alarm_is_ringing
 
+   character(len=20), intent(in) :: dirName
+   character(len=20), intent(in) :: rank_str
+
     ! Local variables
-    integer                         :: I, J, L
+    integer                         :: I, J, L, fileID
     integer, intent(in)                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS

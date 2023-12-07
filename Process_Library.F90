@@ -78,6 +78,9 @@ module GEOSmoist_Process_Library
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
 
+  ! Added from Base_Base.F90
+  real,    public, parameter :: MAPL_UNDEF              = 1.0e15
+
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 

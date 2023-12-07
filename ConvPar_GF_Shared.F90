@@ -2,7 +2,7 @@ MODULE ConvPar_GF_SharedParams
 
    !  USE MAPL
     USE GEOSmoist_Process_Library, only : CNV_Tracers 
-    
+    Use MAPL_Constants
      IMPLICIT NONE
     
      !- plume spectral size
