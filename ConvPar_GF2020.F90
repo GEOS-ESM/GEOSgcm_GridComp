@@ -352,6 +352,8 @@ MODULE ConvPar_GF2020
         INTEGER, PARAMETER :: itest=1!3
         REAL :: RL, RI, disp_factor,x1,x2
         INTEGER :: mtp
+
+      print*, "In GF2020_Interface"
     
        CNV_MFC = 0.0
        CNV_MF0 = 0.0

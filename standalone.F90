@@ -21,9 +21,7 @@ program test_moist_subroutines
     JM = 180
     LM = 72
 
-       
-    ! if (trim(dirName(12:38)) == 'gfdl_cloud_microphys_driver' .or. trim(dirName(13:39)) == 'gfdl_cloud_microphys_driver') then
-        call GF_Run(IM, JM, LM, dirName, rank_str)
-    ! endif
+    ! Note : GF_Run parameters have been edited from original
+    call GF_Run(IM, JM, LM, dirName, rank_str)
 
 end program

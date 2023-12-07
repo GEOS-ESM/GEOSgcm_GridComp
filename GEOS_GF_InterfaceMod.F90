@@ -270,7 +270,7 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    !  type(ESMF_Alarm)                :: alarm
    !  logical                         :: alarm_is_ringing
 
-   character(len=20), intent(in) :: dirName
+   character(len=100), intent(in) :: dirName
    character(len=20), intent(in) :: rank_str
 
     ! Local variables
@@ -330,6 +330,8 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
     ! CK : Extra variables
    integer :: CNV_tracer_size
    character(2) :: n_str
+
+   print*,'In GF_RUN'
 
 !     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
 !     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -403,18 +405,22 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    !  call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,RC=STATUS); VERIFY_(STATUS)
    !  call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
 
+   open(newunit=fileID, file=trim(dirName) // '/USE_GF2020_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_GF2020
+   close(fileID)
+
    open(newunit=fileID, file=trim(dirName) // '/GF_DT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
    read(fileID) GF_DT
    close(fileID)
 
-   open(newunit=fileID, file=trim(dirName) // '/LONS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
    allocate(LONS(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/LONS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
    read(fileID) LONS
    close(fileID)
 
+   allocate(LATS(IM, JM))
    open(newunit=fileID, file=trim(dirName) // '/LATS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
    read(fileID) LATS
-   allocate(LATS(IM, JM))
    close(fileID)
 
    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
