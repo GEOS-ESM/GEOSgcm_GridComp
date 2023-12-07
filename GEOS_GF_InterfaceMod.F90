@@ -1182,25 +1182,25 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
                                  ,TPWI, TPWI_star, LFR_GF                           &
                                  ,VAR3d_a, VAR3d_b, VAR3d_c, VAR3d_d, CNV_TR)
     ELSE
-         !- call GF/GEOS5 interface routine
-         ! PLE and PL are passed in Pq
-         call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,GF_DT                       &
-                                 ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA               &
-                                 ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
-                                 ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT,ENTLAM      &
-                                 ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &
-                                 ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
-                                 ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, TMP2D, T2M, Q2M      &
-                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &  
-                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
-                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
-                                 ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
-                                 ,MUPDP,MUPSH,MUPMD                                 &
-                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
-                                 ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
-                                 ,DTDTDYN,DQVDTDYN                                  &
-                                 ,REVSU, PRFIL)
+         ! !- call GF/GEOS5 interface routine
+         ! ! PLE and PL are passed in Pq
+         ! call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,GF_DT                       &
+         !                         ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA               &
+         !                         ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
+         !                         ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT,ENTLAM      &
+         !                         ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &
+         !                         ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
+         !                         ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
+         !                         ,FRLAND, TMP2D, T2M, Q2M      &
+         !                         ,TA ,QA ,SH ,EVAP ,PHIS                            &  
+         !                         ,KPBL ,CNV_FRC, SRF_TYPE                           &
+         !                         ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
+         !                         ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
+         !                         ,MUPDP,MUPSH,MUPMD                                 &
+         !                         ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
+         !                         ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
+         !                         ,DTDTDYN,DQVDTDYN                                  &
+         !                         ,REVSU, PRFIL)
     ENDIF
 
     ! add tendencies to the moist import state

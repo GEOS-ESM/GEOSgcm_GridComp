@@ -1,6 +1,6 @@
 program test_moist_subroutines
 
-    use test_gf_run
+    use GEOS_GF_InterfaceMod
 
     implicit none
 
@@ -23,7 +23,7 @@ program test_moist_subroutines
 
        
     ! if (trim(dirName(12:38)) == 'gfdl_cloud_microphys_driver' .or. trim(dirName(13:39)) == 'gfdl_cloud_microphys_driver') then
-        call test_gf_run(IM, JM, LM, dirName, rank_str)
+        call GF_Run(IM, JM, LM, dirName, rank_str)
     ! endif
 
 end program
