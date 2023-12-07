@@ -39,7 +39,8 @@ module GEOS_GF_InterfaceMod
   real    :: GF_MIN_AREA
   logical :: FIX_CNV_CLOUD
 
-  public :: GF_Setup, GF_Initialize, GF_Run
+!   public :: GF_Setup, GF_Initialize, GF_Run
+  public :: GF_Run
 
 contains
 
@@ -251,7 +252,7 @@ contains
 ! end subroutine GF_Initialize
 
 
-subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
+subroutine GF_Run (IM, JM, LM)!(GC, IMPORT, EXPORT, CLOCK, RC)
    !  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
    !  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
    !  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
@@ -264,14 +265,14 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
    !  type (ESMF_Config  )            :: CF
    !  type (ESMF_State   )            :: INTERNAL
    !  type (ESMF_TimeInterval)        :: TINT
-    real(ESMF_KIND_R8)              :: DT_R8
+   !  real(ESMF_KIND_R8)              :: DT_R8
     real                            :: GF_DT
    !  type(ESMF_Alarm)                :: alarm
    !  logical                         :: alarm_is_ringing
 
     ! Local variables
     integer                         :: I, J, L
-    integer                         :: IM,JM,LM
+    integer, intent(in)                         :: IM,JM,LM
     real, pointer, dimension(:,:)   :: LONS
     real, pointer, dimension(:,:)   :: LATS
     real                            :: minrhx
@@ -323,6 +324,10 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
+    ! CK : Extra variables
+   integer :: CNV_tracer_size
+   character(2) :: n_str
+
 !     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
 !     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
 
@@ -332,7 +337,7 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
 !     call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
 !     call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
 !     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
-!     GF_DT = DT_R8
+!       GF_DT = DT_R8
 
 !     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
 
@@ -354,587 +359,601 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
 !          RC=STATUS )
 !     VERIFY_(STATUS)
 
-    ! Internals
-    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
+   !  ! Internals
+   !  call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
 
-    ! Imports
-    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, W         ,'W'         ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, OMEGA     ,'OMEGA'     ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, KH        ,'KH'        ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, T2M       ,'T2M'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, Q2M       ,'Q2M'       ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, TA        ,'TA'        ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, QA        ,'QA'        ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PHIS      ,'PHIS'      ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DQVDTDYN  ,'DQVDTDYN'  ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DTDTDYN   ,'DTDTDYN'   ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, QV_DYN_IN ,'QV_DYN_IN' ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, U_DYN_IN  ,'U_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, V_DYN_IN  ,'V_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, T_DYN_IN  ,'T_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DTDT_BL   ,'DTDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DQDT_BL   ,'DQDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RADSW     ,'RADSW'     ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
+   !  ! Imports
+   !  call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, W         ,'W'         ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, OMEGA     ,'OMEGA'     ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, KH        ,'KH'        ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, T2M       ,'T2M'       ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, Q2M       ,'Q2M'       ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, TA        ,'TA'        ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, QA        ,'QA'        ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, PHIS      ,'PHIS'      ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, DQVDTDYN  ,'DQVDTDYN'  ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, DTDTDYN   ,'DTDTDYN'   ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, QV_DYN_IN ,'QV_DYN_IN' ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, U_DYN_IN  ,'U_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, V_DYN_IN  ,'V_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, T_DYN_IN  ,'T_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, DTDT_BL   ,'DTDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, DQDT_BL   ,'DQDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, RADSW     ,'RADSW'     ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
 
-    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ICUMULUS_GF(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ICUMULUS_GF(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ICUMULUS_GF(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLOSURE_CHOICE(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLOSURE_CHOICE(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLOSURE_CHOICE(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_ENTR_RATE(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_ENTR_RATE(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_ENTR_RATE(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_FADJ_MASSFLX(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_FADJ_MASSFLX(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_FADJ_MASSFLX(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_TRACER_TRANSP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_SCAVEN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_TRACER_SCAVEN
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_SCALE_DEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_SCALE_DEP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_MOMENTUM_TRANSP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/DICYCLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DICYCLE
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) OUTPUT_SOUND
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_MEMORY
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/TAU_OCEA_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) TAU_OCEA_CP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/TAU_LAND_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) TAU_LAND_CP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DOWNDRAFT
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_FLUX_FORM_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_FLUX_FORM
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_TRACER_EVAP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) APPLY_SUB_MP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/ALP1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ALP1
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) LIGHTNING_DIAG
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) OVERSHOOT
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_WETBULB
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) LAMBAU_SHDN
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) MAX_TQ_TEND
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_CLOUD_DISSIPATION_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_CLOUD_DISSIPATION
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_SMOOTH_TEND
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/BETA_SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) BETA_SH
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_LINEAR_SUBCL_MF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_LINEAR_SUBCL_MF
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CAP_MAXS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CAP_MAXS
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ZERO_DIFF
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/GF_ENV_SETTING_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) GF_ENV_SETTING
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/STOCH_TOP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) STOCH_TOP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/STOCH_BOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) STOCH_BOT
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/STOCHASTIC_CNV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) STOCHASTIC_CNV
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/GF_MIN_AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) GF_MIN_AREA
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/TAU_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) TAU_MID
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/TAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) TAU_DEEP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLEV_GRID
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) VERT_DISCR
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_FCT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_FCT
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) SATUR_CALC
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/BC_METH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) BC_METH
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_REBCB
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) AUTOCONV
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) LAMBAU_DEEP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) MOIST_TRIGGER
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) SGS_W_TIMESCALE
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) FRAC_MODIS
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) USE_SMOOTH_PROF
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) EVAP_FIX
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ADV_TRIGGER
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_AVE_LAYER(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_AVE_LAYER(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_AVE_LAYER(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_USE_EXCESS(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_USE_EXCESS(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_USE_EXCESS(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/C0_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) C0_DEEP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/C0_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) C0_MID
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/C0_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) C0_SHAL
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/QRC_CRIT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QRC_CRIT
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/C1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) C1
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_LAND(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_LAND(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_LAND(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_OCEAN(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_OCEAN(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_DOWN_OCEAN(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_LAND(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_LAND(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_LAND(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_OCEAN(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_OCEAN(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_HEI_UPDF_OCEAN(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_LAND(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_LAND(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_LAND(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_OCEAN(DEEP)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_OCEAN(SHAL)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CUM_MAX_EDT_OCEAN(MID)
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/SCLM_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) SCLM_DEEP
-    close(fileID)
-     
-    open(newunit=fileID, file=trim(dirName) // '/FIX_CNV_CLOUD_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) FIX_CNV_CLOUD
-    close(fileID)
+   open(newunit=fileID, file=trim(dirName) // '/GF_DT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) GF_DT
+   close(fileID)
 
-    allocate(Q(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) Q
-    close(fileID)
-     
-    allocate(QLLS(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/QLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QLLS
-    close(fileID)
-     
-    allocate(QLCN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/QLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QLCN
-    close(fileID)
-     
-    allocate(CLLS(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/CLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLLS
-    close(fileID)
-     
-    allocate(CLCN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/CLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CLCN
-    close(fileID)
-     
-    allocate(QILS(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/QILS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QILS
-    close(fileID)
+   open(newunit=fileID, file=trim(dirName) // '/LONS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   allocate(LONS(IM, JM))
+   read(fileID) LONS
+   close(fileID)
+
+   open(newunit=fileID, file=trim(dirName) // '/LATS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) LATS
+   allocate(LATS(IM, JM))
+   close(fileID)
+
+   open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ICUMULUS_GF(DEEP)
+   close(fileID)
    
-    allocate(QICN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/QICN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QICN
-    close(fileID)
-     
-    allocate(CNV_TR(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/CNV_TR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) CNV_TR
-    close(fileID)
-     
-    allocate(ZLE(IM, JM, 0:LM))
-    open(newunit=fileID, file=trim(dirName) // '/ZLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) ZLE
-    close(fileID)
-     
-    allocate(PLE(IM, JM, 0:LM))
-    open(newunit=fileID, file=trim(dirName) // '/PLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) PLE
-    close(fileID)
-     
-    allocate(T(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/T_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) T
-    close(fileID)
-     
-    allocate(U(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/U_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) U
-    close(fileID)
-     
-    allocate(V(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/V_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) V
-    close(fileID)
-     
-    allocate(W(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/W_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) W
-    close(fileID)
-     
-    allocate(KH(IM, JM, 0:LM))
-    open(newunit=fileID, file=trim(dirName) // '/KH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) KH
-    close(fileID)
+   open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ICUMULUS_GF(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/ICUMULUS_GF_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ICUMULUS_GF(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLOSURE_CHOICE(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLOSURE_CHOICE(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CLOSURE_CHOICE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLOSURE_CHOICE(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_ENTR_RATE(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_ENTR_RATE(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_ENTR_RATE_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_ENTR_RATE(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_FADJ_MASSFLX(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_FADJ_MASSFLX(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_FADJ_MASSFLX(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_TRACER_TRANSP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_SCAVEN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_TRACER_SCAVEN
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_SCALE_DEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_SCALE_DEP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_MOMENTUM_TRANSP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/DICYCLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DICYCLE
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) OUTPUT_SOUND
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_MEMORY
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/TAU_OCEA_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) TAU_OCEA_CP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/TAU_LAND_CP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) TAU_LAND_CP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DOWNDRAFT
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_FLUX_FORM_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_FLUX_FORM
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_TRACER_EVAP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) APPLY_SUB_MP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/ALP1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ALP1
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) LIGHTNING_DIAG
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) OVERSHOOT
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_WETBULB
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) LAMBAU_SHDN
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) MAX_TQ_TEND
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_CLOUD_DISSIPATION_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_CLOUD_DISSIPATION
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_SMOOTH_TEND
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/BETA_SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) BETA_SH
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_LINEAR_SUBCL_MF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_LINEAR_SUBCL_MF
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CAP_MAXS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CAP_MAXS
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ZERO_DIFF
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/GF_ENV_SETTING_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) GF_ENV_SETTING
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/STOCH_TOP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) STOCH_TOP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/STOCH_BOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) STOCH_BOT
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/STOCHASTIC_CNV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) STOCHASTIC_CNV
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/GF_MIN_AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) GF_MIN_AREA
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/TAU_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) TAU_MID
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/TAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) TAU_DEEP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLEV_GRID
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) VERT_DISCR
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_FCT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_FCT
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) SATUR_CALC
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/BC_METH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) BC_METH
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_REBCB
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) AUTOCONV
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) LAMBAU_DEEP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) MOIST_TRIGGER
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) SGS_W_TIMESCALE
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) FRAC_MODIS
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) USE_SMOOTH_PROF
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) EVAP_FIX
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ADV_TRIGGER
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_AVE_LAYER(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_AVE_LAYER(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_AVE_LAYER(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_USE_EXCESS(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_USE_EXCESS(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_USE_EXCESS(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/C0_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) C0_DEEP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/C0_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) C0_MID
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/C0_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) C0_SHAL
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/QRC_CRIT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QRC_CRIT
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/C1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) C1
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_LAND(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_LAND(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_LAND(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_OCEAN(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_OCEAN(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_DOWN_OCEAN(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_LAND(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_LAND(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_LAND(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_OCEAN(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_OCEAN(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_HEI_UPDF_OCEAN(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_LAND(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_LAND(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_LAND(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_OCEAN(DEEP)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_OCEAN(SHAL)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CUM_MAX_EDT_OCEAN(MID)
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/SCLM_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) SCLM_DEEP
+   close(fileID)
+   
+   open(newunit=fileID, file=trim(dirName) // '/FIX_CNV_CLOUD_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) FIX_CNV_CLOUD
+   close(fileID)
 
-    allocate(SH(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) SH
-    close(fileID)
+   allocate(Q(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) Q
+   close(fileID)
+   
+   allocate(QLLS(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/QLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QLLS
+   close(fileID)
+   
+   allocate(QLCN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/QLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QLCN
+   close(fileID)
+   
+   allocate(CLLS(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/CLLS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLLS
+   close(fileID)
+   
+   allocate(CLCN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/CLCN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CLCN
+   close(fileID)
+   
+   allocate(QILS(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/QILS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QILS
+   close(fileID)
 
-    allocate(EVAP(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) EVAP
-    close(fileID)
-     
-    allocate(T2M(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/T2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) T2M
-    close(fileID)
+   allocate(QICN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/QICN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QICN
+   close(fileID)
+   
+   allocate(CNV_TR(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/CNV_TR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CNV_TR
+   close(fileID)
+   
+   allocate(ZLE(IM, JM, 0:LM))
+   open(newunit=fileID, file=trim(dirName) // '/ZLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) ZLE
+   close(fileID)
+   
+   allocate(PLE(IM, JM, 0:LM))
+   open(newunit=fileID, file=trim(dirName) // '/PLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) PLE
+   close(fileID)
+   
+   allocate(T(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/T_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) T
+   close(fileID)
+   
+   allocate(U(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/U_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) U
+   close(fileID)
+   
+   allocate(V(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/V_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) V
+   close(fileID)
+   
+   allocate(W(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/W_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) W
+   close(fileID)
+   
+   allocate(KH(IM, JM, 0:LM))
+   open(newunit=fileID, file=trim(dirName) // '/KH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) KH
+   close(fileID)
 
-    allocate(Q2M(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/Q2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) Q2M
-    close(fileID)
+   allocate(SH(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/SH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) SH
+   close(fileID)
 
-    allocate(TA(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/TA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) TA
-    close(fileID)
+   allocate(EVAP(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) EVAP
+   close(fileID)
+   
+   allocate(T2M(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/T2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) T2M
+   close(fileID)
 
-    allocate(QA(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/QA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QA
-    close(fileID)
+   allocate(Q2M(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/Q2M_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) Q2M
+   close(fileID)
 
-    allocate(PHIS(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/PHIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) PHIS
-    close(fileID)
+   allocate(TA(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/TA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) TA
+   close(fileID)
 
-    allocate(OMEGA(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/OMEGA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) OMEGA
-    close(fileID)
-     
-    allocate(FRLAND(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/FRLAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) FRLAND
-    close(fileID)
-     
-    allocate(AREA(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) AREA
-    close(fileID)
-     
-    allocate(DQVDTDYN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/DQVDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DQVDTDYN
-    close(fileID)
+   allocate(QA(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/QA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QA
+   close(fileID)
 
-    allocate(DTDTDYN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/DTDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DTDTDYN
-    close(fileID)
-     
-    allocate(QV_DYN_IN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/QV_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) QV_DYN_IN
-    close(fileID)
-     
-    allocate(U_DYN_IN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/U_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) U_DYN_IN
-    close(fileID)
-     
-    allocate(V_DYN_IN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/V_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) V_DYN_IN
-    close(fileID)
-     
-    allocate(T_DYN_IN(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/T_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) T_DYN_IN
-    close(fileID)
-     
-    allocate(PLE_DYN_IN(IM, JM, 0:LM))
-    open(newunit=fileID, file=trim(dirName) // '/PLE_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) PLE_DYN_IN
-    close(fileID)
-     
-    allocate(DTDT_BL(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/DTDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DTDT_BL
-    close(fileID)
-     
-    allocate(DQDT_BL(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/DQDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) DQDT_BL
-    close(fileID)
-     
-    allocate(KPBL(IM, JM))
-    open(newunit=fileID, file=trim(dirName) // '/KPBL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) KPBL
-    close(fileID)
-     
-    allocate(RADSW(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/RADSW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) RADSW
-    close(fileID)
-     
-    allocate(RADLW(IM, JM, LM))
-    open(newunit=fileID, file=trim(dirName) // '/RADLW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-    read(fileID) RADLW
-    close(fileID)
+   allocate(PHIS(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/PHIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) PHIS
+   close(fileID)
+
+   allocate(OMEGA(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/OMEGA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) OMEGA
+   close(fileID)
+   
+   allocate(FRLAND(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/FRLAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) FRLAND
+   close(fileID)
+   
+   allocate(AREA(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/AREA_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) AREA
+   close(fileID)
+   
+   allocate(DQVDTDYN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/DQVDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DQVDTDYN
+   close(fileID)
+
+   allocate(DTDTDYN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/DTDTDYN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DTDTDYN
+   close(fileID)
+   
+   allocate(QV_DYN_IN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/QV_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) QV_DYN_IN
+   close(fileID)
+   
+   allocate(U_DYN_IN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/U_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) U_DYN_IN
+   close(fileID)
+   
+   allocate(V_DYN_IN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/V_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) V_DYN_IN
+   close(fileID)
+   
+   allocate(T_DYN_IN(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/T_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) T_DYN_IN
+   close(fileID)
+   
+   allocate(PLE_DYN_IN(IM, JM, 0:LM))
+   open(newunit=fileID, file=trim(dirName) // '/PLE_DYN_IN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) PLE_DYN_IN
+   close(fileID)
+   
+   allocate(DTDT_BL(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/DTDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DTDT_BL
+   close(fileID)
+   
+   allocate(DQDT_BL(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/DQDT_BL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) DQDT_BL
+   close(fileID)
+   
+   allocate(KPBL(IM, JM))
+   open(newunit=fileID, file=trim(dirName) // '/KPBL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) KPBL
+   close(fileID)
+   
+   allocate(RADSW(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/RADSW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) RADSW
+   close(fileID)
+   
+   allocate(RADLW(IM, JM, LM))
+   open(newunit=fileID, file=trim(dirName) // '/RADLW_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) RADLW
+   close(fileID)
 
     ! Allocatables
      ! Edge variables 
@@ -966,62 +985,147 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
     TH       = T/PK
     MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
 
-    ! Required Exports (connectivities to moist siblings)
-    call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_MFC,    'CNV_MFC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_CVW,    'CNV_CVW'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_QC,     'CNV_QC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    ! Exports used below
-    call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTLAM,     'ENTLAM'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SIGMA_DEEP, 'SIGMA_DEEP',  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TPWI,       'TPWI'      ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TPWI_star,  'TPWI_star' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    TPWI       = SUM( Q*MASS, 3 )
-    TPWI_star  = SUM( GEOS_QSAT(T,PL,PASCALS=.true.)*MASS, 3 )
-    call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MUPDP    ,'MUPDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MUPMD    ,'MUPMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_a  ,'VAR3d_a'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_b  ,'VAR3d_b'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_c  ,'VAR3d_c'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, VAR3d_d  ,'VAR3d_d'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MFDP     ,'MFDP'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MFSH     ,'MFSH'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MFMD     ,'MFMD'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ERRSH    ,'ERRSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ERRMD    ,'ERRMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, RSU_CN   ,'RSU_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, REV_CN   ,'REV_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PFI_CN   ,'PFI_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PFL_CN   ,'PFL_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA1      ,'AA1'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA2      ,'AA2'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA3      ,'AA3'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  ! Required Exports (connectivities to moist siblings)
+   !  call MAPL_GetPointer(EXPORT, CNV_MFD,    'CNV_MFD'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_MFC,    'CNV_MFC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_CVW,    'CNV_CVW'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_QC,     'CNV_QC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  ! Exports used below
+   !  call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, ENTLAM,     'ENTLAM'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, SIGMA_DEEP, 'SIGMA_DEEP',  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, TPWI,       'TPWI'      ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, TPWI_star,  'TPWI_star' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    ! Initialize tendencies
-    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MUPDP    ,'MUPDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MUPMD    ,'MUPMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, VAR3d_a  ,'VAR3d_a'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, VAR3d_b  ,'VAR3d_b'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, VAR3d_c  ,'VAR3d_c'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, VAR3d_d  ,'VAR3d_d'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MFDP     ,'MFDP'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MFSH     ,'MFSH'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, MFMD     ,'MFMD'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, ERRSH    ,'ERRSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, ERRMD    ,'ERRMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, RSU_CN   ,'RSU_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, REV_CN   ,'REV_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, PFI_CN   ,'PFI_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, PFL_CN   ,'PFL_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA1      ,'AA1'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA2      ,'AA2'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA3      ,'AA3'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+
+   !  ! Initialize tendencies
+   !  call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+   !  call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+   allocate(CNV_MFD(IM, JM, LM))
+   allocate(CNV_MFC(IM, JM, 0:LM))
+   allocate(CNV_CVW(IM, JM, LM))
+   allocate(CNV_QC(IM, JM, LM))
+   allocate(CNV_DQCDT(IM, JM, LM))
+   allocate(CNV_PRC3(IM, JM, LM))
+   allocate(CNV_UPDF(IM, JM, LM))
+   allocate(DUDT_DC(IM, JM, LM))
+   allocate(DVDT_DC(IM, JM, LM))
+   allocate(DTDT_DC(IM, JM, LM))
+   allocate(DQVDT_DC(IM, JM, LM))
+   allocate(DQIDT_DC(IM, JM, LM))
+   allocate(DQLDT_DC(IM, JM, LM))
+   allocate(DQADT_DC(IM, JM, LM))
+   allocate(CNV_FRC(IM, JM))
+   allocate(SRF_TYPE(IM, JM))
+   allocate(CNV_MF0(IM, JM, LM))
+   allocate(ENTLAM(IM, JM, LM))
+   allocate(MUPDP(IM, JM, LM))
+   allocate(MDNDP(IM, JM, LM))
+   allocate(MUPSH(IM, JM, LM))
+   allocate(MUPMD(IM, JM, LM))
+   allocate(VAR3d_a(IM, JM, LM))
+   allocate(VAR3d_b(IM, JM, LM))
+   allocate(VAR3d_c(IM, JM, LM))
+   allocate(VAR3d_d(IM, JM, LM))
+   allocate(MFDP(IM, JM))
+   allocate(MFSH(IM, JM))
+   allocate(MFMD(IM, JM))
+   allocate(ERRDP(IM, JM))
+   allocate(ERRSH(IM, JM))
+   allocate(ERRMD(IM, JM))
+   allocate(AA0(IM, JM))
+   allocate(AA1(IM, JM))
+   allocate(AA2(IM, JM))
+   allocate(AA3(IM, JM))
+   allocate(AA1_BL(IM, JM))
+   allocate(AA1_CIN(IM, JM))
+   allocate(TAU_BL(IM, JM))
+   allocate(TAU_EC(IM, JM))
+   allocate(TPWI(IM, JM))
+   allocate(TPWI_star(IM, JM))
+   allocate(LFR_GF(IM, JM))
+   allocate(CNPCPRATE(IM, JM))
+   allocate(RSU_CN(IM, JM, LM))
+   allocate(REV_CN(IM, JM, LM))
+   allocate(PFL_CN(IM, JM, 0:LM))
+   allocate(PFI_CN(IM, JM, 0:LM))
+   allocate(SIGMA_DEEP(IM, JM))
+   allocate(SIGMA_MID(IM, JM))
+   allocate(PTR3D(IM, JM, LM))
+   allocate(PTR2D(IM, JM))
+
+   ! Note: CNV_Tracers is typically set in GEOS_moistGridComp.  This is to enable testing of GF_Run individually
+   ! Read in Tracer data
+   open(newunit=fileID, file=trim(dirName) // '/CNV_Tracers_Size_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CNV_tracer_size
+   close(fileID)
+
+   allocate(CNV_Tracers(CNV_tracer_size))
+   
+   do I = 1,CNV_tracer_size
+      allocate(CNV_Tracers(I)%Q(IM, JM, LM))
+
+      if(I>10) then
+         write(n_str,'(i2)') I
+      else
+         write(n_str,'(i1)') I
+      endif
+
+      open(newunit=fileID, file=trim(dirName) // '/CNV_Tracers_' // trim(n_str) // '_Q_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CNV_tracers(I)%Q
+      close(fileID)
+
+      open(newunit=fileID, file=trim(dirName) // '/CNV_Tracers_' // trim(n_str) // '_Vect_Hcts_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CNV_tracers(I)%Vect_Hcts
+      close(fileID)
+
+      open(newunit=fileID, file=trim(dirName) // '/CNV_Tracers_' // trim(n_str) // '_fscav_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CNV_tracers(I)%fscav
+      close(fileID)
+   enddo
+
+   TPWI       = SUM( Q*MASS, 3 )
+   TPWI_star  = SUM( GEOS_QSAT(T,PL,PASCALS=.true.)*MASS, 3 )
 
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
@@ -1032,7 +1136,7 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
     else
        SEEDCNV = 1.0
     endif
-    CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
+   !  CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
     if(associated(PTR2D)) PTR2D = SEEDCNV
 
     ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
@@ -1122,7 +1226,7 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
       QICN =         QICN + DQIDT_DC*GF_DT
       CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
     ! Export
-      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      ! call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
     ! fix 'convective' cloud fraction 
       if (FIX_CNV_CLOUD) then
@@ -1152,10 +1256,10 @@ subroutine GF_Run ()!(GC, IMPORT, EXPORT, CLOCK, RC)
       END WHERE
       endif
 
-      call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+      ! call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
-    call MAPL_TimerOff (MAPL,"--GF")
+   !  call MAPL_TimerOff (MAPL,"--GF")
 
    !  endif
 

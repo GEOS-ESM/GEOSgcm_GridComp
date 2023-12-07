@@ -1,0 +1,25 @@
+    real, dimension(DIMS :),  intent(IN   ) ::  A, B, C
+    real, dimension(DIMS :),  intent(INOUT) ::  Y
+    real, dimension(DIMS :),  intent(IN   ) ::  YG
+
+    integer :: LM, L
+
+    LM = size(A,size(shape(A)))
+
+! Sweep down, modifying rhs with multiplier A
+
+    Y(DIMS 1) = Y(DIMS 1) - A(DIMS 1)*YG(DIMS 1)
+
+    do L = 2,LM
+       Y(DIMS L) = Y(DIMS L) - Y(DIMS L-1) * A(DIMS L)
+    enddo
+
+! Sweep up, solving for updated value. Note B has the inverse of the main diagonal
+
+    Y(DIMS LM)   = (Y(DIMS LM) - C(DIMS LM) * YG(DIMS  2))*B(DIMS LM)
+
+    do L = LM-1,1,-1
+       Y(DIMS L) = (Y(DIMS L ) - C(DIMS L ) * Y(DIMS L+1))*B(DIMS L )
+    enddo
+
+    return

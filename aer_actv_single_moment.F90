@@ -1,9 +1,9 @@
 MODULE Aer_Actv_Single_Moment
     !
-    #include "MAPL_Generic.h"
+!     #include "MAPL_Generic.h"
     
-          USE ESMF
-          USE MAPL
+!           USE ESMF
+!           USE MAPL
           USE aer_cloud, only: AerProps
     !-------------------------------------------------------------------------------------------------------------------------
           IMPLICIT NONE
