@@ -32,7 +32,8 @@ MODULE ConvPar_GF2020
             ,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
             ,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation      &
             ,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal                   &
-            ,use_linear_subcl_mf,cap_maxs
+            ,use_linear_subcl_mf,cap_maxs                                      &
+            ,read_convpar_gf2020_module_var
     
     !PUBLIC GF2020_DRV,make_DropletNumber ,make_IceNumber,fract_liq_f &
     !      ,use_gustiness, use_random_num, dcape_threshold
@@ -168,6 +169,199 @@ MODULE ConvPar_GF2020
      INTEGER :: whoami_all, JCOL
     
     CONTAINS
+
+    subroutine read_convpar_gf2020_module_var(dirName, rank_str)
+
+      character(len=100), intent(in) :: dirName
+      character(len=20), intent(in) :: rank_str
+
+      integer :: fileID
+
+      open(newunit=fileID, file=trim(dirName) // '/wrtgrads_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) wrtgrads
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/nrec_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) nrec
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ntimes_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) ntimes
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/int_time_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) int_time
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_MEMORY
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CONVECTION_TRACER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CONVECTION_TRACER
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CLEV_GRID
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_REBCB
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) VERT_DISCR
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) SATUR_CALC
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) SGS_W_TIMESCALE
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) LIGHTNING_DIAG
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) APPLY_SUB_MP
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_WETBULB
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) OVERSHOOT
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) AUTOCONV
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_MOMENTUM_TRANSP
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) LAMBAU_DEEP
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) LAMBAU_SHDN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) DOWNDRAFT
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) MAX_TQ_TEND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) ZERO_DIFF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_SMOOTH_PROF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_SMOOTH_TEND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_HEI_DOWN_LAND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_HEI_DOWN_OCEAN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_HEI_UPDF_LAND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_HEI_UPDF_OCEAN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_MAX_EDT_LAND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_MAX_EDT_OCEAN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_FADJ_MASSFLX
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CUM_USE_EXCESS
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) MOIST_TRIGGER
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) FRAC_MODIS
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) ADV_TRIGGER
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) EVAP_FIX
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) OUTPUT_SOUND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/tau_ocea_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) tau_ocea_cp
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/tau_land_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) tau_land_cp
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/use_cloud_dissipation_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) use_cloud_dissipation
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/use_gustiness_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) use_gustiness
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/use_random_num_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) use_random_num
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/dcape_threshold_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) dcape_threshold
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/beta_sh_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) beta_sh
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/use_linear_subcl_mf_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) use_linear_subcl_mf
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/cap_maxs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) cap_maxs
+      close(fileID)
+
+    end subroutine
     !---------------------------------------------------------------------------------------------------
       SUBROUTINE GF2020_INTERFACE(  mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
                                    ,PLE, PLO, ZLE, ZLO, PK, MASS, OMEGA , KH          &

@@ -1165,6 +1165,8 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
        TMP2D = AREA
     endif
 
+    call read_convpar_gf2020_module_var(dirName, rank_str)
+
     IF (USE_GF2020==1) THEN
          !- call GF2020 interface routine
          ! PLE and PL are passed in Pq
