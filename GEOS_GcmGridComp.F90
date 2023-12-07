@@ -1,4 +1,4 @@
- $Id: GEOS_GcmGridComp.F90,v 1.30.2.1.4.4.2.2.2.1.2.11.6.1.4.1.2.1.2.1.14.2 2019/12/18 20:23:25 ltakacs Exp $
+! $Id: GEOS_GcmGridComp.F90,v 1.30.2.1.4.4.2.2.2.1.2.11.6.1.4.1.2.1.2.1.14.2 2019/12/18 20:23:25 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
