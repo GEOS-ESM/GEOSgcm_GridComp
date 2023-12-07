@@ -233,7 +233,7 @@ module GEOS_SurfaceGridCompMod
 
     ! Are we running DataAtm?
     !------------------------
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATAATM:" , DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Create Surface Config

@@ -128,7 +128,7 @@ module GEOS_SaltwaterGridCompMod
 
 ! Are we running DataAtm?
 !------------------------
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATAATM:" ,   DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:" ,   DEFAULT=0, _RC)
 
 ! Data sea ice thickness from ExtData or not?
 !--------------------------------------------
