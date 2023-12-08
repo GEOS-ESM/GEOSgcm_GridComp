@@ -2632,8 +2632,8 @@ contains
              ! update capacity heat and latend heat coefficient
              ! -----------------------------------------------------------------------
 
-             lhl = lv00 + d0_vap * tz (k)
-             lhi = li00 + dc_ice * tz (k)
+             lhl = lv00 + d0_vap * tz (i, j, k)
+             lhi = li00 + dc_ice * tz (i, j, k)
              lcpk = lhl / cvm
              icpk = lhi / cvm
              tcpk = lcpk + icpk
@@ -2669,8 +2669,8 @@ contains
              ! update capacity heat and latend heat coefficient
              ! -----------------------------------------------------------------------
 
-             lhl (k) = lv00 + d0_vap * tz (i, j, k)
-             lcpk (k) = lhl (k) / cvm (k)
+             lhl = lv00 + d0_vap * tz (i, j, k)
+             lcpk = lhl / cvm
 
              ! -----------------------------------------------------------------------
              ! * minimum evap of rain in dry environmental air
