@@ -327,9 +327,26 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
+   ! Required Exports (connectivities to moist siblings) reference comparison
+    real, pointer, dimension(:,:,:) :: CNV_MFD_REF, CNV_MFC_REF, CNV_CVW_REF, CNV_QC_REF, CNV_DQCDT_REF, CNV_PRC3_REF, CNV_UPDF_REF
+    real, pointer, dimension(:,:,:) :: DUDT_DC_REF, DVDT_DC_REF, DTDT_DC_REF, DQVDT_DC_REF, DQIDT_DC_REF, DQLDT_DC_REF, DQADT_DC_REF
+    real, pointer, dimension(:,:  ) :: CNV_FRC_REF, SRF_TYPE_REF
+    ! Exports reference comparison
+    real, pointer, dimension(:,:,:) :: CNV_MF0_REF, ENTLAM_REF
+    real, pointer, dimension(:,:,:) :: MUPDP_REF,MDNDP_REF,MUPSH_REF,MUPMD_REF
+    real, pointer, dimension(:,:,:) :: VAR3d_a_REF,VAR3d_b_REF,VAR3d_c_REF,VAR3d_d_REF
+    real, pointer, dimension(:,:  ) :: MFDP_REF,MFSH_REF,MFMD_REF,ERRDP_REF,ERRSH_REF,ERRMD_REF
+    real, pointer, dimension(:,:  ) :: AA0_REF,AA1_REF,AA2_REF,AA3_REF,AA1_BL_REF,AA1_CIN_REF,TAU_BL_REF,TAU_EC_REF
+    real, pointer, dimension(:,:  ) :: TPWI_REF,TPWI_star_REF,LFR_GF_REF,CNPCPRATE_REF
+    real, pointer, dimension(:,:,:) :: RSU_CN_REF,REV_CN_REF,PFL_CN_REF,PFI_CN_REF
+    real, pointer, dimension(:,:  ) :: SIGMA_DEEP_REF, SIGMA_MID_REF
+    real, pointer, dimension(:,:,:) :: PTR3D_REF
+    real, pointer, dimension(:,:  ) :: PTR2D_REF
+
     ! CK : Extra variables
    integer :: CNV_tracer_size
    character(2) :: n_str
+   logical :: file_exists
 
    print*,'In GF_RUN'
 
@@ -1100,7 +1117,9 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    allocate(PFI_CN(IM, JM, 0:LM))
    allocate(SIGMA_DEEP(IM, JM))
    allocate(SIGMA_MID(IM, JM))
-   allocate(PTR3D(IM, JM, LM))
+   INQUIRE(FILE='" + PTR3D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
+   if(file_exists) allocate(PTR3D(IM, JM, LM))
+   INQUIRE(FILE='" + PTR2D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
    allocate(PTR2D(IM, JM))
 
    ! Note : CNV_FRC and SRF_TYPE, even though these are designated as "exports", they are used at inputs to calcuations below
@@ -1282,6 +1301,273 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    !  call MAPL_TimerOff (MAPL,"--GF")
 
    !  endif
+
+      allocate(CNV_MFD_REF(IM, JM, LM))
+      allocate(CNV_MFC_REF(IM, JM, 0:LM))
+      allocate(CNV_CVW_REF(IM, JM, LM))
+      allocate(CNV_QC_REF(IM, JM, LM))
+      allocate(CNV_DQCDT_REF(IM, JM, LM))
+      allocate(CNV_PRC3_REF(IM, JM, LM))
+      allocate(CNV_UPDF_REF(IM, JM, LM))
+      allocate(DUDT_DC_REF(IM, JM, LM))
+      allocate(DVDT_DC_REF(IM, JM, LM))
+      allocate(DTDT_DC_REF(IM, JM, LM))
+      allocate(DQVDT_DC_REF(IM, JM, LM))
+      allocate(DQIDT_DC_REF(IM, JM, LM))
+      allocate(DQLDT_DC_REF(IM, JM, LM))
+      allocate(DQADT_DC_REF(IM, JM, LM))
+      allocate(CNV_FRC_REF(IM, JM))
+      allocate(SRF_TYPE_REF(IM, JM))
+      allocate(CNV_MF0_REF(IM, JM, LM))
+      allocate(ENTLAM_REF(IM, JM, LM))
+      allocate(MUPDP_REF(IM, JM, LM))
+      allocate(MDNDP_REF(IM, JM, LM))
+      allocate(MUPSH_REF(IM, JM, LM))
+      allocate(MUPMD_REF(IM, JM, LM))
+      allocate(VAR3d_a_REF(IM, JM, LM))
+      allocate(VAR3d_b_REF(IM, JM, LM))
+      allocate(VAR3d_c_REF(IM, JM, LM))
+      allocate(VAR3d_d_REF(IM, JM, LM))
+      allocate(MFDP_REF(IM, JM))
+      allocate(MFSH_REF(IM, JM))
+      allocate(MFMD_REF(IM, JM))
+      allocate(ERRDP_REF(IM, JM))
+      allocate(ERRSH_REF(IM, JM))
+      allocate(ERRMD_REF(IM, JM))
+      allocate(AA0_REF(IM, JM))
+      allocate(AA1_REF(IM, JM))
+      allocate(AA2_REF(IM, JM))
+      allocate(AA3_REF(IM, JM))
+      allocate(AA1_BL_REF(IM, JM))
+      allocate(AA1_CIN_REF(IM, JM))
+      allocate(TAU_BL_REF(IM, JM))
+      allocate(TAU_EC_REF(IM, JM))
+      allocate(TPWI_REF(IM, JM))
+      allocate(TPWI_star_REF(IM, JM))
+      allocate(LFR_GF_REF(IM, JM))
+      allocate(CNPCPRATE_REF(IM, JM))
+      allocate(RSU_CN_REF(IM, JM, LM))
+      allocate(REV_CN_REF(IM, JM, LM))
+      allocate(PFL_CN_REF(IM, JM, 0:LM))
+      allocate(PFI_CN_REF(IM, JM, 0:LM))
+      allocate(SIGMA_DEEP_REF(IM, JM))
+      allocate(SIGMA_MID_REF(IM, JM))
+
+      open(newunit=fileID, file=trim(dirName) // '/CNV_MFD_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_MFD_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_MFC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_MFC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_CVW_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_CVW_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_QC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_QC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_DQCDT_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_DQCDT_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_PRC3_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_PRC3_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_UPDF_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_UPDF_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DUDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DUDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DVDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DVDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DTDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DTDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DQVDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DQVDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DQIDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DQIDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DQLDT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DQLDT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/DQADT_DC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) DQADT_DC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_FRC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/SRF_TYPE_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) SRF_TYPE_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_MF0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNV_MF0_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ENTLAM_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) ENTLAM_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MUPDP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MUPDP_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MDNDP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MDNDP_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MUPSH_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MUPSH_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MUPMD_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MUPMD_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/VAR3d_a_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) VAR3d_a_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/VAR3d_b_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) VAR3d_b_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/VAR3d_c_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) VAR3d_c_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/VAR3d_d_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) VAR3d_d_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MFDP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MFDP_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MFSH_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MFSH_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MFMD_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) MFMD_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ERRDP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) ERRDP_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ERRSH_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) ERRSH_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/ERRMD_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) ERRMD_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA0_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA1_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA1_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA2_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA2_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA3_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA3_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA1_BL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA1_BL_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AA1_CIN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) AA1_CIN_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/TAU_BL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) TAU_BL_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/TAU_EC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) TAU_EC_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/TPWI_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) TPWI_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/TPWI_star_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) TPWI_star_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/LFR_GF_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) LFR_GF_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNPCPRATE_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) CNPCPRATE_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/RSU_CN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) RSU_CN_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/REV_CN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) REV_CN_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/PFL_CN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) PFL_CN_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/PFI_CN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) PFI_CN_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/SIGMA_DEEP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) SIGMA_DEEP_REF
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/SIGMA_MID_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+      read(fileID) SIGMA_MID_REF
+      close(fileID)
+      
+      INQUIRE(FILE='" + PTR3D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
+      if(file_exists) then
+         allocate(PTR3D_REF(IM, JM, LM))
+         open(newunit=fileID, file=trim(dirName) // '/PTR3D_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+         read(fileID) PTR3D_REF
+         close(fileID)
+      endif
+      
+      INQUIRE(FILE='" + PTR2D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
+      if(file_exists) then
+         allocate(PTR2D_REF(IM, JM))
+         open(newunit=fileID, file=trim(dirName) // '/PTR2D_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+         read(fileID) PTR2D_REF
+         close(fileID)
+      endif
 
 end subroutine GF_Run
 
