@@ -1117,10 +1117,15 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    allocate(PFI_CN(IM, JM, 0:LM))
    allocate(SIGMA_DEEP(IM, JM))
    allocate(SIGMA_MID(IM, JM))
-   INQUIRE(FILE='" + PTR3D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
+
+   PTR3D => null()
+   PTR2D => null()
+
+   INQUIRE(FILE=trim(dirName) // '/PTR3D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
    if(file_exists) allocate(PTR3D(IM, JM, LM))
-   INQUIRE(FILE='" + PTR2D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
-   allocate(PTR2D(IM, JM))
+   
+   INQUIRE(FILE=trim(dirName) // '/PTR2D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
+   if(file_exists) allocate(PTR2D(IM, JM))
 
    ! Note : CNV_FRC and SRF_TYPE, even though these are designated as "exports", they are used at inputs to calcuations below
    open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
@@ -1266,6 +1271,7 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
       CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
     ! Export
       ! call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      print*,'associated(PTR3D) = ', associated(PTR3D)
       if (associated(PTR3D)) PTR3D = fQi
     ! fix 'convective' cloud fraction 
       if (FIX_CNV_CLOUD) then
@@ -1553,12 +1559,215 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
       read(fileID) SIGMA_MID_REF
       close(fileID)
       
+      print*,"sum(CNV_MFD_REF - CNV_MFD) = ", sum(CNV_MFD_REF - CNV_MFD)
+      print*,"sum(CNV_MFD_REF) = ", sum(CNV_MFD_REF)
+      print*,"sum(CNV_MFD) = ", sum(CNV_MFD)
+
+      print*,"sum(CNV_MFC_REF - CNV_MFC) = ", sum(CNV_MFC_REF - CNV_MFC)
+      print*,"sum(CNV_MFC_REF) = ", sum(CNV_MFC_REF)
+      print*,"sum(CNV_MFC) = ", sum(CNV_MFC)
+
+      print*,"sum(CNV_CVW_REF - CNV_CVW) = ", sum(CNV_CVW_REF - CNV_CVW)
+      print*,"sum(CNV_CVW_REF) = ", sum(CNV_CVW_REF)
+      print*,"sum(CNV_CVW) = ", sum(CNV_CVW)
+
+      print*,"sum(CNV_QC_REF - CNV_QC) = ", sum(CNV_QC_REF - CNV_QC)
+      print*,"sum(CNV_QC_REF) = ", sum(CNV_QC_REF)
+      print*,"sum(CNV_QC) = ", sum(CNV_QC)
+
+      print*,"sum(CNV_DQCDT_REF - CNV_DQCDT) = ", sum(CNV_DQCDT_REF - CNV_DQCDT)
+      print*,"sum(CNV_DQCDT_REF) = ", sum(CNV_DQCDT_REF)
+      print*,"sum(CNV_DQCDT) = ", sum(CNV_DQCDT)
+
+      print*,"sum(CNV_PRC3_REF - CNV_PRC3) = ", sum(CNV_PRC3_REF - CNV_PRC3)
+      print*,"sum(CNV_PRC3_REF) = ", sum(CNV_PRC3_REF)
+      print*,"sum(CNV_PRC3) = ", sum(CNV_PRC3)
+
+      print*,"sum(CNV_UPDF_REF - CNV_UPDF) = ", sum(CNV_UPDF_REF - CNV_UPDF)
+      print*,"sum(CNV_UPDF_REF) = ", sum(CNV_UPDF_REF)
+      print*,"sum(CNV_UPDF) = ", sum(CNV_UPDF)
+
+      print*,"sum(DUDT_DC_REF - DUDT_DC) = ", sum(DUDT_DC_REF - DUDT_DC)
+      print*,"sum(DUDT_DC_REF) = ", sum(DUDT_DC_REF)
+      print*,"sum(DUDT_DC) = ", sum(DUDT_DC)
+
+      print*,"sum(DVDT_DC_REF - DVDT_DC) = ", sum(DVDT_DC_REF - DVDT_DC)
+      print*,"sum(DVDT_DC_REF) = ", sum(DVDT_DC_REF)
+      print*,"sum(DVDT_DC) = ", sum(DVDT_DC)
+
+      print*,"sum(DTDT_DC_REF - DTDT_DC) = ", sum(DTDT_DC_REF - DTDT_DC)
+      print*,"sum(DTDT_DC_REF) = ", sum(DTDT_DC_REF)
+      print*,"sum(DTDT_DC) = ", sum(DTDT_DC)
+
+      print*,"sum(DQVDT_DC_REF - DQVDT_DC) = ", sum(DQVDT_DC_REF - DQVDT_DC)
+      print*,"sum(DQVDT_DC_REF) = ", sum(DQVDT_DC_REF)
+      print*,"sum(DQVDT_DC) = ", sum(DQVDT_DC)
+
+      print*,"sum(DQIDT_DC_REF - DQIDT_DC) = ", sum(DQIDT_DC_REF - DQIDT_DC)
+      print*,"sum(DQIDT_DC_REF) = ", sum(DQIDT_DC_REF)
+      print*,"sum(DQIDT_DC) = ", sum(DQIDT_DC)
+
+      print*,"sum(DQLDT_DC_REF - DQLDT_DC) = ", sum(DQLDT_DC_REF - DQLDT_DC)
+      print*,"sum(DQLDT_DC_REF) = ", sum(DQLDT_DC_REF)
+      print*,"sum(DQLDT_DC) = ", sum(DQLDT_DC)
+
+      print*,"sum(DQADT_DC_REF - DQADT_DC) = ", sum(DQADT_DC_REF - DQADT_DC)
+      print*,"sum(DQADT_DC_REF) = ", sum(DQADT_DC_REF)
+      print*,"sum(DQADT_DC) = ", sum(DQADT_DC)
+
+      print*,"sum(CNV_FRC_REF - CNV_FRC) = ", sum(CNV_FRC_REF - CNV_FRC)
+      print*,"sum(CNV_FRC_REF) = ", sum(CNV_FRC_REF)
+      print*,"sum(CNV_FRC) = ", sum(CNV_FRC)
+
+      print*,"sum(SRF_TYPE_REF - SRF_TYPE) = ", sum(SRF_TYPE_REF - SRF_TYPE)
+      print*,"sum(SRF_TYPE_REF) = ", sum(SRF_TYPE_REF)
+      print*,"sum(SRF_TYPE) = ", sum(SRF_TYPE)
+
+      print*,"sum(CNV_MF0_REF - CNV_MF0) = ", sum(CNV_MF0_REF - CNV_MF0)
+      print*,"sum(CNV_MF0_REF) = ", sum(CNV_MF0_REF)
+      print*,"sum(CNV_MF0) = ", sum(CNV_MF0)
+
+      print*,"sum(ENTLAM_REF - ENTLAM) = ", sum(ENTLAM_REF - ENTLAM)
+      print*,"sum(ENTLAM_REF) = ", sum(ENTLAM_REF)
+      print*,"sum(ENTLAM) = ", sum(ENTLAM)
+
+      print*,"sum(MUPDP_REF - MUPDP) = ", sum(MUPDP_REF - MUPDP)
+      print*,"sum(MUPDP_REF) = ", sum(MUPDP_REF)
+      print*,"sum(MUPDP) = ", sum(MUPDP)
+
+      print*,"sum(MDNDP_REF - MDNDP) = ", sum(MDNDP_REF - MDNDP)
+      print*,"sum(MDNDP_REF) = ", sum(MDNDP_REF)
+      print*,"sum(MDNDP) = ", sum(MDNDP)
+
+      print*,"sum(MUPSH_REF - MUPSH) = ", sum(MUPSH_REF - MUPSH)
+      print*,"sum(MUPSH_REF) = ", sum(MUPSH_REF)
+      print*,"sum(MUPSH) = ", sum(MUPSH)
+
+      print*,"sum(MUPMD_REF - MUPMD) = ", sum(MUPMD_REF - MUPMD)
+      print*,"sum(MUPMD_REF) = ", sum(MUPMD_REF)
+      print*,"sum(MUPMD) = ", sum(MUPMD)
+
+      print*,"sum(VAR3d_a_REF - VAR3d_a) = ", sum(VAR3d_a_REF - VAR3d_a)
+      print*,"sum(VAR3d_a_REF) = ", sum(VAR3d_a_REF)
+      print*,"sum(VAR3d_a) = ", sum(VAR3d_a)
+
+      print*,"sum(VAR3d_b_REF - VAR3d_b) = ", sum(VAR3d_b_REF - VAR3d_b)
+      print*,"sum(VAR3d_b_REF) = ", sum(VAR3d_b_REF)
+      print*,"sum(VAR3d_b) = ", sum(VAR3d_b)
+
+      print*,"sum(VAR3d_c_REF - VAR3d_c) = ", sum(VAR3d_c_REF - VAR3d_c)
+      print*,"sum(VAR3d_c_REF) = ", sum(VAR3d_c_REF)
+      print*,"sum(VAR3d_c) = ", sum(VAR3d_c)
+
+      print*,"sum(VAR3d_d_REF - VAR3d_d) = ", sum(VAR3d_d_REF - VAR3d_d)
+      print*,"sum(VAR3d_d_REF) = ", sum(VAR3d_d_REF)
+      print*,"sum(VAR3d_d) = ", sum(VAR3d_d)
+
+      print*,"sum(MFDP_REF - MFDP) = ", sum(MFDP_REF - MFDP)
+      print*,"sum(MFDP_REF) = ", sum(MFDP_REF)
+      print*,"sum(MFDP) = ", sum(MFDP)
+
+      print*,"sum(MFSH_REF - MFSH) = ", sum(MFSH_REF - MFSH)
+      print*,"sum(MFSH_REF) = ", sum(MFSH_REF)
+      print*,"sum(MFSH) = ", sum(MFSH)
+
+      print*,"sum(MFMD_REF - MFMD) = ", sum(MFMD_REF - MFMD)
+      print*,"sum(MFMD_REF) = ", sum(MFMD_REF)
+      print*,"sum(MFMD) = ", sum(MFMD)
+
+      print*,"sum(ERRDP_REF - ERRDP) = ", sum(ERRDP_REF - ERRDP)
+      print*,"sum(ERRDP_REF) = ", sum(ERRDP_REF)
+      print*,"sum(ERRDP) = ", sum(ERRDP)
+
+      print*,"sum(ERRSH_REF - ERRSH) = ", sum(ERRSH_REF - ERRSH)
+      print*,"sum(ERRSH_REF) = ", sum(ERRSH_REF)
+      print*,"sum(ERRSH) = ", sum(ERRSH)
+
+      print*,"sum(ERRMD_REF - ERRMD) = ", sum(ERRMD_REF - ERRMD)
+      print*,"sum(ERRMD_REF) = ", sum(ERRMD_REF)
+      print*,"sum(ERRMD) = ", sum(ERRMD)
+
+      print*,"sum(AA0_REF - AA0) = ", sum(AA0_REF - AA0)
+      print*,"sum(AA0_REF) = ", sum(AA0_REF)
+      print*,"sum(AA0) = ", sum(AA0)
+
+      print*,"sum(AA1_REF - AA1) = ", sum(AA1_REF - AA1)
+      print*,"sum(AA1_REF) = ", sum(AA1_REF)
+      print*,"sum(AA1) = ", sum(AA1)
+
+      print*,"sum(AA2_REF - AA2) = ", sum(AA2_REF - AA2)
+      print*,"sum(AA2_REF) = ", sum(AA2_REF)
+      print*,"sum(AA2) = ", sum(AA2)
+
+      print*,"sum(AA3_REF - AA3) = ", sum(AA3_REF - AA3)
+      print*,"sum(AA3_REF) = ", sum(AA3_REF)
+      print*,"sum(AA3) = ", sum(AA3)
+
+      print*,"sum(AA1_BL_REF - AA1_BL) = ", sum(AA1_BL_REF - AA1_BL)
+      print*,"sum(AA1_BL_REF) = ", sum(AA1_BL_REF)
+      print*,"sum(AA1_BL) = ", sum(AA1_BL)
+
+      print*,"sum(AA1_CIN_REF - AA1_CIN) = ", sum(AA1_CIN_REF - AA1_CIN)
+      print*,"sum(AA1_CIN_REF) = ", sum(AA1_CIN_REF)
+      print*,"sum(AA1_CIN) = ", sum(AA1_CIN)
+
+      print*,"sum(TAU_BL_REF - TAU_BL) = ", sum(TAU_BL_REF - TAU_BL)
+      print*,"sum(TAU_BL_REF) = ", sum(TAU_BL_REF)
+      print*,"sum(TAU_BL) = ", sum(TAU_BL)
+
+      print*,"sum(TAU_EC_REF - TAU_EC) = ", sum(TAU_EC_REF - TAU_EC)
+      print*,"sum(TAU_EC_REF) = ", sum(TAU_EC_REF)
+      print*,"sum(TAU_EC) = ", sum(TAU_EC)
+
+      print*,"sum(TPWI_REF - TPWI) = ", sum(TPWI_REF - TPWI)
+      print*,"sum(TPWI_REF) = ", sum(TPWI_REF)
+      print*,"sum(TPWI) = ", sum(TPWI)
+
+      print*,"sum(TPWI_star_REF - TPWI_star) = ", sum(TPWI_star_REF - TPWI_star)
+      print*,"sum(TPWI_star_REF) = ", sum(TPWI_star_REF)
+      print*,"sum(TPWI_star) = ", sum(TPWI_star)
+
+      print*,"sum(LFR_GF_REF - LFR_GF) = ", sum(LFR_GF_REF - LFR_GF)
+      print*,"sum(LFR_GF_REF) = ", sum(LFR_GF_REF)
+      print*,"sum(LFR_GF) = ", sum(LFR_GF)
+
+      print*,"sum(CNPCPRATE_REF - CNPCPRATE) = ", sum(CNPCPRATE_REF - CNPCPRATE)
+      print*,"sum(CNPCPRATE_REF) = ", sum(CNPCPRATE_REF)
+      print*,"sum(CNPCPRATE) = ", sum(CNPCPRATE)
+
+      print*,"sum(RSU_CN_REF - RSU_CN) = ", sum(RSU_CN_REF - RSU_CN)
+      print*,"sum(RSU_CN_REF) = ", sum(RSU_CN_REF)
+      print*,"sum(RSU_CN) = ", sum(RSU_CN)
+
+      print*,"sum(REV_CN_REF - REV_CN) = ", sum(REV_CN_REF - REV_CN)
+      print*,"sum(REV_CN_REF) = ", sum(REV_CN_REF)
+      print*,"sum(REV_CN) = ", sum(REV_CN)
+
+      print*,"sum(PFL_CN_REF - PFL_CN) = ", sum(PFL_CN_REF - PFL_CN)
+      print*,"sum(PFL_CN_REF) = ", sum(PFL_CN_REF)
+      print*,"sum(PFL_CN) = ", sum(PFL_CN)
+
+      print*,"sum(PFI_CN_REF - PFI_CN) = ", sum(PFI_CN_REF - PFI_CN)
+      print*,"sum(PFI_CN_REF) = ", sum(PFI_CN_REF)
+      print*,"sum(PFI_CN) = ", sum(PFI_CN)
+
+      print*,"sum(SIGMA_DEEP_REF - SIGMA_DEEP) = ", sum(SIGMA_DEEP_REF - SIGMA_DEEP)
+      print*,"sum(SIGMA_DEEP_REF) = ", sum(SIGMA_DEEP_REF)
+      print*,"sum(SIGMA_DEEP) = ", sum(SIGMA_DEEP)
+
+      print*,"sum(SIGMA_MID_REF - SIGMA_MID) = ", sum(SIGMA_MID_REF - SIGMA_MID)
+      print*,"sum(SIGMA_MID_REF) = ", sum(SIGMA_MID_REF)
+      print*,"sum(SIGMA_MID) = ", sum(SIGMA_MID)
+
       INQUIRE(FILE='" + PTR3D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
       if(file_exists) then
          allocate(PTR3D_REF(IM, JM, LM))
          open(newunit=fileID, file=trim(dirName) // '/PTR3D_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
          read(fileID) PTR3D_REF
          close(fileID)
+         print*,"sum(PTR3D_REF - PTR3D) = ", sum(PTR3D_REF - PTR3D)
+         print*,"sum(PTR3D_REF) = ", sum(PTR3D_REF)
+         print*,"sum(PTR3D) = ", sum(PTR3D)
       endif
       
       INQUIRE(FILE='" + PTR2D + "_' // trim(rank_str) // '.in', EXIST=file_exists)
@@ -1567,6 +1776,9 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
          open(newunit=fileID, file=trim(dirName) // '/PTR2D_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
          read(fileID) PTR2D_REF
          close(fileID)
+         print*,"sum(PTR2D_REF - PTR2D) = ", sum(PTR2D_REF - PTR2D)
+         print*,"sum(PTR2D_REF) = ", sum(PTR2D_REF)
+         print*,"sum(PTR2D) = ", sum(PTR2D)
       endif
 
 end subroutine GF_Run
