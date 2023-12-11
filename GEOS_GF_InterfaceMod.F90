@@ -1103,6 +1103,15 @@ subroutine GF_Run (IM, JM, LM, dirName, rank_str)!(GC, IMPORT, EXPORT, CLOCK, RC
    allocate(PTR3D(IM, JM, LM))
    allocate(PTR2D(IM, JM))
 
+   ! Note : CNV_FRC and SRF_TYPE, even though these are designated as "exports", they are used at inputs to calcuations below
+   open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) CNV_FRC
+   close(fileID)
+
+   open(newunit=fileID, file=trim(dirName) // '/SRF_TYPE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+   read(fileID) SRF_TYPE
+   close(fileID)
+
    ! Note: CNV_Tracers is typically set in GEOS_moistGridComp.  This is to enable testing of GF_Run individually
    ! Read in Tracer data
    open(newunit=fileID, file=trim(dirName) // '/CNV_Tracers_Size_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
