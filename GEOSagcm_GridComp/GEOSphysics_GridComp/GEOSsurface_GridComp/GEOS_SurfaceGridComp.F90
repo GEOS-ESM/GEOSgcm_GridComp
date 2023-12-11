@@ -264,9 +264,9 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigDestroy(SCF, __RC__ )
     
     if ((catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
-       do_goswim=.true.
+       DO_GOSWIM=.true.
     else
-       do_goswim=.false.
+       DO_GOSWIM=.false.
     endif
     
 ! Set the Run entry point
