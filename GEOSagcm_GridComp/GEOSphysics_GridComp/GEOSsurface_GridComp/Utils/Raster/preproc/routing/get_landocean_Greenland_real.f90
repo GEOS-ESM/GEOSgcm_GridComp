@@ -1,6 +1,6 @@
 program main
 
-use constant, only : nlon,nlat,nlon_G,nlat_G,loni_min,loni_max,lati_min,lati_max,id_glac,id_lake,id_landend
+use routing_constant, only : nlon,nlat,nlon_G,nlat_G,loni_min,loni_max,lati_min,lati_max,id_glac,id_lake,id_landend
 
 implicit none
 include 'netcdf.inc'

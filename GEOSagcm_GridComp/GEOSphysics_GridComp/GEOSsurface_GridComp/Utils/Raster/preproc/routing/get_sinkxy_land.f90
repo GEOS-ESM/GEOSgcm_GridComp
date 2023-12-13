@@ -1,6 +1,6 @@
 program main
 
-use constant,only : ns,nlon,nlat
+use routing_constant,only : ns,nlon,nlat
 implicit none
 
 real*8,allocatable,dimension(:)  :: lats,lons,lat30s,lon30s,lat_dis,lon_dis

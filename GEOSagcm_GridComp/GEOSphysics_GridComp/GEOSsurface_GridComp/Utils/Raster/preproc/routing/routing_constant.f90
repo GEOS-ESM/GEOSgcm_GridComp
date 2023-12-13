@@ -1,4 +1,4 @@
-module constant
+module routing_constant
 
 implicit none
 public
@@ -23,4 +23,4 @@ integer,parameter :: nl=22087 !number of outlets to ocean in land (not including
 integer,parameter :: nall=291809 !total number of catchments in land and Greenland
 
 
-end module constant
+end module routing_constant

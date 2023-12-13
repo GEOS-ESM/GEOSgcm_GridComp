@@ -1,6 +1,6 @@
 program main
 
-use constant,only : nall,ns
+use routing_constant,only : nall,ns
 implicit none
 
 integer, allocatable, dimension(:) :: id_final,id_outlet,msk 

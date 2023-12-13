@@ -1,6 +1,6 @@
 program main
 
-use constant,only : nc,nl,ng,nlon=>nlon1m,nlat=>nlat1m
+use routing_constant,only : nc,nl,ng,nlon=>nlon1m,nlat=>nlat1m
 implicit none
 include 'netcdf.inc'
 

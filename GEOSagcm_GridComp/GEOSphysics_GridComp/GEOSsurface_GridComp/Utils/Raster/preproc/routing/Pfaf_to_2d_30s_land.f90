@@ -1,6 +1,6 @@
 program main
 
-use constant,only : nall,nlon,nlat
+use routing_constant,only : nall,nlon,nlat
 implicit none
 
 character(len=100)  :: var1="outlet_sinky_allcat"

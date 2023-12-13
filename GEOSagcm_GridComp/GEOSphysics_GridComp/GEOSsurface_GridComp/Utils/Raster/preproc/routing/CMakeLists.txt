@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set(srcs
-  constant.f90
+  routing_constant.f90
 )
 
 set (exe_srcs
@@ -16,7 +16,6 @@ set (exe_srcs
 esma_add_library (${this}
   SRCS ${srcs}
 )
-
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".f90" ".x" exe ${src})
   ecbuild_add_executable (
@@ -25,3 +24,6 @@ foreach (src ${exe_srcs})
     NOINSTALL
     LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
 endforeach ()
+
+# copy to the build directory
+configure_file(run_routing.py run_routing.py)

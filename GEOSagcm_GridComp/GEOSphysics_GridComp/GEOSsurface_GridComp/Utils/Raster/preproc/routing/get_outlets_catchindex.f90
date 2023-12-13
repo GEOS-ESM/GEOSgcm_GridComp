@@ -1,6 +1,6 @@
 program main
 
-use constant,only : nc,ns,ng
+use routing_constant,only : nc,ns,ng
 implicit none
 
 integer,allocatable,dimension(:) :: msk,outid,mskall,final,finalall
