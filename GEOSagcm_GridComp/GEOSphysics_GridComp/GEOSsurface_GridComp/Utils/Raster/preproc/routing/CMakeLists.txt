@@ -22,5 +22,6 @@ foreach (src ${exe_srcs})
   ecbuild_add_executable (
     TARGET ${exe}
     SOURCES ${src}
+    NOINSTALL
     LIBS    ${this} NetCDF::NetCDF_Fortran MPI::MPI_Fortran)
 endforeach ()
