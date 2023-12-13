@@ -84,6 +84,7 @@ module GEOSmoist_Process_Library
   real    :: CNV_FRACTION_EXP
 
   ! Storage of aerosol properties for activation
+  type(AerPropsNew) :: AeroPropsNew(nsmx_par)
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
   ! Tracer Bundle things for convection
@@ -107,6 +108,7 @@ module GEOSmoist_Process_Library
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
   public :: AeroProps
+  public :: AeroPropsNew
   public :: CNV_Tracer_Type, CNV_Tracers, CNV_Tracers_Init
   public :: ICE_FRACTION, EVAP3, SUBL3, LDRADIUS4, BUOYANCY, BUOYANCY2
   public :: REDISTRIBUTE_CLOUDS, RADCOUPLE, FIX_UP_CLOUDS

@@ -5382,7 +5382,6 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
-         allocate ( AeroProps(IM,JM,LM) )
          ! get veritical velocity
          if (LHYDROSTATIC) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
@@ -5392,7 +5391,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5496,11 +5495,6 @@ contains
          call FILLQ2ZERO(Q, MASS, TMP2D)
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
-
-       if (USE_AEROSOL_NN) then
-         deallocate ( AeroProps )
-       endif
-
 
        ! Export Total Moist Tendencies
 
