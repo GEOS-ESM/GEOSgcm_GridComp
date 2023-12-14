@@ -5270,13 +5270,13 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           end if
        end if
 
-       if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
-          if (NAME == 'S')  then
-              SF = SF + SH_SPRAY
+       if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
+          if (NAME == 'S') then
+             SF = SF + SH_SPRAY
           end if
 
-          if (NAME == 'Q')  
-              SF = SF + LH_SPRAY/MAPL_ALHL
+          if (NAME == 'Q') then 
+             SF = SF + LH_SPRAY/MAPL_ALHL
           end if
        end if
 
@@ -5291,13 +5291,13 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           endif
        end if
 
-       if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
-          if (NAME == 'S')  then
-              SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
+       if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
+          if (NAME == 'S') then
+             SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
           end if
 
-          if (NAME == 'Q')  then
-              SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
+          if (NAME == 'Q') then
+             SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
           end if
        end if
 
