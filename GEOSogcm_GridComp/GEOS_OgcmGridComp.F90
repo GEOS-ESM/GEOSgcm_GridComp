@@ -59,7 +59,6 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_DATAICE
   integer            :: DO_OBIO
   integer            :: DO_DATA_ATM4OCN
-  integer            :: DO_WAVES
 
   logical          :: ocean_extData
   logical          :: ocean_sssData
@@ -214,8 +213,6 @@ contains
       call MAPL_GetResource (MAPL, ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
       call MAPL_GetResource (MAPL, seaIceT_extData,Label="SEAICE_THICKNESS_EXT_DATA:", DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
     endif
-
-    call MAPL_GetResource (MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
 
 ! Set the Run and initialize entry points
 !----------------------------------------
@@ -599,16 +596,14 @@ contains
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_WAVES /= 0) then
-    call MAPL_AddExportSpec(GC,                               &
+  call MAPL_AddExportSpec(GC,                               &
       SHORT_NAME       = 'DW',                                &
-      LONG_NAME        = 'bathymetry',                        &
+      LONG_NAME        = 'sea_floor_depth',                   &
       UNITS            = 'm',                                 &
       DIMS             = MAPL_DimsTileOnly,                   &
       VLOCATION        = MAPL_VLocationNone,                  &
       RC=STATUS)
-    VERIFY_(STATUS)
-  end if
+  VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'UI',                                &
@@ -772,13 +767,11 @@ contains
 !   end if
   end if
 
-  if (DO_WAVES == 0) then
-    call MAPL_AddConnectivity ( GC,  &
-            SHORT_NAME  = (/'FRACICE'/), & 
-            DST_ID = OCEAN,          &
-            SRC_ID = SEAICE,         &
-            _RC)
-  end if
+  call MAPL_AddConnectivity ( GC,  &
+          SHORT_NAME  = (/'FRACICE'/), & 
+          DST_ID = OCEAN,             &
+          SRC_ID = SEAICE,            &
+          _RC)
 
   if (seaIceT_extData) then
     call MAPL_AddConnectivity ( GC,  &
@@ -872,31 +865,21 @@ contains
     endif
   else
 #if (0)
-    call MAPL_TerminateImport ( GC, ALL=.true., __RC__)
+    call MAPL_TerminateImport(GC, ALL=.true., _RC)
 #else
-    call MAPL_TerminateImport ( GC, CHILD=ORAD,   RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_TerminateImport ( GC, CHILD=OBIO,   RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_TerminateImport ( GC, CHILD=SEAICE, RC=STATUS )
-    VERIFY_(STATUS)
-
 #if (1)
-    call MAPL_TerminateImport (GC, CHILD=OCEAN, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW', 'DATA_DW'], [OCEAN, OCEAN, OCEAN], _RC)
 #else
-    if (DO_DATASEAONLY==0) then
-        call MAPL_TerminateImport (GC, CHILD=OCEAN, RC=STATUS)
-        VERIFY_(STATUS)
-    else
-        call MAPL_TerminateImport(GC, SHORT_NAME=['FRACICE  ', &
-                                                  'FROCEAN  ', &
-                                                  'SWHEAT   ', &
-                                                  'TAUX     ', &
-                                                  'TAUY     ', &
-                                                  'DISCHARGE'], CHILD=OCEAN, RC=STATUS)
-        VERIFY_(STATUS)
-    end if
+    call MAPL_TerminateImport(GC, CHILD=ORAD, _RC)
+    call MAPL_TerminateImport(GC, CHILD=OBIO, _RC)
+    call MAPL_TerminateImport(GC, CHILD=SEAICE, _RC)
+    call MAPL_TerminateImport(GC, CHILD=OCEAN,              &
+                                  SHORT_NAME=['FRACICE  ',  &
+                                              'FROCEAN  ',  &
+                                              'SWHEAT   ',  &
+                                              'TAUX     ',  &
+                                              'TAUY     ',  &
+                                              'DISCHARGE'], _RC)
 #endif
 #endif
   endif
