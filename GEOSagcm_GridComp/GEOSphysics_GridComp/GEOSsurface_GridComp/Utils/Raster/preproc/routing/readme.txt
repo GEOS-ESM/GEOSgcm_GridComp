@@ -8,7 +8,7 @@ The river outlets are located in land or landice tiles as defined in the raster 
 
 The "Outlet_latlon.43200x21600" file is the input for "mk_runofftbl.F90" in the makebcs package, which further adjusts the outlet locations to be consistent with the ocean model resolution and domain ("mk_runofftbl.F90").
 
-If on NCCS/Discover, the package can be run using the script "run.sh".  If not on Discover, please contact yujin.zeng@nasa.gov.
+If on NCCS/Discover, the package can be run using the script "run_routing_raster.py". Users may source g5_modules before run to get the necessary env. If not on Discover, please contact yujin.zeng@nasa.gov.
 
 The function for each f90 code are briefly described as follows:
 
@@ -28,8 +28,5 @@ Assign outlet locations to all upstream catchments to create a 1d list showing t
 Insert the Greenland index map into the catchment index map.
 
 6. Pfaf_to_2d_30s_land.f90: 
-Transform the 1d list above to a 30 arc-sec 2d map using the map of indices.
-
-7. read_riveroutlet_land.f90: 
-Transform the above 2d maps to the unformatted Fortran binary file "Outlet_latlon.43200x21600" that can be read directly by "mk_runofftbl.F90" of makebcs. 
+Transform the 1d list above to the unformatted Fortran binary file "Outlet_latlon.43200x21600" that can be read directly by "mk_runofftbl.F90" of makebcs.
 

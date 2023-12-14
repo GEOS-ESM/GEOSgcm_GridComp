@@ -26,4 +26,4 @@ foreach (src ${exe_srcs})
 endforeach ()
 
 # copy to the build directory
-configure_file(run_routing.py run_routing.py)
+configure_file(run_routing_raster.py run_routing_raster.py)
