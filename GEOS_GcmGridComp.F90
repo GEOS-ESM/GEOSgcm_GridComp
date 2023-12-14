@@ -208,7 +208,7 @@ contains
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, _RC)
     call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATAATM:", DEFAULT=0, _RC)
     call MAPL_GetResource ( MAPL, DO_DATASEA, Label="USE_DATASEA:", DEFAULT=1, _RC)
-    call MAPL_GetResource ( MAPL, seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DAT, DEFAULT=.FALSE., _RC )
+    call MAPL_GetResource ( MAPL, seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:", DEFAULT=.FALSE., _RC )
     call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
     call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, _RC)
 
@@ -1308,34 +1308,34 @@ contains
    skinname = 'SALTWATER'
 
     ! wave model addition
-    !select SURFACE export
+    ! select SURFACE export
     call MAPL_ExportStateGet(GEX, name='SURFACE', &
-         result=GCM_INTERNAL_STATE%SURF_EXP,rc=status )
+         result=GCM_INTERNAL_STATE%SURF_EXP, rc=status)
     VERIFY_(STATUS)
 
     !select SURFACE import 
     call MAPL_ImportStateGet(GC, import=import, name='SURFACE', &
-         result=GCM_INTERNAL_STATE%SURF_IMP,rc=status )
+         result=GCM_INTERNAL_STATE%SURF_IMP, rc=status)
     VERIFY_(STATUS)
 
     !select TURBULENCE export
     call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_EXP,rc=status )
+         result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
     VERIFY_(STATUS)
 
     !select SURFACE import 
     call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_IMP,rc=status )
+         result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
     VERIFY_(STATUS)
 
     !select OCEAN export
     call MAPL_ExportStateGet(GEX, name='OCEAN', &
-         result=GCM_INTERNAL_STATE%OCN_EXP,rc=status )
+         result=GCM_INTERNAL_STATE%OCN_EXP, rc=status)
     VERIFY_(STATUS)
 
     !select OCEAN import
     call MAPL_ImportStateGet(GC, import=import, name='OCEAN', &
-         result=GCM_INTERNAL_STATE%OCN_IMP,rc=status )
+         result=GCM_INTERNAL_STATE%OCN_IMP, rc=status)
     VERIFY_(STATUS)
 
     if (DO_WAVES /= 0) then
