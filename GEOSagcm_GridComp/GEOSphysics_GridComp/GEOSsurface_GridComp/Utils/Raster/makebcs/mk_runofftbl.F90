@@ -309,7 +309,7 @@ contains
   subroutine outlets_to_ocean(file,lons,lats,nx,ny)
     
     integer,           intent(in)      :: nx,ny
-    character(len=*)   intent(in)      :: file
+    character(len=*),  intent(in)      :: file
     integer,           intent(inout)   :: lons(nx,ny),lats(nx,ny)
     
     ! -----------------------------------------------------------
@@ -641,7 +641,7 @@ contains
 
     character(len=*),    intent(in)  :: res_MAPL
     integer,             intent(in)  :: nx, ny
-    real                 intent(out) :: wetMask(nx,ny)
+    real,                intent(out) :: wetMask(nx,ny)
     
     integer                          :: ncid, varid, ret
     character(len=4)                 :: subname="read"
