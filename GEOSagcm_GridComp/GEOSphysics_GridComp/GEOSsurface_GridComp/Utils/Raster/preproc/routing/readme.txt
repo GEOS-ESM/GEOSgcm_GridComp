@@ -1,6 +1,6 @@
 v1 11/08/2023, Yujin Zeng
 
-The "preproc/routing" package is used for creating a file with the locations of river outlets to the ocean.
+The "preproc/routing" package is used for creating a 30-arcsec raster file with the locations of river outlets to the ocean.
 
 The output from this package is a binary file "Outlet_latlon.43200x21600".  
 
@@ -8,9 +8,9 @@ The river outlets are located in land or landice tiles as defined in the raster 
 
 The "Outlet_latlon.43200x21600" file is the input for "mk_runofftbl.F90" in the makebcs package, which further adjusts the outlet locations to be consistent with the ocean model resolution and domain ("mk_runofftbl.F90").
 
-If on NCCS/Discover, the package can be run using the script "run_routing_raster.py". Users may source g5_modules before run to get the necessary env. If not on Discover, please contact yujin.zeng@nasa.gov.
+If on NCCS/Discover, the package can be run using the script "run_routing_raster.py". Users should source g5_modules before run to get the necessary env. If not on Discover, please contact yujin.zeng@nasa.gov.
 
-The function for each f90 code are briefly described as follows:
+The tasks completed by each f90 program are briefly described as follows:
 
 1. get_outlets_catchindex.f90:
 Get sink catchment IDs.
