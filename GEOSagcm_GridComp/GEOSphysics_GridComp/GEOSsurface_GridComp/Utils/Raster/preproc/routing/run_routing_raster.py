@@ -5,7 +5,7 @@
 import os
 import subprocess
 
-input_path = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing"
+input_path = "/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/"
 
 # Remove files and directories
 os.system("rm -rf inputs >& /dev/null")

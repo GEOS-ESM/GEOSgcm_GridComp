@@ -78,7 +78,6 @@ program main
   lons(k+1:ntot)=long
   lats(k+1:ntot)=latg
   
-  
   open(88,file="outputs/outlet_sinklat.txt")
   do i=1,ntot
      write(88,*)lats(i)
