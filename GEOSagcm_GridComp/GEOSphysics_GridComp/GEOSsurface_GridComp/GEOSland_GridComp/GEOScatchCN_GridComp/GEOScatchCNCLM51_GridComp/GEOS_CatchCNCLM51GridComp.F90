@@ -7194,7 +7194,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        if(NextTime == StopTime .or. record) then
           
-          call CN_exit(ntile,ityp,fveg,cncol,cnpft)    
+          call CN_exit(ntiles,ityp,fveg,cncol,cnpft)    
           i = 1
           do iv = 1,VAR_PFT
              do nv = 1,NUM_VEG
