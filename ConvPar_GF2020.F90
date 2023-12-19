@@ -193,149 +193,149 @@ MODULE ConvPar_GF2020
       read(fileID) int_time
       close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_MEMORY
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_MEMORY_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_MEMORY
+      ! close(fileID)
       
       open(newunit=fileID, file=trim(dirName) // '/CONVECTION_TRACER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
       read(fileID) CONVECTION_TRACER
       close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CLEV_GRID
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CLEV_GRID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CLEV_GRID
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_REBCB
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_REBCB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_REBCB
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) VERT_DISCR
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/VERT_DISCR_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) VERT_DISCR
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) SATUR_CALC
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/SATUR_CALC_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) SATUR_CALC
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) SGS_W_TIMESCALE
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/SGS_W_TIMESCALE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) SGS_W_TIMESCALE
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) LIGHTNING_DIAG
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/LIGHTNING_DIAG_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) LIGHTNING_DIAG
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) APPLY_SUB_MP
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/APPLY_SUB_MP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) APPLY_SUB_MP
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_WETBULB
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_WETBULB_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_WETBULB
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) OVERSHOOT
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/OVERSHOOT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) OVERSHOOT
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) AUTOCONV
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/AUTOCONV_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) AUTOCONV
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_MOMENTUM_TRANSP
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_MOMENTUM_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_MOMENTUM_TRANSP
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) LAMBAU_DEEP
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/LAMBAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) LAMBAU_DEEP
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) LAMBAU_SHDN
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/LAMBAU_SHDN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) LAMBAU_SHDN
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) DOWNDRAFT
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/DOWNDRAFT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) DOWNDRAFT
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) MAX_TQ_TEND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/MAX_TQ_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) MAX_TQ_TEND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) ZERO_DIFF
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/ZERO_DIFF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) ZERO_DIFF
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_SMOOTH_PROF
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_PROF_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_SMOOTH_PROF
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) USE_SMOOTH_TEND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_SMOOTH_TEND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_SMOOTH_TEND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_HEI_DOWN_LAND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_HEI_DOWN_LAND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_HEI_DOWN_OCEAN
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_DOWN_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_HEI_DOWN_OCEAN
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_HEI_UPDF_LAND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_HEI_UPDF_LAND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_HEI_UPDF_OCEAN
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_HEI_UPDF_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_HEI_UPDF_OCEAN
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_MAX_EDT_LAND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_MAX_EDT_LAND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_MAX_EDT_OCEAN
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_MAX_EDT_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_MAX_EDT_OCEAN
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_FADJ_MASSFLX
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_FADJ_MASSFLX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_FADJ_MASSFLX
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) CUM_USE_EXCESS
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_USE_EXCESS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_USE_EXCESS
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) MOIST_TRIGGER
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/MOIST_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) MOIST_TRIGGER
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) FRAC_MODIS
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/FRAC_MODIS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) FRAC_MODIS
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) ADV_TRIGGER
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/ADV_TRIGGER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) ADV_TRIGGER
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) EVAP_FIX
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/EVAP_FIX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) EVAP_FIX
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) OUTPUT_SOUND
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/OUTPUT_SOUND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) OUTPUT_SOUND
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/tau_ocea_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) tau_ocea_cp
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/tau_ocea_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) tau_ocea_cp
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/tau_land_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) tau_land_cp
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/tau_land_cp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) tau_land_cp
+      ! close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/use_cloud_dissipation_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) use_cloud_dissipation
-      close(fileID)
+      ! open(newunit=fileID, file=trim(dirName) // '/use_cloud_dissipation_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) use_cloud_dissipation
+      ! close(fileID)
       
       open(newunit=fileID, file=trim(dirName) // '/use_gustiness_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
       read(fileID) use_gustiness
@@ -349,17 +349,157 @@ MODULE ConvPar_GF2020
       read(fileID) dcape_threshold
       close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/beta_sh_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) beta_sh
+      ! open(newunit=fileID, file=trim(dirName) // '/beta_sh_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) beta_sh
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/use_linear_subcl_mf_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) use_linear_subcl_mf
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/cap_maxs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) cap_maxs
+      ! close(fileID)
+
+      open(newunit=fileID, file=trim(dirName) // '/HEI_DOWN_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) HEI_DOWN_LAND
       close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/use_linear_subcl_mf_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) use_linear_subcl_mf
+      open(newunit=fileID, file=trim(dirName) // '/HEI_DOWN_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) HEI_DOWN_OCEAN
       close(fileID)
       
-      open(newunit=fileID, file=trim(dirName) // '/cap_maxs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-      read(fileID) cap_maxs
+      open(newunit=fileID, file=trim(dirName) // '/HEI_UPDF_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) HEI_UPDF_LAND
       close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/HEI_UPDF_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) HEI_UPDF_OCEAN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MAX_EDT_LAND_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) MAX_EDT_LAND
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/MAX_EDT_OCEAN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) MAX_EDT_OCEAN
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/FADJ_MASSFLX_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) FADJ_MASSFLX
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_EXCESS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_EXCESS
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/USE_C1D_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) USE_C1D
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/FIRST_GUESS_W_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) FIRST_GUESS_W
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/whoami_all_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) whoami_all
+      close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/JCOL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) JCOL
+      close(fileID)
+
+      ! open(newunit=fileID, file=trim(dirName) // '/icumulus_gf_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) icumulus_gf
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/closure_choice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) closure_choice
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/cum_entr_rate_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) cum_entr_rate
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_TRANSP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_TRACER_TRANSP
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_SCAVEN_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_TRACER_SCAVEN
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_FLUX_FORM_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_FLUX_FORM
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_FCT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_FCT
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_TRACER_EVAP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_TRACER_EVAP
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/USE_SCALE_DEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) USE_SCALE_DEP
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/DICYCLE_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) DICYCLE
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/ALP1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) ALP1
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/BC_METH_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) BC_METH
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/CUM_AVE_LAYER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) CUM_AVE_LAYER
+      ! close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/AVE_LAYER_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) AVE_LAYER
+      close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/TAU_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) TAU_DEEP
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/TAU_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) TAU_MID
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/C0_DEEP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) C0_DEEP
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/C0_MID_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) C0_MID
+      ! close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/C0_SHAL_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) C0_SHAL
+      ! close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/QRC_CRIT_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) QRC_CRIT
+      close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/C1_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) C1
+      ! close(fileID)
+      
+      open(newunit=fileID, file=trim(dirName) // '/CNV_2MOM_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      read(fileID) CNV_2MOM
+      close(fileID)
+      
+      ! open(newunit=fileID, file=trim(dirName) // '/GF_ENV_SETTING_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+      ! read(fileID) GF_ENV_SETTING
+      ! close(fileID)
 
     end subroutine
     !---------------------------------------------------------------------------------------------------
@@ -549,6 +689,31 @@ MODULE ConvPar_GF2020
 
       print*, "In GF2020_Interface"
     
+      ! print *, 'icumulus_gf = ', icumulus_gf
+      ! print *, 'closure_choice = ', closure_choice
+      ! print *, 'cum_entr_rate = ', cum_entr_rate
+      ! print *, 'USE_TRACER_TRANSP = ', USE_TRACER_TRANSP
+      ! print *, 'USE_TRACER_SCAVEN = ', USE_TRACER_SCAVEN
+      ! print *, 'USE_FLUX_FORM = ', USE_FLUX_FORM
+      ! print *, 'USE_FCT = ', USE_FCT
+      ! print *, 'USE_TRACER_EVAP = ', USE_TRACER_EVAP
+      ! print *, 'USE_SCALE_DEP = ', USE_SCALE_DEP
+      ! print *, 'DICYCLE = ', DICYCLE
+      ! print *, 'ALP1 = ', ALP1
+      ! print *, 'BC_METH = ', BC_METH
+      ! print *, 'CUM_AVE_LAYER = ', CUM_AVE_LAYER
+      ! print *, 'AVE_LAYER = ', AVE_LAYER
+      ! print *, 'TAU_DEEP = ', TAU_DEEP
+      ! print *, 'TAU_MID = ', TAU_MID
+      ! print *, 'C0_DEEP = ', C0_DEEP
+      ! print *, 'C0_MID = ', C0_MID
+      ! print *, 'C0_SHAL = ', C0_SHAL
+      ! print *, 'QRC_CRIT = ', QRC_CRIT
+      ! print *, 'C1 = ', C1
+      ! print *, 'CNV_2MOM = ', CNV_2MOM
+      ! print *, 'GF_ENV_SETTING = ', GF_ENV_SETTING
+      ! call exit(1)
+
        CNV_MFC = 0.0
        CNV_MF0 = 0.0
        CNV_PRC3 = 0.0
@@ -1186,6 +1351,50 @@ MODULE ConvPar_GF2020
       !- for debugging purposes only
       if(wrtgrads) call alloc_grads_arr(1,mzp,2,jl)
     
+      ! print *, 'sum(CNV_TR) = ', sum(CNV_TR)
+      ! print *, 'sum(CNV_MFC) = ', sum(CNV_MFC)
+      ! print *, 'sum(CNV_MF0) = ', sum(CNV_MF0)
+      ! print *, 'sum(CNV_PRC3) = ', sum(CNV_PRC3)
+      ! print *, 'sum(CNV_MFD) = ', sum(CNV_MFD)
+      ! print *, 'sum(CNV_DQCDT) = ', sum(CNV_DQCDT)
+      ! print *, 'sum(CNV_UPDF) = ', sum(CNV_UPDF)
+      ! print *, 'sum(CNV_CVW) = ', sum(CNV_CVW)
+      ! print *, 'sum(CNV_QC) = ', sum(CNV_QC)
+      ! print *, 'sum(ENTLAM) = ', sum(ENTLAM)
+      ! print *, 'sum(CNPCPRATE) = ', sum(CNPCPRATE)
+      ! print *, 'sum(LIGHTN_DENS) = ', sum(LIGHTN_DENS)
+      ! print *, 'sum(REVSU) = ', sum(REVSU)
+      ! print *, 'sum(PRFIL) = ', sum(PRFIL)
+      ! print *, 'sum(DQDT_GF) = ', sum(DQDT_GF)
+      ! print *, 'sum(DTDT_GF) = ', sum(DTDT_GF)
+      ! print *, 'sum(DUDT_GF) = ', sum(DUDT_GF)
+      ! print *, 'sum(DVDT_GF) = ', sum(DVDT_GF)
+      ! print *, 'sum(SIGMA_DEEP) = ', sum(SIGMA_DEEP)
+      ! print *, 'sum(SIGMA_MID) = ', sum(SIGMA_MID)
+      ! print *, 'sum(VAR3d_a) = ', sum(VAR3d_a)
+      ! print *, 'sum(VAR3d_b) = ', sum(VAR3d_b)
+      ! print *, 'sum(VAR3d_c) = ', sum(VAR3d_c)
+      ! print *, 'sum(VAR3d_d) = ', sum(VAR3d_d)
+      ! print *, 'sum(MUPDP) = ', sum(MUPDP)
+      ! print *, 'sum(MDNDP) = ', sum(MDNDP)
+      ! print *, 'sum(MUPSH) = ', sum(MUPSH)
+      ! print *, 'sum(MUPMD) = ', sum(MUPMD)
+      ! print *, 'sum(MFDP) = ', sum(MFDP)
+      ! print *, 'sum(MFSH) = ', sum(MFSH)
+      ! print *, 'sum(MFMD) = ', sum(MFMD)
+      ! print *, 'sum(ERRDP) = ', sum(ERRDP)
+      ! print *, 'sum(ERRSH) = ', sum(ERRSH)
+      ! print *, 'sum(ERRMD) = ', sum(ERRMD)
+      ! print *, 'sum(AA0) = ', sum(AA0)
+      ! print *, 'sum(AA1) = ', sum(AA1)
+      ! print *, 'sum(AA2) = ', sum(AA2)
+      ! print *, 'sum(AA3) = ', sum(AA3)
+      ! print *, 'sum(AA1_BL) = ', sum(AA1_BL)
+      ! print *, 'sum(AA1_CIN) = ', sum(AA1_CIN)
+      ! print *, 'sum(TAU_BL) = ', sum(TAU_BL)
+      ! print *, 'sum(TAU_EC) = ', sum(TAU_EC)
+      ! call exit(1)
+
       END SUBROUTINE GF2020_INTERFACE
     !---------------------------------------------------------------------------------------------------
     
@@ -1434,7 +1643,78 @@ MODULE ConvPar_GF2020
         REAL,   DIMENSION(mxp,myp,-1:5) :: dummy_precip
         INTEGER :: imemory,irun,jlx,kk,kss,plume,ii_plume
     
-    
+      print*,"In GF2020_DRV"
+
+      ! print *, 'ims = ', ims
+      ! print *, 'ime = ', ime
+      ! print *, 'jms = ', jms
+      ! print *, 'jme = ', jme
+      ! print *, 'kms = ', kms
+      ! print *, 'kme = ', kme
+      ! print *, 'its = ', its
+      ! print *, 'ite = ', ite
+      ! print *, 'jts = ', jts
+      ! print *, 'jte = ', jte
+      ! print *, 'kts = ', kts
+      ! print *, 'kte = ', kte
+      ! print *, 'mynum = ', mynum
+      ! print *, 'mzp = ', mzp
+      ! print *, 'mxp = ', mxp
+      ! print *, 'myp = ', myp
+      ! print *, 'mtp = ', mtp
+      ! print *, 'nmp = ', nmp
+      ! print *, 'DT = ', DT
+      ! print *, 'sum(flip) = ', sum(flip)
+      ! print *, 'sum(zm) = ', sum(zm)
+      ! print *, 'sum(zt) = ', sum(zt)
+      ! print *, 'sum(u) = ', sum(u)
+      ! print *, 'sum(v) = ', sum(v)
+      ! print *, 'sum(w) = ', sum(w)
+      ! print *, 'sum(rvap) = ', sum(rvap)
+      ! print *, 'sum(temp) = ', sum(temp)
+      ! print *, 'sum(press) = ', sum(press)
+      ! print *, 'sum(dm) = ', sum(dm)
+      ! print *, 'sum(curr_rvap) = ', sum(curr_rvap)
+      ! print *, 'sum(buoy_exc) = ', sum(buoy_exc)
+      ! print *, 'sum(kpbl) = ', sum(kpbl)
+      ! print *, 'sum(cnvfrc) = ', sum(cnvfrc)
+      ! print *, 'sum(srftype) = ', sum(srftype)
+      ! print *, 'sum(topt) = ', sum(topt)
+      ! print *, 'sum(aot500) = ', sum(aot500)
+      ! print *, 'sum(temp2m) = ', sum(temp2m)
+      ! print *, 'sum(sfc_press) = ', sum(sfc_press)
+      ! print *, 'sum(sflux_r) = ', sum(sflux_r)
+      ! print *, 'sum(sflux_t) = ', sum(sflux_t)
+      ! print *, 'sum(xland) = ', sum(xland)
+      ! print *, 'sum(lons) = ', sum(lons)
+      ! print *, 'sum(lats) = ', sum(lats)
+      ! print *, 'sum(dx2d) = ', sum(dx2d)
+      ! print *, 'sum(col_sat) = ', sum(col_sat)
+      ! print *, 'sum(stochastic_sig) = ', sum(stochastic_sig)
+      ! print *, 'sum(rthften) = ', sum(rthften)
+      ! print *, 'sum(rqvften) = ', sum(rqvften)
+      ! print *, 'sum(rth_advten) = ', sum(rth_advten)
+      ! print *, 'sum(rthblten) = ', sum(rthblten)
+      ! print *, 'sum(rqvblten) = ', sum(rqvblten)
+      ! print *, 'sum(mp_ice) = ', sum(mp_ice)   
+      ! print *, 'sum(mp_liq) = ', sum(mp_liq)
+      ! print *, 'sum(mp_cf) = ', sum(mp_cf)
+      ! print *, 'sum(do_this_column) = ', sum(do_this_column)
+      ! print *, 'ADV_TRIGGER = ', ADV_TRIGGER
+      ! print * ,' C1 = ', C1
+      ! print*, 'USE_TRACER_TRANSP = ', USE_TRACER_TRANSP
+      ! print*, 'autoconv = ', autoconv
+      ! print*, 'APPLY_SUB_MP = ', APPLY_SUB_MP
+      ! print*, 'DICYCLE = ', DICYCLE
+      ! print*, 'CUM_HEI_DOWN_LAND = ', CUM_HEI_DOWN_LAND
+      ! print*, 'CUM_HEI_DOWN_OCEAN = ',CUM_HEI_DOWN_OCEAN
+      ! print*, 'CUM_HEI_UPDF_LAND = ',CUM_HEI_UPDF_LAND
+      ! print*, 'CUM_HEI_UPDF_OCEAN = ',CUM_HEI_UPDF_OCEAN
+      ! print*, 'CUM_MAX_EDT_LAND = ',CUM_MAX_EDT_LAND
+      ! print*, 'CUM_MAX_EDT_OCEAN = ',CUM_MAX_EDT_OCEAN
+      ! print*, 'CUM_FADJ_MASSFLX = ',CUM_FADJ_MASSFLX
+      ! print*, 'CUM_USE_EXCESS = ',CUM_USE_EXCESS
+      ! call exit(1)
     !----------------------------------------------------------------------
         !-do not change this
         itf=ite
@@ -2048,7 +2328,98 @@ MODULE ConvPar_GF2020
     
     
          ENDDO
-    
+         ! print *, 'its = ', its
+         ! print *, 'ite = ', ite
+         ! print *, 'kts = ', kts
+         ! print *, 'kte = ', kte
+         ! print *, 'itf = ', itf
+         ! print *, 'ktf = ', ktf
+         ! print *, 'mtp = ', mtp
+         ! print *, 'nmp = ', nmp
+         ! print *, 'cumulus_type = ', cumulus_type
+         ! print *, 'sum(closure_choice) = ', sum(closure_choice)
+         ! print *, 'sum(cum_entr_rate ) = ', sum(cum_entr_rate )
+         ! print *, 'sum(cum_use_excess) = ', sum(cum_use_excess)
+         ! print *, 'sum(dx2d) = ', sum(dx2d)
+         ! print *, 'sum(stochastic_sig) = ', sum(stochastic_sig)
+         ! print *, 'sum(col_sat) = ', sum(col_sat)
+         ! print *, 'dt = ', dt
+         ! print *, 'sum(kpbli) = ', sum(kpbli)
+         ! print *, 'sum(cum_ztexec) = ', sum(cum_ztexec)
+         ! print *, 'sum(cum_zqexec) = ', sum(cum_zqexec)
+         ! print *, 'sum(ccn) = ', sum(ccn)
+         ! print *, 'sum(rhoi) = ', sum(rhoi)
+         ! print *, 'sum(omeg) = ', sum(omeg)
+         ! print *, 'sum(temp_old) = ', sum(temp_old)
+         ! print *, 'sum(qv_old) = ', sum(qv_old)
+         ! print *, 'sum(ter11) = ', sum(ter11)
+         ! print *, 'sum(h_sfc_flux) = ', sum(h_sfc_flux)
+         ! print *, 'sum(le_sfc_flux) = ', sum(le_sfc_flux)
+         ! print *, 'sum(xlons) = ', sum(xlons)
+         ! print *, 'sum(xlats) = ', sum(xlats)
+         ! print *, 'sum(xlandi) = ', sum(xlandi)
+         ! print *, 'sum(cnvfrc) = ', sum(cnvfrc)
+         ! print *, 'sum(srftype) = ', sum(srftype)
+         ! print *, 'sum(temp_new) = ', sum(temp_new)
+         ! print *, 'sum(qv_new) = ', sum(qv_new)
+         ! print *, 'sum(temp_new_BL) = ', sum(temp_new_BL)
+         ! print *, 'sum(qv_new_BL) = ', sum(qv_new_BL)
+         ! print *, 'sum(temp_new_ADV) = ', sum(temp_new_ADV)
+         ! print *, 'sum(qv_new_ADV) = ', sum(qv_new_ADV)
+         ! print *, 'sum(zo) = ', sum(zo)
+         ! print *, 'sum(po) = ', sum(po)
+         ! print *, 'sum(tsur) = ', sum(tsur)
+         ! print *, 'sum(psur) = ', sum(psur)
+         ! print *, 'sum(us) = ', sum(us)
+         ! print *, 'sum(vs) = ', sum(vs)
+         ! print *, 'sum(dm2d) = ', sum(dm2d)
+         ! print *, 'sum(se_chem) = ', sum(se_chem)
+         ! print *, 'sum(zws) = ', sum(zws)
+         ! print *, 'sum(dhdt) = ', sum(dhdt)
+         ! print *, 'sum(buoy_exc2d) = ', sum(buoy_exc2d)
+         ! print *, 'sum(mpqi) = ', sum(mpqi)
+         ! print *, 'sum(mpql) = ', sum(mpql)
+         ! print *, 'sum(mpcf) = ', sum(mpcf)
+         ! print *, 'sum(last_ierr) = ', sum(last_ierr)
+         ! print *, 'sum(outt) = ', sum(outt)
+         ! print *, 'sum(outq) = ', sum(outq)
+         ! print *, 'sum(outqc) = ', sum(outqc)
+         ! print *, 'sum(outu) = ', sum(outu)
+         ! print *, 'sum(outv) = ', sum(outv)
+         ! print *, 'sum(outnliq) = ', sum(outnliq)
+         ! print *, 'sum(outnice) = ', sum(outnice)
+         ! print *, 'sum(outbuoy) = ', sum(outbuoy)
+         ! print *, 'sum(outmpqi) = ', sum(outmpqi)
+         ! print *, 'sum(outmpql) = ', sum(outmpql)
+         ! print *, 'sum(outmpcf) = ', sum(outmpcf)
+         ! print *, 'sum(out_chem) = ', sum(out_chem)
+         ! print *, 'sum(ierr4d) = ', sum(ierr4d)
+         ! print *, 'sum(jmin4d) = ', sum(jmin4d)
+         ! print *, 'sum(klcl4d) = ', sum(klcl4d)
+         ! print *, 'sum(k224d) = ', sum(k224d)
+         ! print *, 'sum(kbcon4d) = ', sum(kbcon4d)
+         ! print *, 'sum(ktop4d) = ', sum(ktop4d)
+         ! print *, 'sum(kstabi4d) = ', sum(kstabi4d)
+         ! print *, 'sum(kstabm4d) = ', sum(kstabm4d)
+         ! print *, 'sum(cprr4d) = ', sum(cprr4d)
+         ! print *, 'sum(xmb4d) = ', sum(xmb4d)
+         ! print *, 'sum(edt4d) = ', sum(edt4d)
+         ! print *, 'sum(pwav4d) = ', sum(pwav4d)
+         ! print *, 'sum(sigma4d) = ', sum(sigma4d)
+         ! print *, 'sum(pcup5d) = ', sum(pcup5d)
+         ! print *, 'sum(up_massentr5d) = ', sum(up_massentr5d)
+         ! print *, 'sum(up_massdetr5d) = ', sum(up_massdetr5d)
+         ! print *, 'sum(dd_massentr5d) = ', sum(dd_massentr5d)
+         ! print *, 'sum(dd_massdetr5d) = ', sum(dd_massdetr5d)
+         ! print *, 'sum(zup5d) = ', sum(zup5d)
+         ! print *, 'sum(zdn5d) = ', sum(zdn5d)
+         ! print *, 'sum(prup5d) = ', sum(prup5d)
+         ! print *, 'sum(prdn5d) = ', sum(prdn5d)
+         ! print *, 'sum(clwup5d) = ', sum(clwup5d)
+         ! print *, 'sum(tup5d) = ', sum(tup5d)
+         ! print *, 'sum(conv_cld_fr5d) = ', sum(conv_cld_fr5d)
+            
+         ! call exit(1)
         END SUBROUTINE GF2020_DRV
     !---------------------------------------------------------------------------------------------------
     
