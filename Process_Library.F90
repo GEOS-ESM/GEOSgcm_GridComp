@@ -1,22 +1,23 @@
 ! $Id$
 
-#include "MAPL_Generic.h"
+! #include "MAPL_Generic.h"
 
 !=============================================================================
 !BOP
 
 module GEOSmoist_Process_Library
 
-  use ESMF
-  use MAPL
+!   use ESMF
+!   use MAPL
   use GEOS_UtilsMod
+  use MAPL_PhysicalConstantsMod
   use Aer_Actv_Single_Moment
   use aer_cloud
 
   implicit none
   private
 
-  character(len=ESMF_MAXSTR)              :: IAm="GEOSmoist_Process_Library"
+!   character(len=ESMF_MAXSTR)              :: IAm="GEOSmoist_Process_Library"
   integer                                 :: STATUS
 
   interface MELTFRZ
@@ -77,6 +78,9 @@ module GEOSmoist_Process_Library
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
 
+  ! Added from Base_Base.F90
+  real,    public, parameter :: MAPL_UNDEF              = 1.0e15
+
  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
@@ -85,8 +89,10 @@ module GEOSmoist_Process_Library
       real, pointer              :: Q(:,:,:) => null()
       real                       :: fscav = 0.0
       real                       :: Vect_Hcts(4)
-      character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
-      character(len=ESMF_MAXSTR) :: CNAME ! Component Name
+      ! character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
+      character(len=7) :: QNAME ! Tracer Name
+      ! character(len=ESMF_MAXSTR) :: CNAME ! Component Name
+      character(len=7) :: CNAME ! Component Name
   end type CNV_Tracer_Type
   type(CNV_Tracer_Type), allocatable :: CNV_Tracers(:)
 
@@ -110,95 +116,95 @@ module GEOSmoist_Process_Library
   
  
   contains
+    subroutine CNV_Tracers_Init()
+!   subroutine CNV_Tracers_Init(TR, RC)
+!     type (ESMF_FieldBundle), intent(inout) :: TR
+!     integer,       optional, intent(inout) :: RC
+!    ! Local
+!     type (ESMF_Field) :: FIELD
+!     integer :: TotalTracers, FriendlyTracers
+!     logical :: isPresent, isFriendly
+!     integer :: ind, N, F
+!     character(len=ESMF_MAXSTR), pointer, dimension(:) :: QNAMES
+!     character(len=ESMF_MAXSTR) :: QNAME, STR_CNV_TRACER
 
-  subroutine CNV_Tracers_Init(TR, RC)
-    type (ESMF_FieldBundle), intent(inout) :: TR
-    integer,       optional, intent(inout) :: RC
-   ! Local
-    type (ESMF_Field) :: FIELD
-    integer :: TotalTracers, FriendlyTracers
-    logical :: isPresent, isFriendly
-    integer :: ind, N, F
-    character(len=ESMF_MAXSTR), pointer, dimension(:) :: QNAMES
-    character(len=ESMF_MAXSTR) :: QNAME, STR_CNV_TRACER
+!     call ESMF_FieldBundleGet(TR, FieldCount=TotalTracers, RC=STATUS); VERIFY_(STATUS)
+!     allocate(QNAMES(TotalTracers), stat=STATUS); VERIFY_(STATUS)
+!     call ESMF_FieldBundleGet(TR, fieldNameList=QNAMES, RC=STATUS); VERIFY_(STATUS)
+!     FriendlyTracers = 0
+!     do N=1,TotalTracers
+!        QNAME = trim(QNAMES(N))
+!        call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
+!        call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+!        if(isPresent) then
+!           call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
+!           if (isFriendly) FriendlyTracers = FriendlyTracers + 1 
+!        end if
+!     enddo
 
-    call ESMF_FieldBundleGet(TR, FieldCount=TotalTracers, RC=STATUS); VERIFY_(STATUS)
-    allocate(QNAMES(TotalTracers), stat=STATUS); VERIFY_(STATUS)
-    call ESMF_FieldBundleGet(TR, fieldNameList=QNAMES, RC=STATUS); VERIFY_(STATUS)
-    FriendlyTracers = 0
-    do N=1,TotalTracers
-       QNAME = trim(QNAMES(N))
-       call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
-       call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
-       if(isPresent) then
-          call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
-          if (isFriendly) FriendlyTracers = FriendlyTracers + 1 
-       end if
-    enddo
+!     ! see if we need to allocate
+!     if (allocated(CNV_Tracers)) then
+!       ASSERT_( size(CNV_Tracers) == FriendlyTracers )
+!     else
+!       call WRITE_PARALLEL ("List of species friendly to MoistGridComp:")
+!       ! fill CNV_Tracers
+!       allocate( CNV_Tracers(FriendlyTracers), stat=STATUS); VERIFY_(STATUS)
+!       F = 0
+!       do N=1,TotalTracers
+!          QNAME = trim(QNAMES(N))
+!          call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
+!          call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+!          if(isPresent) then
+!             call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
+!             if (isFriendly) then
+!                ! Iterate the friendly index
+!                !-------------------------------
+!                F = F + 1
+!                ! Get items scavenging fraction
+!                !-------------------------------
+!                CNV_Tracers(F)%fscav = 0.0
+!                call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+!                if(isPresent) then
+!                   call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS); VERIFY_(STATUS)
+!                end if
+!                ! Get items for the wet removal parameterization for gases based on the Henry's Law
+!                !-------------------------------------------------------------------------------------
+!                CNV_Tracers(F)%Vect_Hcts(:)=-99.
+!                call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
+!                if (isPresent) then
+!                   call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
+!                end if
+!                ! Get component and tracer names
+!                !-------------------------------------------------------------------------------------
+!                ind= index(QNAME, '::')
+!                if (ind > 0) then
+!                   CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
+!                   CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
+!                end if
+!                ! Get pointer to friendly tracers
+!                !-----------------------------------------
+!                call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
+!                ! Report tracer status
+!                !-----------------------------------------
+!                if (CNV_Tracers(F)%fscav > 1.e-6) then
+!                    WRITE(STR_CNV_TRACER,101) TRIM(QNAME), CNV_Tracers(F)%fscav
+!                    call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+!                elseif (CNV_Tracers(F)%Vect_Hcts(1)>1.e-6) then
+!                    WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
+!                    call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+!                else
+!                    WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
+!                    call WRITE_PARALLEL (trim(STR_CNV_TRACER))
+!                endif
+! 101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
+! 102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
+! 103            FORMAT(a,' is transported by Moist')
+!             end if
+!          end if
+!       enddo
+!     end if
 
-    ! see if we need to allocate
-    if (allocated(CNV_Tracers)) then
-      ASSERT_( size(CNV_Tracers) == FriendlyTracers )
-    else
-      call WRITE_PARALLEL ("List of species friendly to MoistGridComp:")
-      ! fill CNV_Tracers
-      allocate( CNV_Tracers(FriendlyTracers), stat=STATUS); VERIFY_(STATUS)
-      F = 0
-      do N=1,TotalTracers
-         QNAME = trim(QNAMES(N))
-         call ESMF_FieldBundleGet(TR, fieldName=trim(QNAME), Field=FIELD, RC=STATUS); VERIFY_(STATUS)
-         call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
-         if(isPresent) then
-            call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
-            if (isFriendly) then
-               ! Iterate the friendly index
-               !-------------------------------
-               F = F + 1
-               ! Get items scavenging fraction
-               !-------------------------------
-               CNV_Tracers(F)%fscav = 0.0
-               call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
-               if(isPresent) then
-                  call ESMF_AttributeGet(FIELD, "ScavengingFractionPerKm", CNV_Tracers(F)%fscav, RC=STATUS); VERIFY_(STATUS)
-               end if
-               ! Get items for the wet removal parameterization for gases based on the Henry's Law
-               !-------------------------------------------------------------------------------------
-               CNV_Tracers(F)%Vect_Hcts(:)=-99.
-               call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", isPresent=isPresent,  RC=STATUS); VERIFY_(STATUS)
-               if (isPresent) then
-                  call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
-               end if
-               ! Get component and tracer names
-               !-------------------------------------------------------------------------------------
-               ind= index(QNAME, '::')
-               if (ind > 0) then
-                  CNV_Tracers(F)%CNAME = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
-                  CNV_Tracers(F)%QNAME = trim(QNAME(ind+2:))
-               end if
-               ! Get pointer to friendly tracers
-               !-----------------------------------------
-               call ESMFL_BundleGetPointerToData(TR, trim(QNAME), CNV_Tracers(F)%Q, RC=STATUS); VERIFY_(STATUS)
-               ! Report tracer status
-               !-----------------------------------------
-               if (CNV_Tracers(F)%fscav > 1.e-6) then
-                   WRITE(STR_CNV_TRACER,101) TRIM(QNAME), CNV_Tracers(F)%fscav
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-               elseif (CNV_Tracers(F)%Vect_Hcts(1)>1.e-6) then
-                   WRITE(STR_CNV_TRACER,102) TRIM(QNAME), CNV_Tracers(F)%Vect_Hcts
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-               else
-                   WRITE(STR_CNV_TRACER,103) TRIM(QNAME)
-                   call WRITE_PARALLEL (trim(STR_CNV_TRACER))
-               endif
-101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
-102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
-103            FORMAT(a,' is transported by Moist')
-            end if
-         end if
-      enddo
-    end if
-
-    deallocate(QNAMES)
+!     deallocate(QNAMES)
 
   end subroutine CNV_Tracers_Init
 
@@ -2507,7 +2513,7 @@ module GEOSmoist_Process_Library
     km   = size(ple,3)-1
     edge = size(v3,3)==km+1
 
-    _ASSERT(edge .or. size(v3,3)==km,'needs informative message')
+   !  _ASSERT(edge .or. size(v3,3)==km,'needs informative message')
 
     v2   = MAPL_UNDEF
 
@@ -2544,7 +2550,7 @@ module GEOSmoist_Process_Library
        end where
     end if
 
-    RETURN_(ESMF_SUCCESS)
+   !  RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp
 
 !finds the level closets to X2=criteria
@@ -3405,3 +3411,19 @@ subroutine update_cld( &
  end subroutine cs_prof
 
 end module GEOSmoist_Process_Library
+
+! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+  
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+  
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+  
+! http://www.apache.org/licenses/LICENSE-2.0
+  
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.

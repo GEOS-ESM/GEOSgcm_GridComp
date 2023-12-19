@@ -1,22 +1,18 @@
-module MAPL_Constants
+    real, dimension (DIMS :), intent(IN   ) ::  C
+    real, dimension (DIMS :), intent(INOUT) ::  A, B
 
-    use, intrinsic :: iso_fortran_env, only: REAL64, REAL32
-    use MAPL_InternalConstantsMod
-    use MAPL_MathConstantsMod
-    use MAPL_PhysicalConstantsMod
-    
-    contains
-    
-    subroutine initialize_constants()
-       implicit none
-    end subroutine initialize_constants
-    
-    end module MAPL_Constants
-    
-    ! For backwards compatibility
-    module MAPL_ConstantsMod
-    use MAPL_Constants
-    end module MAPL_ConstantsMod
+    integer :: LM, L
+
+    LM = size(A,size(shape(A)))
+
+    B(DIMS 1) = 1. /  B(DIMS 1)
+
+    do L = 2,LM
+       A(DIMS L) = A(DIMS L) * B(DIMS L-1)
+       B(DIMS L) = 1. / ( B(DIMS L) - C(DIMS L-1) * A(DIMS L) )
+    enddo
+
+    return
     
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
   

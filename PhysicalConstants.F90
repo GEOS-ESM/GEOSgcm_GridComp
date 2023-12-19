@@ -12,15 +12,15 @@ module MAPL_PhysicalConstantsMod
  ! !PUBLIC VARIABLES:
  
     ! Universal Constants
- #if defined(CODATA_2018_CONSTANTS)
-    real, parameter              :: MAPL_STFBOL                    = 5.670374419E-8                               ! W/(m^2 K^4)
-    real, parameter              :: MAPL_AVOGAD                    = 6.02214076E26                                ! 1/kmol
-    real, parameter              :: MAPL_RUNIV                     = 8314.462618                                  ! J/(Kmole K)
- #else
+!  #if defined(CODATA_2018_CONSTANTS)
+!     real, parameter              :: MAPL_STFBOL                    = 5.670374419E-8                               ! W/(m^2 K^4)
+!     real, parameter              :: MAPL_AVOGAD                    = 6.02214076E26                                ! 1/kmol
+!     real, parameter              :: MAPL_RUNIV                     = 8314.462618                                  ! J/(Kmole K)
+!  #else
     real, parameter              :: MAPL_STFBOL                    = 5.6734E-8                                    ! W/(m^2 K^4)
     real, parameter              :: MAPL_AVOGAD                    = 6.023E26                                     ! 1/kmol
     real, parameter              :: MAPL_RUNIV                     = 8314.47                                      ! J/(Kmole K)
- #endif
+!  #endif
     
     ! Earth Constants
     real(kind=REAL64), parameter :: MAPL_PSDRY                     = 98305.0_REAL64                                ! Pa
@@ -78,3 +78,19 @@ module MAPL_PhysicalConstantsMod
  !EOP
  
  end module MAPL_PhysicalConstantsMod
+
+ ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+  
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+  
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+  
+! http://www.apache.org/licenses/LICENSE-2.0
+  
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.

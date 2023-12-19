@@ -10,7 +10,7 @@
     ! !USES:
     
       use MAPL_ConstantsMod
-      use pFlogger
+      ! use pFlogger
       use ieee_arithmetic
     
     ! #include "qsatlqu.code"
@@ -152,7 +152,7 @@
           real, save :: TMINLQU    =  ZEROC - 40.0
           real, save :: TMINICE    =  ZEROC + TMINSTR
     
-          class(Logger), pointer :: lgr
+         !  class(Logger), pointer :: lgr
           logical :: debugIsEnabled
     
       contains
@@ -229,15 +229,15 @@
              real    :: TT
              real    :: DDQ
              integer :: IT
-    #define TX TL
-    #define PX PL
-    #define EX QS
-    #define DX DQ
-    #include "qsatlqu.code"
-    #undef  DX
-    #undef  TX
-    #undef  EX
-    #undef  PX
+#define TX TL
+#define PX PL
+#define EX QS
+#define DX DQ
+#include "qsatlqu.code"
+#undef  DX
+#undef  TX
+#undef  EX
+#undef  PX
              return
            end function QSATLQU0
     
@@ -253,15 +253,15 @@
              real    :: DD
              integer :: IT
              do I=1,size(TL,1)
-    #define TX TL(I)
-    #define PX PL(I)
-    #define EX QS(I)
-    #define DX DQ(I)
-    #include "qsatlqu.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I)
+#define PX PL(I)
+#define EX QS(I)
+#define DX DQ(I)
+#include "qsatlqu.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
              end do
            end function QSATLQU1
     
@@ -278,15 +278,15 @@
              integer :: IT
              do J=1,size(TL,2)
                 do I=1,size(TL,1)
-    #define TX TL(I,J)
-    #define PX PL(I,J)
-    #define EX QS(I,J)
-    #define DX DQ(I,J)
-    #include "qsatlqu.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I,J)
+#define PX PL(I,J)
+#define EX QS(I,J)
+#define DX DQ(I,J)
+#include "qsatlqu.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
                 end do
              end do
            end function QSATLQU2
@@ -305,15 +305,15 @@
              do K=1,size(TL,3)
                 do J=1,size(TL,2)
                    do I=1,size(TL,1)
-    #define TX TL(I,J,K)
-    #define PX PL(I,J,K)
-    #define EX QS(I,J,K)
-    #define DX DQ(I,J,K)
-    #include "qsatlqu.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I,J,K)
+#define PX PL(I,J,K)
+#define EX QS(I,J,K)
+#define DX DQ(I,J,K)
+#include "qsatlqu.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
     
                    end do
                 end do
@@ -333,15 +333,15 @@
              real    :: TT
              real    :: DDQ
              integer :: IT
-    #define TX TL
-    #define PX PL
-    #define EX QS
-    #define DX DQ
-    #include "qsatice.code"
-    #undef  DX
-    #undef  TX
-    #undef  EX
-    #undef  PX
+#define TX TL
+#define PX PL
+#define EX QS
+#define DX DQ
+#include "qsatice.code"
+#undef  DX
+#undef  TX
+#undef  EX
+#undef  PX
              return
            end function QSATICE0
     
@@ -357,15 +357,15 @@
              real    :: DD
              integer :: IT
              do I=1,size(TL,1)
-    #define TX TL(I)
-    #define PX PL(I)
-    #define EX QS(I)
-    #define DX DQ(I)
-    #include "qsatice.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I)
+#define PX PL(I)
+#define EX QS(I)
+#define DX DQ(I)
+#include "qsatice.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
              end do
            end function QSATICE1
     
@@ -382,15 +382,15 @@
              integer :: IT
              do J=1,size(TL,2)
                 do I=1,size(TL,1)
-    #define TX TL(I,J)
-    #define PX PL(I,J)
-    #define EX QS(I,J)
-    #define DX DQ(I,J)
-    #include "qsatice.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I,J)
+#define PX PL(I,J)
+#define EX QS(I,J)
+#define DX DQ(I,J)
+#include "qsatice.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
                 end do
              end do
            end function QSATICE2
@@ -409,15 +409,15 @@
              do K=1,size(TL,3)
                 do J=1,size(TL,2)
                    do I=1,size(TL,1)
-    #define TX TL(I,J,K)
-    #define PX PL(I,J,K)
-    #define EX QS(I,J,K)
-    #define DX DQ(I,J,K)
-    #include "qsatice.code"
-    #undef  DX
-    #undef  TX
-    #undef  PX
-    #undef  EX
+#define TX TL(I,J,K)
+#define PX PL(I,J,K)
+#define EX QS(I,J,K)
+#define DX DQ(I,J,K)
+#include "qsatice.code"
+#undef  DX
+#undef  TX
+#undef  PX
+#undef  EX
     
                    end do
                 end do
@@ -509,8 +509,8 @@
         integer :: IT
     
         if (debugIsEnabled) then
-          if (ieee_is_nan(TL)) call lgr%warning(' QSAT0: TL contains NaN')
-          if (ieee_is_nan(PL)) call lgr%warning(' QSAT0: PL contains NaN')
+         !  if (ieee_is_nan(TL)) call lgr%warning(' QSAT0: TL contains NaN')
+         !  if (ieee_is_nan(PL)) call lgr%warning(' QSAT0: PL contains NaN')
         end if
     
         if(present(RAMP)) then
@@ -601,8 +601,8 @@
           integer :: I
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT1: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT1: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT1: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT1: PL contains NaN')
           end if
     
           do I=1,SIZE(TL,1)
@@ -623,8 +623,8 @@
           integer :: I, J
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT2: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT2: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT2: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT2: PL contains NaN')
           end if
     
           do J=1,SIZE(TL,2)
@@ -647,8 +647,8 @@
           integer :: I, J, K
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT3: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT3: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning(' QSAT3: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning(' QSAT3: PL contains NaN')
           end if
     
           do K=1,SIZE(TL,3)
@@ -727,8 +727,8 @@
           integer :: IT
     
           if (debugIsEnabled) then
-             if (ieee_is_nan(TL)) call lgr%warning('DQSAT0: TL contains NaN')
-             if (ieee_is_nan(PL)) call lgr%warning('DQSAT0: PL contains NaN')
+            !  if (ieee_is_nan(TL)) call lgr%warning('DQSAT0: TL contains NaN')
+            !  if (ieee_is_nan(PL)) call lgr%warning('DQSAT0: PL contains NaN')
           end if
     
           if(present(RAMP)) then
@@ -819,8 +819,8 @@
           integer :: I
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT1: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT1: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT1: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT1: PL contains NaN')
           end if
     
           do I=1,SIZE(TL,1)
@@ -841,8 +841,8 @@
           integer :: I, J
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT2: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT2: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT2: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT2: PL contains NaN')
           end if
     
           do J=1,SIZE(TL,2)
@@ -865,8 +865,8 @@
           integer :: I, J, K
     
           if (debugIsEnabled) then
-             if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT3: TL contains NaN')
-             if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT3: PL contains NaN')
+            !  if (any(ieee_is_nan(TL))) call lgr%warning('DQSAT3: TL contains NaN')
+            !  if (any(ieee_is_nan(PL))) call lgr%warning('DQSAT3: PL contains NaN')
           end if
     
           do K=1,SIZE(TL,3)
@@ -981,8 +981,8 @@
     
               implicit none
     
-              lgr => logging%get_logger('SHARED.GMAOSHARED.GEOSSHARED.QSAT')
-              debugIsEnabled = lgr%isEnabledFor(DEBUG)
+            !   lgr => logging%get_logger('SHARED.GMAOSHARED.GEOSSHARED.QSAT')
+            !   debugIsEnabled = lgr%isEnabledFor(DEBUG)
     
            end subroutine LOGGER_INIT
     
@@ -1120,37 +1120,52 @@
     
     
     
-    #define DIMS
+#define DIMS
       subroutine GEOS_TRILU1 ( A,B,C )
-    #include "trilu.code"
+#include "trilu.code"
       end subroutine GEOS_TRILU1
     
       subroutine GEOS_TRISOLVE1 ( A,B,C,Y,YG )
-    #include "trisolve.code"
+#include "trisolve.code"
       end subroutine GEOS_TRISOLVE1
-    #undef DIMS
+#undef DIMS
     
-    #define DIMS :,
+#define DIMS :,
       subroutine GEOS_TRILU2 ( A,B,C )
-    #include "trilu.code"
+#include "trilu.code"
       end subroutine GEOS_TRILU2
     
       subroutine GEOS_TRISOLVE2 ( A,B,C,Y,YG )
-    #include "trisolve.code"
+#include "trisolve.code"
       end subroutine GEOS_TRISOLVE2
-    #undef DIMS
+#undef DIMS
     
-    #define DIMS :,:,
+#define DIMS :,:,
       subroutine GEOS_TRILU3 ( A,B,C )
-    #include "trilu.code"
+#include "trilu.code"
       end subroutine GEOS_TRILU3
     
       subroutine GEOS_TRISOLVE3 ( A,B,C,Y,YG )
-    #include "trisolve.code"
+#include "trisolve.code"
       end subroutine GEOS_TRISOLVE3
-    #undef DIMS
+#undef DIMS
     
     
     
       end module GEOS_UtilsMod
     
+! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+  
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+  
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+  
+! http://www.apache.org/licenses/LICENSE-2.0
+  
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.

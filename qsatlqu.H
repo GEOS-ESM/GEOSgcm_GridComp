@@ -1,23 +1,17 @@
-module MAPL_Constants
 
-    use, intrinsic :: iso_fortran_env, only: REAL64, REAL32
-    use MAPL_InternalConstantsMod
-    use MAPL_MathConstantsMod
-    use MAPL_PhysicalConstantsMod
-    
-    contains
-    
-    subroutine initialize_constants()
-       implicit none
-    end subroutine initialize_constants
-    
-    end module MAPL_Constants
-    
-    ! For backwards compatibility
-    module MAPL_ConstantsMod
-    use MAPL_Constants
-    end module MAPL_ConstantsMod
-    
+
+
+#define TABLE   ESTBLW
+#define FILE_    "esatlqu.H"
+#define PHASE   WATER
+
+#include "eqsat.H"
+
+
+#undef TABLE
+#undef FILE_
+#undef PHASE
+
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
   
 ! “Copyright © 2008 United States Government as represented by the Administrator

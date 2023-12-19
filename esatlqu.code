@@ -1,23 +1,17 @@
-module MAPL_Constants
+      if    (TYPE==1) then
+         TT = TI-ZEROC       !  Starr polynomial fit
+         EX = (TT*(TT*(TT*(TT*(TT*(TT*B6+B5)+B4)+B3)+B2)+B1)+B0)
+      elseif(TYPE==2) then   !  Fit used in CAM.
+         TT = TS/TI
+         EX = 10.0**(  DL(1)*(TT - 1.0) + DL(2)*LOG10(TT)             + &
+              DL(3)*(10.0**(DL(4)*(1.0 - (1.0/TT))) - 1.0)/10000000.0 + &
+              DL(5)*(10.0**(DL(6)*(TT -   1.0    )) - 1.0)/1000.0     + &
+              LOGPS + 2.0                                               )
+      elseif(TYPE==3) then   !  Murphy and Koop (2005, QJRMS)
+         EX = exp(                     (CL(0) + CL(1)/TI + CL(2)*alog(TI) + CL(3)*TI) + &
+              tanh(CL(4)*(TI-CL(5))) * (CL(6) + CL(7)/TI + CL(8)*alog(TI) + CL(9)*TI)   )
+      endif
 
-    use, intrinsic :: iso_fortran_env, only: REAL64, REAL32
-    use MAPL_InternalConstantsMod
-    use MAPL_MathConstantsMod
-    use MAPL_PhysicalConstantsMod
-    
-    contains
-    
-    subroutine initialize_constants()
-       implicit none
-    end subroutine initialize_constants
-    
-    end module MAPL_Constants
-    
-    ! For backwards compatibility
-    module MAPL_ConstantsMod
-    use MAPL_Constants
-    end module MAPL_ConstantsMod
-    
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
   
 ! “Copyright © 2008 United States Government as represented by the Administrator

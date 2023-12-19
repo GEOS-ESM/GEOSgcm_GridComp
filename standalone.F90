@@ -1,23 +1,31 @@
-module MAPL_Constants
+program test_moist_subroutines
 
-    use, intrinsic :: iso_fortran_env, only: REAL64, REAL32
-    use MAPL_InternalConstantsMod
-    use MAPL_MathConstantsMod
-    use MAPL_PhysicalConstantsMod
+    use GEOS_GF_InterfaceMod
+
+    implicit none
+
+    character*100 :: dirName, rank_str
+    integer       :: IM, JM, LM, fileID, num_args
+
+    num_args = command_argument_count()
     
-    contains
-    
-    subroutine initialize_constants()
-       implicit none
-    end subroutine initialize_constants
-    
-    end module MAPL_Constants
-    
-    ! For backwards compatibility
-    module MAPL_ConstantsMod
-    use MAPL_Constants
-    end module MAPL_ConstantsMod
-    
+    if(num_args.ne.2) then
+        print*, 'Missing arguments : <executable> <data directory> <trim(rank_str)>'
+        call exit(1)
+    else
+        call get_command_argument(1, dirName)
+        call get_command_argument(2, rank_str)
+    endif
+
+    IM = 180
+    JM = 180
+    LM = 72
+
+    ! Note : GF_Run parameters have been edited from original
+    call GF_Run(IM, JM, LM, dirName, rank_str)
+
+end program
+
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
   
 ! “Copyright © 2008 United States Government as represented by the Administrator
