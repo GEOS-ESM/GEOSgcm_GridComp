@@ -506,21 +506,21 @@ contains
 
   ! LOCAL
 
- type(bounds_type)                      :: bounds
- type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
- type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
- type(gridcell_type)                    :: grc
- type(cn_vegetation_type)               :: bgc_vegetation_inst
-! type(cnveg_state_type)                 :: cnveg_state_inst
- type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
- type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
- type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
- type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
- type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
- type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
- type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
- type(cn_products_type)                  :: c_products_inst
- type(cn_products_type)                  :: n_products_inst
+! type(bounds_type)                      :: bounds
+! type(soilbiogeochem_carbonflux_type)   :: soilbiogeochem_carbonflux_inst
+! type(soilbiogeochem_nitrogenflux_type) :: soilbiogeochem_nitrogenflux_inst
+! type(gridcell_type)                    :: grc
+! type(cn_vegetation_type)               :: bgc_vegetation_inst
+!! type(cnveg_state_type)                 :: cnveg_state_inst
+! type(soilbiogeochem_carbonstate_type)  :: soilbiogeochem_carbonstate_inst
+! type(soilbiogeochem_nitrogenstate_type):: soilbiogeochem_nitrogenstate_inst
+! type(soilbiogeochem_state_type)        :: soilbiogeochem_state_inst
+! type(cnveg_carbonflux_type)            :: cnveg_carbonflux_inst
+! type(cnveg_carbonstate_type)           :: cnveg_carbonstate_inst
+! type(cnveg_nitrogenflux_type)          :: cnveg_nitrogenflux_inst
+! type(cnveg_nitrogenstate_type)          :: cnveg_nitrogenstate_inst
+! type(cn_products_type)                  :: c_products_inst
+! type(cn_products_type)                  :: n_products_inst
 
   integer :: n, p, nv, nc, nz, np, nd
   integer, dimension(8) :: decomp_cpool_cncol_index = (/ 3, 4, 5, 2, 10, 11, 12, 13 /)
@@ -541,27 +541,27 @@ contains
          cncol(nc,nz,decomp_npool_cncol_index(nd)) = soilbiogeochem_nitrogenstate_inst%decomp_npools_vr_col (n,1,nd)
       end do
 
-      cncol(nc,nz, 6) = cnveg_carbonstate_inst%totvegc_col              (n)
+      cncol(nc,nz, 6) = bgc_vegetation_inst%cnveg_carbonstate_inst%totvegc_col              (n)
       ! jkolassa: variables below transitioned from being column-level to being gridcell-level in CLM;
       !           assuming here that quantities are spread over zones according to zone weight
-      cncol(nc,nz, 7) = c_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
-      cncol(nc,nz, 8) = c_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
-      cncol(nc,nz, 9) = cnveg_carbonstate_inst%seedc_grc(nc)*CN_zone_weight(nz)
-      cncol(nc,nz,14) = cnveg_carbonstate_inst%totc_col                 (n)
+      cncol(nc,nz, 7) = bgc_vegetation_inst%c_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
+      cncol(nc,nz, 8) = bgc_vegetation_inst%c_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz, 9) = bgc_vegetation_inst%cnveg_carbonstate_inst%seedc_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,14) = bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col                 (n)
       cncol(nc,nz,15) = soilbiogeochem_carbonstate_inst%totlitc_col     (n)
       cncol(nc,nz,16) = soilbiogeochem_nitrogenstate_inst%ntrunc_vr_col (n,1)
 
 
-      cncol(nc,nz,21) = n_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
-      cncol(nc,nz,22) = n_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
-      cncol(nc,nz,23) = cnveg_nitrogenstate_inst%seedn_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,21) = bgc_vegetation_inst%n_products_inst%prod100_grc(nc)*CN_zone_weight(nz) 
+      cncol(nc,nz,22) = bgc_vegetation_inst%n_products_inst%prod100_grc(nc)*CN_zone_weight(nz)
+      cncol(nc,nz,23) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%seedn_grc(nc)*CN_zone_weight(nz)
       cncol(nc,nz,24) = soilbiogeochem_nitrogenstate_inst%sminn_vr_col   (n,1)
-      cncol(nc,nz,29) = cnveg_nitrogenstate_inst%totn_col                (n)
+      cncol(nc,nz,29) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%totn_col                (n)
       cncol(nc,nz,30) = soilbiogeochem_state_inst%fpg_col                (n)
-      cncol(nc,nz,31) = cnveg_state_inst%annsum_counter_col              (n)
-      cncol(nc,nz,32) = cnveg_state_inst%annavg_t2m_col                  (n)
-      cncol(nc,nz,33) = cnveg_carbonflux_inst%annsum_npp_col             (n)
-      cncol(nc,nz,34) = cnveg_state_inst%farea_burned_col                (n)
+      cncol(nc,nz,31) = bgc_vegetation_inst%cnveg_state_inst%annsum_counter_col              (n)
+      cncol(nc,nz,32) = bgc_vegetation_inst%cnveg_state_inst%annavg_t2m_col                  (n)
+      cncol(nc,nz,33) = bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_npp_col             (n)
+      cncol(nc,nz,34) = bgc_vegetation_inst%cnveg_state_inst%farea_burned_col                (n)
       cncol(nc,nz,35) = soilbiogeochem_state_inst%fpi_col                (n)
 
       do p = 0,numpft  ! PFT index loop
@@ -569,87 +569,87 @@ contains
         do nv = 1,num_veg ! defined veg loop
 
           if(ityp(nc,nv,nz)==p .and. fveg(nc,nv,nz)>1.e-4) then
-            cnpft(nc,nz,nv,  1) = cnveg_carbonstate_inst%cpool_patch                 (np)
-            cnpft(nc,nz,nv,  2) = cnveg_carbonstate_inst%deadcrootc_patch            (np)
-            cnpft(nc,nz,nv,  3) = cnveg_carbonstate_inst%deadcrootc_storage_patch    (np)
-            cnpft(nc,nz,nv,  4) = cnveg_carbonstate_inst%deadcrootc_xfer_patch       (np)
-            cnpft(nc,nz,nv,  5) = cnveg_carbonstate_inst%deadstemc_patch             (np)
-            cnpft(nc,nz,nv,  6) = cnveg_carbonstate_inst%deadstemc_storage_patch     (np)
-            cnpft(nc,nz,nv,  7) = cnveg_carbonstate_inst%deadstemc_xfer_patch        (np)
-            cnpft(nc,nz,nv,  8) = cnveg_carbonstate_inst%frootc_patch                (np)
-            cnpft(nc,nz,nv,  9) = cnveg_carbonstate_inst%frootc_storage_patch        (np)
-            cnpft(nc,nz,nv, 10) = cnveg_carbonstate_inst%frootc_xfer_patch           (np)
-            cnpft(nc,nz,nv, 11) = cnveg_carbonstate_inst%gresp_storage_patch         (np)
-            cnpft(nc,nz,nv, 12) = cnveg_carbonstate_inst%gresp_xfer_patch            (np)
-            cnpft(nc,nz,nv, 13) = cnveg_carbonstate_inst%leafc_patch                 (np)
-            cnpft(nc,nz,nv, 14) = cnveg_carbonstate_inst%leafc_storage_patch         (np)
-            cnpft(nc,nz,nv, 15) = cnveg_carbonstate_inst%leafc_xfer_patch            (np)
-            cnpft(nc,nz,nv, 16) = cnveg_carbonstate_inst%livecrootc_patch            (np)
-            cnpft(nc,nz,nv, 17) = cnveg_carbonstate_inst%livecrootc_storage_patch    (np)
-            cnpft(nc,nz,nv, 18) = cnveg_carbonstate_inst%livecrootc_xfer_patch       (np)
-            cnpft(nc,nz,nv, 19) = cnveg_carbonstate_inst%livestemc_patch             (np)
-            cnpft(nc,nz,nv, 20) = cnveg_carbonstate_inst%livestemc_storage_patch     (np)
-            cnpft(nc,nz,nv, 21) = cnveg_carbonstate_inst%livestemc_xfer_patch        (np)
-            cnpft(nc,nz,nv, 22) = cnveg_carbonstate_inst%ctrunc_patch                (np)
-            cnpft(nc,nz,nv, 23) = cnveg_carbonstate_inst%xsmrpool_patch              (np)
-            cnpft(nc,nz,nv, 24) = cnveg_state_inst%annavg_t2m_patch                  (np)
-            cnpft(nc,nz,nv, 25) = cnveg_state_inst%annmax_retransn_patch             (np)
-            cnpft(nc,nz,nv, 26) = cnveg_carbonflux_inst%annsum_npp_patch             (np)
-            cnpft(nc,nz,nv, 27) = cnveg_state_inst%annsum_potential_gpp_patch        (np)
-            cnpft(nc,nz,nv, 28) = grc%dayl                                           (np)
-            cnpft(nc,nz,nv, 29) = cnveg_state_inst%days_active_patch                 (np)
-            cnpft(nc,nz,nv, 30) = cnveg_state_inst%dormant_flag_patch                (np)
-            cnpft(nc,nz,nv, 31) = cnveg_state_inst%offset_counter_patch              (np)
-            cnpft(nc,nz,nv, 32) = cnveg_state_inst%offset_fdd_patch                  (np)
-            cnpft(nc,nz,nv, 33) = cnveg_state_inst%offset_flag_patch                 (np)
-            cnpft(nc,nz,nv, 34) = cnveg_state_inst%offset_swi_patch                  (np)
-            cnpft(nc,nz,nv, 35) = cnveg_state_inst%onset_counter_patch               (np)
-            cnpft(nc,nz,nv, 36) = cnveg_state_inst%onset_fdd_patch                   (np)
-            cnpft(nc,nz,nv, 37) = cnveg_state_inst%onset_flag_patch                  (np)
-            cnpft(nc,nz,nv, 38) = cnveg_state_inst%onset_gdd_patch                   (np)
-            cnpft(nc,nz,nv, 39) = cnveg_state_inst%onset_gddflag_patch               (np)
-            cnpft(nc,nz,nv, 40) = cnveg_state_inst%onset_swi_patch                   (np)
-            cnpft(nc,nz,nv, 41) = cnveg_carbonflux_inst%prev_frootc_to_litter_patch  (np)
-            cnpft(nc,nz,nv, 42) = cnveg_carbonflux_inst%prev_leafc_to_litter_patch   (np)
-            cnpft(nc,nz,nv, 43) = cnveg_state_inst%tempavg_t2m_patch                 (np)
-            cnpft(nc,nz,nv, 44) = cnveg_state_inst%tempmax_retransn_patch            (np)
-            cnpft(nc,nz,nv, 45) = cnveg_carbonflux_inst%tempsum_npp_patch            (np)
-            cnpft(nc,nz,nv, 46) = cnveg_state_inst%tempsum_potential_gpp_patch       (np)
-            cnpft(nc,nz,nv, 47) = cnveg_carbonflux_inst%xsmrpool_recover_patch       (np)
-            cnpft(nc,nz,nv, 48) = cnveg_nitrogenstate_inst%deadcrootn_patch          (np)
-            cnpft(nc,nz,nv, 49) = cnveg_nitrogenstate_inst%deadcrootn_storage_patch  (np)
-            cnpft(nc,nz,nv, 50) = cnveg_nitrogenstate_inst%deadcrootn_xfer_patch     (np)
-            cnpft(nc,nz,nv, 51) = cnveg_nitrogenstate_inst%deadstemn_patch           (np)
-            cnpft(nc,nz,nv, 52) = cnveg_nitrogenstate_inst%deadstemn_storage_patch   (np)
-            cnpft(nc,nz,nv, 53) = cnveg_nitrogenstate_inst%deadstemn_xfer_patch      (np)
-            cnpft(nc,nz,nv, 54) = cnveg_nitrogenstate_inst%frootn_patch              (np)
-            cnpft(nc,nz,nv, 55) = cnveg_nitrogenstate_inst%frootn_storage_patch      (np)
-            cnpft(nc,nz,nv, 56) = cnveg_nitrogenstate_inst%frootn_xfer_patch         (np)
-            cnpft(nc,nz,nv, 57) = cnveg_nitrogenstate_inst%leafn_patch               (np)
-            cnpft(nc,nz,nv, 58) = cnveg_nitrogenstate_inst%leafn_storage_patch       (np)
-            cnpft(nc,nz,nv, 59) = cnveg_nitrogenstate_inst%leafn_xfer_patch          (np)
-            cnpft(nc,nz,nv, 60) = cnveg_nitrogenstate_inst%livecrootn_patch          (np)
-            cnpft(nc,nz,nv, 61) = cnveg_nitrogenstate_inst%livecrootn_storage_patch  (np)
-            cnpft(nc,nz,nv, 62) = cnveg_nitrogenstate_inst%livecrootn_xfer_patch     (np)
-            cnpft(nc,nz,nv, 63) = cnveg_nitrogenstate_inst%livestemn_patch           (np)
-            cnpft(nc,nz,nv, 64) = cnveg_nitrogenstate_inst%livestemn_storage_patch   (np)
-            cnpft(nc,nz,nv, 65) = cnveg_nitrogenstate_inst%livestemn_xfer_patch      (np)
-            cnpft(nc,nz,nv, 66) = cnveg_nitrogenstate_inst%npool_patch               (np)
-            cnpft(nc,nz,nv, 67) = cnveg_nitrogenstate_inst%ntrunc_patch              (np)
-            cnpft(nc,nz,nv, 68) = cnveg_nitrogenstate_inst%retransn_patch            (np)
+            cnpft(nc,nz,nv,  1) = bgc_vegetation_inst%cnveg_carbonstate_inst%cpool_patch                 (np)
+            cnpft(nc,nz,nv,  2) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_patch            (np)
+            cnpft(nc,nz,nv,  3) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_storage_patch    (np)
+            cnpft(nc,nz,nv,  4) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadcrootc_xfer_patch       (np)
+            cnpft(nc,nz,nv,  5) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_patch             (np)
+            cnpft(nc,nz,nv,  6) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_storage_patch     (np)
+            cnpft(nc,nz,nv,  7) = bgc_vegetation_inst%cnveg_carbonstate_inst%deadstemc_xfer_patch        (np)
+            cnpft(nc,nz,nv,  8) = bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_patch                (np)
+            cnpft(nc,nz,nv,  9) = bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_storage_patch        (np)
+            cnpft(nc,nz,nv, 10) = bgc_vegetation_inst%cnveg_carbonstate_inst%frootc_xfer_patch           (np)
+            cnpft(nc,nz,nv, 11) = bgc_vegetation_inst%cnveg_carbonstate_inst%gresp_storage_patch         (np)
+            cnpft(nc,nz,nv, 12) = bgc_vegetation_inst%cnveg_carbonstate_inst%gresp_xfer_patch            (np)
+            cnpft(nc,nz,nv, 13) = bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_patch                 (np)
+            cnpft(nc,nz,nv, 14) = bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_storage_patch         (np)
+            cnpft(nc,nz,nv, 15) = bgc_vegetation_inst%cnveg_carbonstate_inst%leafc_xfer_patch            (np)
+            cnpft(nc,nz,nv, 16) = bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_patch            (np)
+            cnpft(nc,nz,nv, 17) = bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_storage_patch    (np)
+            cnpft(nc,nz,nv, 18) = bgc_vegetation_inst%cnveg_carbonstate_inst%livecrootc_xfer_patch       (np)
+            cnpft(nc,nz,nv, 19) = bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_patch             (np)
+            cnpft(nc,nz,nv, 20) = bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_storage_patch     (np)
+            cnpft(nc,nz,nv, 21) = bgc_vegetation_inst%cnveg_carbonstate_inst%livestemc_xfer_patch        (np)
+            cnpft(nc,nz,nv, 22) = bgc_vegetation_inst%cnveg_carbonstate_inst%ctrunc_patch                (np)
+            cnpft(nc,nz,nv, 23) = bgc_vegetation_inst%cnveg_carbonstate_inst%xsmrpool_patch              (np)
+            cnpft(nc,nz,nv, 24) = bgc_vegetation_inst%cnveg_state_inst%annavg_t2m_patch                  (np)
+            cnpft(nc,nz,nv, 25) = bgc_vegetation_inst%cnveg_state_inst%annmax_retransn_patch             (np)
+            cnpft(nc,nz,nv, 26) = bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_npp_patch             (np)
+            cnpft(nc,nz,nv, 27) = bgc_vegetation_inst%cnveg_state_inst%annsum_potential_gpp_patch        (np)
+            cnpft(nc,nz,nv, 28) = grc%dayl                                           (nc) ! jkolassa Dec 2023: dayl is a gridcell =-level variable in CLM, but is stored as patch-level variable in CatcCN restart
+            cnpft(nc,nz,nv, 29) = bgc_vegetation_inst%cnveg_state_inst%days_active_patch                 (np)
+            cnpft(nc,nz,nv, 30) = bgc_vegetation_inst%cnveg_state_inst%dormant_flag_patch                (np)
+            cnpft(nc,nz,nv, 31) = bgc_vegetation_inst%cnveg_state_inst%offset_counter_patch              (np)
+            cnpft(nc,nz,nv, 32) = bgc_vegetation_inst%cnveg_state_inst%offset_fdd_patch                  (np)
+            cnpft(nc,nz,nv, 33) = bgc_vegetation_inst%cnveg_state_inst%offset_flag_patch                 (np)
+            cnpft(nc,nz,nv, 34) = bgc_vegetation_inst%cnveg_state_inst%offset_swi_patch                  (np)
+            cnpft(nc,nz,nv, 35) = bgc_vegetation_inst%cnveg_state_inst%onset_counter_patch               (np)
+            cnpft(nc,nz,nv, 36) = bgc_vegetation_inst%cnveg_state_inst%onset_fdd_patch                   (np)
+            cnpft(nc,nz,nv, 37) = bgc_vegetation_inst%cnveg_state_inst%onset_flag_patch                  (np)
+            cnpft(nc,nz,nv, 38) = bgc_vegetation_inst%cnveg_state_inst%onset_gdd_patch                   (np)
+            cnpft(nc,nz,nv, 39) = bgc_vegetation_inst%cnveg_state_inst%onset_gddflag_patch               (np)
+            cnpft(nc,nz,nv, 40) = bgc_vegetation_inst%cnveg_state_inst%onset_swi_patch                   (np)
+            cnpft(nc,nz,nv, 41) = bgc_vegetation_inst%cnveg_carbonflux_inst%prev_frootc_to_litter_patch  (np)
+            cnpft(nc,nz,nv, 42) = bgc_vegetation_inst%cnveg_carbonflux_inst%prev_leafc_to_litter_patch   (np)
+            cnpft(nc,nz,nv, 43) = bgc_vegetation_inst%cnveg_state_inst%tempavg_t2m_patch                 (np)
+            cnpft(nc,nz,nv, 44) = bgc_vegetation_inst%cnveg_state_inst%tempmax_retransn_patch            (np)
+            cnpft(nc,nz,nv, 45) = bgc_vegetation_inst%cnveg_carbonflux_inst%tempsum_npp_patch            (np)
+            cnpft(nc,nz,nv, 46) = bgc_vegetation_inst%cnveg_state_inst%tempsum_potential_gpp_patch       (np)
+            cnpft(nc,nz,nv, 47) = bgc_vegetation_inst%cnveg_carbonflux_inst%xsmrpool_recover_patch       (np)
+            cnpft(nc,nz,nv, 48) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_patch          (np)
+            cnpft(nc,nz,nv, 49) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_storage_patch  (np)
+            cnpft(nc,nz,nv, 50) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadcrootn_xfer_patch     (np)
+            cnpft(nc,nz,nv, 51) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_patch           (np)
+            cnpft(nc,nz,nv, 52) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_storage_patch   (np)
+            cnpft(nc,nz,nv, 53) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%deadstemn_xfer_patch      (np)
+            cnpft(nc,nz,nv, 54) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_patch              (np)
+            cnpft(nc,nz,nv, 55) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_storage_patch      (np)
+            cnpft(nc,nz,nv, 56) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%frootn_xfer_patch         (np)
+            cnpft(nc,nz,nv, 57) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_patch               (np)
+            cnpft(nc,nz,nv, 58) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_storage_patch       (np)
+            cnpft(nc,nz,nv, 59) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%leafn_xfer_patch          (np)
+            cnpft(nc,nz,nv, 60) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_patch          (np)
+            cnpft(nc,nz,nv, 61) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_storage_patch  (np)
+            cnpft(nc,nz,nv, 62) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livecrootn_xfer_patch     (np)
+            cnpft(nc,nz,nv, 63) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_patch           (np)
+            cnpft(nc,nz,nv, 64) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_storage_patch   (np)
+            cnpft(nc,nz,nv, 65) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%livestemn_xfer_patch      (np)
+            cnpft(nc,nz,nv, 66) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%npool_patch               (np)
+            cnpft(nc,nz,nv, 67) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%ntrunc_patch              (np)
+            cnpft(nc,nz,nv, 68) = bgc_vegetation_inst%cnveg_nitrogenstate_inst%retransn_patch            (np)
             cnpft(nc,nz,nv, 69) = canopystate_inst%elai_patch                        (np)
             cnpft(nc,nz,nv, 70) = canopystate_inst%esai_patch                        (np)
             cnpft(nc,nz,nv, 71) = canopystate_inst%hbot_patch                        (np)
             cnpft(nc,nz,nv, 72) = canopystate_inst%htop_patch                        (np)
             cnpft(nc,nz,nv, 73) = canopystate_inst%tlai_patch                        (np)
             cnpft(nc,nz,nv, 74) = canopystate_inst%tsai_patch                        (np)
-            cnpft(nc,nz,nv, 75) = cnveg_nitrogenflux_inst%plant_ndemand_patch        (np)
+            cnpft(nc,nz,nv, 75) = bgc_vegetation_inst%cnveg_nitrogenflux_inst%plant_ndemand_patch        (np)
             cnpft(nc,nz,nv, 76) = canopystate_inst%vegwp_patch                       (np,1)
             cnpft(nc,nz,nv, 77) = canopystate_inst%vegwp_patch                       (np,2)
             cnpft(nc,nz,nv, 78) = canopystate_inst%vegwp_patch                       (np,3)
             cnpft(nc,nz,nv, 79) = canopystate_inst%vegwp_patch                       (np,4)
-            cnpft(nc,nz,nv, 80) = cnveg_carbonflux_inst%annsum_litfall_patch         (np)
-            cnpft(nc,nz,nv, 81) = cnveg_carbonflux_inst%tempsum_litfall_patch        (np)
+            cnpft(nc,nz,nv, 80) = bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_litfall_patch         (np)
+            cnpft(nc,nz,nv, 81) = bgc_vegetation_inst%cnveg_carbonflux_inst%tempsum_litfall_patch        (np)
           endif
 
         end do ! defined veg loop
