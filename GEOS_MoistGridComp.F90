@@ -21,15 +21,15 @@ module GEOS_MoistGridCompMod
 !   use ESMF
 !   use MAPL
   use GEOS_GFDL_1M_InterfaceMod
-  use GEOS_BACM_1M_InterfaceMod
-  use GEOS_MGB2_2M_InterfaceMod
-  use GEOS_RAS_InterfaceMod
+!   use GEOS_BACM_1M_InterfaceMod
+!   use GEOS_MGB2_2M_InterfaceMod
+!   use GEOS_RAS_InterfaceMod
   use GEOS_GF_InterfaceMod
   use GEOS_UW_InterfaceMod
 
   use aer_cloud
   use Aer_Actv_Single_Moment
-  use Lightning_mod, only: HEMCO_FlashRate
+!   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
   use GEOS_UtilsMod
 

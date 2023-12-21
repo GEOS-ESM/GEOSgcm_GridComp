@@ -1,6 +1,6 @@
 program test_moist_subroutines
 
-    use GEOS_GF_InterfaceMod
+    use GEOS_MoistGridCompMod
 
     implicit none
 
@@ -22,7 +22,7 @@ program test_moist_subroutines
     LM = 72
 
     ! Note : GF_Run parameters have been edited from original
-    call GF_Run(IM, JM, LM, dirName, rank_str)
+    call Run(IM, JM, LM, dirName, rank_str)
 
 end program
 
