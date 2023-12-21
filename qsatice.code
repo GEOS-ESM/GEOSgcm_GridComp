@@ -1,0 +1,94 @@
+
+if(UTBL) then
+
+   if(FIRST) then
+      FIRST = .false.
+      call ESINIT
+   end if
+
+   if    (TX<=TMINTBL) then
+      EX=ESTBLE(1)
+      if(present(DQ)) DDQ = 0.0
+   elseif(TX>=ZEROC  ) then
+      EX=ESTFRZ
+      if(present(DQ)) DDQ = 0.0
+   else
+      TT  = (TX - TMINTBL)*DEGSUBS+1
+      IT  = int(TT)
+      DDQ = ESTBLE(IT+1) - ESTBLE(IT)
+      EX  =  ((TT-IT)*DDQ + ESTBLE(IT))
+   end if
+
+
+   if(present(PL)) then
+      if(PX > EX) then
+         DD = (ESFAC/(PX - (1.0-ESFAC)*EX))
+         EX = EX*DD
+         if(present(DQ)) DX = DDQ*ERFAC*PX*DD*DD
+      else
+         EX  = MAX_MIXING_RATIO
+         if(present(DQ)) DX = 0.0
+      end if
+   else
+      if(present(DQ)) DX = DDQ
+   end if
+
+else  ! Exact Formulation
+
+   if    (TX<TMINICE) then
+      TI = TMINICE
+   elseif(TX>ZEROC  ) then
+      TI = ZEROC
+   else
+      TI = TX
+   end if
+
+#include "esatice.code"
+
+   if(present(DQ)) then
+      if    (TX<TMINICE) then
+         DDQ = 0.0
+      elseif(TX>ZEROC  ) then
+         DDQ = 0.0
+      else
+         if(PX>EX) then
+            DD = EX
+            TI = TX + DELTA_T
+#include "esatice.code"
+            DDQ = EX-DD
+            EX  = DD
+         endif
+      end if
+   end if
+
+   if(present(PL)) then
+      if(PX > EX) then
+         DD = ESFAC/(PX - (1.0-ESFAC)*EX)
+         EX = EX*DD
+         if(present(DQ)) DX = DDQ*ERFAC*PX*DD*DD
+      else
+         EX = MAX_MIXING_RATIO
+         if(present(DQ)) DX = 0.0
+      end if
+   else
+      if(present(DQ)) DX = DDQ*(1.0/DELTA_T)
+   end if
+
+
+end if
+
+! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+
+! http://www.apache.org/licenses/LICENSE-2.0
+
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.
