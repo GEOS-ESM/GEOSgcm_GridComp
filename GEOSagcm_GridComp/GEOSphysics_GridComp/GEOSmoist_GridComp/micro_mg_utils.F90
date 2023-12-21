@@ -117,8 +117,8 @@ interface size_dist_param_liq
 end interface
 
 interface size_dist_param_ice
-  module procedure size_dist_param_basic_vect
-  module procedure size_dist_param_basic_line
+  module procedure size_dist_param_ice_vect
+  module procedure size_dist_param_ice_line
 end interface
 
 interface size_dist_param_basic
