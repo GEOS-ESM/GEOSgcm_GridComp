@@ -1,11 +1,11 @@
 program test_moist_subroutines
 
-    use test_evap_subl_pdf_subroutines
+    use GFDL_1M_RUN_data
 
     implicit none
 
     character*100 :: dirName, rank_str
-    integer       :: IM, JM, LM, fileID, num_args
+    integer       :: IM, JM, LM, num_args
 
     num_args = command_argument_count()
     
@@ -17,24 +17,14 @@ program test_moist_subroutines
         call get_command_argument(2, rank_str)
     endif
 
-    ! if (dirName(1:10) == './c24_data') then
-    !     IM = 24
-    !     JM = 24
-    !     LM = 72
-    ! elseif (dirName(1:10) == './c90_data') then
-    !     IM = 90
-    !     JM = 90
-    !     LM = 72
 
-    ! elseif (dirName(1:11) == './c180_data') then
-        IM = 180
-        JM = 180
-        LM = 72
-    ! endif
+    IM = 180
+    JM = 180
+    LM = 72
 
-    ! if (trim(dirName(12:29)) == 'evap_subl_pdf_loop' .or. trim(dirName(13:30)) == 'evap_subl_pdf_loop') then
-        call test_evap_subl_pdf_loop(IM, JM, LM, dirName, rank_str)
-    ! endif
+    call data_setup(IM, JM, LM, dirName, rank_str)
+    ! call test_GFDL_1M_RUN(IM, JM, LM, dirName, rank_str)
+    
 
 end program
 
