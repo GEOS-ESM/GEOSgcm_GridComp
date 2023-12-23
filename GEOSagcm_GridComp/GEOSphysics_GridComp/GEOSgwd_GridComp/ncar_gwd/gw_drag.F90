@@ -55,10 +55,10 @@ contains
 !===============================================================================
 
 
-  subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,              &    
-          beres_dc_desc, beres_sc_desc, beres_band,   oro_band, rdg_band,         &
+  subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,                &    
+          beres_dc_desc, beres_band,   oro_band, rdg_band,                           &
           pint_dev,      t_dev,         u_dev,        v_dev,                         &
-          ht_dc_dev,     ht_sc_dev,     dqcdt_dev,                                   &
+          ht_dc_dev,     dqcdt_dev,                                                  &
           sgh_dev,       mxdis_dev,     hwdth_dev,    clngt_dev,  angll_dev,         &
           anixy_dev,     gbxar_dev,     kwvrdg_dev,   effrdg_dev, pref_dev,          & 
           pmid_dev,      pdel_dev,      rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
@@ -84,7 +84,6 @@ contains
     type(GWBand),          intent(inout) :: rdg_band   ! Band descriptor
     type(GWBand),          intent(inout) :: beres_band ! Band descriptor
     type(BeresSourceDesc), intent(inout) :: beres_dc_desc ! Table descriptor for DeepCu Beres scheme
-    type(BeresSourceDesc), intent(inout) :: beres_sc_desc ! Table descriptor for ShallowCu Beres scheme
     real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
     real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
@@ -92,7 +91,6 @@ contains
     real,    intent(in   ) :: u_dev(pcols,pver)        ! zonal wind at layers
     real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
     real,    intent(in   ) :: ht_dc_dev(pcols,pver)    ! DeepCu heating in layers
-    real,    intent(in   ) :: ht_sc_dev(pcols,pver)    ! ShallowCu heating in layers
     real,    intent(in   ) :: dqcdt_dev(pcols,pver)    ! Condensate tendencies due to large-scale
     real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
 !++jtb 01/25/21 New topo vars
@@ -204,36 +202,21 @@ contains
     end do
     zi(:,1) = zi(:,2) + 0.5*( zm_dev(:,1) - zm_dev(:,2)  )
 
-   ! DeepCu BKG
+   ! DeepCu+Frontal BKG
     if (beres_dc_desc%active .and. effgwbkg>0.0) then
     call gw_beres_ifc( beres_band, &
        pcols, pver, dt , effgwbkg,  &
        u_dev , v_dev, t_dev, &
-       pref_dev, pint_dev, & 
+       pref_dev, pint_dev,  & 
        pdel_dev , rpdel_dev, lnpint_dev, &
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
-       utgw, vtgw, ttgw, flx_heat)
-       dudt_gwd_dev = dudt_gwd_dev + utgw
-       dvdt_gwd_dev = dvdt_gwd_dev + vtgw
-       dtdt_gwd_dev = dtdt_gwd_dev + ttgw
-    endif
-   ! ShallowCu BKG
-    if (beres_sc_desc%active .and. effgwbkg>0.0) then
-    call gw_beres_ifc( beres_band, &
-       pcols, pver, dt , effgwbkg,  &
-       u_dev , v_dev, t_dev, &
-       pref_dev, pint_dev, &
-       pdel_dev , rpdel_dev, lnpint_dev, &
-       zm_dev, zi, &
-       nm, ni, rhoi, kvtt,  &
-       ht_sc_dev,beres_sc_desc,rlat_dev, alpha, &
        utgw, vtgw, ttgw, flx_heat, dqcdt=dqcdt_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw
-     endif
+    endif
     ! Orographic
      if (effgworo > 0.0) then
      if (nrdg > 0) then

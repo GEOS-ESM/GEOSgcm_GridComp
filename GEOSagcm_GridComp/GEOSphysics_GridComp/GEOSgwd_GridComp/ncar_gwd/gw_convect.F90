@@ -196,7 +196,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 end subroutine gw_beres_init
 
 !------------------------------------
-subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
+subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth, maxq0, lats, dqcdt)
 !-----------------------------------------------------------------------
@@ -222,8 +222,10 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   type(GWBand), intent(in) :: band
 
   ! Settings for convection type (e.g. deep vs shallow).
-  type(BeresSourceDesc), intent(in) :: desc
+  type(BeresSourceDesc), intent(inout) :: desc
 
+  ! Edge pressures
+  real, intent(in) :: pint(ncol,pver+1)
   ! Midpoint zonal/meridional winds.
   real, intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Heating rate due to convection.
@@ -292,35 +294,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   tau0 = 0.0
   ubi = 0.0
 
-  !------------------------------------------------------------------------
-  ! Determine wind and unit vectors approximately at the source level, then
-  ! project winds.
-  !------------------------------------------------------------------------
-
-  ! Source wind speed and direction.
-  do i=1,ncol
-   uconv(i) = u(i,desc%k(i))
-   vconv(i) = v(i,desc%k(i))
-  enddo
-
-  ! Get the unit vector components and magnitude at the source level.
-  ubi1d = 0.0
-  call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
-  do i=1,ncol
-   ubi(i,desc%k(i)+1) = ubi1d(i)
-  enddo
-
-  ! Project the local wind at midpoints onto the source wind.
-  do k = 1, pver
-     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
-  end do
-
-  ! Compute the interface wind projection by averaging the midpoint winds.
-  ! Use the top level wind at the top interface.
-  ubi(:,1) = ubm(:,1)
-
-  ubi(:,2:pver) = midpoint_interp(ubm)
-
   !-----------------------------------------------------------------------
   ! Calculate heating depth.
   !
@@ -383,33 +356,69 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   ! Multipy by conversion factor
   q0 = q0 * hr_cf
 
-  if (desc%storm_shift) then
+  ! Compute source k-index
+  do i=1,ncol
+     if (hd_idx(i) > 0) then
+       do k = 0, pver-2
+         ! spectrum source index for DeepCu scheme
+         if (pint(i,k+1) < desc%spectrum_source) desc%k(i) = k+1
+       end do
+     else
+       do k = 0, pver-2
+         ! spectrum source index for frontal scheme
+         if (pint(i,k+1) < 90000.0) desc%k(i) = k+1
+       end do
+     endif
+  enddo
 
-     ! Find the cell speed where the storm speed is > 10 m/s.
-     ! Storm speed is taken to be the source wind speed.
-     do i=1,ncol
-       CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
-     enddo
+  !------------------------------------------------------------------------
+  ! Determine wind and unit vectors approximately at the source level, then
+  ! project winds.
+  !------------------------------------------------------------------------
 
-     ! Average wind in heating region, relative to storm cells.
-     uh = 0.0
-     do k = minval(topi), maxval(boti)
-        where (k >= topi .and. k <= boti)
-           uh = uh + ubm(:,k)/(boti-topi+1)
-        end where
-     end do
+  ! Source wind speed and direction.
+  do i=1,ncol
+   uconv(i) = u(i,desc%k(i))
+   vconv(i) = v(i,desc%k(i))
+  enddo
 
-     uh = uh - CS
+  ! Get the unit vector components and magnitude at the source level.
+  ubi1d = 0.0
+  call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
+  do i=1,ncol
+   ubi(i,desc%k(i)+1) = ubi1d(i)
+  enddo
 
-  else
+  ! Project the local wind at midpoints onto the source wind.
+  do k = 1, pver
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+  end do
 
-     ! For shallow convection, wind is relative to ground, and "heating
-     ! region" wind is just the source level wind.
-     do i=1,ncol
-       uh(i) = ubm(i,desc%k(i))
-     enddo
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+  ubi(:,2:pver) = midpoint_interp(ubm)
 
-  end if
+  ! Average wind in heating region, relative to storm cells.
+  uh = 0.0
+  do k = minval(topi), maxval(boti)
+     where (k >= topi .and. k <= boti)
+       uh = uh + ubm(:,k)/(boti-topi+1)
+     end where
+  end do
+
+  do i=1,ncol
+     if (desc%storm_shift .and. (hd_idx(i) > 0)) then
+         ! Find the cell speed where the storm speed is > 10 m/s.
+         ! Storm speed is taken to be the source wind speed.
+          CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
+          uh(i) = uh(i) - CS(i)
+     else
+         ! For shallow convection, wind is relative to ground, and "heating
+         ! region" wind is just the source level wind.
+          uh(i) = ubm(i,desc%k(i))
+     endif
+  enddo
 
   ! Limit uh to table range.
   uh = min(uh,  real(desc%maxuh))
@@ -437,7 +446,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
      !---------------------------------------------------------------------
      ! Look up spectrum only if the heating depth is large enough, else set
-     ! tau0 = 0.
+     ! tau0 = 0. or use frontal scheme forcing
      !---------------------------------------------------------------------
 
      if (hd_idx(i) > 0) then
@@ -464,17 +473,20 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
         tau(i,:,topi(i)+1) = tau0
 
      else
-      if (present(dqcdt)) then
-        if (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
-        ! include forced background stress in extra tropical large-scale systems
-        ! Set the phase speeds and wave numbers in the direction of the source wind.
-        ! Set the source stress magnitude (positive only, note that the sign of the 
-        ! stress is the same as (c-u).
-         tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
-         topi(i) = desc%k(i)
+
+        if (present(dqcdt)) then
+          if (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
+          ! include forced background stress in extra tropical large-scale systems
+          ! Set the phase speeds and wave numbers in the direction of the source wind.
+          ! Set the source stress magnitude (positive only, note that the sign of the 
+          ! stress is the same as (c-u).
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           topi(i) = desc%k(i)
+          endif
         endif
-      endif
+
      endif
+
   enddo
   !-----------------------------------------------------------------------
   ! End loop over all columns.
@@ -604,13 +616,8 @@ subroutine gw_beres_ifc( band, &
        enddo
      enddo
 
-     do k = 0, pver
-        ! spectrum source index
-        if (pref(k+1) < desc%spectrum_source) desc%k(:) = k+1
-     end do
-
      ! Determine wave sources for Beres deep scheme
-     call gw_beres_src(ncol, pver, band, desc, &
+     call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
 

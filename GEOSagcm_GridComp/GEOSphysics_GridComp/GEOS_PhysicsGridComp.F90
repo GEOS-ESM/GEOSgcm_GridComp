@@ -1180,7 +1180,7 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = [character(len=7):: 'Q', 'DTDT_DC', 'DTDT_SC'], &
+         SHORT_NAME  = (/'Q', 'DTDT_DC', 'CNV_FRC' /),                 &
          DST_ID      = GWD,                                            &
          SRC_ID      = MOIST,                                          &
                                                         RC=STATUS      )
