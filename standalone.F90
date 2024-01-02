@@ -1,6 +1,6 @@
 program test_moist_subroutines
 
-    use GFDL_1M_RUN_data
+    use GFDL_1M_RUN_module
 
     implicit none
 

@@ -1,4 +1,4 @@
-module GFDL_1M_RUN_data
+module GFDL_1M_RUN_module
 
     implicit none
 
