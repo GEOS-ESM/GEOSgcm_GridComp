@@ -5,7 +5,7 @@ FC = gfortran
 #OPT = -O3 -Mfunc32 -Kieee -acc=gpu -gpu=flushz -Minfo=acc #NVIDIA compiler options
 OPT = -g -O3 -fPIC -ffree-line-length-0 #-fopenacc -foffload="-lgfortran -lgomp -lm" -foffload=nvptx-none # Gfortran compiler options
 #OPT = -O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons #-prof-gen=srcpos# Ifort compiler options
-OBJ = GFDL_1M_RUN_mod.o standalone.o \
+OBJ = MAPL_Constants.o GEOS_Utilities.o MathConstants.o PhysicalConstants.o MAPL_SatVapor.o Process_Library.o GFDL_1M_RUN_mod.o standalone.o \
 
 FFLAGS ?=$(OPT)
 

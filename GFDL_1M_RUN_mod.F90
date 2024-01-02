@@ -1,5 +1,9 @@
 module GFDL_1M_RUN_module
 
+    use GEOS_UtilsMod
+    use MAPL_PhysicalConstantsMod
+    use GEOSmoist_Process_Library
+
     implicit none
 
     private
@@ -381,6 +385,85 @@ module GFDL_1M_RUN_module
         !$acc end data
 
 
+    end subroutine
+
+    subroutine GFDL_1M_RUN_driver(IM, JM, LM)
+
+        integer, intent(in) :: IM,JM,LM
+
+        ! Local
+        real, allocatable, dimension(:,:,:)  :: U0, V0
+        real, allocatable, dimension(:,:,:)  :: PLEmb, ZLE0
+        real, allocatable, dimension(:,:,:)  :: PLmb,  ZL0
+        real, allocatable, dimension(:,:,:)  :: DZ, DZET, DP, MASS, iMASS
+        real, allocatable, dimension(:,:,:)  :: DQST3, QST3
+        real, allocatable, dimension(:,:,:)  :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+                                                DQSDTmic, DQGDTmic, DQADTmic, &
+                                                DUDTmic,  DVDTmic,  DTDTmic
+        real, allocatable, dimension(:,:,:)  :: TMP3D
+        real, allocatable, dimension(:,:)    :: frland2D
+        real, allocatable, dimension(:,:)    :: TMP2D
+        integer, allocatable, dimension(:,:) :: KLCL
+
+        real                                 :: DT_MOIST
+
+        ! Local variables
+        real    :: facEIS
+        real    :: minrhcrit, ALPHA, RHCRIT
+        ! integer :: IM,JM,LM
+        integer :: I, J, L
+
+        DT_MOIST = DT_R8
+
+        ! Allocatables
+        ! Edge variables 
+        ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+        ALLOCATE ( PLEmb(IM,JM,0:LM) )
+        ! Layer variables
+        ALLOCATE ( U0   (IM,JM,LM  ) )
+        ALLOCATE ( V0   (IM,JM,LM  ) )
+        ALLOCATE ( ZL0  (IM,JM,LM  ) )
+        ALLOCATE ( PLmb (IM,JM,LM  ) )
+        ALLOCATE ( DZET (IM,JM,LM  ) )
+        ALLOCATE ( DZ   (IM,JM,LM  ) )
+        ALLOCATE ( DP   (IM,JM,LM  ) )
+        ALLOCATE ( MASS (IM,JM,LM  ) )
+        ALLOCATE ( iMASS(IM,JM,LM  ) )
+        ALLOCATE ( DQST3(IM,JM,LM  ) )
+        ALLOCATE (  QST3(IM,JM,LM  ) )
+        ALLOCATE ( TMP3D(IM,JM,LM  ) )
+        ! Local tendencies
+        ALLOCATE ( DQVDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQLDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQIDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQRDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQSDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQGDTmic(IM,JM,LM  ) )
+        ALLOCATE ( DQADTmic(IM,JM,LM  ) )
+        ALLOCATE (  DUDTmic(IM,JM,LM  ) )
+        ALLOCATE (  DVDTmic(IM,JM,LM  ) )
+        ALLOCATE (  DTDTmic(IM,JM,LM  ) )
+        ! 2D Variables
+        ALLOCATE ( frland2D     (IM,JM) ) 
+        ALLOCATE ( KLCL         (IM,JM) )
+        ALLOCATE ( TMP2D        (IM,JM) )
+
+        ! Derived States
+        PLEmb    =  PLE*.01
+        PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
+        DO L=0,LM
+        ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
+        END DO
+        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
+        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+        DP       = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
+        MASS     = DP/MAPL_GRAV
+        iMASS    = 1.0/MASS
+        U0       = U
+        V0       = V
+
+        KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM ) 
     end subroutine
 
 end module
