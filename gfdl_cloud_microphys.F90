@@ -55,7 +55,7 @@ module gfdl2_cloud_microphys_mod
   
   private
   
-!   public gfdl_cloud_microphys_driver, gfdl_cloud_microphys_init, gfdl_cloud_microphys_end
+  public gfdl_cloud_microphys_driver!, gfdl_cloud_microphys_init, gfdl_cloud_microphys_end
   public wqs1, wqs2, qs_blend, wqsat_moist, wqsat2_moist
   public qsmith_init, qsmith, es2_table1d, es3_table1d, esw_table1d
   public setup_con, wet_bulb

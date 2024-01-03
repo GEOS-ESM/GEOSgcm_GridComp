@@ -59,7 +59,7 @@ module GFDL_1M_RUN_module
     ! Module variable from aer_actv_single_moment.F90
     logical, public :: USE_BERGERON
  
-    public :: data_setup
+    public :: data_setup, GFDL_1M_RUN_driver
 
     contains
 

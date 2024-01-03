@@ -23,7 +23,7 @@ program test_moist_subroutines
     LM = 72
 
     call data_setup(IM, JM, LM, dirName, rank_str)
-    ! call test_GFDL_1M_RUN(IM, JM, LM, dirName, rank_str)
+    call GFDL_1M_RUN_driver(IM, JM, LM)
     
 
 end program
