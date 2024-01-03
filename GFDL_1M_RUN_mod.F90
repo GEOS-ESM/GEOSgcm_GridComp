@@ -19,12 +19,13 @@ module GFDL_1M_RUN_module
     real, pointer, dimension(:,:,:), public :: WTHV2
     real, pointer, dimension(:,:,:), public :: OMEGA
 
+    ! Exports
     real, pointer, dimension(:,:  ), public :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ), public :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:), public :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, DQGDT_macro
     real, pointer, dimension(:,:,:), public :: DUDT_macro,  DVDT_macro,  DTDT_macro
     real, pointer, dimension(:,:,:), public :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro, DQRDT_micro, DQSDT_micro, DQGDT_micro
-    real, pointer, dimension(:,:,:), public ::  DUDT_micro,  DVDT_micro,  DTDT_micro
+    real, pointer, dimension(:,:,:), public :: DUDT_micro,  DVDT_micro,  DTDT_micro
     real, pointer, dimension(:,:,:), public :: RAD_CF, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG
     real, pointer, dimension(:,:,:), public :: CLDREFFL, CLDREFFI
     real, pointer, dimension(:,:,:), public :: EVAPC, SUBLC
@@ -72,6 +73,8 @@ module GFDL_1M_RUN_module
         character*100, intent(IN) :: dirName, rank_str
 
         integer :: fileID
+
+        logical :: file_exists
 
         ! Imports and Internal array allocations
         allocate(Q(IM, JM, LM))
@@ -167,6 +170,26 @@ module GFDL_1M_RUN_module
         allocate(DUDT_micro(IM, JM, LM))
         allocate(DVDT_micro(IM, JM, LM))
         allocate(DTDT_micro(IM, JM, LM))
+
+        inquire(file=trim(dirName) // '/DBZ_MAX_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_MAX(IM, JM))
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_1KM_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_1KM(IM, JM))
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_TOP_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_TOP(IM, JM))
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_M10C_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_M10C(IM, JM))
+        endif
 
         open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) Q
@@ -374,19 +397,6 @@ module GFDL_1M_RUN_module
 
         ! Note : do_qa is a module variable in gfdl_cloud_microphys.F90
         do_qa = .false.
-
-        !$acc data copyin(DT_MOIST, PDFSHAPE, CNV_FRC, SRF_TYPE, PLmb, ZL0, &
-        !$acc             NACTL, NACTI, WHL, WQT, HL2, QT2, &
-        !$acc             HLQT, W3, W2, QT3, HL3, EDMF_FRC, USE_BERGERON, &
-        !$acc             QST3, CCI_EVAP_EFF, CCW_EVAP_EFF, &
-        !$acc             PLEmb) &
-        !$acc      copy(Q, QLLS, QLCN, QILS, QICN, T, CLLS, &
-        !$acc           CLCN, PDF_A, WTHV2, WQL) &
-        !$acc      copyout(EVAPC,RHX, SUBLC, PDFITERS)
-
-
-        !$acc end data
-
 
     end subroutine
 
@@ -851,6 +861,345 @@ module GFDL_1M_RUN_module
 
     end subroutine
 
+    subroutine compare_results(IM, JM, LM, dirName, rank_str)
+
+        integer, intent(in)       :: IM, JM, LM
+        character*100, intent(IN) :: dirName, rank_str
+        integer                   :: fileID
+
+        logical                   :: file_exists
+
+        real, dimension(:,:  ), allocatable :: PRCP_RAIN_ref, PRCP_SNOW_ref, PRCP_ICE_ref, PRCP_GRAUPEL_ref
+        real, dimension(:,:  ), allocatable :: LS_PRCP_ref, LS_SNR_ref, ICE_ref, FRZR_ref, CNV_FRC_ref, SRF_TYPE_ref
+        real, dimension(:,:,:), allocatable :: DQVDT_macro_ref, DQIDT_macro_ref, DQLDT_macro_ref, DQADT_macro_ref, DQRDT_macro_ref, DQSDT_macro_ref, DQGDT_macro_ref
+        real, dimension(:,:,:), allocatable :: DUDT_macro_ref,  DVDT_macro_ref,  DTDT_macro_ref
+        real, dimension(:,:,:), allocatable :: DQVDT_micro_ref, DQIDT_micro_ref, DQLDT_micro_ref, DQADT_micro_ref, DQRDT_micro_ref, DQSDT_micro_ref, DQGDT_micro_ref
+        real, dimension(:,:,:), allocatable ::  DUDT_micro_ref,  DVDT_micro_ref,  DTDT_micro_ref
+        real, dimension(:,:,:), allocatable :: RAD_CF_ref, RAD_QV_ref, RAD_QL_ref, RAD_QI_ref, RAD_QR_ref, RAD_QS_ref, RAD_QG_ref
+        real, dimension(:,:,:), allocatable :: CLDREFFL_ref, CLDREFFI_ref
+        real, dimension(:,:,:), allocatable :: EVAPC_ref, SUBLC_ref
+        real, dimension(:,:,:), allocatable :: RHX_ref, REV_LS_ref, RSU_LS_ref
+        real, dimension(:,:,:), allocatable :: PFL_LS_ref, PFL_AN_ref
+        real, dimension(:,:,:), allocatable :: PFI_LS_ref, PFI_AN_ref
+        real, dimension(:,:,:), allocatable :: PDF_A_ref, PDFITERS_ref
+        real, dimension(:,:,:), allocatable :: RHCRIT3D_ref, WTHV2_ref, WQL_ref
+        real, dimension(:,:), allocatable   :: EIS_ref, LTS_ref
+        real, dimension(:,:), allocatable   :: DBZ_MAX_ref, DBZ_1KM_ref, DBZ_TOP_ref, DBZ_M10C_ref
+        real, dimension(:,:,:), allocatable :: PTR3D_ref
+        real, dimension(:,:  ), allocatable :: PTR2D_ref
+
+        allocate(RAD_CF_ref(IM, JM, LM))
+        allocate(RAD_QV_ref(IM, JM, LM))
+        allocate(RAD_QL_ref(IM, JM, LM))
+        allocate(RAD_QI_ref(IM, JM, LM))
+        allocate(RAD_QR_ref(IM, JM, LM))
+        allocate(RAD_QS_ref(IM, JM, LM))
+        allocate(RAD_QG_ref(IM, JM, LM))
+        allocate(CLDREFFL_ref(IM, JM, LM))
+        allocate(CLDREFFI_ref(IM, JM, LM))
+        allocate(CNV_FRC_ref(IM, JM))
+        allocate(SRF_TYPE_ref(IM, JM))
+        allocate(EVAPC_ref(IM, JM, LM))
+        allocate(SUBLC_ref(IM, JM, LM))
+        allocate(PRCP_RAIN_ref(IM, JM))
+        allocate(PRCP_SNOW_ref(IM, JM))
+        allocate(PRCP_ICE_ref(IM, JM))
+        allocate(PRCP_GRAUPEL_ref(IM, JM))
+        allocate(LS_PRCP_ref(IM, JM))
+        allocate(LS_SNR_ref(IM, JM))
+        allocate(ICE_ref(IM, JM))
+        allocate(FRZR_ref(IM, JM))
+        allocate(RHX_ref(IM, JM, LM))
+        allocate(REV_LS_ref(IM, JM, LM))
+        allocate(RSU_LS_ref(IM, JM, LM))
+        allocate(PFL_AN_ref(IM, JM, 0:LM))
+        allocate(PFL_LS_ref(IM, JM, 0:LM))
+        allocate(PFI_AN_ref(IM, JM, 0:LM))
+        allocate(PFI_LS_ref(IM, JM, 0:LM))
+        allocate(PDF_A_ref(IM, JM, LM))
+        allocate(WTHV2_ref(IM, JM, LM))
+        allocate(WQL_ref(IM, JM, LM))
+        allocate(PDFITERS_ref(IM, JM, LM))
+        allocate(LTS_ref(IM, JM))
+        allocate(EIS_ref(IM, JM))
+        allocate(DQVDT_macro_ref(IM, JM, LM))
+        allocate(DQIDT_macro_ref(IM, JM, LM))
+        allocate(DQLDT_macro_ref(IM, JM, LM))
+        allocate(DQADT_macro_ref(IM, JM, LM))
+        allocate(DQRDT_macro_ref(IM, JM, LM))
+        allocate(DQSDT_macro_ref(IM, JM, LM))
+        allocate(DQGDT_macro_ref(IM, JM, LM))
+        allocate(DUDT_macro_ref(IM, JM, LM))
+        allocate(DVDT_macro_ref(IM, JM, LM))
+        allocate(DTDT_macro_ref(IM, JM, LM))
+        allocate(RHCRIT3D_ref(IM, JM, LM))
+        allocate(DQVDT_micro_ref(IM, JM, LM))
+        allocate(DQIDT_micro_ref(IM, JM, LM))
+        allocate(DQLDT_micro_ref(IM, JM, LM))
+        allocate(DQADT_micro_ref(IM, JM, LM))
+        allocate(DQRDT_micro_ref(IM, JM, LM))
+        allocate(DQSDT_micro_ref(IM, JM, LM))
+        allocate(DQGDT_micro_ref(IM, JM, LM))
+        allocate(DUDT_micro_ref(IM, JM, LM))
+        allocate(DVDT_micro_ref(IM, JM, LM))
+        allocate(DTDT_micro_ref(IM, JM, LM))
+
+        allocate(DBZ_M10C_ref(IM, JM))
+
+        inquire(file=trim(dirName) // '/DBZ_MAX_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_MAX_ref(IM, JM))
+            open(newunit=fileID, file=trim(dirName) // '/DBZ_MAX_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+            read(fileID) DBZ_MAX_ref
+            close(fileID)
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_1KM_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_1KM_ref(IM, JM))
+            open(newunit=fileID, file=trim(dirName) // '/DBZ_1KM_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+            read(fileID) DBZ_1KM_ref
+            close(fileID)
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_TOP_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_TOP_ref(IM, JM))
+            open(newunit=fileID, file=trim(dirName) // '/DBZ_TOP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+            read(fileID) DBZ_TOP_ref
+            close(fileID)
+        endif
+
+        inquire(file=trim(dirName) // '/DBZ_M10C_' // trim(rank_str) // '.out', exist=file_exists)
+        if(file_exists) then
+            allocate(DBZ_M10C_ref(IM, JM))
+            open(newunit=fileID, file=trim(dirName) // '/DBZ_M10C_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+            read(fileID) DBZ_M10C_ref
+            close(fileID)
+        endif
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_CF_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_CF_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QV_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QV_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QL_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QI_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QI_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QR_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QR_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RAD_QG_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RAD_QG_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/CLDREFFL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) CLDREFFL_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/CLDREFFI_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) CLDREFFI_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/CNV_FRC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) CNV_FRC_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/SRF_TYPE_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) SRF_TYPE_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/EVAPC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) EVAPC_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/SUBLC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) SUBLC_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PRCP_RAIN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PRCP_RAIN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PRCP_SNOW_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PRCP_SNOW_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PRCP_ICE_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PRCP_ICE_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PRCP_GRAUPEL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PRCP_GRAUPEL_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/LS_PRCP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) LS_PRCP_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/LS_SNR_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) LS_SNR_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/ICE_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) ICE_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/FRZR_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) FRZR_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RHX_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RHX_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/REV_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) REV_LS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RSU_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RSU_LS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PFL_AN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PFL_AN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PFL_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PFL_LS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PFI_AN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PFI_AN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PFI_LS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PFI_LS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PDF_A_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PDF_A_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WTHV2_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WTHV2_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WQL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WQL_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PDFITERS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PDFITERS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/LTS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) LTS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/EIS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) EIS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQVDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQVDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQIDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQIDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQLDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQLDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQADT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQADT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQRDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQRDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQSDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQSDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQGDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQGDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DUDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DUDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DVDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DVDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DTDT_macro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DTDT_macro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/RHCRIT3D_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) RHCRIT3D_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQVDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQVDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQIDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQIDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQLDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQLDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQADT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQADT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQRDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQRDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQSDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQSDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DQGDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DQGDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DUDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DUDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DVDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DVDT_micro_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/DTDT_micro_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) DTDT_micro_ref
+        close(fileID)
+
+
+    end subroutine
 end module
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
