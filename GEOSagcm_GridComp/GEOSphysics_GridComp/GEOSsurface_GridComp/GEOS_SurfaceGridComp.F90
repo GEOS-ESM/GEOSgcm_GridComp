@@ -666,30 +666,6 @@ module GEOS_SurfaceGridCompMod
             VLOCATION          = MAPL_VLocationNone,                  &
             RC=STATUS  )
        VERIFY_(STATUS)
-
-#if (0)
-       call MAPL_AddImportSpec(GC,                                    &
-            SHORT_NAME         = 'SHFX_SPRAY',                        &
-            LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
-            UNITS              = '1',                                 &
-            RESTART            = MAPL_RestartOptional,                &
-            DEFAULT            = 0.0,                                 &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-
-       call MAPL_AddImportSpec(GC,                                    &
-            SHORT_NAME         = 'LHFX_SPRAY',                        &
-            LONG_NAME          = 'latent_heat_contribution_from_sea_spray', &
-            UNITS              = '1',                                 &
-            RESTART            = MAPL_RestartOptional,                &
-            DEFAULT            = 0.0,                                 &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-#endif
     end if
 
     if (DO_DATA_ATM4OCN /= 0) then
@@ -4190,10 +4166,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: PHIS    => NULL()
 
     real, pointer, dimension(:,:) :: CHARNOCK => NULL()
-#if (0)
-    real, pointer, dimension(:,:) :: SH_SPRAY => NULL()
-    real, pointer, dimension(:,:) :: LH_SPRAY => NULL()
-#endif
 
 
 ! Pointers to gridded internals
@@ -4258,11 +4230,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: PCUTILE     => NULL()
 
     real, pointer, dimension(:) :: CHARNOCKTILE=> NULL()
-#if (0)
-    real, pointer, dimension(:) :: SH_SPRAYTILE=> NULL()
-    real, pointer, dimension(:) :: LH_SPRAYTILE=> NULL()
-#endif
-
 
 ! Pointers to tiled versions of internals
 
@@ -4382,16 +4349,6 @@ module GEOS_SurfaceGridCompMod
 
     if (DO_WAVES /= 0) then
       call MAPL_GetPointer(IMPORT  , CHARNOCK , 'CHARNOCK',  RC=STATUS); VERIFY_(STATUS)
-#if (0)
-      call MAPL_GetPointer(IMPORT  , SH_SPRAY , 'SHFX_SPRAY',  RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT  , LH_SPRAY , 'LHFX_SPRAY',  RC=STATUS); VERIFY_(STATUS)
-#endif 
-#ifdef DEBUG
-      print *, 'DEBUG::WGCM::SURF CHARNOCK = ', minval(CHARNOCK,mask=CHARNOCK/=MAPL_UNDEF), maxval(CHARNOCK,mask=CHARNOCK/=MAPL_UNDEF)
-
-      print *, 'DEBUG::WGCM::SURF SH_SPRAY = ', minval(SH_SPRAY,mask=SH_SPRAY/=MAPL_UNDEF), maxval(SH_SPRAY,mask=SH_SPRAY/=MAPL_UNDEF)
-      print *, 'DEBUG::WGCM::SURF LH_SPRAY = ', minval(LH_SPRAY,mask=LH_SPRAY/=MAPL_UNDEF), maxval(LH_SPRAY,mask=LH_SPRAY/=MAPL_UNDEF)
-#endif
     end if
 
 ! Pointers to grid outputs
@@ -4497,12 +4454,6 @@ module GEOS_SurfaceGridCompMod
     if (DO_WAVES /= 0) then
       allocate(CHARNOCKTILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
-#if(0)
-      allocate(SH_SPRAYTILE(NT), STAT=STATUS)
-      VERIFY_(STATUS)
-      allocate(LH_SPRAYTILE(NT), STAT=STATUS)
-      VERIFY_(STATUS)
-#endif
     end if
 
 ! Imports at the tiles
@@ -4524,11 +4475,6 @@ module GEOS_SurfaceGridCompMod
 
     if (DO_WAVES /= 0) then
       call MAPL_LocStreamTransform( LOCSTREAM,  CHARNOCKTILE,  CHARNOCK, RC=STATUS); VERIFY_(STATUS)
-
-#if (0)
-      call MAPL_LocStreamTransform( LOCSTREAM,  SH_SPRAYTILE,  SH_SPRAY, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_LocStreamTransform( LOCSTREAM,  LH_SPRAYTILE,  LH_SPRAY, RC=STATUS); VERIFY_(STATUS)
-#endif
     end if
 
 ! Allocate tile versions of internal
@@ -4860,10 +4806,6 @@ module GEOS_SurfaceGridCompMod
     if(associated(   VWINDLMTILE)) deallocate(    VWINDLMTILE)
 
     if(associated(CHARNOCKTILE))   deallocate(CHARNOCKTILE)
-#if (0)
-    if(associated(SH_SPRAYTILE))   deallocate(SH_SPRAYTILE)
-    if(associated(LH_SPRAYTILE))   deallocate(LH_SPRAYTILE)
-#endif
 
 !  All done
 !-----------
@@ -4924,12 +4866,6 @@ module GEOS_SurfaceGridCompMod
         if (DO_WAVES /= 0) then
           call FILLIN_TILE(GIM(type), 'CHARNOCK', CHARNOCKTILE, XFORM, RC=STATUS)
           VERIFY_(STATUS)
-#if (0)
-          call FILLIN_TILE(GIM(type), 'SHFX_SPRAY', SH_SPRAYTILE, XFORM, RC=STATUS)
-          VERIFY_(STATUS)
-          call FILLIN_TILE(GIM(type), 'LHFX_SPRAY', LH_SPRAYTILE, XFORM, RC=STATUS)
-          VERIFY_(STATUS)
-#endif
         end if
 
 
