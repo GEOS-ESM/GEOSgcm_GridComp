@@ -1614,10 +1614,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
      call MAPL_GetPointer(IMPORT,CHARNOCK, 'CHARNOCK', RC=STATUS)
      VERIFY_(STATUS)
 
-#ifdef DEBUG
-     print *, 'DEBUG::WGCM::OpenWater CHARNOCK = ', minval(CHARNOCK), maxval(CHARNOCK)
-#endif
-
      where (CHARNOCK > 0 .and. CHARNOCK < 1.0)
        CHARNOCK_ = CHARNOCK
      elsewhere
