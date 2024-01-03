@@ -5051,18 +5051,11 @@ end if
        SH_SPRAY = SH_SPRAY_
        LH_SPRAY = LH_SPRAY_
 
-#ifdef DEBUG
-       print *, ' *** DEBUG TURB:SH_spray      = ', minval(SH_SPRAY), maxval(SH_SPRAY)
-       print *, ' *** DEBUG TURB:LH_spray      = ', minval(LH_SPRAY), maxval(LH_SPRAY)
-       print *, ' *** DEBUG TURB:(SH+LH)_spray = ', minval(SH_SPRAY+LH_SPRAY), maxval(SH_SPRAY+LH_SPRAY)
-#endif
-
        where (SH_SPRAY < SH_SPRAY_MIN)  SH_SPRAY = SH_SPRAY_MIN
        where (SH_SPRAY > SH_SPRAY_MAX)  SH_SPRAY = SH_SPRAY_MAX
 
        where (LH_SPRAY < LH_SPRAY_MIN)  LH_SPRAY = LH_SPRAY_MIN
        where (LH_SPRAY > LH_SPRAY_MAX)  LH_SPRAY = LH_SPRAY_MAX
-     
     end if
 
     call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
