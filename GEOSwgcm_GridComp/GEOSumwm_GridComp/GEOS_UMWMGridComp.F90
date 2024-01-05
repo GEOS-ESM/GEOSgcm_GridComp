@@ -52,15 +52,15 @@ module GEOS_UMWMGridCompMod
                                   umwm_d             => d
 
     use UMWM_module,        only: umwm_nu_air        => nu_air,        &
-                                  umwm_nu_water      => nu_water,      & 
+                                  umwm_nu_water      => nu_water,      &
                                   umwm_g             => g,             &
                                   umwm_kappa         => kappa,         &
                                   umwm_gustiness     => gustiness,     &
-                                  umwm_sfct          => sfct,          &   
-                                  umwm_z             => z,             &  
+                                  umwm_sfct          => sfct,          &
+                                  umwm_z             => z,             &
                                   umwm_dmin          => dmin,          &
-                                  umwm_explim        => explim,        &  
-                                  umwm_sin_fac       => sin_fac,       &  
+                                  umwm_explim        => explim,        &
+                                  umwm_sin_fac       => sin_fac,       &
                                   umwm_sin_diss1     => sin_diss1,     &
                                   umwm_sin_diss2     => sin_diss2,     &
                                   umwm_sds_fac       => sds_fac,       &
@@ -123,7 +123,7 @@ module GEOS_UMWMGridCompMod
                                   umwm_taux_form     => taux_form,     &
                                   umwm_tauy_form     => tauy_form,     &
                                   umwm_taux_skin     => taux_skin,     &
-                                  umwm_tauy_skin     => tauy_skin      
+                                  umwm_tauy_skin     => tauy_skin
 
     use UMWM_init,          only: umwm_environment   => environment,   &
                                   umwm_alloc         => alloc,         &
@@ -141,7 +141,7 @@ module GEOS_UMWMGridCompMod
                                      umwm_s_ds       => sds_d12,       &
                                      umwm_s_nl       => snl_d12,       &
                                      umwm_s_ice      => s_ice
-                        
+
     use UMWM_stress,        only: umwm_stress_       => stress
 
     use UMWM_physics,       only: umwm_source        => source,        &
@@ -154,7 +154,7 @@ module GEOS_UMWMGridCompMod
     use UMWM_stokes,        only: umwm_stokes_drift  => stokes_drift
 
     use UMWM_util,          only: umwm_dealloc       => dealloc,       &
-                                  umwm_remap_mn2i    => remap_mn2i,    &  
+                                  umwm_remap_mn2i    => remap_mn2i,    &
                                   umwm_remap_i2mn    => remap_i2mn
 
     use UMWM_util,          only: sigWaveHeight, meanWavePeriod
@@ -180,22 +180,22 @@ module GEOS_UMWMGridCompMod
         private
 
         type(ESMF_Config) :: CF             ! Private Config
- 
+
         logical:: verbose   = .false.       ! verbose messages
- 
+
         real    :: dt        = 0.0          ! wave model time step, s
- 
+
         integer :: n_split      = 0         ! number of substeps for time-splitting
         integer :: max_substeps = 0         ! max number of sub-steps
-        
- 
+
+
         integer :: om        = 0            ! number of frequency/wavenumber bins
         integer :: pm        = 0            ! number of direction bins
- 
+
         real    :: fmin      = 0.0          ! lowest  frequency bin, Hz
         real    :: fmax      = 0.0          ! highest frequency bin, Hz
         real    :: fprog     = 0.0          ! highest prognostic frequency bin, Hz
- 
+
         real    :: nu_air    = 0.0          ! kinematic viscosity of air, m2 s-1
         real    :: nu_water  = 0.0          ! kinematic viscosity of water, m2 s-1
         real    :: sfct      = 0.0          ! surface tension, N m-1
@@ -220,7 +220,7 @@ module GEOS_UMWMGridCompMod
 
         logical :: stokes    = .true.       ! output Stokes drift velocity fields
         real, pointer, dimension(:) :: depths => null()  ! depths for Stokes diagnostics
- 
+
     end type WaveModel_State
 
 
@@ -238,7 +238,7 @@ module GEOS_UMWMGridCompMod
 !=============================================================================
 
 !  !DESCRIPTION:
-! 
+!
 !
 
 !EOP
@@ -260,7 +260,7 @@ contains
 
 ! ! DESCRIPTION: This version uses the MAPL_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!                our instance of a generic state and putting it in the 
+!                our instance of a generic state and putting it in the
 !                gridded component (GC). Here we only need to set the run method and
 !                add the state variable specifications (also generic) to our instance
 !                of the generic state. This is the way our true state variables get into
@@ -284,7 +284,7 @@ contains
         type (WaveModel_Wrap)           :: wrap
 
         integer                         :: NUM_FREQUENCY_BINS  ! number of frequency/wavenumber bins
-        integer                         :: NUM_DIRECTIONS      ! number of descrete directions 
+        integer                         :: NUM_DIRECTIONS      ! number of descrete directions
 
 !=============================================================================
 
@@ -302,7 +302,7 @@ contains
 
         allocate(self, __STAT__)
         wrap%ptr => self
- 
+
 ! Load private Config Attributes
 ! ------------------------------
 
@@ -314,14 +314,14 @@ contains
 
         call ESMF_ConfigGetAttribute(self%CF, self%om,        label='FREQUENCIES:',    __RC__)
         call ESMF_ConfigGetAttribute(self%CF, self%pm,        label='DIRECTIONS:' ,    __RC__)
-    
+
         call ESMF_ConfigGetAttribute(self%CF, self%fmin,      label='MIN_FREQUENCY:',  __RC__)
         call ESMF_ConfigGetAttribute(self%CF, self%fmax,      label='MAX_FREQUENCY:',  __RC__)
         call ESMF_ConfigGetAttribute(self%CF, self%fprog,     label='MAX_PROGNFREQ:',  __RC__)
-    
+
         call ESMF_ConfigGetAttribute(self%CF, self%n_split,   label='N_SPLIT:',        __RC__)
         call ESMF_ConfigGetAttribute(self%CF, self%max_substeps, label='MAX_SUBSTEPS:',__RC__)
-    
+
         call ESMF_ConfigGetAttribute(self%CF, self%fice_lth,  label='SEAICE_LTH:',     __RC__)
         call ESMF_ConfigGetAttribute(self%CF, self%fice_uth,  label='SEAICE_UTH:',     __RC__)
 
@@ -346,7 +346,7 @@ contains
 
 
         ASSERT_(self%om > 0)
-        ASSERT_(self%pm > 0) 
+        ASSERT_(self%pm > 0)
 
 !!!     ASSERT_(mod(self%pm,8) /= 0)
 
@@ -424,8 +424,8 @@ contains
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,                     &
-            RESTART        = MAPL_RestartSkip,        __RC__) 
-  
+            RESTART        = MAPL_RestartSkip,        __RC__)
+
         call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME     = 'V10M',                                 &
             LONG_NAME      = '10-meter_northward_wind',              &
@@ -433,15 +433,15 @@ contains
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,                     &
             RESTART        = MAPL_RestartSkip,        __RC__)
- 
+
         call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME     = 'U10N',                                 &
             LONG_NAME      = 'equivalent_neutral_10-meter_eastward_wind', &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,                     &
-            RESTART        = MAPL_RestartSkip,        __RC__) 
-  
+            RESTART        = MAPL_RestartSkip,        __RC__)
+
         call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME     = 'V10N',                                 &
             LONG_NAME      = 'equivalent_neutral_10-meter_northward_wind', &
@@ -456,8 +456,8 @@ contains
 !           UNITS          = 'm s-1',                                &
 !           DIMS           = MAPL_DimsHorzOnly,                      &
 !           VLOCATION      = MAPL_VLocationNone,                     &
-!           RESTART        = MAPL_RestartSkip,       __RC__) 
-!  
+!           RESTART        = MAPL_RestartSkip,       __RC__)
+!
 !       call MAPL_AddImportSpec(GC,                                  &
 !           SHORT_NAME     = 'VA',                                   &
 !           LONG_NAME      = 'surface_northward_wind',               &
@@ -481,7 +481,7 @@ contains
 !            UNITS          = 'm',                                    &
 !            DIMS           = MAPL_DimsHorzOnly,                      &
 !            VLOCATION      = MAPL_VLocationNone,                     &
-!            RESTART        = MAPL_RestartOptional,  __RC__)        
+!            RESTART        = MAPL_RestartOptional,  __RC__)
 
         call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME     = 'TSKINW',                               &
@@ -563,7 +563,7 @@ contains
 
 
 !  OGCM -> WM
-  
+
         call MAPL_AddImportSpec(GC,                                  &
             SHORT_NAME     = 'TW',                                   &
             LONG_NAME      = 'temperature',                          &
@@ -634,8 +634,8 @@ contains
             LONG_NAME      = '10-meter_eastward_wind',               &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,      __RC__) 
-  
+            VLOCATION      = MAPL_VLocationNone,      __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'V10M',                                 &
             LONG_NAME      = '10-meter_northward_wind',              &
@@ -648,8 +648,8 @@ contains
             LONG_NAME      = 'equivalent_neutral_10-meter_eastward_wind', &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,      __RC__) 
-  
+            VLOCATION      = MAPL_VLocationNone,      __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'V10N',                                 &
             LONG_NAME      = 'equivalent_neutral_10-meter_northward_wind', &
@@ -745,35 +745,35 @@ contains
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'SWHS',                                 &
             LONG_NAME      = 'sea_surface_swell_significant_height', &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'MWP',                                  &
             LONG_NAME      = 'mean_wave_period',                     &
             UNITS          = 's',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'MWD',                                  &
             LONG_NAME      = 'mean_wave_direction',                  &
             UNITS          = 'rad',                                  &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'MSS',                                  &
             LONG_NAME      = 'mean_squared_slope',                   &
             UNITS          = 'rad',                                  &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'MWL',                                  &
             LONG_NAME      = 'mean_wave_length',                     &
@@ -787,63 +787,63 @@ contains
             UNITS          = 'rad',                                  &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DWL',                                  &
             LONG_NAME      = 'dominant_wave_length',                 &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DWP',                                  &
             LONG_NAME      = 'dominant_wave_period',                 &
             UNITS          = 's',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCP0',                                 &
             LONG_NAME      = 'dominant_phase_speed_intrinsic',       &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCG0',                                 &
             LONG_NAME      = 'dominant_group_speed_intrinsic',       &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCP',                                  &
             LONG_NAME      = 'dominant_phase_speed',                 &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCG',                                  &
             LONG_NAME      = 'dominant_group_speed',                 &
             UNITS          = 'm s-1',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EDFX',                                 &
             LONG_NAME      = 'wave_energy_dissipation_flux_x_component', &
             UNITS          = 'kg s-3',                               &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EDFY',                                 &
             LONG_NAME      = 'wave_energy_dissipation_flux_y_component', &
             UNITS          = 'kg s-3',                               &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EDF',                                  &
             LONG_NAME      = 'wave_energy_dissipation_flux',         &
@@ -857,27 +857,27 @@ contains
             UNITS          = 'kg s-3',                               &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EGFY',                                 &
             LONG_NAME      = 'wave_energy_growth_flux_y_component',  &
             UNITS          = 'kg s-3',                               &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'EGF',                                  &
             LONG_NAME      = 'wave_energy_growth_flux',              &
             UNITS          = 'kg s-3',                               &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'Z0',                                   &
             LONG_NAME      = 'surface_roughness',                    &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'CD',                                   &
@@ -885,76 +885,76 @@ contains
             UNITS          = '1',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,     __RC__)
-    
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'CHARNOCK',                             &
             LONG_NAME      = 'wave_model_charnock_coefficient',      &
             UNITS          = '1',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAU',                                  &
             LONG_NAME      = 'total drag',                           &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUX',                                 &
             LONG_NAME      = 'total drag, x-component',              &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUY',                                 &
             LONG_NAME      = 'total drag, y-component',              &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-        
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAU_FORM',                             &
             LONG_NAME      = 'form drag',                            &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUX_FORM',                            &
             LONG_NAME      = 'form drag, x-component',               &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUY_FORM',                            &
             LONG_NAME      = 'form drag, y-component',               &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAU_SKIN',                             &
             LONG_NAME      = 'skin drag',                            &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUX_SKIN',                            &
             LONG_NAME      = 'skin drag, x-component',               &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
-    
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
+
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'TAUY_SKIN',                            &
             LONG_NAME      = 'skin drag, y-component',               &
             UNITS          = 'N m-2',                                &
             DIMS           = MAPL_DimsHorzOnly,                      &
-            VLOCATION      = MAPL_VLocationNone,     __RC__) 
+            VLOCATION      = MAPL_VLocationNone,     __RC__)
 
 
 
@@ -1004,13 +1004,13 @@ contains
 
 ! !ARGUMENTS:
 
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
       integer, optional,   intent(  out) :: RC     ! Error code:
 
-! ! DESCRIPTION: 
+! ! DESCRIPTION:
 
 !EOP
 
@@ -1050,7 +1050,7 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1126,9 +1126,9 @@ contains
       self%dt = real(time_step)
 
       if (MAPL_AM_I_ROOT()) then
-          write (*, '(A, I)') 'Wave model (dynamics) time step      = ', nint(self%dt)
-          write (*, '(A, I)') 'Wave model (dynamics) frequency bins = ', self%om
-          write (*, '(A, I)') 'Wave model (dynamics) directions     = ', self%pm
+          write (*, '(A, I0)') 'Wave model (dynamics) time step      = ', nint(self%dt)
+          write (*, '(A, I0)') 'Wave model (dynamics) frequency bins = ', self%om
+          write (*, '(A, I0)') 'Wave model (dynamics) directions     = ', self%pm
       end if
 
       !call MAPL_MemUtilsWrite(VM, 'GEOSUMWM_GridComp:AfterGEOS_UMWM_INIT', __RC__)
@@ -1158,13 +1158,13 @@ contains
 
 ! !ARGUMENTS:
 
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
       integer, optional,   intent(  out) :: RC     ! Error code:
 
-! ! DESCRIPTION: 
+! ! DESCRIPTION:
 
 !EOP
 
@@ -1240,21 +1240,21 @@ contains
       real, pointer, dimension(:,:) :: WM_DCG0 => null()
       real, pointer, dimension(:,:) :: WM_DCP  => null()
       real, pointer, dimension(:,:) :: WM_DCG  => null()
-  
-  
+
+
       real, pointer, dimension(:,:) :: WM_Z0    => null()
       real, pointer, dimension(:,:) :: WM_CD    => null()
       real, pointer, dimension(:,:) :: WM_CHARNOCK => null()
-  
-  
+
+
       real, pointer, dimension(:,:) :: WM_TAU   => null()
       real, pointer, dimension(:,:) :: WM_TAUX  => null()
       real, pointer, dimension(:,:) :: WM_TAUY  => null()
-  
+
       real, pointer, dimension(:,:) :: WM_TAU_FORM  => null()
       real, pointer, dimension(:,:) :: WM_TAUX_FORM => null()
       real, pointer, dimension(:,:) :: WM_TAUY_FORM => null()
-  
+
       real, pointer, dimension(:,:) :: WM_TAU_SKIN  => null()
       real, pointer, dimension(:,:) :: WM_TAUX_SKIN => null()
       real, pointer, dimension(:,:) :: WM_TAUY_SKIN => null()
@@ -1298,17 +1298,17 @@ contains
       real, allocatable, dimension(:,:) :: tmp_global_x ! global 2d buffer (x-component)
       real, allocatable, dimension(:,:) :: tmp_global_y ! global 2d buffer (y-component)
       real, allocatable, dimension(:,:) :: tmp_local    ! local  2d buffer
-      real, allocatable, dimension(:)   :: tmp_unroll   ! global 1d buffer 
+      real, allocatable, dimension(:)   :: tmp_unroll   ! global 1d buffer
 
       real :: tau_, tau_form_, tau_skin_
 
       real, pointer, dimension(:,:) :: LATS => NULL()
       real, pointer, dimension(:,:) :: LONS => NULL()
 
- 
+
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1360,7 +1360,7 @@ contains
       call MAPL_GetPointer(INTERNAL, WM_E,     'E',        __RC__)
       call MAPL_GetPointer(INTERNAL, WM_USTAR, 'USTAR',    __RC__)
 
-      ! AGCM     
+      ! AGCM
       call MAPL_GetPointer(IMPORT, U10N,    'U10N',    __RC__)
       call MAPL_GetPointer(IMPORT, V10N,    'V10N',    __RC__)
 
@@ -1420,7 +1420,7 @@ contains
       call MAPL_GetPointer(EXPORT, WM_LAT2D,     'LAT2D',     __RC__)
 
       call MAPL_GetPointer(EXPORT, WM_NUW,       'NUW',       __RC__)
-     
+
       call MAPL_GetPointer(EXPORT, WM_FRACICE,   'FRACI',     __RC__)
 
 
@@ -1428,7 +1428,7 @@ contains
       call MAPL_GetPointer(EXPORT, WM_SWH,       'SWH',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_SWHS,      'SWHS',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_SWHW,      'SWHW',      __RC__)
-   
+
       call MAPL_GetPointer(EXPORT, WM_MWP,       'MWP',       __RC__)
       call MAPL_GetPointer(EXPORT, WM_MWD,       'MWD',       __RC__)
       call MAPL_GetPointer(EXPORT, WM_MSS,       'MSS',       __RC__)
@@ -1440,11 +1440,11 @@ contains
       call MAPL_GetPointer(EXPORT, WM_DCG0,      'DCG0',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCP,       'DCP',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_DCG,       'DCG',       __RC__)
-  
-  
+
+
       call MAPL_GetPointer(EXPORT, WM_Z0,        'Z0',        __RC__)
       call MAPL_GetPointer(EXPORT, WM_CD,        'CD',        __RC__)
-  
+
       call MAPL_GetPointer(EXPORT, WM_TAU,       'TAU',       alloc=.true., __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUX,      'TAUX',      __RC__)
       call MAPL_GetPointer(EXPORT, WM_TAUY,      'TAUY',      __RC__)
@@ -1508,14 +1508,14 @@ contains
 !   ** For tiles not covered by sea-ice:
 !   1. Initialize UMWM
 !   2. Set UMWM state variables from the INTERNAL state
-!   3. Update UMWM forcings from IMPORT state 
+!   3. Update UMWM forcings from IMPORT state
 !   4. Integrate sources in time
 !      4.1 physics
 !   5. Wave propagation
-!      5.1 advection 
+!      5.1 advection
 !      5.2 refraction
 !   6. Update UMWM diagnostics
-!   7. Update INTERNAL state       
+!   7. Update INTERNAL state
 !   8. Update EXPORTs
 !   9. Free UMWM memory
 !
@@ -1542,7 +1542,7 @@ contains
 
       umwm_dtg       = self%dt
 
-      umwm_om        = self%om 
+      umwm_om        = self%om
       umwm_pm        = self%pm
       umwm_fmin      = self%fmin
       umwm_fmax      = self%fmax
@@ -1571,7 +1571,7 @@ contains
 
       allocate(tmp_local(IM, JM), __STAT__)
       allocate(tmp_global(IM_world, JM_world), __STAT__)
-      allocate(tmp_unroll(IM_world*JM_world),  __STAT__) 
+      allocate(tmp_unroll(IM_world*JM_world),  __STAT__)
 
       umwm_mm = IM_world  ! domain size in x
       umwm_nm = JM_world  ! domain size in y
@@ -1584,7 +1584,7 @@ contains
       call set_global_2d(tmp_global, LONS, VM, GRID, __RC__)
       umwm_lon = (180.0/MAPL_PI) * tmp_global
 
-      call set_global_2d(tmp_global, LATS, VM, GRID, __RC__) 
+      call set_global_2d(tmp_global, LATS, VM, GRID, __RC__)
       umwm_lat = (180.0/MAPL_PI) * tmp_global
 
 
@@ -1641,19 +1641,19 @@ contains
           ! ocean currents
           tmp_local = UW
           where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
-          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__) 
+          call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
           umwm_uc = umwm_remap_mn2i(tmp_global)
 
           tmp_local = VW
           where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
           call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
-          umwm_vc = umwm_remap_mn2i(tmp_global)         
+          umwm_vc = umwm_remap_mn2i(tmp_global)
 
           ! sea ice
           tmp_local = FRACICE
           where (tmp_local == MAPL_UNDEF) tmp_local = 0.0
           where (tmp_local  > 1.0) tmp_local = 1.0
-          where (tmp_local <= 0.0) tmp_local = tiny(0.0)     
+          where (tmp_local <= 0.0) tmp_local = tiny(0.0)
           call set_global_2d(tmp_global, tmp_local, VM, GRID, __RC__)
           umwm_fice = umwm_remap_mn2i(tmp_global)
 
@@ -1661,14 +1661,14 @@ contains
           umwm_rhow   = MAPL_RHO_SEAWATER      ! constant value, no need to gather/broadcast
           umwm_rhow0  = MAPL_RHO_SEAWATER      ! ...dito
           umwm_rhorat = umwm_rhoa / umwm_rhow  ! ...dito
-    
+
           call MAPL_TimerOff(MAPL, '-WM_SET' )
-    
-    
+
+
           call MAPL_TimerOn(MAPL, '-WM_INIT' )
-    
+
           call umwm_initialize()
-    
+
           call MAPL_TimerOff(MAPL, '-WM_INIT' )
 
 
@@ -1694,10 +1694,10 @@ contains
 
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM is initialized'
-          end if 
-    
+          end if
+
           call MAPL_TimerOn(MAPL, '-WM_RUN' )
-          
+
           umwm_sumt = 0.0
           time_substeps = 0
 
@@ -1712,25 +1712,25 @@ contains
               call MAPL_TimerOn(MAPL,  '--WM_S_IN')
               call umwm_s_in()           ! compute source input term Sin
               call MAPL_TimerOff(MAPL, '--WM_S_IN')
-    
+
               call MAPL_TimerOn(MAPL,  '--WM_S_DS')
               call umwm_s_ds()           ! compute source dissipation term Sds
               call MAPL_TimerOff(MAPL, '--WM_S_DS')
-    
+
               call MAPL_TimerOn(MAPL,  '--WM_S_NL')
               call umwm_s_nl()           ! compute non-linear source term Snl
-              call MAPL_TimerOff(MAPL, '--WM_S_NL') 
-   
+              call MAPL_TimerOff(MAPL, '--WM_S_NL')
+
               call MAPL_TimerOn(MAPL,  '--WM_S_ICE')
               call umwm_s_ice()          ! compute sea ice attenuation term Sice
-              call MAPL_TimerOff(MAPL, '--WM_S_ICE') 
-   
+              call MAPL_TimerOff(MAPL, '--WM_S_ICE')
+
 
               call MAPL_TimerOn(MAPL,  '--WM_SOURCE')
               call umwm_source()         ! integrate source functions
-              call MAPL_TimerOff(MAPL, '--WM_SOURCE') 
+              call MAPL_TimerOff(MAPL, '--WM_SOURCE')
 
-              call MAPL_TimerOn(MAPL,  '--WM_EXCHANGE_HALO') 
+              call MAPL_TimerOn(MAPL,  '--WM_EXCHANGE_HALO')
               call umwm_exchange_halo()  ! exchange halo points
               call MAPL_TimerOff(MAPL, '--WM_EXCHANGE_HALO')
 
@@ -1739,14 +1739,14 @@ contains
 
               call MAPL_TimerOn(MAPL, '--WM_DYNAMICS')
 
-              call umwm_propagation() 
+              call umwm_propagation()
               umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
 
 
-              call umwm_refraction() 
+              call umwm_refraction()
               umwm_e(:,:,umwm_istart:umwm_iend) = umwm_ef(:,:,umwm_istart:umwm_iend)
 
-              call MAPL_TimerOff(MAPL, '--WM_DYNAMICS') 
+              call MAPL_TimerOff(MAPL, '--WM_DYNAMICS')
 
 
               call MAPL_TimerOn(MAPL,  '--WM_STRESS' )
@@ -1759,7 +1759,7 @@ contains
 #ifdef DEBUG
               if (MAPL_AM_I_ROOT()) write (*, '(F5.3)'   ) umwm_sumt/umwm_dtg
 #endif
-          end do ADVANCE_IN_TIME   
+          end do ADVANCE_IN_TIME
 
           call MAPL_TimerOff(MAPL, '-WM_RUN' )
 
@@ -1770,13 +1770,13 @@ contains
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               write (*, '(A)'   ) 'UMWM time integration is done for this time step.'
           end if
- 
+
 
           call MAPL_TimerOn(MAPL, '-WM_DIAG')
 
 !!!       call umwm_stokes_drift()
           call umwm_diag()
- 
+
           call MAPL_TimerOff(MAPL, '-WM_DIAG')
 
 
@@ -1787,7 +1787,7 @@ contains
 
           call MAPL_TimerOn(MAPL, '-WM_GET' )
           ! copy out state variables and diagnostics
-        
+
           do p = 1, umwm_pm
               do o = 1, umwm_om
                   call umwm_gatherfield(umwm_e(o,p,umwm_istart:umwm_iend), tmp_global)
@@ -1795,14 +1795,14 @@ contains
                   where (isnan(WM_E(:,:,o,p))) WM_E(:,:,o,p) = MAPL_UNDEF
               end do
           end do
-  
-          
+
+
           call umwm_gatherfield(umwm_ustar, tmp_global)
           call ArrayScatter(WM_USTAR, tmp_global, GRID, __RC__ )
           where (isnan(WM_USTAR)) WM_USTAR = MAPL_UNDEF
 
           call MAPL_TimerOff(MAPL, '-WM_GET' )
- 
+
 
           if (MAPL_AM_I_ROOT() .and. self%verbose) then
               print *, 'DEBUG::UMWM  _E      = ', minval(WM_E, mask=(WM_E/=MAPL_UNDEF)), maxval(WM_E, mask=(WM_E/=MAPL_UNDEF))
@@ -1829,7 +1829,7 @@ contains
           call ArrayScatter(WM_SWHS, tmp_global, GRID, __RC__ )
           where (isnan(WM_SWHS)) WM_SWHS = MAPL_UNDEF
       end if
- 
+
       if (associated(WM_SWHW)) then
           call umwm_gatherfield(umwm_htw, tmp_global)
           call ArrayScatter(WM_SWHW, tmp_global, GRID, __RC__ )
@@ -1922,7 +1922,7 @@ contains
           end where
 
           call ArrayScatter(WM_TAU, tmp_global, GRID, __RC__ )
-          
+
           deallocate(tmp_global_x)
           deallocate(tmp_global_y)
       end if
@@ -1941,7 +1941,7 @@ contains
           end where
 
           call ArrayScatter(WM_TAU_FORM, tmp_global, GRID, __RC__ )
-          
+
           deallocate(tmp_global_x)
           deallocate(tmp_global_y)
       end if
@@ -1960,7 +1960,7 @@ contains
           end where
 
           call ArrayScatter(WM_TAU_SKIN, tmp_global, GRID, __RC__ )
-          
+
           deallocate(tmp_global_x)
           deallocate(tmp_global_y)
       end if
@@ -1979,7 +1979,7 @@ contains
           end where
 
           call ArrayScatter(WM_EDF, tmp_global, GRID, __RC__ )
-          
+
           deallocate(tmp_global_x)
           deallocate(tmp_global_y)
       end if
@@ -2010,7 +2010,7 @@ contains
           end where
 
           call ArrayScatter(WM_EGF, tmp_global, GRID, __RC__ )
-          
+
           deallocate(tmp_global_x)
           deallocate(tmp_global_y)
       end if
@@ -2031,7 +2031,7 @@ contains
       DIAGNOSTICS_CHARNOCK: if (associated(WM_CHARNOCK)) then
 
           do j = 1, JM
-              do i = 1, IM 
+              do i = 1, IM
                   tau_      = WM_TAU(i,j)
                   tau_form_ = WM_TAU_FORM(i,j)
                   tau_skin_ = WM_TAU_SKIN(i,j)
@@ -2074,8 +2074,8 @@ contains
 
 ! Free the memory used by UMWM
 ! -----------------------------
-      call umwm_dealloc() 
-      call umwm_environment('stop') 
+      call umwm_dealloc()
+      call umwm_environment('stop')
 
 
 ! Stop the timers
@@ -2103,13 +2103,13 @@ contains
 
 ! !ARGUMENTS:
 
-      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+      type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
       type(ESMF_State),    intent(inout) :: IMPORT ! Import state
       type(ESMF_State),    intent(inout) :: EXPORT ! Export state
       type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
       integer, optional,   intent(  out) :: RC     ! Error code:
 
-! ! DESCRIPTION: 
+! ! DESCRIPTION:
 
 !EOP
 
@@ -2139,7 +2139,7 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2239,7 +2239,7 @@ contains
 
       integer, intent(out) :: RC
 
-! ! DESCRIPTION: 
+! ! DESCRIPTION:
 
 !EOP
 
@@ -2253,9 +2253,9 @@ contains
 !     none
 
       Iam = 'UMWMGridComp::set_global_2d()'
-     
+
       call ArrayGather(var_local, var_global, GRID, __RC__)
-      call MAPL_CommsBcast(VM, DATA=var_global, N=size(var_global), ROOT=0, __RC__) 
+      call MAPL_CommsBcast(VM, DATA=var_global, N=size(var_global), ROOT=0, __RC__)
 
       RETURN_(ESMF_SUCCESS)
 
@@ -2267,7 +2267,7 @@ contains
 !BOP
 
 ! ! IROUTINE: seawater_viscosity
-! ! 
+! !
 
 ! !INTERFACE:
 
@@ -2284,11 +2284,11 @@ contains
 
       integer, intent(out) :: RC
 
-! ! DESCRIPTION: parameterization of kinematic sea water viscosity -- 
-! !              based on Thermophysical properties of seawater: 
-! !              A review of existing correlations and data, Desalination and Water Treatment, 
+! ! DESCRIPTION: parameterization of kinematic sea water viscosity --
+! !              based on Thermophysical properties of seawater:
+! !              A review of existing correlations and data, Desalination and Water Treatment,
 ! !              Vol. 16, pp.354-380, April 2010.
-! !              ...with corrections from http://web.mit.edu/seawater/ and 
+! !              ...with corrections from http://web.mit.edu/seawater/ and
 ! !              http://web.mit.edu/lienhard/www/Thermophysical_properties_of_seawater-DWT-16-354-2010.pdf
 
 
@@ -2301,24 +2301,24 @@ contains
 
 
 ! Local Variables
-!     
+!
       real, allocatable, dimension(:,:) :: Tc
       real, allocatable, dimension(:,:) :: mu_w
       real, allocatable, dimension(:,:) :: A, B
-      
-      
+
+
       Iam = 'UMWMGridComp::seawater_viscosity()'
-     
+
       allocate(Tc,   mold=T, __STAT__)
       allocate(mu_w, mold=T, __STAT__)
       allocate(A,    mold=T, __STAT__)
       allocate(B,    mold=T, __STAT__)
 
       Tc = max(0.0, T - 273.15)
-      
+
       ! dynamic viscosity of pure water, IAPWS 2008
       mu_w = 4.2844e-5 + 1.0/(0.157*(Tc + 64.993)**2 - 91.296)
-      
+
       A = 1.541 + 1.998e-2*Tc - 9.520e-5*Tc**2
       B = 7.974 - 7.561e-2*Tc + 4.724e-4*Tc**2
 
