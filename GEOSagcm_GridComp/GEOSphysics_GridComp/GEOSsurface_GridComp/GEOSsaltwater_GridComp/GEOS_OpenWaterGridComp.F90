@@ -1790,10 +1790,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                            fakelai,IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0,CHARNOCK_)
 
-#ifdef DEBUG
-         print *, 'DEBUG::WGCM::OpenWater CHARNOCK_= ', minval(CHARNOCK_), maxval(CHARNOCK_)
-#endif
-
          CM(:,N)  = VKM
          CH(:,N)  = VKH
          CQ(:,N)  = VKH
