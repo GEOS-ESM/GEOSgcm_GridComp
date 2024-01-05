@@ -631,9 +631,17 @@ contains
     endif
 
    if (DO_WAVES /= 0) then
-      ! For now we terminate all the imports of WGCM. If we need to send any of
-      ! them to ExtData, we need to revisit this statement
-      call MAPL_TerminateImport(GC, CHILD=WGCM, RC=STATUS)
+      ! Terminate the imports of WGCM with the exception 
+      ! of the few that have to be sent to ExtData
+      call MAPL_TerminateImport(GC,                         &
+         SHORT_NAME = (/                                    &
+               'U10M   ', 'V10M   ', 'U10N   ', 'V10N   ',  &
+               'RHOS   ', 'TSKINW ', 'TS     ', 'FRLAND ',  &
+               'FROCEAN', 'FRACI  ', 'PS     ', 'Q10M   ',  &
+               'RH2M   ', 'T10M   ', 'LHFX   ', 'SH     ',  &
+               'TW     ', 'UW     ', 'VW     '/),           &
+         CHILD=WGCM,                                        &
+         RC=STATUS)
       VERIFY_(STATUS)
    end if
 
@@ -1454,7 +1462,7 @@ contains
      call AllocateExports_OBIO(DO_DATA_ATM4OCN, RC)
    endif
 
-   call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', 'DW      ', &
+   call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
                                      'UI      ', 'VI      ', &
                                      'FRZMLT  ', 'KPAR    ', &
                                      'TS_FOUND', 'SS_FOUND' /), RC=STATUS)
@@ -2397,8 +2405,6 @@ contains
      call DO_O2W(SRC, DST, NAME='UW',      RC=STATUS)
      VERIFY_(STATUS)
      call DO_O2W(SRC, DST, NAME='VW',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_O2W(SRC, DST, NAME='DW',      RC=STATUS)
      VERIFY_(STATUS)
      call DO_O2W(SRC, DST, NAME='TW',      RC=STATUS)
      VERIFY_(STATUS)

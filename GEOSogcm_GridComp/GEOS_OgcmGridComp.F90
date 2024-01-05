@@ -596,15 +596,6 @@ contains
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  call MAPL_AddExportSpec(GC,                               &
-      SHORT_NAME       = 'DW',                                &
-      LONG_NAME        = 'sea_floor_depth',                   &
-      UNITS            = 'm',                                 &
-      DIMS             = MAPL_DimsTileOnly,                   &
-      VLOCATION        = MAPL_VLocationNone,                  &
-      RC=STATUS)
-  VERIFY_(STATUS)
-
   call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'UI',                                &
     LONG_NAME          = 'zonal_velocity_of_surface_seaice',  &
@@ -864,7 +855,7 @@ contains
       call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
   else
-    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW', 'DATA_DW'], [OCEAN, OCEAN, OCEAN], _RC)
+    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
   endif
 
 ! Set the Profiling timers
@@ -1580,7 +1571,6 @@ contains
     real, pointer, dimension(:,:) :: DISCHARGEO => null()
     real, pointer, dimension(:,:) :: UWO => null()
     real, pointer, dimension(:,:) :: VWO => null()
-    real, pointer, dimension(:,:) :: DWO => null()
 
     real, pointer, dimension(:,:) :: HIO => null()
     real, pointer, dimension(:,:) :: SIO => null()
@@ -1626,7 +1616,6 @@ contains
 
     real, pointer, dimension(:) :: UW       => null()
     real, pointer, dimension(:) :: VW       => null()
-    real, pointer, dimension(:) :: DW       => null()
     real, pointer, dimension(:) :: UI       => null()
     real, pointer, dimension(:) :: VI       => null()
     real, pointer, dimension(:) :: KPAR     => null()
@@ -2099,8 +2088,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VW      ,  'VW'     , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DW      ,  'DW'     , RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UI      ,  'UI'     , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VI      ,  'VI'     , RC=STATUS)
@@ -2124,11 +2111,6 @@ contains
 
     if(associated(VW)) then
        call MAPL_GetPointer(GEX(OCEAN ), VWO ,  'VW'    , alloc=.true., RC=STATUS)
-       VERIFY_(STATUS)
-    end if
-
-    if(associated(DW)) then
-       call MAPL_GetPointer(GEX(OCEAN ), DWO ,  'DW'    , alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
 
@@ -2340,12 +2322,6 @@ contains
 
     if(associated(VW)) then
        call MAPL_LocStreamTransform( ExchGrid, VW     ,  VWO   , &
-         INTERP=useInterp, RC=STATUS)
-       VERIFY_(STATUS)
-    end if
-
-    if(associated(DW)) then
-       call MAPL_LocStreamTransform( ExchGrid, DW     ,  DWO   , &
          INTERP=useInterp, RC=STATUS)
        VERIFY_(STATUS)
     end if

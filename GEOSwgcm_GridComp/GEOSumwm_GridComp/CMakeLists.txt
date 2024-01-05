@@ -17,3 +17,9 @@ foreach ( file ${rc_files} )
    get_filename_component( dir ${file} DIRECTORY )
    install( FILES ${file} DESTINATION etc/${dir} )
 endforeach()
+
+
+install (
+    FILES UMWM_ExtData.yaml
+    DESTINATION etc
+)

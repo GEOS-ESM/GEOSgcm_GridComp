@@ -348,13 +348,12 @@ contains
             RESTART        = MAPL_RestartOptional,    __RC__)
 
         call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME     = 'DW',                                   &
-            LONG_NAME      = 'bathymetry',                           &
+            SHORT_NAME     = 'DW_WGCM',                              &
+            LONG_NAME      = 'sea_floor_depth',                      &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,                     &
-            DEFAULT        = 0.0,                                    &
-            RESTART        = MAPL_RestartOptional,    __RC__)
+            RESTART        = MAPL_RestartSkip,        __RC__)
 
 
 ! !EXPORT STATE:
@@ -376,8 +375,8 @@ contains
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME     = 'EDF',                                  &
-             CHILD_ID       = WM,                     __RC__)
+             SHORT_NAME    = 'EDF',                                  &
+             CHILD_ID      = WM,                     __RC__)
 
 
 

@@ -591,13 +591,12 @@ contains
             RESTART        = MAPL_RestartOptional,    __RC__)
 
         call MAPL_AddImportSpec(GC,                                  &
-            SHORT_NAME     = 'DW',                                   &
-            LONG_NAME      = 'bathymetry',                           &
+            SHORT_NAME     = 'DW_WGCM',                              &
+            LONG_NAME      = 'sea_floor_depth',                      &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,                     &
-            DEFAULT        = 0.0,                                    &
-            RESTART        = MAPL_RestartOptional,    __RC__)
+            RESTART        = MAPL_RestartSkip,        __RC__)
 
 !       call MAPL_AddImportSpec(GC,                                  &
 !           SHORT_NAME     = 'SSKINW',                               &
@@ -695,7 +694,7 @@ contains
 
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DW',                                   &
-            LONG_NAME      = 'bathymetry',                           &
+            LONG_NAME      = 'sea_floor_depth',                      &
             UNITS          = 'm',                                    &
             DIMS           = MAPL_DimsHorzOnly,                      &
             VLOCATION      = MAPL_VLocationNone,      __RC__)
@@ -1383,7 +1382,7 @@ contains
       ! OGCM
       call MAPL_GetPointer(IMPORT, UW,      'UW',      __RC__)
       call MAPL_GetPointer(IMPORT, VW,      'VW',      __RC__)
-      call MAPL_GetPointer(IMPORT, DW,      'DW',      __RC__)
+      call MAPL_GetPointer(IMPORT, DW,      'DW_WGCM', __RC__)
 
 
       if (MAPL_AM_I_ROOT() .and. self%verbose) then
