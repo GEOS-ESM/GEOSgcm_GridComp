@@ -1,19 +1,15 @@
 esma_set_this ()
 
-set (ESMFMKFILE "${BASEDIR}/lib/esmf.mk")
-
 set (alldirs
     ww3_multi_esmf
   )
-
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_WaveWatchGridComp.F90)
 
   esma_add_library (${this}
     SRCS GEOS_WaveWatchGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL
-    INCLUDES ${INC_ESMF}
+    DEPENDENCIES MAPL esmf
     )
 
 else ()

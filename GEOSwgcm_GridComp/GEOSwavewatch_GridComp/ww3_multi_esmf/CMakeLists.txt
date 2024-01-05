@@ -1,4 +1,4 @@
-esma_set_this () 
+esma_set_this ()
 
 
 list( APPEND WW3ESMF_FTN
@@ -67,13 +67,14 @@ list( APPEND WW3ESMF_FTN
     SCRIP/scrip_timers.f
 )
 
-set (WW3_path ${CMAKE_CURRENT_SOURCE_DIR}/../@ww3)
+esma_mepo_style(ww3 WW3_rel_path REL_PATH ..)
+set (WW3_path ${CMAKE_CURRENT_SOURCE_DIR}/${WW3_rel_path})
 
 get_filename_component(aux_dir ${WW3_path}/model/aux ABSOLUTE)
 get_filename_component(ftn_dir ${WW3_path}/model/ftn ABSOLUTE)
 
-message(STATUS "aux_dir ${aux_dir}")
-message(STATUS "ftn_dir ${ftn_dir}")
+message(STATUS "WW3 aux_dir ${aux_dir}")
+message(STATUS "WW3 ftn_dir ${ftn_dir}")
 
 add_executable(w3adc "${aux_dir}/w3adc.f")
 
@@ -83,6 +84,7 @@ foreach(src_file ${WW3ESMF_FTN})
     STRING(REGEX REPLACE "/" "_" gen_log_file ${gen_src_file})
     add_custom_command(
         OUTPUT  ${gen_src_file}
+        BYPRODUCTS  ${gen_src_file}
         DEPENDS w3adc ${ftn_dir}/${src_file}
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run_w3adc.sh ${ftn_dir} ${src_file} > ${gen_log_file}.w3adc.log 2>&1
         COMMENT "Running w3adc ${src_file}")
@@ -90,11 +92,11 @@ foreach(src_file ${WW3ESMF_FTN})
 endforeach()
 
 
-include_directories (${ftn_dir} ${INC_ESMF} ${INC_NETCDF})
-
-esma_add_library (${this} 
-   SRCS ${WW3ESMF_F90} 
-   DEPENDENCIES MAPL
-   INCLUDES 
+esma_add_library (${this}
+   SRCS ${WW3ESMF_F90}
+   DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran
   )
 
+target_include_directories (${this} PRIVATE
+  $<BUILD_INTERFACE:${ftn_dir}>
+  )

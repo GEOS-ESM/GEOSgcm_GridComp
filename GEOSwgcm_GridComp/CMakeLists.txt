@@ -19,8 +19,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_WgcmGridComp.F90)
   esma_add_library (${this}
     SRCS bl_seaspray.F90 GEOS_WgcmGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL 
-    INCLUDES ${INC_ESMF}
+    DEPENDENCIES MAPL esmf
     )
 
 else ()
@@ -30,6 +29,6 @@ else ()
 endif()
 
 
-install (FILES ${resource_files} 
-  DESTINATION etc 
+install (FILES ${resource_files}
+  DESTINATION etc
   )
