@@ -1,0 +1,35 @@
+select case (TYPE)
+
+case (Starr)
+   TT = TI-ZEROC
+   EX = (TT*(TT*(TT*(TT*(TT*(TT*B6+B5)+B4)+B3)+B2)+B1)+B0)
+
+case (GoffGratch)
+   TT = TS/TI
+   EX = 10.0**(  DL(1)*(TT - 1.0) + DL(2)*log10(TT)  + &
+        DL(3)*(10.0**(DL(4)*(1.0 - (1.0/TT))) - 1.0) + &
+        DL(5)*(10.0**(DL(6)*(TT  -  1.0    )) - 1.0) + &
+        LOGPS + 2.0                                           )
+
+case (MurphyKoop)
+
+   EX = exp(                   (CL(0)+CL(1)/TI+CL(2)*log(TI)+CL(3)*TI) + &
+        tanh(CL(4)*(TI-CL(5)))*(CL(6)+CL(7)/TI+CL(8)*log(TI)+CL(9)*TI)   )
+
+end select
+
+! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”
+  
+! “Copyright © 2008 United States Government as represented by the Administrator
+! of the National Aeronautics and Space Administration. All Rights Reserved.”
+  
+! Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+! this file except in compliance with the License. You may obtain a copy of the
+! License at
+  
+! http://www.apache.org/licenses/LICENSE-2.0
+  
+! Unless required by applicable law or agreed to in writing, software distributed
+! under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+! CONDITIONS OF ANY KIND, either express or implied. See the License for the
+! specific language governing permissions and limitations under the License.
