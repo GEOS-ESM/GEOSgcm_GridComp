@@ -59,7 +59,7 @@ module StieglitzSnow
   
   real,          parameter :: StieglitzSnow_RHOMA  = 500.    ! kg/m^3  maximum snow density
   real,          parameter :: StieglitzSnow_MINSWE = 0.013   ! kg/m^2  min SWE to avoid immediate melt
-  real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
+  real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  spec heat of ice near 0 deg C  [cf. MAPL_CAPICE=2000. near -10 deg C]
 
   real, private, parameter :: SNWALB_VISMIN        = 0.5    
   real, private, parameter :: SNWALB_NIRMIN        = 0.3
@@ -535,7 +535,7 @@ contains
     
     do i=1,N_snow
        
-       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), .true.)
+       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), use_threshold_fac=.false.)
        
        if(ice1(i)) then
           cl(i) = df(i)
@@ -612,7 +612,7 @@ contains
           if(i==N_snow) flxnet=fhsn(i+1)+df(i+1)*dtc(i)                     &
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
+          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .use_threshold_fac=.false. )
           fnew=amax1(0.,  amin1(1.,  fnew))
           
        endif
@@ -636,7 +636,7 @@ contains
                   -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
              
              HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
+             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, use_threshold_fac=.false. )
              fnew=amax1(0.,  amin1(1.,  fnew))
           endif
        endif
@@ -1145,7 +1145,7 @@ contains
        ! determine frozen fraction and temperature before relayering
        
        do i=1,N_snow
-          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), .true. )
+          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), use_threshold_fac=.false. )
        enddo
 
     end if

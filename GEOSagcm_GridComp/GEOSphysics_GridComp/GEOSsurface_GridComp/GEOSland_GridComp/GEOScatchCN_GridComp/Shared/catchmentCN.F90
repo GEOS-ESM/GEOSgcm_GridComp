@@ -848,7 +848,7 @@ CONTAINS
 !     in process
 !     reichle, 29 May 03
 
-        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,use_threshold_fac=.false.)
         tgs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tgs_orig(n)=                       &
                   amin1( tf, tg1_orig(n)*ar1(n)+tg2_orig(n)*ar2(n)+            &
