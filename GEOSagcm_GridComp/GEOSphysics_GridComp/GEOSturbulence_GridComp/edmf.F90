@@ -32,6 +32,7 @@ real, parameter ::     &
     integer :: TEST
     integer :: DEBUG
     integer :: ET
+    integer :: UPABUOYDEP
     real    :: L0
     real    :: L0fac
     real    :: STOCHFRAC
@@ -499,7 +500,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           UPA(kts-1,I)=MFAREA(IH,JH,I) !0.5*(ERF(3.0/sqrt(2.))-ERF(1.0/sqrt(2.)))/real(NUP)  ! assume equal size for now
         else
           UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)
-          UPA(kts-1,I)=MIN(1.0,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
+          if (MFPARAMS%UPABUOYDEP/=0) then
+!            UPA(kts-1,I)=MIN(1.0,0.5+wthv/0.2)*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
+            UPA(kts-1,I)=(0.5+0.5*TANH((wthv-0.02)/0.09))*(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
+          else
+            UPA(kts-1,I)=(0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW)))
+          end if
         end if
 
         UPU(kts-1,I)=U(kts)

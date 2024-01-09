@@ -389,7 +389,11 @@ contains
           Cee = Cek* (pt19 + pt51*smix/grd)
 
           wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
-          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.01)    ! TKE shear production term
+          if (nx.eq.1) then
+            a_prod_sh = min(min(tkhmax,wrk)*def2(i,j,k),0.0001)    ! TKE shear production term
+          else
+            a_prod_sh = min(min(tkhmax,wrk)*def2(i,j,k),0.01)    ! TKE shear production term
+          end if
 
 ! Semi-implicitly integrate TKE equation forward in time
           wtke = tke(i,j,k)
@@ -442,11 +446,9 @@ contains
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
 !            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*0.5*(brunt(i,j,k)+brunt(i,j,k-1))*wrk*wrk)))
           endif
-!          if (k.ge.cldbasek(i,j) .and. maxval(brunt(i,j,cldbasek(i,j):cldbasek(i,j)+5)).lt.5e-4) then
-          if (k.ge.cldbasek(i,j)) then
-            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
-!            isotropy(i,j,k) = min(200.,isotropy(i,j,k))
-          end if
+!          if (k.ge.cldbasek(i,j)) then
+!            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
+!          end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -455,15 +457,8 @@ contains
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
 
           tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
-!          if (brunt(i,j,k).gt.2e-4) then
-!            tkh(i,j,k) = wrk1*min(isotropy(i,j,k),isotropy(i,j,k-1))    &
-            tkh(i,j,k) = wrk1*isotropy(i,j,k)    &
+          tkh(i,j,k) = wrk1*isotropy(i,j,k)    &
                        * 1.*(tke_env)             ! remove MF TKE
-!          else
-!            tkh(i,j,k) = 0.5*wrk1*(isotropy(i,j,k) + isotropy(i,j,k-1))    &
-!                         *(tke_env)             ! remove MF TKE
-!                            * (tke(i,j,k)+tke(i,j,k-1)) ! use total TKE
-!          end if
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
         end do ! i
       end do ! j
@@ -686,15 +681,18 @@ contains
           l_mix(i,j) = max(zl(i,j,kk-1),100.)
         end if
 
-        do while ((zl(i,j,cldbasek(i,j)).lt.300.) .or. (cld_sgs(i,j,cldbasek(i,j)).lt.0.01 .and. cldbasek(i,j).lt.nzm))
+        do while ((zl(i,j,cldbasek(i,j)).lt.300.) .or. (cld_sgs(i,j,cldbasek(i,j)).lt.0.001 .and. cldbasek(i,j).lt.nzm))
           cldbasek(i,j) = cldbasek(i,j) + 1
         end do
+!        print *,'cldbase=',zl(i,j,cldbasek(i,j))
 
         kk = 1
         do while (zl(i,j,kk) .lt. 3000. .or. kk.eq.nzm)
           kk = kk + 1
         end do
         lts(i,j) = thv(i,j,kk) - thv(i,j,1)
+
+!       Alternate cloud base calculation
 !        tep = tabs(i,j,1)
 !        qsp = MAPL_EQsat(tabs(i,j,1),prsl(i,j,1),dtqw)
 !        kk = 1
@@ -823,17 +821,6 @@ contains
          brunt_smooth = brunt
          brunt_smooth(:,:,nzm) = brunt(:,:,nzm-1)
          brunt_smooth(:,:,1) = brunt(:,:,1)
-!         brunt_smooth(:,:,1) = 0.333*(brunt(:,:,1)+brunt(:,:,2)+brunt(:,:,3))   ! use avg of lowest 3 levs
-!         brunt_smooth(:,:,2) = brunt_smooth(:,:,1)
-!         brunt_smooth(:,:,3) = brunt_smooth(:,:,1)
-!         do kk = 2,nzm-1   ! smooth 3-layers of brunt freq to reduce influence of single layers
-!            brunt_smooth(:,:,kk) = brunt2(:,:,kk)
-!            where (brunt(:,:,kk+1).lt.1e-4)
-!              brunt_smooth(:,:,kk) = 0.333*(brunt(:,:,kk-1)+brunt(:,:,kk)+brunt(:,:,kk+1))
-!              brunt_smooth(:,:,kk) = 0.5*(brunt(:,:,kk)+brunt(:,:,kk+1))   ! smooth up only
-!            end where
-!            brunt_smooth(:,:,kk) = 0.333*brunt2(:,:,kk)+0.333*brunt2(:,:,kk+1)+0.334*brunt2(:,:,kk+2)  ! level above, kk+1
-!         end do
          brunt_smooth = max( bruntmin, brunt_smooth )
 
 
@@ -849,43 +836,6 @@ contains
 ! Calculate turbulent length scale in the boundary layer.
 ! See Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
 
-! Keep the length scale adequately small near the surface following Blackadar (1984)
-! Note that this is not documented in BK13 and was added later for SP-CAM runs
-
-!         if (k == 1) then
-!           term = 600.*tkes
-!           smixt(i,j,k) = term + (0.4*zl(i,j,k)-term)*exp(-zl(i,j,k)*0.01)
-!         else
-
-! tscale is the eddy turnover time scale in the boundary layer and is
-! an empirically derived constant
-
-!           if ( shocparams%LENOPT==0 ) then
-!              wrk2 = (tscale*tkes*0.1*l_inf(i,j))
-!           end if
-
-!           if (shocparams%LENOPT==1 ) then
-!              kk=k
-!              if (brunt_smooth(i,j,k).le.1.e-6 ) then
-!                do while (brunt_smooth(i,j,kk).le.1.e-6 .and. kk.lt.nzm)
-!                  kk=kk+1
-!                end do
-!                ktop=kk
-!                kk=k
-!                do while (brunt_smooth(i,j,kk).le.1.e-6 .and. kk.gt.1)
-!                  kk=kk-1
-!                end do
-!                l_inf(i,j) = max(50.,min(1000.,zl(i,j,ktop)-zl(i,j,kk) ))
-!              else
-!                l_inf(i,j) = 50.
-!              end if
-!
-!              if (zl(i,j,k).lt.zcb(i,j)) then
-!                 wrk2 = (tscale*tkes*0.2*zcb(i,j))
-!              else
-!                 wrk2 = (tscale*tkes*0.05*l_inf(i,j))
-!              end if
-!           end if
 
           !----------------------------------
           ! calculate parcel mixing length
@@ -909,16 +859,9 @@ contains
 !              if (brunt_smooth(i,j,k).gt.1e-5) l_par(i,j) = max(25.,l_par(i,j)/2.)
 !              wrk2 = (tscale*tkes*0.1*l_par(i,j))
 
-          !-------------------------
-          ! combine SHOC length scales
-          !-------------------------
-            if ( shocparams%LENOPT .eq. 0 ) then   ! SHOC classic length scale
-
-            else if ( shocparams%LENOPT .lt. 4 ) then  ! SHOC-MF length scale
-
-                 smixt1(i,j,k) = vonk*zl(i,j,k)*exp(MIN(1000.,zl(i,j,k))**2/4e4)*shocparams%LENFAC1
-!                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1
-
+          !----------------------------------
+          ! calculate 'TKE' mixing length
+          !----------------------------------
 !                 l_mix(i,j) = 0.
 !                 kinv = k
 !                 do while (tke(i,j,kinv).gt.0.02) 
@@ -932,25 +875,28 @@ contains
 !                 end do
 !                 l_mix(i,j) = 0.1*l_mix(i,j)
 
-!                 if (zl(i,j,k).lt.zpbl(i,j)) then
+
+            if ( shocparams%LENOPT .lt. 4 ) then  ! SHOC-MF length scale
+
+                 ! Surface length scale
+!                 smixt1(i,j,k) = vonk*zl(i,j,k)*exp(MIN(1000.,zl(i,j,k))**2/4e4)*shocparams%LENFAC1
+                 smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
+!                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1
+
+                 ! Turbulent length scale
                  if (zl(i,j,k).lt.l_mix(i,j)) then
 !                   smixt2(i,j,k) = sqrt(0.1*zpbl(i,j)*400.*tkes)*shocparams%LENFAC2
-                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*(shocparams%LENFAC2+0.7*(0.5+0.5*tanh(0.3*(lts(i,j)-19.))))
+                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*(shocparams%LENFAC2)
                  else
                    smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
                  end if
 
-                 ! Kludgey adjustment to increase StCu by reducing L3 at cloud top
-!                 if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. (cld_sgs(i,j,k).gt.0.2.or.cld_sgs(i,j,k-1).gt.0.2) .and. brunt(i,j,k+1).gt.2e-4) then
-!                 if (zl(i,j,k).gt.200. .and. zl(i,j,k).lt.1700. .and. cld_sgs(i,j,k).gt.0.2  .and. brunt(i,j,k).gt.2e-4) then
-!                    smixt3(i,j,k) = (0.25+(1-0.25)*(zl(i,j,k)-200.)/1500.)*tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
-!                 else
-                    smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
-!                    smixt3(i,j,k) = tkes*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
-!                 end if
+                 ! Stability length scale
+                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
+
 
                  !=== Combine component length scales ===
-                 if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach
+                 if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
                       wrk1 = 2./(1./smixt2(i,j,k)+1./smixt3(i,j,k))
                       if (zl(i,j,k).lt.300.) then
                          smixt(i,j,k) = wrk1 + (smixt1(i,j,k)-wrk1)*exp(-(zl(i,j,k)/100.)**2)
@@ -976,7 +922,7 @@ contains
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
            if (zl(i,j,k) .lt. 5000.) then
              smixt(i,j,k) = max(wrk, smixt(i,j,k))
-           else if (zl(i,j,k) .lt. 9500) then
+           else if (zl(i,j,k) .lt. 9500) then    ! Between 5-10 km the max length scale reduces with height
              smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
            else
              smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*0.1,smixt(i,j,k)))
@@ -1175,7 +1121,6 @@ contains
         wrk1 = 1.0 / (ZL(:,:,k)-ZL(:,:,k+1))
         wrk3 = KH(:,:,k) * wrk1
 
-!        sm   = 0.5*(ISOTROPY(:,:,k)+ISOTROPY(:,:,k+1))*wrk1*wrk3 !Tau*Kh/dz^2
         sm   = 0.5*ISOTROPY(:,:,k)*wrk1*wrk3 !Tau*Kh/dz^2
 
         ! SGS vertical flux liquid/ice water static energy. Eq 1 in BK13
@@ -1188,7 +1133,6 @@ contains
 
         ! Second moment of liquid/ice water static energy. Eq 4 in BK13
         hl2_edge_nomf(:,:,k) = HL2TUNE * sm * wrk1 * wrk1
-!        hl2_edge(:,:,k) = HL2TUNE * 0.5*(ISOTROPY(:,:,k)+ISOTROPY(:,:,k+1)) * &
         hl2_edge(:,:,k) = HL2TUNE * 0.5*ISOTROPY(:,:,k) * &
                           (wrk3*wrk1-MFWHL(:,:,k)) * wrk1/(ZL(:,:,k)-ZL(:,:,k+1))
 
