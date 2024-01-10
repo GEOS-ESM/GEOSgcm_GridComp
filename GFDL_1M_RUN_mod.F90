@@ -397,327 +397,327 @@ module GFDL_1M_RUN_module
         read(fileID) LPHYS_HYDROSTATIC
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/mp_time_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/mp_time_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) mp_time
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/t_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/t_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) t_min
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/t_sub_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/t_sub_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) t_sub
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_r2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_r2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_r2g
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_smlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_smlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_smlt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_g2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_g2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_g2r
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/dw_land_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/dw_land_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) dw_land
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/dw_ocean_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/dw_ocean_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) dw_ocean
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vi_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vi_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vi_fac
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vr_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vr_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vr_fac
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vs_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vs_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vs_fac
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vg_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vg_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vg_fac
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/ql_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ql_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ql_mlt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_qa_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_qa_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_qa
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/fix_negative_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/fix_negative_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) fix_negative
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vi_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vi_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vi_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vs_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vs_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vs_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vg_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vg_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vg_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/vr_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/vr_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) vr_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qs_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qs_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qs_mlt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qs0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qs0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qs0_crt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qi_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qi_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qi_gen
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/ql0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ql0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ql0_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qi0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qi0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qi0_max
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qi0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qi0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qi0_crt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qr0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qr0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qr0_crt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/fast_sat_adj_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/fast_sat_adj_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) fast_sat_adj
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/rh_inc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/rh_inc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) rh_inc
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/rh_ins_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/rh_ins_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) rh_ins
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/rh_inr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/rh_inr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) rh_inr
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/const_vi_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/const_vi_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) const_vi
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/const_vs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/const_vs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) const_vs
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/const_vg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/const_vg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) const_vg
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/const_vr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/const_vr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) const_vr
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/use_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/use_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) use_ccn
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/rthreshu_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/rthreshu_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) rthreshu
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/rthreshs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/rthreshs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) rthreshs
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/ccn_l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ccn_l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ccn_l
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/ccn_o_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ccn_o_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ccn_o
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qc_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qc_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qc_crt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_g2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_g2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_g2v
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_v2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_v2g
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_s2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_s2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_s2v
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_v2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_v2s
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_revp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_revp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_revp
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_frz_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_frz_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_frz
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_bigg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_bigg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_bigg
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_evap_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_evap_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_evap
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_subl_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_subl_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_subl
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/sat_adj0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/sat_adj0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) sat_adj0
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_piacr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_piacr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_piacr
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_imlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_imlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_imlt
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_v2l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_v2l
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_l2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_l2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_l2v
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_i2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_i2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_i2v
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_i2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_i2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_i2s
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/tau_l2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/tau_l2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) tau_l2r
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/qi_lim_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/qi_lim_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) qi_lim
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/ql_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ql_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) ql_gen
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_paut_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_paut_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_paut
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_psaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_psaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_psaci
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_pgacs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_pgacs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_pgacs
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_pgaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_pgaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_pgaci
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/z_slope_liq_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/z_slope_liq_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) z_slope_liq
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/z_slope_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/z_slope_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) z_slope_ice
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/prog_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/prog_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) prog_ccn
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/c_cracw_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/c_cracw_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) c_cracw
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/alin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/alin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) alin
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/clin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/clin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) clin
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/preciprad_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/preciprad_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) preciprad
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/cld_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/cld_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) cld_min
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/use_ppm_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/use_ppm_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) use_ppm
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/mono_prof_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/mono_prof_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) mono_prof
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_sedi_heat_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_sedi_heat_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_sedi_heat
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/sedi_transport_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/sedi_transport_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) sedi_transport
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/do_sedi_w_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/do_sedi_w_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) do_sedi_w
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/dt_fr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/dt_fr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) dt_fr
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/de_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/de_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) de_ice
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/icloud_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/icloud_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) icloud_f
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/irain_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/irain_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) irain_f
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/test/mp_print_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/mp_print_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) mp_print
         close(fileID)
 
@@ -859,47 +859,47 @@ module GFDL_1M_RUN_module
 
         ! ** Check Variables
             
-        open(newunit=fileID, file=trim(dirName) // '/PLEmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/PLEmb_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) PLEmb_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/PLmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/PLmb_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) PLmb_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/ZLE0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ZLE0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) ZLE0_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/ZL0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/ZL0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) ZL0_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/DZET_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/DZET_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) DZET_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/DQST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/DQST3_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) DQST3_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/DP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/DP_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) DP_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/MASS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/MASS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) MASS_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/U0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/U0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) U0_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/V0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/V0_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) V0_ref
         close(fileID)
 
-        open(newunit=fileID, file=trim(dirName) // '/QST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        open(newunit=fileID, file=trim(dirName) // '/QST3_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) QST3_ref
         close(fileID)
 
