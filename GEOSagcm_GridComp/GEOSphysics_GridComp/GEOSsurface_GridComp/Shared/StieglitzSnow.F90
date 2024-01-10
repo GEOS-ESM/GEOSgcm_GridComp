@@ -1351,14 +1351,27 @@ contains
     
     ! ------------------------------------------------------------
     
-    real,    parameter     :: tfac=1./StieglitzSnow_CPW
-    real,    parameter     :: ffac=1./alhm
+    real,             parameter :: tfac=1./StieglitzSnow_CPW
+    real,             parameter :: ffac=1./alhm
     
-    real                   :: hbw
+    real                        :: hbw
     
-    real                   :: threshold1, threshold2
+    real                        :: threshold1, threshold2
+    
+    character(len=*), parameter :: Iam = 'StieglitzSnow_calc_tpsnow_scalar()'
     
     ! ------------------------------------------------------------------------------
+    
+    ! make sure snow heat content is not positive (would result in snow temperature above 0 deg C)
+    
+    if (h>0.) then
+       
+       write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
+       stop
+       
+    end if
+
+    ! -------------------------------------------------------------------    
     
     if (use_threshold_fac) then
        
