@@ -612,7 +612,7 @@ contains
           if(i==N_snow) flxnet=fhsn(i+1)+df(i+1)*dtc(i)                     &
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .use_threshold_fac=.false. )
+          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, use_threshold_fac=.false. )
           fnew=amax1(0.,  amin1(1.,  fnew))
           
        endif
