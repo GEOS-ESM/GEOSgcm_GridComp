@@ -397,8 +397,332 @@ module GFDL_1M_RUN_module
         read(fileID) LPHYS_HYDROSTATIC
         close(fileID)
 
+        open(newunit=fileID, file=trim(dirName) // '/test/mp_time_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) mp_time
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/t_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) t_min
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/t_sub_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) t_sub
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_r2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_r2g
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_smlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_smlt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_g2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_g2r
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/dw_land_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) dw_land
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/dw_ocean_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) dw_ocean
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vi_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vi_fac
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vr_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vr_fac
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vs_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vs_fac
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vg_fac_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vg_fac
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/ql_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ql_mlt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_qa_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_qa
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/fix_negative_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) fix_negative
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vi_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vi_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vs_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vs_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vg_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vg_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/vr_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) vr_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qs_mlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qs_mlt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qs0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qs0_crt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qi_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qi_gen
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/ql0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ql0_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qi0_max_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qi0_max
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qi0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qi0_crt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qr0_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qr0_crt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/fast_sat_adj_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) fast_sat_adj
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/rh_inc_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) rh_inc
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/rh_ins_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) rh_ins
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/rh_inr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) rh_inr
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/const_vi_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) const_vi
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/const_vs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) const_vs
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/const_vg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) const_vg
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/const_vr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) const_vr
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/use_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) use_ccn
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/rthreshu_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) rthreshu
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/rthreshs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) rthreshs
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/ccn_l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ccn_l
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/ccn_o_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ccn_o
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qc_crt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qc_crt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_g2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_g2v
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2g_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_v2g
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_s2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_s2v
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_v2s
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_revp_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_revp
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_frz_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_frz
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_bigg_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_bigg
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_evap_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_evap
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_subl_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_subl
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/sat_adj0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) sat_adj0
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_piacr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_piacr
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_imlt_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_imlt
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_v2l_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_v2l
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_l2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_l2v
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_i2v_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_i2v
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_i2s_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_i2s
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/tau_l2r_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) tau_l2r
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/qi_lim_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) qi_lim
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/ql_gen_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ql_gen
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_paut_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_paut
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_psaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_psaci
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_pgacs_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_pgacs
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_pgaci_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_pgaci
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/z_slope_liq_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) z_slope_liq
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/z_slope_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) z_slope_ice
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/prog_ccn_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) prog_ccn
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/c_cracw_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) c_cracw
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/alin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) alin
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/clin_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) clin
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/preciprad_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) preciprad
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/cld_min_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) cld_min
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/use_ppm_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) use_ppm
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/mono_prof_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) mono_prof
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_sedi_heat_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_sedi_heat
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/sedi_transport_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) sedi_transport
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/do_sedi_w_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) do_sedi_w
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/dt_fr_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) dt_fr
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/de_ice_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) de_ice
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/icloud_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) icloud_f
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/irain_f_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) irain_f
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/test/mp_print_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) mp_print
+        close(fileID)
+
         ! Note : do_qa is a module variable in gfdl_cloud_microphys.F90
-        do_qa = .false.
+        ! do_qa = .false.
 
     end subroutine
 
@@ -437,6 +761,10 @@ module GFDL_1M_RUN_module
         real, allocatable, dimension(:,:,:) :: PLEmb_ref, PLmb_ref, ZLE0_ref, ZL0_ref, &
                                                DZET_ref, DQST3_ref, DP_ref, MASS_ref, U0_ref, V0_ref, &
                                                QST3_ref, TMP3D_ref
+
+        real, allocatable, dimension(:,:,:) :: T_ref, Q_ref, QLLS_ref, QILS_ref, CLLS_ref, QLCN_ref, QICN_ref, CLCN_ref, PDF_A_ref, &
+                                               WTHV2_ref, WQL_ref, PDFITERS_ref, EVAPC_ref, SUBLC_ref
+        
 
         real, allocatable, dimension(:,:) :: EIS_ref, LTS_ref
         
@@ -497,6 +825,21 @@ module GFDL_1M_RUN_module
         allocate(LTS_ref(IM, JM))
         allocate(EIS_ref(IM, JM))
 
+        allocate(T_ref(IM, JM, LM))
+        allocate(Q_ref(IM, JM, LM))
+        allocate(QLLS_ref(IM, JM, LM))
+        allocate(QILS_ref(IM, JM, LM))
+        allocate(CLLS_ref(IM, JM, LM))
+        allocate(QLCN_ref(IM, JM, LM))
+        allocate(QICN_ref(IM, JM, LM))
+        allocate(CLCN_ref(IM, JM, LM))
+        allocate(PDF_A_ref(IM, JM, LM))
+        allocate(WTHV2_ref(IM, JM, LM))
+        allocate(WQL_ref(IM, JM, LM))
+        allocate(PDFITERS_ref(IM, JM, LM))
+        allocate(EVAPC_ref(IM, JM, LM))
+        allocate(SUBLC_ref(IM, JM, LM))
+
         ! Derived States
         PLEmb    =  PLE*.01
         PLmb     = 0.5*(PLEmb(:,:,0:LM-1) + PLEmb(:,:,1:LM))
@@ -515,97 +858,97 @@ module GFDL_1M_RUN_module
         V0       = V
 
         ! ** Check Variables
-
-        ! open(newunit=fileID, file=trim(dirName) // '/PLEmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) PLEmb_ref
-        ! close(fileID)
+            
+        open(newunit=fileID, file=trim(dirName) // '/PLEmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) PLEmb_ref
+        close(fileID)
 
         open(newunit=fileID, file=trim(dirName) // '/PLmb_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
         read(fileID) PLmb_ref
         close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/ZLE0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) ZLE0_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/ZLE0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ZLE0_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/ZL0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) ZL0_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/ZL0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) ZL0_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/DZET_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) DZET_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/DZET_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) DZET_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/DQST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) DQST3_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/DQST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) DQST3_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/DP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) DP_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/DP_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) DP_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/MASS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) MASS_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/MASS_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) MASS_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/U0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) U0_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/U0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) U0_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/V0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) V0_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/V0_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) V0_ref
+        close(fileID)
 
-        ! open(newunit=fileID, file=trim(dirName) // '/QST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
-        ! read(fileID) QST3_ref
-        ! close(fileID)
+        open(newunit=fileID, file=trim(dirName) // '/QST3_' // trim(rank_str) // '.in', status='old', form='unformatted', action='read')
+        read(fileID) QST3_ref
+        close(fileID)
 
-        ! print*,'Compare sum(diff(PLEmb)) = ',sum(PLEmb_ref - PLEmb)
-        ! print*,'Compare sum(PLEmb) = ',sum(PLEmb)
-        ! print*,'Compare sum(PLEmb_ref) = ',sum(PLEmb_ref)
-        ! print*,'***'
+        print*,'Compare sum(diff(PLEmb)) = ',sum(PLEmb_ref - PLEmb)
+        print*,'Compare sum(PLEmb) = ',sum(PLEmb)
+        print*,'Compare sum(PLEmb_ref) = ',sum(PLEmb_ref)
+        print*,'***'
         print*,'Compare sum(diff(PLmb)) = ',sum(PLmb_ref - PLmb)
         print*,'Compare sum(PLmb) = ',sum(PLmb)
         print*,'Compare sum(PLmb_ref) = ',sum(PLmb_ref)
         print*,'***'
-        ! print*,'Compare sum(diff(ZLE0)) = ',sum(ZLE0_ref - ZLE0)
-        ! print*,'Compare sum(ZLE0) = ',sum(ZLE0)
-        ! print*,'Compare sum(ZLE0_ref) = ',sum(ZLE0_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(ZL0)) = ',sum(ZL0_ref - ZL0)
-        ! print*,'Compare sum(ZL0) = ',sum(ZL0)
-        ! print*,'Compare sum(ZL0_ref) = ',sum(ZL0_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(DZET)) = ',sum(DZET_ref - DZET)
-        ! print*,'Compare sum(DZET) = ',sum(DZET)
-        ! print*,'Compare sum(DZET_ref) = ',sum(DZET_ref)
-        ! print*,'***'
+        print*,'Compare sum(diff(ZLE0)) = ',sum(ZLE0_ref - ZLE0)
+        print*,'Compare sum(ZLE0) = ',sum(ZLE0)
+        print*,'Compare sum(ZLE0_ref) = ',sum(ZLE0_ref)
+        print*,'***'
+        print*,'Compare sum(diff(ZL0)) = ',sum(ZL0_ref - ZL0)
+        print*,'Compare sum(ZL0) = ',sum(ZL0)
+        print*,'Compare sum(ZL0_ref) = ',sum(ZL0_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DZET)) = ',sum(DZET_ref - DZET)
+        print*,'Compare sum(DZET) = ',sum(DZET)
+        print*,'Compare sum(DZET_ref) = ',sum(DZET_ref)
+        print*,'***'
         ! print*,'Compare sum(diff(DQST3)) = ',sum(DQST3_ref - DQST3)
         ! print*,'Compare sum(DQST3) = ',sum(DQST3)
         ! print*,'Compare sum(DQST3_ref) = ',sum(DQST3_ref)
         ! print*,'***'
-        ! print*,'Compare sum(diff(DP)) = ',sum(DP_ref - DP)
-        ! print*,'Compare sum(DP) = ',sum(DP)
-        ! print*,'Compare sum(DP_ref) = ',sum(DP_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(MASS)) = ',sum(MASS_ref - MASS)
-        ! print*,'Compare sum(MASS) = ',sum(MASS)
-        ! print*,'Compare sum(MASS_ref) = ',sum(MASS_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(U0)) = ',sum(U0_ref - U0)
-        ! print*,'Compare sum(U0) = ',sum(U0)
-        ! print*,'Compare sum(U0_ref) = ',sum(U0_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(V0)) = ',sum(V0_ref - V0)
-        ! print*,'Compare sum(V0) = ',sum(V0)
-        ! print*,'Compare sum(V0_ref) = ',sum(V0_ref)
-        ! print*,'***'
-        ! print*,'Compare sum(diff(QST3)) = ',sum(abs(QST3_ref - QST3))
-        ! print*,'Compare sum(QST3) = ',sum(QST3)
-        ! print*,'Compare sum(QST3_ref) = ',sum(QST3_ref)
-        ! print*,'***'
+        print*,'Compare sum(diff(DP)) = ',sum(DP_ref - DP)
+        print*,'Compare sum(DP) = ',sum(DP)
+        print*,'Compare sum(DP_ref) = ',sum(DP_ref)
+        print*,'***'
+        print*,'Compare sum(diff(MASS)) = ',sum(MASS_ref - MASS)
+        print*,'Compare sum(MASS) = ',sum(MASS)
+        print*,'Compare sum(MASS_ref) = ',sum(MASS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(U0)) = ',sum(U0_ref - U0)
+        print*,'Compare sum(U0) = ',sum(U0)
+        print*,'Compare sum(U0_ref) = ',sum(U0_ref)
+        print*,'***'
+        print*,'Compare sum(diff(V0)) = ',sum(V0_ref - V0)
+        print*,'Compare sum(V0) = ',sum(V0)
+        print*,'Compare sum(V0_ref) = ',sum(V0_ref)
+        print*,'***'
+        print*,'Compare sum(diff(QST3)) = ',sum(abs(QST3_ref - QST3))
+        print*,'Compare sum(QST3) = ',sum(QST3)
+        print*,'Compare sum(QST3_ref) = ',sum(QST3_ref)
+        print*,'***'
 
-        ! call exit(1)
+        call exit(1)
 
         ! Note : QST3 has a slight variation in standalone calcuation when compared to Discover calcuations
         ! ***
@@ -655,7 +998,6 @@ module GFDL_1M_RUN_module
         print*,'Compare sum(EIS_ref) = ',sum(EIS_ref)
         print*,'***'
 
-        call exit(1)
 
         DUDT_macro=U
         DVDT_macro=V
@@ -803,6 +1145,121 @@ module GFDL_1M_RUN_module
             end do ! JM loop
         end do ! LM loop
 
+        open(newunit=fileID, file=trim(dirName) // '/T_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) T_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) Q_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/QLLS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) QLLS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/QILS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) QILS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/CLLS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) CLLS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/QLCN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) QLCN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/QICN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) QICN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/CLCN_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) CLCN_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PDF_A_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PDF_A_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WTHV2_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WTHV2_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/WQL_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) WQL_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/PDFITERS_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) PDFITERS_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/EVAPC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) EVAPC_ref
+        close(fileID)
+
+        open(newunit=fileID, file=trim(dirName) // '/SUBLC_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
+        read(fileID) SUBLC_ref
+        close(fileID)
+
+        print*,'Compare sum(diff(T)) = ',sum(T_ref - T)
+        print*,'Compare sum(T) = ',sum(T)
+        print*,'Compare sum(T_ref) = ',sum(T_ref)
+        print*,'***'
+        print*,'Compare sum(diff(Q)) = ',sum(Q_ref - Q)
+        print*,'Compare sum(Q) = ',sum(Q)
+        print*,'Compare sum(Q_ref) = ',sum(Q_ref)
+        print*,'***'
+        print*,'Compare sum(diff(QLLS)) = ',sum(QLLS_ref - QLLS)
+        print*,'Compare sum(QLLS) = ',sum(QLLS)
+        print*,'Compare sum(QLLS_ref) = ',sum(QLLS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(QILS)) = ',sum(QILS_ref - QILS)
+        print*,'Compare sum(QILS) = ',sum(QILS)
+        print*,'Compare sum(QILS_ref) = ',sum(QILS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(CLLS)) = ',sum(CLLS_ref - CLLS)
+        print*,'Compare sum(CLLS) = ',sum(CLLS)
+        print*,'Compare sum(CLLS_ref) = ',sum(CLLS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(QLCN)) = ',sum(QLCN_ref - QLCN)
+        print*,'Compare sum(QLCN) = ',sum(QLCN)
+        print*,'Compare sum(QLCN_ref) = ',sum(QLCN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(QICN)) = ',sum(QICN_ref - QICN)
+        print*,'Compare sum(QICN) = ',sum(QICN)
+        print*,'Compare sum(QICN_ref) = ',sum(QICN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(CLCN)) = ',sum(CLCN_ref - CLCN)
+        print*,'Compare sum(CLCN) = ',sum(CLCN)
+        print*,'Compare sum(CLCN_ref) = ',sum(CLCN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PDF_A)) = ',sum(PDF_A_ref - PDF_A)
+        print*,'Compare sum(PDF_A) = ',sum(PDF_A)
+        print*,'Compare sum(PDF_A_ref) = ',sum(PDF_A_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WTHV2)) = ',sum(WTHV2_ref - WTHV2)
+        print*,'Compare sum(WTHV2) = ',sum(WTHV2)
+        print*,'Compare sum(WTHV2_ref) = ',sum(WTHV2_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WQL)) = ',sum(WQL_ref - WQL)
+        print*,'Compare sum(WQL) = ',sum(WQL)
+        print*,'Compare sum(WQL_ref) = ',sum(WQL_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PDFITERS)) = ',sum(PDFITERS_ref - PDFITERS)
+        print*,'Compare sum(PDFITERS) = ',sum(PDFITERS)
+        print*,'Compare sum(PDFITERS_ref) = ',sum(PDFITERS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(EVAPC)) = ',sum(EVAPC_ref - EVAPC)
+        print*,'Compare sum(EVAPC) = ',sum(EVAPC)
+        print*,'Compare sum(EVAPC_ref) = ',sum(EVAPC_ref)
+        print*,'***'
+        print*,'Compare sum(diff(SUBLC)) = ',sum(SUBLC_ref - SUBLC)
+        print*,'Compare sum(SUBLC) = ',sum(SUBLC)
+        print*,'Compare sum(SUBLC_ref) = ',sum(SUBLC_ref)
+        print*,'***'
+        
+        call exit(1)
+
         ! Update macrophysics tendencies
         DUDT_macro=( U         - DUDT_macro)/DT_MOIST
         DVDT_macro=( V         - DVDT_macro)/DT_MOIST
@@ -860,6 +1317,10 @@ module GFDL_1M_RUN_module
         ! GRAUPEL
         RAD_QG = QGRAUPEL
 
+        ! Subroutines calls that set up Cloud Microphysics module variables
+        call setup_con
+        call setupm
+        
         call gfdl_cloud_microphys_driver( &
             ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
             RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &

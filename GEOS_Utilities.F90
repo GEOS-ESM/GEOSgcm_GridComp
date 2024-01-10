@@ -784,7 +784,6 @@
 
          if(FIRST) then
             FIRST = .false.
-            print*,'Going into ESINIT'
             call ESINIT
             !call LOGGER_INIT
          end if
