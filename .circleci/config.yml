@@ -5,7 +5,7 @@ version: 2.1
 #bcs_version: &bcs_version v11.1.0
 
 orbs:
-  ci: geos-esm/circleci-tools@1
+  ci: geos-esm/circleci-tools@dev:d864e18a37d24b54f3e74e13c868b391a98f4be9
 
 workflows:
   build-test:
