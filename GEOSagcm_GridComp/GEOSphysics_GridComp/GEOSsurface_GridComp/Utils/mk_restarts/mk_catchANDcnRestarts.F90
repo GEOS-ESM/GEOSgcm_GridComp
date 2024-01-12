@@ -111,13 +111,6 @@ PROGRAM mk_catchANDcnRestarts
           nxt = nxt + 1
           call getarg(nxt,arg)
        end do
-       if (index(model, 'catchcn') /=0 ) then
-         if((INDEX(out_bcsdir, 'NL') == 0).AND.(INDEX(out_bcsdir, 'OutData') == 0)) then
-           print *,'Land BCs in : ',trim(out_bcsdir)
-           print *,'do not support ',trim (model)
-           stop
-         endif
-       endif
        out_file = out_dir //'/'//out_rstfile
 
      end subroutine
