@@ -353,7 +353,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QCTOT',                                     &
+        SHORT_NAME = 'FCLD',                                      &
         LONG_NAME  = 'cloud_fraction',                            &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -2778,7 +2778,7 @@ end if
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
-     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QCTOT
+     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, FCLD
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
@@ -2975,7 +2975,7 @@ end if
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, QCTOT,   'QCTOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  FCLD,    'FCLD', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
@@ -3361,7 +3361,7 @@ end if
 
       QL  = QLTOT
       QI  = QITOT
-      QA  = QCTOT
+      QA  = FCLD
       Z   = 0.5*(ZL0(:,:,0:LM-1)+ZL0(:,:,1:LM)) ! layer height above surface
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 

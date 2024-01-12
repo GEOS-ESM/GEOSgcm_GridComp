@@ -1047,7 +1047,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','QCTOT ',      &
+         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','FCLD  ',      &
                          'WTHV2 ','WQT_DC'                   /),   &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
