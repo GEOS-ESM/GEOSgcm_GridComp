@@ -36,7 +36,7 @@ real, parameter ::     &
     real    :: L0
     real    :: L0fac
     real    :: STOCHFRAC
-    real    :: ENTWFAC
+    real    :: ENTUFAC
     real    :: EDFAC
     real    :: ENT0
     real    :: ENT0LTS
@@ -226,8 +226,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    LOGICAL :: calc_avg_diag
 
 ! velocity equation parameters
-   REAL,PARAMETER :: Wa=1., &    ! buoyancy term
-                     Wb=1.5      ! entrainment term
+!   REAL,PARAMETER :: Wa=1., &    ! buoyancy term
+!                     Wb=1.5      ! entrainment term
 !                    Wa=1., &    ! original
 !                    Wb=1.5
 
@@ -584,7 +584,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
             end if
 
             EntExp  = exp(-ENT(K,I)*(ZW(k)-ZW(k-1)))
-            EntExpU = exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*MFPARAMS%EntWFac)
+            EntExpU = exp(-ENT(K,I)*(ZW(k)-ZW(k-1))*MFPARAMS%EntUFac)
 
             ! Effect of mixing on thermodynamic variables in updraft
             QTn  = QT(K)*(1-EntExp)+UPQT(K-1,I)*EntExp
@@ -607,12 +607,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
 
             ! vertical velocity
             B=mapl_grav*(0.5*(THVn+UPTHV(k-1,I))/THV(k)-1.)
-            WP=Wb*ENT(K,I)
+            WP=MFPARAMS%WB*ENT(K,I)
             IF (WP==0.) THEN
-              Wn2=UPW(K-1,I)**2+2.*Wa*B*(ZW(k)-ZW(k-1))
+              Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
               EntW=exp(-2.*WP*(ZW(k)-ZW(k-1)))
-              Wn2=EntW*UPW(k-1,I)**2+Wa*B/WP*(1.-EntW)
+              Wn2=EntW*UPW(k-1,I)**2+MFPARAMS%WA*B/WP*(1.-EntW)
             END IF
 
             IF (Wn2>0.) THEN
