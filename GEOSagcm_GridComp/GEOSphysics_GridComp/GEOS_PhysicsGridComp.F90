@@ -1047,7 +1047,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','FCLD ',       &
+         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','FCLD  ',      &
                          'WTHV2 ','WQT_DC'                   /),   &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
@@ -1180,7 +1180,7 @@ contains
 ! Imports for GWD
 !----------------
     call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = (/'Q', 'DTDT_DC', 'CNV_FRC' /),                 &
+         SHORT_NAME  = ['Q      ', 'DTDT_DC', 'CNV_FRC'],  &
          DST_ID      = GWD,                                            &
          SRC_ID      = MOIST,                                          &
                                                         RC=STATUS      )

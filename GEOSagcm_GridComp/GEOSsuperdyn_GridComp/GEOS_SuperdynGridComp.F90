@@ -519,9 +519,10 @@ integer ::          ADV = -1
 ! -----------------------------
     if(adjustl(DYCORE)=="FV3+ADV"  ) then
       CALL MAPL_AddConnectivity ( GC,                               &
-                 SHORT_NAME  = (/'MFX ', 'MFY ', 'CX  ' , 'CY  ',   &
+           SHORT_NAME  = [character(len=14) :: &
+                                  'MFX', 'MFY', 'CX' , 'CY',   &
                                  'PLE0', 'PLE1', 'QW_BEFORE_DYN',   &
-                                 'QW_AFTER_DYN'/),                  &
+                                 'QW_AFTER_DYN'],                  &
                  DST_ID      = ADV,                                 &
                  SRC_ID      = DYN,                                 &
                  RC=STATUS  )

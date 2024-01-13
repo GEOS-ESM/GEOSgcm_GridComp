@@ -1313,7 +1313,7 @@ CONTAINS
 
 !   Clean up
 !   --------
-    call MAPL_FieldBundleDestroy ( RBUNDLEP0, RC=STATUS)
+    call MAPL_FieldBundleDestroy ( RBUNDLEP0, noGarbage=.true., RC=STATUS)
     VERIFY_(STATUS)
     deallocate(dp)
     deallocate(gptr2d)

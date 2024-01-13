@@ -1599,6 +1599,7 @@ contains
     integer                                :: N
 
     TYPE(ESMF_Alarm)              :: PredictorIsActive
+    logical :: oserver
 
 !=============================================================================
 
@@ -1736,6 +1737,7 @@ contains
                     VERIFY_(STATUS)
 
                     if( gcm_internal_state%checkpointRequested ) then
+                        call MAPL_GetResource( MAPL_AGCM, oserver, "WRITE_RESTART_BY_OSERVER:", _RC)
                         call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
                         VERIFY_(STATUS)
 
@@ -1750,7 +1752,7 @@ contains
                         if( FileType == 'pnc4'   ) RECORD_FNAME = trim(Filename) // '.' // DATESTAMP // '.nc4'
 
                         if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Creating MKIAU Checkpoint ..."
-                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, .FALSE., RC=STATUS )
+                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, HDR=.FALSE., write_with_oserver=oserver, _RC)
                         if( MAPL_AM_I_Root() ) PRINT *
                         VERIFY_(STATUS)
                     endif
@@ -1808,6 +1810,7 @@ contains
                     VERIFY_(STATUS)
 
                     if( gcm_internal_state%checkpointRequested ) then
+                        call MAPL_GetResource( MAPL_AGCM, oserver, "WRITE_RESTART_BY_OSERVER:", _RC)
                         call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
                         VERIFY_(STATUS)
 
@@ -1822,8 +1825,7 @@ contains
                         if( FileType == 'pnc4'   ) RECORD_FNAME = trim(Filename) // '.' // DATESTAMP // '.nc4'
 
                         if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Creating MKIAU Checkpoint ..."
-                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, .FALSE., RC=STATUS )
-                        VERIFY_(STATUS)
+                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, HDR=.FALSE., write_with_oserver=oserver, _RC)
                         if( MAPL_AM_I_Root() ) PRINT *
                     endif
                 endif
