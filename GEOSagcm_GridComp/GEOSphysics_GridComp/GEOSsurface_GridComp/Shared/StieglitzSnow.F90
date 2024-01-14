@@ -491,7 +491,9 @@ contains
     htest=htsnn
     htest(N_snow)=htest(N_snow)+fhsn(N_snow+1)*dts*areasc
     
-    call StieglitzSnow_calc_tpsnow(N_snow, htest, wesn, ttest, ftest)
+    ! tpsnow may be positive in the following call; set optional flag accordingly
+    
+    call StieglitzSnow_calc_tpsnow(N_snow, htest, wesn, ttest, ftest, allow_pos_tpsnow=.true.)
     
     scale=1.
     if((t1ave-tpsn(N_snow))*(t1ave-ttest(N_snow)) .lt. 0.) then
@@ -1317,7 +1319,7 @@ contains
   ! **********************************************************************
   
   subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero,  &
-       use_threshold_fac )
+       use_threshold_fac, allow_pos_tpsnow )
     
     ! diagnose snow temperature and frozen fraction from snow mass and snow heat content
     !
@@ -1342,13 +1344,15 @@ contains
     !rr   real, parameter :: lhs    = 2.8434e6  !  @ 0 C [J/kg]
     !      real, parameter :: lhf    = (lhs-lhv) !  @ 0 C [J/kg]
     
-    real,    intent(in )   :: w, h          ! snow mass (SWE), snow heat content 
-    real,    intent(out)   :: t, f          ! snow temperature, frozen ("ice") fraction
+    real,    intent(in )           :: w, h          ! snow mass (SWE), snow heat content 
+    real,    intent(out)           :: t, f          ! snow temperature, frozen ("ice") fraction
     
-    logical, intent(out)   :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
+    logical, intent(out)           :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
     
-    logical, intent(in)    :: use_threshold_fac
+    logical, intent(in)            :: use_threshold_fac
     
+    logical, intent(in),  optional :: allow_pos_tpsnow
+
     ! ------------------------------------------------------------
     
     real,             parameter :: tfac=1./StieglitzSnow_CPW
@@ -1360,11 +1364,26 @@ contains
     
     character(len=*), parameter :: Iam = 'StieglitzSnow_calc_tpsnow_scalar()'
     
+    logical                     :: allow_pos_tpsnow_tmp
+
     ! ------------------------------------------------------------------------------
     
     ! make sure snow heat content is not positive (would result in snow temperature above 0 deg C)
+    !
+    ! disable this check with optional input argument allow_pos_tpsnow=.true. (needed for block of code
+    !   in StieglitzSnow_snowrt() that "[e]nsure[s] against excessive heat flux between ground and snow")
+
+    if (present(allow_pos_tpsnow)) then
+       
+       allow_pos_tpsnow_tmp = allow_pos_tpsnow
+       
+    else
+       
+       allow_pos_tpsnow_tmp = .false.
+       
+    end if
     
-    if (h>0.) then
+    if ( (.not. allow_pos_tpsnow_tmp) .and. (h>0.) ) then
        
        write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
        stop
@@ -1437,7 +1456,7 @@ contains
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_calc_tpsnow_vector( N, h, w, t, f )
+  subroutine StieglitzSnow_calc_tpsnow_vector( N, h, w, t, f, allow_pos_tpsnow )
     
     ! renamed for clarity:   get_tf_nd() --> StieglitzSnow_calc_tpsnow()
     ! reichle, 12 Aug 2014
@@ -1464,6 +1483,8 @@ contains
     real,    dimension(N), intent(in)  :: h, w
     real,    dimension(N), intent(out) :: t, f
     
+    logical, optional,     intent(in)  :: allow_pos_tpsnow
+
     ! -----------------------------------
     
     integer            :: ii      
@@ -1472,12 +1493,26 @@ contains
     
     logical, parameter :: use_threshold_fac = .false.
 
+    logical            :: allow_pos_tpsnow
+
     ! ----------------------------------
     
+    if (present(allow_pos_tpsnow)) then
+       
+       allow_pos_tpsnow_tmp = allow_pos_tpsnow
+       
+    else
+       
+       allow_pos_tpsnow_tmp = .false.
+       
+    end if
+    
+    ! --------------------------------------
+
     do ii=1,N
        
        call StieglitzSnow_calc_tpsnow_scalar( h(ii), w(ii), t(ii), f(ii), ice1, tzero,  &
-            use_threshold_fac )
+            use_threshold_fac, allow_pos_tpsnow_tmp )
        
     end do
 
