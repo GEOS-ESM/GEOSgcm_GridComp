@@ -1493,7 +1493,7 @@ contains
     
     logical, parameter :: use_threshold_fac = .false.
 
-    logical            :: allow_pos_tpsnow
+    logical            :: allow_pos_tpsnow_tmp
 
     ! ----------------------------------
     
