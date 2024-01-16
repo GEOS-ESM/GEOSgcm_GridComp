@@ -71,20 +71,8 @@ module Process_Library_standalone
         LM = size(T,3)
         IM = size(T,1)
         JM = size(T,2)
-!!$acc kernels
-!        BUOY(:,:,LM) =  T(:,:,LM) + gravbcp*ZLO(:,:,LM) + alhlbcp*Q(:,:,LM)
-!!$acc end kernels
 
-! !$acc parallel loop gang vector collapse(2)
-!         do J = 1,JM
-!             do I =1,IM
-!                 BUOY(I,J,LM) =  T(I,J,LM) + gravbcp*ZLO(I,J,LM) + alhlbcp*Q(I,J,LM)
-!             enddo
-!         enddo
-! !$acc end parallel
-
-!!$acc parallel loop gang vector collapse(3)
-!$omp target teams distribute parallel do
+!$omp target teams distribute parallel do collapse(3)
         do L=LM-1,1,-1
             do J = 1,JM
                 do I = 1,IM
@@ -94,10 +82,8 @@ module Process_Library_standalone
             enddo
         enddo
 !$omp end target teams distribute parallel do
-!!$acc end parallel loop
 
-!!$acc parallel loop gang vector collapse(2)
-!$omp target teams distribute parallel do
+!$omp target teams distribute parallel do collapse(2)
         do J = 1,JM
             do I = 1,IM
                 BUOY(I,J,LM) = 0.0
@@ -107,10 +93,8 @@ module Process_Library_standalone
             enddo
         enddo
 !$omp end target teams distribute parallel do
-!!$acc end parallel loop
 
-!!$acc parallel loop gang vector collapse(3)
-!$omp target teams distribute parallel do
+!$omp target teams distribute parallel do collapse(3)
         do L=1,LM-1
             do J = 1, JM
                 do I = 1,IM
@@ -133,10 +117,8 @@ module Process_Library_standalone
             enddo
         end do
 !$omp end target teams distribute parallel do
-!!$acc end parallel loop
 
-!!$acc parallel loop gang vector collapse(2)
-!$omp target teams distribute parallel do
+!$omp target teams distribute parallel do collapse(2)
         do J = 1,JM
             do I = 1,IM
                 if(CAPE(I,J) <= 0.0) then
@@ -146,7 +128,6 @@ module Process_Library_standalone
             enddo
         enddo
 !$omp end target teams distribute parallel do
-!!$acc end parallel loop
     end subroutine BUOYANCY
 
     subroutine pdffrac (flag,qtmean,sigmaqt1,sigmaqt2,qstar,clfrac)

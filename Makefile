@@ -1,9 +1,9 @@
 programName = TEST_MOIST
 
-FC = nvfortran
+FC = gfortran
 #OPT = -O3 -Mflushz -Mfunc32 -Kieee #NVIDIA compiler options
-OPT = -O3 -Mfunc32 -Kieee -mp=gpu -gpu=flushz -Minfo=mp #NVIDIA compiler options
-#OPT = -g -O3 -fPIC -ffree-line-length-0 -fopenacc -foffload="-lgfortran -lgomp -lm" -foffload=nvptx-none #--coverage# Gfortran compiler options
+#OPT = -O3 -Mfunc32 -Kieee -mp=gpu -gpu=flushz -Minfo=mp #NVIDIA compiler options
+OPT = -g -O3 -fPIC -ffree-line-length-0 -fopenmp -foffload="-lgfortran -lgomp -lm" -foffload=nvptx-none #--coverage# Gfortran compiler options
 #OPT = -O3 -g -march=core-avx2 -fma -qopt-report0 -ftz -align all -fno-alias -align array32byte -traceback -assume realloc_lhs -fpe3 -fp-model consistent -assume noold_maxminloc -align dcommons #-prof-gen=srcpos# Ifort compiler options
 OBJ = MAPL_SatVapor.o MAPL_Constants.o GEOS_Utilities.o \
       moist_subroutines_process_library.o \
