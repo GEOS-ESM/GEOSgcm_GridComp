@@ -1,0 +1,4 @@
+.gitignore
+*_data
+*.o
+*.mod
