@@ -112,7 +112,7 @@ PROGRAM mk_catchANDcnRestarts
           call getarg(nxt,arg)
        end do
        if (index(model, 'catchcn') /=0 ) then
-         if((INDEX(out_bcsdir, '/ICA/') /== 0) .or. (INDEX(out_bcsdir, '/GM4/') /= 0)) then
+         if((INDEX(out_bcsdir, '/ICA/') /= 0) .or. (INDEX(out_bcsdir, '/GM4/') /= 0)) then
            print *,'Land BCs in : ',trim(out_bcsdir)
            print *,'do not support ',trim (model)
            stop
