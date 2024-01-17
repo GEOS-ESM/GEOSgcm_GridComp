@@ -32,7 +32,6 @@ module radcoup_loop
         ! a race condition.
         call call_ESINIT
 
-!!$acc parallel loop gang vector collapse(3)
 !$omp target teams distribute parallel do collapse(3)
         do L = 1, LM
             do J = 1, JM
@@ -40,20 +39,87 @@ module radcoup_loop
                     ! cleanup clouds
                     call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), &
                         CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
-                    ! get radiative properties
-                    call RADCOUPLE ( T(I,J,L), PLmb(I,J,L), CLLS(I,J,L), CLCN(I,J,L), &
-                            Q(I,J,L), QLLS(I,J,L), QILS(I,J,L), QLCN(I,J,L), QICN(I,J,L), &
-                            QRAIN(I,J,L), QSNOW(I,J,L), QGRAUPEL(I,J,L), NACTL(I,J,L), NACTI(I,J,L), &
-                            RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), &
-                            RAD_QG(I,J,L), RAD_CF(I,J,L), CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
-                            FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-                    ! Note : GEOS_QSAT has not been tested in standalone
-                    if (do_qa) RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
                 enddo
             enddo
         enddo
 !$omp end target teams distribute parallel do
-!!$acc end parallel loop
+
+!$omp target teams distribute parallel do collapse(3)
+        do L = 1, LM
+            do J = 1, JM
+                do I = 1, IM
+                    ! get radiative properties
+                    call RADCOUPLE_pt1 ( &
+                            CLLS(I,J,L), &
+                            CLCN(I,J,L), &
+                            Q(I,J,L), &
+                            QLLS(I,J,L), &
+                            QILS(I,J,L), &
+                            QLCN(I,J,L), &
+                            QICN(I,J,L), &
+                            RAD_QV(I,J,L), &
+                            RAD_QL(I,J,L), &
+                            RAD_QI(I,J,L), &
+                            RAD_CF(I,J,L))
+                enddo
+            enddo
+        enddo
+!$omp end target teams distribute parallel do
+
+!$omp target teams distribute parallel do collapse(3)
+        do L = 1, LM
+            do J = 1, JM
+                do I = 1, IM
+                    call RADCOUPLE_pt2( &
+                        CLLS(I,J,L), &
+                        CLCN(I,J,L), &
+                        QRAIN(I,J,L), &
+                        QSNOW(I,J,L), &
+                        QGRAUPEL(I,J,L), &
+                        RAD_CF(I,J,L),   &
+                        RAD_QR(I,J,L), &
+                        RAD_QS(I,J,L), &
+                        RAD_QG(I,J,L))
+                enddo
+            enddo
+        enddo
+!$omp end target teams distribute parallel do
+
+!$omp target teams distribute parallel do collapse(3)
+        do L = 1, LM
+            do J = 1, JM
+                do I = 1, IM
+                    call RADCOUPLE_pt3( &
+                         T(I,J,L), &
+                         PLmb(I,J,L), &
+                         NACTL(I,J,L), &
+                         NACTI(I,J,L), &
+                         RAD_QL(I,J,L), &
+                         RAD_QI(I,J,L), &
+                         CLDREFFL(I,J,L), &
+                         CLDREFFI(I,J,L), &
+                         FAC_RL, &
+                         MIN_RL, &
+                         MAX_RL, &
+                         FAC_RI, &
+                         MIN_RI, &
+                         MAX_RI)
+                enddo
+            enddo
+        enddo
+!$omp end target teams distribute parallel do
+
+        if(do_qa) then
+!$omp target teams distribute parallel do collapse(3)
+            do L = 1, LM
+                do J = 1, JM
+                    do I = 1, IM
+                        RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
+                    enddo
+                enddo
+            enddo
+!$omp end target teams distribute parallel do
+        endif
     end subroutine
 
 end module

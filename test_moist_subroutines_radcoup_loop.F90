@@ -187,10 +187,6 @@ module test_radcoup_subroutines
         close(fileID)
         ! print*, 'Rank ', trim(rank_str),': In sum(RHX) = ', sum(RHX)
 
-!!$acc data copyin(PLmb, QRAIN, QSNOW, QGRAUPEL, NACTL, NACTI) &
-!!$acc      copyin(FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, do_qa) &
-!!$acc      copy(Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN, RHX) &
-!!$acc      copyout(RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG, RAD_CF, CLDREFFL, CLDREFFI)
 
 !$omp target data map(to: PLmb, QRAIN, QSNOW, QGRAUPEL, NACTL, NACTI) &
 !$omp             map(to: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, do_qa) &
@@ -209,7 +205,6 @@ module test_radcoup_subroutines
         call print_timing()
 
 !$omp end target data
-!!$acc end data
 
         open(newunit=fileID, file=trim(dirName) // '/Q_' // trim(rank_str) // '.out', status='old', form='unformatted', action='read')
         read(fileID) Q_ref

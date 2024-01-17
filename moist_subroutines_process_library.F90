@@ -51,7 +51,8 @@ module Process_Library_standalone
 
     real, parameter :: mapl_undef = 1.0e15  ! NOTE : This is the value pulled from MAPL_Mod
 
-    public :: hystpdf, ICE_FRACTION, FILLQ2ZERO, BUOYANCY, EVAP3, SUBL3, FIX_UP_CLOUDS, RADCOUPLE
+    public :: hystpdf, ICE_FRACTION, FILLQ2ZERO, BUOYANCY, EVAP3, SUBL3, FIX_UP_CLOUDS
+    public :: RADCOUPLE_pt1, RADCOUPLE_pt2, RADCOUPLE_pt3
 
     contains
 
@@ -1713,9 +1714,7 @@ module Process_Library_standalone
 
     end subroutine FIX_UP_CLOUDS
 
-    subroutine RADCOUPLE(  &
-        TE,              & 
-        PL,              & 
+    subroutine RADCOUPLE_pt1(  &
         CF,              & 
         AF,              & 
         QV,              &
@@ -1723,32 +1722,14 @@ module Process_Library_standalone
         QCiLS,           & 
         QClAN,           & 
         QCiAN,           & 
-        QRN_ALL,         & 
-        QSN_ALL,         & 
-        QGR_ALL,         &
-        NL,              &
-        NI,              &
         RAD_QV,          &
         RAD_QL,          &  
         RAD_QI,          & 
-        RAD_QR,          & 
-        RAD_QS,          & 
-        RAD_QG,          &
-        RAD_CF,          & 
-        RAD_RL,          & 
-        RAD_RI,          & 
-        FAC_RL, MIN_RL, MAX_RL, &
-        FAC_RI, MIN_RI, MAX_RI)
-        !!$acc routine seq
-        !$omp declare target
-        real, intent(in ) :: TE
-        real, intent(in ) :: PL
-        real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
-        real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
-        real, intent(in ) :: NL,NI
-        real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
-        real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
+        RAD_CF)
 
+        real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
+        real, intent(out) :: RAD_CF, RAD_QV,RAD_QL,RAD_QI
+        !$omp declare target
         ! Limits on Radii needed to ensure
         ! correct behavior of cloud optical
         ! properties currently calculated in 
@@ -1762,48 +1743,95 @@ module Process_Library_standalone
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         RAD_CF = MAX(MIN(CF+AF,1.0),0.0)
         if ( RAD_CF >= 1.e-5 ) then
-        ! Total In-cloud liquid
-        if ( (QClLS + QClAN) >= 1.e-8 ) then
-            RAD_QL = ( QClLS + QClAN ) / RAD_CF
+            ! Total In-cloud liquid
+            if ( (QClLS + QClAN) >= 1.e-8 ) then
+                RAD_QL = ( QClLS + QClAN ) / RAD_CF
+            else
+                RAD_QL = 0.0
+            end if
+            ! Total In-cloud ice
+            if ( (QCiLS + QCiAN) >= 1.e-8 ) then
+                RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
+            else
+                RAD_QI = 0.0
+            end if
         else
+            RAD_CF = 0.0
             RAD_QL = 0.0
-        end if
-        ! Total In-cloud ice
-        if ( (QCiLS + QCiAN) >= 1.e-8 ) then
-            RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
-        else
             RAD_QI = 0.0
-        end if
-        ! Total In-cloud precipitation
-        if (QRN_ALL >= 1.e-8 ) then
-            RAD_QR = ( QRN_ALL ) / RAD_CF
-        else
-            RAD_QR = 0.0
-        end if
-        if (QSN_ALL >= 1.e-8 ) then
-            RAD_QS = ( QSN_ALL ) / RAD_CF
-        else
-            RAD_QS = 0.0
-        end if
-        if (QGR_ALL >= 1.e-8 ) then
-            RAD_QG = ( QGR_ALL ) / RAD_CF
-        else
-            RAD_QG = 0.0
-        end if
-        else
-        RAD_CF = 0.0
-        RAD_QL = 0.0
-        RAD_QI = 0.0
-        RAD_QR = 0.0
-        RAD_QS = 0.0
-        RAD_QG = 0.0
         end if
         ! cap the high end of condensates
         RAD_QL = MIN( RAD_QL, 0.01 )
         RAD_QI = MIN( RAD_QI, 0.01 )
+
+    end subroutine RADCOUPLE_pt1
+
+    subroutine RADCOUPLE_pt2( &
+        CF,              &
+        AF,              &
+        QRN_ALL,         & 
+        QSN_ALL,         & 
+        QGR_ALL,         &
+        RAD_CF,          &
+        RAD_QR,          & 
+        RAD_QS,          & 
+        RAD_QG)
+
+        real, intent(in ) :: CF,AF
+        real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
+        real, intent(out) :: RAD_CF, RAD_QR, RAD_QS,RAD_QG
+        !$omp declare target
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Total cloud fraction
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        RAD_CF = MAX(MIN(CF+AF,1.0),0.0)
+        if ( RAD_CF >= 1.e-5 ) then
+            ! Total In-cloud precipitation
+            if (QRN_ALL >= 1.e-8 ) then
+                RAD_QR = ( QRN_ALL ) / RAD_CF
+            else
+                RAD_QR = 0.0
+            end if
+            if (QSN_ALL >= 1.e-8 ) then
+                RAD_QS = ( QSN_ALL ) / RAD_CF
+            else
+                RAD_QS = 0.0
+            end if
+            if (QGR_ALL >= 1.e-8 ) then
+                RAD_QG = ( QGR_ALL ) / RAD_CF
+            else
+                RAD_QG = 0.0
+            end if
+        else
+            RAD_CF = 0.0
+            RAD_QR = 0.0
+            RAD_QS = 0.0
+            RAD_QG = 0.0
+        end if
+        ! cap the high end of condensates
         RAD_QR = MIN( RAD_QR, 0.01 )
         RAD_QS = MIN( RAD_QS, 0.01 )
         RAD_QG = MIN( RAD_QG, 0.01 )
+    end subroutine
+
+    subroutine RADCOUPLE_pt3( &
+        TE,              & 
+        PL,              & 
+        NL,              &
+        NI,              &
+        RAD_QL,          &
+        RAD_QI,          & 
+        RAD_RL,          & 
+        RAD_RI,          & 
+        FAC_RL, MIN_RL, MAX_RL, &
+        FAC_RI, MIN_RI, MAX_RI)
+        real, intent(in ) :: TE
+        real, intent(in ) :: PL
+        real, intent(in ) :: NL,NI, RAD_QL, RAD_QI
+        real, intent(in ) :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
+        real, intent(out) :: RAD_RL,RAD_RI
+        !$omp declare target
 
         ! LIQUID RADII
         !-BRAMS formulation     
@@ -1811,13 +1839,12 @@ module Process_Library_standalone
         ! apply limits
         RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
 
-    ! ICE RADII
+        ! ICE RADII
         !-BRAMS formulation  
         RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
-    ! apply limits
+        ! apply limits
         RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
-
-    end subroutine RADCOUPLE
+    end subroutine
 end module
 
 ! NASA Docket No. GSC-15,354-1, and identified as "GEOS-5 GCM Modeling Software”

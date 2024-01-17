@@ -153,7 +153,7 @@
 
       real, save :: TMINLQU    =  ZEROC - 40.0
       real, save :: TMINICE    =  ZEROC + TMINSTR
-!!$acc declare create(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
+
 !$omp declare target(UTBL,FIRST,ESTBLX,ESTFRZ,ESTLQU,ESTBLE,ESTBLW,TMINLQU,TMINICE,TYPE)
       !class(Logger), pointer :: lgr
       !logical :: debugIsEnabled
