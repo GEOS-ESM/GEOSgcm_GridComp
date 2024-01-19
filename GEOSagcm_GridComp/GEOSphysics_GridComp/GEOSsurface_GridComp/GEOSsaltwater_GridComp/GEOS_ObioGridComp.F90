@@ -57,21 +57,17 @@ module GEOS_ObioGridCompMod
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, _RC)
     Iam = trim(COMP_NAME) // 'SetServices'
 
 ! Get my MAPL_Generic state
 !--------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, _RC)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -85,8 +81,7 @@ module GEOS_ObioGridCompMod
           UNITS              = '1e-6'                      ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                           _RC  ) 
 
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'DUDP'                      ,&
@@ -95,8 +90,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly           ,&
           UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
 
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'DUWT'                      ,&
@@ -105,8 +99,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly           ,&
           UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
  
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'DUSD'                      ,&
@@ -115,8 +108,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly           ,&
           UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
      
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'BCDP'                            ,&
@@ -125,8 +117,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
      
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'BCWT'                            ,&
@@ -135,8 +126,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
      
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'OCDP'                            ,&
@@ -145,8 +135,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
      
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'OCWT'                            ,&
@@ -155,8 +144,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
      
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'FSWBAND'                         ,                   &
@@ -165,8 +153,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
 
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
@@ -175,8 +162,7 @@ module GEOS_ObioGridCompMod
           DIMS               = MAPL_DimsTileOnly                 ,&
           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
           VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+          _RC  ) 
 
 ! Following OBIO related imports are
 ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
@@ -188,8 +174,7 @@ module GEOS_ObioGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         RESTART            = MAPL_RestartSkip,                    &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                       _RC  )
 
    call MAPL_AddImportSpec(GC,                            &
          SHORT_NAME         = 'DUDP'                      ,&
@@ -199,8 +184,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                            &
          SHORT_NAME         = 'DUWT'                      ,&
@@ -210,8 +194,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                            &
          SHORT_NAME         = 'DUSD'                      ,&
@@ -221,8 +204,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'BCDP'                            ,&
@@ -232,8 +214,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'BCWT'                            ,&
@@ -243,8 +224,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'OCDP'                            ,&
@@ -254,8 +234,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'OCWT'                            ,&
@@ -265,8 +244,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME         = 'FSWBAND'                         ,                   &
@@ -276,8 +254,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
    call MAPL_AddImportSpec(GC,                    &
          SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
@@ -287,22 +264,18 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
           VLOCATION          = MAPL_VLocationNone                ,&
           RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
+          _RC  ) 
 
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC,    name="RUN1"   ,               RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="RUN2"  ,                RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="RUN1"   ,               _RC)
+    call MAPL_TimerAdd(GC,    name="RUN2"  ,                _RC)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_GenericSetServices    ( GC,  RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices    ( GC,  _RC)
 
 ! Set the Run entry point
 ! -----------------------
@@ -346,15 +319,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Run1"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
 ! Start Total timer
 !------------------
@@ -367,8 +338,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_Get(MAPL,                          &
          INTERNAL_ESMF_STATE = INTERNAL,         &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                       _RC)
 
 !  All done
 !-----------
@@ -426,15 +396,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Run2"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
 ! Start Total timer
 !------------------
@@ -452,14 +420,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ORBIT     = ORBIT,                      &
          INTERNAL_ESMF_STATE = INTERNAL,         &
          CF = CF,                                &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                       _RC)
 
 ! Update the skin variables each step
 !------------------------------------
 
-    call OBIOCORE(NT=size(LONS), RC=STATUS )
-    VERIFY_(STATUS)
+    call OBIOCORE(NT=size(LONS), _RC)
 
 !  All done
 !-----------
@@ -514,30 +480,30 @@ contains
 ! Pointers to inputs
 !-------------------
 
-    call MAPL_GetPointer(IMPORT,CO2SC  , 'CO2SC'  ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,DUWT   , 'DUWT'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,CO2SC  , 'CO2SC'  ,    _RC)
+    call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,DUWT   , 'DUWT'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    _RC)
+    call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   _RC)
+    call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', _RC)
 
 ! Pointers to outputs
 !--------------------
 
-    call MAPL_GetPointer(EXPORT,CO2SCEX,    'CO2SC'   ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,DUDPEX ,    'DUDP'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,DUWTEX ,    'DUWT'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND',     RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,CO2SCEX,    'CO2SC'   ,    _RC)
+    call MAPL_GetPointer(EXPORT,DUDPEX ,    'DUDP'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,DUWTEX ,    'DUWT'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    _RC)
+    call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND',     _RC)
+    call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   _RC)
 
 
     if  (  associated(CO2SCEX)      )  CO2SCEX      =  CO2SC

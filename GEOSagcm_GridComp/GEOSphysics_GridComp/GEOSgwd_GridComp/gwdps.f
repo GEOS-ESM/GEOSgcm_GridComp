@@ -338,7 +338,6 @@
       parameter(mdir=8, FDIR=mdir/(PI+PI))
       integer nwdir(mdir)
       data nwdir/6,7,5,8,2,3,1,4/
-      save nwdir
 !
       LOGICAL ICRILV(IM)
 !

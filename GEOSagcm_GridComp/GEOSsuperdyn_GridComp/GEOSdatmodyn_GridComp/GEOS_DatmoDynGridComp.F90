@@ -17,7 +17,8 @@ module GEOS_DatmoDynGridCompMod
   use MAPL
   use PPM
   use cfmip_data_mod
-  
+  use MAPL_PhysicalConstantsMod, only : MAPL_OMEGA
+
   implicit none
   private
 
@@ -26,8 +27,8 @@ module GEOS_DatmoDynGridCompMod
   public SetServices
 
 ! !DESCRIPTION:
-! 
-!   {\tt MOIST} 
+!
+!   {\tt MOIST}
 !
 
 !EOP
@@ -46,10 +47,10 @@ contains
 
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer,             intent(  OUT) :: RC  ! return code
-    
+
 ! !DESCRIPTION: This version uses the GEOS\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -81,7 +82,7 @@ contains
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, __RC__ )
-    
+
     Iam = trim(COMP_NAME) // 'SetServices'
     call write_parallel(trim(IAM))
 
@@ -89,11 +90,11 @@ contains
 ! ------------------------------------
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,   Run , __RC__)
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,   RunAddIncs, __RC__)
-    
+
 ! Get the configuration from the component
 !-----------------------------------------
     call ESMF_GridCompGet( GC, CONFIG = CF, __RC__ )
-    
+
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -127,7 +128,7 @@ contains
          UNITS     ='Pascals',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                   __RC__  )
-  
+
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME='T ',                                      &
          LONG_NAME ='air_temperature',                    &
@@ -135,23 +136,23 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='U  ',                                      &
-         LONG_NAME ='Zonal wind ',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME ='U  ',                                     &
+         LONG_NAME  ='Zonal wind ',                             &
+         UNITS      ='m/s',                                     &
+         DIMS       = MAPL_DimsHorzVert,                        &
+         VLOCATION  = MAPL_VLocationCenter,                     &
                                                         __RC__  )
-    
+
     call MAPL_AddInternalSpec(GC,                               &
-         SHORT_NAME='V  ',                                      &
-         LONG_NAME ='meridional wind',        &
-         UNITS     ='m/s',                                     &
-         DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationCenter,                         &
+         SHORT_NAME = 'V  ',                                      &
+         LONG_NAME  = 'meridional wind',                          &
+         UNITS      = 'm/s',                                      &
+         DIMS       = MAPL_DimsHorzVert,                         &
+         VLOCATION  = MAPL_VLocationCenter,                      &
                                                         __RC__  )
-    
+
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME='OM ',                                      &
          LONG_NAME ='pressure velocity',                        &
@@ -159,7 +160,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                         &
                                                         __RC__  )
-    
+
 
 ! !IMPORT STATE:
 
@@ -170,7 +171,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
                                                         __RC__  )
-                                                                              
+
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME ='DUDT',                                       &
          LONG_NAME  ='later',                                      &
@@ -178,7 +179,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
                                                          __RC__  )
-                                                                              
+
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME ='DVDT',                                       &
          LONG_NAME  ='later',                                      &
@@ -186,7 +187,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
                                                         __RC__  )
-                                                                              
+
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME ='DWDT',                                       &
          LONG_NAME  ='later',                                      &
@@ -194,7 +195,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
                                                         __RC__  )
-                                                                              
+
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME ='DPEDT',                                      &
          LONG_NAME  ='air_pressure',                               &
@@ -202,7 +203,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,                          &
                                                         __RC__  )
-                                                                              
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Not sure why these are really needed
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -213,56 +214,56 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DQLANA',                                    &
          LONG_NAME  = 'specific_humidity_liquid_increment_from_analysis', &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DQIANA',                                    &
          LONG_NAME  = 'specific_humidity_ice_increment_from_analysis', &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DQRANA',                                    &
          LONG_NAME  = 'specific_humidity_rain_increment_from_analysis', &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DQSANA',                                    &
          LONG_NAME  = 'specific_humidity_snow_increment_from_analysis', &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DQGANA',                                    &
          LONG_NAME  = 'specific_humidity_graupel_increment_from_analysis', &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'DOXANA',                                    &
          LONG_NAME  = 'ozone_increment_from_analysis',             &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-    
+
     call MAPL_AddImportSpec ( gc,                             &
          SHORT_NAME = 'PHIS',                                      &
          LONG_NAME  = 'surface_geopotential_height',               &
          UNITS      = 'm+2 sec-2',                                 &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               __RC__  )
-    
+
 !!This bundle should come from PHYSICS(MOIST)
     call MAPL_AddImportSpec( gc,                              &
         SHORT_NAME = 'TRADV',                                        &
@@ -270,9 +271,18 @@ contains
         UNITS      = 'unknown',                                    &
         DATATYPE   = MAPL_BundleItem,               &
         __RC__  )
-    
+
+     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'VARFLT',                            &
+        LONG_NAME          = 'variance_of_filtered_topography',   &
+        UNITS              = 'm+2',                               &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       __RC__ )
+
 ! !EXPORT STATE:
- 
+
 ! first copies of exportable internal variables
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PLE',                                         &
@@ -280,7 +290,7 @@ contains
          UNITS     ='Pascals',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='T  ',                                           &
          LONG_NAME ='air_temperature',                    &
@@ -288,7 +298,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='U  ',                                      &
          LONG_NAME ='Zonal wind ',        &
@@ -296,7 +306,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='V',                                      &
          LONG_NAME ='meridional wind',        &
@@ -304,7 +314,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='W',                                      &
          LONG_NAME ='meridional wind',        &
@@ -312,7 +322,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='Q',                                      &
          LONG_NAME ='meridional wind',        &
@@ -328,7 +338,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='DIV',                                        &
          LONG_NAME ='divergence',        &
@@ -336,7 +346,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='LHOBS',                                       &
          LONG_NAME ='Obs. latent heat flux (surface)',             &
@@ -344,7 +354,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                           &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='SHOBS',                                       &
          LONG_NAME ='Obs. sensible heat flux (surface)',           &
@@ -352,7 +362,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                           &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PCPOBS',                                      &
          LONG_NAME ='Obs. precipitation rate',                     &
@@ -360,7 +370,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                           &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TSAIROBS',                                    &
          LONG_NAME ='Obs. sfc(2m?) air temp.',                     &
@@ -375,7 +385,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                           &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PSFCOBS',                                     &
          LONG_NAME ='Obs. Sfc. Pressure',                          &
@@ -383,7 +393,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                           &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TH ',                                      &
          LONG_NAME ='potential_temperature',                    &
@@ -391,21 +401,34 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='ZLE',                                         &
          LONG_NAME ='Geop. height at the edges',                      &
          UNITS     ='m',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                __RC__  )
-    
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='UOBS',                                        &
+         LONG_NAME ='Obs. Eastward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='VOBS',                                        &
+         LONG_NAME ='Obs. Northward Wind',                          &
+         UNITS     ='m s-1',                                       &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                __RC__  )
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QOBS',                                        &
          LONG_NAME ='Obs. Spec. Humidity',                         &
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TOBS',                                        &
@@ -413,28 +436,28 @@ contains
          UNITS     ='K',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TVATOBS',                                     &
          LONG_NAME ='Obs. Temperature Tendency V adv',             &
          UNITS     ='K s-1',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='THATOBS',                                     &
          LONG_NAME ='Obs. Temperature Tendency H adv',             &
          UNITS     ='K s-1',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QVATOBS',                                     &
          LONG_NAME ='Obs. Moisture Tendency V adv',             &
          UNITS     ='K s-1',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QHATOBS',                                     &
@@ -442,7 +465,7 @@ contains
          UNITS     ='K s-1',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QTEST ',                                      &
          LONG_NAME ='test_tracer',                    &
@@ -450,7 +473,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='UE',                                      &
          LONG_NAME ='Diagnosed_Edge_Winds',                    &
@@ -458,7 +481,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='WWTG',                                      &
          LONG_NAME ='weak_T-gradient_compensating_W',                    &
@@ -466,7 +489,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                         &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='WTOT',                                      &
          LONG_NAME ='total_vertical_velocity',                    &
@@ -474,7 +497,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,                         &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QLOBS',                                       &
@@ -482,7 +505,7 @@ contains
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='QIOBS',                                       &
@@ -490,7 +513,7 @@ contains
          UNITS     ='1',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                __RC__  )
-    
+
 
 !JTB: New exports for Surface comp.
 !------------------------------------------
@@ -501,7 +524,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='TA',                                           &
@@ -510,7 +533,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='SPEED',                                        &
@@ -519,7 +542,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='DZ',                                           &
@@ -528,7 +551,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='QA',                                           &
@@ -537,7 +560,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'US',                                         &
          LONG_NAME ='Surface_zonal_wind',                           &
@@ -561,7 +584,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='TSKINOBS',                                     &
@@ -570,7 +593,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='PHIS',                                     &
@@ -579,7 +602,7 @@ contains
          DIMS      = MAPL_DimsHorzOnly,                             &
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='VARFLT',                                     &
@@ -633,7 +656,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                                       &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
 !    call MAPL_AddExportSpec ( gc,                                  &
 !         SHORT_NAME = 'T_N',                                       &
 !         LONG_NAME  = 'air_temperature at begin of time step',     &
@@ -721,7 +744,7 @@ contains
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
     VERIFY_(STATUS)
 
-   
+
 
 !! Exports added for consistency with Superdyn
 
@@ -731,7 +754,7 @@ contains
        UNITS              = 'W m-2',                                             &
        DIMS               = MAPL_DimsHorzOnly,                                   &
        VLOCATION          = MAPL_VLocationNone,                        __RC__ )
-    
+
 
     call MAPL_AddExportSpec ( gc,                                                &
        SHORT_NAME   = 'PEPHY',                                                   &
@@ -739,7 +762,7 @@ contains
        UNITS        = 'W m-2',                                                   &
        DIMS         = MAPL_DimsHorzOnly,                                         &
        VLOCATION    = MAPL_VLocationNone,                              __RC__ )
-    
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DOXDTANAINT',                                                        &
@@ -747,7 +770,7 @@ contains
          UNITS      = 'kg m-2 s-1',                                                         &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DQVDTANAINT',                                                        &
@@ -755,7 +778,7 @@ contains
          UNITS      = 'kg m-2 s-1',                                                         &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DQLDTANAINT',                                                        &
@@ -763,7 +786,7 @@ contains
          UNITS      = 'kg m-2 s-1',                                                         &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DQIDTANAINT',                                                        &
@@ -771,7 +794,7 @@ contains
          UNITS      = 'kg m-2 s-1',                                                         &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DTHVDTANAINT',                                                       &
@@ -779,7 +802,7 @@ contains
          UNITS      = 'K kg m-2 s-1',                                                       &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DTHVDTPHYINT',                                                       &
@@ -787,7 +810,7 @@ contains
          UNITS      = 'K kg m-2 s-1',                                                       &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                           &
          SHORT_NAME = 'DQVDTDYNINT',                                                        &
@@ -795,7 +818,7 @@ contains
          UNITS      = 'kg m-2 s-1',                                                         &
          DIMS       = MAPL_DimsHorzOnly,                                                    &
          VLOCATION  = MAPL_VLocationNone,                                        __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'PV',                                        &
@@ -803,7 +826,7 @@ contains
          UNITS      = 'm+2 kg-1 sec-1',                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'EPV',                                       &
@@ -811,7 +834,7 @@ contains
          UNITS      = 'K m+2 kg-1 sec-1',                          &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                                        &
        SHORT_NAME         = 'TROPP_BLENDED',                                             &
@@ -819,7 +842,13 @@ contains
        UNITS              = 'Pa',                                                        &
        DIMS               = MAPL_DimsHorzOnly,                                           &
        VLOCATION          = MAPL_VLocationNone,                                __RC__ )
-    
+
+    call MAPL_AddExportSpec ( gc,                                                        &
+       SHORT_NAME         = 'TROPK_BLENDED',                                             &
+       LONG_NAME          = 'tropopause_index_based_on_blended_estimate',             &
+       UNITS              = 'unitless',                                                  &
+       DIMS               = MAPL_DimsHorzOnly,                                           &
+       VLOCATION          = MAPL_VLocationNone,                                __RC__ )
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='S',                                      &
@@ -828,7 +857,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='TV',                                      &
@@ -837,7 +866,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PLK',                                      &
@@ -846,7 +875,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PL',                                      &
@@ -855,7 +884,7 @@ contains
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
-    
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DQVDTDYN',                                      &
@@ -863,7 +892,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DQLLSDTDYN',                                    &
@@ -871,7 +900,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DQILSDTDYN',                                    &
@@ -879,7 +908,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DQLCNDTDYN',                                    &
@@ -887,7 +916,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DQICNDTDYN',                                    &
@@ -895,7 +924,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DCLLSDTDYN',                                    &
@@ -903,7 +932,7 @@ contains
          UNITS      = 'fraction',                                      &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DCLCNDTDYN',                                    &
@@ -911,7 +940,20 @@ contains
          UNITS      = 'fraction',                                      &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DUDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_eastward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
+
+    call MAPL_AddExportSpec ( gc,                                    &
+         SHORT_NAME = 'DVDTDYN',                                     &
+         LONG_NAME  = 'tendency_of_northward_wind_speed_due_to_dynamics', &
+         UNITS      = 'm s-2',                                       &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationCenter,             __RC__    )
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'DTDTDYN',                                     &
@@ -919,7 +961,6 @@ contains
          UNITS      = 'K sec-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
-     
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'HDQDTDYN',                                      &
@@ -927,7 +968,6 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'VDQDTDYN',                                      &
@@ -935,7 +975,7 @@ contains
          UNITS      = 'kg/kg/sec',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 __RC__  )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'HDTDTDYN',                                    &
@@ -943,7 +983,7 @@ contains
          UNITS      = 'K sec-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'HDTHDTDYN',                                   &
@@ -951,7 +991,7 @@ contains
          UNITS      = 'K sec-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'VDTDTDYN',                                    &
@@ -959,7 +999,7 @@ contains
          UNITS      = 'K sec-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
-     
+
 
     call MAPL_AddExportSpec ( gc,                                    &
          SHORT_NAME = 'VDTHDTDYN',                                   &
@@ -967,7 +1007,7 @@ contains
          UNITS      = 'K sec-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             __RC__    )
-     
+
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DXC',                                       &
          LONG_NAME  = 'cgrid_delta_x',                             &
@@ -991,7 +1031,7 @@ contains
          UNITS      = 'm+2'  ,                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               __RC__  )
-     
+
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'AK',                                        &
          LONG_NAME  = 'hybrid_sigma_pressure_a',                   &
@@ -1071,13 +1111,13 @@ contains
 ! ------------------------
     call MAPL_TimerAdd(GC, name="DRIVER"    ,__RC__)
     call MAPL_TimerAdd(GC, name="MISC"      ,__RC__)
-     
+
 ! Set generic init and final methods
 ! ----------------------------------
     call MAPL_GenericSetServices    ( GC, __RC__)
 
     RETURN_(ESMF_SUCCESS)
-     
+
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1092,12 +1132,12 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
     integer, optional,   intent(  out) :: RC     ! Error code:
-    
+
 ! !DESCRIPTION: This version uses the GEOS\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
 
@@ -1135,7 +1175,14 @@ contains
     type (ESMF_TimeInterval) :: timeStep
 
     real    :: DT,Fac0,Fac1,DTXX,RELAX_TO_OBS
-    real    :: OROGSGH 
+    real    :: OROGSGH
+
+    real, dimension(:,:), allocatable :: F0
+    real :: SCM_UG, SCM_VG
+    integer :: SCM_CORIOLIS ! 0:    Coriolis acceleration off
+                            ! else: Coriolis acceleration on
+    integer :: SCM_WIND ! 0:    use observed winds
+                        ! else: use interactive winds
 
     integer :: IM,JM,LM,L,K,NQ,ii,NOT1,COLDSTART,Ktrc,iip1,itr,ntracs
 
@@ -1148,6 +1195,7 @@ contains
     real, pointer, dimension(:,:,:) :: TH,PL
     real, pointer, dimension(:,:,:) :: U,UE,UOUT
     real, pointer, dimension(:,:,:) :: V,VOUT
+    real, pointer, dimension(:,:,:) :: UOBS, VOBS, DUDTDYN, DVDTDYN
     real, pointer, dimension(:,:,:) :: TTPHYS,QTEST,OM,OMOUT,div
     real, pointer, dimension(:,:,:) :: DUDT,DVDT,DTDT,PV,EPV
     real, pointer, dimension(:,:,:) :: DQVDTDYN,DTDTDYN
@@ -1196,8 +1244,10 @@ contains
          real, pointer, dimension(:,:,:) :: ptr3
     end type three_d_ptr
 
-    real, allocatable, dimension(:,:,:) :: PKE,PLO,QTDYN,TTDYN,OMOBS,THOBS
-    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX
+    real, allocatable, dimension(:,:,:) :: PKE,ZLO,PLO,QTDYN,TTDYN,OMOBS,THOBS
+    real, allocatable, dimension(:,:,:) :: UTDYN, VTDYN
+    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX,CFMIPRLX1
+    real, allocatable, dimension(:,:,:) :: CFMIPRLX_WIND
     type(three_d_ptr), allocatable :: TRCarr(:)
     real, pointer , dimension(:,:,:) :: qdum
             real,allocatable, dimension(:) :: WF, XXX
@@ -1212,9 +1262,9 @@ contains
       real, ALLOCATABLE, SAVE, DIMENSION(:       ) ::  hh        !Hour
       real, ALLOCATABLE, SAVE, DIMENSION(:       ) ::  mm        !Minutes
       REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: LHF
-      REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: SHF 
+      REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: SHF
       REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: PSFC
-      REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: PCP_OBS 
+      REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: PCP_OBS
       REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: TS_AIR
       REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: TG_SOIL
       REAL, ALLOCATABLE, SAVE, DIMENSION(:       ) :: TSKIN
@@ -1224,47 +1274,48 @@ contains
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: qq , QiQi, QLQL
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: uu
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: vv
-      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_H_adv 
+      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_H_adv
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_V_adv
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q_H_adv
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q_V_adv
-      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_t_dyn 
+      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_t_dyn
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q_t_dyn
-      
+
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: T_ana
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q_ana
 
-      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q1 
-      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q2 
+      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q1
+      REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: Q2
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: PLE_DATA
       REAL, ALLOCATABLE, SAVE, DIMENSION(: , :   ) :: OMEGA
       REAL, SAVE :: ptop
 
-      real, dimension(4) :: VC 
+      real, dimension(4) :: VC
 
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
+      real :: zrel,zrelp,qfloor
 
-      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, isPresent
+      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, CFMIP3, isPresent
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
-      integer, save :: I_time_step
+      integer, save :: I_time_step,cfcse
       real blendwgt
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, __RC__ )
-    
+
     Iam = trim(COMP_NAME) // 'Run'
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, STATE, __RC__)
-    
+
 
 ! Get parameters from generic state.
 !-----------------------------------
@@ -1276,14 +1327,23 @@ contains
                                LATS     = LATS,              &
                                INTERNAL_ESMF_STATE=INTERNAL, &
                                                    __RC__ )
-    
+
 
 #ifdef DEBUG_SCM
            print *," LONS, LATS in SCM " ,lons*180./MAPL_PI ,lats*180./MAPL_PI
 #endif
 
     call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
-    
+
+    ! Idealized SCM parameters
+    call ESMF_ConfigGetAttribute ( CF, SCM_WIND, Label="SCM_WIND:", &
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_CORIOLIS, Label="SCM_CORIOLIS:", &
+                                         DEFAULT=0,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_UG,  Label="SCM_UG:", &
+                                         DEFAULT=0.,  __RC__)
+    call ESMF_ConfigGetAttribute ( CF, SCM_VG,  Label="SCM_VG:", &
+                                         DEFAULT=0.,  __RC__)
 
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                          DEFAULT=0.00,  __RC__)
@@ -1317,6 +1377,12 @@ contains
 
     call ESMF_ConfigGetAttribute( cf, CFMIP2, label ='SCM_CFMIP2:', &
                                     DEFAULT=.false., rc = status )
+
+    call ESMF_ConfigGetAttribute( cf, CFMIP3, label ='SCM_CFMIP3:', &
+                                    DEFAULT=.false., rc = status )
+
+    call ESMF_ConfigGetAttribute( cf, CFCSE, label ='CGILS_CASE:', &
+                                    DEFAULT=0, rc = status )
 
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
                                          DEFAULT=100.,  __RC__)
@@ -1366,15 +1432,15 @@ contains
  ! have "SAVE" attribute, so are allocated once and not deallocated.
  ! Kludgey but seems to work - JTB 7/21/04
 
-     if (.not.(ALLOCATED(TIME)) ) THEN 
-        ALLOCATE(time (NT)        , __STAT__ )       
+     if (.not.(ALLOCATED(TIME)) ) THEN
+        ALLOCATE(time (NT)        , __STAT__ )
         ALLOCATE(yy (NT)          , __STAT__)        !Year
         ALLOCATE(mo (NT)          , __STAT__)        !Month
         ALLOCATE(dd (NT)          , __STAT__)        !Day
         ALLOCATE(hh (NT)          , __STAT__)        !Hour
         ALLOCATE(mm (NT)          , __STAT__)        !Minutes
         ALLOCATE(PSFC (NT)        , __STAT__)
-        ALLOCATE(PCP_OBS (NT)     , __STAT__ ) 
+        ALLOCATE(PCP_OBS (NT)     , __STAT__ )
         ALLOCATE(TS_AIR (NT)      , __STAT__ )
         ALLOCATE(TG_SOIL (NT)     , __STAT__ )
         ALLOCATE(TSKIN (NT)       , __STAT__ )
@@ -1386,32 +1452,32 @@ contains
         ALLOCATE(qq (NT,LM)       , __STAT__ )
         ALLOCATE(uu (NT,LM)       , __STAT__ )
         ALLOCATE(vv (NT,LM)       , __STAT__ )
-        ALLOCATE(T_H_adv(NT,LM)   , __STAT__ )  
+        ALLOCATE(T_H_adv(NT,LM)   , __STAT__ )
         T_h_adv = 0.
-        ALLOCATE(T_V_adv (NT,LM)  , __STAT__)  
+        ALLOCATE(T_V_adv (NT,LM)  , __STAT__)
         T_v_adv = 0.
-        ALLOCATE(Q_H_adv (NT,LM)  , __STAT__)  
+        ALLOCATE(Q_H_adv (NT,LM)  , __STAT__)
         Q_h_adv = 0.
-        ALLOCATE(Q_V_adv (NT,LM)  , __STAT__)  
+        ALLOCATE(Q_V_adv (NT,LM)  , __STAT__)
         Q_v_adv = 0.
-        ALLOCATE(T_t_dyn (NT,LM)  , __STAT__)  
+        ALLOCATE(T_t_dyn (NT,LM)  , __STAT__)
         T_t_dyn = 0.
-        ALLOCATE(Q_t_dyn (NT,LM)  , __STAT__)  
+        ALLOCATE(Q_t_dyn (NT,LM)  , __STAT__)
         Q_t_dyn = 0.
-        ALLOCATE(T_ana (NT,LM)    , __STAT__)  
-        T_ana = 0. 
-        ALLOCATE(Q_ana (NT,LM)    , __STAT__)  
+        ALLOCATE(T_ana (NT,LM)    , __STAT__)
+        T_ana = 0.
+        ALLOCATE(Q_ana (NT,LM)    , __STAT__)
         Q_ana = 0.
-        ALLOCATE(Q1 (NT,LM)       , __STAT__) 
-        ALLOCATE(Q2 (NT,LM)       , __STAT__) 
+        ALLOCATE(Q1 (NT,LM)       , __STAT__)
+        ALLOCATE(Q2 (NT,LM)       , __STAT__)
         ALLOCATE(OMEGA(NT,0:LM)   , __STAT__)
         ALLOCATE(PLE_DATA(NT,0:LM), __STAT__)
         ALLOCATE(qiqi(NT,LM)      , __STAT__)
         ALLOCATE(qlql(NT,LM)      , __STAT__)
-        
+
         I_time_step=0
         ALREADY_HAVE_DATA=.FALSE.
-        
+
       endif
 
       call MAPL_GetPointer(INTERNAL, PLE, 'PLE', __RC__)
@@ -1431,11 +1497,11 @@ contains
        call GET_THE_DATA()
        call MAPL_TimerOff(STATE,"DRIVER")
     endif
-    
+
 ! We need to get Q and any other "advected" water quantities
 ! from a bundle
       call ESMF_FieldBundleGet(QBUNDLE, FieldCount=NQ, __RC__)
-      
+
       ALLOCATE( TRCarr(NQ-1), __STAT__ )
       ALLOCATE( FRIENDLY_arr(NQ-1), __STAT__ )
       ALLOCATE( QNAMEarr(NQ-1), __STAT__ )
@@ -1445,7 +1511,7 @@ contains
 
          call ESMF_FieldBundleGet    (QBUNDLE, fieldIndex=K, field=FIELD, __RC__)
          call ESMF_FieldGet (FIELD, NAME=QNAME,  __RC__)
-         
+
          ! Get item's friendly status (default is not friendly)
          !-----------------------------------------------------
 
@@ -1461,21 +1527,21 @@ contains
           else
            call ESMF_FieldGet (FIELD, 0, trcarr(ktrc)%ptr3 , __RC__)
             !!TRCarr(Ktrc)%ptr3 = Qdum
-           FRIENDLY_arr(Ktrc) = FRIENDLY 
-           QNAMEarr(Ktrc)     = QNAME 
+           FRIENDLY_arr(Ktrc) = FRIENDLY
+           QNAMEarr(Ktrc)     = QNAME
            Ktrc=Ktrc+1
          end if
      end do
 
-       do K=1,nq-1 
+       do K=1,nq-1
          if (.not. FRIENDLY_arr(K) ) then
             print *, trim(QNAMEarr(k)), " unfriendly var in dynamics bundle - Error "  ! This should never happen
             RETURN_(ESMF_FAILURE)
          endif
-       enddo                    
-        
+       enddo
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Figure out what time it is. Check to see if we 
+! Figure out what time it is. Check to see if we
 ! are at the beginning of the run
 !--------------------------------------------------
       call ESMF_ClockGet(CLOCK, currTime=currentTime, startTime=startTime, timeStep=timeStep, __RC__)
@@ -1522,6 +1588,8 @@ contains
       call MAPL_GetPointer(EXPORT, OMOUT,  'OMEGA' , __RC__)
       call MAPL_GetPointer(EXPORT, DIV,    'DIV' , ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, PL ,    'PL' , __RC__)
+      call MAPL_GetPointer(EXPORT, DUDTDYN,   'DUDTDYN'  , __RC__)
+      call MAPL_GetPointer(EXPORT, DVDTDYN,   'DVDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, DTDTDYN,   'DTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, HDTDTDYN,   'HDTDTDYN'  , __RC__)
       call MAPL_GetPointer(EXPORT, VDTDTDYN,   'VDTDTDYN'  , __RC__)
@@ -1561,58 +1629,58 @@ contains
 ! whenever datmodyn starts using gocart, this will need to be a real value --
 ! see fvdycore for example
       if(associated(DUMMYAREA)) then
-          DUMMYAREA=1.0 
+          DUMMYAREA=1.0
       end if
 
       if(associated(DUMMYDXC)) then
-          DUMMYDXC=1.0 
+          DUMMYDXC=1.0
       end if
 
       if(associated(DUMMYW)) then
-          DUMMYW=1.0 
+          DUMMYW=1.0
       end if
 
       if(associated(DUMMYPLK)) then
-          DUMMYPLK=1.0 
+          DUMMYPLK=1.0
       end if
 
       if(associated(DUMMYDYC)) then
-          DUMMYDYC=1.0 
+          DUMMYDYC=1.0
       end if
 
 ! added to satisfy desires of da
       if(associated(AK)) then
-          AK=0.0 
+          AK=0.0
       end if
 
      if(associated(BK)) then
-          BK=0.0 
+          BK=0.0
       end if
 
 ! these could in principle be hooked to U and V (with interpolation),
 ! but setting to 0.0 to catch unexpectedness
 
       if(associated(U_CGRID)) then
-          U_CGRID=0.0 
+          U_CGRID=0.0
       end if
 
       if(associated(V_CGRID)) then
-          V_CGRID=0.0 
+          V_CGRID=0.0
       end if
 
       if(associated(U_DGRID)) then
-          U_DGRID=0.0 
+          U_DGRID=0.0
       end if
 
       if(associated(V_DGRID)) then
-          V_DGRID=0.0 
+          V_DGRID=0.0
       end if
 
       if(associated(PT)) then
-          PT=0.0 
+          PT=0.0
       end if
 
-      if(associated(PE)) PE=0.0 
+      if(associated(PE)) PE=0.0
 
 
 
@@ -1638,6 +1706,10 @@ contains
       call MAPL_GetPointer(EXPORT, QSKINOBS,    'QSKINOBS'    , &
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TSKINOBS,    'TSKINOBS'    , &
+                           ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, UOBS,  'UOBS' , &
+                           ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, VOBS,  'VOBS' , &
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TOBS,  'TOBS' , &
                            ALLOC=.true., __RC__)
@@ -1666,14 +1738,18 @@ contains
       ALLOCATE( UdQdx(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( CFMIPRLX(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( CFMIPRLX1(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( CFMIPRLX_WIND(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( THOBS(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( UTDYN(IM,JM,1:LM), __STAT__ )
+      ALLOCATE( VTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( QTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( TTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( OMOBS(IM,JM,0:LM), __STAT__ )
       ALLOCATE( SGH(IM,JM), __STAT__ )
 
-      SGH  = OROGSGH           
+      SGH  = OROGSGH
       PHISOU = MAPL_GRAV * SGH
 
       I_time_step = I_time_step+1
@@ -1682,14 +1758,14 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! If USE_ASCII_DATA=.T. then data exists to drive run, i.e. NT>1
-! If USE_ASCII_DATA=.F. then NT=1 and only ICs are provided 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   
+! If USE_ASCII_DATA=.F. then NT=1 and only ICs are provided
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
      if (USE_ASCII_DATA) then
         SCMtime = 1.0* (/SCMyear,SCMmonth,SCMday,SCMhour,SCMminute,SCMsecond /)
         ii   = WhereInTime ( yy,mo,dd,hh,mm, nt, DT, SCMtime, Fac0, Fac1 , __RC__)
         iip1 = ii+1
-        
+
 #ifdef DEBUG_SCM
          print *, " Data times and weights"
          print *, yy(ii),mo(ii),dd(ii),hh(ii),mm(ii), Fac0
@@ -1710,22 +1786,28 @@ contains
 
      ALLOCATE( PKE(IM,JM,0:LM), __STAT__ )
      ALLOCATE( PLO(IM,JM,1:LM), __STAT__ )
-     
+   ALLOCATE( ZLO(IM,JM,1:LM), __STAT__ )
+
      do l=0,lm
         PLE(:,:,l)   = ( Fac0*PLE_DATA(ii,l) + Fac1*PLE_DATA(iip1,l) )
      end do
 
       PS(:,:)     =   PLE(:,:,LM)
       PLO(:,:,1:LM) = ( PLE(:,:,0:LM-1)+PLE(:,:,1:LM) )/2.0
-      PKE =  ( PLE / MAPL_P00 )**MAPL_KAPPA 
+      PKE =  ( PLE / MAPL_P00 )**MAPL_KAPPA
       DELTAP = ( PLE(:,:,1:LM) - PLE(:,:,0:LM-1) )
-      
+
       do l=1,lm
+        if ( SCM_WIND /= 0 ) then
+           UOBS(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           VOBS(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        else
+           U(:,:,l) = Fac0*UU(ii,l) + Fac1*UU(iip1,l)
+           V(:,:,l) = Fac0*VV(ii,l) + Fac1*VV(iip1,l)
+        end if
         QOBS(:,:,l)=( Fac0*QQ(ii,l) + Fac1*QQ(iip1,l) )/1000.
         TOBS(:,:,l)=( Fac0*TT(ii,l) + Fac1*TT(iip1,l) )
-        U(:,:,l)   =( Fac0*UU(ii,l) + Fac1*UU(iip1,l) )
-        V(:,:,l)   =( Fac0*VV(ii,l) + Fac1*VV(iip1,l) )
-        QLOBS(:,:,l)=( Fac0*QLQL(ii,l) + Fac1*QLQL(iip1,l) ) 
+        QLOBS(:,:,l)=( Fac0*QLQL(ii,l) + Fac1*QLQL(iip1,l) )
         QIOBS(:,:,l)=( Fac0*QiQi(ii,l) + Fac1*QiQi(iip1,l) )
       end do
       THOBS  = TOBS * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
@@ -1734,28 +1816,44 @@ contains
       PCPOBS(:,:)    = ( Fac0*PCP_OBS(ii) + Fac1*PCP_OBS(iip1) )
       TSAIROBS(:,:)  = ( Fac0*TS_AIR(ii)  + Fac1*TS_AIR(iip1) )
       TGSOILOBS(:,:) = ( Fac0*TG_SOIL(ii) + Fac1*TG_SOIL(iip1) )
-      LHOBS(:,:)     = ( Fac0*LHF(ii)   + Fac1*LHF(iip1) ) 
-      SHOBS(:,:)     = ( Fac0*SHF(ii)   + Fac1*SHF(iip1) ) 
+      LHOBS(:,:)     = ( Fac0*LHF(ii)   + Fac1*LHF(iip1) )
+      SHOBS(:,:)     = ( Fac0*SHF(ii)   + Fac1*SHF(iip1) )
       QSKINOBS(:,:)  = ( Fac0*QSKIN(ii)   + Fac1*QSKIN(iip1) )/1000.
       TSKINOBS(:,:)  = ( Fac0*TSKIN(ii)   + Fac1*TSKIN(iip1) )
-      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
-      US(:,:) = U(:,:,LM)
-      VS(:,:) = V(:,:,LM)
+!      SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 )
+!      US(:,:) = U(:,:,LM)
+!      VS(:,:) = V(:,:,LM)
 
       do l=0,lm
         OMOBS(:,:,L) = ( Fac0*OMEGA(ii,l)    + Fac1*OMEGA(iip1,l) )
       end do
 
+      if ( SCM_CORIOLIS /= 0 ) then
+         allocate(F0(IM,JM))
+         F0(:,:) = 2.*MAPL_OMEGA*sin( LATS(:,:) )
+      end if
+
        do l=1,lm
+          if ( SCM_CORIOLIS == 0 ) then
+             UTDYN(:,:,l) = 0.
+             VTDYN(:,:,l) = 0.
+          else
+             UTDYN(:,:,l) = F0*( V(:,:,l) - SCM_VG )
+             VTDYN(:,:,l) = -F0*( U(:,:,l) - SCM_UG )
+          end if
         QTDYN(:,:,l) = &
-         Fac0*( vc(1)*Q_H_ADV(ii,l)  + vc(2)*Q_V_ADV(ii,l)   + vc(3)*Q_t_DYN(ii,l) + vc(4)*Q_ana(ii,l) ) & 
-      +  Fac1*( vc(1)*Q_H_ADV(iip1,l)+ vc(2)*Q_V_ADV(iip1,l) + vc(3)*Q_t_DYN(iip1,l) + vc(4)*Q_ana(iip1,l) ) 
+         Fac0*( vc(1)*Q_H_ADV(ii,l)  + vc(2)*Q_V_ADV(ii,l)   + vc(3)*Q_t_DYN(ii,l) + vc(4)*Q_ana(ii,l) ) &
+      +  Fac1*( vc(1)*Q_H_ADV(iip1,l)+ vc(2)*Q_V_ADV(iip1,l) + vc(3)*Q_t_DYN(iip1,l) + vc(4)*Q_ana(iip1,l) )
         TTDYN(:,:,l) = &
-         Fac0*( vc(1)*T_H_ADV(ii,l)  + vc(2)*T_V_ADV(ii,l)   + vc(3)*T_t_DYN(ii,l) + vc(4)*T_ana(ii,l) ) & 
-     +   Fac1*( vc(1)*T_H_ADV(iip1,l)+ vc(2)*T_V_ADV(iip1,l) + vc(3)*T_t_DYN(iip1,l) + vc(4)*T_ana(iip1,l) ) 
+         Fac0*( vc(1)*T_H_ADV(ii,l)  + vc(2)*T_V_ADV(ii,l)   + vc(3)*T_t_DYN(ii,l) + vc(4)*T_ana(ii,l) ) &
+     +   Fac1*( vc(1)*T_H_ADV(iip1,l)+ vc(2)*T_V_ADV(iip1,l) + vc(3)*T_t_DYN(iip1,l) + vc(4)*T_ana(iip1,l) )
       enddo!
 
-      TTDYN = -1.0 * TTDYN 
+      if ( SCM_CORIOLIS /= 0 ) then
+         deallocate(F0)
+      end if
+
+      TTDYN = -1.0 * TTDYN
       QTDYN = -1.0 * QTDYN / 1000.
 
 ! diagnostics for tracers that are friendly to dynamics (and advected)
@@ -1780,6 +1878,10 @@ contains
        else
         blendwgt = 1.
        endif
+!       if ( SCM_WIND /= 0 ) then
+!          UOBS(i,j,L) = UOBS(i,j,L) * blendwgt + U(i,j,L) * ( 1. - blendwgt )
+!          VOBS(i,j,L) = VOBS(i,j,L) * blendwgt + V(i,j,L) * ( 1. - blendwgt )
+!       end if
        TOBS(i,j,L) = TOBS(i,j,L) * blendwgt + T(i,j,L) * (1.-blendwgt)
        QOBS(i,j,L) = QOBS(i,j,L) * blendwgt + Q(i,j,L) * (1.-blendwgt)
       enddo
@@ -1787,14 +1889,22 @@ contains
       enddo
      endif
       if ( AT_START ) then
+        if ( SCM_WIND /= 0 ) then
+           U = UOBS
+           V = VOBS
+        end if
         Q  = QOBS
         T  = TOBS
         OM = OMOBS
         QTEST        =0.
         QTEST(:,:,55:60)=1.
-      endif     
+      endif
       TH = T * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
       OM = OMOBS
+
+      SPEED(:,:) = SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 )
+      US(:,:)    = U(:,:,LM)
+      VS(:,:)    = V(:,:,LM)
 
       if (associated(QVDYN))  QVDYN = Q
       if (associated(TDYN))   TDYN = T
@@ -1809,7 +1919,9 @@ contains
       end do
       DZ(:,:)     =  0.5 * ( ZLE(:,:,LM-1) -  ZLE(:,:,LM) )
 
-        ! These quantities are special. Used in SFC to calculate CDs 
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+        ! These quantities are special. Used in SFC to calculate CDs
         ! In 3D GEOS5 they are just set == values_at_LM
       QA(:,:)     = (1.0-RELAX_TO_OBS)*Q(:,:,LM) + RELAX_TO_OBS*     &
                                     ( Fac0*QSFCAIR(ii) + Fac1*QSFCAIR(iip1) )/1000.
@@ -1817,6 +1929,10 @@ contains
 
 ! Load tendency diagnostics with 'before' values
 
+      if ( SCM_WIND /= 0 ) then
+         if ( associated(DUDTDYN) ) DUDTDYN  = U
+         if ( associated(DVDTDYN) ) DVDTDYN  = V
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = T
       if (associated(DQVDTDYN))  DQVDTDYN = Q
       if (associated(DQVDTDYNINT))  then
@@ -1831,9 +1947,13 @@ contains
 
 ! Increment T and Q with  tendencies from dataset that we are using
       if ( .NOT. AT_START ) then
-        Q = Q +  (1.0-RELAX_TO_OBS) * DT * QTDYN +  RELAX_TO_OBS*( QOBS - Q) 
-        T = T +  (1.0-RELAX_TO_OBS) * DT * TTDYN +  RELAX_TO_OBS*( TOBS - T)                             
-      endif     
+        if ( SCM_WIND /= 0 ) then
+           U = U + ( 1.0 - RELAX_TO_OBS ) * DT * UTDYN + RELAX_TO_OBS*( UOBS - U )
+           V = V + ( 1.0 - RELAX_TO_OBS ) * DT * VTDYN + RELAX_TO_OBS*( VOBS - V )
+        end if
+        Q = Q +  (1.0-RELAX_TO_OBS) * DT * QTDYN +  RELAX_TO_OBS*( QOBS - Q)
+        T = T +  (1.0-RELAX_TO_OBS) * DT * TTDYN +  RELAX_TO_OBS*( TOBS - T)
+      endif
 
       call MAPL_GetPointer(EXPORT  , STATICEN  , 'S'  , __RC__)
       STATICEN  = MAPL_GRAV * ( ZLE(:,:,1:LM) + ZLE(:,:,0:LM-1) ) * 0.5 + MAPL_CP * T
@@ -1857,6 +1977,13 @@ contains
       endif
       T  = TH * ( ( PLO / MAPL_P00 )**MAPL_KAPPA )
 
+      if ( SCM_WIND /= 0 ) then
+         if ( associated(DUDTDYN) ) DUDTDYN = ( U - DUDTDYN  ) / DT
+         if ( associated(DVDTDYN) ) DVDTDYN = ( V - DVDTDYN  ) / DT
+      else
+         if ( associated(DUDTDYN) ) DUDTDYN = 0.
+         if ( associated(DVDTDYN) ) DVDTDYN = 0.
+      end if
       if (associated(DTDTDYN))   DTDTDYN  = ( T - DTDTDYN  ) / DT
       if (associated(DQVDTDYN))  DQVDTDYN = ( Q - DQVDTDYN ) / DT
       if (associated(DQVDTDYNINT))  then
@@ -1869,7 +1996,7 @@ contains
       if (associated(VDTDTDYN).and.VERTADV==1)  VDTDTDYN = ( T - VDTDTDYN ) / DT
       if (associated(VDTHDTDYN).and.VERTADV==1)  VDTHDTDYN = ( TH - VDTHDTDYN ) / DT
       if (associated(VDQDTDYN).and.VERTADV==1)  VDQDTDYN = ( Q - VDQDTDYN ) / DT
-  
+
 ! diagnostics for tracers that are friendly to dynamics (and advected)
    if ( SIZE(qnamearr) > 0 ) then
     ntracs = SIZE(qnamearr)
@@ -1884,6 +2011,62 @@ contains
    end if
 
       CFMIPRLX = 0.00
+      CFMIPRLX_WIND = 1./600.
+
+!    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
+      if ( CFMIP3 ) then
+
+         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+         if (CFCSE .eq. 12) then
+           zrel=1200.
+           zrelp=1500.
+           qfloor=0.003581839
+         elseif (CFCSE .eq. 11) then
+           zrel=2500.
+           zrelp=3000.
+           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+         elseif (CFCSE .eq. 6) then
+           zrel=4000.
+           zrelp=4800.
+           qfloor=0.
+         else
+           print *,'error - define the right case'
+           RETURN_(ESMF_FAILURE)
+         endif
+
+          where((ZLO>zrel).and.(ZLO<zrelp))
+              CFMIPRLX=1./(2.*10800.)*(1.-cos(3.14*(ZLO-zrel)/(zrelp-zrel)))
+          endwhere
+
+          where(ZLO>=zrelp)
+              CFMIPRLX=1./10800.
+          endwhere
+
+
+           CFMIPRLX1=0.
+           where((Q<qfloor) .and. (ZLO<1300.))
+           CFMIPRLX1=1./3600.
+           endwhere
+
+         if ( SCM_WIND /= 0 ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
+         T = T - CFMIPRLX * ( T - TOBS ) * DT
+         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT-CFMIPRLX1*(Q-qfloor)*DT
+         if ( SCM_WIND /= 0 ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
+         if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
+         if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )-CFMIPRLX1*(Q-qfloor)*DT
+
+   end if ! CFMIP3
+
+
+
+
 
 !       if ( NT ==  1 .and. .not. CFMIP2 ) then  ! cgils case
        if ( CFMIP ) then  ! cgils case
@@ -1892,13 +2075,21 @@ contains
              CFMIPRLX = 86400. - (86400.-14400.)*(40000. - PLO)/20000.
          endwhere
          where( PLO < 20000. )
-             CFMIPRLX = 14400. 
+             CFMIPRLX = 14400.
          endwhere
          where( CFMIPRLX > 0.000 )
-             CFMIPRLX = 1./ CFMIPRLX 
+             CFMIPRLX = 1./ CFMIPRLX
          endwhere
-         T = T - CFMIPRLX * ( T - TOBS ) * DT 
-         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT  
+         if ( SCM_WIND /= 0 ) then
+            U = U - CFMIPRLX_WIND * ( U - UOBS ) * DT
+            V = V - CFMIPRLX_WIND * ( V - VOBS ) * DT
+         end if
+         T = T - CFMIPRLX * ( T - TOBS ) * DT
+         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT
+         if ( SCM_WIND /= 0 ) then
+            if ( associated(DUDTDYN) ) DUDTDYN = DUDTDYN - CFMIPRLX_WIND * ( U - UOBS )
+            if ( associated(DVDTDYN) ) DVDTDYN = DVDTDYN - CFMIPRLX_WIND * ( V - VOBS )
+         end if
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
@@ -1908,20 +2099,20 @@ contains
              CFMIPRLX = 86400. - (86400.-14400.)*(60000. - PLO)/20000.
          endwhere
          where( PLO < 40000. )
-             CFMIPRLX = 14400. 
+             CFMIPRLX = 14400.
          endwhere
          where( CFMIPRLX > 0.000 )
-             CFMIPRLX = 1./ CFMIPRLX 
+             CFMIPRLX = 1./ CFMIPRLX
          endwhere
-         T = T - CFMIPRLX * ( T - TOBS ) * DT 
-         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT  
+         T = T - CFMIPRLX * ( T - TOBS ) * DT
+         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )
       end if
 
       call MAPL_GetPointer(EXPORT, PREF,   'PREF'    , &
                            ALLOC=.true., __RC__)
-      
+
 
       PREF = PREF_IN
 
@@ -1937,13 +2128,16 @@ contains
       DEALLOCATE(THOBS)
       DEALLOCATE(PKE)
       DEALLOCATE(PLO)
+      DEALLOCATE(UTDYN)
+      DEALLOCATE(VTDYN)
       DEALLOCATE(TTDYN)
       DEALLOCATE(QTDYN)
       DEALLOCATE(CFMIPRLX)
+      DEALLOCATE(CFMIPRLX_WIND)
 
       DEALLOCATE(OMOBS)
       DEALLOCATE(SGH)
- 
+
       DEALLOCATE( VdTdy )
       DEALLOCATE( VdQdy )
       DEALLOCATE( UdTdx )
@@ -1981,13 +2175,13 @@ contains
         end do
        end do
       end do
- 
+
       DIV(:,:,1:LM)  = ( OM(:,:,1:LM) - OM(:,:,0:LM-1) ) / ( PLE(:,:,1:LM) - PLE(:,:,0:LM-1) )
 
       do j=1,JM
        do i=1,IM
-          DP    =  PLE(i,j,1:LM)   - PLE(i,j,0:LM-1) 
-          PP    =( PLE(i,j,1:LM)   + PLE(i,j,0:LM-1) ) / 2.0 
+          DP    =  PLE(i,j,1:LM)   - PLE(i,j,0:LM-1)
+          PP    =( PLE(i,j,1:LM)   + PLE(i,j,0:LM-1) ) / 2.0
        end do
       end do
 
@@ -2042,7 +2236,7 @@ contains
        end do
       end do
 
-      if ( SIZE(qnamearr) > 0 ) then 
+      if ( SIZE(qnamearr) > 0 ) then
         ntracs = SIZE(qnamearr)
         do itr = 1,ntracs
 #ifdef DEBUG_SCM
@@ -2073,13 +2267,13 @@ contains
 
   subroutine GET_THE_DATA
 
-     
-     if (.not.(ALREADY_HAVE_DATA)) THEN
-  
-      QLQL = 0.
-      QIQI = 0.     
 
-       if ( CFMIP .or. CFMIP2 ) then
+     if (.not.(ALREADY_HAVE_DATA)) THEN
+
+      QLQL = 0.
+      QIQI = 0.
+
+       if ( CFMIP .or. CFMIP2 .or. CFMIP3 ) then
            CALL CFMIP_IC(trim(DATA)//'.bin', NT, NLEVEL,     &
                      LM ,                                &
                      PREF_IN,                            &
@@ -2108,13 +2302,13 @@ contains
                      T_V_adv,                            &
                      Q_H_adv,                            &
                      Q_V_adv,                            &
-                     PLE_DATA                             ) 
+                     PLE_DATA                             )
 
 
                      LHF = 0.
                      SHF = 0.
 
-         else if (USE_ASCII_DATA) then      
+         else if (USE_ASCII_DATA) then
                 CALL ARM2(trim(DATA)//'.dat', NT, NLEVEL,     &
                      LM ,                                &
                      PREF_IN,                            &
@@ -2147,18 +2341,18 @@ contains
                      T_ana,                              &
                      Q_ana,                              &
                      Q1,                                 &
-                     Q2,                                 & 
-                     PLE_DATA                             ) 
+                     Q2,                                 &
+                     PLE_DATA                             )
 
-     
-         else 
+
+         else
          write(*,*) " No good data "
          RETURN_(ESMF_FAILURE)
-         
+
         end if
       ALREADY_HAVE_DATA=.TRUE.
 
-      else 
+      else
 #ifdef DEBUG_SCM
         write(*,*) " ALREADY HAVE DATA "
 #endif
@@ -2177,7 +2371,7 @@ contains
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -2201,29 +2395,31 @@ contains
    character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 
-  real, pointer, dimension(:,:,:) :: T, TTPHYS,PLE,ZLE,S
+  real, pointer, dimension(:,:,:) :: U, V, T, UTPHYS, VTPHYS, TTPHYS, PLE, ZLE, S
   integer :: IM,JM,LM
 
   real    :: RELAX_TO_OBS,DTXX,DT
   real, allocatable, dimension(:,:,:) :: DELTAP,ZLO
 
+  integer :: L ! test
+
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
     Iam = "RunAddIncs"
     call ESMF_GridCompGet ( GC, name=COMP_NAME, __RC__ )
-    
+
     Iam = trim(COMP_NAME) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, STATE, __RC__)
- 
+
 ! Get parameters from generic state.
 !-----------------------------------
 
@@ -2231,14 +2427,17 @@ contains
                    CF       = CF,                &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                     __RC__ )
-    
-    call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
+        call ESMF_ConfigGetAttribute ( CF, DTXX,  Label="RUN_DT:", __RC__)
     call ESMF_ConfigGetAttribute ( CF, RELAX_TO_OBS,  Label="RELAX_TO_OBS:", &
                                    DEFAULT=0.00,  __RC__)
     DT=DTXX
 
     call MAPL_GetPointer(INTERNAL, PLE, 'PLE', __RC__)
+    call MAPL_GetPointer(INTERNAL, U,   'U'  , __RC__)
+    call MAPL_GetPointer(INTERNAL, V,   'V'  , __RC__)
     call MAPL_GetPointer(INTERNAL, T,   'T'  , __RC__)
+    call MAPL_GetPointer(IMPORT  , UTPHYS, 'DUDT', __RC__)
+    call MAPL_GetPointer(IMPORT  , VTPHYS, 'DVDT', __RC__)
     call MAPL_GetPointer(IMPORT  , TTPHYS, 'DTDT', __RC__)
     call MAPL_GetPointer(EXPORT  , ZLE, 'ZLE', __RC__)
     call MAPL_GetPointer(EXPORT  , S  , 'S'  , __RC__)
@@ -2252,7 +2451,9 @@ contains
     ! This needs to be protected against having
     ! RELAX_TO_OBS=1 when USE_ASCII_DATA=.F.
 
-    T = T +  (1.0-RELAX_TO_OBS) * DT * TTPHYS / DELTAP 
+    U = U + ( 1. - RELAX_TO_OBS ) * DT * UTPHYS
+    V = V + ( 1. - RELAX_TO_OBS ) * DT * VTPHYS
+    T = T + ( 1. - RELAX_TO_OBS ) * DT * TTPHYS / DELTAP  ! S and hence T tendencies are pressure-weighted
 
     S  = MAPL_GRAV * ZLO + MAPL_CP * T
 
@@ -2286,7 +2487,7 @@ SCM_SecN = SecOfYear( SCMtime(1), SCMtime(2), SCMtime(3), SCMtime(4), SCMtime(5)
 
 if ( nt == 1) then
    i=1
-   Da0_SecN = SecOfYear( yy(i),   mo(i),   dd(i),   hh(i)  , mm(i)  , 0. ) 
+   Da0_SecN = SecOfYear( yy(i),   mo(i),   dd(i),   hh(i)  , mm(i)  , 0. )
    if (ABS(Da0_SecN-SCM_SecN) < 60.) then
       ii=1
    else
@@ -2299,11 +2500,11 @@ do i=1,nt-1
 
    if ( yy(i) .ne. SCMtime(1) ) cycle
 
-   Da0_SecN = SecOfYear( yy(i),   mo(i),   dd(i),   hh(i)  , mm(i)  , 0. ) 
-   Da1_SecN = SecOfYear( yy(i+1), mo(i+1), dd(i+1), hh(i+1), mm(i+1), 0. ) 
+   Da0_SecN = SecOfYear( yy(i),   mo(i),   dd(i),   hh(i)  , mm(i)  , 0. )
+   Da1_SecN = SecOfYear( yy(i+1), mo(i+1), dd(i+1), hh(i+1), mm(i+1), 0. )
 
    if ( yy(i+1) .gt. yy(i) ) then
-         Da1_SecN = Da1_SecN + SecOfYear( yy(i), 12., 31., 23., 59., 59. )   
+         Da1_SecN = Da1_SecN + SecOfYear( yy(i), 12., 31., 23., 59., 59. )
    endif
 
    if ( ( Da0_SecN .gt. SCM_SecN ) .or. ( Da1_SecN .le. SCM_SecN ) ) cycle
@@ -2311,10 +2512,10 @@ do i=1,nt-1
          !! now we should be in the correct Data interval
          !! Lets stop here
        ii=i
-  
-       Fac0 = ( Da1_SecN - SCM_SecN ) / ( Da1_SecN - Da0_SecN ) 
+
+       Fac0 = ( Da1_SecN - SCM_SecN ) / ( Da1_SecN - Da0_SecN )
        Fac1 = 1.0-Fac0
-  
+
 end do
 
 IF (II.lt.1) THEN
@@ -2332,16 +2533,16 @@ IF (II.lt.1) THEN
 
   !do i=1,nt
   !print *, yy(i),mo(i),dd(i),hh(i),mm(i)
-  !enddo 
+  !enddo
 
 ENDIF
 
-end function WhereInTime 
+end function WhereInTime
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function SecOfYear(yr,mo,dy,hh,mm,ss) result(SecN)
 real, intent(in) :: yr,mo,dy,hh,mm,ss
-real             :: SecN 
+real             :: SecN
 integer, dimension(12)      :: monlen
 integer, dimension(0:12)    :: DaysSoFar
 integer :: i, DayN, iyr, imo

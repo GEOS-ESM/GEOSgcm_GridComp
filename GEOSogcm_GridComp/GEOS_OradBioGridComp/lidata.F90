@@ -25,7 +25,7 @@
       cfle = cdir//cabw
       cfle = cabw
       open(4,file=cfle,status='old',form='formatted')
-      do i = 1,5
+      do i = 1,6
        read(4,'(a80)')title
 !       write(6,'(a80)')title
       enddo

@@ -107,6 +107,7 @@ integer ::          ADV = -1
     type (MAPL_MetaComp),      pointer      :: MAPL
     character(len=ESMF_MAXSTR)              :: DYCORE
 
+    integer                                 :: SCM_SL
 
 !=============================================================================
 
@@ -139,6 +140,9 @@ integer ::          ADV = -1
 !BOR
     call MAPL_GetResource(MAPL, DYCORE, 'DYCORE:', default="FV3", RC=STATUS )
 !EOR
+    call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, RC=STATUS )
+
+
     VERIFY_(STATUS)
 
     if(adjustl(DYCORE)=="FV"   ) then
@@ -202,6 +206,19 @@ integer ::          ADV = -1
 
 ! Add Exports promoted from child (FV) exports
 ! --------------------------------------------
+
+    if (SCM_SL /= 0) then
+!      print *,'SuperDyn: adding LHOBS and SHOBS exports'
+      call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME='LHOBS',                                     &
+           CHILD_ID = DYN,                                         &
+                                                         __RC__  )
+
+      call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME='SHOBS',                                     &
+           CHILD_ID = DYN,                                         &
+                                                         __RC__  )
+    end if
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'U',                                         &
@@ -337,6 +354,12 @@ integer ::          ADV = -1
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TROPP_BLENDED',                             &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'TROPK_BLENDED',                             &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
     VERIFY_(STATUS)

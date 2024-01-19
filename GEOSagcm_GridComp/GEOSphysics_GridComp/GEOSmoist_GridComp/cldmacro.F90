@@ -8,7 +8,6 @@ module cldmacro
    ! preliminary calculations for the two-moment cloud microphysics.  
    !=======================================================================
 
-   use CLDPARAMS
    use GEOS_UtilsMod,     only:QSAT=>GEOS_Qsat, DQSAT=>GEOS_DQsat, &
          QSATLQ=>GEOS_QsatLQU, QSATIC=>GEOS_QsatICE
 
@@ -22,73 +21,40 @@ module cldmacro
 
    use MAPL_BaseMod,      only: MAPL_UNDEF
 
-   implicit none
+   use GEOSmoist_Process_Library
 
-     
+   implicit none
 
    private
 
-   PUBLIC MACRO_CLOUD
-   PUBLIC UPDATE_CLD
+   public macro_cloud
+   public update_cld
    public meltfrz_inst
-   public fix_up_clouds_2M
-   public Bergeron_iter
-   
-   
-   !! Some parameters set by CLDPARAMS 
-
-   real    :: CNV_BETA
-   real    :: ANV_BETA
-   real    :: LS_BETA
-   real    :: RH00
-   real    :: C_00
-   real    :: LWCRIT
-   real    :: C_ACC
-   real    :: C_EV_R
-   real    :: C_EV_S
-   real    :: CLDVOL2FRC
-   real    :: RHSUP_ICE
-   real    :: SHR_EVAP_FAC
-   real    :: MIN_CLD_WATER
-   real    :: CLD_EVP_EFF
-   integer :: NSMAX
-   real    :: LS_SDQV2
-   real    :: LS_SDQV3
-   real    :: LS_SDQVT1
-   real    :: ANV_SDQV2
-   real    :: ANV_SDQV3
-   real    :: ANV_SDQVT1
-   real    :: ANV_TO_LS
-   real    :: N_WARM
-   real    :: N_ICE
-   real    :: N_ANVIL
-   real    :: N_PBL
-   integer :: DISABLE_RAD
-   real    :: ANV_ICEFALL_C
-   real    :: LS_ICEFALL_C
-   real    :: REVAP_OFF_P
-   real    :: CNVENVFC
-   real    :: WRHODEP
-   real    :: T_ICE_ALL
-   real    :: CNVICEPARAM
-   integer :: ICEFRPWR
-   real    :: CNVDDRFC
-   real    :: ANVDDRFC
-   real    :: LSDDRFC
-   integer :: tanhrhcrit
-   real    :: minrhcrit
-   real    :: maxrhcrit
-   real    :: turnrhcrit
-   real    :: turnrhcrit_upper
-   real    :: MIN_RI, MAX_RI, MIN_RL, MAX_RL, RI_ANV
-   integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
-   real    :: maxrhcritland
-   integer :: pdfflag
-   real    :: sloperhcrit
-   real :: min_lts
-   real :: disp_factor_liq
-   real :: disp_factor_ice
-   real :: sclm_shw
+   public CLDPARAMS, CLDPARAM_TYPE 
+ 
+   type CLDPARAM_TYPE 
+   real :: CNV_BETA
+   real :: RH00
+   real :: C_ACC
+   real :: C_EV_R
+   real :: C_EV_S
+   real :: CCW_EVAP_EFF
+   real :: CCI_EVAP_EFF
+   real :: REVAP_OFF_P
+   real :: CNVENVFC
+   real :: T_ICE_ALL
+   real :: CNVICEPARAM
+   real :: CNVDDRFC
+   integer :: PDFSHAPE
+   real :: MINRHCRIT
+   real :: TURNRHCRIT
+   real :: TURNRHCRIT_UPPER
+   real :: SLOPERHCRIT
+   real :: DISP_FACTOR_ICE
+   real :: DISP_FACTOR_LIQ
+   real :: SCLM_DEEP, SCLM_SHALLOW
+   endtype CLDPARAM_TYPE
+   type (CLDPARAM_TYPE) :: CLDPARAMS
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE  ! -7.0+MAPL_TICE
    real, parameter :: RHO_W        = 1.0e3      ! Density of liquid water in kg/m^3
@@ -133,15 +99,12 @@ contains
          PP_dev           , &
          PPE_dev          , &
          EXNP_dev         , &
-         SNOMAS_dev       , &
-         FRLANDICE_dev    , &
          FRLAND_dev       , &
-         KH_dev           , &
-         RMFDTR_dev       , &
+         CNVFRC_dev       , &
+         SRFTYPE_dev      , &
          QLWDTR_dev       , &              
          QRN_CU_dev       , &
          CNV_UPDFRC_dev   , &
-         SC_RMFDTR_dev    , &
          SC_QLWDTR_dev    , &
          SC_QIWDTR_dev    , &
          QRN_SC_dev       , &
@@ -160,31 +123,21 @@ contains
          PRECU_dev        , &
          CUARF_dev        , &
          SNRCU_dev        , &
-         CLDPARAMS        , &
-         SCLMFDFR         , &
          QST3_dev         , &
          DZET_dev         , &
-         CNV_FRACTION_dev , &
          QDDF3_dev        , &
          RHX_dev          , &
-         REV_CN_dev       , &
-         RSU_CN_dev       , &
-         ACLL_CN_dev,ACIL_CN_dev, &
-         PFL_CN_dev,PFI_CN_dev, &
+         REV_AN_dev       , &
+         RSU_AN_dev       , &
+         ACLL_AN_dev,ACIL_AN_dev, &
+         PFL_AN_dev,PFI_AN_dev, &
          PDFL_dev,PDFI_dev,FIXL_dev,FIXI_dev, &         
          DCNVL_dev, DCNVi_dev,      &
          ALPHT_dev,   &
-         CFPDF_dev,   &
-         DQRL_dev,  &
-         VFALLSN_CN_dev,  &
-         VFALLRN_CN_dev,  &
+         VFALLSN_AN_dev,  &
+         VFALLRN_AN_dev,  &
          EVAPC_dev,  &
          SUBLC_dev,  &  
-         CNV_FICE_dev,   &
-         CNV_NDROP_dev, &
-         CNV_NICE_dev, &
-         SC_NDROP_dev, &
-         SC_NICE_dev, &
          SCICE_dev,  & 
          NCPL_dev,  &
          NCPI_dev,  &
@@ -194,10 +147,8 @@ contains
          RAS_DT_dev,  &
          QRAIN_CN, & 
          QSNOW_CN, &
-         KCBL, LTS_ , &
-         CONVPAR_OPTION  )       
+         KCBL)
 
-      type (CLDPARAM_TYPE), intent(in)          :: CLDPARAMS
 
       integer, intent(in   )                    :: IRUN ! IM*JM
       integer, intent(in   )                    :: LM   ! LM
@@ -205,15 +156,12 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: PP_dev      ! PLO
       real, intent(in   ), dimension(IRUN,0:LM) :: PPE_dev     ! CNV_PLE
       real, intent(in   ), dimension(IRUN,  LM) :: EXNP_dev    ! PK
-      real, intent(in   ), dimension(IRUN     ) :: SNOMAS_dev  ! SNOMAS
-      real, intent(in   ), dimension(IRUN     ) :: FRLANDICE_dev  ! FRLANDICE
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
-      real, intent(in   ), dimension(IRUN,0:LM) :: KH_dev      ! KH
-      real, intent(in   ), dimension(IRUN,  LM) :: RMFDTR_dev  ! CNV_MFD
+      real, intent(in   ), dimension(IRUN     ) :: CNVFRC_dev  ! CNVFRC
+      real, intent(in   ), dimension(IRUN     ) :: SRFTYPE_dev
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT
       real, intent(inout), dimension(IRUN,  LM) :: QRN_CU_dev  ! CNV_PRC3 IS THIS INTENT IN?
       real, intent(inout), dimension(IRUN,  LM) :: CNV_UPDFRC_dev ! CNV_UPDF
-      real, intent(in   ), dimension(IRUN,  LM) :: SC_RMFDTR_dev
       real, intent(in   ), dimension(IRUN,  LM) :: SC_QLWDTR_dev
       real, intent(in   ), dimension(IRUN,  LM) :: SC_QIWDTR_dev
       real, intent(inout), dimension(IRUN,  LM) :: QRN_SC_dev
@@ -232,18 +180,16 @@ contains
       real, intent(  out), dimension(IRUN     ) :: PRECU_dev ! CN_PRC2    
       real, intent(  out), dimension(IRUN     ) :: CUARF_dev ! CN_ARFX
       real, intent(  out), dimension(IRUN     ) :: SNRCU_dev ! CN_SNR
-      real, intent(in   )                       :: SCLMFDFR   ! CLOUD_CTL%SCLMFDFR
       real, intent(in   ), dimension(IRUN,  LM) :: QST3_dev   ! QST3
       real, intent(in   ), dimension(IRUN,  LM) :: DZET_dev   ! DZET
-      real, intent(in   ), dimension(IRUN)      :: CNV_FRACTION_dev   ! CNV_FRACTION
       real, intent(in   ), dimension(IRUN,  LM) :: QDDF3_dev  ! QDDF3
       real, intent(  out), dimension(IRUN,  LM) :: RHX_dev    ! RHX    
-      real, intent(  out), dimension(IRUN,  LM) :: REV_CN_dev ! REV_CN
-      real, intent(  out), dimension(IRUN,  LM) :: RSU_CN_dev ! RSU_CN
-      real, intent(  out), dimension(IRUN,  LM) :: ACLL_CN_dev ! ACLL_CN
-      real, intent(  out), dimension(IRUN,  LM) :: ACIL_CN_dev ! ACIL_CN     
-      real, intent(  out), dimension(IRUN,0:LM) :: PFL_CN_dev ! PFL_CN
-      real, intent(  out), dimension(IRUN,0:LM) :: PFI_CN_dev ! PFI_CN 
+      real, intent(  out), dimension(IRUN,  LM) :: REV_AN_dev ! REV_CN
+      real, intent(  out), dimension(IRUN,  LM) :: RSU_AN_dev ! RSU_CN
+      real, intent(  out), dimension(IRUN,  LM) :: ACLL_AN_dev ! ACLL_CN
+      real, intent(  out), dimension(IRUN,  LM) :: ACIL_AN_dev ! ACIL_CN     
+      real, intent(  out), dimension(IRUN,0:LM) :: PFL_AN_dev ! PFL_CN
+      real, intent(  out), dimension(IRUN,0:LM) :: PFI_AN_dev ! PFI_CN 
       real, intent(  out), dimension(IRUN,  LM) :: PDFL_dev ! DlPDF
       real, intent(  out), dimension(IRUN,  LM) :: PDFI_dev ! DiPDF
       real, intent(  out), dimension(IRUN,  LM) :: FIXL_dev ! DlFIX
@@ -251,19 +197,12 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: DCNVL_dev ! DCNVL
       real, intent(  out), dimension(IRUN,  LM) :: DCNVi_dev ! DCNVi
       real, intent(  out), dimension(IRUN,  LM) :: ALPHT_dev ! ALPHT
-      real, intent(  out), dimension(IRUN,  LM) :: CFPDF_dev ! CFPDF    
-      real, intent(  out), dimension(IRUN,  LM) :: DQRL_dev ! DQRL    
-      real, intent(  out), dimension(IRUN,  LM) :: VFALLSN_CN_dev ! VFALLSN_CN
-      real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_CN_dev ! VFALLRN_CN
+      real, intent(  out), dimension(IRUN,  LM) :: VFALLSN_AN_dev ! VFALLSN_CN
+      real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_AN_dev ! VFALLRN_CN
       real, intent(  out), dimension(IRUN,  LM) :: EVAPC_dev ! VFALLSN_CN
       real, intent(  out), dimension(IRUN,  LM) :: SUBLC_dev ! VFALLRN_CN
       
       !=====two_moment
-      real, intent(inout), dimension(IRUN,  LM) ::  CNV_FICE_dev
-      real, intent(inout), dimension(IRUN,  LM) :: CNV_NDROP_dev
-      real, intent(inout), dimension(IRUN,  LM) :: CNV_NICE_dev
-      real, intent(inout), dimension(IRUN,  LM) :: SC_NDROP_dev
-      real, intent(inout), dimension(IRUN,  LM) :: SC_NICE_dev
       real, intent(inout), dimension(IRUN,  LM) :: SCICE_dev 
       real, intent(inout), dimension(IRUN,  LM) :: NCPL_dev
       real, intent(inout), dimension(IRUN,  LM) :: NCPI_dev
@@ -275,29 +214,22 @@ contains
       real, intent(out), dimension(IRUN,  LM) :: QSNOW_CN
 
       
-      real, intent(in   ), dimension(IRUN     )  :: LTS_   
       real, dimension(IRUN,  LM) :: FRZ_PP_dev ! FRZ_PP
       real :: TOT_UPDFRC
       integer, intent(in   ), dimension(IRUN     ) :: KCBL  ! RAS CLOUD BASE
 
 
-      character(LEN=*), INTENT(IN)              :: CONVPAR_OPTION
-      
       ! GPU The GPUs need to know how big local arrays are during compile-time
       !     as the GPUs cannot allocate memory themselves. This command resets
       !     this a priori size to LM for the CPU.
 
 
-      integer :: I , J , K , L
-
-      integer :: FRACTION_REMOVAL
+      integer :: I , K
 
       real :: MASS, iMASS
       real :: TOTFRC
       real :: QRN_CU_1D
       real :: QSN_CU
-      real :: QRN_SUM
-      real :: QSN_SUM
       real :: QRN_ALL, QSN_ALL
       real :: QTMP1, QTMP2, QTMP3, QTOT
       real :: TEMP
@@ -307,75 +239,13 @@ contains
       real :: TOT_PREC_UPD   
       real :: AREA_UPD_PRC
       real :: AREA_UPD_PRC_tolayer
-      real :: U_above,U_below
-      real :: V_above,V_below
-      real :: DZET_above,DZET_below
       real :: PRN_CU_above, PSN_CU_above
       real :: EVAP_DD_CU_above, SUBL_DD_CU_above
 
-      real :: NIX, TOTAL_WATER, fQi, QRN_XS, QSN_XS
+      real :: NIX, TOTAL_WATER, QRN_XS, QSN_XS
 
       logical :: use_autoconv_timescale
 
-      CNV_BETA      = CLDPARAMS%CNV_BETA  ! Area factor for convective rain showers (non-dim)
-      ANV_BETA      = CLDPARAMS%ANV_BETA  ! Area factor for anvil rain showers (non-dim)
-      LS_BETA       = CLDPARAMS%LS_BETA   ! Area factor for Large Scale rain showers (non-dim)
-      RH00          = CLDPARAMS%RH_CRIT   ! Critical relative humidity
-      C_00          = CLDPARAMS%AUTOC_LS
-      LWCRIT        = CLDPARAMS%QC_CRIT_LS
-      C_ACC         = CLDPARAMS%ACCRETION
-      C_EV_R        = CLDPARAMS%RAIN_REVAP_FAC
-      C_EV_S        = CLDPARAMS%SNOW_REVAP_FAC
-      CLDVOL2FRC    = CLDPARAMS%VOL_TO_FRAC
-      RHSUP_ICE     = CLDPARAMS%SUPERSAT
-      SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
-      MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
-      CLD_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
-      NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
-      LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
-      LS_SDQV3      = CLDPARAMS%LS_SUND_COLD
-      LS_SDQVT1     = CLDPARAMS%LS_SUND_TEMP1
-      ANV_SDQV2     = CLDPARAMS%ANV_SUND_INTER
-      ANV_SDQV3     = CLDPARAMS%ANV_SUND_COLD
-      ANV_SDQVT1    = CLDPARAMS%ANV_SUND_TEMP1
-      ANV_TO_LS     = CLDPARAMS%ANV_TO_LS_TIME
-      N_WARM        = CLDPARAMS%NCCN_WARM
-      N_ICE         = CLDPARAMS%NCCN_ICE
-      N_ANVIL       = CLDPARAMS%NCCN_ANVIL
-      N_PBL         = CLDPARAMS%NCCN_PBL
-      DISABLE_RAD   = INT( CLDPARAMS%DISABLE_RAD )
-      ANV_ICEFALL_C = CLDPARAMS%ANV_ICEFALL
-      LS_ICEFALL_C  = CLDPARAMS%LS_ICEFALL
-      REVAP_OFF_P   = CLDPARAMS%REVAP_OFF_P
-      CNVENVFC      = CLDPARAMS%CNV_ENVF
-      WRHODEP       = CLDPARAMS%WRHODEP
-      T_ICE_ALL     = 240.0
-      CNVICEPARAM   = CLDPARAMS%CNV_ICEPARAM
-      ICEFRPWR      = INT( CLDPARAMS%CNV_ICEFRPWR + .001 )
-      CNVDDRFC      = CLDPARAMS%CNV_DDRF
-      ANVDDRFC      = CLDPARAMS%ANV_DDRF
-      LSDDRFC       = CLDPARAMS%LS_DDRF
-      TANHRHCRIT    = INT( CLDPARAMS%TANHRHCRIT )
-      MINRHCRIT     = CLDPARAMS%MINRHCRIT
-      MAXRHCRIT     = CLDPARAMS%MAXRHCRIT
-      TURNRHCRIT    = CLDPARAMS%TURNRHCRIT
-      MAXRHCRITLAND = CLDPARAMS%MAXRHCRITLAND
-      FR_LS_WAT     = INT( CLDPARAMS%FR_LS_WAT )
-      FR_LS_ICE     = INT( CLDPARAMS%FR_LS_ICE )
-      FR_AN_WAT     = INT( CLDPARAMS%FR_AN_WAT )
-      FR_AN_ICE     = INT( CLDPARAMS%FR_AN_ICE )
-      MIN_RL        = CLDPARAMS%MIN_RL
-      MIN_RI        = CLDPARAMS%MIN_RI
-      MAX_RL        = CLDPARAMS%MAX_RL
-      MAX_RI        = CLDPARAMS%MAX_RI
-      PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
-      DISP_FACTOR_LIQ   = CLDPARAMS%DISP_FACTOR_LIQ
-      DISP_FACTOR_ICE   = CLDPARAMS%DISP_FACTOR_ICE
-      sclm_shw =  CLDPARAMS%SCLM_SHW
-      
-      turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
-      sloperhcrit= CLDPARAMS%SLOPERHCRIT
-      min_lts = CLDPARAMS%MIN_LTS
       use_autoconv_timescale = .false.
       QRN_XS = 0.0
       QSN_XS = 0.0
@@ -401,21 +271,20 @@ contains
             QSN_CU    = 0.
             VFALL     = 0.
 
-            PFL_CN_dev(I,K) = 0.
-            PFI_CN_dev(I,K) = 0.
-
+            PFL_AN_dev(I,K) = 0.
+            PFI_AN_dev(I,K) = 0.
             IF (K == 1) THEN
-               PFL_CN_dev(I,0) = 0.
-               PFI_CN_dev(I,0) = 0.
+               PFL_AN_dev(I,0) = 0.
+               PFI_AN_dev(I,0) = 0.
             END IF
 
             ! Initialize other diagnostics 
 
             RHX_dev(I,K) = MAPL_UNDEF
-            REV_CN_dev(I,K) = MAPL_UNDEF
-            RSU_CN_dev(I,K) = MAPL_UNDEF
-            ACLL_CN_dev(I,K) = MAPL_UNDEF
-            ACIL_CN_dev(I,K) = MAPL_UNDEF
+            REV_AN_dev(I,K) = MAPL_UNDEF
+            RSU_AN_dev(I,K) = MAPL_UNDEF
+            ACLL_AN_dev(I,K) = MAPL_UNDEF
+            ACIL_AN_dev(I,K) = MAPL_UNDEF
             PDFL_dev(I,K) = MAPL_UNDEF
             PDFI_dev(I,K) = MAPL_UNDEF
             FIXL_dev(I,K) = MAPL_UNDEF
@@ -423,10 +292,8 @@ contains
             DCNVL_dev(I,K) = MAPL_UNDEF
             DCNVi_dev(I,K) = MAPL_UNDEF
             ALPHT_dev(I,K) = MAPL_UNDEF
-            CFPDF_dev(I,K) = MAPL_UNDEF
-            DQRL_dev(I,K) = MAPL_UNDEF
-            VFALLSN_CN_dev(I,K) = MAPL_UNDEF
-            VFALLRN_CN_dev(I,K) = MAPL_UNDEF
+            VFALLSN_AN_dev(I,K) = MAPL_UNDEF
+            VFALLRN_AN_dev(I,K) = MAPL_UNDEF
             
             EVAPC_dev(I,K) = 0.0
             SUBLC_dev(I,K) = 0.0
@@ -464,33 +331,7 @@ contains
             DNDCNV_dev(I, K) = NCPL_dev(I, K)
             DNCCNV_dev(I, K) = NCPI_dev(I, K)
 
-
-            CALL cnvsrc (DT             , &
-                  CNVICEPARAM    , &
-                  SCLMFDFR       , &
-                  MASS           , & 
-                  iMASS          , &
-                  PP_dev(I,K)    , &
-                  TEMP           , &
-                  Q_dev(I,K)     , &
-                  QLWDTR_dev(I,K), &
-                  RMFDTR_dev(I,K), &
-                  SC_QLWDTR_dev(I,K), &
-                  SC_QIWDTR_dev(I,K), &
-                  SC_RMFDTR_dev(I,K), &
-                  QLW_AN_dev(I,K), &
-                  QIW_AN_dev(I,K), &
-                  CLDFRC_dev(I,K), & 
-                  ANVFRC_dev(I,K), &
-                  QST3_dev(I,K) ,   & 
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I), &
-                  CONVPAR_OPTION, &                   
-                  NCPL_dev(I, K), &
-                  NCPI_dev(I, K), &
-                  CNV_FICE_dev(I, K), &
-                  CNV_NDROP_dev(I, K), &
-                  CNV_NICE_dev(I, K) )
-
+           ! cnvsrc now handled in convection routines
 
             DCNVi_dev(I,K) = ( QIW_AN_dev(I,K) - DCNVi_dev(I,K) ) / DT
             DCNVL_dev(I,K) = ( QLW_AN_dev(I,K) - DCNVL_dev(I,K) ) / DT
@@ -520,40 +361,17 @@ contains
             FIXL_dev(I,K) = -( QLW_AN_dev(I,K) + QLW_LS_dev(I,K) - FIXL_dev(I,K) ) / DT 
             FIXI_dev(I,K) = -( QIW_AN_dev(I,K) + QIW_LS_dev(I,K) - FIXI_dev(I,K) ) / DT 
 
-
-!!!!!!!!!!!Spread!!!!!!!!!!!!!!
-
-            if (k == 1 .or. k == lm) then
-               U_above = 0.0
-               U_below = 0.0
-               V_above = 0.0
-               V_below = 0.0
-               DZET_above = 0.0
-               DZET_below = 0.0
-            else
-               U_above = U_dev(i,k-1)
-               U_below = U_dev(i,k+1)
-               V_above = V_dev(i,k-1)
-               V_below = V_dev(i,k+1)
-               DZET_above = DZET_dev(i,k-1)
-               DZET_below = DZET_dev(i,k+1)
-            end if
-
             ! assume deep and shallow updraft fractions non-overlapping
             TOT_UPDFRC = CNV_UPDFRC_dev(I,K) + SC_UPDFRC_dev(I,K)
             TOT_UPDFRC = MAX( MIN( TOT_UPDFRC, 1.), 0.)
 
             call pdf_spread (&
-                  K,LM,&
-                  U_dev(I,K),U_above,U_below,&
-                  V_dev(I,K),V_above,V_below,&
-                  KH_dev(I,K-1),DZET_above,DZET_below,&
-                  TOT_UPDFRC,PP_dev(I,K),ALPHA,&
+                  PP_dev(I,K),ALPHA,&
                   ALPHT_dev(I,K), & 
-                  FRLAND_dev(I), LTS_(I))  
+                  FRLAND_dev(I))
 
             ! impose a minimum amount of variability
-            ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
+            ALPHA    = MAX(  ALPHA , 1.0 - CLDPARAMS%RH00 )
 
             RHCRIT = 1.0 - ALPHA
 
@@ -564,17 +382,18 @@ contains
 
 
             call Pfreezing (  &       
-                  ALPHA    , &
-                  PP_dev(I,K)              , &
-                  TEMP                  , &
-                  Q_dev(I,K)                , &
-                  QLW_LS_dev(I,K), &
-                  QLW_AN_dev(I,K), &
-                  QIW_LS_dev(I,K), &
-                  QIW_AN_dev(I,K), &    
-                  SCICE_dev(I, K)      , &
-                  CLDFRC_dev(I,K), & 
-                  ANVFRC_dev(I,K), &
+                  CLDPARAMS%PDFSHAPE , &
+                  ALPHA              , &
+                  PP_dev(I,K)        , &
+                  TEMP               , &
+                  Q_dev(I,K)         , &
+                  QLW_LS_dev(I,K)    , &
+                  QLW_AN_dev(I,K)    , &
+                  QIW_LS_dev(I,K)    , &
+                  QIW_AN_dev(I,K)    , &    
+                  SCICE_dev(I, K)    , &
+                  CLDFRC_dev(I,K)    , & 
+                  ANVFRC_dev(I,K)    , &
                   PFRZ_dev(I, K) )   
 
 
@@ -588,7 +407,9 @@ contains
             call hystpdf_new(      &
                   DT             , &
                   ALPHA          , &
-                  PDFFLAG        , &
+                  CLDPARAMS%PDFSHAPE , &
+                  CNVFRC_dev(I)  , &
+                  SRFTYPE_dev(I)  , &
                   PP_dev(I,K)    , &
                   Q_dev(I,K)     , &
                   QLW_LS_dev(I,K), &
@@ -598,14 +419,17 @@ contains
                   TEMP           , &
                   CLDFRC_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  NCPL_dev(I,K),  &
-                  NCPI_dev(I,K),  &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I), &
+                  NCPL_dev(I,K)  , &
+                  NCPI_dev(I,K)  , &
                   SCICE_dev(I, K))
             
             PDFL_dev(I,K)  = ( QLW_LS_dev(I,K) + QLW_AN_dev(I,K) - PDFL_dev(I,K) ) / DT 
             PDFI_dev(I,K)  = ( QIW_LS_dev(I,K) + QIW_AN_dev(I,K) - PDFI_dev(I,K) ) / DT 
 
+
+
+            QTMP1 = QLW_LS_dev(I,K) + QLW_AN_dev(I,K)
+            QTMP2 = QIW_LS_dev(I,K) + QIW_AN_dev(I,K)
 
 
             EVAPC_dev(I,K) = QLW_LS_dev(I,K)+QLW_AN_dev(I,K)
@@ -615,6 +439,7 @@ contains
 
             call evap3(            &
                   DT             , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -622,13 +447,13 @@ contains
                   QLW_AN_dev(I,K), &
                   QIW_AN_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  CLDFRC_dev(I,K), &
                   NCPL_dev(I,K) , &
                   NCPI_dev(I,K) , &
                   QST3_dev(I,K)  )  
 
             call subl3(            &
                   DT             , & 
+                  CLDPARAMS%CCI_EVAP_EFF, &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -636,7 +461,6 @@ contains
                   QLW_AN_dev(I,K), &
                   QIW_AN_dev(I,K), &
                   ANVFRC_dev(I,K), &
-                  CLDFRC_dev(I,K), &
                   NCPL_dev(I,K) , &
                   NCPI_dev(I,K) , &
                   QST3_dev(I,K)  ) 
@@ -674,15 +498,6 @@ contains
             QRN_CU_1D = QRN_CU_1D + QRN_SC_dev(I,K) + QRN_XS!! add any excess precip to convective 
             QSN_CU    = QSN_CU    + QSN_SC_dev(I,K) + QSN_XS
 
-            !        
-!	    fQi=  ICE_FRACTION(TEMP)	    
-!            QSN_CU     = QRN_CU_1D*fQi
-!	    QRN_CU_1D = max(QRN_CU_1D -QSN_CU, 0.0)
-!            TEMP      = TEMP + QSN_CU*(MAPL_ALHS-MAPL_ALHL) / MAPL_CP
-
-
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             !----------------------------------------------------------------------------------------------
@@ -699,13 +514,13 @@ contains
 
             if ( TOT_PREC_UPD > 0.0 ) AREA_UPD_PRC_tolayer = MAX( AREA_UPD_PRC/TOT_PREC_UPD, 1.E-6 )
 
-            AREA_UPD_PRC_tolayer = CNV_BETA * AREA_UPD_PRC_tolayer
+            AREA_UPD_PRC_tolayer = CLDPARAMS%CNV_BETA * AREA_UPD_PRC_tolayer
 
             IF (K == LM) THEN ! We've accumulated over the whole column
 
                if ( TOT_PREC_UPD > 0.0 ) AREA_UPD_PRC = MAX( AREA_UPD_PRC/TOT_PREC_UPD, 1.E-6 )
 
-               AREA_UPD_PRC = CNV_BETA * AREA_UPD_PRC
+               AREA_UPD_PRC = CLDPARAMS%CNV_BETA * AREA_UPD_PRC
 
                !! "couple" to diagnostic areal fraction output 
                !! Intensity factor in PRECIP3 is floored at
@@ -761,28 +576,28 @@ contains
                   PSN_CU_above    , &
                   EVAP_DD_CU_above, &
                   SUBL_DD_CU_above, &
-                  REV_CN_dev(I,K) , &
-                  RSU_CN_dev(I,K) , &
-                  ACLL_CN_dev(I,K), &
-                  ACIL_CN_dev(I,K), &
-                  PFL_CN_dev(I,K) , &
-                  PFI_CN_dev(I,K) , &
+                  REV_AN_dev(I,K) , &
+                  RSU_AN_dev(I,K) , &
+                  ACLL_AN_dev(I,K), &
+                  ACIL_AN_dev(I,K), &
+                  PFL_AN_dev(I,K) , &
+                  PFI_AN_dev(I,K) , &
                   VFALLRN         , &
                   VFALLSN         , &
                   FRZ_PP_dev(I,K) , &
-                  CNVENVFC, CNVDDRFC, &
+                  CLDPARAMS%CNVENVFC, CLDPARAMS%CNVDDRFC, &
                   ANVFRC_dev(I,k), CLDFRC_dev(I,k),  &
                   PP_dev(I,KCBL(I)))
 
-            VFALLSN_CN_dev(I,K) = VFALLSN
-            VFALLRN_CN_dev(I,K) = VFALLRN
+            VFALLSN_AN_dev(I,K) = VFALLSN
+            VFALLRN_AN_dev(I,K) = VFALLRN
 
             if (.not.use_autoconv_timescale) then
                if (VFALLSN.NE.0.) then
-                  QSN_ALL = QSN_ALL + PFI_CN_dev(I,K)/VFALLSN
+                  QSN_ALL = QSN_ALL + PFI_AN_dev(I,K)/VFALLSN
                end if
                if (VFALLRN.NE.0.) then
-                  QRN_ALL = QRN_ALL + PFL_CN_dev(I,K)/VFALLRN
+                  QRN_ALL = QRN_ALL + PFL_AN_dev(I,K)/VFALLRN
                end if
             end if
 
@@ -895,41 +710,18 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   subroutine pdf_spread (K,LM,&
-         U,U_above,U_below,&
-         V,V_above,V_below,&
-         KH,&
-         DZ_above,DZ_below,&
-         UPDF,PP,ALPHA,&
+   subroutine pdf_spread ( &
+         PP,ALPHA,&
          ALPHT_DIAG, &
-         FRLAND, LTSX )  
+         FRLAND, MINRHCRIT,  USE_SLINGO, EIS)  
 
-      integer, intent(in)  :: k,lm
-      real,    intent(in)  :: U,U_above,U_below
-      real,    intent(in)  :: V,V_above,V_below
-      real,    intent(in)  :: DZ_above,DZ_below
-      real,    intent(in)  :: UPDF,PP
-      real,    intent(in)  :: KH
+      real,    intent(in)  :: PP
       real,    intent(out) :: ALPHA
-      real,    intent(out) ::  ALPHT_DIAG
-      real,    intent(in)  :: FRLAND, LTSX
+      real,    intent(in)  :: FRLAND, MINRHCRIT, TURNRHCRIT
+      real :: slope_up, aux1, aux2, maxalpha
 
-      real    :: A1,A2,A3
-      real    :: tempmaxrh, slope, slope_up, turnrhcrit_up, aux1, aux2, maxalpha
-
-      !slope = 20.0
-      
       slope_up = 20.0
-     
-    
-      !turnrhcrit_up = 300.0
-
-      turnrhcrit_up = turnrhcrit_upper
-      slope =  sloperhcrit
-
-      !turnrhcrit = 884.0 !turnrhcrit is slightly modified to match the old tan-1 function DONIF
-      maxalpha=1.0-minrhcrit
-
+      maxalpha=1.0-MINRHCRIT
 
       ! alpha is the 1/2*width so RH_crit=1.0-alpha
 
@@ -937,8 +729,8 @@ contains
       !  array a1 holds the critical rh, ranges from 0.8 to 1
       !Reformulated by Donifan Barahona
 
-      aux1 = min(max((pp- turnrhcrit)/slope, -20.0), 20.0) 
-      aux2 = min(max((turnrhcrit_up - pp)/slope_up, -20.0), 20.0)
+      aux1 = min(max((pp- CLDPARAMS%TURNRHCRIT)/CLDPARAMS%SLOPERHCRIT, -20.0), 20.0) 
+      aux2 = min(max((CLDPARAMS%TURNRHCRIT_UPPER - pp)/slope_up, -20.0), 20.0)
 
 
       if (frland > 0.05)  then           
@@ -964,218 +756,12 @@ contains
 
    end subroutine pdf_spread
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-   subroutine fix_up_clouds_2M( &
-         QV, &
-         TE, &
-         QLC,&
-         QIC,&
-         CF, &
-         QLA,&
-         QIA,&
-         AF, &
-         NL, &
-         NI, & 
-         QRN_SX, &
-         QSN_SX  )
-
-      real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, NL, NI
-      real, intent(out) :: QSN_SX, QRN_SX
-      real, parameter  :: qmin  = 1.0e-11
-      real, parameter :: cfmin  = 1.0e-4
-      real, parameter :: nmin  = 100.0
-      real, parameter :: RL_cub  = 1.0e-15
-      real, parameter :: RI_cub  = 1.0e-12
-      real, parameter :: nlmax  = 500.0e6
-      real, parameter :: nimax  = 1.0e5
-
-
-      QRN_SX =  0.0
-      QSN_SX = 0.0
-      ! Fix if Anvil cloud fraction too small
-      if (AF < cfmin) then
-         QV  = QV + QLA + QIA
-         TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
-         AF  = 0.
-         QLA = 0.
-         QIA = 0.
-      end if
-
-      ! Fix if LS cloud fraction too small
-      if ( CF < cfmin) then
-         QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
-         CF  = 0.
-         QLC = 0.
-         QIC = 0.
-      end if
-
-      ! LS LIQUID too small
-      if ( QLC  < qmin ) then
-         QV = QV + QLC 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
-         QLC = 0.
-      end if
-      ! LS ICE too small
-      if ( QIC  < qmin) then
-         QV = QV + QIC 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
-         QIC = 0.
-      end if
-
-      ! Anvil LIQUID too small
-      if ( QLA  < qmin ) then
-         QV = QV + QLA 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
-         QLA = 0.
-      end if
-      ! Anvil ICE too small
-      if ( QIA  < qmin) then
-         QV = QV + QIA 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
-         QIA = 0.
-      end if
-
-      ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < qmin) then
-         QV = QV + QLA + QIA
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
-         AF  = 0.
-         QLA = 0.
-         QIA = 0.
-      end if
-      ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < qmin ) then
-         QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
-         CF  = 0.
-         QLC = 0.
-         QIC = 0.
-      end if
-
-      if ((QLA+QLC) .le. qmin) then 
-         NL = 0.0
-      end if
-
-      if ((QIA+QIC) .le. qmin) then 
-         NI = 0.0
-      end if
-
-    !  ! make sure N > 0 if Q >0!
-
-!      if (((QLA+QLC) .gt. qmin) .and. (NL .le. nmin)) then    
-!         NL =  max((QLA+QLC)/( 1.333 * MAPL_PI *RL_cub*997.0), nmin)             
-!         NL=min(NL, nlmax)
-!      end if
-!
- !     if (((QIA+QIC) .gt. qmin) .and. (NI .le. nmin)) then    
- !        NI =  max((QIA+QIC)/( 1.333 * MAPL_PI *RI_cub*500.0), nmin)             
- !        NI=min(NI, nimax)
- !     end if
-
-
-    ! if Q > 0 and N ~0 this is probably falling (also helps eliminating ice if using initial conditons from single moment).
-   
-            if (((QLA+QLC) .gt. qmin) .and. (NL .le. nmin)) then    
-                 NL = 0.0
-                 QRN_SX =  QLA+QLC
-                 QLA = 0.0
-                 QLC = 0.0
-              
-              end if    
-
-              if (((QIA+QIC) .gt. qmin) .and. (NI .le. nmin)) then    
-                 NI = 0.0
-                 QSN_SX = QIA+QIC
-                 QIA = 0.0
-                 QIC = 0.0                 
-              end if
-   
-
-   end subroutine fix_up_clouds_2M
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- subroutine fix_up_clouds( &
-         QV, &
-         TE, &
-         QLC,&
-         QIC,&
-         CF, &
-         QLA,&
-         QIA,&
-         AF  )
-
-      real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA
-
-      ! Fix if Anvil cloud fraction too small
-      if (AF < 1.E-5) then
-         QV  = QV + QLA + QIA
-         TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
-         AF  = 0.
-         QLA = 0.
-         QIA = 0.
-      end if
-
-      ! Fix if LS cloud fraction too small
-      if ( CF < 1.E-5 ) then
-         QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
-         CF  = 0.
-         QLC = 0.
-         QIC = 0.
-      end if
-      
-      ! LS LIQUID too small
-      if ( QLC  < 1.E-8 ) then
-         QV = QV + QLC 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
-         QLC = 0.
-      end if
-      ! LS ICE too small
-      if ( QIC  < 1.E-8 ) then
-         QV = QV + QIC 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
-         QIC = 0.
-      end if
-
-      ! Anvil LIQUID too small
-      if ( QLA  < 1.E-8 ) then
-         QV = QV + QLA 
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
-         QLA = 0.
-      end if
-      ! Anvil ICE too small
-      if ( QIA  < 1.E-8 ) then
-         QV = QV + QIA 
-         TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
-         QIA = 0.
-      end if
-
-      ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      if ( ( QLA + QIA ) < 1.E-8 ) then
-         QV = QV + QLA + QIA
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
-         AF  = 0.
-         QLA = 0.
-         QIA = 0.
-      end if
-      ! Ditto if LS cloud LIQUID+ICE too small
-      if ( ( QLC + QIC ) < 1.E-8 ) then
-         QV = QV + QLC + QIC
-         TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
-         CF  = 0.
-         QLC = 0.
-         QIC = 0.
-      end if
-
-   end subroutine fix_up_clouds
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    subroutine update_cld( &
          DT          , &
          ALPHA       , &
-         PDFSHAPE    , &
+         PDFFLAG     , &
+         CNVFRC      , &
+         SRFTYPE     , &
          PL          , &
          QV          , &
          QCl         , &
@@ -1184,40 +770,32 @@ contains
          QAi         , &
          TE          , &
          CF          , &
-         AF          ,  &
-         SCICE   ,  &
-         NI            , &
-         NL           , &
-         NCnuc   , &
-         RHcmicro, &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         AF          , &
+         SCICE       , &
+         NI          , &
+         NL          , &
+         RHcmicro    , &
+         DO_HYSTPDF)
 
-      real, intent(in)    :: DT,ALPHA,PL,  NCnuc,  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
-      integer, intent(in) :: pdfshape
+      real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
+      integer, intent(in) :: pdfflag
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF, NI, RHCmicro, NL,  SCICE
 
       ! internal arrays
-      real :: QCO, QVO, CFO, QAO, TAU, SCICE_x
-      real :: QT, QMX, QMN, DQ, QVtop, sigmaqt1, sigmaqt2, qsnx
+      real :: CFO
+      real :: QT
 
-      real :: TEO,QSx,DQsx,QS,DQs
+      real :: QSx,DQsx
 
-      real :: TEp, QSp, CFp, QVp, QCp
-      real :: TEn, QSn, CFn, QVn, QCn
-
-      real :: QCx, QVx, CFx, QAx, QC, QA, fQi, fQi_A
-      real :: dQAi, dQAl, dQCi, dQCl 
+      real :: QCx, QC, QA
 
       real :: QX, QSLIQ, QSICE, CFALL, DQx, FQA, DELQ
 
-      real :: tmpARR
-      real :: ALHX, DQCALL, SHOM, maxalpha
+      real :: SHOM, maxalpha
       ! internal scalars
-      integer :: N
+      logical :: DO_HYSTPDF
 
-
-      pdfflag = PDFSHAPE
-      maxalpha=1.0-minrhcrit 
+      maxalpha=1.0-CLDPARAMS%MINRHCRIT 
 
       QC = QCl + QCi
       QA = QAl + QAi
@@ -1249,7 +827,7 @@ contains
 
 
       
-      if (TE .gt. T_ICE_ALL)   SCICE = 1.0
+      if (TE .gt. CLDPARAMS%T_ICE_ALL)   SCICE = 1.0
       QCx=QC+QA   
       QX=QT-QSx*SCICE
       CFo=0.
@@ -1292,10 +870,10 @@ contains
       AF=CFALL*FQA
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! return 
+      if (.NOT. DO_HYSTPDF) return 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
 
-      !if ((TE .le. T_ICE_ALL))  return !don't do anything else for cirrus
+      !if ((TE .le. CLDPARAMS%T_ICE_ALL))  return !don't do anything else for cirrus
 
 
       !================================================
@@ -1304,10 +882,12 @@ contains
 
                   
                   
-       call hystpdf_new( &
+       call hystpdf_new(  &
             DT          , &
             ALPHA       , &
-            PDFSHAPE    , &
+            PDFFLAG     , &
+            CNVFRC      , &
+            SRFTYPE     , &
             PL          , &
             QV          , &
             QCl         , &
@@ -1316,10 +896,9 @@ contains
             QAi         , &
             TE          , &
             CF          , &
-            AF          ,  &            
-            NL            , &
-            NI           , &
-            CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
+            AF          , &            
+            NL          , &
+            NI          , &
             SCICE  )
 
 
@@ -1342,7 +921,9 @@ contains
 subroutine hystpdf_new( &
          DT          , &
          ALPHA       , &
-         PDFSHAPE    , &
+         PDFFLAG     , &
+         CNVFRC      , &
+         SRFTYPE     , &
          PL          , &
          QV          , &
          QCl         , &
@@ -1354,23 +935,22 @@ subroutine hystpdf_new( &
          AF          , &
          NL          , &
          NI          , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
          SC_ICE)
 
-      real, intent(in)    :: DT,ALPHA,PL
-      integer, intent(in) :: pdfshape
+      real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
+      integer, intent(in) :: pdfflag
       real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF
-      real, intent(in)    :: NL,NI,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
+      real, intent(in)    :: NL,NI
       real, intent(in)    :: SC_ICE
       
       
       ! internal arrays
-      real :: QCO, QVO, CFO, QAO, TAU
-      real :: QT, QMX, QMN, DQ, sigmaqt1, sigmaqt2
+      real :: QCO, QVO, CFO, QAO
+      real :: QT, sigmaqt1, sigmaqt2
 
-      real :: TEO,QSx,DQsx,QS,DQs, qsnx
+      real :: TEO,QSx,DQsx,DQs, qsnx
 
-      real :: TEp, QSp, CFp, QVp, QCp
+      real :: TEp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
       real :: QCx, QVx, CFx, QAx, QC, QA, fQi
@@ -1383,8 +963,6 @@ subroutine hystpdf_new( &
       ! internal scalars
       integer :: N, nmax
 
-      pdfflag = PDFSHAPE
-
       QC = QCl + QCi
       QA = QAl + QAi
       QT  =  QC  + QA + QV  !Total water after microphysics
@@ -1396,7 +974,7 @@ subroutine hystpdf_new( &
 
       TEo = TE
 
-      fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi = ice_fraction( TE, CNVFRC,SRFTYPE )
       DQSx  = DQSAT( TE, PL, QSAT=QSx )
       CFx = CF*tmpARR
       QCx = QC*tmpARR
@@ -1448,8 +1026,8 @@ subroutine hystpdf_new( &
          if ((QCI .ge. 0.0) .and. (qsn .gt. qt))  qsnx=qsn !this way we do not evaporate preexisting ice but maintain supersat
          
          
-         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsnx,CFn)
-         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsnx,QCn)
+         call pdffrac(PDFFLAG,qt,sigmaqt1,sigmaqt2,qsnx,CFn)
+         call pdfcondensate(PDFFLAG,qt,sigmaqt1,sigmaqt2,qsnx,QCn)
 
        
            DQCALL = QCn - QCp
@@ -1470,9 +1048,9 @@ subroutine hystpdf_new( &
                  AF               , &
                  NLv              , &
                  NIv              , &
+                 CNVFRC,SRFTYPE   , &
                  DQCALL           , &
-                 fQi                , & 
-                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
+                 fQi              , & 
                  .true.)
        
 
@@ -1601,601 +1179,6 @@ subroutine hystpdf_new( &
 
    end subroutine hystpdf_new
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef _CUDA
-   attributes(device) &
-#endif
-      subroutine pdffrac (flag,qtmean,sigmaqt1,sigmaqt2,qstar,clfrac)
-      implicit none
-
-      integer flag            ! flag to indicate shape of pdf
-                              ! 1 for tophat, 2 for triangular, 3 for Gaussian
-      real qtmean             ! Grid box value of q total
-      real sigmaqt1           ! width of distribution (sigma)
-      real sigmaqt2           ! width of distribution (sigma)
-      real qstar              ! saturation q at grid box avg T
-      real clfrac             ! cloud fraction (area under pdf from qs)
-
-      real :: qtmode, qtmin, qtmax
-
-      if(flag.eq.1) then
-       if((qtmean+sigmaqt1).lt.qstar) then
-        clfrac = 0.
-       else
-        if(sigmaqt1.gt.0.) then
-        clfrac = min((qtmean + sigmaqt1 - qstar),2.*sigmaqt1)/(2.*sigmaqt1)
-        else
-        clfrac = 1.
-        endif
-       endif
-      elseif(flag.eq.2) then
-       qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.
-       qtmin = min(qtmode-sigmaqt1,0.)
-       qtmax = qtmode + sigmaqt2
-       if(qtmax.lt.qstar) then
-        clfrac = 0.
-       elseif ( (qtmode.le.qstar).and.(qstar.lt.qtmax) ) then
-        clfrac = (qtmax-qstar)*(qtmax-qstar) / ( (qtmax-qtmin)*(qtmax-qtmode) )
-       elseif ( (qtmin.le.qstar).and.(qstar.lt.qtmode) ) then
-        clfrac = 1. - ( (qstar-qtmin)*(qstar-qtmin) / ( (qtmax-qtmin)*(qtmode-qtmin) ) )
-       elseif ( qstar.le.qtmin ) then
-        clfrac = 1.
-       endif
-      endif
-
-      return
-      end subroutine pdffrac
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-    subroutine pdfcondensate (flag,qtmean4,sigmaqt14,sigmaqt24,qstar4,condensate4)
-      implicit none
-
-      integer flag            ! flag to indicate shape of pdf
-                              ! 1 for tophat, 2 for triangular
-      real qtmean4            ! Grid box value of q total
-      real sigmaqt14          ! width of distribution (to left)
-      real sigmaqt24          ! width of distribution (to right)
-      real qstar4             ! saturation q at grid box avg T
-      real condensate4        ! condensate (area under (q*-qt)*pdf from qs)
-
-      real *8 :: qtmode, qtmin, qtmax, constA, constB, cloudf
-      real *8 :: term1, term2, term3
-      real *8 :: qtmean, sigmaqt1, sigmaqt2, qstar, condensate
-
-      qtmean = dble(qtmean4)
-      sigmaqt1 = dble(sigmaqt14)
-      sigmaqt2 = dble(sigmaqt24)
-      qstar = dble(qstar4)
-
-      if(flag.eq.1) then
-       if(qtmean+sigmaqt1.lt.qstar) then
-        condensate = 0.d0
-       elseif(qstar.gt.qtmean-sigmaqt1)then
-        if(sigmaqt1.gt.0.d0) then
-         condensate = (min(qtmean + sigmaqt1 - qstar,2.d0*sigmaqt1)**2)/ (4.d0*sigmaqt1)
-        else
-         condensate = qtmean-qstar
-        endif
-       else
-        condensate = qtmean-qstar
-       endif
-      elseif(flag.eq.2) then
-       qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.d0
-       qtmin = min(qtmode-sigmaqt1,0.d0)
-       qtmax = qtmode + sigmaqt2
-       if ( qtmax.lt.qstar ) then
-        condensate = 0.d0
-       elseif ( (qtmode.le.qstar).and.(qstar.lt.qtmax) ) then
-        constB = 2.d0 / ( (qtmax - qtmin)*(qtmax-qtmode) )
-        cloudf = (qtmax-qstar)*(qtmax-qstar) / ( (qtmax-qtmin)*(qtmax-qtmode) )
-        term1 = (qstar*qstar*qstar)/3.d0
-        term2 = (qtmax*qstar*qstar)/2.d0
-        term3 = (qtmax*qtmax*qtmax)/6.d0
-        condensate = constB * (term1-term2+term3) - qstar*cloudf
-       elseif ( (qtmin.le.qstar).and.(qstar.lt.qtmode) ) then
-        constA = 2.d0 / ( (qtmax - qtmin)*(qtmode-qtmin) )
-        cloudf = 1.d0 - ( (qstar-qtmin)*(qstar-qtmin) / ( (qtmax-qtmin)*(qtmode-qtmin) ) )
-        term1 = (qstar*qstar*qstar)/3.d0
-        term2 = (qtmin*qstar*qstar)/2.d0
-        term3 = (qtmin*qtmin*qtmin)/6.d0
-        condensate = qtmean - ( constA * (term1-term2+term3) ) - qstar*cloudf
-       elseif ( qstar.le.qtmin ) then
-        condensate = qtmean-qstar
-       endif
-      endif
-      condensate4 = real(condensate)
-
-      return
-      end subroutine pdfcondensate
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-   subroutine cnvsrc( & 
-         DT      , &
-         ICEPARAM, &
-         SCLMFDFR, &
-         MASS    , &
-         iMASS   , &
-         PL      , &
-         TE      , &
-         QV      , &
-         DCF     , &
-         DMF     , &
-         DCLFshlw, &
-         DCIFshlw, &
-         DMFshlw , &
-         QLA     , & 
-         QIA     , & 
-         CF      , &
-         AF      , &
-         QS      , &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
-         CONVPAR_OPTION, &
-         NL, NI  , &
-         CNVFICE , &
-         CNVNDROP, &
-         CNVNICE )
-
-      !INPUTS:
-      !
-      !       ICEPARAM: 0-1  controls how strongly new conv condensate is partitioned in ice-liquid
-      !                 1 means partitioning follows ice_fraction(TE,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND). 0 means all new condensate is
-      !                 liquid 
-      !
-      !       SCLMFDFR: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
-      !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
-      !                 0.-1.0) or by subgrid layering (for choices >1.0) 
-
-      real, intent(in)    :: DT,ICEPARAM,SCLMFDFR
-      real, intent(in)    :: MASS,iMASS,QS
-      real, intent(in)    :: DMF,PL
-      real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
-      real, intent(inout) :: TE
-      real, intent(inout) :: AF,QV
-      real, intent(inout) :: QLA, QIA
-      real, intent(in)    :: CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
-      
-      real , intent(inout)       :: CNVFICE, CNVNDROP, CNVNICE !DONIF
-      real, intent(inout) :: NI, NL
-      
-      character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
-
-      real :: TEND,QVx,QCA,fQi, fqi_gf
-
-      ! real, parameter :: RL  = 12.0e-6
-      ! real, parameter :: RI  = 50.0e-6
-     
-     
-       real :: RL, RI
-
-     
-      
-      integer  :: STRATEGY
-      real     :: minrhx 
-
-      STRATEGY = 1
-
-      !Minimum allowed env RH
-      minrhx    = 0.001  
-    !  disp_factor = 10.0
-      !Addition of condensate from RAS/GF 
-      TEND = DCF*iMASS
-      
-            
-      IF(ADJUSTL(CONVPAR_OPTION) .eq. 'GF') THEN
-        
-        ! repartition liquid and ice from GF
-        fQi  = 0.0 + ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-        fqi_gf = icefraction_gf(Te)
-        
-            RL =   10.0  + (12.0*(283.0- Te)/40.0)             
-            RL =   min(max(RL, 10.0), 18.0)*1.e-6     
-   
-            RI =   100.0 + (80.0*(Te- 253.0)/40.0)
-            RI =   min(max(RI, 20.0), 250.0)*1.e-6
-        
-            TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * (fQi-fqi_gf) * DCF*imass*DT/MAPL_CP
-        
-            CNVFICE  = fQi
-               
-            CNVNDROP =   ((1.0-fQi)*TEND+ DCLFshlw*iMASS)/(1.333 * MAPL_PI *RL*RL*RL*997.0*disp_factor_liq)  
-            CNVNICE =   (fQi*TEND+ DCIFshlw*iMASS)/( 1.333 * MAPL_PI *RI*RI*RI*800.0*disp_factor_ice)                    
-            NL = NL + CNVNDROP*DT  
-            NI = NI + CNVNICE *DT
-      else
-      
-          fQi =  CNVFICE  
-          NL = NL + CNVNDROP*iMASS*DT  !number source DONIF
-          NI = NI + CNVNICE *iMASS*DT
-         
-         ! dont forget that conv cond has never frozen !!!!
-          TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * fQi * DCF*imass*DT/MAPL_CP
-      end if 
-       
-       
-      QLA  = QLA + (1.0-fQi)* TEND*DT ! 
-      QIA  = QIA +    fQi   * TEND*DT
-
-      ! add shallow convective ice/liquid source
-       QLA = QLA + DCLFshlw*iMASS*DT
-       QIA = QIA + DCIFshlw*iMASS*DT
-
-      QCA  = QLA + QIA
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !! Tiedtke-style anvil fraction !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      TEND=(DMF*SCLMFDFR+DMFshlw*SCLM_SHW)*iMASS    
-      AF = AF + TEND*DT
-      AF = MIN( AF , 0.99 ) 
-
-      ! where ( (AF+CF) > 1.00 )
-      !    AF=1.00-CF
-      ! endwhere
-      !!!!!!!!!!!!!!!
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! Check for funny (tiny, negative)
-      ! external QV s, resulting from assumed
-      ! QV=QSAT within anvil.
-      !
-      ! Two strategies to fix 
-      !   1) Simply constrain AF assume condensate
-      !      just gets "packed" in
-      !   2) Evaporate QCA to bring up QVx leave AF alone
-      !      Should include QSAT iteration, but ...        
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      
-      !   QS  = QSAT(         &
-      !               TE    , &
-      !               PL      )
-
-      if ( AF < 1.0 ) then
-         QVx  = ( QV - QS * AF )/(1.-AF)
-      else
-         QVx  = QS
-      end if
-
-      if (STRATEGY==1) then 
-         if ( (( QVx - minrhx*QS ) < 0.0 ) .and. (AF > 0.) ) then
-            AF  = (QV  - minrhx*QS )/( QS*(1.0-minrhx) )
-         end if
-         if ( AF < 0. ) then  ! If still cant make suitable env RH then destroy anvil
-            AF  = 0.
-            QV  = QV + QLA + QIA
-            TE  = TE - (MAPL_ALHL*QLA + MAPL_ALHS*QIA)/MAPL_CP        
-            QLA = 0.
-            QIA = 0.
-         end if
-      else if (STRATEGY==2) then
-         if ( (( QVx - minrhx*QS ) < 0.0 ) .and. (AF > 0.) ) then
-            QV  = QV  + (1.-AF)*( minrhx*QS - QVx )
-            QCA = QCA - (1.-AF)*( minrhx*QS - QVx )
-            TE  = TE  - (1.-AF)*( minrhx*QS - QVx )*MAPL_ALHL/MAPL_CP
-         end if
-      end if
-
-   end subroutine cnvsrc
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef _CUDA
-   attributes(device) &
-#endif
-   subroutine evap3(&
-         DT      , &
-         RHCR    , &
-         PL      , &
-         TE      , &
-         QV      , &
-         QL      , &
-         QI      , &
-         F       , &
-         XF      , & 
-         NL      , &
-         NI      , &
-         QS        )
-
-      real, intent(in   ) :: DT 
-      real, intent(in   ) :: RHCR
-      real, intent(in   ) :: PL
-      real, intent(inout) :: TE
-      real, intent(inout) :: QV
-      real, intent(inout) :: QL,QI
-      real, intent(inout) :: F
-      real, intent(in   ) :: XF
-      real, intent(in   ) :: NL,NI
-      real, intent(in   ) :: QS
-
-      real :: ES,NN,RADIUS,K1,K2,TEFF,QCm,EVAP,RHx,QC  !,QS
-
-      real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
-      real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
-      real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
-
-      real :: A_eff
-
-      A_EFF = CLD_EVP_EFF
-
-      NN = 50.*1.0e6
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!         EVAPORATION OF CLOUD WATER.             !!
-      !!                                                 !!
-      !!  DelGenio et al (1996, J. Clim., 9, 270-303)    !!
-      !!  formulation  (Eq.s 15-17)                      !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      
-      !   QS  = QSAT(         &
-      !               TE    , &
-      !               PL      )
-      
-      ES = 100.* PL * QS  / ( (EPSILON) + (1.0-(EPSILON))*QS )  ! (100's <-^ convert from mbar to Pa)
-
-      RHx = MIN( QV/QS , 1.00 )
-
-
-      K1 = (MAPL_ALHL**2) * RHO_W / ( K_COND*MAPL_RVAP*(TE**2))
-
-      K2 = MAPL_RVAP * TE * RHO_W / ( DIFFU * (1000./PL) * ES )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !! Here DIFFU is given for 1000 mb  !!
-      !! so 1000./PR accounts for inc-    !!
-      !! reased diffusivity at lower      !!
-      !! pressure.                        !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
-      if ( ( F > 0.) .and. ( QL > 0. ) ) then
-         QCm=QL/F
-      else
-         QCm=0.
-      end if
-
-      RADIUS = LDRADIUS4(PL,TE,QCm,NN,RHX,NL,NI,1)
-      
-      if ( (RHx < 1.0 ) .and.(RADIUS > 0.0) ) then
-         TEFF   =   (1.0 - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
-      else
-         TEFF   = 0.0 ! -999.
-      end if
-
-      EVAP = a_eff*QL*DT*TEFF
-      EVAP = MIN( EVAP , QL  )
-
-      QC=QL+QI
-      if (QC > 0.) then
-         F    = F * ( QC - EVAP ) / QC
-      end if
-
-      QV   = QV   + EVAP
-      QL   = QL   - EVAP
-      TE   = TE   - (MAPL_ALHL/MAPL_CP)*EVAP
-
-   end subroutine evap3
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef _CUDA
-   attributes(device) &
-#endif
-   subroutine subl3( &
-         DT        , &
-         RHCR      , &
-         PL        , &
-         TE        , &
-         QV        , &
-         QL        , &
-         QI        , &
-         F         , &
-         XF        , & 
-         NL        , &
-         NI        , &
-         QS        )
-
-      real, intent(in   ) :: DT
-      real, intent(in   ) :: RHCR
-      real, intent(in   ) :: PL
-      real, intent(inout) :: TE
-      real, intent(inout) :: QV
-      real, intent(inout) :: QL,QI
-      real, intent(inout) :: F
-      real, intent(in   ) :: XF
-      real, intent(in   ) :: NL,NI
-      real, intent(in   ) :: QS
-
-      real :: ES,NN,RADIUS,K1,K2,TEFF,QCm,SUBL,RHx,QC !, QS
-
-      real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
-      real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
-      real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
-
-      real :: A_eff
-
-      A_EFF = CLD_EVP_EFF
-
-      NN = 5.*1.0e6
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !!         SUBLORATION OF CLOUD WATER.             !!
-      !!                                                 !!
-      !!  DelGenio et al (1996, J. Clim., 9, 270-303)    !!
-      !!  formulation  (Eq.s 15-17)                      !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      
-      !   QS  = QSAT(         &
-      !               TE    , &
-      !               PL      )
-
-      ES = 100.* PL * QS  / ( (EPSILON) + (1.0-(EPSILON))*QS )  ! (100s <-^ convert from mbar to Pa)
-
-      RHx = MIN( QV/QS , 1.00 )
-
-
-      K1 = (MAPL_ALHL**2) * RHO_W / ( K_COND*MAPL_RVAP*(TE**2))
-
-      K2 = MAPL_RVAP * TE * RHO_W / ( DIFFU * (1000./PL) * ES )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !! Here DIFFU is given for 1000 mb  !!
-      !! so 1000./PR accounts for inc-    !!
-      !! reased diffusivity at lower      !!
-      !! pressure.                        !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
-      if ( ( F > 0.) .and. ( QI > 0. ) ) then
-         QCm=QI/F
-      else
-         QCm=0.
-      end if
-
-      RADIUS = LDRADIUS4(PL,TE,QCm,NN,RHX,NL,NI,2)
-      
-      if ( (RHx < RHCR ) .and.(RADIUS > 0.0) ) then
-         TEFF   =   ( RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
-      else
-         TEFF   = 0.0 ! -999.
-      end if
-
-      SUBL = a_eff*QI*DT*TEFF
-      SUBL = MIN( SUBL , QI  )
-
-      QC=QL+QI
-      if (QC > 0.) then
-         F    = F * ( QC - SUBL ) / QC
-      end if
-
-      QV   = QV   + SUBL
-      QI   = QI   - SUBL
-      TE   = TE   - (MAPL_ALHS/MAPL_CP)*SUBL
-
-   end subroutine subl3
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#ifdef _CUDA
-   attributes(device) &
-#endif
-
-   function LDRADIUS4(PL,TE,QC,NN,RHX,NNL,NNI,ITYPE) RESULT(RADIUS)
-   
-       real, parameter :: betai     = -2.262e+3
-       real, parameter :: gamai     =  5.113e+6
-       real, parameter :: deltai    =  2.809e+3
-       real, parameter :: densic    =  500.e0   !Ice crystal density in kgm-3
-
-       real, parameter :: abeta = 0.07
-       real, parameter :: bbeta = -0.14
-       real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)  
-       real, parameter :: r13 = 1./3.  
-       real, parameter :: r13bbeta = 1./3. - 0.14
-       real, parameter :: premit= 750.e2            ! top pressure bound for mid level cloud
-       real, parameter :: smnum = 1.e-1            !
-       real, parameter :: rhminh= 0.80              ! minimum rh for high stable clouds      
-       
-       REAL   , INTENT(IN) :: TE,PL,NN,QC,RHX,NNL,NNI
-       INTEGER, INTENT(IN) :: ITYPE
-       REAL  :: RADIUS
-       INTEGER, PARAMETER  :: CLOUD=1, ICE=2
-       
-       REAL :: NNX,RHO,IWL,BB, RIV,CLOUD_HIGH,RHDIF,WC
-       INTEGER :: ICLD_HIGH
-       
-       !print*,"radius4=", PL,TE
-       
-       IF(ITYPE == CLOUD) THEN        
-       !- liquid cloud effective radius ----- 
-          !- [liu&daum, 2000 and 2005. liu et al 2008]
-          !- air density (kg/m^3)
-          RHO = 100.*PL / (MAPL_RGAS*TE )
-   
-          IF(USE_AEROSOL_NN) THEN
-            !- cloud drop number concentration 
-            !- from the aerosol model + ....
-            NNX = max(NNL, 1.0) * 1.e-6  !#/cm3
-          ELSE
-            !- cloud drop number concentration :u[NNX]= #/cm^3
-            NNX = NN * 1.e-6  !#/cm3
-          ENDIF
-
-          !- liquid water content : u[lwl] = g/m3
-          WC = RHO*max(QC, 1.0e-9)* 1.e+3  !g/m3
-      
-          !- radius in micrometers
-          RADIUS= bx *  ( WC /NNX)**r13bbeta*abeta*6.92 !6.92=(1.e-6)**bbeta	      
-   
-          !- RADIUS is limited between 2.5 and 60 micrometers as 
-          !- required by rrtm parameterization
-          RADIUS = max(2.5, min( 60.0, RADIUS ) )
-  
-          !- convert to meter
-          RADIUS = RADIUS*1.e-6
-  
-       ELSEIF(ITYPE == ICE) THEN
-
-        IF ((adjustl(CLDMICRO)=="GFDL") .or. (adjustl(CLDMICRO)=="2MOMENT"))  THEN
-
-         RHO = 100.*PL / (MAPL_RGAS*TE )
-         !- ice water content
-         WC = RHO*max(QC, 1.0e-9)  !kg/m3
-      
-         
-         IF( (.not. USE_AEROSOL_NN) ) THEN 
-
-            !------ice cloud effective radius ----- [klaus wyser, 1998]
-             BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-TE)**1.5)
-             BB     = MIN((MAX(BB,-6.)),-2.) 
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-
-         ELSE
-
-            !--Mean volume and effective radius following Lohmann&Karcher (2002)
-            !-- qice is the detrained ice water mixing ratio (kg/kg)
-            !-- NNI  !#/m^3	 
-            !-- RIV in micrometers
-
-            RIV  = 1.E+6*((3.*WC)/(4.*MAPL_PI*densic*max(NNI, 1.0)))**0.33333  
-            RIV  = MAX(RIV, 8.22)
-            RADIUS= ((((RIV**3.-betai)**2.-gamai))/deltai)**0.33333
-            
-            !- convert to meter
-            
-            RADIUS = RADIUS*1.E-6
-
-            !if((PL<300. .and. PL>200.) .and. (QC>1.e-6)) print*,"GOCRI=", RHO*QC,TE,NNI, RADIUS* 1.e+6
-         ENDIF
-  
-        ELSE ! CLDMICRO =1MOMENT
-
-            !------ice cloud effective radius ----- [klaus wyser, 1998]
-            !- air density (kg/m^3)
-            RHO = 100.*PL / (MAPL_RGAS*TE )
-            !- ice water content
-            iwl = RHO*QC* 1.e+3  !g/m3
-            if(iwl<1.0e-6 .or. TE>273.0) then
-             RADIUS = 5.0*1.e-6
-            else
-             BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);flush(6)
-            endif
-
-        ENDIF ! CLDMICRO
-
-      ELSE
-        STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
-      ENDIF
-
-   end function LDRADIUS4
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
    subroutine PRECIP3(  &
          K,LM         , &
          DT           , & 
@@ -2265,7 +1248,7 @@ subroutine hystpdf_new( &
       real, intent(in   ) :: AF,CF, PCBL
 
 
-      real :: PFi,PFl,QS,dQS,ENVFRAC
+      real :: PFi,PFl,ENVFRAC
       real :: TKo,QKo,QSTKo,DQSTKo,RH_BOX,T_ED,QPlKo,QPiKo
       real :: Ifactor,RAINRAT0,SNOWRAT0
       real :: FALLRN,FALLSN,VEsn,VErn,NRAIN,NSNOW,Efactor
@@ -2280,9 +1263,9 @@ subroutine hystpdf_new( &
       real :: tmpARR, CFR, aux, RH_EVAP
 
     
-      real :: TAU_MLT, QSICE, DQSI, Told, QKCLR
+      real :: QSICE, DQSI, Told, QKCLR
 
-      integer :: NS, NSMX, itr,L
+      integer :: itr
 
       logical, parameter :: taneff = .true.
       
@@ -2395,7 +1378,7 @@ iDT = 1.0/DT
 
           IF(QCL > 0.0) THEN
             IF(QPi > 0.0) THEN
-               ACCR = min(C_ACC*(QPl*MASS)*QCl, QCl)
+               ACCR = min(CLDPARAMS%C_ACC*(QPl*MASS)*QCl, QCl)
                QPl  = QPl + ACCR
                QCl  = QCl - ACCR
 
@@ -2403,7 +1386,7 @@ iDT = 1.0/DT
             END IF
 
             IF(QPi > 0.0) THEN
-               ACCR = min(C_ACC*(QPi*MASS)*QCl, QCl)
+               ACCR = min(CLDPARAMS%C_ACC*(QPi*MASS)*QCl, QCl)
                QPi  = QPi + ACCR
                QCl  = QCl - ACCR
                TE   = TE + LFBYCP*ACCR
@@ -2490,13 +1473,7 @@ iDT = 1.0/DT
 
             DQSTKo = DQSAT  ( TKo , PL, QSAT=QSTko   ) !use for rain
 
-
-            !  DQSTKo = dQS
-            ! QSTKo  = QS  + DQSTKo * ( TKo - TE )
             QSTKo  = MAX( QSTKo , 1.0e-7 )        
-
-            !RH_BOX = QKo/QSTKo
-
 
 !!!!! RAin falling !!!!!!!!!!!!!!!!!!!!!!!
             if (tmpARR .gt. 0.0) then 
@@ -2517,12 +1494,11 @@ iDT = 1.0/DT
 
 
             if ( ( RH_BOX < RH_EVAP ) .AND. ( DIAMrn > 0.00 ) .AND. &
-                  ( PL > 100. ) .AND. ( PL < REVAP_OFF_P ) ) then
+                  ( PL > 100. ) .AND. ( PL < CLDPARAMS%REVAP_OFF_P ) ) then
                DROPRAD=0.5*DIAMrn
                T_ED =  Efactor * DROPRAD**2 
                T_ED =  T_ED * ( 1.0 + DQSTKo*MAPL_ALHL/MAPL_CP )
-               !EVAP =  QPl*(1.0 - EXP( -C_EV_R * VErn * LANDSEAF * ENVFRAC * TinLAYERrn / T_ED ) )
-               EVAP =  QPl*(1.0 - EXP( -C_EV_R * VErn * LANDSEAF *ENVFRAC* TinLAYERrn / T_ED ) )
+               EVAP =  QPl*(1.0 - EXP( -CLDPARAMS%C_EV_R * VErn * LANDSEAF *ENVFRAC* TinLAYERrn / T_ED ) )
             ELSE
                EVAP = 0.0
             END if
@@ -2551,12 +1527,11 @@ iDT = 1.0/DT
 
 
             if ( ( RH_BOX < RH_EVAP ) .AND. ( DIAMsn > 0.00 ) .AND. &
-                  ( PL > 100. ) .AND. ( PL < REVAP_OFF_P ) ) then
+                  ( PL > 100. ) .AND. ( PL < CLDPARAMS%REVAP_OFF_P ) ) then
                FLAKRAD=0.5*DIAMsn
                T_ED =  Efactor * FLAKRAD**2   
                T_ED =  T_ED * ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP )
-               SUBL =  QPi*(1.0 - EXP( -C_EV_S * VEsn * LANDSEAF * ENVFRAC * TinLAYERsn / T_ED ) )
-               !SUBL =  QPi*(1.0 - EXP( -C_EV_S * VEsn * LANDSEAF * ENVFRAC * TinLAYERsn / T_ED ) )
+               SUBL =  QPi*(1.0 - EXP( -CLDPARAMS%C_EV_S * VEsn * LANDSEAF * ENVFRAC * TinLAYERsn / T_ED ) )
             ELSE
                SUBL = 0.0
             END IF
@@ -2635,7 +1610,7 @@ iDT = 1.0/DT
       real, intent(in ) :: RAIN,PR     ! in kg m**-2 s**-1, mbar
       real, intent(out) :: DIAM3,NTOTAL,W,VE
 
-      real :: RAIN_DAY,LAMBDA,A,B,SLOPR,DIAM1
+      real :: RAIN_DAY,SLOPR,DIAM1
 
       real, parameter  :: N0   = 0.08  ! # cm**-3
 
@@ -2713,107 +1688,6 @@ iDT = 1.0/DT
 
    end subroutine MICRO_AA_BB_3
 
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-function  icefraction_gf(tn) result(p_liq_ice)
-
- real, parameter :: T_ice   = 250.16
- real, parameter :: T_0     = 273.16
- real, intent(in) :: tn
- real :: p_liq_ice 
- 
-            if    (tn <= T_ice) then
-                p_liq_ice = 0.
-             elseif(  tn > T_ice .and. tn < T_0) then
-                p_liq_ice =  ((tn-T_ice)/(T_0-T_ice))**2
-             else
-                p_liq_ice= 1.
-             endif
-             
-             p_liq_ice= 1. - p_liq_ice
-             
- end function  icefraction_gf           
-!!!!
-
-
-   function ICE_FRACTION_0 (TEMP) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP
-      real             :: ICEFRCT
-
-      ICEFRCT  = 0.00
-      if ( TEMP <= T_ICE_ALL ) then
-         ICEFRCT = 1.000
-      else if ( (TEMP > T_ICE_ALL) .AND. (TEMP <= T_ICE_MAX) ) then
-         ICEFRCT = 1.00 -  ( TEMP - T_ICE_ALL ) / ( T_ICE_MAX - T_ICE_ALL ) 
-      end if
-      ICEFRCT = MIN(ICEFRCT,1.00)
-      ICEFRCT = MAX(ICEFRCT,0.00)
-
-      !!ICEFRCT = ICEFRCT**4
-      !ICEFRCT = ICEFRCT**ICEFRPWR
-
-   end function ICE_FRACTION_0
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   function ICE_FRACTION (TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND) RESULT(ICEFRCT)
-      real, intent(in) :: TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
-      real             :: ICEFRCT
-      real             :: ICEFRCT_0, ICEFRCT_1 
-
-  ! Anvil-Convective sigmoidal function like figure 7(right) of Hu et al 2010 in tropical convective regimes
-        ICEFRCT_0  = 0.00
-        if ( TEMP <= aT_ICE_ALL ) then
-           ICEFRCT_0 = 1.000
-        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-           ICEFRCT_0 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_0 = MIN(ICEFRCT_0,1.00)
-        ICEFRCT_0 = MAX(ICEFRCT_0,0.00)
-        ICEFRCT_0 = ICEFRCT_0**aICEFRPWR
-
-  ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) ) then
-        ! Over snow/ice
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**iICEFRPWR
-      else if (FRLAND > 0.1) then
-        ! Over Land
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= lT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > lT_ICE_ALL) .AND. (TEMP <= lT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - lT_ICE_ALL ) / ( lT_ICE_MAX - lT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**lICEFRPWR
-      else
-        ! Over Oceans
-        ICEFRCT_1  = 0.00
-        if ( TEMP <= oT_ICE_ALL ) then
-           ICEFRCT_1 = 1.000
-        else if ( (TEMP > oT_ICE_ALL) .AND. (TEMP <= oT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - oT_ICE_ALL ) / ( oT_ICE_MAX - oT_ICE_ALL ) ) )
-        end if
-        ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
-        ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
-        ICEFRCT_1 = ICEFRCT_1**oICEFRPWR
-      endif
-
-   ! Combine the Convective and Stratiform functions
-      ICEFRCT  = ICEFRCT_1*(1.0-CNV_FRACTION) + ICEFRCT_0*(CNV_FRACTION)
-
-   end function ICE_FRACTION
-   
    function GET_ALHX3(T) RESULT(ALHX3)
 
       real, intent(in) :: T
@@ -2823,7 +1697,7 @@ function  icefraction_gf(tn) result(p_liq_ice)
 
       T_X = T_ICE_MAX
 
-      if ( T < T_ICE_ALL ) then
+      if ( T < CLDPARAMS%T_ICE_ALL ) then
          ALHX3=MAPL_ALHS
       end if
 
@@ -2831,46 +1705,11 @@ function  icefraction_gf(tn) result(p_liq_ice)
          ALHX3=MAPL_ALHL
       end if
 
-      if ( (T <= T_X) .and. (T >= T_ICE_ALL) ) then
-         ALHX3 = MAPL_ALHS + (MAPL_ALHL-MAPL_ALHS)*( T - T_ICE_ALL ) /( T_X - T_ICE_ALL )
+      if ( (T <= T_X) .and. (T >= CLDPARAMS%T_ICE_ALL) ) then
+         ALHX3 = MAPL_ALHS + (MAPL_ALHL-MAPL_ALHS)*( T - CLDPARAMS%T_ICE_ALL ) /( T_X - CLDPARAMS%T_ICE_ALL )
       end if
 
    end function GET_ALHX3
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-   real function ICEFRAC(T,T_TRANS,T_FREEZ)
-
-      real, intent(in) :: T
-      real, intent(in),optional :: T_TRANS
-      real, intent(in),optional :: T_FREEZ
-
-      real :: T_X,T_F
-
-      if (present( T_TRANS )) then 
-         T_X = T_TRANS
-      else
-         T_X = T_ICE_MAX
-      endif
-      if (present( T_FREEZ )) then 
-         T_F = T_FREEZ
-      else
-         T_F = T_ICE_ALL
-      endif
-
-
-      if ( T < T_F ) ICEFRAC=1.000
-
-      if ( T > T_X ) ICEFRAC=0.000
-
-      if ( T <= T_X .and. T >= T_F ) then 
-         ICEFRAC = 1.00 - ( T - T_F ) /( T_X - T_F )
-      endif
-
-   end function ICEFRAC
-
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2889,25 +1728,24 @@ function  icefraction_gf(tn) result(p_liq_ice)
          AF               , &
          NL               , &
          NI               , & 
+         CNVFRC,SRFTYPE   , &  
          DQALL            , &
-         FQI  ,    &
-         CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND, &
+         FQI              , &
          needs_preexisting )
 
       real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
       real ,  intent(inout   )    ::  DQALL 
       real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
-      real ,  intent(in)    :: CF, AF, NL, NI
+      real ,  intent(in)    :: CF, AF, NL, NI, CNVFRC,SRFTYPE
       real, intent (out) :: FQI
-      real, intent(in) :: CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
       logical, intent (in)  :: needs_preexisting
       
-      real  :: DC, TEFF,QCm,DEP, &
-            QC, QS, RHCR, DQSL, DQSI, QI, TC, &
+      real  :: DC, TEFF,DEP, &
+            DQSL, DQSI, QI, TC, &
             DIFF, DENAIR, DENICE, AUX, &
-            DCF, QTOT, LHCORR,  QL, DQI, DQL, &
-            QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
-            QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
+            QTOT, LHCORR,  QL, DQI, DQL, &
+            QVINC, QSLIQ, CFALL,  &
+            QSICE, fQI_0, FQA, NIX
 
       DIFF = 0.0     
       DEP=0.0 
@@ -2927,7 +1765,7 @@ function  icefraction_gf(tn) result(p_liq_ice)
       if (TE .ge. T_ICE_MAX) then   !liquid cloud
          FQI   = 0.0
 
-      elseif(TE .le. T_ICE_ALL) then !ice cloud
+      elseif(TE .le. CLDPARAMS%T_ICE_ALL) then !ice cloud
 
          FQI   = 1.0
 
@@ -2941,7 +1779,7 @@ function  icefraction_gf(tn) result(p_liq_ice)
                    ! new 0518 this line ensures that only preexisting ice can grow by deposition.
                   ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
                     else
-                      fQi  =   ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+                      fQi  =   ice_fraction( TE, CNVFRC,SRFTYPE )
                     end if                      
                   return 
          end if 
@@ -3021,6 +1859,7 @@ function  icefraction_gf(tn) result(p_liq_ice)
 
 
    subroutine Pfreezing (     &             
+         PDFFLAG  , &
          ALPHA    , &
          PL       , &
          TE       , &
@@ -3036,18 +1875,17 @@ function  icefraction_gf(tn) result(p_liq_ice)
 
 
 
-      real ,   intent(in)         :: PL,ALPHA, QV, SC_ICE, AF, TE, &
-            QCl, QCi, QAl, QAi, CF  
-      real ,   intent(out)       ::    PF
+      integer, intent(IN)  :: PDFFLAG
+      real ,   intent(in)  :: PL,ALPHA, QV, SC_ICE, AF, TE, &
+                              QCl, QCi, QAl, QAi, CF  
+      real ,   intent(out) :: PF
 
-
-      real   :: qt, QCx, QSn, tmpARR, CFALL, QVx, CFio, QA, QAx, QC, QI, QL, DQSx
-      real   :: sigmaqt1, sigmaqt2, qsnx, aux
+      real   :: qt, QCx, QSn, tmpARR, CFALL, QVx, CFio, QA, QC, DQSx
+      real   :: sigmaqt1, sigmaqt2, qsnx
 
 
       QA = QAl + QAi  
       QC=QCl+QCi 
-      !CFALL = AF+CF 
       
       CFALL = AF
 
@@ -3056,14 +1894,10 @@ function  icefraction_gf(tn) result(p_liq_ice)
          return 
       end if
 
-
       QSn = QSATIC(         &
             TE   , &
             PL*100.0 , DQ=DQSx ) !only with respect to ice
-
       QSn  = MAX( QSn , 1.0e-9 )  
-
-
 
       tmpARR = 0.0    
       if  ( CFALL < 0.99 ) then 
@@ -3072,14 +1906,10 @@ function  icefraction_gf(tn) result(p_liq_ice)
 
       QCx = QC*tmpARR
       QVx = ( QV - QSn*CFALL )*tmpARR
-      !      QVx = QV*tmpARR
 
       qt =  QCx  +  QVx
-      !qt=QVx
 
       CFio=0.0
-
-  !QSn =  QSn*SC_ICE
 
       if(pdfflag.lt.2) then
            sigmaqt1  = max(ALPHA, 0.01)*QSn
@@ -3087,8 +1917,6 @@ function  icefraction_gf(tn) result(p_liq_ice)
       elseif(pdfflag.eq.2) then
          ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
          ! for triangular, skewed r : sigmaqt1 < sigmaqt2
-         ! try: skewed right below 500 mb
-!!!       if(pl.lt.500.) then
          sigmaqt1  = ALPHA*QSn
          sigmaqt2  = ALPHA*QSn
       elseif(pdfflag .eq. 4) then !lognormal (sigma is dimmensionless)
@@ -3125,7 +1953,7 @@ function  icefraction_gf(tn) result(p_liq_ice)
       integer, intent(in)                             :: IM,JM,LM
       real ,   intent(inout), dimension(:,:,:)   :: TE,QCL,QCI, QAL, QAI, NI, NL
 
-      real ,   dimension(im,jm,lm)              :: fQi,dQil, DQmax, QLTOT, QITOT, FQAL, FQAI, dNil, FQA
+      real ,   dimension(im,jm,lm)              :: dQil, DQmax, QLTOT, QITOT, dNil, FQA
 
       QITOT= QCI+QAI
       QLTOT=QCL + QAL
@@ -3142,8 +1970,8 @@ function  icefraction_gf(tn) result(p_liq_ice)
       DQmax  = 0.0
 
       ! freeze liquid instantaneosly below -40 C
-      where( TE <= T_ICE_ALL )
-         DQmax = (T_ICE_ALL - TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
+      where( TE <= CLDPARAMS%T_ICE_ALL )
+         DQmax = (CLDPARAMS%T_ICE_ALL - TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
          dQil = min(QLTOT , DQmax)  
       end where
 
@@ -3222,5 +2050,5 @@ function  icefraction_gf(tn) result(p_liq_ice)
       RETURN
    END FUNCTION erf_app
 
-
+      
 end module cldmacro

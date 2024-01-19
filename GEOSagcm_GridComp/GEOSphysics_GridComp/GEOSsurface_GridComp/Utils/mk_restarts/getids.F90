@@ -10,18 +10,6 @@ module mk_restarts_getidsMod
   public :: to_radian                 ! should really be replaced with "MAPL_DEGREES_TO_RADIANS" 
   public :: haversine
 
-  ! Copies of the following subroutines 
-  !
-  !    to_radian()
-  !    haversine()
-  !    ReadCNTilFile()   [renamed here to ReadTileFile_RealLatLon()]
-  !
-  ! also exist in
-  !   
-  !   ./GEOSsurface_GridComp/Shared/Raster/comp_CATCHCN_AlbScale_parameters.F90
-  !
-  ! - reichle, 4 Mar 2020
-
   interface GetIds
      module procedure GetIds_fast_1p
      module procedure GetIds_accurate_mpi
@@ -448,10 +436,10 @@ contains
                   icl_ityp1 = iclass(sub_ityp1)
                   
                   do i = 1,nplus
-                     if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
-                          iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
-                          (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
-                          iclass(ityp_new)==iclass(sub_ityp2(i))))) then
+                     if(  ( sub_fevg1(i)>fmin .and. ( ityp_new==sub_ityp1(i) .or. iclass(ityp_new)==iclass(sub_ityp1(i)) ) ) &
+                          .or.                                                                                               &
+                          ( sub_fevg2(i)>fmin .and. ( ityp_new==sub_ityp2(i) .or. iclass(ityp_new)==iclass(sub_ityp2(i)) ) ) &
+                          ) then
                         
                         sub_dist = haversine(to_radian(lato(n)), to_radian(lono(n)), &
                              sub_lat(i), sub_lon(i))
@@ -556,7 +544,7 @@ contains
         integer , intent (inout)  :: ntiles
         real, pointer, dimension (:)    :: xlon, xlat
         integer, optional, intent(IN) :: mask
-        integer :: n,icnt,ityp, nt, umask, i
+        integer :: n,icnt,ityp, nt, umask, i, header
         real    :: xval,yval, pf
         real,  allocatable :: ln1(:), lt1(:)
       
@@ -568,11 +556,26 @@ contains
    
       open(11,file=InCNTileFile, &
            form='formatted',action='read',status='old')
+
+      ! first read number of lines in the til file header
+      ! -------------------------------------------------
+      header = 5
+      read (11,*, iostat=n) Nt
+      do i = 1, header -1
+         read (11,*)
+      end do
+      read (11,*,IOSTAT=n)ityp,pf,xval, yval
+      if(n /= 0) header = 8
+
+      rewind (11)
+
+      ! read the tile file
+      !-------------------
       read (11,*, iostat=n) Nt
    
       allocate(ln1(Nt),lt1(Nt))
-   	  
-      do n = 1,7 ! skip header
+
+      do n = 1,header-1 ! skip header
          read(11,*)
       end do
      

@@ -21,6 +21,7 @@
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
+      public :: make_cnv_ice_drop_number
     
        integer, parameter ::  &
         nsmx_par = 20, npgauss=10 !maximum number of 	
@@ -29,7 +30,7 @@
     
     type :: AerProps            
 	sequence 
-          real,  dimension(nsmx_par)  :: num !Num conc m-3
+          real, dimension(nsmx_par)  :: num !Num conc m-3
           real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
     	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
@@ -39,7 +40,7 @@
 	  real, dimension(nsmx_par)  :: forg ! mass fraction of organics
 	  integer   :: nmods  ! total number of modes (nmods<nmodmax)
       end type AerProps     
-    
+   
       interface assignment (=)
          module procedure copy_aer
       end interface 
@@ -111,7 +112,7 @@
        grav_ice, pi_ice ,alfa_ice, beta_ice, shom_ice, koft_ice, &
        dliq_ice, normv_ice, g1_ice, g2_ice, gdoin_ice, z_ice, doin_ice, & 
        vmin_ice, vmax_ice, miuv_ice, sigmav_ice, smax_ice, &
-       norg_ice, sigorg_ice, dorg_ice, dbc_ice, sigbc_ice 
+       norg_ice, sigorg_ice, dorg_ice, dbc_ice, sigbc_ice, S_CCN(3) 
      
      
         real*8:: lambda_ice, kdust_ice, kbc_ice, shdust_ice, & 
@@ -185,6 +186,8 @@
       DATA Tmin_ice /185.d0/     ! Min freezing T (K) for prop correlations
       DATA Pmin_ice /100.0d0/     ! Minimum pressure (Pa)
       DATA Thom /236.0d0/   !Homogeneous freezing T (K)
+      
+      DATA S_CCN /.001, 0.004, 0.01/ !CCN at supersaturation diagnostics 
 
 
       !=======end of decalarations================================================================
@@ -197,6 +200,7 @@
   
         real*8 :: daux, sigaux, ahet_bc
         integer ::ix
+
        call AerConversion_base
 
        !heterogeneous freezing!!!!!!!!!!!!
@@ -230,9 +234,6 @@
          frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
 			       /sigaux/sq2_par))		       
 
-
-
-
       end subroutine aer_cloud_init
   
  
@@ -248,8 +249,6 @@
 ! Aer_Props = AerProps  structure containing the aerosol properties Aerosol number concentration (Kg-1)
 ! npre_in =  number concentration of prexisting ice crystals (#/Kg)
 ! dpre_in =  mass-weighted diameter of prexisting ice crystals (m)
-! ccn_diagr8 = array of supersaturations for CCN diagnostics (in-out) 
-                           !also returns ccn concentration at the given supersat (m-3)
 ! Ndropr8 = Current droplet number concentration (Kg -1)
 ! qc = Liquid water mixing ratio (Kg/Kg)
 ! use_average_v =  .false. integrate over the updraft distribution. True: use the mean vertical velocity
@@ -265,6 +264,7 @@
 ! INimmr8 =  Nucleated nc by droplet immersion freezing in mixed-phase clouds (Kg-1)
 ! dINimmr8 = Ice crystal number tendency by immersion freezing (Kg-1 s-1)
 ! Ncdepr8 = Nucleated nc by deposition ice nucleation (Kg-1)
+! ccn_diagr8 = returns ccn concentration at the given supersat defined by S_CCN = /.001, 0.004, 0.01/ (m-3)
 
 ! sc_icer8 = Critical saturation ratio in cirrus 
 ! ndust_depr8 = deposition ice nuclei particles that are dust 
@@ -312,7 +312,6 @@
      
       !Variables for liquid       
        real*8 ::   nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
-       real*8, allocatable, dimension(:) :: smax_diag
       !variables for ice
         
        real*8          :: nhet, nice, smaxice, nlim, air_den, &
@@ -356,6 +355,7 @@
       ndust_imm = zero_par
       ndust_dep = zero_par
       pfrz_inc_r8 = zero_par
+      ccn_diagr8 =  zero_par
       
       nact=zero_par
       smax=zero_par                    
@@ -368,7 +368,7 @@
       
       if (sum(Aer_Props%num) .le. 1.0e2) then  !Just get out if too few aerosol 
        return 
-     end if 				   
+      end if 				   
 					   
     !get input into local variables
     
@@ -384,11 +384,10 @@
       allocate (amfs_par(nmodes)) !! molar mass of insoluble fraction    
       allocate (deni_par(nmodes))  ! density of insoluble fraction
       allocate (sg_par(nmodes))  ! modal supersaturation 
-      allocate (smax_diag(size(ccn_diagr8)))  !diagnostic supersat
       allocate (kappa_par(nmodes)) !Hygroscopicity parameter
 
       
-      smax_diag= 0.01
+     
       dpg_par  = zero_par
       vhf_par  = zero_par
       ams_par  = zero_par
@@ -435,7 +434,7 @@
           ams_par  = 18.0e-3*1.7*3.0/kappa_par
       elsewhere 
           ams_par =900.0e-3
-	  tp_par = 0.0
+	  	  tp_par = 0.0
       end where
       
       amfs_par= 1.0
@@ -457,9 +456,9 @@
   if  (tparc .gt. 235.0) then  ! lower T for liquid water activation 
       if (antot .gt. 1.0) then !only if aerosol is present
        ! Get CCN spectra   		    	
-       call ccnspec (tparc,pparc,nmodes)	            
+        call ccnspec (tparc,pparc,nmodes)	            
                   
-	   if (wparc .ge. 0.005) then
+	    if (wparc .ge. 0.005) then
            if (act_param .gt. 1) then !ARG(2000) activation              		       
                 
 		        call arg_activ (wparc,0.d0,nact,smax) !      
@@ -467,20 +466,20 @@
 	      else !Nenes activation	      
       
     	          call pdfactiv (wparc,0.d0,nact,smax) !      
-              endif 
-       	   endif
+          endif 
+        endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
          smaxliqr8=max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
-        smax_diag=ccn_diagr8 
+         
 	  				   
-         do k =1,  size (smax_diag)	 
-	     call ccn_at_super (smax_diag(k), ccn_at_s)
-             ccn_diagr8 (k) = ccn_at_s!m-3
-	 end do
+         do k =1, 3!  size (ccn_diagr8)	
+	     	call ccn_at_super (S_CCN(k), ccn_at_s)
+            ccn_diagr8 (k) = ccn_at_s!m-3
+	 	 end do
 	
       end if 
   end if 
@@ -606,7 +605,7 @@
        ! 3- Barahona (2009) Asumme a maximum freezing fraction then scales it according to CNT
        ! 4- PDA08, using fixed size distributions.
        ! 5- Phillips 2013. Assumes monodisperse for bc and organics 
-       ! 6 - Ulrich 2017 (default) 
+       ! 6 - Ullrich 2017 (default) 
        purehet_ice= .FALSE.  !True supresses homogeneous nucleation      
        purehom_ice= .FALSE.   ! True supresses heterogeneous nucleation   
 
@@ -639,8 +638,8 @@
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
                   
 
-   	        	  !call IceParam (sigwparc,  &
-                	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+   	        	  call IceParam (sigwparc,  &
+                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
 		  end if 
 		   
 		  sc_ice = 1.0
@@ -694,7 +693,6 @@
     deallocate (amfs_par)
     deallocate (deni_par)
     deallocate (sg_par)
-    deallocate (smax_diag)
     
     deallocate (kappa_par)
 
@@ -1243,14 +1241,14 @@ end subroutine getINsubset
       !ACTIVATE STUFF      
       
 	  SMI=MAX(SMI, 1.0e-5)
-          aux =alfa*wparc*G
+      aux =alfa*wparc*G
 	  aux = aux*sqrt(aux)/(2.d0*pi_par*980.d0*beta)
 	  citai = 0.667*Akoh*SQRT(alfa*wparc*G)
 
 	  auxx=0.0 
 	  DO INDEX =1, nmd_par
-	   if (tp_par(INDEX) .gt. 0.0) then 
-		   fi=0.5*exp(2.5*sig_par(INDEX)) !remember: isg is actually log(sig)
+	   if (tp_par(INDEX) .gt. 0.0) then !BUG corrected in fi, DONIF 2023. 
+		   fi=0.5*exp(2.5*sig_par(INDEX)*sig_par(INDEX)) !remember: sigpar is actually log(sig)
 		   gi=1.0+0.25*sig_par(INDEX)		   
 		   nui=aux/tp_par(INDEX)		   		   
 		   aux1=fi*((citai/nui)*sqrt(citai/nui)) + gi*(SMI(INDEX)*SMI(INDEX) &
@@ -1296,8 +1294,8 @@ end subroutine getINsubset
   subroutine ccn_at_super (super, ccn_at_s)
 
       integer :: j, I
-      real*8  :: dlgsg,  dlgsp, orism5, ndl, nds, &
-      super, ccn_at_s   
+
+      real*8  :: dlgsg,  dlgsp, orism5, ndl, nds, ccn_at_s, super   
 
        ndl=0d0 
 
@@ -3452,7 +3450,7 @@ if (.false.) then
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
-                       nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
+                       nssoot= 7.463*max(exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !bug 2021 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
                        
 
@@ -4044,7 +4042,82 @@ end function
 
 
 
+subroutine make_cnv_ice_drop_number(Nd, Ni, Nad, z, zcb, T, qlcn, qicn, cf, nimm, rl_scale, ri_scale)
 
+	! estimate convective Nd and Ni profiles.      
+    !Written by Donifan Barahona
+
+    real, intent (in) :: Nad, z, zcb !Nadiabatic, Z, Zcb  
+    real, intent (in) :: T, qlcn, qicn, cf, rl_scale, ri_scale, nimm 
+    real, intent (out) :: Nd, Ni
+     
+    real :: r3ad, Z12, alf, bet, gam_ad, LWCad 
+    real :: rei3, mui, zkm 
+    real, parameter :: max_rel3 =  22.e-6**3.
+    real, parameter :: min_rel3 =  4.e-6**3.
+    real, parameter :: max_rei3 =  300.e-6**3.
+    real, parameter :: min_rei3 =  5.e-6**3.
+    real, parameter :: ice_den =  900.
+    
+    
+      !========liquid droplet concentration
+      !Loosely based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+     
+     alf=2.8915E-08*(T*T) - 2.1328E-05*T + 4.2523E-03
+     bet=exp(3.49996E-04*T*T - 2.27938E-01*T + 4.20901E+01)
+     gam_ad =  alf/bet
+     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC
+     
+     r3ad = max(min(3.63e-4*LWCad*rl_scale/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+     Z12  =  4.8e-12*Nad/gam_ad !      
+      
+     if (z-zcb .lt. z12) then
+     	Nd  = Nad
+     else
+     	Nd =  min(Nad, 3.6e-4*qlcn/r3ad)
+     end if      
+     
+      !=========ice crystal concentration
+    
+      zkm =  z/1000. !to km
+      rei3 =  0.3667*zkm*zkm - 12.014*zkm + 113.86 !based on van Diedenhoven et al. 2016, GRL, Fig 2
+      rei3 =  min(max((1.e-6*rei3*ri_scale)**3., min_rei3), max_rei3)
+      mui = MUI_HEMP(T)
+      !assume gamma distribution
+      Ni = (mui+3.)*(mui+3.)/(mui+2.)/(mui+1.)
+      Ni = 2.15*Ni*qicn/ice_den/rei3/max(cf, 0.001) 
+      Ni =  max(Ni, nimm) 
+
+    
+end subroutine make_cnv_ice_drop_number     
+    
+
+
+!cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
+         !Returns the value of the dispersion parameter according to Heymsfield et al 2002, Table3.
+         !T is in K
+         ! Written by Donifan Barahona donifan.barahona@nasa.gov
+         !**********************************
+         FUNCTION MUI_HEMP(T)
+
+
+            real :: MUI_HEMP
+            REAL, intent(in)  :: T
+            REAL              :: TC, mui, lambdai
+            TC=T-273.15
+
+            TC=MIN(MAX(TC, -70.0), -15.0)
+
+            if (TC .gt. -27.0) then 
+               lambdai=6.8*exp(-0.096*TC)
+            else
+               lambdai=24.8*exp(-0.049*TC)
+            end if
+
+            mui=(0.13*(lambdai**0.64))-2.
+            MUI_HEMP=max(mui, 1.5_r8)
+
+         END FUNCTION MUI_HEMP
 
 !    END ICE PARAMETERIZATION DONIF
 !

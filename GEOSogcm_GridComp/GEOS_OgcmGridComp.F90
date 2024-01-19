@@ -1,6 +1,5 @@
 !  $Id$
 #include "MAPL_Generic.h"
-
 !=============================================================================
 !BOP
 
@@ -19,11 +18,8 @@ module GEOS_OgcmGridCompMod
   use GEOS_OradBioGridCompMod,           only : OradBioSetServices => SetServices
   use GEOS_OradGridCompMod,              only : OradSetServices    => SetServices
 
-  use GuestOcean_GridCompMod,            only : GuestOceanSetServices => SetServices
-  use GEOS_CICEDynaGridCompMod,          only : SeaIceSetServices     => SetServices
-  use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices => SetServices
-
-  use ice_prescribed_mod,                only : ice_nudging                     
+  use GEOS_OceanGridCompMod,             only : OceanSetServices => SetServices
+  use GEOS_SeaIceGridCompMod,            only : SeaIceSetServices => SetServices
 
   implicit none
   private
@@ -36,7 +32,8 @@ module GEOS_OgcmGridCompMod
 ! 
 !   {\tt GEOS\_Ogcm} is a light-weight gridded component that implements the
 !      interface to the ogcm components. The ogcm computational components
-!      (MOMx/GuestOcean, CICEx, OceanRadiation, OceanBioGeochemistry, etc) are its children.
+!      (MOMx/Ocean, CICEx/GEOS_Seaice, OceanRadiation, OceanBioGeochemistry, etc)
+!      are its children.
 !      This component currently serves as an interface between the exchange
 !      grid and the ocean's grid. Its ``natural'' grid is the ocean part of the 
 !      exchange grid, and all its imports and exports are on this grid. The natural
@@ -53,7 +50,6 @@ module GEOS_OgcmGridCompMod
 !
 !EOP
 
-  integer, parameter :: NUM_3D_ICE_TRACERS=3
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
@@ -62,7 +58,12 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_DATASEAONLY
   integer            :: DO_DATAICE
   integer            :: DO_OBIO
-  integer            :: DO_DATAATM
+  integer            :: DO_DATA_ATM4OCN
+
+  logical          :: ocean_extData
+  logical          :: ocean_sssData
+  logical          :: seaIceT_extData
+
 
 !if DO_OBIO =/ 0
   integer, parameter :: NUM_DUDP = 5
@@ -83,8 +84,6 @@ module GEOS_OgcmGridCompMod
   integer ::        OBIO
   integer ::        ORAD
   integer ::      SEAICE
-  integer ::      SEAICEr
-  integer ::      SEAICEd
   integer ::       OCEAN
 
   logical ::      DUAL_OCEAN
@@ -179,26 +178,28 @@ contains
     if (DO_CICE_THERMO /= 0) then
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then
+          call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+          VERIFY_(STATUS)
+       endif 
     else
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1
     endif
 
-! this get resource is repeated in Guest - change both together!
+! this get resource is repeated in Ocean - change both together!
     call MAPL_GetResource ( MAPL, DO_DATASEAONLY, Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATAICE,     Label="USE_DATASEAICE:" ,     DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,     Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, OCEAN_NAME,     Label="OCEAN_NAME:",          DEFAULT="MOM", __RC__ )
     
 ! following logic is to make sure: configuration of cetain components (CICE, OBIO, etc) has associated models "active."
-    if (DO_DATAATM/=0) then
+    if (DO_DATA_ATM4OCN/=0) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
@@ -206,6 +207,12 @@ contains
        _ASSERT(DO_DATAICE    /=0,'needs informative message')
        _ASSERT(DO_OBIO       ==0,'needs informative message')
     end if
+
+    call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    if (DO_DATASEAONLY==1) then ! Fake-ocean (i.e., data ocean). 
+      call MAPL_GetResource (MAPL, ocean_sssData,  Label="OCEAN_SSS_DATA:",  DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+      call MAPL_GetResource (MAPL, seaIceT_extData,Label="SEAICE_THICKNESS_EXT_DATA:", DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+    endif
 
 ! Set the Run and initialize entry points
 !----------------------------------------
@@ -218,13 +225,6 @@ contains
        call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run       , RC=STATUS )
        VERIFY_(STATUS)
     end if
-
-! Initialize these IDs (0 means not used)
-! ---------------------------------------
-    SEAICE = 0
-    SEAICEr = 0
-    SEAICEd = 0
-
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
@@ -240,21 +240,11 @@ contains
        VERIFY_(STATUS)
     end if
     
-    if (DO_DATAICE/=0) then
-       SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=DataSeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=SeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-     end if
+    SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=SeaIceSetServices, RC=STATUS)
+    VERIFY_(STATUS)
 
-     if (DUAL_OCEAN) then ! that is, running dual ocean
-       SEAICEd = MAPL_AddChild(GC, NAME='SEAICEdata', SS=DataSeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-     endif
-
-     OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=GuestOceanSetServices, RC=STATUS) 
-     VERIFY_(STATUS)
+    OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=OceanSetServices, RC=STATUS) 
+    VERIFY_(STATUS)
    
 ! Set the state variable specs.
 ! -----------------------------
@@ -384,43 +374,35 @@ contains
   VERIFY_(STATUS)
 
   if (DO_OBIO/=0) then
-    call OBIO_SetServices(DO_DATAATM, RC)
+    call OBIO_SetServices(DO_DATA_ATM4OCN, RC)
   end if
   
 ! These are supposed to be friendly to us
 !----------------------------------------------
 
-  call MAPL_AddImportSpec(GC,                            &
-    SHORT_NAME         = 'HI',                                &
-    LONG_NAME          = 'seaice_skin_layer_mass',            &
-    UNITS              = 'kg',                                &
-    DIMS               = MAPL_DimsTileOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-    DEFAULT            = 0.0,                                 &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+  if (.not. seaIceT_extData) then
+    if (DO_CICE_THERMO <= 1) then  
+         call MAPL_AddImportSpec(GC,                               &
+              SHORT_NAME         = 'HI',                           &
+              LONG_NAME          = 'seaice_skin_layer_mass',       &
+              UNITS              = 'kg',                           &
+              DIMS               = MAPL_DimsTileOnly,              &
+              VLOCATION          = MAPL_VLocationNone,             &
+              DEFAULT            = 0.0,                            &
+              _RC)
+    endif
 
-  call MAPL_AddImportSpec(GC,                            &
-    SHORT_NAME         = 'SI',                                &
-    LONG_NAME          = 'seaice_skin_salinity',              &
-    UNITS              = 'psu',                               &
-    DIMS               = MAPL_DimsTileOnly,                   &
-    VLOCATION          = MAPL_VLocationNone,                  &
-    DEFAULT            = 0.0,                                 &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                            &
+      SHORT_NAME         = 'SI',                           &
+      LONG_NAME          = 'seaice_skin_salinity',         &
+      UNITS              = 'psu',                          &
+      DIMS               = MAPL_DimsTileOnly,              &
+      VLOCATION          = MAPL_VLocationNone,             &
+      DEFAULT            = 0.0,                            &
+      _RC)
+  endif
 
   if (DO_CICE_THERMO /= 0) then  
-     call MAPL_AddImportSpec(GC,                            &
-          SHORT_NAME         = 'FRACICE',                         &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsTileOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
      call MAPL_AddImportSpec(GC,                            &
           SHORT_NAME         = 'TI',                                &
           LONG_NAME          = 'seaice_skin_temperature',           &
@@ -429,8 +411,29 @@ contains
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = MAPL_TICE,                           &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
+  else
+     if (.not. seaIceT_extData) then
+        call MAPL_AddImportSpec(GC,                                 &
+             SHORT_NAME         = 'TI',                             &
+             LONG_NAME          = 'seaice_skin_temperature',        &
+             UNITS              = 'K',                              &
+             DIMS               = MAPL_DimsTileOnly,                &
+             VLOCATION          = MAPL_VLocationNone,               &
+             DEFAULT            = MAPL_TICE,                        &
+             _RC)
+     endif
+  endif
+
+  if (DO_CICE_THERMO == 1) then  
+     call MAPL_AddImportSpec(GC,                            &
+          SHORT_NAME         = 'FRACICE',                         &
+          LONG_NAME          = 'fractional_cover_of_seaice',        &
+          UNITS              = '1',                                 &
+          DIMS               = MAPL_DimsTileOnly,                   &
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'VOLICE',                            &
@@ -440,8 +443,7 @@ contains
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'VOLSNO',                            &
@@ -451,8 +453,7 @@ contains
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'ERGICE',                            &
@@ -462,8 +463,7 @@ contains
           VLOCATION          = MAPL_VLocationNone,                  &
           UNGRIDDED_DIMS     = (/NUM_ICE_LAYERS,NUM_ICE_CATEGORIES/),&
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'ERGSNO',                            &
@@ -473,8 +473,7 @@ contains
           VLOCATION          = MAPL_VLocationNone,                  &
           UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS,NUM_ICE_CATEGORIES/),&
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'TAUAGE',                            &
@@ -484,8 +483,7 @@ contains
           DIMS               = MAPL_DimsTileOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'MPOND',                            &
@@ -495,100 +493,88 @@ contains
           DIMS               = MAPL_DimsTileOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           DEFAULT            = 0.0,                                 &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  else
-     call MAPL_AddImportSpec(GC,                            &
-          SHORT_NAME         = 'TI',                                &
-          LONG_NAME          = 'seaice_skin_temperature',           &
-          UNITS              = 'K',                                 &
-          DIMS               = MAPL_DimsTileOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          DEFAULT            = MAPL_TICE,                           &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
   endif
 
-     call MAPL_AddImportSpec(GC                     ,&
+  call MAPL_AddImportSpec(GC                     ,&
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'LWFLX'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+  call MAPL_AddImportSpec(GC,                     &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'SHFLX'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+  call MAPL_AddImportSpec(GC,                     &
         LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'QFLUX'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+  call MAPL_AddImportSpec(GC,                     &
         LONG_NAME          = 'ocean_snowfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'SNOW'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  ) 
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+  call MAPL_AddImportSpec(GC,                     &
         LONG_NAME          = 'ocean_rainfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'RAIN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
+  if (DO_CICE_THERMO <= 1) then  
     call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'FRESH',                           &
          LONG_NAME          = 'fresh_water_flux_due_to_thermodynamics', &
          UNITS              = 'kg m-2 s-1',                      &
          DIMS               = MAPL_DimsTileOnly,                     &
          VLOCATION          = MAPL_VLocationNone,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+         _RC)
 
-    call MAPL_AddImportSpec(GC,                                  &
+  call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'FSALT',                           &
          LONG_NAME          = 'salt_flux_due_to_thermodynamics', &
          UNITS              = 'kg m-2 s-1',                      &
          DIMS               = MAPL_DimsTileOnly,                     &
          VLOCATION          = MAPL_VLocationNone,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+         _RC)
 
-    call MAPL_AddImportSpec(GC,                                  &
+  call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'FHOCN',                           &
          LONG_NAME          = 'heat_flux_due_to_thermodynamics', &
          UNITS              = 'W m-2',                           &
          DIMS               = MAPL_DimsTileOnly,                     &
          VLOCATION          = MAPL_VLocationNone,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+         _RC)
+  endif
 
-    call MAPL_AddImportSpec(GC,                                  &
+  call MAPL_AddImportSpec(GC,                                  &
          SHORT_NAME         = 'PEN_OCN',                         &
          LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer', &
          UNITS              = 'W m-2',                           &
          DIMS               = MAPL_DimsTileOnly,                 &
          VLOCATION          = MAPL_VLocationNone,                &
          RC=STATUS  )
-    VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
 !  !EXPORT STATE:
 
@@ -685,22 +671,32 @@ contains
 
   if (DO_CICE_THERMO == 0) then  
      call MAPL_AddExportSpec(GC,                            &
-          SHORT_NAME         = 'FRACICE',                           &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsTileOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  else
+          SHORT_NAME         = 'FRACICE',                   &
+          LONG_NAME          = 'fractional_cover_of_seaice',&
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileOnly,           &
+          VLOCATION          = MAPL_VLocationNone,          &
+          _RC)
+
+     if (seaIceT_extData) then
+       call MAPL_AddExportSpec(GC,                            &
+            SHORT_NAME         = 'SEAICETHICKNESS',           &
+            LONG_NAME          = 'seaice_thickness',          &
+            UNITS              = 'm',                         &
+            DIMS               = MAPL_DimsTileOnly,           &
+            VLOCATION          = MAPL_VLocationNone,          &
+            _RC)
+     endif
+
+  elseif (DO_CICE_THERMO == 1) then  
+
      call MAPL_AddExportSpec(GC,                                  &
           SHORT_NAME         = 'TAUXIBOT',                           &
           LONG_NAME          = 'eastward_stress_at_base_of_ice',    &
           UNITS              = 'N m-2',                             &
           DIMS               = MAPL_DimsTileOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
      
      call MAPL_AddExportSpec(GC,                                  &
           SHORT_NAME         = 'TAUYIBOT',                           &
@@ -708,14 +704,39 @@ contains
           UNITS              = 'N m-2',                             &
           DIMS               = MAPL_DimsTileOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
+  else  
+     call MAPL_AddExportSpec(GC,                            &
+          SHORT_NAME         = 'FRACICE',                           &
+          LONG_NAME          = 'fractional_cover_of_seaice',        &
+          UNITS              = '1',                                 &
+          DIMS               = MAPL_DimsTileOnly,                   &
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          _RC)
+  
   end if
+
+  if (DO_CICE_THERMO == 2) then
+     call MAPL_AddExportSpec ( GC   ,                          &
+          SHORT_NAME = 'SURFSTATE',                            &
+          CHILD_ID   = SEAICE ,                                &
+                                                           _RC )
+  endif
   
 !EOS
 
 ! Connections between the children
 !---------------------------------
+
+#ifdef BUILD_MIT_OCEAN
+  call MAPL_AddConnectivity ( GC,   &
+       SHORT_NAME  = (/'ICESTATES'/), &
+       DST_ID = OCEAN,               &
+       SRC_ID = SEAICE,             &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+#endif
 
   if(DO_DATASEAONLY==0) then
 !   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
@@ -741,15 +762,29 @@ contains
           SHORT_NAME  = (/'FRACICE'/), & 
           DST_ID = OCEAN,             &
           SRC_ID = SEAICE,            &
-          RC=STATUS  )
-  VERIFY_(STATUS)
+          _RC)
+
+  if (seaIceT_extData) then
+    call MAPL_AddConnectivity ( GC,  &
+         SHORT_NAME  = (/'SEAICETHICKNESS'/), & 
+         DST_ID = OCEAN,             &
+         SRC_ID = SEAICE,            &
+         _RC)
+  endif
 
   if(DUAL_OCEAN) then 
      call MAPL_AddConnectivity ( GC,  &
-          SRC_NAME  = (/'FRACICE'/), & 
+          SRC_NAME  = (/'FRACICEd'/), & 
           DST_NAME  = (/'FRACICEd'/), & 
           DST_ID = OCEAN,             &
-          SRC_ID = SEAICEd,           &
+          SRC_ID = SEAICE,            &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     ! ice nudging needs it 
+     call MAPL_AddConnectivity ( GC,  &
+          SHORT_NAME  = (/'SS_FOUND'/), & 
+          DST_ID = SEAICE,            &
+          SRC_ID = OCEAN,             &
           RC=STATUS  )
      VERIFY_(STATUS)
   endif
@@ -779,13 +814,49 @@ contains
             SRC_ID = SEAICE,            &
             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddConnectivity ( GC,   &
+          SHORT_NAME  = (/'UWC','VWC'/), &
+          SRC_ID = OCEAN,                &
+          DST_ID = SEAICE,               &
+          _RC)
      endif
   end if
 
+  if (DO_CICE_THERMO > 1) then
+     call MAPL_AddConnectivity ( GC,                          &
+          SRC_NAME  = (/'TS_FOUND', 'SS_FOUND', 'FRZMLT  '/), & 
+          DST_NAME  = (/'SST     ', 'SSS     ', 'FRZMLT  '/), & 
+          DST_ID    = SEAICE,                                 &
+          SRC_ID    = OCEAN,                                  &
+          _RC )
+  endif
+
 ! Children's imports are in the ocean grid and are all satisfied
-!   by OGCM from exchange grid quantities.
+! by OGCM from exchange grid quantities.
   
-  call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  if (ocean_extData) then
+
+    if (DO_DATASEAONLY==1) then ! fake-ocean (i.e., data ocean)
+      if (ocean_sssData .or. seaIceT_extData) then
+        if (ocean_sssData .and. (.not. seaIceT_extData)) then ! only data_sss only
+         call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_SSS  ", "DATA_ICEC ","DATA_KPAR "], [ocean,ocean,seaice,orad], RC=STATUS  )
+        endif
+        if ((.not. ocean_sssData) .and. seaIceT_extData) then ! only data_sit only
+         call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_ICEC ", "DATA_SIT  ","DATA_KPAR "], [ocean,seaice,seaice,orad], RC=STATUS  )
+        endif
+        ! both data_sss and data_sit
+        call MAPL_TerminateImport   ( GC, ["DATA_SST  ","DATA_SSS  ", "DATA_ICEC ", "DATA_SIT  ", "DATA_KPAR "], [ocean,ocean,seaice,seaice,orad], RC=STATUS  )
+      else
+        ! no data_sss and data_sit
+        call MAPL_TerminateImport    ( GC, ["DATA_SST  ",             "DATA_ICEC ","DATA_KPAR "], [ocean,seaice,orad], RC=STATUS  )
+      endif
+
+    else ! we got real ocean and sea ice in case of coupled model, and only data KPAR is used.
+      call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
+    endif
+  else
+    call MAPL_TerminateImport ( GC, ALL=.true., __RC__)
+  endif
 
 ! Set the Profiling timers
 ! ------------------------
@@ -821,9 +892,9 @@ contains
  
     contains
 
-    subroutine OBIO_SetServices(DO_DATAATM, RC)
+    subroutine OBIO_SetServices(DO_DATA_ATM4OCN, RC)
     
-      integer,                intent(IN   ) ::  DO_DATAATM
+      integer,                intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,      intent(  OUT) ::  RC
       integer                               :: STATUS
 
@@ -1160,6 +1231,7 @@ contains
 
     type (T_OGCM_STATE), pointer        :: ogcm_internal_state => null() 
     type (OGCM_wrap)                    :: wrap
+    type(ESMF_State)                    :: SURFST
 
     type (ESMF_StateItem_Flag) :: itemType
 
@@ -1237,72 +1309,6 @@ contains
     call MAPL_GridGet(grid, localCellCountPerDim=COUNTS, RC=STATUS)
     VERIFY_(STATUS)
 
-! Tag seaice's friendly imports
-!-----------------------------
-
-    call ESMF_StateGet (GIM(SEAICE), 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-    if (SEAICEd /= 0) then
-       call ESMF_StateGet (GIM(SEAICEd), 'TI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       call ESMF_StateGet (GIM(SEAICEd), 'HI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       call ESMF_StateGet (GIM(SEAICEd), 'SI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    end if
-    VERIFY_(STATUS)
-
-    if(DO_CICE_THERMO/=0) then
-       call ESMF_StateGet (GIM(SEAICE), 'FRACICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'VOLICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'VOLSNO', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'ERGICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'ERGSNO', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'TAUAGE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'MPOND',  FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-    end if
-
-    call ESMF_StateGet (GIM(SEAICE), 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-    call ESMF_StateGet (GIM(SEAICE), 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Fill the ocean fraction exposed to atmosphere (skin area) 
 !   in the childrens import, if they want it
@@ -1324,6 +1330,13 @@ contains
        end if
     end do
 
+    if (DO_CICE_THERMO > 1) then
+        call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
+        call MAPL_GetPointer(SURFST, FROCEAN, 'FROCEAN', __RC__)
+        call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
+        VERIFY_(STATUS)
+    endif 
+
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------
 
@@ -1331,11 +1344,11 @@ contains
        if (trim(OCEAN_NAME) == "MOM") then
          call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
          VERIFY_(STATUS)
-       endif
-       if (DO_OBIO/=0) then
-         call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
-         VERIFY_(STATUS)
-       end if
+         if (DO_OBIO/=0) then
+            call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
+            VERIFY_(STATUS)
+         end if
+      endif
     end if
 
 !   The section below attempts to make an intellegent guess of the default
@@ -1562,6 +1575,7 @@ contains
     real, pointer, dimension(:,:) :: HIO => null()
     real, pointer, dimension(:,:) :: SIO => null()
     real, pointer, dimension(:,:) :: UIO => null()
+    real, pointer, dimension(:,:) :: SEAICETHICKNESSO  => null()
     real, pointer, dimension(:,:) :: VIO => null()
     real, pointer, dimension(:,:) :: KPARO => null()
     real, pointer, dimension(:,:) :: TS_FOUNDO => null()
@@ -1577,10 +1591,8 @@ contains
     real, pointer, dimension(:,:) :: VWBO => null()
 
     real, pointer, dimension(:,:,:) :: TIO8 => null()
-    real, pointer, dimension(:,:,:) :: TIO8d => null()
     real, pointer, dimension(:,:)   :: FRI => null()
     real, pointer, dimension(:,:,:) :: FRO8 => null()
-    real, pointer, dimension(:,:,:) :: FRO8d => null()
     real, pointer, dimension(:,:)   :: FRO => null()
     real, pointer, dimension(:,:)   :: TIO => null()
     real, pointer, dimension(:,:,:) :: VOLICEO => null()
@@ -1589,19 +1601,6 @@ contains
     real, pointer, dimension(:,:,:) :: MPONDO => null()
     real, pointer, dimension(:,:,:) :: ERGICEO => null()
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
-    real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: AICEDO => null()
-    real, pointer, dimension(:,:)   :: HICEDO => null()
-    real, pointer, dimension(:,:)   :: HSNODO => null()
-
-    real, pointer, dimension(:,:,:) :: VOLICEOd => null()
-    real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
-    real, pointer, dimension(:,:,:) :: TAUAGEOd => null()
-    real, pointer, dimension(:,:,:) :: MPONDOd => null()
-
-    real, pointer, dimension(:,:,:) :: ERGICEOd => null()
-    real, pointer, dimension(:,:,:) :: ERGSNOOd => null()
 
     real, pointer, dimension(:,:) :: LWFLXO => null()
     real, pointer, dimension(:,:) :: SHFLXO => null()
@@ -1623,6 +1622,7 @@ contains
     real, pointer, dimension(:) :: TS_FOUND => null()
     real, pointer, dimension(:) :: SS_FOUND => null()
     real, pointer, dimension(:) :: FRZMLT   => null()
+    real, pointer, dimension(:) :: SEAICETHICKNESS   => null()
 
     real, allocatable, dimension(:) :: VARTILE
 
@@ -1637,8 +1637,6 @@ contains
     integer :: PHASE
     integer :: PHASE_
     integer, allocatable :: CHLD(:)
-    integer :: CAT_DIST                  ! parameters for sea ice nudging
-    real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
 !=============================================================================
 
@@ -1650,6 +1648,7 @@ contains
     Iam = 'Run'
     call ESMF_GridCompGet( GC, name=COMP_NAME, currentPhase=PHASE, RC=status)
     VERIFY_(STATUS)
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced with MAPL get_phase   
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1704,14 +1703,23 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DISCHARGE, 'DISCHRG', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, HI      ,  'HI'     , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SI      ,  'SI'     , RC=STATUS)
-    VERIFY_(STATUS)
+    if (.not. seaIceT_extData) then
+      if (DO_CICE_THERMO <= 1) then  
+          call MAPL_GetPointer(IMPORT, HI      ,  'HI'     , _RC)
+      endif
+      call MAPL_GetPointer(IMPORT, SI      ,  'SI'     , _RC)
+    endif
 
     if (DO_CICE_THERMO /= 0) then  
-       call MAPL_GetPointer(IMPORT, TI8      ,  'TI'     , RC=STATUS)
+       call MAPL_GetPointer(IMPORT, TI8     ,  'TI'     , _RC)
        VERIFY_(STATUS)
+    else
+       if (.not. seaIceT_extData) then
+         call MAPL_GetPointer(IMPORT, TI      ,  'TI'     , _RC)
+       endif 
+    endif
+    
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(IMPORT, FR8     , 'FRACICE' , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, VOLICE  , 'VOLICE'  , RC=STATUS)
@@ -1726,13 +1734,10 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, MPOND   , 'MPOND'   , RC=STATUS)
        VERIFY_(STATUS)
-    else
-       call MAPL_GetPointer(IMPORT, TI       ,  'TI'     , RC=STATUS)
-       VERIFY_(STATUS)
     endif 
     
     if (DO_OBIO/=0) then
-      call OBIO_RunTransforms(DO_DATAATM, RC)
+      call OBIO_RunTransforms(DO_DATA_ATM4OCN, RC)
     endif
 
     call MAPL_GetPointer(IMPORT, LWFLX, 'LWFLX', RC=STATUS)
@@ -1741,44 +1746,40 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QFLUX, 'QFLUX', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SNOW, 'SNOW', RC=STATUS)
+    call MAPL_GetPointer(IMPORT, SNOW,  'SNOW' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RAIN, 'RAIN', RC=STATUS)
+    call MAPL_GetPointer(IMPORT, RAIN,  'RAIN' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRESH,   'FRESH'  , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FSALT,   'FSALT'  , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FHOCN,   'FHOCN'  , RC=STATUS)
-    VERIFY_(STATUS)
+    if (DO_CICE_THERMO <= 1) then  
+       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH', _RC)
+       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT', _RC)
+       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN', _RC)
+    endif 
     call MAPL_GetPointer(IMPORT, PEN_OCN,'PEN_OCN',RC=STATUS)
     VERIFY_(STATUS)
 
 ! Verify that the saltwater ice variables are friendly to seaice
 !---------------------------------------------------------------
 
-    call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+    if (.not. seaIceT_extData) then
+      call ESMF_StateGet (IMPORT, 'TI', FIELD, _RC)
+      call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, _RC)
+      _ASSERT(FRIENDLY,'needs informative message')
 
-    call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+      call ESMF_StateGet (IMPORT, 'SI', FIELD, _RC)
+      call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, _RC)
+      _ASSERT(FRIENDLY,'needs informative message')
 
-    call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+      if(DO_CICE_THERMO <= 1) then
+         call ESMF_StateGet (IMPORT, 'HI', FIELD, _RC)
+         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, _RC)
+         _ASSERT(FRIENDLY,'needs informative message')
+      endif
+    endif 
 
-    if(DO_CICE_THERMO/=0) then
+    if(DO_CICE_THERMO==1) then
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
-
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
        _ASSERT(FRIENDLY,'needs informative message')
@@ -1861,16 +1862,22 @@ contains
     call MAPL_GetPointer(GIM(ORAD  ), DFNIRO ,  'DFNIR',  RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetPointer(GIM(SEAICE), HIO     ,  'HI'    ,  RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(SEAICE), SIO     ,  'SI'    ,  RC=STATUS)
-    VERIFY_(STATUS)
+    if (.not. seaIceT_extData) then
+      if (DO_CICE_THERMO <= 1) then  
+         call MAPL_GetPointer(GIM(SEAICE), HIO     ,  'HI'    ,  _RC)
+      endif
+      call MAPL_GetPointer(GIM(SEAICE), SIO     ,  'SI'    ,  _RC)
+    endif
     if (DO_CICE_THERMO == 0) then  
-       call MAPL_GetPointer(GIM(SEAICE), TIO     ,  'TI'    ,  RC=STATUS)
-       VERIFY_(STATUS)
+       if (.not. seaIceT_extData) then
+         call MAPL_GetPointer(GIM(SEAICE), TIO   ,  'TI'    ,  _RC)
+       endif
+    elseif(DO_CICE_THERMO == 1) then
+       call MAPL_GetPointer(GIM(SEAICE), TIO8    ,  'TI'    ,  _RC)
     else
-       call MAPL_GetPointer(GIM(SEAICE), TIO8    ,  'TI'    ,  RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetPointer(GEX(SEAICE), TIO8    ,  'TI'    ,  _RC)
+    endif
+    if (DO_CICE_THERMO == 1) then  
        call MAPL_GetPointer(GIM(SEAICE), FRO8    , 'FRACICE',  RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), VOLICEO , 'VOLICE' ,  RC=STATUS)
@@ -1891,34 +1898,6 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), FHOCNO  , 'FHOCN'  ,  RC=STATUS)
        VERIFY_(STATUS)
-       if(dual_ocean) then
-        call MAPL_GetPointer(GIM(SEAICEd), FRO8d    , 'FRACICE',  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), TIO8d    ,  'TI'    ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), VOLICEOd , 'VOLICE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), VOLSNOOd , 'VOLSNO' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), ERGICEOd , 'ERGICE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), ERGSNOOd , 'ERGSNO' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), TAUAGEOd , 'TAUAGE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), MPONDOd  , 'MPOND'  ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
-        VERIFY_(STATUS)
-       endif
     endif
 
    call MAPL_GetPointer(GIM(OCEAN), LWFLXO, 'LWFLX',  RC=STATUS)
@@ -2005,16 +1984,18 @@ contains
        VERIFY_(STATUS)
     end if
     
-    call MAPL_LocStreamTransform( ExchGrid, SIO    ,  SI    , RC=STATUS) 
-    VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
-    VERIFY_(STATUS)
-
+    if (.not. seaIceT_extData) then
+      call MAPL_LocStreamTransform( ExchGrid, SIO    ,  SI    , _RC)
+      if (DO_CICE_THERMO <= 1) then  
+         call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , _RC)
+      endif
+    endif
     
     if (DO_CICE_THERMO == 0) then  
-      call MAPL_LocStreamTransform( ExchGrid, TIO    ,  TI    , RC=STATUS)
-      VERIFY_(STATUS)
-    else
+      if (.not. seaIceT_extData) then
+        call MAPL_LocStreamTransform( ExchGrid, TIO  ,  TI    , _RC)
+      endif
+    elseif (DO_CICE_THERMO == 1) then
        allocate(VARTILE(size(TI8,dim=1)), STAT=STATUS) 
        VERIFY_(STATUS)
        do n=1,NUM_ICE_CATEGORIES 
@@ -2065,16 +2046,6 @@ contains
        enddo
        deallocate(VARTILE, STAT=STATUS)
        VERIFY_(STATUS)
-       if(dual_ocean) then
-         TIO8d = TIO8
-         FRO8d = FRO8
-         VOLICEOd = VOLICEO
-         VOLSNOOd = VOLSNOO
-         TAUAGEOd = TAUAGEO
-         MPONDOd = MPONDO
-         ERGICEOd = ERGICEO
-         ERGSNOOd = ERGSNOO
-       endif
        if (.not. (dual_ocean .and. phase==2) ) then
 ! for efficiency, dont need these if running predictor in dual ocean
         call MAPL_LocStreamTransform( ExchGrid, FRESHO,    FRESH,   RC=STATUS) 
@@ -2102,13 +2073,15 @@ contains
 ! Pointers to tile outputs
 !-------------------------
     if (DO_CICE_THERMO == 0) then  
-       call MAPL_GetPointer(EXPORT, FR      ,  'FRACICE', RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       call MAPL_GetPointer(EXPORT, TAUXIBOT,  'TAUXIBOT', RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUYIBOT,  'TAUYIBOT', RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FR      ,  'FRACICE', _RC)
+       if (seaIceT_extData) then
+         call MAPL_GetPointer(EXPORT, SEAICETHICKNESS,  'SEAICETHICKNESS', _RC)
+       endif
+    elseif (DO_CICE_THERMO == 1) then  
+       call MAPL_GetPointer(EXPORT, TAUXIBOT,  'TAUXIBOT', _RC)
+       call MAPL_GetPointer(EXPORT, TAUYIBOT,  'TAUYIBOT', _RC)
+    else  
+       call MAPL_GetPointer(EXPORT, FR8     ,  'FRACICE',  _RC)
     end if
 
     call MAPL_GetPointer(EXPORT, UW      ,  'UW'     , RC=STATUS)
@@ -2180,24 +2153,22 @@ contains
     end if
 
     if (DO_CICE_THERMO == 0) then  
-       call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., RC=STATUS)
-       VERIFY_(STATUS)
-       if(DUAL_OCEAN) then
-          call MAPL_GetPointer(GEX(SEAICEd), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
-          VERIFY_(STATUS)
-       endif   
+       call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., _RC)
+       if (seaIceT_extData) then
+         call MAPL_GetPointer(GEX(SEAICE), SEAICETHICKNESSO, 'SEAICETHICKNESS', alloc=.true., _RC)
+       endif
+    elseif (DO_CICE_THERMO == 1) then  
+       call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., _RC)
+
        if(associated(TAUXIBOT)) then
-          call MAPL_GetPointer(GEX(SEAICE), TAUXIBOTO , 'TAUXBOT' , alloc=.true., RC=STATUS)
-          VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(SEAICE), TAUXIBOTO , 'TAUXBOT' , alloc=.true., _RC)
        end if
        
        if(associated(TAUYIBOT)) then
-          call MAPL_GetPointer(GEX(SEAICE), TAUYIBOTO , 'TAUYBOT' , alloc=.true., RC=STATUS)
-          VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(SEAICE), TAUYIBOTO , 'TAUYBOT' , alloc=.true., _RC)
        end if
+    else
+       call MAPL_GetPointer(GEX(SEAICE), FRO8  ,  'FRSEAICE', alloc=.true.,    _RC)
     endif
 
     call MAPL_TimerOff(MAPL,"TOTAL"     )
@@ -2209,9 +2180,9 @@ contains
        if (PHASE == 1) then
           ! corrector
           ! run explicitly phase 1 of all the children
-          allocate(CHLD(5), stat=status)
+          allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICEd,SEAICE,OCEAN/)
+          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
              if (ID <= 0) cycle
@@ -2224,14 +2195,14 @@ contains
           deallocate(CHLD)
 
        else
-       ! run explicitly the children excluding "real" seaice (ocean has the data part inside guest)
+       ! run explicitly the children excluding "real" seaice (ocean has the data part inside ocean)
           allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICEd,OCEAN/)
+          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
              if (ID <= 0) cycle
-             if (ID /= OCEAN) then
+             if (ID /= OCEAN .and. ID /= SEAICE) then
                 phase_ = 1
              else
                 phase_ = phase
@@ -2255,99 +2226,45 @@ contains
 
     useInterp = ogcm_internal_state%useInterp
 
-    call MAPL_LocStreamTransform( ExchGrid, SI     ,  SIO   , RC=STATUS) 
-    VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
-    VERIFY_(STATUS)
+    if (.not. seaIceT_extData) then
+      call MAPL_LocStreamTransform( ExchGrid, SI     ,  SIO   , _RC)
+      if (DO_CICE_THERMO <= 1) then  
+         call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , _RC)
+      endif
+    endif
 
-    if(DUAL_OCEAN) then
-        call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
-        if(PHASE == 2) then ! phase 2 is predictor
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            DT,            0.0,            &
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT)
-        else ! corrector
-           TIO8d = TIO8
-           FRO8d = FRO8
-           VOLICEOd = VOLICEO
-           VOLSNOOd = VOLSNOO
-           TAUAGEOd = TAUAGEO
-           MPONDOd = MPONDO
-           ERGICEOd = ERGICEO
-           ERGSNOOd = ERGSNOO
-           call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0,RC=STATUS)
-           VERIFY_(STATUS)
-           call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, RC=STATUS)
-           VERIFY_(STATUS)
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            TAU_SIT,       RN,             & 
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT,             &               
-                            salinity = SS_FOUNDO,          &
-                            ai_tend = DAIDTNUDG,           &
-                            vi_tend = DVIDTNUDG )
-           if(associated(AICEDO)) then
-               where(AICEDO/=MAPL_UNDEF)
-                   AICEDO = sum(FRO8d, dim=3)
-               endwhere
-           endif  
-           if(associated(HICEDO)) then
-               where(HICEDO/=MAPL_UNDEF)
-                   HICEDO = sum(VOLICEOd, dim=3)
-               endwhere
-           endif  
-           if(associated(HSNODO)) then
-               where(HSNODO/=MAPL_UNDEF)
-                   HSNODO = sum(VOLSNOOd, dim=3)
-               endwhere
-           endif  
+    ! call Run2 of SEAICE to do ice nudging 
+    if (dual_ocean) then
+        if(PHASE==1) then
+             ! phase 3 is corrector stage same as phase 1
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=3, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
+        else
+             ! phase 4 predictor stage same as phase 2
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=4, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
         endif
-    endif 
+    endif
 
     if (DO_CICE_THERMO == 0) then  
-       call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_LocStreamTransform( ExchGrid, FR     ,  FRO   , &
-            INTERP=useInterp, RC=STATUS)
-       VERIFY_(STATUS)
-    else
+       call MAPL_LocStreamTransform( ExchGrid, FR     ,  FRO   , INTERP=useInterp, _RC)
+
+       if (.not. seaIceT_extData) then
+         call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , _RC)
+       else
+         call MAPL_LocStreamTransform( ExchGrid, SEAICETHICKNESS,  SEAICETHICKNESSO, INTERP=useInterp, _RC)
+       endif
+    elseif (DO_CICE_THERMO == 1) then
        do n=1,NUM_ICE_CATEGORIES
-          if(dual_ocean) then
-           call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8d(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8d(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, VOLICE(:,N),  VOLICEOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, VOLSNO(:,N),  VOLSNOOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, TAUAGE(:,N),  TAUAGEOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, MPOND(:,N),  MPONDOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-          else
            call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
+           if (DO_CICE_THERMO == 1) then
            call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),  & 
                 INTERP=useInterp, RC=STATUS) 
            VERIFY_(STATUS)
@@ -2363,29 +2280,17 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, MPOND (:,  N), &
                MPONDO(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
-          endif
           do k=1,NUM_ICE_LAYERS 
-           if(dual_ocean) then
-             call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
-                  ERGICEOd(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
-             VERIFY_(STATUS)
-           else
              call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
                   ERGICEO(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           endif
           enddo
           do k=1,NUM_SNOW_LAYERS 
-           if(dual_ocean) then
-             call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
-                  ERGSNOOd(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
-             VERIFY_(STATUS)
-           else
              call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
                   ERGSNOO(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           endif
           enddo
+          endif
        enddo
        
        if(associated(TAUXIBOT)) then
@@ -2397,6 +2302,11 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, TAUYIBOT, TAUYIBOTO, RC=STATUS) 
           VERIFY_(STATUS)
        end if
+    else
+       do n=1,NUM_ICE_CATEGORIES
+          call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N),   _RC)
+          call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),   _RC)
+       enddo
     endif
 
     call MAPL_GetResource(MAPL, iUseInterp, 'INTERPOLATE_OCEAN_ICE_CURRENTS:', &
@@ -2460,9 +2370,9 @@ contains
    
     contains
 
-    subroutine OBIO_RunTransforms(DO_DATAATM, RC)
+    subroutine OBIO_RunTransforms(DO_DATA_ATM4OCN, RC)
 
-      integer,                    intent(IN   ) ::  DO_DATAATM
+      integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,          intent(  OUT) ::  RC
       
       character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
@@ -2534,7 +2444,7 @@ contains
       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
         call MAPL_GetPointer(IMPORT, BCDP      , 'BCDP'      , RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, BCWT      , 'BCWT'      , RC=STATUS)
@@ -2624,7 +2534,7 @@ contains
        VERIFY_(STATUS)
       endif
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
         call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
@@ -2634,7 +2544,7 @@ contains
         call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if(DO_DATAATM==0) then
+      if(DO_DATA_ATM4OCN==0) then
        if(associated(BCDPB)) then
           do N = 1, NUM_BCDP
              call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )

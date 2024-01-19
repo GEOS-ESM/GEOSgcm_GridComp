@@ -4,7 +4,7 @@
 module GEOS_LandGridCompMod
 
 !BOP
-! !MODULE: GEOS_LandGridCompMod -- A Module to combine VegDyn and Catch Gridded Components
+! !MODULE: GEOS_LandGridCompMod -- A Module to combine VegDyn and Catch, and Igni Gridded Components
 
 ! !DESCRIPTION: This gridded component operates on the land tiles as
 ! as child of GEOS\_SurfaceGridComp.  The core functionality is the
@@ -33,6 +33,7 @@ module GEOS_LandGridCompMod
   use GEOS_IrrigationGridCompMod, only : IrrigationSetServices => SetServices
   use GEOS_CatchGridCompMod,      only : CatchSetServices      => SetServices
   use GEOS_CatchCNGridCompMod,    only : CatchCNSetServices    => SetServices
+  use GEOS_IgniGridCompMod,       only : IgniSetServices       => SetServices
 !  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
@@ -48,8 +49,10 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:), IRRIGATION(:)
-  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
-  LOGICAL                                 :: RUN_IRRIG
+  integer                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  logical				  :: RUN_IRRIG
+  integer                                 :: IGNI
+  logical                                 :: DO_FIRE_DANGER
 
 contains
 
@@ -120,7 +123,7 @@ contains
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
-        !landxxxx
+        ! land_exxxx
         tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
     endif
 
@@ -155,9 +158,12 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=.false., __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, DO_FIRE_DANGER, label='FIRE_DANGER:',    DEFAULT=.false., __RC__ )
+    call MAPL_GetResource (SCF, RUN_IRRIG, label='RUN_IRRIG:', DEFAULT=.false., __RC__ )
+    
+
     call ESMF_ConfigDestroy      (SCF, __RC__)
    
     SELECT CASE (LSM_CHOICE)
@@ -178,7 +184,7 @@ contains
           end do
        end if
        
-    CASE (2) 
+    CASE (2,3) 
        
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
@@ -223,7 +229,14 @@ contains
 !          end do
 !       end if
 !    ENDIF
-    
+   
+    if (DO_FIRE_DANGER) then
+        IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
+        VERIFY_(STATUS)
+    else
+        IGNI = -1
+    end if
+
 !BOS
 
 !------------------------------------------------------------
@@ -944,6 +957,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -957,7 +972,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
-    CASE (2) 
+    CASE (2,3) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1226,6 +1241,10 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       if (LSM_CHOICE == 3) then
+         call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFROOTC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+         VERIFY_(STATUS)
+       endif
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNGPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1312,6 +1331,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_WATERLEVEL',CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PEATCLSM_FSWCHANGE', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
 
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -1361,6 +1382,37 @@ contains
                               RC=STATUS  )
     VERIFY_(STATUS) 
 
+
+    if (DO_FIRE_DANGER) then
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC',        CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GFMC',        CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC',          CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI',         CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR',         CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC_DAILY',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC_DAILY',    CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY',   CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FFMC_DAILY_', CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DMC_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DC_DAILY_',   CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ISI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BUI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FWI_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DSR_DAILY_',  CHILD_ID = IGNI,  __RC__ )
+
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'VPD',         CHILD_ID = IGNI,  __RC__ )
+    end if
+
+
 !EOS
     
 !------------------------------------------------------------
@@ -1402,7 +1454,20 @@ contains
                   RC=STATUS )
              VERIFY_(STATUS)             
           ENDIF
-          
+ 
+          if (DO_FIRE_DANGER) then
+              call MAPL_AddConnectivity (                      &
+                GC,                                            &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &
+                                'MOU10M    ', 'MOV10M    ',    &
+                                'PRLAND    ', 'SWDOWNLAND',    &
+                                'ASNOW     ', 'SNOWDP    ' /), &
+                DST_ID = IGNI,                                 &
+                SRC_ID = CATCH(I),                             &
+                RC = STATUS )
+              VERIFY_(STATUS)
+          end if
+
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1414,7 +1479,7 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
 
-       CASE (2)
+       CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
             SHORT_NAME  = (/'LAI    ', 'GRN    ', 'ROOTL  ', 'Z2CH   ',  &
@@ -1440,6 +1505,20 @@ contains
              VERIFY_(STATUS)             
           ENDIF
           
+!
+          if (DO_FIRE_DANGER) then
+              call MAPL_AddConnectivity (                      &
+                GC,                                            &
+                SHORT_NAME = (/ 'MOT2M     ', 'MOQ2M     ',    &
+                                'MOU10M    ', 'MOV10M    ',    &
+                                'PRLAND    ', 'SWDOWNLAND',    &
+                                'ASNOW     ', 'SNOWDP    ' /), &
+                DST_ID = IGNI,                                 &
+                SRC_ID = CATCHCN(I),                           &
+                RC = STATUS )
+              VERIFY_(STATUS)
+          end if
+
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&

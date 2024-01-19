@@ -1,3 +1,5 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
 program mk_LakeLandiceSaltRestarts
 
   use netcdf
@@ -43,7 +45,7 @@ program mk_LakeLandiceSaltRestarts
   type(StringVector), pointer :: var_dimensions
   character(len=:), pointer :: vname,dname
   integer :: dataType
-
+  integer :: status
 !---------------------------------------------------------------------------
 
   I = iargc()
@@ -115,13 +117,13 @@ program mk_LakeLandiceSaltRestarts
            write(*,*)"Writing ",trim(vname)
            if (ndims == 1) then
               if (dataType == pFIO_REAL64) then
-                 call MAPL_VarRead(InFmt,vname,varIn8)
+                 call MAPL_VarRead(InFmt,vname,varIn8, __RC__)
                  do i=1,otiles
                     varOut8(i) = varIn8(id(i))
                  enddo
                  call MAPL_VarWrite(OutFmt,vname,varOut8)
               else
-                 call MAPL_VarRead(InFmt,vname,varIn)
+                 call MAPL_VarRead(InFmt,vname,varIn, __RC__)
                  do i=1,otiles
                     varOut(i) = varIn(id(i))
                  enddo
@@ -134,13 +136,13 @@ program mk_LakeLandiceSaltRestarts
         
               do j=1,dim1
                  if (dataType == pFIO_REAL64) then
-                    call MAPL_VarRead(InFmt,vname,varIn8,offset1=j)
+                    call MAPL_VarRead(InFmt,vname,varIn8,offset1=j, __RC__)
                     do i=1,otiles
                        varOut8(i) = varIn8(id(i))
                     enddo
                     call MAPL_VarWrite(OutFmt,vname,varOut8,offset1=j)
                  else
-                    call MAPL_VarRead(InFmt,vname,varIn,offset1=j)
+                    call MAPL_VarRead(InFmt,vname,varIn,offset1=j, __RC__)
                     do i=1,otiles
                        varOut(i) = varIn(id(i))
                     enddo
@@ -157,13 +159,13 @@ program mk_LakeLandiceSaltRestarts
               do k=1,dim2
                  do j=1,dim1
                     if (dataType == pFIO_REAL64) then
-                       call MAPL_VarRead(InFmt,vname,varIn8,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,vname,varIn8,offset1=j,offset2=k, __RC__)
                        do i=1,otiles
                           varOut8(i) = varIn8(id(i))
                        enddo
                        call MAPL_VarWrite(OutFmt,vname,varOut8,offset1=j,offset2=k)
                     else
-                       call MAPL_VarRead(InFmt,vname,varIn,offset1=j,offset2=k)
+                       call MAPL_VarRead(InFmt,vname,varIn,offset1=j,offset2=k, __RC__)
                        do i=1,otiles
                           varOut(i) = varIn(id(i))
                        enddo

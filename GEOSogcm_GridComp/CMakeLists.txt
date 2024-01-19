@@ -1,18 +1,21 @@
 esma_set_this ()
 
-
 set (alldirs
   GEOS_OceanBioGeoChemGridComp
   GEOS_OradGridComp
   GEOS_OradBioGridComp
+  GEOS_OceanGridComp
   )
 
-set (dependencies GEOSdatasea_GridComp  GEOSdataseaice_GridComp GuestOcean_GridComp GEOSCICEDyna_GridComp MAPL LANL_cice)
+set (dependencies GEOS_Seaice_GridComp MAPL CICE4 esmf)
+
+if ( BUILD_MIT_OCEAN )
+  add_compile_definitions(BUILD_MIT_OCEAN)
+endif()
 
 esma_add_library (${this}
   SRCS GEOS_OgcmGridComp.F90
   SUBCOMPONENTS ${alldirs}
-  SUBDIRS GEOSseaice_GridComp GEOSocean_GridComp 
-  DEPENDENCIES ${dependencies}
-  INCLUDES ${INC_ESMF})
+  SUBDIRS GEOSseaice_GridComp
+  DEPENDENCIES ${dependencies})
 

@@ -19,13 +19,13 @@
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSland_GridComp/ @GEOS-ESM/land-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSlake_GridComp/ @GEOS-ESM/land-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/            @GEOS-ESM/land-team
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/             @GEOS-ESM/land-team
 
 # But the OAsim file is ocean
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/OASIMalbedoMod.f @GEOS-ESM/ocean-team
 
 # The surface preproc team owns these
-/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSland_GridComp/GEOScatch_GridComp/mk_restarts/ @GEOS-ESM/surface-preproc-team
-/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/Raster/                                    @GEOS-ESM/surface-preproc-team
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/ @GEOS-ESM/surface-preproc-team
 
 # Landice Team owns Landice
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSlandice_GridComp/ @GEOS-ESM/landice-team
@@ -33,6 +33,7 @@
 # Some files are shared
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/StieglitzSnow.F90 @GEOS-ESM/land-team @GEOS-ESM/landice-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/SurfParams.F90    @GEOS-ESM/land-team @GEOS-ESM/landice-team
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOS_SurfaceGridComp.F90 @GEOS-ESM/land-team @GEOS-ESM/landice-team @GEOS-ESM/ocean-team
 
 # The Python Transition Team will own Python files
 # until the Python 3 transition is completed

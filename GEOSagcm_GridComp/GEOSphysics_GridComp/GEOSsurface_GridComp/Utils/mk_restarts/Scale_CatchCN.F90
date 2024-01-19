@@ -1,6 +1,20 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
+
+program Scale_CatchCN
+
   use MAPL
-  use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
-  USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
+
+  use LSM_ROUTINES,      ONLY:          &
+       catch_calc_soil_moist,           &
+       catch_calc_tp,                   &
+       catch_calc_ght
+  
+  USE CATCH_CONSTANTS,   ONLY:          &
+       N_GT              => CATCH_N_GT, &
+       DZGT              => CATCH_DZGT, &
+       PEATCLSM_POROS_THRESHOLD
+  
   implicit none
 
   character(256)    :: fname1, fname2, fname3
@@ -13,14 +27,21 @@
   integer           :: iargc
   real              :: SURFLAY        ! (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                       ! (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+  real              :: WEMIN_IN, WEMIN_OUT
   character*256     :: arg(6)
 
-  integer, parameter :: nveg = 4
+  integer, parameter :: nveg  = 4
   integer, parameter :: nzone = 3
-  integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
-  real               :: WEMIN_IN, WEMIN_OUT
+  integer            :: VAR_COL, VAR_PFT
+  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
+  integer, parameter :: npft    = 19  
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
   
+  logical            :: clm45  = .false.
+  integer :: un_dim3
+
   type catch_rst
        real, pointer ::        bf1(:)
        real, pointer ::        bf2(:)
@@ -90,51 +111,25 @@
        real, pointer ::    BGALBNF(:)
        real, pointer ::    CNCOL(:,:)
        real, pointer ::    CNPFT(:,:)
+       real, pointer ::    ABM     (:)
+       real, pointer ::    FIELDCAP(:)
+       real, pointer ::    HDM     (:)
+       real, pointer ::    GDP     (:)
+       real, pointer ::    PEATF   (:)       
   endtype catch_rst
 
   type(catch_rst) catch(3)
 
-  interface
-  subroutine calc_soil_moist( &
-       ncat,dzsf,vgwmax,cdcr1,cdcr2,wpwet,poros, &
-       psis,bee,ars1,ars2,ars3,ara1,ara2, &
-       ara3,ara4,arw1,arw2,arw3,arw4, &
-       srfexc,rzexc,catdef, &
-       sfmc, rzmc, prmc,  &
-       werror, sfmcun, rzmcun, prmcun )
-    
-    implicit none
-    
-    integer, parameter                   :: KSNGL=4
-    integer,                  intent(in) :: ncat
-    
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: wpwet,poros,psis
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: bee,ars1
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: ars2,ars3,ara1,ara2,ara3
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: ara4,arw1,arw2,arw3,arw4
-    
-    real(KIND=KSNGL), dimension(ncat), intent(inout) :: srfexc, rzexc, catdef
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out) :: sfmc, rzmc, prmc
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: werror
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: sfmcun
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: rzmcun
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: prmcun
-  end subroutine calc_soil_moist
-  end interface
-
-  real,    allocatable, dimension(:) :: sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun, dzsf
-  real,    allocatable, dimension(:) :: vegdyn
+  real,    allocatable, dimension(:)   :: dzsf, ar1, ar2, ar4
   real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE, GHT_OUT, TP_OUT
-  real,    allocatable, dimension(:) :: swe_in,depth_in,areasc_in,areasc_out, depth_out
+  real,    allocatable, dimension(:)   :: swe_in, depth_in, areasc_in, areasc_out, depth_out
 
   type(Netcdf4_fileformatter) :: formatter(3)
   type(Filemetadata) :: cfg(3)
   integer :: i, rc, filetype
-    
+  integer :: status  
+  character(256) :: Iam = "Scale_CatchCN"
+  
 ! Usage
 ! -----
   if (iargc() /= 6) then
@@ -156,19 +151,19 @@
 ! -------------------------------
   read(arg(3),'(a)') fname3
 
-  call MAPL_NCIOGetFileType(fname1, filetype,rc=rc)
+  call MAPL_NCIOGetFileType(fname1, filetype, __RC__)
 
   if (filetype == 0) then
-     call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
-     call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
-     cfg(1)=formatter(1)%read(rc=rc)
-     cfg(2)=formatter(2)%read(rc=rc)
-  else
-     open(unit=10, file=trim(fname1),  form='unformatted')
-     open(unit=20, file=trim(fname2),  form='unformatted')
-     open(unit=30, file=trim(fname3),  form='unformatted')
+     call formatter(1)%open(trim(fname1),pFIO_READ, __RC__)
+     call formatter(2)%open(trim(fname2),pFIO_READ, __RC__)
+     cfg(1)=formatter(1)%read(__RC__) 
+     cfg(2)=formatter(2)%read(__RC__)
+ ! else
+ !    open(unit=10, file=trim(fname1),  form='unformatted')
+ !    open(unit=20, file=trim(fname2),  form='unformatted')
+ !    open(unit=30, file=trim(fname3),  form='unformatted')
   end if
-
+  
 ! Get SURFLAY Value
 ! -----------------
   read(arg(4),*) SURFLAY
@@ -183,19 +178,30 @@
   end if
   print *, 'SURFLAY: ',SURFLAY
 
+  VAR_COL = VAR_COL_CLM40 
+  VAR_PFT = VAR_PFT_CLM40
+
   if (filetype ==0) then
 
-     ntiles = cfg(1)%get_dimension('tile',rc=rc)
-
-  else
-
-!    Determine NTILES
-!    ----------------
-     bpos=0
-     read(10)
-     epos = ftell(10)            ! ending position of file pointer
-     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
-     rewind 10
+     ntiles = cfg(1)%get_dimension('tile', __RC__)
+     un_dim3 = cfg(1)%get_dimension('unknown_dim3', __RC__)
+     if(un_dim3 == 105) then
+        clm45  = .true.
+        VAR_COL = VAR_COL_CLM45 
+        VAR_PFT = VAR_PFT_CLM45
+        print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+     else
+        print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+     endif
+!  else
+!
+!!    Determine NTILES
+!!    ----------------
+!     bpos=0
+!     read(10)
+!     epos = ftell(10)            ! ending position of file pointer
+!     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+!     rewind 10
 
   end if
 
@@ -213,16 +219,17 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatch_nc4 ( catch(old), formatter(old), cfg(old) )
-     call readcatch_nc4 ( catch(new), formatter(new), cfg(new) )
-  else
-     call readcatch ( 10,catch(old) )
-     call readcatch ( 20,catch(new) )
+     call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old), __RC__ )
+     call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new), __RC__ )
+!  else
+!     call readcatchcn ( 10,catch(old) )
+!     call readcatchcn ( 20,catch(new) )
   end if
 
 ! Create Scaled Catch
 ! -------------------
   sca = 3
+  
   catch(sca) = catch(new)
 
 ! 1) soil moisture prognostics
@@ -269,27 +276,26 @@
       catch(sca)%catdef = catch(old)%catdef * (catch(new)%cdcr1 / catch(old)%cdcr1)
   end where
 
-! Sanity Check
+! Sanity Check (catch_calc_soil_moist() forces consistency betw. srfexc, rzexc, catdef)
 ! ------------
   print *, 'Performing Sanity Check ...'
   allocate (   dzsf(ntiles) )
-  allocate (   sfmc(ntiles) )
-  allocate (   rzmc(ntiles) )
-  allocate (   prmc(ntiles) )
-  allocate ( werror(ntiles) )
-  allocate ( sfmcun(ntiles) )
-  allocate ( rzmcun(ntiles) )
-  allocate ( prmcun(ntiles) )
+  allocate (   ar1( ntiles) )
+  allocate (   ar2( ntiles) )
+  allocate (   ar4( ntiles) )
 
   dzsf = SURFLAY
 
-  call calc_soil_moist( ntiles,dzsf,                                                                                   &
-       catch(sca)%vgwmax,catch(sca)%cdcr1,catch(sca)%cdcr2,catch(sca)%wpwet,catch(sca)%poros,                          &
-       catch(sca)%psis,catch(sca)%bee,catch(sca)%ars1,catch(sca)%ars2,catch(sca)%ars3,catch(sca)%ara1,catch(sca)%ara2, &
-       catch(sca)%ara3,catch(sca)%ara4,catch(sca)%arw1,catch(sca)%arw2,catch(sca)%arw3,catch(sca)%arw4,                &
-       catch(sca)%srfexc,catch(sca)%rzexc,catch(sca)%catdef,                                                           &
-       sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun )
-    
+  call catch_calc_soil_moist( ntiles, dzsf,                                            &
+       catch(sca)%vgwmax, catch(sca)%cdcr1, catch(sca)%cdcr2,                          &
+       catch(sca)%psis,   catch(sca)%bee,   catch(sca)%poros, catch(sca)%wpwet,        &
+       catch(sca)%ars1,   catch(sca)%ars2,  catch(sca)%ars3,                           &
+       catch(sca)%ara1,   catch(sca)%ara2,  catch(sca)%ara3,  catch(sca)%ara4,         &
+       catch(sca)%arw1,   catch(sca)%arw2,  catch(sca)%arw3,  catch(sca)%arw4,         &
+       catch(sca)%bf1,    catch(sca)%bf2,                                              &
+       catch(sca)%srfexc, catch(sca)%rzexc, catch(sca)%catdef,                         &
+       ar1,               ar2,              ar4                                 )
+  
   n = count( catch(sca)%catdef .ne. catch(new)%catdef )
   write(6,300) n,100*n/ntiles
   n = count( catch(sca)%srfexc .ne. catch(new)%srfexc )
@@ -396,15 +402,24 @@
           
   endif
 
+  ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
+  ! -------------------------------------------------------------------------------
+
+  where ( (catch(old)%poros < PEATCLSM_POROS_THRESHOLD) .and. (catch(sca)%poros >= PEATCLSM_POROS_THRESHOLD) )
+     catch(sca)%catdef = 25.
+     catch(sca)%rzexc  =  0.
+     catch(sca)%srfexc =  0.
+  end where
+
 ! Write Scaled Catch
 ! ------------------
   if (filetype ==0) then
-     cfg(3) = cfg(2)
-     call formatter(3)%create(fname3,rc=rc)
-     call formatter(3)%write(cfg(3),rc=rc)
-     call writecatch_nc4 ( catch(sca), formatter(3) ,cfg(3) )
-  else
-     call writecatch ( 30,catch(sca) )
+     cfg(3)=cfg(2)
+     call formatter(3)%create(fname3, __RC__)
+     call formatter(3)%write(cfg(3), __RC__)
+     call writecatchcn_nc4 ( catch(sca), formatter(3) ,cfg(3) )
+!  else
+!     call writecatchcn ( 30,catch(sca) )
   end if
 
 100 format(1x,'Total  Tiles: ',i10)
@@ -416,11 +431,12 @@
   stop
 
   contains
-   subroutine allocatch (ntiles,catch)
 
-     integer ntiles
-
-   type(catch_rst) catch
+    subroutine allocatch (ntiles,catch)
+      
+      integer ntiles
+      
+      type(catch_rst) catch
 
        allocate( catch%        bf1(ntiles) )
        allocate( catch%        bf2(ntiles) )
@@ -490,104 +506,130 @@
        allocate( catch%    BGALBNF(ntiles) )
        allocate( catch%      CNCOL(ntiles,nzone*VAR_COL))
        allocate( catch%      CNPFT(ntiles,nzone*nveg*VAR_PFT))
+       allocate( catch%        ABM(ntiles) )
+       allocate( catch%   FIELDCAP(ntiles) )
+       allocate( catch%        HDM(ntiles) )
+       allocate( catch%        GDP(ntiles) )
+       allocate( catch%      PEATF(ntiles) )
+       
    return
    end subroutine allocatch
 
-   subroutine readcatch_nc4 (catch,formatter,cfg)
-   type(catch_rst) catch
-   type(Filemetadata) :: cfg
-   type(Netcdf4_Fileformatter) :: formatter
-   integer :: j, dim1,dim2
-   type(Variable), pointer :: myVariable
-   character(len=:), pointer :: dname
-   
+   subroutine readcatchcn_nc4 (catch,formatter,cfg, rc)
+      type(catch_rst) catch
+      type(Filemetadata) :: cfg
+      type(Netcdf4_fileformatter) :: formatter
+      integer, optional, intent(out) :: rc
+      integer :: j, dim1,dim2
+      type(Variable), pointer :: myVariable
+      character(len=:), pointer :: dname
+      integer :: status
+      character(256) :: Iam = "readcatchcn_nc4"
 
-       call MAPL_VarRead(formatter,"BF1",catch%bf1)
-       call MAPL_VarRead(formatter,"BF2",catch%bf2)
-       call MAPL_VarRead(formatter,"BF3",catch%bf3)
-       call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax)
-       call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1)
-       call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2)
-       call MAPL_VarRead(formatter,"PSIS",catch%psis)
-       call MAPL_VarRead(formatter,"BEE",catch%bee)
-       call MAPL_VarRead(formatter,"POROS",catch%poros)
-       call MAPL_VarRead(formatter,"WPWET",catch%wpwet)
-       call MAPL_VarRead(formatter,"COND",catch%cond)
-       call MAPL_VarRead(formatter,"GNU",catch%gnu)
-       call MAPL_VarRead(formatter,"ARS1",catch%ars1)
-       call MAPL_VarRead(formatter,"ARS2",catch%ars2)
-       call MAPL_VarRead(formatter,"ARS3",catch%ars3)
-       call MAPL_VarRead(formatter,"ARA1",catch%ara1)
-       call MAPL_VarRead(formatter,"ARA2",catch%ara2)
-       call MAPL_VarRead(formatter,"ARA3",catch%ara3)
-       call MAPL_VarRead(formatter,"ARA4",catch%ara4)
-       call MAPL_VarRead(formatter,"ARW1",catch%arw1)
-       call MAPL_VarRead(formatter,"ARW2",catch%arw2)
-       call MAPL_VarRead(formatter,"ARW3",catch%arw3)
-       call MAPL_VarRead(formatter,"ARW4",catch%arw4)
-       call MAPL_VarRead(formatter,"TSA1",catch%tsa1)
-       call MAPL_VarRead(formatter,"TSA2",catch%tsa2)
-       call MAPL_VarRead(formatter,"TSB1",catch%tsb1)
-       call MAPL_VarRead(formatter,"TSB2",catch%tsb2)
-       call MAPL_VarRead(formatter,"ATAU",catch%atau)
-       call MAPL_VarRead(formatter,"BTAU",catch%btau)
+      call MAPL_VarRead(formatter,"BF1",catch%bf1, __RC__)
+      call MAPL_VarRead(formatter,"BF2",catch%bf2, __RC__)
+      call MAPL_VarRead(formatter,"BF3",catch%bf3, __RC__)
+      call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax, __RC__)
+      call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1, __RC__)
+      call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2, __RC__)
+      call MAPL_VarRead(formatter,"PSIS",catch%psis, __RC__)
+      call MAPL_VarRead(formatter,"BEE",catch%bee, __RC__)
+      call MAPL_VarRead(formatter,"POROS",catch%poros, __RC__)
+      call MAPL_VarRead(formatter,"WPWET",catch%wpwet, __RC__)
+      call MAPL_VarRead(formatter,"COND",catch%cond, __RC__)
+      call MAPL_VarRead(formatter,"GNU",catch%gnu, __RC__)
+      call MAPL_VarRead(formatter,"ARS1",catch%ars1, __RC__)
+      call MAPL_VarRead(formatter,"ARS2",catch%ars2, __RC__)
+      call MAPL_VarRead(formatter,"ARS3",catch%ars3, __RC__)
+      call MAPL_VarRead(formatter,"ARA1",catch%ara1, __RC__)
+      call MAPL_VarRead(formatter,"ARA2",catch%ara2, __RC__)
+      call MAPL_VarRead(formatter,"ARA3",catch%ara3, __RC__)
+      call MAPL_VarRead(formatter,"ARA4",catch%ara4, __RC__)
+      call MAPL_VarRead(formatter,"ARW1",catch%arw1, __RC__)
+      call MAPL_VarRead(formatter,"ARW2",catch%arw2, __RC__)
+      call MAPL_VarRead(formatter,"ARW3",catch%arw3, __RC__)
+      call MAPL_VarRead(formatter,"ARW4",catch%arw4, __RC__)
+      call MAPL_VarRead(formatter,"TSA1",catch%tsa1, __RC__)
+      call MAPL_VarRead(formatter,"TSA2",catch%tsa2, __RC__)
+      call MAPL_VarRead(formatter,"TSB1",catch%tsb1, __RC__)
+      call MAPL_VarRead(formatter,"TSB2",catch%tsb2, __RC__)
+      call MAPL_VarRead(formatter,"ATAU",catch%atau, __RC__)
+      call MAPL_VarRead(formatter,"BTAU",catch%btau, __RC__)
 
-       myVariable => cfg%get_variable("ITY")
-       dname => myVariable%get_ith_dimension(2)
-       dim1 = cfg%get_dimension(dname)
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"ITY",catch%ity(:,j),offset1=j)
-          call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j)
-       enddo
+      myVariable => cfg%get_variable("ITY")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"ITY",catch%ity(:,j),offset1=j, __RC__)
+         call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j, __RC__)
+      enddo
 
-       call MAPL_VarRead(formatter,"TC",catch%tc)
-       call MAPL_VarRead(formatter,"QC",catch%qc)
-       call MAPL_VarRead(formatter,"TG",catch%tg)
-       call MAPL_VarRead(formatter,"CAPAC",catch%capac)
-       call MAPL_VarRead(formatter,"CATDEF",catch%catdef)
-       call MAPL_VarRead(formatter,"RZEXC",catch%rzexc)
-       call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc)
-       call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1)
-       call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2)
-       call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3)
-       call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4)
-       call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5)
-       call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6)
-       call MAPL_VarRead(formatter,"TSURF",catch%tsurf)
-       call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1)
-       call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2)
-       call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3)
-       call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1)
-       call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2)
-       call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3)
-       call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1)
-       call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2)
-       call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3)
-       call MAPL_VarRead(formatter,"CH",catch%ch)
-       call MAPL_VarRead(formatter,"CM",catch%cm)
-       call MAPL_VarRead(formatter,"CQ",catch%cq)
-       call MAPL_VarRead(formatter,"FR",catch%fr)
-       call MAPL_VarRead(formatter,"WW",catch%ww)
-       call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID)
-       call MAPL_VarRead(formatter,"NDEP",catch%ndep)
-       call MAPL_VarRead(formatter,"CLI_T2M",catch%t2)
-       call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR)
-       call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF)
-       call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR)
-       call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF)
-       myVariable => cfg%get_variable("CNCOL")
-       dname => myVariable%get_ith_dimension(2)
-       dim1 = cfg%get_dimension(dname)
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
-       enddo
-       do j=1,dim1
-          call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
-       enddo
-   return
-   end subroutine readcatch_nc4
+      call MAPL_VarRead(formatter,"TC",catch%tc, __RC__)
+      call MAPL_VarRead(formatter,"QC",catch%qc, __RC__)
+      call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
+      call MAPL_VarRead(formatter,"CAPAC",catch%capac, __RC__)
+      call MAPL_VarRead(formatter,"CATDEF",catch%catdef, __RC__)
+      call MAPL_VarRead(formatter,"RZEXC",catch%rzexc, __RC__)
+      call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5, __RC__)
+      call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6, __RC__)
+      call MAPL_VarRead(formatter,"TSURF",catch%tsurf, __RC__)
+      call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1, __RC__)
+      call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2, __RC__)
+      call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2, __RC__)
+      call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2, __RC__)
+      call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3, __RC__)
+      call MAPL_VarRead(formatter,"CH",catch%ch, __RC__)
+      call MAPL_VarRead(formatter,"CM",catch%cm, __RC__)
+      call MAPL_VarRead(formatter,"CQ",catch%cq, __RC__)
+      call MAPL_VarRead(formatter,"FR",catch%fr, __RC__)
+      call MAPL_VarRead(formatter,"WW",catch%ww, __RC__)
+      call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
+      call MAPL_VarRead(formatter,"NDEP",catch%ndep, __RC__)
+      call MAPL_VarRead(formatter,"CLI_T2M",catch%t2, __RC__)
+      call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR, __RC__)
+      call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF, __RC__)
+      call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
+      call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
+      myVariable => cfg%get_variable("CNCOL")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)
+      if(clm45) then          
+         call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
+         call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
+         call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
+         call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
+         call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+      endif
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
+      enddo
+      ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
+      ! (to be merged into the "develop" branch in late 2020):
+      ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
+      ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
+      ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+      ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
+      ! - reichle, 23 Nov 2020
+      myVariable => cfg%get_variable("CNPFT")
+      dname => myVariable%get_ith_dimension(2)
+      dim1 = cfg%get_dimension(dname)       
+      do j=1,dim1
+         call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
+      enddo
+      if (present(rc)) rc =0
+      !_RETURN(_SUCCESS)
+   end subroutine readcatchcn_nc4
 
-   subroutine readcatch (unit,catch)
+   subroutine readcatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -672,9 +714,9 @@
           read(unit) catch%    CNPFT (:,i)
        end do
    return
-   end subroutine readcatch
+   end subroutine readcatchcn
 
-   subroutine writecatch_nc4 (catch,formatter,cfg)
+   subroutine writecatchcn_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
    type(Netcdf4_fileformatter) :: formatter
    type(filemetadata) :: cfg
@@ -759,6 +801,7 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
+
        do j=1,dim1
           call MAPL_VarWrite(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
@@ -773,7 +816,6 @@
        allocate (var (dim1))
        var = 0.
 
-       call MAPL_VarWrite(formatter,"SFMCM",  var)
        call MAPL_VarWrite(formatter,"BFLOWM", var)
        call MAPL_VarWrite(formatter,"TOTWATM",var)
        call MAPL_VarWrite(formatter,"TAIRM",  var)
@@ -790,10 +832,33 @@
           call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
        end do
 
+       if (clm45) then
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
+          enddo
+
+          call MAPL_VarWrite(formatter,"ABM",     catch%ABM, rc =rc     )
+          call MAPL_VarWrite(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarWrite(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarWrite(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarWrite(formatter,"PEATF",   catch%PEATF   )
+          call MAPL_VarWrite(formatter,"RHM",     var)
+          call MAPL_VarWrite(formatter,"WINDM",   var)
+          call MAPL_VarWrite(formatter,"RAINFM",  var)
+          call MAPL_VarWrite(formatter,"SNOWFM",  var)
+          call MAPL_VarWrite(formatter,"RUNSRFM", var)
+          call MAPL_VarWrite(formatter,"AR1M",    var)
+          call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"TPREC10D",var)
+          call MAPL_VarWrite(formatter,"TPREC60D",var)
+       else
+          call MAPL_VarWrite(formatter,"SFMCM",  var)          
+       endif
+       
        myVariable => cfg%get_variable("PSNSUNM")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
-       dname => myVariable%get_ith_dimension(2)
+       dname => myVariable%get_ith_dimension(3)
        dim2 = cfg%get_dimension(dname)
        do i=1,dim2 
           do j=1,dim1
@@ -803,9 +868,9 @@
        end do
        call formatter%close()
    return
-   end subroutine writecatch_nc4
+   end subroutine writecatchcn_nc4
 
-   subroutine writecatch (unit,catch)
+   subroutine writecatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -891,526 +956,7 @@
        end do
 
    return
-   end subroutine writecatch
+   end subroutine writecatchcn
 
-  end
-
-  subroutine calc_soil_moist( &
-       ncat,dzsf,vgwmax,cdcr1,cdcr2,wpwet,poros, &
-       psis,bee,ars1,ars2,ars3,ara1,ara2, &
-       ara3,ara4,arw1,arw2,arw3,arw4, &
-       srfexc,rzexc,catdef, &
-       sfmc, rzmc, prmc,  &
-       werror, sfmcun, rzmcun, prmcun )
-    
-    ! Calculate diagnostic soil moisture content from prognostic
-    ! excess/deficit variables.
-    !
-    ! On input, also check validity of prognostic excess/deficit variables
-    ! and modify if necessary.  Perturbed or updated excess/deficit variables 
-    ! in data assimilation integrations may be unphysical.  
-    ! Optional output "werror" contains excess or missing water related
-    ! to inconsistency.
-    !
-    ! Optional outputs "smfcun", "rzmcun", "prmcun" are surface,
-    ! root zone, and profile moisture content for unsaturated areas only,
-    ! ie. excluding the saturated area of the catchment.    
-    !
-    ! NOTE: When calling with optional output arguments, use keywords
-    !       unless arguments are in proper order!
-    !       
-    !       Example: 
-    !       (don't want "werror" as output, but want "*mcun" output)
-    !       
-    !       call calc_soil_moist(         & 
-    !            ncat, ...                &
-    !            sfmc, rzmc, prmc,        &
-    !            sfmcun=sfmc_unsat,   &
-    !            rzmcun=rzmc_unsat,   & 
-    !            prmcun=prmc_unsat )
-    !
-    ! replaces moisture_sep_22_2003.f (and older moisture.f)
-    !
-    ! koster+reichle, Feb 5, 2004
-    !
-    ! revised - koster+reichle, Mar 19, 2004
-    !
-    ! added optional *un output - koster+reichle, Apr 6, 2004
-    !
-    ! ----------------------------------------------------------------
-
-    
-    implicit none
-    
-    integer, parameter                   :: KSNGL=4
-    integer,                  intent(in) :: ncat
-    
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: wpwet,poros,psis
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: bee,ars1
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: ars2,ars3,ara1,ara2,ara3
-    real(KIND=KSNGL), dimension(ncat), intent(in) :: ara4,arw1,arw2,arw3,arw4
-    
-    real(KIND=KSNGL), dimension(ncat), intent(inout) :: srfexc, rzexc, catdef
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out) :: sfmc, rzmc, prmc
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: werror
-    
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: sfmcun
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: rzmcun
-    real(KIND=KSNGL), dimension(ncat), intent(out), optional :: prmcun
-    
-    ! ----------------------------
-    !    
-    ! local variables
-    
-    integer :: n
-    
-    real(KIND=KSNGL), parameter :: dtstep_dummy = -9999.
-    
-    real(KIND=KSNGL), dimension(ncat) :: rzeq, runsrf_dummy, catdef_dummy
-    real(KIND=KSNGL), dimension(ncat) :: ar1, ar2, ar4, prmc_orig
-    real(KIND=KSNGL), dimension(ncat) :: srfmn, srfmx, swsrf1, swsrf2, swsrf4, rzi
-    
-
-    ! --------------------------------------------------------------------
-    !
-    ! compute soil water storage upon input [mm]
-    
-    do n=1,ncat
-       prmc_orig(n) =                                                 &
-            (cdcr2(n)/(1.-wpwet(n))-catdef(n)+rzexc(n)+srfexc(n))
-    enddo
-       
-    ! -----------------------------------
-    !
-    ! check limits of catchment deficit
-    !
-    ! increased minimum catchment deficit from 0.01 to 1. to make the 
-    ! check work with perturbed parameters and initial condition
-    ! reichle, 16 May 01
-    !
-    ! IT REALLY SHOULD WORK WITH catdef > 0 (rather than >1.) ????
-    ! reichle, 5 Feb 2004 
-    
-    do n=1,ncat     
-       catdef(n)=max(1.,min(cdcr2(n),catdef(n)))
-    end do
-    
-    ! ------------------------------------------------------------------
-    !     
-    ! check limits of root zone excess
-    !     
-    ! calculate root zone equilibrium moisture for given catchment deficit
-    
-    call rzequil( &
-         ncat, catdef, vgwmax, &
-         cdcr1, cdcr2, wpwet, &
-         ars1, ars2, ars3, ara1, ara2, ara3, ara4, &
-         arw1, arw2, arw3, arw4, &
-         rzeq)
-    
-    ! assume srfexc=0 and constrain rzexc appropriately
-    ! (iteration would be needed to contrain srfexc and rzexc simultaneously)
-    
-    do n=1,ncat
-       rzexc(n)=max(wpwet(n)*vgwmax(n)-rzeq(n),min(vgwmax(n)-rzeq(n),rzexc(n)))
-    end do
-    
-    ! this translates into:
-    !
-    ! wilting level < rzmc < porosity
-    ! 
-    ! or more precisely:  wpwet*vgwmax < rzeq+rzexc < vgwmax
-    ! 
-    ! NOTE: root zone moisture is not allowed to drop below wilting level 
-    
-    ! -----------------------------------------------------------------
-    !
-    ! Call partition() for computation of surface moisture content.
-    !
-    ! Call to partition() also checks limits of surface excess.
-    !
-    ! Call partition with dtstep_dummy:
-    !  In partition, dtstep is only used for a correction that
-    !  puts water into runsrf (for which runsrf_dummy is used here).
-    !  Also use catdef_dummy because partition() updates catdef
-    !  whenever srfexc exceeds physical bounds, but this is not desired here.
-    
-    runsrf_dummy = 0.
-    catdef_dummy = catdef          
-    
-    call partition( &
-         ncat,dtstep_dummy,dzsf,rzexc,    &
-         rzeq,vgwmax,cdcr1,cdcr2, &
-         psis,bee,poros,wpwet, &
-         ars1,ars2,ars3, &
-         ara1,ara2,ara3,ara4, &
-         arw1,arw2,arw3,arw4,.false., &
-         srfexc,catdef_dummy,runsrf_dummy, &
-         ar1, ar2, ar4,srfmx,srfmn, & 
-         swsrf1,swsrf2,swsrf4,rzi &
-         )
-    
-    ! compute surface, root zone, and profile soil moisture
-    
-    do n=1,ncat
-
-       sfmc(n) = poros(n) *                                           &
-            (swsrf1(n)*ar1(n) + swsrf2(n)*ar2(n) + swsrf4(n)*ar4(n))
-       
-       rzmc(n) = (rzeq(n)+rzexc(n)+srfexc(n))*poros(n)/vgwmax(n)
-       
-       ! compute revised soil water storage [mm]
-       
-       prmc(n) =                                                               &
-            (cdcr2(n)/(1.-wpwet(n))-catdef(n)+rzexc(n)+srfexc(n))
-
-       ! compute error in soil water storage [mm] (if argument is present)
-       
-       if (present(werror))  werror(n)=(prmc(n)-prmc_orig(n))
-       
-       ! convert to volumetric soil moisture
-       ! note: dzpr = (cdcr2/(1-wpwet)) / poros 
-       
-       prmc(n) = prmc(n)*poros(n) / (cdcr2(n)/(1.-wpwet(n)))
-
-       
-       ! check for negative soil moisture 
-       
-       if ( (sfmc(n)<.0) .or. (rzmc(n)<.0) .or. (prmc(n)<.0) ) then
-          
-          write (*,*) 'FOUND NEGATIVE SOIL MOISTURE CONTENT.... stopping'
-          write (*,*) n, sfmc(n), rzmc(n), prmc(n)
-          stop
-       end if
-
-       ! compute moisture content in unsaturated areas [m3/m3] (if arg present)
-
-       if (ar1(n)<1.) then       
-
-          if (present(prmcun))  prmcun(n)=(prmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
-          if (present(rzmcun))  rzmcun(n)=(rzmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
-          if (present(sfmcun))  sfmcun(n)=(sfmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
-
-       else          
-          
-          if (present(prmcun))  prmcun(n)=poros(n)
-          if (present(rzmcun))  rzmcun(n)=poros(n)
-          if (present(sfmcun))  sfmcun(n)=poros(n)
-          
-       end if
-       
-    enddo
-
-  return
-
-  end subroutine calc_soil_moist
-
-      SUBROUTINE PARTITION (                                                   &
-                            NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
-                            PSIS,BEE,poros,WPWET,                              &
-                            ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
-                            arw1,arw2,arw3,arw4,BUG,                           &
-                            srfexc,catdef,runsrf,                              &
-                            AR1, AR2, AR4, srfmx, srfmn,                       &
-                            SWSRF1,SWSRF2,SWSRF4,RZI                           &
-                           )
-
-      IMPLICIT NONE
-
-! -------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: NCH
-
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
-                                          PSIS,BEE,poros,WPWET,                &
-                                          ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
-
-      LOGICAL, INTENT(IN) :: BUG
-! -------------------------------------------------------------------
-      REAL, INTENT(INOUT), DIMENSION(NCH) :: srfexc,catdef,runsrf
-! -------------------------------------------------------------------
-      REAL, INTENT(OUT), DIMENSION(NCH) :: AR1, AR2, AR4, srfmx, srfmn,        &
-                                           SWSRF1, SWSRF2, SWSRF4, RZI
-! -------------------------------------------------------------------
-      INTEGER :: N
-
-      REAL :: cor, A150, W150, WMIN, AX, WMNEW, WRZ, TERM1, TERM2, TERM3,      &
-              AREA0, AREA1, AREA2, AREA3, AREA4, ASCALE, WILT, D1, D2, CDI,    &
-              DELTA1, DELTA2, DELTA4, MULTAR, CATDEFX, RZEQX, RZEQW, FACTOR,   &
-              X0, RZEQY, CATDEFW, AR1W, ASUM, RZEQYI, RZEQWI, RZEQXI, AR20,    &
-              ARG1, EXPARG1, ARG2, EXPARG2, ARG3, EXPARG3  !, surflay
-
-      LOGICAL :: LSTRESS
-
-
-      DATA LSTRESS/.FALSE./    !,surflay/20./
-
-!****
-!**** --------------------------------------------------       
-
-!rr   next line for debugging, sep 23, 2003, reichle
-!rr
-!rr   write (*,*) 'entering partition()'
-
-      DO N=1,NCH
-
-        WILT=WPWET(N)
-        WRZ=RZEXC(N)/VGWMAX(N)
-        CATDEFX=AMIN1( CATDEF(N) , CDCR1(N) )
-
-! CDI DEFINES IF THE SHAPE PARAMETER IS ADJUSTED IN ONE OR TWO SEGMENTS
-        if (ara1(n) .ne. ara3(n)) then
-            cdi=(ara4(n)-ara2(n))/(ara1(n)-ara3(n))
-          else
-            cdi=0.
-          endif
-
-        AR1(N)= AMIN1(1.,AMAX1(0.,(1.+ars1(n)*CATDEFX)                         &
-                 /(1.+ars2(n)*CATDEFX+ars3(n)*CATDEFX*CATDEFX))) 
-
-        if (CATDEFX .ge. cdi) then
-            ax=ara3(n)*CATDEFX+ara4(n)
-          else
-            ax=ara1(n)*CATDEFX+ara2(n)
-          endif
-
-        WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*                           &
-                 (1.+arw1(n)*CATDEFX)                                          &
-                 /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
-
-!**** CRITICAL VALUE 1: AVERAGE MOISTURE IN ROOT ZONE AT WMIN
-!**** ASSOCIATED WITH CATDEF.
-        ARG1=AMAX1(-40., AMIN1(40., -AX*(1.-WMIN)))
-        EXPARG1=EXP(ARG1)
-        RZEQX=(WMIN-1.-(2./AX))*EXPARG1 + WMIN + (2./AX)
-        RZEQXI=AX*EXPARG1 *                                                    &
-          ( -1. -(2./AX) - (2./(AX*AX)) + WMIN + (WMIN/AX) )                   &
-          + WMIN + 2./AX
-        AR20=1.+(-AX-1.+AX*WMIN)*EXPARG1
-        RZEQXI=RZEQXI/(AR20+1.E-20)
-
-!**** CRITICAL VALUE 2: AVERAGE MOISTURE IN ROOT ZONE WHEN WMIN
-!**** IS EXACTLY AT WILTING POINT.
-        ARG2=AMAX1(-40., AMIN1(40., -AX*(1.-WILT)))
-        EXPARG2=EXP(ARG2)
-        RZEQW=(WILT-1.-(2./AX))*EXPARG2 + WILT + (2./AX)
-        RZEQWI=AX*EXPARG2 *                                                    &
-         ( -1. -(2./AX) - (2./(AX*AX)) + WILT + (WILT/AX) )                    &
-         + WILT + 2./AX
-        AR20=1.+(-AX-1.+AX*WILT)*EXPARG2
-        RZEQWI=RZEQWI/(AR20+1.E-20)
-
-!**** SITUATION 1: CATDEF LE CDCR1
-        IF(CATDEF(N) .LE. CDCR1(N)) THEN
-          RZEQY=RZEQX+WRZ
-          RZEQYI=RZEQXI+WRZ
-          WMNEW=WMIN+WRZ
-          ARG3=AMAX1(-40., AMIN1(40., -AX*(1.-WMNEW)))
-          EXPARG3=EXP(ARG3)
-          AREA1=(1.+AX-AX*WMIN)*EXPARG1
-          AREA2=(1.+AX-AX*WMNEW)*EXPARG3
-          IF(WMNEW .GE. WILT) THEN
-            AR1(N)=AR1(N)+AREA2-AREA1
-            AR2(N)=1.-AR1(N)
-            AR4(N)=0.
-            ENDIF
-          IF(WMNEW .LT. WILT) THEN
-            AREA3=(1.+AX-AX*WILT)*EXPARG2
-            AR1(N)=AR1(N)+AREA3-AREA1
-            AR2(N)=1.-AR1(N)
-            FACTOR=(RZEQX+WRZ-WILT)/(RZEQW-WILT)
-            AR1(N)=AR1(N)*FACTOR
-            AR2(N)=AR2(N)*FACTOR
-            AR4(N)=1.-FACTOR
-            ENDIF
-          ENDIF
-
-!**** SITUATION 2: CATDEF GT CDCR1
-        IF(CATDEF(N) .GT. CDCR1(N)) THEN
-          FACTOR=(CDCR2(N)-CATDEF(N))/(CDCR2(N)-CDCR1(N))
-          RZEQY=WILT+(RZEQX-WILT)*FACTOR+WRZ
-          RZEQYI=WILT+(RZEQXI-WILT)*FACTOR+WRZ
-
-          IF(RZEQY .LT. WILT) THEN
-            IF(RZEQY .LT. WILT-.001) THEN
-!rr                WRITE(*,*) 'RZEXC WAY TOO LOW!  N=',N,' RZEQY=',RZEQY
-!rr                WRITE(*,*) 'SRFEXC=',SRFEXC(N),'RZEXC=',RZEXC(N),
-!rr     &                     'CATDEF=',CATDEF(N)
-!             ELSE
-!               WRITE(*,*) 'RZEXC TOO LOW  N=',N
-              ENDIF
-            RZEQY=WILT
-            RZEQYI=WILT
-            ENDIF
-
-          IF(RZEQY .GE. RZEQX) THEN  ! RZEXC BRINGS MOISTURE ABOVE CDCR1 POINT
-            WMNEW=WMIN+(RZEQY-RZEQX)
-            ARG3=AMAX1(-40., AMIN1(40., -AX*(1.-WMNEW)))
-            EXPARG3=EXP(ARG3)
-            AREA1=(1.+AX-AX*WMIN)*EXPARG1
-            AREA2=(1.+AX-AX*WMNEW)*EXPARG3
-            AR1(N)=AR1(N)+(AREA2-AREA1)
-            AR2(N)=1.-AR1(N)
-            AR4(N)=0.
-            ENDIF
-
-          IF(RZEQY .LT. RZEQX .AND. RZEQY .GE. RZEQW) THEN
-            CATDEFW=CDCR2(N)+((RZEQW-WILT)/(RZEQX-WILT))*(CDCR1(N)-CDCR2(N))
-            AR1W= AMIN1(1.,AMAX1(0.,(1.+ars1(n)*CATDEFW)                       &
-                 /(1.+ars2(n)*CATDEFW+ars3(n)*CATDEFW*CATDEFW)))
-            FACTOR=(RZEQY-RZEQW)/(RZEQX-RZEQW)
-            AR1(N)=AR1W+FACTOR*(AR1(N)-AR1W)
-            AR2(N)=1.-AR1(N)
-            AR4(N)=0.
-            ENDIF
-
-          IF(RZEQY .LT. RZEQW) THEN
-            CATDEFW=CDCR2(N)+((RZEQW-WILT)/(RZEQX-WILT))*(CDCR1(N)-CDCR2(N))
-            AR1W= AMIN1(1.,AMAX1(0.,(1.+ars1(n)*CATDEFW)                       &
-                 /(1.+ars2(n)*CATDEFW+ars3(n)*CATDEFW*CATDEFW)))
-            AR1(N)=AR1W
-            AR2(N)=1.-AR1(N)
-            FACTOR=(RZEQY-WILT)/(RZEQW-WILT)
-            AR1(N)=AR1(N)*FACTOR
-            AR2(N)=AR2(N)*FACTOR
-            AR4(N)=1.-FACTOR
-            ENDIF
-
-          ENDIF
-
-        RZI(N)=RZEQYI
-
-        SWSRF1(N)=1.
-!mjs: changed .001 temporarily because of large bee.
-        SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
-        SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
-
-!**** EXTRAPOLATION OF THE SURFACE WETNESSES
-
-! 1st step: surface wetness in the unstressed fraction without considering
-!           the surface excess; we just assume an equilibrium profile from 
-!           the middle of the root zone to the surface.
-
-        SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
-        SWSRF4(N)=((SWSRF4(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
-
-! srfmx is the maximum amount of water that can be added to the surface layer
-! The choice of defining SWSRF4 like SWSRF2 needs to be better examined.
-        srfmx(n)=ar2(n)*(1.-swsrf2(n))*(dzsf(n)*poros(n))
-        srfmx(n)=srfmx(n)+ar4(n)*(1.-swsrf4(n))*(dzsf(n)*poros(n))
-!**** For calculation of srfmn, assume surface moisture associated with
-!**** AR1 is constantly replenished by water table.
-        srfmn(n)=-(ar2(n)*swsrf2(n)+ar4(n)*swsrf4(n))*(dzsf(n)*poros(n))
-
-        if(srfexc(n).gt.srfmx(n)) then
-            cor=srfexc(n)-srfmx(n)     !  The correction is here
-            srfexc(n)=srfmx(n)
-            catdef(n)=catdef(n)-cor
-            if(catdef(n).lt.0.) then
-              runsrf(n)=runsrf(n)-catdef(n)/dtstep
-              catdef(n)=0.
-              endif
-          else if(srfexc(n).lt.srfmn(n)) then
-            cor=srfexc(n)-srfmn(n)
-            catdef(n)=catdef(n)-cor
-            srfexc(n)=srfmn(n)
-          else
-            cor=0.
-          endif
-          
-        SWSRF2(N)=SWSRF2(N)+SRFEXC(N)/(dzsf(n)*poros(n)*(1.-ar1(n))+1.e-20)
-        SWSRF2(N)=AMIN1(1., AMAX1(1.E-5, SWSRF2(N)))
-        swsrf4(n)=swsrf4(n)+srfexc(n)/(dzsf(n)*poros(n)*(1.-ar1(n))+1.e-20)
-        SWSRF4(N)=AMIN1(1., AMAX1(1.E-5, SWSRF4(N)))
-
-        IF (AR1(N) .ge. 1.-1.E-5) then
-          AR1(N)=1.
-          AR2(N)=0.
-          AR4(N)=0.
-          SWSRF2(N)=1.
-          SWSRF4(N)=wilt
-          ENDIF
-
-        IF (AR1(N) .LT. 0.) then
-!rr          IF(AR1(N) .LT. -1.E-3) WRITE(*,*) 'AR1 TOO LOW: AR1=',AR1(N)
-          AR1(N)=0.
-          ENDIF
-        ar1(n)=amax1(0., amin1(1., ar1(n)))
-        ar2(n)=amax1(0., amin1(1., ar2(n)))
-        ar4(n)=amax1(0., amin1(1., ar4(n)))
-        asum=ar1(n)+ar2(n)+ar4(n)
-        if(asum .lt. .9999 .or. asum .gt. 1.0001) then
-          write(*,*) 'Areas do not add to 1: sum=',asum,'N=',n
-       endif
-
-
-        ENDDO
-
-         
-      RETURN
-      END SUBROUTINE PARTITION
-
-      SUBROUTINE RZEQUIL (                                                     &
-                          NCH,CATDEF,VGWMAX,CDCR1,CDCR2,WPWET,                 &
-                          ars1,ars2,ars3,ara1,ara2,ara3,ara4,                  &
-                          arw1,arw2,arw3,arw4,                                 &
-                          RZEQ                                                 &
-                         )
-
-      IMPLICIT NONE
-
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN), DIMENSION(NCH) :: CATDEF, VGWMAX, CDCR1, CDCR2,        &
-                   WPWET, ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1,      &
-                   arw2, arw3, arw4
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: RZEQ
-
-      INTEGER N
-      REAL AX,WMIN,ASCALE,cdi,wilt,catdefx,factor,ARG1,EXPARG1
-
-! ----------------------------------------------------------------------
-
-      DO N=1,NCH
-
-        WILT=WPWET(N)
-        CATDEFX=AMIN1( CATDEF(N) , CDCR1(N) )
-
-! CDI DEFINES IF THE SHAPE PARAMETER IS ADJUSTED IN ONE OR TWO SEGMENTS
-        if (ara1(n) .ne. ara3(n)) then
-            cdi=(ara4(n)-ara2(n))/(ara1(n)-ara3(n))
-          else
-            cdi=0.
-          endif
-
-        if (CATDEFX .ge. cdi) then
-            ax=ara3(n)*CATDEFX+ara4(n)
-          else
-            ax=ara1(n)*CATDEFX+ara2(n)
-          endif
-
-        WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)       &
-                 /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
-
-        ARG1=AMAX1(-40., AMIN1(40., -AX*(1.-WMIN)))
-        EXPARG1=EXP(ARG1)
-        RZEQ(N)=(WMIN-1.-(2./AX))*EXPARG1 + WMIN + (2./AX)
-
-        IF(CATDEF(N) .GT. CDCR1(N)) THEN
-          FACTOR=(CDCR2(N)-CATDEF(N))/(CDCR2(N)-CDCR1(N))
-          RZEQ(N)=WILT+(RZEQ(N)-WILT)*FACTOR
-          ENDIF
-
-! scaling:    
-        RZEQ(N)=AMIN1(1.,AMAX1(0.,RZEQ(N)))
-        RZEQ(N)=RZEQ(N)*VGWMAX(N)
-
-      ENDDO
-
-      RETURN
-      END SUBROUTINE RZEQUIL
+  end program
 

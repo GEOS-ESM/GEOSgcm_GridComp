@@ -1,3 +1,6 @@
+#define I_AM_MAIN
+#include "MAPL_Generic.h"
+
 program SaltImpConverter
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
@@ -46,6 +49,7 @@ program SaltImpConverter
   character*256        :: longname
   character*256        :: units
   character*256        :: impNames(39)
+  character*256        :: Iam = "SaltImpConverter"
 
   INCLUDE 'netcdf.inc'
 !---------------------------------------------------------------------------
@@ -144,9 +148,9 @@ program SaltImpConverter
      do while (var_iter /= variables%end())
         var_name => var_iter%key()
         if(var_name(1:6) == 'TSKINW') & 
-           call MAPL_VarRead(InIntFmt,var_name,TW)
+           call MAPL_VarRead(InIntFmt,var_name,TW, __RC__)
         if(var_name(1:6) == 'SSKINW') & 
-           call MAPL_VarRead(InIntFmt,var_name,SW)
+           call MAPL_VarRead(InIntFmt,var_name,SW, __RC__)
         call var_iter%next()
      enddo   
 
@@ -197,7 +201,7 @@ program SaltImpConverter
         ndims = var_dimensions%size()      
         write(*,*)"Writing ",trim(var_name)
         if (ndims == 1) then
-           call MAPL_VarRead(InImpFmt,var_name,varIn)
+           call MAPL_VarRead(InImpFmt,var_name,varIn, __RC__)
            if(vname(1:8) == 'TS_FOUND') then 
               varOut(:) = TW(:)    
            else
