@@ -309,7 +309,7 @@ contains
            thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
            thlu, thvu, uu, vu, xc, trten,                   & 
 #endif
-           dotransport)
+           dotransport )
 
       ! Reverse again
 
