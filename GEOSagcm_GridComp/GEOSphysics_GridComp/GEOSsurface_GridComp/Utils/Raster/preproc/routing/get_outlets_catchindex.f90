@@ -1,15 +1,16 @@
 program main
   
-  use routing_constant,only : nc,ns,ng
+  use routing_constant,only : nc,nl,ng
   implicit none
   
   integer,allocatable,dimension(:) :: msk,outid,mskall,final,finalall
   
-  integer :: k,i,ntot
+  integer :: k,i,ntot,ns
   
   ntot=nc+ng
+  ns=nl+ng
   allocate(msk(nc),outid(ns),mskall(ntot),final(nc),finalall(ntot))
-  open(77,file="inputs/Pfaf_msk.txt")
+  open(77,file="outputs/Pfaf_msk.txt") !!!
   read(77,*)msk
   k=0
   do i=1,nc
@@ -33,7 +34,7 @@ program main
      write(88,*)mskall(i)
   enddo
   
-  open(77,file="inputs/Pfaf_finalID.txt")
+  open(77,file="outputs/Pfaf_finalID.txt")
   read(77,*)final
   finalall(1:nc)=final
   do i=nc+1,ntot

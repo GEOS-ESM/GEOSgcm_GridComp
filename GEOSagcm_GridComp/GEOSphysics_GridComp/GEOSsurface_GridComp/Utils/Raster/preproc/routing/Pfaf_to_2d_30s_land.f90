@@ -1,6 +1,6 @@
 program main
   
-  use routing_constant,only : nall,nlon,nlat
+  use routing_constant,only : nc,ng,nlon,nlat
   implicit none
   
   character(len=100)  :: var1="outlet_sinky_allcat"
@@ -12,9 +12,9 @@ program main
   integer,allocatable :: lons(:,:),lats(:,:)
   integer,allocatable :: data_Pfaf(:)
   
-  integer :: i,j,xi,yi,id
+  integer :: i,j,xi,yi,id,nall
   
-  
+  nall=nc+ng
   allocate(catchind(nlon,nlat),lons(nlon,nlat),lats(nlon,nlat))
   allocate(lon(nlon),lat(nlat))
   

@@ -5,6 +5,7 @@ set(srcs
 )
 
 set (exe_srcs
+   get_finalID_msk.f90
    get_landocean_Greenland_real.f90
    get_outlets_land_allcat.f90
    get_sinkxy_land.f90

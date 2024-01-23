@@ -19,6 +19,7 @@ for file in os.listdir(input_path):
     os.symlink(os.path.join(input_path, file), os.path.join("inputs", file))
 
 out_programs = [
+    "get_finalID_msk.x",
     "get_outlets_catchindex.x",
     "get_outlets_land.x",
     "get_sinkxy_land.x",

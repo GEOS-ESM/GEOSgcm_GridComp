@@ -1,14 +1,16 @@
 program main
   
-  use routing_constant,only : nall,ns
+  use routing_constant,only : nc,nl,ng
   implicit none
   
   integer, allocatable, dimension(:) :: id_final,id_outlet,msk 
   integer,allocatable,dimension(:)   :: lati_outlet,loni_outlet
   integer,allocatable,dimension(:)   :: lati_full,loni_full
   
-  integer :: i,j
+  integer :: i,j,nall,ns
   
+  nall=nc+ng
+  ns=nl+ng
   allocate(id_final(nall),id_outlet(ns),msk(nall),&
        lati_outlet(ns),loni_outlet(ns),lati_full(nall),loni_full(nall))
   
@@ -27,7 +29,6 @@ program main
   loni_full=-999
   
   do i=1,nall
-     !if(mod(i,1000)==0) print *,i
      if(msk(id_final(i)).eq.2)then
         do j=1,ns
            if(id_outlet(j).eq.id_final(i))then 

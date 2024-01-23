@@ -19,17 +19,17 @@ program main
   allocate(long(ng),latg(ng),lons(ntot),lats(ntot))
   
   
-  ret=nf_open("inputs/CatchIndex.nc",0,ncid)
-  ret=nf_inq_varid(ncid,"lon",varid)
+  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_inq_varid(ncid,"longitude",varid)
   ret=nf_get_var_double(ncid,varid,lon)
   ret=nf_close(ncid)
-  ret=nf_open("inputs/CatchIndex.nc",0,ncid)
-  ret=nf_inq_varid(ncid,"lat",varid)
+  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_inq_varid(ncid,"latitude",varid)
   ret=nf_get_var_double(ncid,varid,lat)
   ret=nf_close(ncid)
   
-  ret=nf_open("inputs/CatchIndex.nc",0,ncid)
-  ret=nf_inq_varid(ncid,"data",varid)
+  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_inq_varid(ncid,"CatchIndex",varid)
   ret=nf_get_var_int(ncid,varid,catchind)
   ret=nf_close(ncid)
   
@@ -38,9 +38,9 @@ program main
   ret=nf_get_var_real(ncid,varid,acah)
   ret=nf_close(ncid)
   
-  open(77,file="inputs/downstream_1D_new_noadj.txt")
+  open(77,file="outputs/Pfaf_downid.txt")
   read(77,*)down
-  open(77,file="inputs/Pfaf_msk.txt")
+  open(77,file="outputs/Pfaf_msk.txt")
   read(77,*)msk
   
   acas=-9999.

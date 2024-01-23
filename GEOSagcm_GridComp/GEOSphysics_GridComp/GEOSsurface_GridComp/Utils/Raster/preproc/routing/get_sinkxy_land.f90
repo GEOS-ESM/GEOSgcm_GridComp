@@ -1,13 +1,14 @@
 program main
   
-  use routing_constant,only : ns,nlon,nlat
+  use routing_constant,only : nl,ng,nlon,nlat
   implicit none
   
   real*8,allocatable,dimension(:)  :: lats,lons,lat30s,lon30s,lat_dis,lon_dis
   integer,allocatable,dimension(:) :: lati,loni
   
-  integer :: i,temp(1)
-  
+  integer :: i,temp(1),ns
+
+  ns=nl+ng
   allocate(lats(ns),lons(ns),lati(ns),loni(ns))
   allocate(lat30s(nlat),lon30s(nlon),lat_dis(nlat),lon_dis(nlon))
   open(77,file="outputs/outlet_sinklat.txt")
