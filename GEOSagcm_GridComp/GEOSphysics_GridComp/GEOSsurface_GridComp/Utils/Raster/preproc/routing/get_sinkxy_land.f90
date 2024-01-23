@@ -7,6 +7,7 @@ program main
   integer,allocatable,dimension(:) :: lati,loni
   
   integer :: i,temp(1),ns
+  real*8  :: dlat,dlon
 
   ns=nl+ng
   allocate(lats(ns),lons(ns),lati(ns),loni(ns))
@@ -15,10 +16,18 @@ program main
   read(77,*)lats
   open(77,file="outputs/outlet_sinklon.txt")
   read(77,*)lons
-  open(77,file="inputs/lat_30s.txt")
-  read(77,*)lat30s
-  open(77,file="inputs/lon_30s.txt")
-  read(77,*)lon30s
+  
+  dlat=180.D0/nlat
+  dlon=360.D0/nlon
+  lat30s(1)=-90.D0+dlat/2.D0
+  lon30s(1)=-180.D0+dlon/2.D0
+  do i=2,nlat
+    lat30s(i)=lat30s(i-1)+dlat
+  enddo
+  do i=2,nlon
+    lon30s(i)=lon30s(i-1)+dlon
+  enddo  
+
   
   do i=1,ns
      lat_dis=abs(lat30s-lats(i))
