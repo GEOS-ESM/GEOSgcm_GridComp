@@ -12,21 +12,37 @@ If on NCCS/Discover, the package can be run using the script "run_routing_raster
 
 The tasks completed by each f90 program are briefly described as follows:
 
-1. get_outlets_catchindex.f90:
-Get sink catchment IDs.
+1. get_finalID_msk.f90:
+Get downstream catchment and final destination ID for each catchment, and determine whether it directs to ocean or inland lake. 
 
-2. get_outlets_land.f90: 
+2. get_outlets_catchindex.f90:
+Get a list of sink catchment IDs.
+
+3. get_outlets_land.f90: 
 Get sink points on land or in Greenland (from Lauren Andrews) by picking the point (i.e., 15-arcsec grid cell) within each sink catchment that has the largest drainage area per the HydroSHEDS (https://www.hydrosheds.org/) dataset.
 
-3. get_sinkxy_land.f90: 
+4. get_sinkxy_land.f90: 
 Convert outlet locations in degree lat/lon to indices on the 30 arc-sec raster grid.
 
-4. get_outlets_land_allcat.f90: 
+5. get_outlets_land_allcat.f90: 
 Assign outlet locations to all upstream catchments to create a 1d list showing the final x and y indexes for each catchment.
 
-5. get_landocean_Greenland_real.f90: 
+6. get_landocean_Greenland_real.f90: 
 Insert the Greenland index map into the catchment index map.
 
-6. Pfaf_to_2d_30s_land.f90: 
+7. Pfaf_to_2d_30s_land.f90: 
 Transform the 1d list above to the unformatted Fortran binary file "Outlet_latlon.43200x21600" that can be read directly by "mk_runofftbl.F90" of makebcs.
 
+The input data are briefly described as follows:
+
+1. HydroSHEDS_drainage_area.nc: 
+The drainage_area dataset provided by the HydroSHEDS (https://www.hydrosheds.org/).
+
+2. GreenlandID_30s.nc: 
+The Greenland ID map provided by Lauren Andrews (Lauren.c.andrews@nasa.gov).
+
+3. Greenland_outlets_lat.txt: 
+The latitude of the routing outlet for each Greenland catchment provided by Lauren Andrews.
+
+4. Greenland_outlets_lon.txt: 
+The longitude of the routing outlet for each Greenland catchment provided by Lauren Andrews.
