@@ -2893,3 +2893,11 @@ end subroutine RUN
 
 
 end module GEOS_CICEDynaGridCompMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_CICEDynaGridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine

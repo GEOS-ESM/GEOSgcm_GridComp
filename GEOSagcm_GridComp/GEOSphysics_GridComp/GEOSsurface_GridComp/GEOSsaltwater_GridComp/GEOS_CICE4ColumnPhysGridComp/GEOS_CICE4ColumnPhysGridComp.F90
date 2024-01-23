@@ -5759,3 +5759,11 @@ subroutine CICEReOrder8(Packed, UnPacked, MSK, Pdim, Udim, LM, DIR)
      end do
   end do
 end subroutine CICEReOrder8
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_CICE4ColumnPhysGridComp, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc,rc=rc)
+end subroutine

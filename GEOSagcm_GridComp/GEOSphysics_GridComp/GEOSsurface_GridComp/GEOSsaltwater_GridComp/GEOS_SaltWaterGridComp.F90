@@ -36,8 +36,6 @@ module GEOS_SaltwaterGridCompMod
 
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
-  use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
-  use GEOS_SeaiceInterfaceGridComp,         only : SeaiceInterfaceSetServices => SetServices
   use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
   
   implicit none
@@ -102,6 +100,7 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
     logical                                 :: seaIceT_extData ! default (=.FALSE.) is to NOT use data sea ice thickness from ExtData
 
+    character(len=ESMF_MAXSTR)              :: sharedObj
     character(len = 2) :: suffix
 
 !=============================================================================
@@ -144,14 +143,13 @@ module GEOS_SaltwaterGridCompMod
     ! sea-ice first and openwater second 
     ! changing order requires also changing indices of ICE and WATER (sub-tiles at the top)
     if(DO_CICE_THERMO == 0) then
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
-       VERIFY_(STATUS)
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,   _RC)
     elseif(DO_CICE_THERMO == 1) then 
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_CICE4ColumnPhysGridComp:", DEFAULT="libGEOS_CICE4ColumnPhysGridComp.so", _RC)
+       I = MAPL_AddChild('SEAICETHERMO','setservices_', parentGC=GC, sharedObj=sharedObj,  _RC)
     else
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SeaiceInterfaceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_SeaiceInterfaceGridComp:", DEFAULT="libGEOS_SeaiceInterfaceGridComp.so", _RC)
+       I = MAPL_AddChild('SEAICETHERMO','setservices_', parentGC=GC, sharedObj=sharedObj,  _RC)
     endif  
 
     I = MAPL_AddChild(GC,    NAME='OPENWATER', SS=OpenWaterSetServices,    _RC)

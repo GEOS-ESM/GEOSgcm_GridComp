@@ -3120,4 +3120,10 @@ end subroutine RUN2
 
 end module GEOS_SeaiceInterfaceGridComp
 
-
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_SeaiceInterfaceGridComp, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc,rc=rc)
+end subroutine
