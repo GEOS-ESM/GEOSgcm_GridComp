@@ -1046,12 +1046,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','QCTOT ',      &
-                         'WTHV2 ','WQT_DC'                   /),   &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
+    call MAPL_AddConnectivity ( GC,                   &
+         SHORT_NAME  = [character(len=6) ::           &
+                         'QV','QLTOT','QITOT','FCLD', &
+                         'WTHV2','WQT_DC'],           &
+         DST_ID      = TURBL,                         &
+         SRC_ID      = MOIST,                         &
+                                           RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1179,11 +1180,11 @@ contains
 
 ! Imports for GWD
 !----------------
-    call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = [character(len=7):: 'Q', 'DTDT_DC', 'DTDT_SC'], &
-         DST_ID      = GWD,                                            &
-         SRC_ID      = MOIST,                                          &
-                                                        RC=STATUS      )
+    call MAPL_AddConnectivity ( GC,                                      &
+         SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                        RC=STATUS        )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
          SRC_NAME    = 'DQIDT_micro',                                    &
@@ -1212,7 +1213,8 @@ contains
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
-                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ' /),          &
+                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ',             &
+                         'BYNCY   ',  'CAPE    ', 'INHB    ' /),          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
