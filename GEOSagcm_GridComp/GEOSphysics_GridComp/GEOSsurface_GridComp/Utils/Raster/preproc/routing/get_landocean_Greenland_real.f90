@@ -21,7 +21,6 @@ program main
 
   open(77,file="/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv5/Icarus-NLv5_EASE/SMAP_EASEv2_M09/til/Pfafstetter.til",form="formatted",status="old")
   read(77,*) ntile
-  print *,ntile
   id_glac=ntile
   id_lake=ntile-1
   id_landend=ntile-3
@@ -30,7 +29,7 @@ program main
     read(77,*)
   enddo
   do i=1,id_landend
-    read(77,*) val(4),Pfaf_real(i)
+    read(77,*) val(1:4),Pfaf_real(i)
   enddo
 
   allocate(Greenland(nlon_G,nlat_G))
