@@ -1106,7 +1106,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1118,7 +1118,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
   ! Biljana
@@ -1386,7 +1386,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                    ,&
+    RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1397,7 +1397,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                    ,&
+    RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1408,9 +1408,21 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                     ,&
+    RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'qc difference, optional in helfsurface'  ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'drv_qc'                    ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
   ! Biljana
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -3065,13 +3077,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: WW
     real, dimension(:,:), pointer :: DCH
     real, dimension(:,:), pointer :: DCQ
-    ! Biljana for helfsurface
-    real, dimension(:,:), pointer :: TC_pert
-    real, dimension(:,:), pointer :: QC_pert
-    real,   allocatable :: drv_tc(:)
-    real,   allocatable :: drv_qc(:)
-    real,   allocatable :: VKH_pert_tc(:)
-    real,   allocatable :: VKH_pert_qc(:)
 
 
 ! -----------------------------------------------------
@@ -3393,16 +3398,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    ! Biljana helfsurface
-    allocate(drv_tc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(drv_qc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VKH_pert_tc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VKH_pert_qc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-
 !  Vegetation types used to index into tables
 !--------------------------------------------
 
@@ -3612,11 +3607,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    ! Biljana Helfsurface
-    deallocate(VKH_pert_qc)
-    deallocate(VKH_pert_tc)
-    deallocate(tc_pert)
-    deallocate(qc_pert)
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3659,17 +3649,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(MAPL_MetaComp),pointer :: MAPL
     type(ESMF_Alarm)                :: ALARM
 
-    integer :: IM,JM
-    integer :: incl_Louis_extra_derivs
-    ! Biljana
-    integer :: incl_HelfandMO_extra_derivs
+    integer                         :: IM,JM
+    integer                         :: incl_Louis_extra_derivs
 
-    real                           :: SCALE4ZVG
-    real                           :: SCALE4Z0_u
+    ! Biljana Helfand
+    integer                         :: incl_HelfandMO_extra_derivs
+    real                            :: SCALE4Z0 
+
+    real                            :: SCALE4ZVG
+    real                            :: SCALE4Z0_u
     real                            :: MIN_VEG_HEIGHT
     type(ESMF_VM)                   :: VM
-    type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
-    type (CATCH_WRAP)                       :: wrap
+    type (T_CATCH_STATE), pointer   :: CATCH_INTERNAL_STATE
+    type (CATCH_WRAP)               :: wrap
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3700,35 +3692,39 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! Biljana
+    ! Biljana Helfand
     call MAPL_GetResource ( MAPL, incl_HelfandMO_extra_derivs, Label="INCL_HELFANDMO_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    ! Biljana
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
-   select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-      case (0)  ! no scaled at all
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01
-      case (1) ! This case is bugged
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (2)
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.01         
-      case (3)
-         SCALE4ZVG   = 0.5
-         SCALE4Z0_u  = 1
-         MIN_VEG_HEIGHT = 0.01         
-      case (4) 
-         SCALE4ZVG   = 1
-         SCALE4Z0_u  = 2
-         MIN_VEG_HEIGHT = 0.1
-   end select
+    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
+       case (0)  ! no scaled at all
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01
+       case (1) ! This case is bugged
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01         
+       case (2)
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.01         
+       case (3)
+          SCALE4ZVG   = 0.5
+          SCALE4Z0    = 1
+          SCALE4Z0_u  = 1
+          MIN_VEG_HEIGHT = 0.01         
+       case (4) 
+          SCALE4ZVG   = 1
+          SCALE4Z0    = 2
+          SCALE4Z0_u  = 2
+          MIN_VEG_HEIGHT = 0.1
+    end select
     
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -3940,6 +3936,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,   allocatable :: Q2M (:)
         real,   allocatable :: U2M (:)
         real,   allocatable :: V2M (:)
+        real,   allocatable :: D0T(:)
 
         ! -----------------------------------------------------
         ! EXPORT Pointers
@@ -4255,9 +4252,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
         ! Biljana (Helfsurface)
-        real, parameter               :: small_TC = 0.00001
-        real, parameter               :: small_QC = 0.0000001 
-        ! Biljana (Helfsurface)
+        real(ESMF_KIND_R8), parameter               :: small_TC = 0.0001
+        real(ESMF_KIND_R8), parameter               :: small_QC = 0.000001 
 
 !#---
 
@@ -4415,6 +4411,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
+        ! Biljana Helfand
+        call MAPL_GetPointer(IMPORT,UWINDLMTILE, 'UWINDLMTILE',    RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,VWINDLMTILE, 'VWINDLMTILE',    RC=STATUS)
+        VERIFY_(STATUS)
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4450,14 +4451,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,ATAU       ,'ATAU'       ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BTAU       ,'BTAU'       ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); VERIFY_(STATUS)
-        ! Biljana
-        call MAPL_GetPointer(INTERNAL,TC_pert    ,'TC_pert'    ,RC=STATUS); VERIFY_(STATUS)
-        !call MAPL_GetPointer(INTERNAL,drv_tc     ,'drv_tc'     ,RC=STATUS); VERIFY_(STATUS)
-        !call MAPL_GetPointer(INTERNAL,drv_qc     ,'drv_tc'     ,RC=STATUS); VERIFY_(STATUS)
-        !call MAPL_GetPointer(INTERNAL,VKH_pert_tc,'VKH_pert_tc',RC=STATUS); VERIFY_(STATUS)
-        !call MAPL_GetPointer(INTERNAL,VKH_pert_qc,'VKH_pert_qc',RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,QC_pert    ,'QC_pert'    ,RC=STATUS); VERIFY_(STATUS)
-        ! Biljana
         call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CATDEF     ,'CATDEF'     ,RC=STATUS); VERIFY_(STATUS)
@@ -4704,6 +4697,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! Biljana Helfsurface
 
+        allocate(TC_pert        (NTILES,NUM_SUBTILES))
+        allocate(QC_pert        (NTILES,NUM_SUBTILES))
         allocate(VKH_pert_tc    (NTILES))
         allocate(VKH_pert_qc    (NTILES))
         allocate(drv_tc         (NTILES))
@@ -4734,6 +4729,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(U2M            (NTILES))
         allocate(V2M            (NTILES))
         allocate(Z0T            (NTILES,NUM_SUBTILES))
+        allocate(D0T            (NTILES))
 
         debugzth = .false.
 
@@ -5161,7 +5157,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            ! Biljana (adding derivatives for helfand MO scheme)
            if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+
               do N=1,NUM_SUBTILES
+
+                  Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
+                  D0T  = D0_BY_ZVEG*ZVG
+                  DZE  = max(DZ - D0T, 10.)   ! most of the time this is between 40-70
+
+                  if(associated(Z0 )) Z0  = Z0T(:,N)
+                  if(associated(D0 )) D0  = D0T
+                  niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
+                  IWATER = 3
+                  PSMB = PS * 0.01            ! convert to MB
+                  NT = NTILES
+
+                 ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
+                 !  MAPL_GRAV this is 9.806650 
+                 !  MAPL_RGAS    this is 287.0523
+                  PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
+                        (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
 
                  TC_pert(:,N)=TC(:,N)+small_TC
                  CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
@@ -5178,30 +5192,29 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                                    IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,       &
                                    t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-
                  ! getting DSHSBT - derivative of sensible heat flux w.r.t. Tc (ground temperature)
                  drv_tc     = (VKH_pert_tc - VKH ) / small_TC
-                 DSHSBT(:,N)=(TC(:,N)-TA) * MAPL_CP * drv_tc
+                 DSHSBT(:,N)= MAPL_CP*( VKH +max(0.0,(TC(:,N)-TA) * drv_tc))
 
                  ! getting DHSDQA - cross derivative of sensible heat flux  w.r.t. Qc (ground humidity)
                  drv_qc     = (VKH_pert_qc - VKH ) / small_QC
-                 DHSDQA(:,N)=(TC(:,N)-TA) * MAPL_CP * drv_qc
+                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * drv_qc)
 
                  ! getting DEVSBT - derivative of latent heat flux w.r.t. Qc (ground humidity)
-                 DEVSBT(:,N)=(QC(:,N)-QA) * drv_qc
+                 DEVSBT(:,N)=VKH+max(0.0,(QC(:,N)-QA) * drv_qc)
 
-                 ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
-                 DEDTC(:,N) =(QC(:,N)-QA) * drv_tc
+                ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
+                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * drv_tc)
 
               enddo ! N-loop (NUM_SUBTILES)
 
            endif ! if Helfand
-           ! Biljana
+           ! Biljana Helfand
 
           ! BLWX = EMIS*MAPL_STFBOL*TA*TA*TA
           ! ALWX = -3.0*BLWX*TA
           ! BLWX =  4.0*BLWX
-        else ! Biljana!!! Do we need this we only have 2 options louis and helfand? 
+        else  
            do N=1,NUM_SUBTILES
               CFT   (:,N) = (CH(:,N)/CTATM)
               CFQ   (:,N) = (CQ(:,N)/CQATM)
@@ -6130,6 +6143,40 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(FICE1TMP )
         deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
+        ! Biljana Helfand
+        deallocate(VKH_pert_tc)
+        deallocate(VKH_pert_qc)
+        deallocate(TC_pert    )
+        deallocate(QC_pert    )
+        deallocate(drv_tc     )
+        deallocate(drv_qc     )
+        deallocate(Z0T        )
+        deallocate(PSL        )
+        deallocate(RHOH       )
+        deallocate(IWATER     )
+        deallocate(PSMB       )
+        deallocate(DZE        )
+        deallocate(WS         )
+        deallocate(VKM        )
+        deallocate(VKH        )
+        deallocate(USTAR      )
+        deallocate(XX         )
+        deallocate(YY         )
+        deallocate(CU         )
+        deallocate(CT         )
+        deallocate(RIB        )
+        deallocate(ZETA       )
+        deallocate(U50M       )
+        deallocate(V50M       )
+        deallocate(T10M       )
+        deallocate(Q10M       )
+        deallocate(U10M       )
+        deallocate(V10M       )
+        deallocate(T2M        )
+        deallocate(Q2M        )
+        deallocate(U2M        )
+        deallocate(V2M        )
+        deallocate(D0T        )
 
         RETURN_(ESMF_SUCCESS)
 
