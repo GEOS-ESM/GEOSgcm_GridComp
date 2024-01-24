@@ -1046,12 +1046,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','QCTOT ',      &
-                         'WTHV2 ','WQT_DC'                   /),   &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
+    call MAPL_AddConnectivity ( GC,                   &
+         SHORT_NAME  = [character(len=6) ::           &
+                         'QV','QLTOT','QITOT','FCLD', &
+                         'WTHV2','WQT_DC'],           &
+         DST_ID      = TURBL,                         &
+         SRC_ID      = MOIST,                         &
+                                           RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1181,11 +1182,11 @@ contains
 
 ! Imports for GWD
 !----------------
-    call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = [character(len=7):: 'Q', 'DTDT_DC', 'DTDT_SC'], &
-         DST_ID      = GWD,                                            &
-         SRC_ID      = MOIST,                                          &
-                                                        RC=STATUS      )
+    call MAPL_AddConnectivity ( GC,                                      &
+         SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                        RC=STATUS        )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
          SRC_NAME    = 'DQIDT_micro',                                    &
