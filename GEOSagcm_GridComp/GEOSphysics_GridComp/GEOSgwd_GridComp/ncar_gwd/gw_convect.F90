@@ -44,6 +44,7 @@ type :: BeresSourceDesc
    real, allocatable :: mfcc(:,:,:)
    ! Forced background for extratropics
    real, allocatable :: taubck(:,:)
+   logical :: et_bkg_lat_forcing
 end type BeresSourceDesc
 
 
@@ -53,7 +54,8 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, taubgnd, tndmax, active, ncol, lats)
+                          spectrum_source, min_hdepth, storm_shift, tau_et, et_uselats, tndmax, &
+                          active, ncol, lats)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -63,8 +65,8 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth, taubgnd, tndmax
-  logical, intent(in) :: storm_shift, active
+  real, intent(in) :: spectrum_source, min_hdepth, tau_et, tndmax
+  logical, intent(in) :: storm_shift, active, et_uselats
   real, intent(in) :: lats(ncol)
 
   ! Stuff for Beres convective gravity wave source.
@@ -168,8 +170,10 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        c0(kc) =  10.0*(4.0/real(band%ngwv))*kc
        desc%taubck(:,kc) =  exp(-(c0(kc)/30.)**2)
     enddo
-    do i=1,ncol
-      ! include forced background stress in extra tropics
+    desc%et_bkg_lat_forcing = et_uselats
+    if (et_uselats) then
+      do i=1,ncol
+       ! include forced background stress in extra tropics
        ! Determine the background stress at c=0
        ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
@@ -188,15 +192,21 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        else if (latdeg >=  60.) then
          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/70.)**2)
        end if
-       desc%taubck(i,:) = taubgnd*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
-    enddo
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
+      enddo
+    else
+      flat_gw = 0.5 ! constant scaling since DQCDT will be used for frontal detection
+      do i=1,ncol
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
+      enddo
+    end if
     deallocate( c0, cw4 )
   end if
     
 end subroutine gw_beres_init
 
 !------------------------------------
-subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
+subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth, maxq0, lats, dqcdt)
 !-----------------------------------------------------------------------
@@ -222,8 +232,10 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   type(GWBand), intent(in) :: band
 
   ! Settings for convection type (e.g. deep vs shallow).
-  type(BeresSourceDesc), intent(in) :: desc
+  type(BeresSourceDesc), intent(inout) :: desc
 
+  ! Edge pressures
+  real, intent(in) :: pint(ncol,pver+1)
   ! Midpoint zonal/meridional winds.
   real, intent(in) :: u(ncol,pver), v(ncol,pver)
   ! Heating rate due to convection.
@@ -252,7 +264,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   real, intent(out) :: hdepth(ncol), maxq0(ncol)
 
   ! Condensate tendency due to large-scale (kg kg-1 s-1)
-  real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  real, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -291,35 +303,6 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   q0 = 0.0
   tau0 = 0.0
   ubi = 0.0
-
-  !------------------------------------------------------------------------
-  ! Determine wind and unit vectors approximately at the source level, then
-  ! project winds.
-  !------------------------------------------------------------------------
-
-  ! Source wind speed and direction.
-  do i=1,ncol
-   uconv(i) = u(i,desc%k(i))
-   vconv(i) = v(i,desc%k(i))
-  enddo
-
-  ! Get the unit vector components and magnitude at the source level.
-  ubi1d = 0.0
-  call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
-  do i=1,ncol
-   ubi(i,desc%k(i)+1) = ubi1d(i)
-  enddo
-
-  ! Project the local wind at midpoints onto the source wind.
-  do k = 1, pver
-     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
-  end do
-
-  ! Compute the interface wind projection by averaging the midpoint winds.
-  ! Use the top level wind at the top interface.
-  ubi(:,1) = ubm(:,1)
-
-  ubi(:,2:pver) = midpoint_interp(ubm)
 
   !-----------------------------------------------------------------------
   ! Calculate heating depth.
@@ -383,33 +366,69 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
   ! Multipy by conversion factor
   q0 = q0 * hr_cf
 
-  if (desc%storm_shift) then
+  ! Compute source k-index
+  do i=1,ncol
+     if (hd_idx(i) > 0) then
+       do k = 0, pver-2
+         ! spectrum source index for DeepCu scheme
+         if (pint(i,k+1) < desc%spectrum_source) desc%k(i) = k+1
+       end do
+     else
+       do k = 0, pver-2
+         ! spectrum source index for frontal scheme
+         if (pint(i,k+1) < 90000.0) desc%k(i) = k+1
+       end do
+     endif
+  enddo
 
-     ! Find the cell speed where the storm speed is > 10 m/s.
-     ! Storm speed is taken to be the source wind speed.
-     do i=1,ncol
-       CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
-     enddo
+  !------------------------------------------------------------------------
+  ! Determine wind and unit vectors approximately at the source level, then
+  ! project winds.
+  !------------------------------------------------------------------------
 
-     ! Average wind in heating region, relative to storm cells.
-     uh = 0.0
-     do k = minval(topi), maxval(boti)
-        where (k >= topi .and. k <= boti)
-           uh = uh + ubm(:,k)/(boti-topi+1)
-        end where
-     end do
+  ! Source wind speed and direction.
+  do i=1,ncol
+   uconv(i) = u(i,desc%k(i))
+   vconv(i) = v(i,desc%k(i))
+  enddo
 
-     uh = uh - CS
+  ! Get the unit vector components and magnitude at the source level.
+  ubi1d = 0.0
+  call get_unit_vector(uconv, vconv, xv, yv, ubi1d)
+  do i=1,ncol
+   ubi(i,desc%k(i)+1) = ubi1d(i)
+  enddo
 
-  else
+  ! Project the local wind at midpoints onto the source wind.
+  do k = 1, pver
+     ubm(:,k) = dot_2d(u(:,k), v(:,k), xv, yv)
+  end do
 
-     ! For shallow convection, wind is relative to ground, and "heating
-     ! region" wind is just the source level wind.
-     do i=1,ncol
-       uh(i) = ubm(i,desc%k(i))
-     enddo
+  ! Compute the interface wind projection by averaging the midpoint winds.
+  ! Use the top level wind at the top interface.
+  ubi(:,1) = ubm(:,1)
+  ubi(:,2:pver) = midpoint_interp(ubm)
 
-  end if
+  ! Average wind in heating region, relative to storm cells.
+  uh = 0.0
+  do k = minval(topi), maxval(boti)
+     where (k >= topi .and. k <= boti)
+       uh = uh + ubm(:,k)/(boti-topi+1)
+     end where
+  end do
+
+  do i=1,ncol
+     if (desc%storm_shift .and. (hd_idx(i) > 0)) then
+         ! Find the cell speed where the storm speed is > 10 m/s.
+         ! Storm speed is taken to be the source wind speed.
+          CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
+          uh(i) = uh(i) - CS(i)
+     else
+         ! For shallow convection, wind is relative to ground, and "heating
+         ! region" wind is just the source level wind.
+          uh(i) = ubm(i,desc%k(i))
+     endif
+  enddo
 
   ! Limit uh to table range.
   uh = min(uh,  real(desc%maxuh))
@@ -437,7 +456,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
 
      !---------------------------------------------------------------------
      ! Look up spectrum only if the heating depth is large enough, else set
-     ! tau0 = 0.
+     ! tau0 = 0. or use frontal scheme forcing
      !---------------------------------------------------------------------
 
      if (hd_idx(i) > 0) then
@@ -464,17 +483,36 @@ subroutine gw_beres_src(ncol, pver, band, desc, u, v, &
         tau(i,:,topi(i)+1) = tau0
 
      else
-      if (present(dqcdt)) then
-        if (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
-        ! include forced background stress in extra tropical large-scale systems
-        ! Set the phase speeds and wave numbers in the direction of the source wind.
-        ! Set the source stress magnitude (positive only, note that the sign of the 
-        ! stress is the same as (c-u).
-         tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
-         topi(i) = desc%k(i)
+
+        if (desc%et_bkg_lat_forcing) then
+          ! use latitudinal dependence
+          ! include forced background stress in extra tropical large-scale systems
+          ! Set the phase speeds and wave numbers in the direction of the source wind.
+          ! Set the source stress magnitude (positive only, note that the sign of the 
+          ! stress is the same as (c-u).
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           topi(i) = desc%k(i)
+        else
+          ! Maximum condensate change, for frontal detection
+          q0(i) = 0.0
+          do k = pver, 1, -1 ! Surface to top of atmosphere
+             if (dqcdt(i,k) < q0(i)) then ! Find max DQCDT level
+                q0(i) = dqcdt(i,k)
+                desc%k(i) = k
+             endif
+          end do
+          if (q0(i) < -1.e-8) then ! frontal region (large-scale forcing)
+          ! include forced background stress in extra tropical large-scale systems
+          ! Set the phase speeds and wave numbers in the direction of the source wind.
+          ! Set the source stress magnitude (positive only, note that the sign of the 
+          ! stress is the same as (c-u).
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           topi(i) = desc%k(i)
+          endif
         endif
-      endif
+
      endif
+
   enddo
   !-----------------------------------------------------------------------
   ! End loop over all columns.
@@ -532,7 +570,7 @@ subroutine gw_beres_ifc( band, &
    real,         intent(out) :: ttgw(ncol,pver)       ! temperature tendency
    real,         intent(inout) :: flx_heat(ncol)        ! Energy change
 
-   real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+   real,         intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -597,20 +635,15 @@ subroutine gw_beres_ifc( band, &
      end where
 
 !GEOS pressure scaling near model top
-     zfac_layer = 1.0e2 ! 1mb
+     zfac_layer = 0.35e2 ! 0.35mb
      do k=1,pver+1
        do i=1,ncol
          pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
        enddo
      enddo
 
-     do k = 0, pver
-        ! spectrum source index
-        if (pref(k+1) < desc%spectrum_source) desc%k(:) = k+1
-     end do
-
      ! Determine wave sources for Beres deep scheme
-     call gw_beres_src(ncol, pver, band, desc, &
+     call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
 
@@ -619,12 +652,12 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha) !, tau_adjust=pint_adj)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 tend_level, tndmax_in=desc%tndmax)
+                                 tend_level, tndmax_in=desc%tndmax) !, pint_adj=pint_adj)
  
    deallocate(tau, gwut, c)
 
