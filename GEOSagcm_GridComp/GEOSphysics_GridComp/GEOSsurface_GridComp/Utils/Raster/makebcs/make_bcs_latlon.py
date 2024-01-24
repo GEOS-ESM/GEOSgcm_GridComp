@@ -54,7 +54,7 @@ endif
 
 def make_bcs_latlon(config):
   bin_dir = os.getcwd()
-  if 'install/bin' not in bin_dir:
+  if '/bin' not in bin_dir:
     print(" please run this program in installed bin directory")
     return
 
