@@ -405,7 +405,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT_ANA',                                 &
-         LONG_NAME  = 'total_ozone_analysis_tendency',             &
+         LONG_NAME  = 'ozone_analysis_tendency',                   &
          UNITS      = 'mol mol-1 s-1',                             &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
