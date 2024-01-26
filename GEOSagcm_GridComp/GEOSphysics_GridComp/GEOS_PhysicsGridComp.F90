@@ -572,7 +572,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME = 'MCHEMTRI',                                      &
+         SHORT_NAME = 'MCHEMTRI',                                  &
          LONG_NAME  = 'moist_quantities',                          &
          UNITS      = 'UNITS s-1',                                 &
          DATATYPE   = MAPL_BundleItem,                             &
@@ -1052,12 +1052,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV    ','QLTOT ','QITOT ','QCTOT ',      &
-                         'WTHV2 ','WQT_DC'                   /),   &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
+    call MAPL_AddConnectivity ( GC,                   &
+         SHORT_NAME  = [character(len=6) ::           &
+                         'QV','QLTOT','QITOT','FCLD', &
+                         'WTHV2','WQT_DC'],           &
+         DST_ID      = TURBL,                         &
+         SRC_ID      = MOIST,                         &
+                                           RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1185,11 +1186,11 @@ contains
 
 ! Imports for GWD
 !----------------
-    call MAPL_AddConnectivity ( GC,                                    &
-         SHORT_NAME  = [character(len=7):: 'Q', 'DTDT_DC', 'DTDT_SC'], &
-         DST_ID      = GWD,                                            &
-         SRC_ID      = MOIST,                                          &
-                                                        RC=STATUS      )
+    call MAPL_AddConnectivity ( GC,                                      &
+         SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                        RC=STATUS        )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
          SRC_NAME    = 'DQIDT_micro',                                    &
@@ -1972,13 +1973,30 @@ contains
     end do
     deallocate ( NAMES )
 
-! Fill the moist increments bundle
-!---------------------------------
+! Fill the moist increments bundles
+!----------------------------------
+
+! The original 3D increments:
+
+    call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
+  
+#ifdef PRINT_STATES
+    call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
+    VERIFY_(STATUS)                           
+
+    call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
+    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
+#endif
+
+! The 2D vertically summed, mass weighted increments:
 
     call Initialize_IncMBundle_init(GC, GIM(MOIST), EXPORT, __RC__)
 
 #ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
+    call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
+    VERIFY_(STATUS)                           
+
+    call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
 #endif
 
@@ -2464,7 +2482,8 @@ contains
 ! Moist Processes
 !----------------
 
-    call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,__RC__)
+    call Initialize_IncBundle_run( GIM(MOIST), EXPORT, MTRIinc, __RC__)  ! 3D non-weighted
+    call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,   __RC__)  ! 2D mass-weighted
 
     I=MOIST
 
@@ -2475,7 +2494,8 @@ contains
 
     call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
 
-    call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,__RC__)
+    call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
+    call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
 
     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
