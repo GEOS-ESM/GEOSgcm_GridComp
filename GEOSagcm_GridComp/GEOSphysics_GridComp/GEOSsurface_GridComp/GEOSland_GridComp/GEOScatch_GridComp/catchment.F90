@@ -129,8 +129,8 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
+                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &  ! LONS, LATS are in [radians] !!!
+                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp !!!
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -297,6 +297,10 @@
       integer  n_out
       integer  n_outs(20)
 
+      integer :: rc_calc_tpsn
+
+      ! ---------------------------------
+      
       numout =  0
 
 ! choose output point by lon and lat Input lons and lats are in radians
@@ -924,8 +928,9 @@
                    EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
                    sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
-                   excs, drho0, wesnbot, tksno, dtss                   )          ! out     
+                   excs, drho0, wesnbot, tksno, dtss, rc_calc_tpsn     )          ! out     
 
+        if (rc_calc_tpsn/=0)  write (*,*) 'PosSnowHeat: n, lon, lat = ', n, lons(n)*180./PIE, lats(n)*180./PIE
 
         FICESOUT(:,N)  = fices
 
