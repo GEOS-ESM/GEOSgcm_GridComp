@@ -60,7 +60,7 @@ module GFDL_1M_RUN_module
     ! Module variable from aer_actv_single_moment.F90
     logical, public :: USE_BERGERON
  
-    public :: data_setup, GFDL_1M_RUN_driver
+    public :: data_setup, GFDL_1M_RUN_driver, compare_results
 
     contains
 
@@ -1198,6 +1198,226 @@ module GFDL_1M_RUN_module
         read(fileID) DTDT_micro_ref
         close(fileID)
 
+        print*,'Compare sum(diff(RAD_CF)) = ',sum(RAD_CF_ref - RAD_CF)
+        print*,'Compare sum(RAD_CF) = ',sum(RAD_CF)
+        print*,'Compare sum(RAD_CF_ref) = ',sum(RAD_CF_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QV)) = ',sum(RAD_QV_ref - RAD_QV)
+        print*,'Compare sum(RAD_QV) = ',sum(RAD_QV)
+        print*,'Compare sum(RAD_QV_ref) = ',sum(RAD_QV_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QL)) = ',sum(RAD_QL_ref - RAD_QL)
+        print*,'Compare sum(RAD_QL) = ',sum(RAD_QL)
+        print*,'Compare sum(RAD_QL_ref) = ',sum(RAD_QL_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QI)) = ',sum(RAD_QI_ref - RAD_QI)
+        print*,'Compare sum(RAD_QI) = ',sum(RAD_QI)
+        print*,'Compare sum(RAD_QI_ref) = ',sum(RAD_QI_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QR)) = ',sum(RAD_QR_ref - RAD_QR)
+        print*,'Compare sum(RAD_QR) = ',sum(RAD_QR)
+        print*,'Compare sum(RAD_QR_ref) = ',sum(RAD_QR_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QS)) = ',sum(RAD_QS_ref - RAD_QS)
+        print*,'Compare sum(RAD_QS) = ',sum(RAD_QS)
+        print*,'Compare sum(RAD_QS_ref) = ',sum(RAD_QS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RAD_QG)) = ',sum(RAD_QG_ref - RAD_QG)
+        print*,'Compare sum(RAD_QG) = ',sum(RAD_QG)
+        print*,'Compare sum(RAD_QG_ref) = ',sum(RAD_QG_ref)
+        print*,'***'
+        print*,'Compare sum(diff(CLDREFFL)) = ',sum(CLDREFFL_ref - CLDREFFL)
+        print*,'Compare sum(CLDREFFL) = ',sum(CLDREFFL)
+        print*,'Compare sum(CLDREFFL_ref) = ',sum(CLDREFFL_ref)
+        print*,'***'
+        print*,'Compare sum(diff(CLDREFFI)) = ',sum(CLDREFFI_ref - CLDREFFI)
+        print*,'Compare sum(CLDREFFI) = ',sum(CLDREFFI)
+        print*,'Compare sum(CLDREFFI_ref) = ',sum(CLDREFFI_ref)
+        print*,'***'
+        print*,'Compare sum(diff(CNV_FRC)) = ',sum(CNV_FRC_ref - CNV_FRC)
+        print*,'Compare sum(CNV_FRC) = ',sum(CNV_FRC)
+        print*,'Compare sum(CNV_FRC_ref) = ',sum(CNV_FRC_ref)
+        print*,'***'
+        print*,'Compare sum(diff(SRF_TYPE)) = ',sum(SRF_TYPE_ref - SRF_TYPE)
+        print*,'Compare sum(SRF_TYPE) = ',sum(SRF_TYPE)
+        print*,'Compare sum(SRF_TYPE_ref) = ',sum(SRF_TYPE_ref)
+        print*,'***'
+        print*,'Compare sum(diff(EVAPC)) = ',sum(EVAPC_ref - EVAPC)
+        print*,'Compare sum(EVAPC) = ',sum(EVAPC)
+        print*,'Compare sum(EVAPC_ref) = ',sum(EVAPC_ref)
+        print*,'***'
+        print*,'Compare sum(diff(SUBLC)) = ',sum(SUBLC_ref - SUBLC)
+        print*,'Compare sum(SUBLC) = ',sum(SUBLC)
+        print*,'Compare sum(SUBLC_ref) = ',sum(SUBLC_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_RAIN)) = ',sum(PRCP_RAIN_ref - PRCP_RAIN)
+        print*,'Compare sum(PRCP_RAIN) = ',sum(PRCP_RAIN)
+        print*,'Compare sum(PRCP_RAIN_ref) = ',sum(PRCP_RAIN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_SNOW)) = ',sum(PRCP_SNOW_ref - PRCP_SNOW)
+        print*,'Compare sum(PRCP_SNOW) = ',sum(PRCP_SNOW)
+        print*,'Compare sum(PRCP_SNOW_ref) = ',sum(PRCP_SNOW_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_ICE)) = ',sum(PRCP_ICE_ref - PRCP_ICE)
+        print*,'Compare sum(PRCP_ICE) = ',sum(PRCP_ICE)
+        print*,'Compare sum(PRCP_ICE_ref) = ',sum(PRCP_ICE_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PRCP_GRAUPEL)) = ',sum(PRCP_GRAUPEL_ref - PRCP_GRAUPEL)
+        print*,'Compare sum(PRCP_GRAUPEL) = ',sum(PRCP_GRAUPEL)
+        print*,'Compare sum(PRCP_GRAUPEL_ref) = ',sum(PRCP_GRAUPEL_ref)
+        print*,'***'
+        print*,'Compare sum(diff(LS_PRCP)) = ',sum(LS_PRCP_ref - LS_PRCP)
+        print*,'Compare sum(LS_PRCP) = ',sum(LS_PRCP)
+        print*,'Compare sum(LS_PRCP_ref) = ',sum(LS_PRCP_ref)
+        print*,'***'
+        print*,'Compare sum(diff(LS_SNR)) = ',sum(LS_SNR_ref - LS_SNR)
+        print*,'Compare sum(LS_SNR) = ',sum(LS_SNR)
+        print*,'Compare sum(LS_SNR_ref) = ',sum(LS_SNR_ref)
+        print*,'***'
+        print*,'Compare sum(diff(ICE)) = ',sum(ICE_ref - ICE)
+        print*,'Compare sum(ICE) = ',sum(ICE)
+        print*,'Compare sum(ICE_ref) = ',sum(ICE_ref)
+        print*,'***'
+        print*,'Compare sum(diff(FRZR)) = ',sum(FRZR_ref - FRZR)
+        print*,'Compare sum(FRZR) = ',sum(FRZR)
+        print*,'Compare sum(FRZR_ref) = ',sum(FRZR_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RHX)) = ',sum(RHX_ref - RHX)
+        print*,'Compare sum(RHX) = ',sum(RHX)
+        print*,'Compare sum(RHX_ref) = ',sum(RHX_ref)
+        print*,'***'
+        print*,'Compare sum(diff(REV_LS)) = ',sum(REV_LS_ref - REV_LS)
+        print*,'Compare sum(REV_LS) = ',sum(REV_LS)
+        print*,'Compare sum(REV_LS_ref) = ',sum(REV_LS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RSU_LS)) = ',sum(RSU_LS_ref - RSU_LS)
+        print*,'Compare sum(RSU_LS) = ',sum(RSU_LS)
+        print*,'Compare sum(RSU_LS_ref) = ',sum(RSU_LS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PFL_AN)) = ',sum(PFL_AN_ref - PFL_AN)
+        print*,'Compare sum(PFL_AN) = ',sum(PFL_AN)
+        print*,'Compare sum(PFL_AN_ref) = ',sum(PFL_AN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PFL_LS)) = ',sum(PFL_LS_ref - PFL_LS)
+        print*,'Compare sum(PFL_LS) = ',sum(PFL_LS)
+        print*,'Compare sum(PFL_LS_ref) = ',sum(PFL_LS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PFI_AN)) = ',sum(PFI_AN_ref - PFI_AN)
+        print*,'Compare sum(PFI_AN) = ',sum(PFI_AN)
+        print*,'Compare sum(PFI_AN_ref) = ',sum(PFI_AN_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PFI_LS)) = ',sum(PFI_LS_ref - PFI_LS)
+        print*,'Compare sum(PFI_LS) = ',sum(PFI_LS)
+        print*,'Compare sum(PFI_LS_ref) = ',sum(PFI_LS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PDF_A)) = ',sum(PDF_A_ref - PDF_A)
+        print*,'Compare sum(PDF_A) = ',sum(PDF_A)
+        print*,'Compare sum(PDF_A_ref) = ',sum(PDF_A_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WTHV2)) = ',sum(WTHV2_ref - WTHV2)
+        print*,'Compare sum(WTHV2) = ',sum(WTHV2)
+        print*,'Compare sum(WTHV2_ref) = ',sum(WTHV2_ref)
+        print*,'***'
+        print*,'Compare sum(diff(WQL)) = ',sum(WQL_ref - WQL)
+        print*,'Compare sum(WQL) = ',sum(WQL)
+        print*,'Compare sum(WQL_ref) = ',sum(WQL_ref)
+        print*,'***'
+        print*,'Compare sum(diff(PDFITERS)) = ',sum(PDFITERS_ref - PDFITERS)
+        print*,'Compare sum(PDFITERS) = ',sum(PDFITERS)
+        print*,'Compare sum(PDFITERS_ref) = ',sum(PDFITERS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(LTS)) = ',sum(LTS_ref - LTS)
+        print*,'Compare sum(LTS) = ',sum(LTS)
+        print*,'Compare sum(LTS_ref) = ',sum(LTS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(EIS)) = ',sum(EIS_ref - EIS)
+        print*,'Compare sum(EIS) = ',sum(EIS)
+        print*,'Compare sum(EIS_ref) = ',sum(EIS_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQVDT_macro)) = ',sum(DQVDT_macro_ref - DQVDT_macro)
+        print*,'Compare sum(DQVDT_macro) = ',sum(DQVDT_macro)
+        print*,'Compare sum(DQVDT_macro_ref) = ',sum(DQVDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQIDT_macro)) = ',sum(DQIDT_macro_ref - DQIDT_macro)
+        print*,'Compare sum(DQIDT_macro) = ',sum(DQIDT_macro)
+        print*,'Compare sum(DQIDT_macro_ref) = ',sum(DQIDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQLDT_macro)) = ',sum(DQLDT_macro_ref - DQLDT_macro)
+        print*,'Compare sum(DQLDT_macro) = ',sum(DQLDT_macro)
+        print*,'Compare sum(DQLDT_macro_ref) = ',sum(DQLDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQADT_macro)) = ',sum(DQADT_macro_ref - DQADT_macro)
+        print*,'Compare sum(DQADT_macro) = ',sum(DQADT_macro)
+        print*,'Compare sum(DQADT_macro_ref) = ',sum(DQADT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQRDT_macro)) = ',sum(DQRDT_macro_ref - DQRDT_macro)
+        print*,'Compare sum(DQRDT_macro) = ',sum(DQRDT_macro)
+        print*,'Compare sum(DQRDT_macro_ref) = ',sum(DQRDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQSDT_macro)) = ',sum(DQSDT_macro_ref - DQSDT_macro)
+        print*,'Compare sum(DQSDT_macro) = ',sum(DQSDT_macro)
+        print*,'Compare sum(DQSDT_macro_ref) = ',sum(DQSDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQGDT_macro)) = ',sum(DQGDT_macro_ref - DQGDT_macro)
+        print*,'Compare sum(DQGDT_macro) = ',sum(DQGDT_macro)
+        print*,'Compare sum(DQGDT_macro_ref) = ',sum(DQGDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DUDT_macro)) = ',sum(DUDT_macro_ref - DUDT_macro)
+        print*,'Compare sum(DUDT_macro) = ',sum(DUDT_macro)
+        print*,'Compare sum(DUDT_macro_ref) = ',sum(DUDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DVDT_macro)) = ',sum(DVDT_macro_ref - DVDT_macro)
+        print*,'Compare sum(DVDT_macro) = ',sum(DVDT_macro)
+        print*,'Compare sum(DVDT_macro_ref) = ',sum(DVDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DTDT_macro)) = ',sum(DTDT_macro_ref - DTDT_macro)
+        print*,'Compare sum(DTDT_macro) = ',sum(DTDT_macro)
+        print*,'Compare sum(DTDT_macro_ref) = ',sum(DTDT_macro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(RHCRIT3D)) = ',sum(RHCRIT3D_ref - RHCRIT3D)
+        print*,'Compare sum(RHCRIT3D) = ',sum(RHCRIT3D)
+        print*,'Compare sum(RHCRIT3D_ref) = ',sum(RHCRIT3D_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQVDT_micro)) = ',sum(DQVDT_micro_ref - DQVDT_micro)
+        print*,'Compare sum(DQVDT_micro) = ',sum(DQVDT_micro)
+        print*,'Compare sum(DQVDT_micro_ref) = ',sum(DQVDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQIDT_micro)) = ',sum(DQIDT_micro_ref - DQIDT_micro)
+        print*,'Compare sum(DQIDT_micro) = ',sum(DQIDT_micro)
+        print*,'Compare sum(DQIDT_micro_ref) = ',sum(DQIDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQLDT_micro)) = ',sum(DQLDT_micro_ref - DQLDT_micro)
+        print*,'Compare sum(DQLDT_micro) = ',sum(DQLDT_micro)
+        print*,'Compare sum(DQLDT_micro_ref) = ',sum(DQLDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQADT_micro)) = ',sum(DQADT_micro_ref - DQADT_micro)
+        print*,'Compare sum(DQADT_micro) = ',sum(DQADT_micro)
+        print*,'Compare sum(DQADT_micro_ref) = ',sum(DQADT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQRDT_micro)) = ',sum(DQRDT_micro_ref - DQRDT_micro)
+        print*,'Compare sum(DQRDT_micro) = ',sum(DQRDT_micro)
+        print*,'Compare sum(DQRDT_micro_ref) = ',sum(DQRDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQSDT_micro)) = ',sum(DQSDT_micro_ref - DQSDT_micro)
+        print*,'Compare sum(DQSDT_micro) = ',sum(DQSDT_micro)
+        print*,'Compare sum(DQSDT_micro_ref) = ',sum(DQSDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DQGDT_micro)) = ',sum(DQGDT_micro_ref - DQGDT_micro)
+        print*,'Compare sum(DQGDT_micro) = ',sum(DQGDT_micro)
+        print*,'Compare sum(DQGDT_micro_ref) = ',sum(DQGDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DUDT_micro)) = ',sum(DUDT_micro_ref - DUDT_micro)
+        print*,'Compare sum(DUDT_micro) = ',sum(DUDT_micro)
+        print*,'Compare sum(DUDT_micro_ref) = ',sum(DUDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DVDT_micro)) = ',sum(DVDT_micro_ref - DVDT_micro)
+        print*,'Compare sum(DVDT_micro) = ',sum(DVDT_micro)
+        print*,'Compare sum(DVDT_micro_ref) = ',sum(DVDT_micro_ref)
+        print*,'***'
+        print*,'Compare sum(diff(DTDT_micro)) = ',sum(DTDT_micro_ref - DTDT_micro)
+        print*,'Compare sum(DTDT_micro) = ',sum(DTDT_micro)
+        print*,'Compare sum(DTDT_micro_ref) = ',sum(DTDT_micro_ref)
+        print*,'***'
 
     end subroutine
 end module

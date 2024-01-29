@@ -24,7 +24,7 @@ program test_moist_subroutines
 
     call data_setup(IM, JM, LM, dirName, rank_str)
     call GFDL_1M_RUN_driver(IM, JM, LM)
-    
+    call compare_results(IM, JM, LM, dirName, rank_str)
 
 end program
 
