@@ -1,1 +1,1 @@
-# OpenACC Port of Evaporation/Sublimination routine in Moist Physics
+# OpenACC Port of GFDL_1M_Run routine in Moist Physics
