@@ -312,7 +312,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T3     --  Tripolar (MOM5-Tripolar-Ocean:   $720x410$ )", \
                  "T4     --  Tripolar (MOM5-Tripolar-Ocean:  $1440x1080$)", \
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
-                 "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
+                 "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
             "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
