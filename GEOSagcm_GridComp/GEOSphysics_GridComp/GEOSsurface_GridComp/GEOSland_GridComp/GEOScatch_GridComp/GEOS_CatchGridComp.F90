@@ -1405,7 +1405,6 @@ subroutine SetServices ( GC, RC )
     LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'DTC'                       ,&
-    !SHORT_NAME         = 'drv_tc'                    ,&
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1417,24 +1416,12 @@ subroutine SetServices ( GC, RC )
     LONG_NAME          = 'qc difference, optional in helfsurface'  ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'DQC'                       ,&
-    !SHORT_NAME         = 'drv_qc'                    ,&
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-
-  !call MAPL_AddInternalSpec(GC                  ,&
-  !  LONG_NAME          = 'surface_heat_exchange_coefficient, optional in helfsurface'  ,&
-  !  UNITS              = 'kg m-2 s-1'                ,&
-  !  SHORT_NAME         = 'VKH'                       ,&
-  !  DIMS               = MAPL_DimsTileTile           ,&
-  !  NUM_SUBTILES       = NUM_SUBTILES                ,&
-  !  VLOCATION          = MAPL_VLocationNone          ,&
-  !  RESTART            = MAPL_RestartSkip            ,&
-  !                                         RC=STATUS  ) 
-  !VERIFY_(STATUS)
 
   ! Biljana
 
@@ -3101,13 +3088,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: DQC
     real, dimension(:,:), pointer :: DTC
 
-    !real, dimension(:), pointer   :: VKH
-
     real,   allocatable :: VKH(:)
-    !real,   allocatable :: DTC(:)
-    !real,   allocatable :: DQC(:)
-    !real,   allocatable :: drv_tc(:)
-    !real,   allocatable :: drv_qc(:)
 
 ! -----------------------------------------------------
 ! EXPORT Pointers
@@ -3300,8 +3281,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     ! Biljana helfsurface
-    !call MAPL_GetPointer(INTERNAL,VKH  , 'VKH'     ,    RC=STATUS)
-    !VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
@@ -3442,17 +3421,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS)
-    !allocate(DTC(NT),STAT=STATUS)
-    !allocate(drv_tc(NT),STAT=STATUS)
-    !VERIFY_(STATUS)
-    !allocate(DQC(NT),STAT=STATUS)
-    !allocate(drv_qc(NT),STAT=STATUS)
-    !VERIFY_(STATUS)
     allocate(VKH_pert_tc(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(VKH_pert_qc(NT),STAT=STATUS)
     VERIFY_(STATUS)
-
     allocate(VKH(NT) ,STAT=STATUS)
     VERIFY_(STATUS)
 
@@ -3583,8 +3555,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                          IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,       &
                          t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
   
-        !drv_tc     = (VKH_pert_tc - VKH ) / small_TC
-        !drv_qc     = (VKH_pert_qc - VKH ) / small_QC
         DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
         DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
 
@@ -3686,11 +3656,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(VKH_pert_qc)
     deallocate(TC_pert    )
     deallocate(QC_pert    )
-    !deallocate(DTC     )
-    !deallocate(DQC     )
     deallocate(VKH)
-    !deallocate(drv_tc     )
-    !deallocate(drv_qc     )
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3980,12 +3946,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Biljana for helfsurface
         real, dimension(:,:), pointer :: DQC
         real, dimension(:,:), pointer :: DTC
-        !real, dimension(:,:), pointer :: VKH
-        !real,   allocatable :: VKH(:)
-        !real,   allocatable :: DTC(:)
-        !real,   allocatable :: DQC(:)
-        !real,   allocatable :: drv_tc(:)
-        !real,   allocatable :: drv_qc(:)
 
         ! -----------------------------------------------------
         ! EXPORT Pointers
@@ -4519,7 +4479,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
         ! Biljana helfsurface
-        !call MAPL_GetPointer(INTERNAL,VKH        ,'VKH'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
@@ -4738,13 +4697,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
-
-        ! Biljana Helfsurface
-        !allocate(VKH         (NTILES))
-        !allocate(DTC         (NTILES))
-        !allocate(DQC         (NTILES))
-        !allocate(drv_tc         (NTILES))
-        !allocate(drv_qc         (NTILES))
 
         debugzth = .false.
 
@@ -5178,23 +5130,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  ! getting DSHSBT - derivative of sensible heat flux w.r.t. Tc (ground temperature)
                  ! note CH and CQ are VKH (values are assigned in RUN1 after the helfsurf call is returned)
                  DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
-                 !print*,'Biljana DSHSBT(:,N)', DSHSBT(:,N)
-                 !DSHSBT(:,N)= MAPL_CP*( VKH +max(0.0,(TC(:,N)-TA) * drv_tc))
 
                  ! getting DHSDQA - cross derivative of sensible heat flux  w.r.t. Qc (ground humidity)
                  DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
-                 !print*,'Biljana DHSDQA(:,N)', DHSDQA(:,N)
-                 !DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * drv_qc)
 
                  ! getting DEVSBT - derivative of latent heat flux w.r.t. Qc (ground humidity)
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
-                 !print*,'Biljana DEVSBT(:,N)', DEVSBT(:,N)
-                 !DEVSBT(:,N)=VKH+max(0.0,(QC(:,N)-QA) * drv_qc)
 
                 ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
                  DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
-                 !print*,'Biljana DEDTC(:,N)', DEDTC(:,N)
-                 !DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * drv_tc)
 
               enddo ! N-loop (NUM_SUBTILES)
 
@@ -6132,14 +6076,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(FICE1TMP )
         deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
-
-        ! Biljana Helfand
-        !deallocate(DTC     )
-        !deallocate(DQC     )
-        !deallocate(VKH     )
-
-        !deallocate(drv_tc     )
-        !deallocate(drv_qc     )
 
         RETURN_(ESMF_SUCCESS)
 
