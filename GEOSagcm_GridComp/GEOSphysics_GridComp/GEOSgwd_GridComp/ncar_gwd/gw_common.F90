@@ -881,7 +881,7 @@ end subroutine energy_fixer
 
 subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                               tend_level, tndmax_in)
+                               tend_level, tndmax_in, pint_adj)
 
   integer, intent(in) :: ncol, pver
   ! Wavelengths.
@@ -913,6 +913,8 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
   real, intent(inout) :: utgw(ncol,pver)
   real, intent(inout) :: vtgw(ncol,pver)
   real, intent(inout) :: ttgw(ncol,pver)
+  ! Pressure level efficiency adjustment
+  real, intent(in), optional :: pint_adj(ncol,pver+1)
 
   real :: taucd(ncol,pver+1,4)
   real :: um_flux(ncol), vm_flux(ncol)
@@ -938,16 +940,25 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
    !---------------------------------------------------------------------------------------
    ! Apply efficiency factor and tendency limiter to prevent unrealistically strong forcing
    !---------------------------------------------------------------------------------------
-    uhtmax = 0.0
-    utfac  = 1.0
+    ! efficiency factor and optional pressure adjustment
     do k = ktop, pver
-       uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
-    end do
-    if (uhtmax > tndmax) utfac = tndmax/uhtmax
-    do k = ktop, pver
+                              utfac = 1.0 
+       if (present(pint_adj)) utfac = pint_adj(i,k) 
        utgw(i,k) = utgw(i,k)*effgw(i)*utfac
        vtgw(i,k) = vtgw(i,k)*effgw(i)*utfac
        ttgw(i,k) = ttgw(i,k)*effgw(i)*utfac
+    end do
+    ! tendency limiter
+    uhtmax = 0.0
+    do k = ktop, pver
+       uhtmax = max(sqrt(utgw(i,k)**2 + vtgw(i,k)**2), uhtmax)
+    end do
+                         utfac  = 1.0
+    if (uhtmax > tndmax) utfac = tndmax/uhtmax
+    do k = ktop, pver
+       utgw(i,k) = utgw(i,k)*utfac
+       vtgw(i,k) = vtgw(i,k)*utfac
+       ttgw(i,k) = ttgw(i,k)*utfac
     end do
   end do  ! i=1,ncol
 

@@ -52,7 +52,7 @@ module GEOS_GwdGridCompMod
 ! config params
   type :: ThreadWorkspace
      type(GWBand)          :: beres_band
-     type(BeresSourceDesc) :: beres_dc_desc, beres_sc_desc
+     type(BeresSourceDesc) :: beres_dc_desc
      type(GWBand)          :: oro_band
      type(GWBand)          :: rdg_band
   end type ThreadWorkspace
@@ -69,8 +69,6 @@ module GEOS_GwdGridCompMod
      real :: TAU1
      real :: H0
      real :: HH
-     real :: HGT_SURFACE
-     real :: effbeljaars, limbeljaars
      real, allocatable :: alpha(:) 
      type(ThreadWorkspace), allocatable :: workspaces(:)
   end type GEOS_GwdGridComp
@@ -81,10 +79,6 @@ module GEOS_GwdGridCompMod
 
   !logical, save      :: FIRST_RUN = .true.
 
-! Beljaars parameters
-   real, parameter ::      &
-      dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
-      dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 contains
 
 !BOP
@@ -258,14 +252,8 @@ contains
          UNITS     ='K s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                      &
          VLOCATION = MAPL_VLocationCenter,              _RC  )
-     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME='DTDT_SC',                               &
-         LONG_NAME ='T tendency due to shallow convection',  &
-         UNITS     ='K s-1',                                 &
-         DIMS      = MAPL_DimsHorzVert,                      &
-         VLOCATION = MAPL_VLocationCenter,              _RC  )
      call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME = 'DQLDT',                                   &
+         SHORT_NAME= 'DQLDT',                                   &
          LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -277,6 +265,13 @@ contains
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
+         _RC  )
+     call MAPL_AddImportSpec(GC,                           &
+        SHORT_NAME = 'CNV_FRC',                            &
+        LONG_NAME  = 'convective_fraction',                &
+        UNITS      = '1',                                  &
+        DIMS       = MAPL_DimsHorzOnly,                    &
+        VLOCATION  = MAPL_VLocationNone,                   &
          _RC  )
      
 ! !EXPORT STATE:
@@ -391,20 +386,6 @@ contains
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DVDT',                                      &
         LONG_NAME  = 'tendency_of_northward_wind_due_to_GWD',                &
-        UNITS      = 'm s-2',                                     &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             _RC  )
-     
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DUDT_TFD',                                  &
-        LONG_NAME  = 'tendency_of_eastward_wind_due_to_topographic_form_drag',               &
-        UNITS      = 'm s-2',                                     &
-        DIMS       = MAPL_DimsHorzVert,                           &
-        VLOCATION  = MAPL_VLocationCenter,             _RC  )
-     
-     call MAPL_AddExportSpec(GC,                             &
-        SHORT_NAME = 'DVDT_TFD',                                  &
-        LONG_NAME  = 'tendency_of_northward_wind_due_to_topographic_form_dra',              &
         UNITS      = 'm s-2',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             _RC  )
@@ -705,7 +686,6 @@ contains
     call MAPL_TimerAdd(GC,    name="-INTR"   ,_RC)
     call MAPL_TimerAdd(GC,    name="-INTR_NCAR"   ,_RC)
     call MAPL_TimerAdd(GC,    name="-INTR_GEOS"   ,_RC)
-    call MAPL_TimerAdd(GC,    name="-BELJAARS_TOFD"   ,_RC)
     call MAPL_TimerAdd(GC,    name="-DRIVER_DATA"   ,_RC)
     call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_DEVICE"   ,_RC)
     call MAPL_TimerAdd(GC,    name="--DRIVER_DATA_CONST"   ,_RC)
@@ -778,6 +758,7 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
 
+    logical :: JASON_BKG, JASON_ORO
     logical :: NCAR_TAU_TOP_ZERO
     real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
@@ -790,11 +771,11 @@ contains
     real    :: NCAR_BKG_TNDMAX
     real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
+    logical :: NCAR_ET_USELATS  
     logical :: NCAR_DC_BERES
-    logical :: NCAR_SC_BERES
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
-    real :: NCAR_DC_BERES_SRC_LEVEL, NCAR_SC_BERES_SRC_LEVEL
+    real :: NCAR_DC_BERES_SRC_LEVEL
 
     type (wrap_) :: wrap
     type (GEOS_GwdGridComp), pointer        :: self
@@ -843,44 +824,46 @@ contains
       imsize = imsize*CEILING(STRETCH_FACTOR)
       sigma = 1.0-0.9839*exp(-0.09835*4.e7*0.9/imsize/1000.) ! Based on Arakawa 2011 sigma used in GF2020
 
-! Gravity wave drag
-! -----------------
+! Background Gravity wave drag
+! ----------------------------
+      call MAPL_GetResource(MAPL,JASON_BKG,'JASON_BKG:', default=(LM==72), _RC)
+      if (JASON_BKG) then
+                                          GEOS_PGWV = 4
+        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
+        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
+      else
+                                          GEOS_PGWV = NINT(32*LM/181.0)
+        call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
+                                     self%NCAR_EFFGWBKG = 1.0 !(1.0 - 0.5*sigma)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=self%NCAR_EFFGWBKG, _RC)
+        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
+      endif
 
-    if (LM .eq. 72) then
-                                         GEOS_PGWV = 4
-       call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
-       call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=0.0, _RC)
-       call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
-    else
-                                         GEOS_PGWV = NINT(32*LM/181.0)
-       call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
-       call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
-       call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
-       call MAPL_GetResource( MAPL, self%HGT_SURFACE,   Label="HGT_SURFACE:",   default=50.0, _RC)
-       call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
-    endif
-
-! Topographic Form Drag [Beljaars et al (2004)]
-! ---------------------------------------------
-      call MAPL_GetResource( MAPL, self%effbeljaars, Label="BELJAARS_EFF_FACTOR:",  default=0.0, _RC)
-      call MAPL_GetResource( MAPL, self%limbeljaars, Label="BELJAARS_LIMITER:",  default=400.0, _RC)
-                                   self%limbeljaars = self%limbeljaars/86400.0
+! Orographic Gravity wave drag
+! ----------------------------
+      call MAPL_GetResource(MAPL,JASON_ORO,'JASON_ORO:', default=(LM==72), _RC)
+      if (JASON_ORO) then
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
+      else  
+        call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
+      endif
 
 ! Rayleigh friction
 ! -----------------
-      call MAPL_GetResource( MAPL, self%Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  _RC)
-      call MAPL_GetResource( MAPL, self%H0,   Label="RAYLEIGH_H0:",   default=7000.,   _RC)
-      call MAPL_GetResource( MAPL, self%HH,   Label="RAYLEIGH_HH:",   default=7500.,   _RC)
+      if (self%TAU1 > 0.0) then
+        call MAPL_GetResource( MAPL, self%Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  _RC)
+        call MAPL_GetResource( MAPL, self%H0,   Label="RAYLEIGH_H0:",   default=7000.,   _RC)
+        call MAPL_GetResource( MAPL, self%HH,   Label="RAYLEIGH_HH:",   default=7500.,   _RC)
+      endif
 
 ! NCAR GWD settings
 ! -----------------
@@ -888,7 +871,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = CEILING(5.0*sigma)
+                                   NCAR_HR_CF = CEILING(30.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
@@ -900,14 +883,15 @@ contains
       ! Beres Scheme File
       call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
             default='ExtData/g5gcm/gwd/newmfspectra40_dc25.nc', _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=50.0,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0, _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,     _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=3.2,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USELATS,     Label="NCAR_ET_USELATS:",     default=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
-                 ! Beres DeepCu
+      ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
       call MAPL_GetResource( MAPL, NCAR_DC_BERES, "NCAR_DC_BERES:", DEFAULT=.TRUE., _RC)
       num_threads = MAPL_get_num_threads()
@@ -919,20 +903,7 @@ contains
                                 self%workspaces(thread)%beres_dc_desc, &
                                 NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                                 NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
-                                IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
-      end do
-      ! Beres ShallowCu
-      call MAPL_GetResource( MAPL, NCAR_SC_BERES_SRC_LEVEL, "NCAR_SC_BERES_SRC_LEVEL:", DEFAULT=90000.0, _RC)
-      call MAPL_GetResource( MAPL, NCAR_SC_BERES, "NCAR_SC_BERES:", DEFAULT=.FALSE., _RC)
-      do thread = 0, num_threads-1
-            JM_thread = bounds(thread+1)%max - bounds(thread+1)%min + 1
-            call gw_beres_init( BERES_FILE_NAME ,  &
-                                self%workspaces(thread)%beres_band,  &
-                                self%workspaces(thread)%beres_sc_desc,  &
-                                NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2,  &
-                                NCAR_BKG_WAVELENGTH, NCAR_SC_BERES_SRC_LEVEL, &
-                                0.0, .FALSE., NCAR_ET_TAUBGND, NCAR_BKG_TNDMAX, NCAR_SC_BERES, &
+                                1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_ET_USELATS, NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                 IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
       end do
 
@@ -941,18 +912,20 @@ contains
       call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
-      do thread = 0, num_threads-1
-            call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
-                               NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
-                               NCAR_ORO_SOUTH_FAC )
-      end do
-      ! Ridge Scheme
       if (self%NCAR_NRDG > 0) then
-          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=200.0, _RC)
+        ! Ridge Scheme
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=400.0, _RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
              call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
+          end do
+      else
+        ! Old Scheme
+          call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
+          do thread = 0, num_threads-1
+             call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
+                                NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
+                                NCAR_ORO_SOUTH_FAC )
           end do
       endif
 
@@ -1001,8 +974,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer                             :: IM, JM, LM
   !integer                             :: pgwv
-  !real                                :: HGT_SURFACE
-  !real                                :: effbeljaars, limbeljaars, tcrib
   real                                :: tcrib
   !real                                :: effgworo, effgwbkg
   !real                                :: CDMBGWD1, CDMBGWD2
@@ -1091,10 +1062,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:)      :: PREF
       real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT, PHIS
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
-      !++jtb Array for moist deep & shallow conv heating
-      real, pointer, dimension(:,:,:)  :: HT_dc, HT_sc
+      ! Array for moist deep conv heating
+      real, pointer, dimension(:,:,:)  :: HT_dc
       ! Arrays for QL and QI condensate tendencies from Moist
-      real, pointer, dimension(:,:,:)  :: QLDT_mst, QIDT_mst
+      real, pointer, dimension(:,:,:)  :: DQLDT, DQIDT
+      real, pointer, dimension(:,:)    :: CNV_FRC
       !++jtb pointers for NCAR Orographic GWP
       !     (in Internal State)
       real, pointer, dimension(:,:,:)  :: MXDIS
@@ -1129,7 +1101,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:)    :: PEGWD, PEORO,  PERAY,  PEBKG, BKGERR
 
       real, pointer, dimension(:,:,:)  :: DTDT, DUDT, DVDT, TTMGW
-      real, pointer, dimension(:,:,:)  ::           DUDT_TFD, DVDT_TFD
       real, pointer, dimension(:,:,:)  :: DTDT_ORO, DUDT_ORO, DVDT_ORO
       real, pointer, dimension(:,:,:)  :: DTDT_BKG, DUDT_BKG, DVDT_BKG
       real, pointer, dimension(:,:,:)  :: DTDT_RAY, DUDT_RAY, DVDT_RAY
@@ -1140,9 +1111,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! local variables
 
+      real,              dimension(IM,JM,LM  ) :: DQCDT_LS
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM     ) :: a2, Hefold
-      real,              dimension(IM,JM,LM  ) :: DUDT_TOFD, DVDT_TOFD
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
       real,              dimension(IM,JM,LM  ) :: DUDT_RAH, DVDT_RAH, DTDT_RAH
@@ -1167,8 +1138,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG_NCAR , DVDT_ORG_NCAR , DTDT_ORG_NCAR
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
-
-      real,              dimension(IM,JM     ) :: DC_SRC_L, SC_SRC_L
 
       integer                                  :: J, K, L, nrdg, ikpbl
       real(ESMF_KIND_R8)                       :: DT_R8
@@ -1207,9 +1176,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, AREA,     'AREA',    _RC )
       call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  _RC )
       call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', _RC )
-      call MAPL_GetPointer( IMPORT, HT_sc,    'DTDT_SC', _RC )
-      call MAPL_GetPointer( IMPORT, QLDT_mst, 'DQLDT'  , _RC )
-      call MAPL_GetPointer( IMPORT, QIDT_mst, 'DQIDT'  , _RC )
+      call MAPL_GetPointer( IMPORT, DQLDT,    'DQLDT'  , _RC )
+      call MAPL_GetPointer( IMPORT, DQIDT,    'DQIDT'  , _RC )
+      call MAPL_GetPointer( IMPORT, CNV_FRC,  'CNV_FRC', _RC )      
  
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1222,8 +1191,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , _RC)
       call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , _RC)
       call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , _RC)
-      call MAPL_GetPointer(EXPORT, DUDT_TFD, 'DUDT_TFD', _RC)
-      call MAPL_GetPointer(EXPORT, DVDT_TFD, 'DVDT_TFD', _RC)
       call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', _RC)
       call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', _RC)
       call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', _RC)
@@ -1347,13 +1314,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP_NCAR = 0.0
          !call MAPL_TimerOn(MAPL,"-INTR_NCAR")
          if ( (self%NCAR_EFFGWORO /= 0.0) .OR. (self%NCAR_EFFGWBKG /= 0.0) ) then
+            DO L=1, LM
+               DQCDT_LS(:,:,L) = (1.0-CNV_FRC)*(DQLDT(:,:,L)+DQIDT(:,:,L))
+            END DO
             thread = MAPL_get_current_thread()
             workspace => self%workspaces(thread)
             call gw_intr_ncar(IM*JM,    LM,         DT,     self%NCAR_NRDG,   &
-                 workspace%beres_dc_desc, workspace%beres_sc_desc, &
+                 workspace%beres_dc_desc, &
                  workspace%beres_band, workspace%oro_band, workspace%rdg_band, &
                  PLE,       T,          U,          V,                   &
-                 HT_dc,     HT_sc,      QLDT_mst+QIDT_mst,               &
+                 HT_dc,                 DQCDT_LS,                        &
                  SGH,       MXDIS,      HWDTH,      CLNGT,  ANGLL,       &
                  ANIXY,     GBXAR_TMP,  KWVRDG,     EFFRDG, PREF,        &
                  PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
@@ -1412,65 +1382,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
     !call MAPL_TimerOff(MAPL,"-INTR")
 
-    !call MAPL_TimerOn(MAPL,"-BELJAARS_TOFD")
-    if (self%effbeljaars > 0.0) then
-        THV = T * (1.0 + MAPL_VIREPS * Q) / ( (PMID/MAPL_P00)**MAPL_KAPPA )
-    DO J=1,JM
-       DO I=1,IM
-! Find the PBL height
-             ikpbl = LM
-             do L=LM-1,1,-1
-                tcrib = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*ZM(I,J,L)/ &
-                        (THV(I,J,LM)*MAX(U(I,J,L)**2+V(I,J,L)**2,1.0E-8))
-                if (tcrib >= 0.25) then
-                   ikpbl = L
-                   exit
-                end if
-             end do
-! determine the efolding height
-             a2(i,j)=self%effbeljaars * 1.08371722e-7 * VARFLT(i,j) * &
-                     MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
-           ! Revise e-folding height based on PBL height and topographic std. dev.
-             Hefold(i,j) = 1500.0 !MIN(MAX(2*SQRT(VARFLT(i,j)),ZM(i,j,ikpbl)),1500.)
-       END DO
-    END DO
-    DO L=1, LM
-       DO J=1,JM
-          DO I=1,IM
-               var_temp = 0.0
-               if (a2(i,j) > 0.0 .AND. ZM(I,J,L) < 4.0*Hefold(i,j)) then
-                  wsp      = SQRT(U(i,j,l)**2 + V(i,j,l)**2)
-                  wsp      = SQRT(MIN(wsp/25.0,1.0))*MAX(25.0,wsp) ! enhance winds below 25 m/s
-                  var_temp = ZM(I,J,L)/Hefold(i,j)
-                  var_temp = exp(-var_temp*sqrt(var_temp))*(var_temp**(-1.2))
-                  var_temp = wsp*a2(i,j)*(var_temp/Hefold(i,j))
-                 !  Note:  This is a semi-implicit treatment of the time differencing
-                 !  per Beljaars et al. (2004, QJRMS) doi: 10.1256/qj.03.73
-                  DUDT_TOFD(i,j,l) = - var_temp*U(i,j,l)/(1. + var_temp*DT)
-                  DVDT_TOFD(i,j,l) = - var_temp*V(i,j,l)/(1. + var_temp*DT)
-                 ! Apply Tendency Limiter
-                  if (abs(DUDT_TOFD(i,j,l)) > self%limbeljaars) then
-                    DUDT_TOFD(i,j,l) = (self%limbeljaars/abs(DUDT_TOFD(i,j,l))) * DUDT_TOFD(i,j,l)
-                  end if
-                  if (abs(DVDT_TOFD(i,j,l)) > self%limbeljaars) then
-                    DVDT_TOFD(i,j,l) = (self%limbeljaars/abs(DVDT_TOFD(i,j,l))) * DVDT_TOFD(i,j,l)
-                  end if
-               else
-                  DUDT_TOFD(i,j,l) = 0.0
-                  DVDT_TOFD(i,j,l) = 0.0
-               end if
-          END DO
-       END DO
-    END DO
-    DUDT_GWD=DUDT_GWD+DUDT_TOFD
-    DVDT_GWD=DVDT_GWD+DVDT_TOFD
-    !deallocate( THV )
-    else
-    DUDT_TOFD=0.0
-    DVDT_TOFD=0.0
-    endif
-    !call MAPL_TimerOff(MAPL,"-BELJAARS_TOFD")
-
     CALL POSTINTR(IM*JM, LM, DT, H0, HH, Z1, TAU1, &
           PREF,     &
           PDEL,     &
@@ -1528,15 +1439,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !! Tendency diagnostics
 !!---------------------
 
-    if(associated(DUDT_TFD)) DUDT_TFD = DUDT_TOFD
-    if(associated(DVDT_TFD)) DVDT_TFD = DVDT_TOFD
-
     if(associated(DUDT_ORO)) DUDT_ORO = DUDT_ORG
     if(associated(DVDT_ORO)) DVDT_ORO = DVDT_ORG
     if(associated(DTDT_ORO)) DTDT_ORO = DTDT_ORG
 
-    if(associated(DUDT_BKG)) DUDT_BKG = DUDT_GWD - DUDT_ORG - DUDT_TOFD
-    if(associated(DVDT_BKG)) DVDT_BKG = DVDT_GWD - DVDT_ORG - DVDT_TOFD
+    if(associated(DUDT_BKG)) DUDT_BKG = DUDT_GWD - DUDT_ORG
+    if(associated(DVDT_BKG)) DVDT_BKG = DVDT_GWD - DVDT_ORG
     if(associated(DTDT_BKG)) DTDT_BKG = DTDT_GWD - DTDT_ORG
 
 ! Orographic stress
