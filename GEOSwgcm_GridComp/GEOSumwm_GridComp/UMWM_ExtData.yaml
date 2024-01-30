@@ -1,0 +1,29 @@
+Exports:
+    DW_WGCM:
+        collection: /dev/null
+        linear_transformation: [-3682.0, 0.0]
+
+# --
+#
+# Comment:
+#    configuration: GEOS/WGCM/UMWM
+#    description: realistic currents and ocean depth
+#
+# Samplings:
+#    static:
+#        extrapolation: persist_closest
+#
+# Collections:
+#     gebco_terrain_model_for_ocean_and_land:
+#         template: /discover/nobackup/projects/gmao/geos-wmma/data/gebco2008.ocean_depth.nc4
+#     s2s_ana_ocean:
+#         template: /discover/nobackup/projects/gmao/geos-wmma/data/S2S-2_1_ANA_001/S2S-2_1_ANA_001.geosgcm_ocn2d_720x361.%y4%m2%d2_1200z.nc4
+#
+# Exports:
+#     DATA_UW;DATA_VW:
+#         collection: /dev/null
+#         variable: none;none
+#     DW_WGCM:
+#         collection: gebco_terrain_model_for_ocean_and_land
+#         sample: static
+#         variable: elevation
