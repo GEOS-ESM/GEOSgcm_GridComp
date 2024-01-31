@@ -695,8 +695,16 @@ fire_m_fac(6) = 10.e15
               fire_m_tmp = exp(-fire_m_fac(ivt(p))*(m/0.69_r8)**2)*(1.0_r8 - max(0._r8, &
                       min(1._r8,(forc_rh(g)-30._r8)/(80._r8-30._r8))))*  &
                       min(1._r8,exp(SHR_CONST_PI*(forc_t(g)-SHR_CONST_TKFRZ)/10._r8))
+              print*,'Biljana fire_m_tmp 1',fire_m_tmp
+              print*,'Biljana fire_m_fac 1',fire_m_fac
+              print*,'Biljana fire_m_fac(4) 1',fire_m_fac(4)
+              print*,'Biljana fire_m_fac(6) 1',fire_m_fac(6)
               fire_m = fire_m + (fire_m_tmp*wtcol(p))
            end do
+              print*,'Biljana fire_m_tmp 2',fire_m_tmp
+              print*,'Biljana fire_m_fac 2',fire_m_fac
+              print*,'Biljana fire_m_fac(4) 2',fire_m_fac(4)
+              print*,'Biljana fire_m_fac(6) 2',fire_m_fac(6)
            lh       = 0.0035_r8*6.8_r8*hdmlf**(0.43_r8)/30._r8/24._r8
            fs       = 1._r8-(0.01_r8+0.98_r8*exp(-0.025_r8*hdmlf))
 !          ig       = (lh+forc_lnfm(g)/24/(5.16_r8+2.16_r8*cos(3._r8*grc%latdeg(g)))*0.25_r8)*(1._r8-fs)*(1._r8-cropf_col(c))                         ! There is a bug here. The input of "cos" must be in radians!! fzeng, 2 Aug 2019              
