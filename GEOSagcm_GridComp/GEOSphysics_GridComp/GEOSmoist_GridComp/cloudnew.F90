@@ -1992,8 +1992,7 @@ contains
             ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
             HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
 
-           call partition_dblgss(DT/nmax,           &
-                                 fQi,          &
+           call partition_dblgss(fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &

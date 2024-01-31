@@ -666,7 +666,7 @@ contains
 
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'RADSW',                                           &
-         LONG_NAME  = 'air_temperature_tendency_due_to_longwave',        &
+         LONG_NAME  = 'air_temperature_tendency_due_to_shortwave',       &
          UNITS      = 'K s-1',                                           &
          DIMS       = MAPL_DimsHorzVert,                                 &
          VLOCATION  = MAPL_VLocationCenter,                              &

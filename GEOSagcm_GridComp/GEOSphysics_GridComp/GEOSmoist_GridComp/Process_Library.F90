@@ -1,6 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
+!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -1290,8 +1291,7 @@ module GEOSmoist_Process_Library
 ! References in the comments in this code are given to                   !
 ! the Appendix A of Pete Bogenschutz's dissertation.                     !
 !------------------------------------------------------------------------!
- subroutine partition_dblgss( dt,           &  ! IN
-                              fQi,          &
+ subroutine partition_dblgss( fQi,          &  ! IN
                               tabs,         &  
                               qwv,          &
                               qc,           &  ! OUT
@@ -1346,7 +1346,7 @@ module GEOSmoist_Process_Library
  use MAPL_SatVaporMod,  only: MAPL_EQsat
 
    real, intent(in   )  :: fQi         ! ice fraction
-   real, intent(in   )  :: DT          ! timestep [s]
+!   real, intent(in   )  :: DT          ! timestep [s]
    real, intent(in   )  :: tabs        ! absolute temperature [K]
    real, intent(in   )  :: qwv         ! specific humidity [kg kg-1]
    real, intent(  out)  :: qc          ! liquid+ice condensate [kg kg-1]
@@ -1905,13 +1905,31 @@ module GEOSmoist_Process_Library
             rwthl = 0.0
          end if
 
+         if (abs(rwqt).gt.1e3) print *,'rwqt>1e3'
+         if (abs(rwthl).gt.1e3) print *,'rwthl>1e3'
+         if (abs(C1).gt.1e3) print *,'C1>1e3'
+         if (abs(C2).gt.1e3) print *,'C2>1e3'
+         if (abs(w1_1).gt.1e3) print *,'w1_1>1e3'
+         if (abs(w1_2).gt.1e3) print *,'w1_2>1e3'
+         if (abs(qw2_2).gt.1e3) print *,'qw2_2>1e3'
+         if (abs(qw2_1).gt.1e3) print *,'qw2_1>1e3'
+         if (abs(cqt1).gt.1e3) print *,'cqt1>1e3'
+         if (abs(cqt2).gt.1e3) print *,'cqt2>1e3'
+         if (abs(cthl1).gt.1e3) print *,'cthl1>1e3'
+         if (abs(cthl2).gt.1e3) print *,'cthl2>1e3'
+         if (abs(thl2_1).gt.1e3) print *,'thl2_1>1e3'
+         if (abs(thl2_2).gt.1e3) print *,'thl2_2>1e3'
+
          wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
          wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
-
+         if (abs(wql1).gt.1e3) print *,'wql1>1e3'
+         if (abs(wql2).gt.1e3) print *,'wql2>1e3'
 
 ! Compute the liquid water flux
           wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
           wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
+          if (isnan(wqls)) print *,'wqls is nan at p=',pval
+          if (wqls>1e3) print *,'wqls >1e3 at p=',pval
 
 ! diagnostic buoyancy flux.  Includes effects from liquid water, ice
 ! condensate, liquid & ice precipitation
@@ -2072,8 +2090,7 @@ module GEOSmoist_Process_Library
            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
            HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
-           call partition_dblgss(DT/nmax,      &
-                                 fQi,          &
+           call partition_dblgss(fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
