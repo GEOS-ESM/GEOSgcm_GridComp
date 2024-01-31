@@ -297,8 +297,6 @@
       integer  n_out
       integer  n_outs(20)
 
-      integer :: rc_calc_tpsn
-
       ! ---------------------------------
       
       numout =  0
@@ -915,8 +913,9 @@
         tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
 
         sumdepth=sum(sndz)
-
+        
         CALL StieglitzSnow_snowrt(                                             &
+                   LONS(N), LATS(N),                                           &  ! in    [radians]  !!!
                    N_sm, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
@@ -928,9 +927,7 @@
                    EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
                    sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
-                   excs, drho0, wesnbot, tksno, dtss, rc_calc_tpsn     )          ! out     
-
-        if (rc_calc_tpsn/=0)  write (*,*) 'PosSnowHeat: n, lon, lat = ', n, lons(n)*180./PIE, lats(n)*180./PIE
+                   excs, drho0, wesnbot, tksno, dtss     )                        ! out     
 
         FICESOUT(:,N)  = fices
 
@@ -2943,8 +2940,6 @@
 
     logical                    :: ice1, tzero
 
-    logical, parameter         :: use_threshold_fac = .false.
-
     ! ------------------------------------------------------------------
 
     ! Compute tsurf excluding snow
@@ -2964,7 +2959,7 @@
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
           call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
-               ice1, tzero, use_threshold_fac ) 
+               ice1, tzero, use_threshold_fac=.false. ) 
           
           tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
