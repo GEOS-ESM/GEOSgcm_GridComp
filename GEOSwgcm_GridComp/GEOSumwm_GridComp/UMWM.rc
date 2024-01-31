@@ -1,0 +1,43 @@
+#
+# Resource file for the University of Miamy Wave Model (UMWM)
+# 
+
+verbose: .true.
+
+FREQUENCIES: 37           # number of frequency/wavenumber bins
+DIRECTIONS:  36           # number of direction bins
+
+MIN_FREQUENCY: 3.13e-2    # lowest  frequency bin, Hz
+MAX_FREQUENCY: 2.0        # highest frequency bin, Hz
+MAX_PROGNFREQ: 2.0        # highest prognostic frequency bin, Hz
+
+N_SPLIT: 1                # substep time-splitting
+MAX_SUBSTEPS: 20          # max number of sub-steps
+
+SEAICE_LTH: 0.30          # Sea ice fraction - lower threshold for attenuation
+SEAICE_UTH: 0.75          # Sea ice fraction - upper threshold for attenuation
+
+CHARNOCK_SF: 0.013        # Value of Charnock when wave supported stress is 0
+
+STOKES:.true.
+STOKE_DEPTHS: 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.2 1.4 1.6 1.8 2.0 2.4 2.8 3.2 3.6 4.0 4.5 5.0 6 7 8 9 10 12 14 16 18 20 24 28 32 40 50 60 70 80 90 100
+
+# -------------------------------------------------------------------
+# misc parameters
+# -------------------------------------------------------------------
+   nu_air: 1.56e-5       # kinematic viscosity of air, m2 s-1
+ nu_water: 1.20e-6       # kinematic viscosity of water (~15 C), m2 s-1
+     sfct: 0.07          # surface tension, N m-1
+gustiness: 0.0           # random wind gustiness factor (0 ~ 0.2)
+     dmin: 10.0          # depth limiter, m
+   explim: 0.9           # exponent limiter (0.69 ~ 100% growth)
+  sin_fac: 0.11          # input factor from following winds
+sin_diss1: 0.10          # damping factor from opposing winds
+sin_diss2: 0.001         # damping factor from swell overrunning wind
+  sds_fac: 42.0          # breaking dissipation factor
+sds_power: 2.4           # saturation spectrum power
+  mss_fac: 360           # mean-square-slope adjustment to Sds
+  snl_fac: 5.0           # wave energy downshifting factor
+  sdt_fac: 0.002         # dissipation due to turbulence factor
+  sbf_fac: 0.003         # bottom friction coefficient, m s-1
+  sbp_fac: 0.003         # bottom percolation coefficient, m s-1
