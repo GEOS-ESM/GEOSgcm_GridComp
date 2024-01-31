@@ -1,4 +1,4 @@
-# OpenACC Port of `GFDL_1M_Run` routine in Moist Physics
+# Standalone of `GFDL_1M_Run` routine in Moist Physics
 
 ## Brief Description
 
