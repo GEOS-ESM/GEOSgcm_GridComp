@@ -4,7 +4,7 @@
 
 This standalone replicates the computations performed by the `GFDL_1M_Run` subroutine in [`GEOS_GFDL_1M_InterfaceMod.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90).  The codebase was developed based on the `GEOSgcm_GridComp` branch [`2.1.3+moist-zero-divide-fix+aqua-planet-def`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.  
 
-Currently, the standalone can be built for execution on CPUs, but its output has not verified with the `discover` dataset.
+Currently, the standalone can be built for execution on CPUs, but its output does not verify with the `discover` dataset.
 
 ## Building and Running
 
@@ -19,4 +19,4 @@ Currently, the standalone can be built for execution on CPUs, but its output has
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- There is no OpenACC / OpenMP pragmas in the codebase.
+- There are no OpenACC / OpenMP pragmas in the codebase.
