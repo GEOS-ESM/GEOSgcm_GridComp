@@ -246,7 +246,7 @@ subroutine gw_oro_ifc( band, &
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
-   real,         intent(in) :: alpha(:)
+   real,         intent(in) :: alpha(pver+1)
 
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency

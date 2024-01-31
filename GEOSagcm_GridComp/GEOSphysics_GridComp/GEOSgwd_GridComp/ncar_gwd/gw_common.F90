@@ -68,10 +68,6 @@ integer :: ktop = huge(1)
 ! Background diffusivity.
 real(GW_PRC), parameter :: dback = 0.05_GW_PRC
 
-
-! Newtonian cooling coefficients.
-!real, allocatable :: alpha(:) ! AOO global save/alloctable variable not thread-safe 
-
 !
 ! Limits to keep values reasonable.
 !
@@ -341,7 +337,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Gravity wave wind tendency for each wave.
   real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
-  real, intent(in) :: alpha(:)
+  real, intent(in) :: alpha(pver+1)
 
   ! Adjustment parameter for IGWs.
   real, intent(in), optional :: &
@@ -476,6 +472,16 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
                  tausat(i) = tausat(i) * tau_adjust(i,k)
           endif
 
+          ! Force tau at the top of the model to zero, if requested.
+          if (tau_0_ubc) then
+            if (k == ktop  ) tausat = 0.0
+            if (k == ktop+1) tausat = tausat*0.02
+            if (k == ktop+2) tausat = tausat*0.05
+            if (k == ktop+3) tausat = tausat*0.10
+            if (k == ktop+4) tausat = tausat*0.20
+            if (k == ktop+5) tausat = tausat*0.50
+          endif
+
           ! Compute stress for each wave. The stress at this level is the
           ! min of the saturation stress and the stress at the level below
           ! reduced by damping. The sign of the stress must be the same as
@@ -484,7 +490,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           mi(i) = ni(i,k) / (2.0 * effkwv(i) * ubmc2(i)) * &  ! Is this 2.0 related to satfac?
                  (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
           wrk(i) = -2.0*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
-          wrk(i) = max( wrk(i), -200.0 ) * exp(wrk(i))
+          wrk(i) = max( wrk(i), -200.0 )
           taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
           ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
           ! we limit tau, so instead limit the arrays used to set it.
@@ -497,9 +503,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      end do
   end do
   
-  ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc) tau(:,:,ktop) = 0.0
-
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.
   !------------------------------------------------------------------------
@@ -600,7 +603,7 @@ use interpolate_data, only: lininterp
   integer,  intent(in)  :: pver
   real, intent(in)  :: pref( pver+1 )
 ! Newtonian cooling coefficients.
-  real, intent(inout) :: alpha(:)  ! Make alpha argument instead of global for correct behavior under threading
+  real, intent(inout) :: alpha( pver+1 )  ! Make alpha argument instead of global for correct behavior under threading
   
   ! Levels of pre-calculated Newtonian cooling (1/day).
   ! The following profile is digitized from:
@@ -661,8 +664,6 @@ use interpolate_data, only: lininterp
      alpha0(k) = max(alpha0(k), 1.e-6)
      palph(k) = palph(k)*1.e2
   end do
-
-  !allocate (alpha(pver+1)) ! Make alpha local instead of global for correct behavior under threading
 
   ! interpolate to current vertical grid and obtain alpha
   call lininterp (alpha0, palph, nalph , alpha, pref, pver+1)

@@ -75,7 +75,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   ! For forced background extratropical wave speed
   real    :: c4, latdeg, flat_gw
-  real, allocatable :: c0(:), cw4(:)
+  real, allocatable :: cw(:), cw4(:)
   integer :: i, kc
 
   ! Vars needed by NetCDF operators
@@ -157,19 +157,20 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
     ! Intialize forced background wave speeds
     allocate(desc%taubck(ncol,-band%ngwv:band%ngwv))
-    allocate(c0(-band%ngwv:band%ngwv))
+    allocate(cw(-band%ngwv:band%ngwv))
     allocate(cw4(-band%ngwv:band%ngwv))
     desc%taubck = 0.0
-    c0  = 0.0
+    cw  = 0.0
     cw4 = 0.0
     do kc = -4,4
         c4 =  10.0*kc
        cw4(kc) =  exp(-(c4/30.)**2)
     enddo
     do kc = -band%ngwv,band%ngwv
-       c0(kc) =  10.0*(4.0/real(band%ngwv))*kc
-       desc%taubck(:,kc) =  exp(-(c0(kc)/30.)**2)
+       cw(kc) =  10.0*(4.0/real(band%ngwv))*kc
+       cw(kc) =  exp(-(cw(kc)/30.)**2)
     enddo
+    cw = cw*(sum(cw4)/sum(cw)) 
     desc%et_bkg_lat_forcing = et_uselats
     if (et_uselats) then
       do i=1,ncol
@@ -192,15 +193,15 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        else if (latdeg >=  60.) then
          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/70.)**2)
        end if
-       desc%taubck(i,:) = tau_et*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
       enddo
     else
       flat_gw = 0.5 ! constant scaling since DQCDT will be used for frontal detection
       do i=1,ncol
-       desc%taubck(i,:) = tau_et*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
       enddo
     end if
-    deallocate( c0, cw4 )
+    deallocate( cw, cw4 )
   end if
     
 end subroutine gw_beres_init
