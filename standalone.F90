@@ -27,9 +27,9 @@ program test_moist_subroutines
     !     LM = 72
 
     ! elseif (dirName(1:11) == './c180_data') then
-    !     IM = 180
-    !     JM = 180
-    !     LM = 72
+        IM = 180
+        JM = 180
+        LM = 72
     ! endif
 
     ! if (trim(dirName(12:23)) == 'radcoup_loop' .or. trim(dirName(13:24)) == 'radcoup_loop') then
