@@ -22,3 +22,4 @@ Currently, the standalone can be built for execution on both CPUs and GPUs.
 - GPU execution is performed via OpenACC directives.
 - The `nvfortran` compiler has been tested up to version 23.11 and can build and execute the standalone via OpenACC directives.
 - The `gfortran` compiler has been tested up to version 11.4.0 and can build the standalone with OpenACC directives; however, a `gfortran` compiled binary cannot successfully execute on device.
+- The code "verifies" with the `discover` dataset, but this may have to be examined more in detail.
