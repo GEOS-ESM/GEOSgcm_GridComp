@@ -374,7 +374,6 @@ contains
           wrk  = 0.5 * (tkh(i,j,ku)+tkh(i,j,kd))
 
           if (shocparams%BUOYOPT==2) then
-!            if (zl(i,j,k).lt.1000.) wthv_sec(i,j,k) = max(0.,wthv_sec(i,j,k)) ! prevent decoupling
             a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
           else
             a_prod_bu = -1.*wrk*brunt(i,j,k) + (ggr / thv(i,j,k))*wthv_mf(i,j,k)
@@ -405,8 +404,9 @@ contains
           wrk  = (dtn*Cee)/smixt(i,j,k)
           wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
+          wrk2 = min_tke+0.5*(tke_mf(i,j,nz-k+1)+tke_mf(i,j,nz-k))
           do itr=1,nitr                        ! iterate for implicit solution
-            wtke   = min(max(min_tke, wtke), max_tke)
+            wtke   = min(max(wrk2, wtke), max_tke)
             a_diss = wrk*sqrt(wtke)            ! Coefficient in the TKE dissipation term
 !            if (a_diss.ne.-1.) then
               wtke   = wrk1 / (1.+a_diss)
@@ -418,7 +418,7 @@ contains
 
           enddo
 
-          tke(i,j,k) = min(max(min_tke, wtke), max_tke)
+          tke(i,j,k) = min(max(wrk2, wtke), max_tke)
 
           tscale1(i,j,k) = (dtn+dtn) / a_diss        ! See Eq 8 in BK13 (note typo, flipped num/denom)
 
@@ -453,7 +453,6 @@ contains
 !          if (k.ge.cldbasek(i,j)) then
 !            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
 !          end if
-!          if (zl(i,j,k).gt.500.) isotropy(i,j,k) = 200.
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -461,9 +460,9 @@ contains
 !          tkh(i,j,k) = 0.5*( smixt(i,j,k)*sqrt(tke(i,j,k)) &      ! alternate form
 !                           + smixt(i,j,k-1)*sqrt(tke(i,j,k-1)) )
 
-          tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-tke_mf(i,j,nz-k+1))
-          tkh(i,j,k) = wrk1*isotropy(i,j,k)    &
-                       * 1.*(tke_env)             ! remove MF TKE
+!          tke_env = max(min_tke,0.5*(tke(i,j,k)+tke(i,j,k-1))-0.*tke_mf(i,j,nz-k+1))
+          tkh(i,j,k) = wrk1*isotropy(i,j,k)*0.5*(tke(i,j,k)+tke(i,j,k-1)) !   &
+!                       *(tke_env)             ! remove MF TKE
           tkh(i,j,k) = min(tkh(i,j,k),tkhmax)
         end do ! i
       end do ! j
@@ -877,7 +876,6 @@ contains
               l_par(i,j,k) = max(min(l_par(i,j,k),1500.),25.)
 !              if (zl(i,j,k).lt.600.) print *,'z=',zl(i,j,k),'  thv=',thv(i,j,k),'  thv pert=',max(0.001,3.*wthv_sec(i,j,k)) / max(0.05,sqrt(0.667)*tkes),'  l_par=',l_par(i,j,k)
 
-!              if (brunt_smooth(i,j,k).gt.1e-5) l_par(i,j) = max(25.,l_par(i,j)/2.)
 
           !----------------------------------
           ! calculate 'TKE' mixing length
@@ -899,19 +897,11 @@ contains
             if ( shocparams%LENOPT .lt. 4 ) then  ! SHOC-MF length scale
 
                  ! Surface length scale
-!                 smixt1(i,j,k) = vonk*zl(i,j,k)*exp(MIN(1000.,zl(i,j,k))**2/4e4)*shocparams%LENFAC1
                  smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
-!                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1
+!                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
-!                 if (zl(i,j,k).lt.zl(i,j,cldbasek(i,j))) then
-!                 if (zl(i,j,k).lt.l_mix(i,j)) then
-!                   smixt2(i,j,k) = sqrt(0.1*zpbl(i,j)*400.*tkes)*shocparams%LENFAC2
-!                   smixt2(i,j,k) = sqrt(min(1000.,l_mix(i,j))*400.*tkes)*(shocparams%LENFAC2)
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*(shocparams%LENFAC2)
-!                 else
-!                   smixt2(i,j,k) = 400.*tkes*shocparams%LENFAC2
-!                 end if
 
                  ! Stability length scale
                  smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
@@ -1257,7 +1247,6 @@ contains
     qt3 = ( qt3 + max(MFQT3,0.) ) / ( 1. + DT/QT3_TSCALE )
     hl3 = MFHL3
     w3  = MFW3
-!    w3  = (1.-MFFRC)*0.5*((Sqrt(w2)-MFAW/(1.-MFFRC))**3 + (-Sqrt(w2)-MFAW/(1.-MFFRC))**3) + MFW3
   else
 
 ! pre-define adzl,

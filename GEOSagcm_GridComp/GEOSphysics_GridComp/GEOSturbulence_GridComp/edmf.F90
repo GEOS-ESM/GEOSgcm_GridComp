@@ -929,9 +929,14 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         buoyf(IH,JH,K)  = s_buoyf(KTE+KTS-K)    ! can be used in SHOC
         mfw2(IH,JH,K)   = 0.5*(s_aw2(KTE+KTS-K-1)+s_aw2(KTE+KTS-K))
         mfw3(IH,JH,K)   = 0.5*(s_aw3(KTE+KTS-K-1)+s_aw3(KTE+KTS-K))
-        mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
-        mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         mfhlqt(IH,JH,K) = 0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
+        if (SUM(moist_a(KTS-1:KTE+KTS-K)).le.1e-4) then
+          mfqt3(IH,JH,K) = 0.
+          mfhl3(IH,JH,K) = 0.
+        else
+          mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
+          mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
+        end if
   !      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
   !      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       ENDDO
