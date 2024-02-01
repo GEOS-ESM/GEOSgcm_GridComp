@@ -2,13 +2,13 @@
 
 ## Brief Description
 
-This standalone replicates the computations performed by the `fillq2zero` subroutine in [`aer_actv_single_moment.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/v2.1.2/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/aer_actv_single_moment.F90#L39).  The codebase was developed based on the `GEOSgcm_GridComp` branch tagged [`v2.1.2`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/v2.1.2).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.  
+This standalone replicates the computations performed by the `fillq2zero` subroutine in [`Process_Library.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90#L2268).  The codebase was developed based on the `GEOSgcm_GridComp` branch tagged [`2.1.3+moist-zero-divide-fix+aqua-planet-def`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.  
 
 The standalone can be built for execution on both CPUs and GPUs.
 
 ## Building and Running
 
-1. Edit the [`Makefile`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/orphan/openacc/moist/radcoup_loop/Makefile)
+1. Edit the [`Makefile`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/orphan/openacc/moist/fillq2zero/Makefile)
     - Set `FC` in the `Makefile` to a Fortran compiler.  During development, the standalone has been compiled with `ifort`, `gfortran`, and `nvfortran`.
     - Choose the appropriate optimization `OPT` based on the Fortran compiler.  There are comments in the `Makefile` to guide the choice for `OPT`.
 
