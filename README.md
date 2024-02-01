@@ -2,7 +2,7 @@
 
 ## Brief Description
 
-This standalone replicates the computations performed by the `gfdl_cloud_microphys_driver` subroutine in [`gfdl_cloud_microphys.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/gfdl_cloud_microphys.F90).  The codebase was developed based on the `GEOSgcm_GridComp` branch [`2.1.3+moist-zero-divide-fix+aqua-planet-def`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.  
+This standalone replicates the computations performed by the `gfdl_cloud_microphys_driver` subroutine in [`gfdl_cloud_microphys.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/gfdl_cloud_microphys.F90#L345).  The codebase was developed based on the `GEOSgcm_GridComp` branch [`2.1.3+moist-zero-divide-fix+aqua-planet-def`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.  
 
 Currently, the standalone can be built for execution on both CPUs and GPUs.
 
@@ -22,4 +22,4 @@ Currently, the standalone can be built for execution on both CPUs and GPUs.
 - GPU execution is performed via OpenACC directives.
 - The `nvfortran` compiler has been tested up to version 23.11 and can build and execute the standalone via OpenACC directives.
 - The `gfortran` compiler has been tested up to version 11.4.0 and can build the standalone with OpenACC directives; however, a `gfortran` compiled binary cannot successfully execute on device.
-- The code "verifies" with the `discover` dataset, but this may have to be examined more in detail.
+- The code "verifies" with the comparison dataset, but this may have to be examined more in detail.
