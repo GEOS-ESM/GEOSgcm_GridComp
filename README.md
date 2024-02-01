@@ -2,7 +2,7 @@
 
 ## Brief Description
 
-This standalone replicates the computations performed within the Cloud Macrophysics region in [`GEOS_GFDL_1M_InterfaceMod.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/v2.1.2/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90).  The codebase was developed based on the `GEOSgcm_GridComp` branch tagged [`v2.1.2`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/v2.1.2).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.
+This standalone replicates the computations performed within the Cloud Macrophysics region in [`GEOS_GFDL_1M_InterfaceMod.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/v2.1.2/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90#L530).  The codebase was developed based on the `GEOSgcm_GridComp` branch tagged [`v2.1.2`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/v2.1.2).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.
 
 Currently, the standalone can be built for execution on CPUs and GPUs and has been verified with a `discover` dataset.
 
