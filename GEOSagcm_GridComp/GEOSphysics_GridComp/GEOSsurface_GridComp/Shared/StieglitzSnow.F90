@@ -595,25 +595,25 @@ contains
     
     do i=1,N_snow
        
-       !**** Quick check for "impossible" condition:
-       
-       if(.not.tzero(i) .and. .not.ice1(i)) then
+       if      (.not.tzero(i) .and. .not.ice1(i)) then
+          
+          !**** "Impossible" condition:
+          
           write(*,*) 'bad snow condition: fice,tpsn =',fices(i),tpsn(i)
           stop
-       endif
-       
-       !****  Condition 1: layer starts fully frozen (temp < 0.)
-       
-       if(.not.tzero(i)) then
+          
+       else if (.not.tzero(i)) then
+          
+          !****  Condition 1: layer starts fully frozen (temp < 0.)
+          
           tnew=tpsn(i)+dtc(i)
           fnew=1.
+       
+       else if (.not.ice1(i)) then
           
-       endif
-       
-       !****  Condition 2: layer starts with temp = 0, fices < 1.
-       !      Corrections for flxnet calculation: Koster, March 18, 2003.
-       
-       if(.not.ice1(i)) then
+          !****  Condition 2: layer starts with temp = 0, fices < 1.
+          !      Corrections for flxnet calculation: Koster, March 18, 2003.
+          
           tnew=0.
           if(i==1) flxnet= fhsn(i+1)+df(i+1)*(dtc(i)-dtc(i+1))              &
                -fhsn(i)-df(i)*dtc(i)
@@ -623,17 +623,16 @@ contains
           if(i==N_snow) flxnet=fhsn(i+1)+df(i+1)*dtc(i)                     &
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-
+          
           call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, ignore_pos_tpsnow=.true.)
-
+          
           fnew=amax1(0.,  amin1(1.,  fnew))
           
-       endif
-       
-       !****  Condition 3: layer starts with temp = 0, fices = 1.
-       !      Corrections for flxnet calculation: Koster, March 18, 2003.
-       
-       if(ice1(i) .and. tzero(i)) then
+       else  ! (ice1(i) .and. tzero(i)) 
+          
+          !****  Condition 3: layer starts with temp = 0, fices = 1.
+          !      Corrections for flxnet calculation: Koster, March 18, 2003.
+          
           if(dtc(i) < 0.) then
              tnew=tpsn(i)+dtc(i)
              fnew=1.
@@ -649,12 +648,13 @@ contains
                   -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
              
              HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-
+             
              call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, ignore_pos_tpsnow=.true.)
-
+             
              fnew=amax1(0.,  amin1(1.,  fnew))
-
+             
           endif
+
        endif
        
        !**** Now update heat fluxes & compute sublimation or deposition.
