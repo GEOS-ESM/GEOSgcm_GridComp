@@ -546,7 +546,7 @@ contains
     
     do i=1,N_snow
        
-       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), use_threshold_fac=.false., ignore_pos_tpsnow=.true.)
+       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), ignore_pos_tpsnow=.true.)
 
        if(ice1(i)) then
           cl(i) = df(i)
@@ -624,7 +624,7 @@ contains
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
 
-          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, use_threshold_fac=.false., ignore_pos_tpsnow=.true.)
+          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, ignore_pos_tpsnow=.true.)
 
           fnew=amax1(0.,  amin1(1.,  fnew))
           
@@ -650,7 +650,7 @@ contains
              
              HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
 
-             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, use_threshold_fac=.false., ignore_pos_tpsnow=.true.)
+             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, ignore_pos_tpsnow=.true.)
 
              fnew=amax1(0.,  amin1(1.,  fnew))
 
@@ -1247,8 +1247,7 @@ contains
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero,  &
-       use_threshold_fac, ignore_pos_tpsnow, rc )
+  subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero, ignore_pos_tpsnow, rc )
     
     ! diagnose snow temperature and frozen fraction from snow mass and snow heat content
     !
@@ -1277,8 +1276,6 @@ contains
     real,    intent(out)           :: t, f          ! snow temperature, frozen ("ice") fraction
     
     logical, intent(out)           :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
-    
-    logical, intent(in)            :: use_threshold_fac
     
     logical, intent(in),  optional :: ignore_pos_tpsnow
 
@@ -1316,21 +1313,21 @@ contains
 
     ! -------------------------------------------------------------------    
     
-    if (use_threshold_fac) then
-       
-       ! replicates original get_tf0d()
-       
-       threshold1 = -1.00001*alhm     
-       threshold2 = -0.99999*alhm
+    !if (use_threshold_fac) then
+    !   
+    !   ! replicates original get_tf0d()
+    !   
+    !   threshold1 = -1.00001*alhm     
+    !   threshold2 = -0.99999*alhm
+    !
+    !else
 
-    else
-
-       ! replicates original get_tf_nd() / StieglitzSnow_calc_tpsnow[_vector]()
-       
-       threshold1 = -alhm                      
-       threshold2 = -alhm                      
-              
-    end if
+    ! replicates original get_tf_nd() / StieglitzSnow_calc_tpsnow[_vector]()
+    
+    threshold1 = -alhm                      
+    threshold2 = -alhm                      
+    
+    !end if
     
     ! -------------------------------------------------------------------    
 
@@ -1453,7 +1450,7 @@ contains
     do ii=1,N
        
        call StieglitzSnow_calc_tpsnow_scalar( h(ii), w(ii), t(ii), f(ii), ice1, tzero,  &
-            use_threshold_fac=.false., ignore_pos_tpsnow=ignore_pos_tpsnow_tmp, rc=rc_tmp )
+            ignore_pos_tpsnow=ignore_pos_tpsnow_tmp, rc=rc_tmp )
     
        if (rc_tmp/=0) then
 
