@@ -14,8 +14,8 @@ The standalone can be built for execution on both CPUs and GPUs.
 
 2. Run `make` to build.  This will create a binary called `TEST_MOIST`.
 
-3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/radcoup_loop/ <Dataset Number>`
-    - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/radcoup_loop/` contains the input and comparison dataset for the standalone.
+3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/fillq2zero/ <Dataset Number>`
+    - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/fillq2zero/` contains the input and comparison dataset for the standalone.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
