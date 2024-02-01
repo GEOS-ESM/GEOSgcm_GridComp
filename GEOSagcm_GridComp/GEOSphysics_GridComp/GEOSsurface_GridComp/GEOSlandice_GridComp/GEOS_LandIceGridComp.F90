@@ -3086,7 +3086,7 @@ contains
 #endif
           TKSNO = condice 
 
-          call SNOWRT( LONS(N), LATS(N),                                       &  ! in     [radians]  !!!
+          call SNOWRT( LONS(k), LATS(k),                                       &  ! in     [radians]  !!!
                    1,NUM_SNOW_LAYERS,MAPL_LANDICE,                             &  ! in    
                    MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in    
                    LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in    
