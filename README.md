@@ -19,4 +19,6 @@ The standalone can be built for execution on CPUs.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- The standalone contains OpenACC directives that can compile for either CPU and GPU using `nvfortran`.  The standalone does not execute successfully on GPUs; however, it does exhibit performance improvements when executing with OpenACC on CPUs.
+- The standalone contains OpenACC directives that can compile for either CPU and GPU using `nvfortran`.
+    - The standalone compiled for GPUs does not execute successfully and displays the error `Accelerator Fatal Error: call to cuStreamSynchronize returned error 700: Illegal address during kernel execution`.
+    - The standalone compiled for CPUs does execute and utilize the OpenACC directives to exhibit performance improvements.
