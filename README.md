@@ -20,4 +20,5 @@ Currently, the standalone can be built for execution on CPUs and GPUs and has be
 
 ## Other Notes
 - The standalone contains OpenACC directives that can compile and execute successfully for either CPU and GPU using `nvfortran`.
-- `gfortran` can build the standalone with OpenACC offloading; however, executing the resulting binary results in the following error: `libgomp: cuStreamSynchronize error: an illegal memory access was encountered`
+- `gfortran` can build the standalone with OpenACC offloading to the GPU; however, executing the binary results in the following error: `libgomp: cuStreamSynchronize error: an illegal memory access was encountered`
+- When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
