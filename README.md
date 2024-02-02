@@ -21,3 +21,4 @@ The standalone can be built for execution on CPUs.
 ## Other Notes
 - There are no OpenACC / OpenMP directives in the codebase.
 - The standalone does not verify with the comparision data.
+- When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
