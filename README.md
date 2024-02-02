@@ -14,11 +14,11 @@ Currently, the standalone can be built for execution on CPUs and GPUs and has be
 
 2. Run `make` to build.  This will create a binary called `TEST_MOIST`.
 
-3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/evap_subl_pdf_loop/ <Dataset Number>`
+3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/evap_subl_pdf_loop/ <Dataset Number>` to execute the standalone.
     - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/evap_subl_pdf_loop/` contains the input and comparison data for the standalone.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- The standalone contains OpenACC directives that can compile and execute successfully for either CPU and GPU using `nvfortran`.
+- The standalone contains OpenACC directives that can compile and execute successfully for either CPU and GPU using `nvfortran`.  The standalone has been tested using `nvfortran` version 23.x.
 - `gfortran` can build the standalone with OpenACC offloading to the GPU; however, executing the binary results in the following error: `libgomp: cuStreamSynchronize error: an illegal memory access was encountered`
 - When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
