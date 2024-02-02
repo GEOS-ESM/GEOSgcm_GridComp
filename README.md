@@ -14,7 +14,7 @@ The standalone can be built for execution on CPUs.
 
 2. Run `make` to build.  This will create a binary called `TEST_MOIST`.
 
-3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/cup_gf_GF2020/ <Dataset Number>`
+3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/cup_gf_GF2020/ <Dataset Number>` to execute the standalone.
     - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/cup_gf_GF2020/` contains the input and comparison dataset for the standalone.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
