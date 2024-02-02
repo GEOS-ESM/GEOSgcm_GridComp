@@ -14,12 +14,14 @@ The standalone can be built for execution on CPUs.
 
 2. Run `make` to build.  This will create a binary called `TEST_MOIST`.
 
-3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/uwshcu/ <Dataset Number>`
+3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/uwshcu/ <Dataset Number>` to execute the standalone.
     - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/uwshcu/` contains the input and comparison data for the standalone.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- The standalone contains OpenACC directives that can compile for either CPU and GPU using `nvfortran`.
-    - The standalone compiled for GPUs does not execute successfully and displays the error `Accelerator Fatal Error: call to cuStreamSynchronize returned error 700: Illegal address during kernel execution`.
-    - The standalone compiled for CPUs does execute and utilize the OpenACC directives to exhibit performance improvements.
+- The standalone verifies with the comparison dataset when computing on the CPU.
+- OpenACC directives can offload portions of standalone code to execute on the GPU.
+    - Version 23.x of the `nvfortran` compiler have been tested to build offloaded code using OpenACC directives.
+        - The standalone compiled for GPUs does not execute successfully and displays the error `Accelerator Fatal Error: call to cuStreamSynchronize returned error 700: Illegal address during kernel execution`.
+        - The standalone compiled for CPUs does execute and utilize the OpenACC directives to exhibit performance improvements.
 - When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
