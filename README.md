@@ -19,8 +19,8 @@ The standalone can be built for execution on both CPUs and GPUs.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- The standalone verifies with the comparison dataset.
+- The standalone verifies with the comparison dataset when computing either on the CPU or GPU.
 - OpenACC directives can offload portions of standalone code to execute on the GPU.
-    - The `nvfortran` compiler has been tested up to version 23.11 and can build and execute offloaded code using OpenACC directives.
-    - The `gfortran` compiler has been tested up to version 11.4.0 and can build and execute offloaded code using OpenACC directives.
+    - Version 23.x of the `nvfortran` compiler has been tested to build and execute offloaded code using OpenACC directives.
+    - Versions 10.4.0 and 11.4.0 of the `gfortran` compiler with offload capability have been tested to build and execute offloaded code using OpenACC directives.
 - When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
