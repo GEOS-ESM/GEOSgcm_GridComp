@@ -16,23 +16,36 @@
       public :: aerosol_activate
       public :: AerConversion	
       public :: AerProps
+      public :: AerPropsNew
       public :: getINsubset
       public :: init_Aer
       public :: aer_cloud_init
       public :: vertical_vel_variance
       public :: gammp
       public :: make_cnv_ice_drop_number
+      public :: nsmx_par
+
+      integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
+      integer, parameter :: npgauss  = 10
     
-       integer, parameter ::  &
-        nsmx_par = 20, npgauss=10 !maximum number of 	
-       !nsmx_par !maximum number of modes allowed
-    
-    
-    type :: AerProps            
-	sequence 
-          real, dimension(nsmx_par)  :: num !Num conc m-3
-          real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
-    	  real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
+      type :: AerPropsNew
+      sequence 
+      real, dimension(:,:,:), pointer :: num !Num conc m-3
+      real, dimension(:,:,:), pointer :: dpg !dry Geometric size, m
+      real, dimension(:,:,:), pointer :: sig  !logarithm (base e) of the dry geometric disp
+      real, dimension(:,:,:), pointer :: den  !dry density , Kg m-3
+      real, dimension(:,:,:), pointer :: kap !Hygroscopicity parameter 
+      real, dimension(:,:,:), pointer :: fdust! mass fraction of dust 
+      real, dimension(:,:,:), pointer :: fsoot ! mass fraction of soot
+      real, dimension(:,:,:), pointer :: forg ! mass fraction of organics
+      integer :: nmods  ! total number of modes (nmods<nmodmax)
+      end type AerPropsNew
+   
+      type :: AerProps            
+      sequence 
+      real, dimension(nsmx_par)  :: num !Num conc m-3
+      real, dimension(nsmx_par)  :: dpg !dry Geometric size, m
+      real, dimension(nsmx_par)  :: sig  !logarithm (base e) of the dry geometric disp
 	  real, dimension(nsmx_par)  :: den  !dry density , Kg m-3
   	  real, dimension(nsmx_par)  :: kap !Hygroscopicity parameter 
  	  real, dimension(nsmx_par)  :: fdust! mass fraction of dust 
@@ -1155,12 +1168,9 @@ end subroutine getINsubset
  
 !========================subroutines to handle aer strucuture=====================================
 
-
- subroutine copy_Aer(a,b)
-      
+   subroutine copy_Aer(a,b)
       type (AerProps), intent(out) :: a
       type (AerProps), intent(in) :: b
-      
       a%num= b%num
       a%sig = b%sig
       a%dpg = b%dpg
@@ -1168,16 +1178,14 @@ end subroutine getINsubset
       a%den = b%den
       a%fdust = b%fdust
       a%fsoot = b%fsoot
-      a%forg= b%forg
-      a%nmods =  b%nmods
-      	 	  
+      a%forg  = b%forg
+      a%nmods = b%nmods
    end subroutine copy_Aer 
-      
+
    subroutine copy_mode(a_out,a_in, mode_in, mode_out)
       type (AerProps), intent(out) :: a_out
       type (AerProps), intent(in) :: a_in
       integer, intent (in) :: mode_in, mode_out
-      
       a_out%num(mode_out)= a_in%num(mode_in)
       a_out%sig(mode_out) = a_in%sig(mode_in)
       a_out%dpg(mode_out) = a_in%dpg(mode_in)
@@ -1186,28 +1194,22 @@ end subroutine getINsubset
       a_out%fdust(mode_out) = a_in%fdust(mode_in)
       a_out%fsoot(mode_out) = a_in%fsoot(mode_in)
       a_out%forg(mode_out) = a_in%forg(mode_in)
-           
    end subroutine copy_mode
    
    
-    subroutine init_Aer(aerout)
-
-    type (AerProps), intent(inout) :: aerout
-   
-           aerout%num = 0.0
-	   aerout%dpg =  1.0e-9
-	   aerout%sig =  2.0
-	   aerout%kap =  0.2
-	   aerout%den = 2200.0
-	   aerout%fdust  =  0.0
-           aerout%fsoot  =  0.0
-	   aerout%forg   =  0.0
-	   aerout%nmods = 1
-	   
+   subroutine init_Aer(aerout)
+     type (AerProps), intent(inout) :: aerout
+     aerout%num = 0.0
+     aerout%dpg = 1.0e-9
+     aerout%sig = 2.0
+     aerout%kap = 0.2
+     aerout%den = 2200.0
+     aerout%fdust = 0.0
+     aerout%fsoot = 0.0
+     aerout%forg  = 0.0
+     aerout%nmods = 1
    end subroutine init_Aer
    
-      
-      
 !!!!!!!!!!!!!!======================================     
 !!!!!!!!!   Subroutine ARG_act: finds the activated droplet number following Abdul_Razzak and Ghan 2000.
 !Written by Donifan Barahona
