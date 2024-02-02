@@ -4754,7 +4754,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME='QCVAR_EXP',                                   &
+         SHORT_NAME='QCVAR',                                   &
          LONG_NAME ='inverse relative variance of cloud water',        &
          UNITS      = '1',                                    &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5512,11 +5512,12 @@ contains
          DQVDT_ER = Q
 
          ! some diagnostics to export
-         if (.FALSE.) then
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
           QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
          else
           DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
          end if
+         
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            PTR3D = Q/QST3
@@ -5535,7 +5536,7 @@ contains
            end where
          endif
 
-         if (.FALSE.) then
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
           QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          else
           DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
