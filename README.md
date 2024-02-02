@@ -19,7 +19,8 @@ The standalone can be built for execution on both CPUs and GPUs.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- GPU execution is performed via OpenACC directives.
-- The `nvfortran` compiler has been tested up to version 23.11 and can build and execute the standalone using OpenACC directives.
-- The `gfortran` compiler has been tested up to version 11.4.0 and can build and execute the standalone using OpenACC directives.
 - The standalone verifies with the comparison dataset.
+- GPU execution is performed via OpenACC directives.
+    - The `nvfortran` compiler has been tested up to version 23.11 and can build and execute the standalone using OpenACC directives.
+    - The `gfortran` compiler has been tested up to version 11.4.0 and can build and execute the standalone using OpenACC directives.
+- When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
