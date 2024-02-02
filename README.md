@@ -22,3 +22,4 @@ The standalone can be built for execution on CPUs.
 - The standalone contains OpenACC directives that can compile for either CPU and GPU using `nvfortran`.
     - The standalone compiled for GPUs does not execute successfully and displays the error `Accelerator Fatal Error: call to cuStreamSynchronize returned error 700: Illegal address during kernel execution`.
     - The standalone compiled for CPUs does execute and utilize the OpenACC directives to exhibit performance improvements.
+- When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
