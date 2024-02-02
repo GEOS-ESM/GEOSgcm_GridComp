@@ -4,7 +4,7 @@
 
 This standalone replicates the computations performed by the `compute_uwshcu_inv` subroutine in [`uwshcu.F90`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/uwshcu.F90#L74).  The codebase was developed based on the `GEOSgcm_GridComp` branch [`2.1.3+moist-zero-divide-fix+aqua-planet-def`](https://github.com/GEOS-ESM/GEOSgcm_GridComp/tree/2.1.3%2Bmoist-zero-divide-fix%2Baqua-planet-def).  MAPL data calls are substituted with file IO from a c180 GEOS aquaplanet run.
 
-Currently, the standalone can be built for execution on CPUs and has been verified with a `discover` dataset.
+The standalone can be built for execution on CPUs.
 
 ## Building and Running
 
