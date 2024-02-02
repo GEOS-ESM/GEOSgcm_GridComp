@@ -14,11 +14,11 @@ The standalone can be built for execution on CPUs.
 
 2. Run `make` to build.  This will create a binary called `TEST_MOIST`.
 
-3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/gfdl_1m_run/ <Dataset Number>`
+3. Run `./TEST_MOIST /discover/nobackup/projects/geosongpu/physics_standalone_data/moist/gfdl_1m_run/ <Dataset Number>` to execute the standalone.
     - `/discover/nobackup/projects/geosongpu/physics_standalone_data/moist/gfdl_1m_run/` contains the input and comparison data for the standalone.
     - `<Dataset Number>` can be set as an integer from `0` to `5`.
 
 ## Other Notes
-- There are no OpenACC / OpenMP directives in the codebase.
 - The standalone does not verify with the comparsion data.
+- There are no OpenACC / OpenMP directives in the codebase.
 - When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
