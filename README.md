@@ -20,4 +20,5 @@ The standalone can be built for execution on CPUs.
 
 ## Other Notes
 - The standalone verifies with the comparison dataset.
-- The stack size may have to be set to unlimited (ex: `ulimit -s unlimited`) to avoid seg faults.
+- The standalone contains no OpenACC directives.
+- When compiling with `ifort`, the stack size may have to be set to unlimited (ex: With a bash shell, run `ulimit -s unlimited`) so that the standalone does not produce a segmentation fault.
