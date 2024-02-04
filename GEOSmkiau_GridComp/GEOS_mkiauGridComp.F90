@@ -695,6 +695,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   logical                             :: NEED_BUNDLEM2
   data                                   NEED_BUNDLEM2 /.true./
 
+  integer, save :: P0_col_id
+
   integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
 
@@ -1483,13 +1485,15 @@ CONTAINS
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
-        VERIFY_(STATUS)
+
+        P0_col_id = MAPL_CFIOAddCollection(Replay_FileP0)
+
+        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0, collection_id=P0_col_id, _RC)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
+        call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0, collection_id=P0_col_id, _RC)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
