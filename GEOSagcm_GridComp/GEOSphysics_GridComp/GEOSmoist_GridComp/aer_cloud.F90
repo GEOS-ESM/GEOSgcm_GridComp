@@ -226,9 +226,9 @@
 ! ===============Output=============:
 
 ! cdncr8 = Activated cloud droplet number concentration (Kg-1)
-! smaxliqr8 = Maximum supersaturation w.r.t liquid during droplet activation
+! smaxliqr8 = Maximum supersaturation w.r.t liquid during droplet activation (%)
 ! incr8  = Nucleated ice crystal concentration (Kg-1)
-! smaxicer8 = Maximum supersaturation w.r.t. ice during ice nucleation
+! smaxicer8 = Maximum supersaturation w.r.t. ice during ice nucleation (%)
 ! nheticer8 = Nucleated ice crystal concentration by het freezing (Kg-1)
 ! INimmr8 =  Nucleated nc by droplet immersion freezing in mixed-phase clouds (Kg-1)
 ! dINimmr8 = Ice crystal number tendency by immersion freezing (Kg-1 s-1)
@@ -432,7 +432,7 @@
        	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-         smaxliqr8=max(smax, zero_par)
+         smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -630,7 +630,7 @@
     !==========================
 
 !All # m-3 except those passed to MG later
-   smaxicer8    = min(max(smaxice, zero_par), 2.0)   
+   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
    nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
    nlimr8       = min(max(nlim, zero_par), 1e10)   

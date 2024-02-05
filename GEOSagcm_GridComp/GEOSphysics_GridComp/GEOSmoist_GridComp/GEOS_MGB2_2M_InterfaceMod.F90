@@ -69,7 +69,7 @@ module GEOS_MGB2_2M_InterfaceMod
 
   real  :: DCS, WBFFACTOR, NC_CST, NI_CST, NG_CST, MUI_CST, &
            LCCIRRUS, UISCALE, LIU_MU, NPRE_FRAC, QCVAR_CST, &
-           AUTSC, TS_AUTO_ICE, CCN_PARAM, IN_PARAM, &
+           AUT_SCALE, TS_AUTO_ICE, CCN_PARAM, IN_PARAM, &
            FDROP_DUST, FDROP_SOOT, WSUB_OPTION, &
            DUST_INFAC, ORG_INFAC, BC_INFAC, SS_INFAC, RRTMG_IRRAD, RRTMG_SORAD,&
            MTIME,MINCDNC, Immersion_param, ACC_ENH, ACC_ENH_ICE, DT_MICRO, URSCALE, &
@@ -372,7 +372,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, LIU_MU,         'LIU_MU:',         DEFAULT= 2.0,    __RC__) !Liu autoconversion parameter
     call MAPL_GetResource(MAPL, NPRE_FRAC,      'NPRE_FRAC:',      DEFAULT= -1.0,   __RC__) !Fraction of preexisting ice affecting ice nucleationn            
     call MAPL_GetResource(MAPL, USE_AV_V,       'USE_AV_V:',       DEFAULT= .TRUE.,    __RC__) !Set to > 0 to use an average velocity for activation
-    call MAPL_GetResource(MAPL, AUTSC,          'AUT_SCALE:',      DEFAULT= 1.0,    __RC__) !scale factor for critical size for drizzle
+    call MAPL_GetResource(MAPL, AUT_SCALE,      'AUT_SCALE:',      DEFAULT= 0.5,    __RC__) !scale factor for critical size for drizzle
     call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 360.,    __RC__) !Ice autoconversion time scale
     call MAPL_GetResource(MAPL, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    __RC__) !CCN activation param
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
@@ -396,7 +396,7 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
     call MAPL_GetResource(MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)      
     call MAPL_GetResource(MAPL, CNV_GSC,   'CNV_GSC:', DEFAULT= 5.0e-5 ,RC=STATUS) !linear scaling for NCPL of conv detrainment 
-    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 0.1, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
+    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 1.0, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
     call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=250.0e-6, __RC__ ) !ice/snow separation diameter   
     Dcsr8 = DCS
     
@@ -499,7 +499,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     
     !2m
     real, pointer, dimension(:,:,:) :: SC_ICE, CDNC_NUC, INC_NUC, PFRZ, &
-       CFICE, CFLIQ, DT_RASP, SMAXL, SMAXI, WSUB, CCN01, CCN04, CCN1, &
+       CFICE, CFLIQ, DT_RASP, SMAX_LIQ, SMAX_ICE, WSUB, CCN01, CCN04, CCN1, &
        NHET_NUC, NLIM_NUC, SO4, ORG, BCARBON, DUST, SEASALT, NCPL_VOL, NCPI_VOL, &
        SAT_RAT, RHICE, RL_MASK, RI_MASK, &
        NHET_IMM, NHET_DEP, DUST_IMM, DUST_DEP, SIGW_GW, SIGW_CNV, SIGW_TURB, &
@@ -897,8 +897,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PFRZ,        'PFRZ'        , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, LTS,         'LTS'         , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, EIS,         'EIS'         , ALLOC=.TRUE., __RC__)
-    call MAPL_GetPointer(EXPORT, SMAXL,       'SMAX_LIQ'    , ALLOC=.TRUE., __RC__)
-    call MAPL_GetPointer(EXPORT, SMAXI,       'SMAX_ICE'    , ALLOC=.TRUE., __RC__)
+    call MAPL_GetPointer(EXPORT, SMAX_LIQ,       'SMAX_LIQ'    , ALLOC=.TRUE., __RC__)
+    call MAPL_GetPointer(EXPORT, SMAX_ICE,       'SMAX_ICE'    , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, WSUB,        'WSUB'        , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, CCN01,       'CCN01'       , ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, CCN04,       'CCN04'       , ALLOC=.TRUE., __RC__)
@@ -1070,7 +1070,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
                  call   aerosol_activate(T(I, J, K), 100.*PLmb(I, J, K), WSUB(I, J, K), SIGW_RC(I, J, K), AeroProps(I, J, K), &
                       npre, dpre, ccn_diag, &
-                      nact, SMAXL(I, J, K), INC_NUC (I, J, K), SMAXI(I, J, K) ,  NHET_NUC(I, J, K), &
+                      nact, SMAX_LIQ(I, J, K), INC_NUC (I, J, K), SMAX_ICE(I, J, K) ,  NHET_NUC(I, J, K), &
                       NHET_IMM(I, J, K), DNHET_IMM(I, J, K) , NHET_DEP(I, J, K) , SC_ICE(I, J, K) , &
                       DUST_IMM(I, J, K), DUST_DEP(I, J, K), NLIM_NUC(I, J, K), USE_AV_V, int(CCN_PARAM), int(IN_PARAM),  &
                       SO4(I, J, K), SEASALT(I, J, K), DUST(I, J, K), ORG(I, J, K), BCARBON(I, J, K), &                          
@@ -1603,10 +1603,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                kkvhr8(1,1:LM+1) = KH(I,J,0:LM)  
                ficer8 = qir8 /( qcr8+qir8 + 1.e-10 )  
                           
-               if (AUTSC .gt. 0.0) then 
-                  autscx = AUTSC
+               if (AUT_SCALE .gt. 0.0) then 
+                  autscx = AUT_SCALE
                else
-                  autscx =  min(max(0., (300.0 - T(I,J,LM))/ABS(AUTSC)), 1.0)
+                  autscx =  min(max(0., (300.0 - T(I,J,LM))/ABS(AUT_SCALE)), 1.0)
                   autscx  =  1.0 - 0.995*autscx
                end if
                
