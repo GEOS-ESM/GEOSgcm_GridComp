@@ -33,6 +33,9 @@ if (Baselibs_FOUND)
 else ()
   find_package(ZLIB)
   target_link_libraries(${this} PRIVATE ZLIB::zlib)
+  # Spack testing shows we need stdlib.h, so this ifdef will
+  # enable it in zip.c
+  target_compile_definitions(${this} PRIVATE STDC)
 endif ()
 
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL ${this})
