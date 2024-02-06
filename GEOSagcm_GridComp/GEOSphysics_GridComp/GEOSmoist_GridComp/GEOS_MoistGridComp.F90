@@ -5190,7 +5190,7 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
-    real                                :: Tmax
+    real                                :: Tmax, KCBLMIN, PMIN_CBL
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
@@ -5202,8 +5202,8 @@ contains
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
-    real, pointer, dimension(:,:)   :: SH, EVAP, KPBL
-    real, pointer, dimension(:,:,:) :: TKE, OMEGA
+    real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
+    real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
     ! Exports
@@ -5220,8 +5220,7 @@ contains
     real, pointer, dimension(:,:,:  ) :: NWFA
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-
-
+    real, pointer, dimension(:    ) :: PTR1D
 
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -5276,15 +5275,17 @@ contains
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, KPBL,    'KPBL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
 
@@ -5339,6 +5340,71 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+
+       ! Recording of import/internal vars into export if desired
+       !---------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QX0'       , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QLLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLLS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QLCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'CLCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'CLLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLLS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QILSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QILS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QICNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QICN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QCCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QICN+QLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QCLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QILS+QLLS
+
+       ! Trajectory for the moist TLM/ADJ
+       !---------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, PTR3D,   'TH_moist'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = T/PK 
+       call MAPL_GetPointer(EXPORT, PTR3D,    'Q_moist'   , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
+       call MAPL_GetPointer(EXPORT, PTR2D,   'TS_moist'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TS  
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KHu_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         PTR2D = -1 
+         do l = 0,LM
+            where( (PTR2D == -1) .AND. (KH(:,:,l) > 2.0) )
+              PTR2D = l * 1.0
+            end where
+         enddo 
+       endif
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KHl_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         PTR2D = -1
+         do l = LM,0,-1
+            where( (PTR2D == -1) .AND. (KH(:,:,l) > 2.0) )
+              PTR2D = l * 1.0
+            end where
+         enddo
+       endif
+
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KCBL_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         call MAPL_GetResource(MAPL, PMIN_CBL, 'PMIN_CBL', DEFAULT= 50000.0, RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(IMPORT, PTR1D, 'PREF'      ,  RC=STATUS); VERIFY_(STATUS)
+         KCBLMIN = count(PTR1D < PMIN_CBL)
+         do j = 1,JM
+            do i = 1,IM
+               if(nint(KPBL(i,j)).ne.0) then
+                  PTR2D(i,j) = max(min(nint(KPBL(i,j))+1,LM-1), 1)
+               else
+                  PTR2D(i,j) = LM-1
+               endif
+               PTR2D(I,J)   =  MAX( PTR2D(I,J), KCBLMIN )
+           enddo
+         enddo 
+       endif
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, NWFA,    'NWFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)

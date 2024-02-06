@@ -2995,7 +2995,7 @@ end if
      if (JASON_TRB) then
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,    RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3010,7 +3010,7 @@ end if
      call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      if (JASON_TRB) then
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=30.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.0,         RC=STATUS); VERIFY_(STATUS)
      endif
@@ -6312,7 +6312,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, wsp, FKV_temp, Hefold
+      real    :: CBl, wsp0, wsp, FKV_temp, Hefold
 
       if (C_B > 0.0) then
       do I = 1, IM
@@ -6337,14 +6337,14 @@ end subroutine RUN1
         do J = 1, JM
           do I = 1, IM
            ! determine the resolution dependent tuning factor
-            CBl = ABS(C_B) * 1.08371722e-7 * VARFLT(i,j) * &
+            CBl = 1.08371722e-7 * VARFLT(i,j) * &
                   MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! determine the efolding height
             Hefold = LAMBDA_B !MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B)
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
-                  wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  wsp = SQRT(SIN(MAPL_PI*0.5*MIN(wsp/30.0,1.0)))*MAX(30.0,wsp) ! enhance winds below 30 m/s
+                  wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                  wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
                   FKV_temp = Z(I,J,L)/Hefold
                   FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                   FKV_temp = CBl*(FKV_temp/Hefold)*wsp

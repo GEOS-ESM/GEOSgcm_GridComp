@@ -212,7 +212,7 @@ contains
        zm_dev, zi, &
        nm, ni, rhoi, kvtt,  &
        ht_dc_dev,beres_dc_desc,rlat_dev, alpha, &
-       utgw, vtgw, ttgw, flx_heat, dqcdt=dqcdt_dev)
+       utgw, vtgw, ttgw, flx_heat, dqcdt_dev)
        dudt_gwd_dev = dudt_gwd_dev + utgw
        dvdt_gwd_dev = dvdt_gwd_dev + vtgw
        dtdt_gwd_dev = dtdt_gwd_dev + ttgw

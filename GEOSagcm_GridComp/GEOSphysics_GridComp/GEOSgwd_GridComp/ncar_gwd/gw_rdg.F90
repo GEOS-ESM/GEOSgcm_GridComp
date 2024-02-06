@@ -181,7 +181,7 @@ subroutine gw_rdg_ifc( band, &
 
    real,         intent(in) :: rdg_cd_llb      ! Drag coefficient for low-level flow
    logical,      intent(in) :: trpd_leewv
-   real,         intent(in) :: alpha(:)
+   real,         intent(in) :: alpha(pver+1)
 
 
    ! OUTPUTS

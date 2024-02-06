@@ -44,6 +44,7 @@ type :: BeresSourceDesc
    real, allocatable :: mfcc(:,:,:)
    ! Forced background for extratropics
    real, allocatable :: taubck(:,:)
+   logical :: et_bkg_lat_forcing
 end type BeresSourceDesc
 
 
@@ -53,7 +54,8 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, taubgnd, tndmax, active, ncol, lats)
+                          spectrum_source, min_hdepth, storm_shift, tau_et, et_uselats, tndmax, &
+                          active, ncol, lats)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -63,8 +65,8 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth, taubgnd, tndmax
-  logical, intent(in) :: storm_shift, active
+  real, intent(in) :: spectrum_source, min_hdepth, tau_et, tndmax
+  logical, intent(in) :: storm_shift, active, et_uselats
   real, intent(in) :: lats(ncol)
 
   ! Stuff for Beres convective gravity wave source.
@@ -73,7 +75,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   ! For forced background extratropical wave speed
   real    :: c4, latdeg, flat_gw
-  real, allocatable :: c0(:), cw4(:)
+  real, allocatable :: cw(:), cw4(:)
   integer :: i, kc
 
   ! Vars needed by NetCDF operators
@@ -155,21 +157,24 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
     ! Intialize forced background wave speeds
     allocate(desc%taubck(ncol,-band%ngwv:band%ngwv))
-    allocate(c0(-band%ngwv:band%ngwv))
+    allocate(cw(-band%ngwv:band%ngwv))
     allocate(cw4(-band%ngwv:band%ngwv))
     desc%taubck = 0.0
-    c0  = 0.0
+    cw  = 0.0
     cw4 = 0.0
     do kc = -4,4
         c4 =  10.0*kc
        cw4(kc) =  exp(-(c4/30.)**2)
     enddo
     do kc = -band%ngwv,band%ngwv
-       c0(kc) =  10.0*(4.0/real(band%ngwv))*kc
-       desc%taubck(:,kc) =  exp(-(c0(kc)/30.)**2)
+       cw(kc) =  10.0*(4.0/real(band%ngwv))*kc
+       cw(kc) =  exp(-(cw(kc)/30.)**2)
     enddo
-    do i=1,ncol
-      ! include forced background stress in extra tropics
+    cw = cw*(sum(cw4)/sum(cw)) 
+    desc%et_bkg_lat_forcing = et_uselats
+    if (et_uselats) then
+      do i=1,ncol
+       ! include forced background stress in extra tropics
        ! Determine the background stress at c=0
        ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
@@ -188,9 +193,15 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        else if (latdeg >=  60.) then
          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/70.)**2)
        end if
-       desc%taubck(i,:) = taubgnd*0.001*flat_gw*desc%taubck(i,:)*(sum(cw4)/sum(desc%taubck(i,:)))
-    enddo
-    deallocate( c0, cw4 )
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+      enddo
+    else
+      flat_gw = 0.5 ! constant scaling since DQCDT will be used for frontal detection
+      do i=1,ncol
+       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+      enddo
+    end if
+    deallocate( cw, cw4 )
   end if
     
 end subroutine gw_beres_init
@@ -254,7 +265,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   real, intent(out) :: hdepth(ncol), maxq0(ncol)
 
   ! Condensate tendency due to large-scale (kg kg-1 s-1)
-  real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+  real, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
 !---------------------------Local Storage-------------------------------
   ! Column and level indices.
@@ -474,8 +485,24 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
      else
 
-        if (present(dqcdt)) then
-          if (dqcdt(i,desc%k(i)) > 1.e-8) then ! frontal region (large-scale forcing)
+        if (desc%et_bkg_lat_forcing) then
+          ! use latitudinal dependence
+          ! include forced background stress in extra tropical large-scale systems
+          ! Set the phase speeds and wave numbers in the direction of the source wind.
+          ! Set the source stress magnitude (positive only, note that the sign of the 
+          ! stress is the same as (c-u).
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           topi(i) = desc%k(i)
+        else
+          ! Maximum condensate change, for frontal detection
+          q0(i) = 0.0
+          do k = pver, 1, -1 ! Surface to top of atmosphere
+             if (dqcdt(i,k) < q0(i)) then ! Find max DQCDT level
+                q0(i) = dqcdt(i,k)
+                desc%k(i) = k
+             endif
+          end do
+          if (q0(i) < -1.e-8) then ! frontal region (large-scale forcing)
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
@@ -544,7 +571,7 @@ subroutine gw_beres_ifc( band, &
    real,         intent(out) :: ttgw(ncol,pver)       ! temperature tendency
    real,         intent(inout) :: flx_heat(ncol)        ! Energy change
 
-   real, optional, intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
+   real,         intent(in) :: dqcdt(ncol,pver)  ! Condensate tendency due to large-scale (kg kg-1 s-1)
 
    !---------------------------Local storage-------------------------------
 
@@ -609,7 +636,7 @@ subroutine gw_beres_ifc( band, &
      end where
 
 !GEOS pressure scaling near model top
-     zfac_layer = 1.0e2 ! 1mb
+     zfac_layer = 0.35e2 ! 0.35mb
      do k=1,pver+1
        do i=1,ncol
          pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
@@ -626,12 +653,12 @@ subroutine gw_beres_ifc( band, &
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha) !, tau_adjust=pint_adj)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 tend_level, tndmax_in=desc%tndmax)
+                                 tend_level, tndmax_in=desc%tndmax) !, pint_adj=pint_adj)
  
    deallocate(tau, gwut, c)
 

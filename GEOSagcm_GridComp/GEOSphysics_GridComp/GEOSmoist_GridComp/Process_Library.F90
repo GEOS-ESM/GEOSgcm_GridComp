@@ -31,22 +31,32 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_1D
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
-  ! In anvil/convective clouds
-  real, parameter :: aT_ICE_ALL = 252.16
-  real, parameter :: aT_ICE_MAX = 268.16
-  real, parameter :: aICEFRPWR  = 2.0
-  ! Over snow/ice SRF_TYPE = 2
-  real, parameter :: iT_ICE_ALL = 236.16
-  real, parameter :: iT_ICE_MAX = 261.16
-  real, parameter :: iICEFRPWR  = 6.0
-  ! Over Land     SRF_TYPE = 1
-  real, parameter :: lT_ICE_ALL = 239.16
-  real, parameter :: lT_ICE_MAX = 261.16
-  real, parameter :: lICEFRPWR  = 2.0
-  ! Over Oceans   SRF_TYPE = 0
-  real, parameter :: oT_ICE_ALL = 238.16
-  real, parameter :: oT_ICE_MAX = 263.16
-  real, parameter :: oICEFRPWR  = 4.0
+  ! ICE_FRACTION constants
+   ! In anvil/convective clouds
+   real, parameter :: aT_ICE_ALL = 252.16
+   real, parameter :: aT_ICE_MAX = 268.16
+   real, parameter :: aICEFRPWR  = 2.0
+   ! Over snow/ice SRF_TYPE = 2
+   real, parameter :: iT_ICE_ALL = 236.16
+   real, parameter :: iT_ICE_MAX = 261.16
+   real, parameter :: iICEFRPWR  = 6.0
+   ! Over Land     SRF_TYPE = 1
+   real, parameter :: lT_ICE_ALL = 239.16
+   real, parameter :: lT_ICE_MAX = 261.16
+   real, parameter :: lICEFRPWR  = 2.0
+   ! Over Oceans   SRF_TYPE = 0
+   real, parameter :: oT_ICE_ALL = 238.16
+   real, parameter :: oT_ICE_MAX = 263.16
+   real, parameter :: oICEFRPWR  = 4.0
+   ! Jason
+   ! In anvil/convective clouds
+   real, parameter :: JaT_ICE_ALL = 245.16
+   real, parameter :: JaT_ICE_MAX = 261.16
+   real, parameter :: JaICEFRPWR  = 2.0
+        ! Over snow/ice
+   real, parameter :: JiT_ICE_ALL = MAPL_TICE-40.0
+   real, parameter :: JiT_ICE_MAX = MAPL_TICE
+   real, parameter :: JiICEFRPWR  = 4.0
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -55,6 +65,10 @@ module GEOSmoist_Process_Library
   real, parameter :: taufrz  =  450.0
   real, parameter :: dQCmax  =  1.e-4
   ! LDRADIUS4
+  ! Jason
+  real, parameter :: abeta = 0.07
+  real, parameter :: r13bbeta = 1./3. - 0.14
+  real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
@@ -75,7 +89,8 @@ module GEOSmoist_Process_Library
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
 
-  ! option for cloud ice radii
+  ! option for cloud liq/ice radii
+  integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
 
   ! defined to determine CNV_FRACTION
@@ -123,7 +138,7 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, ICE_RADII_PARAM
+  public :: SH_MD_DP, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: pdf_alpha
@@ -369,11 +384,21 @@ module GEOSmoist_Process_Library
      ! Anvil clouds
      ! Anvil-Convective sigmoidal function like figure 6(right)
      ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-      ICEFRCT_C  = 0.00
-      if ( TEMP <= aT_ICE_ALL ) then
-         ICEFRCT_C = 1.000
-      else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
-         ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+      if (ICE_RADII_PARAM == 1) then
+        ! Jason formula
+        ICEFRCT_C  = 0.00
+        if ( TEMP <= JaT_ICE_ALL ) then
+           ICEFRCT_C = 1.000
+        else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
+           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
+        end if
+      else
+        ICEFRCT_C  = 0.00
+        if ( TEMP <= aT_ICE_ALL ) then
+           ICEFRCT_C = 1.000
+        else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
+           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
+        end if
       end if
       ICEFRCT_C = MIN(ICEFRCT_C,1.00)
       ICEFRCT_C = MAX(ICEFRCT_C,0.00)
@@ -381,11 +406,21 @@ module GEOSmoist_Process_Library
      ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
       if (SRF_TYPE == 2.0) then
         ! Over snow/ice
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+        if (ICE_RADII_PARAM == 1) then
+          ! Jason formula
+          ICEFRCT_M  = 0.00
+          if ( TEMP <= JiT_ICE_ALL ) then
+             ICEFRCT_M = 1.000
+          else if ( (TEMP > JiT_ICE_ALL) .AND. (TEMP <= JiT_ICE_MAX) ) then
+             ICEFRCT_M = 1.00 -  ( TEMP - JiT_ICE_ALL ) / ( JiT_ICE_MAX - JiT_ICE_ALL )
+          end if
+        else
+          ICEFRCT_M  = 0.00
+          if ( TEMP <= iT_ICE_ALL ) then
+             ICEFRCT_M = 1.000
+          else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+             ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+          end if
         end if
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
@@ -598,8 +633,13 @@ module GEOSmoist_Process_Library
           !- from the aerosol model + ....
           NNX = max(NNL*1.e-6, 10.0)
           !- radius in meters
-          !- [liu&daum, 2000 and 2005. liu et al 2008]
-          RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+          if (LIQ_RADII_PARAM == 1) then
+            !- Jason Version
+            RADIUS= MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**r13bbeta*abeta*6.92))
+          else
+            !- [liu&daum, 2000 and 2005. liu et al 2008]
+            RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+          endif
 
        ELSEIF(ITYPE == ICE) THEN
 
