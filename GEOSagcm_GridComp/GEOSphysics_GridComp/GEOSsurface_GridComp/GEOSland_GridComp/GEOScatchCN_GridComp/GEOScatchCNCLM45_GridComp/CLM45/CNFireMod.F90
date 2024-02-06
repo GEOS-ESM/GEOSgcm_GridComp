@@ -296,8 +296,8 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
 data     fire_m_fac    /  SHR_CONST_PI, SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI/
 
 ! only allow fires in very dry conditions in PFTs 4 and 6 (jkolassa 08/2020)
-fire_m_fac(4) = 10.e15
-fire_m_fac(6) = 10.e15
+fire_m_fac(4) = 10.e5 ! 10.e15
+fire_m_fac(6) = 10.e5 ! 10.e15
 
 ! assign local pointers to derived type members (pft-level)
   wtcol              =>pft%wtcol
