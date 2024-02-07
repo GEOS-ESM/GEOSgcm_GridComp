@@ -112,6 +112,7 @@ contains
     type (ESMF_Config)                      :: CF
 
     integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
+    integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
@@ -166,6 +167,11 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:",DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
@@ -1411,6 +1417,22 @@ contains
           RC=STATUS  )
        VERIFY_(STATUS)
      endif
+
+     if (DO_WAVES/=0) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/ 'CHARNOCK'/), &
+          CHILD      = SURF,               &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
+
+     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/ 'SHFX_SPRAY', 'LHFX_SPRAY'/), &
+          CHILD      = TURBL,                           &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif 
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &

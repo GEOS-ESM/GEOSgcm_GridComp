@@ -97,6 +97,7 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: I, k
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
+    integer                                 :: DO_WAVES
     logical                                 :: seaIceT_extData ! default (=.FALSE.) is to NOT use data sea ice thickness from ExtData
 
     character(len = 2) :: suffix
@@ -129,6 +130,11 @@ module GEOS_SaltwaterGridCompMod
 ! Are we running DataAtm?
 !------------------------
     call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:" ,   DEFAULT=0, _RC)
+
+! Waves: active or disabled?
+!------------------------------------------------
+
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
 
 ! Data sea ice thickness from ExtData or not?
 !--------------------------------------------
@@ -647,6 +653,17 @@ module GEOS_SaltwaterGridCompMod
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
           _RC  ) 
+
+  if (DO_WAVES /= 0) then
+     call MAPL_AddImportSpec(GC,                            &
+          SHORT_NAME         = 'CHARNOCK',                  &
+          LONG_NAME          = 'charnock_coefficient',      &
+          UNITS              = '1',                         &
+          RESTART            = MAPL_RestartSkip,            &
+          DIMS               = MAPL_DimsTileOnly,           &
+          VLOCATION          = MAPL_VLocationNone,          &
+          _RC  )
+  end if
 
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, _RC)
