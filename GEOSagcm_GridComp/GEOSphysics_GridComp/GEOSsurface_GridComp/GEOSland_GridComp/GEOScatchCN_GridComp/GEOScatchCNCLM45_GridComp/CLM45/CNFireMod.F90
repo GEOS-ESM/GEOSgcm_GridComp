@@ -296,7 +296,7 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
 data     fire_m_fac    /  SHR_CONST_PI, SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI/
 
 ! only allow fires in very dry conditions in PFTs 4 and 6 (jkolassa 08/2020)
-! note on 02/2014, value for fire_m_fac was changed from 10.e15 to 10.e5 due fail in line for fire_m_tmp calculation on SLES15 GNU.
+! 02/2024: changed value for fire_m_fac(4,6) from 10.e15 to 10.e5 to avoid floating point exception in fire_m_tmp calculation with GNU on NCCS/SLES15.
 fire_m_fac(4) = 10.e5 
 fire_m_fac(6) = 10.e5 
 
