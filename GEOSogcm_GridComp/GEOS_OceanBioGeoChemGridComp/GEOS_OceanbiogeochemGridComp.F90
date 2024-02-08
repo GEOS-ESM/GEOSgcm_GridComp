@@ -19,7 +19,7 @@ module GEOS_OceanbiogeochemGridCompMod
 ! !PUBLIC ROUTINES:
   public SetServices
 
-  integer            :: DO_DATA_ATM4OCN
+  logical            :: DO_DATA_ATM4OCN
   integer            :: NUM_ICE_CATEGORIES
   integer, parameter :: NUM_DUDP           = 5
   integer, parameter :: NUM_DUWT           = 5
@@ -133,7 +133,7 @@ module GEOS_OceanbiogeochemGridCompMod
        NUM_ICE_CATEGORIES = 1
     endif
 
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=.FALSE., _RC)
 
 ! Set the Run entry point
 ! -----------------------
@@ -377,7 +377,7 @@ module GEOS_OceanbiogeochemGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
       call MAPL_AddImportSpec(GC,                               &
       LONG_NAME               = 'Black Carbon Dry Deposition',  &
       UNITS                   = 'kg m-2 s-1',                   &

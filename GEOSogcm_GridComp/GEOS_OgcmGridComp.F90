@@ -58,7 +58,7 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_DATASEAONLY
   integer            :: DO_DATAICE
   integer            :: DO_OBIO
-  integer            :: DO_DATA_ATM4OCN
+  logical            :: DO_DATA_ATM4OCN
 
   logical          :: ocean_extData
   logical          :: ocean_sssData
@@ -184,12 +184,12 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" ,  DEFAULT=0,     __RC__ )
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" ,  DEFAULT=.FALSE.,     __RC__ )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, OCEAN_NAME,     Label="OCEAN_NAME:",          DEFAULT="MOM", __RC__ )
     
 ! following logic is to make sure: configuration of cetain components (CICE, OBIO, etc) has associated models "active."
-    if (DO_DATA_ATM4OCN/=0) then
+    if (DO_DATA_ATM4OCN) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
@@ -885,7 +885,7 @@ contains
 
     subroutine OBIO_SetServices(DO_DATA_ATM4OCN, RC)
     
-      integer,                intent(IN   ) ::  DO_DATA_ATM4OCN
+      logical,                intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,      intent(  OUT) ::  RC
       integer                               :: STATUS
 
@@ -2226,7 +2226,7 @@ contains
 
     subroutine OBIO_RunTransforms(DO_DATA_ATM4OCN, RC)
 
-      integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
+      logical,                    intent(IN   ) ::  DO_DATA_ATM4OCN
       integer, optional,          intent(  OUT) ::  RC
       
       character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
@@ -2263,7 +2263,7 @@ contains
       call MAPL_GetPointer(GIM(ORAD ), DFBANDR  , 'DFBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)          
       call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-      if(DO_DATA_ATM4OCN==0) then
+      if(.not. DO_DATA_ATM4OCN) then
         call MAPL_GetPointer(IMPORT, BCDP      , 'BCDP'      , RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT, BCWT      , 'BCWT'      , RC=STATUS)
@@ -2331,14 +2331,14 @@ contains
         end do
       endif
 
-      if(DO_DATA_ATM4OCN==0) then
+      if(.not. DO_DATA_ATM4OCN) then
         call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if(DO_DATA_ATM4OCN==0) then
+      if(.not. DO_DATA_ATM4OCN) then
        if(associated(BCDPB)) then
           do N = 1, NUM_BCDP
              call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )

@@ -101,7 +101,7 @@ module GEOS_SurfaceGridCompMod
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
   logical :: DO_FIRE_DANGER
-  integer :: DO_DATA_ATM4OCN
+  logical :: DO_DATA_ATM4OCN
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -234,7 +234,7 @@ module GEOS_SurfaceGridCompMod
 
     ! Are we running DataAtm?
     !------------------------
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
 ! Create Surface Config
@@ -669,7 +669,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     end if
 
-    if (DO_DATA_ATM4OCN /= 0) then
+    if (DO_DATA_ATM4OCN) then
        call MAPL_AddImportSpec ( gc,                               &
          SHORT_NAME = 'DISCHARGE',                                 &
          LONG_NAME  = 'river_discharge_at_ocean_points',           &
@@ -7155,7 +7155,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDSRF ,LWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDSRF ,SWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
-    if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATA_ATM4OCN /=0) then ! routing file exists or we run DataAtm
+    if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATA_ATM4OCN) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -7306,7 +7306,7 @@ module GEOS_SurfaceGridCompMod
 
        ! Create discharge at exit tiles by routing runoff
 
-       if (DO_DATA_ATM4OCN /= 0) then
+       if (DO_DATA_ATM4OCN) then
           call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
           call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
           VERIFY_(STATUS)
@@ -8322,7 +8322,7 @@ module GEOS_SurfaceGridCompMod
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
     end if
 
-    if (DO_DATA_ATM4OCN /= 0) then
+    if (DO_DATA_ATM4OCN) then
        ! dataAtm operates only on "saltwater" tiles. 
        ! we need to handle grid boxes withot any ocean
        ! and avoid division by 0

@@ -53,7 +53,7 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: ICE           = 1  ! index(id) of two children fixed here 
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
   integer, parameter :: OBIO          = 3   
-  integer            :: DO_DATA_ATM4OCN
+  logical            :: DO_DATA_ATM4OCN
 
    contains
 
@@ -129,7 +129,7 @@ module GEOS_SaltwaterGridCompMod
 
 ! Are we running DataAtm?
 !------------------------
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:" ,   DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:", DEFAULT=.FALSE., _RC)
 
 ! Waves: active or disabled?
 !------------------------------------------------
@@ -752,7 +752,7 @@ module GEOS_SaltwaterGridCompMod
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUSD'      , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DRBAND'    , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DFBAND'    , CHILD_ID = OBIO, __RC__)
-     if(DO_DATA_ATM4OCN==0) then
+     if(.not. DO_DATA_ATM4OCN) then
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCDP'      , CHILD_ID = OBIO, __RC__)
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
        call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)

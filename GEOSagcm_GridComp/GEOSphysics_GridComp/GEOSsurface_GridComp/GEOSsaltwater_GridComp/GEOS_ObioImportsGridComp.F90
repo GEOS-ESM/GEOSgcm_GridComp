@@ -30,7 +30,7 @@ module GEOS_ObioImportsGridCompMod
   integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
   integer, parameter :: NB_OBIO  = 33                          !total number of bands for OradBio
-  integer            :: DO_DATA_ATM4OCN
+  logical            :: DO_DATA_ATM4OCN
 
   contains
 
@@ -73,7 +73,7 @@ module GEOS_ObioImportsGridCompMod
 
 ! Are we running DataAtm?
 !------------------------
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:" ,   DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:", DEFAULT=.FALSE., _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -136,7 +136,7 @@ module GEOS_ObioImportsGridCompMod
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    if(DO_DATA_ATM4OCN==0) then    
+    if(.not. DO_DATA_ATM4OCN) then    
       call MAPL_AddExportSpec(GC,                    &
            SHORT_NAME         = 'BCDP'                            ,&
            LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
@@ -239,7 +239,7 @@ module GEOS_ObioImportsGridCompMod
    VERIFY_(STATUS)
 
 
-   if(DO_DATA_ATM4OCN==0) then
+   if(.not. DO_DATA_ATM4OCN) then
      call MAPL_AddImportSpec(GC,                                  &
           SHORT_NAME         = 'BCDP'                            ,&
           LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
@@ -502,7 +502,7 @@ contains
     call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    _RC)
     call MAPL_GetPointer(IMPORT,DRBAND , 'DRBAND' ,    _RC)
     call MAPL_GetPointer(IMPORT,DFBAND , 'DFBAND' ,    _RC)
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
       call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    _RC)
       call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    _RC)
       call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    _RC)
@@ -517,7 +517,7 @@ contains
     call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'   ,    _RC)
     call MAPL_GetPointer(EXPORT,DRBANDEX,   'DRBAND'  ,    _RC)
     call MAPL_GetPointer(EXPORT,DFBANDEX,   'DFBAND'  ,    _RC)
-    if(DO_DATA_ATM4OCN==0) then 
+    if(.not. DO_DATA_ATM4OCN) then 
       call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'   ,    _RC)
       call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    _RC)
       call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    _RC)
@@ -530,7 +530,7 @@ contains
     if  (  associated(DUSDEX)       )  DUSDEX       =  DUSD
     if  (  associated(DRBANDEX)     )  DRBANDEX     =  DRBAND
     if  (  associated(DFBANDEX)     )  DFBANDEX     =  DFBAND
-    if(DO_DATA_ATM4OCN==0) then 
+    if(.not. DO_DATA_ATM4OCN) then 
       if  (  associated(BCDPEX)       )  BCDPEX       =  BCDP
       if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
       if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
