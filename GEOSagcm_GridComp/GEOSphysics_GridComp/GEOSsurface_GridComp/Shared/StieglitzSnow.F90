@@ -874,7 +874,7 @@ contains
           
           if(dens(i) > StieglitzSnow_RHOMA) then
              
-             if (tileType==MAPL_LANDICE) then               ! restrict SWE adjustment to LANDICE tiles
+!rhr20240209             if (tileType==MAPL_LANDICE) then               ! restrict SWE adjustment to LANDICE tiles
                 
                 ! excs = SWE in excess of max density given fixed snow depth
 
@@ -890,7 +890,7 @@ contains
                 hcorr= hcorr+(htsnn(i)-hnew)/dts                          ! add excess heat content into residual accounting term
                 htsnn(i)= hnew
 
-             end if
+ !rhr20240209            end if
              
              dens(i) = StieglitzSnow_RHOMA
           endif
@@ -900,12 +900,12 @@ contains
     
     wesndens = wesn - wesndens
     
-    if (tileType==MAPL_LANDICE) then                        ! finish SWE adjustment for LANDICE tiles
+!rhr20240209    if (tileType==MAPL_LANDICE) then                        ! finish SWE adjustment for LANDICE tiles
        
        pre  = pre + sum(excs*max(1.-fices,0.0))/dts
        excs = excs * fices / dts
        
-    end if
+ !rhr20240209   end if
 
     snowd=sum(wesn)
     call StieglitzSnow_calc_asnow( snowd, areasc0 )
