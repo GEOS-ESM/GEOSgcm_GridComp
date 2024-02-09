@@ -855,20 +855,25 @@ contains
           !**** while conserving heat & mass (STEPH 06/21/03).
           
           if(dens(i) > StieglitzSnow_RHOMA) then
-
-             ! excs = SWE in excess of max density given fixed snow depth
-
-             excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)           ! solid + liquid
-             wlossfrac=excs(i)/wesn(i)
-             wesn(i) = wesn(i) - excs(i)                               ! remove EXCS from SWE
-             do k=1,N_constit
-                rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
-                rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
-                rconstit(i,k)=amax1(0.,rconstit(i,k))                  ! guard against truncation error
-             enddo
-             hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)  ! adjust heat content accordingly
-             hcorr= hcorr+(htsnn(i)-hnew)/dts                          ! add excess heat content into residual accounting term
-             htsnn(i)= hnew
+             
+             if (tileType==MAPL_LANDICE) then ! restrict SWE adjustment to LANDICE tiles
+                
+                ! excs = SWE in excess of max density given fixed snow depth
+                
+                excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)           ! solid + liquid
+                wlossfrac=excs(i)/wesn(i)
+                wesn(i) = wesn(i) - excs(i)                               ! remove EXCS from SWE
+                do k=1,N_constit
+                   rmelt(k)=rmelt(k)+rconstit(i,k)*wlossfrac/dts
+                   rconstit(i,k)=rconstit(i,k)*(1.-wlossfrac)
+                   rconstit(i,k)=amax1(0.,rconstit(i,k))                  ! guard against truncation error
+                enddo
+                hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)  ! adjust heat content accordingly
+                hcorr= hcorr+(htsnn(i)-hnew)/dts                          ! add excess heat content into residual accounting term
+                htsnn(i)= hnew
+                
+             endif
+             
              dens(i) = StieglitzSnow_RHOMA
           endif
        enddo
@@ -877,8 +882,10 @@ contains
     
     wesndens = wesn - wesndens
 
-    pre  = pre + sum(excs*max(1.-fices,0.0))/dts
-    excs = excs * fices / dts
+    if (tileType==MAPL_LANDICE) then ! restrict SWE adjustment to LANDICE tiles
+       pre  = pre + sum(excs*max(1.-fices,0.0))/dts
+       excs = excs * fices / dts
+    endif
     
     snowd=sum(wesn)
     call StieglitzSnow_calc_asnow( snowd, areasc0 )
