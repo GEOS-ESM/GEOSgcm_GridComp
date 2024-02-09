@@ -396,11 +396,11 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
     call MAPL_GetResource(MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)      
     call MAPL_GetResource(MAPL, CNV_GSC,   'CNV_GSC:', DEFAULT= 5.0e-5 ,RC=STATUS) !linear scaling for NCPL of conv detrainment 
-    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 1.0, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
-    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=250.0e-6, __RC__ ) !ice/snow separation diameter   
+    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 0.3, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
+    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=200.0e-6, __RC__ ) !ice/snow separation diameter   
     Dcsr8 = DCS
     
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 1.0 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.1 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, NC_CST ,  'NC_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)      

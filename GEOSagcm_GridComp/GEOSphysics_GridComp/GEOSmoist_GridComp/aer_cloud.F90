@@ -3997,7 +3997,7 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
     real, intent (in) ::   g_scale, b_scale, Nad,  z, zcb
     real, intent (out) :: Nd, Ni
      
-    real :: r3ad, Z12, alf, bet, gam_ad, LWCad 
+    real :: r3ad, dZ12, alf, bet, gam_ad, LWCad 
     real :: rei3, mui, zkm, Tx 
     real, parameter :: max_rel3 =  22.e-6**3.
     real, parameter :: min_rel3 =  10.e-6**3.
@@ -4023,15 +4023,16 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
      
       !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
 
-     Z12  =  4.8e-12*Nad/gam_ad !      
+     dZ12  =  4.8e-12*Nad/gam_ad !      
 
-     if (z-zcb .lt. z12) then
+     if (z-zcb .lt. dz12) then
      	Nd  = b_scale*Nad
      else
-     	Nd =  max(b_scale*Nad*(1-g_scale*(z - z12)), 1.0e4)
+     	Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
      end if
 
      Ni =  Nd*cnvfice
+     if (T .lt. 238.) Ni =  Nd
      Nd =  Nd - Ni
      Ni =  max(Ni, Nimm)
       
