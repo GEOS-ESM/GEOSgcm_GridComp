@@ -1060,16 +1060,6 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'EDMF_plume_depth_for_entrainment',                      &
-       UNITS      = 'm',                                                     &
-       SHORT_NAME = 'EDMF_DEPTH2',                                            &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'EDMF_mass_flux',                                        &
        UNITS      = 'kg m s-1',                                              &
@@ -2974,7 +2964,7 @@ end if
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
                                             SL2, SL3, W2, W3, WQT, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
-     real, dimension(:,:), pointer       :: LMIX, edmf_depth, edmf_depth2
+     real, dimension(:,:), pointer       :: LMIX, edmf_depth
 
 ! EDMF variables
      real, dimension(:,:,:), pointer     :: edmf_dry_a,edmf_moist_a,edmf_frc, edmf_dry_w,edmf_moist_w, &
@@ -3437,8 +3427,6 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_depth,     'EDMF_DEPTH', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_depth2,     'EDMF_DEPTH2', RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  mfaw,           'MFAW',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  slflxmf,        'SLFLXMF',  RC=STATUS)
@@ -3599,34 +3587,6 @@ end if
       rho = plo/( MAPL_RGAS*tv )
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
-
-      ! find thv-based inversion depth
-      if (associated(EDMF_DEPTH2)) then
-      tmp3d(:,:,1:LM-1) = (thv(:,:,2:LM)-thv(:,:,1:LM-1)) / (Z(:,:,2:LM)-Z(:,:,1:LM-1))
-   do J = 1,JM
-     do I = 1,IM
-        temparray = 0.
-        K = LM
-        DO WHILE(Z(I,J,K).lt.3e3) 
-          K = K-1
-        END DO
-!        print *,'3km hgt=',Z(I,J,K)
-        ! at this point, K is index of full level above 3km height
-        locmax = maxloc(tmp3d(I,J,K:),dim=1) ! returns edge index of max thv gradient
-        K = K-1+locmax
-!        print *,'thv max hgt=',Z(I,J,K)
-        temparray(K:LM-1) = (tmp3d(I,J,K-1:LM-2)-tmp3d(I,J,K:LM-1)) / (Z(I,J,K-1:LM-2)-Z(I,J,K:LM-1)) ! 2nd deriv of THV on full levs
-!        print *,'2nd deriv=',temparray(K:LM-1)
-        DO WHILE( K.lt.LM )
-          K = K+1
-          if (temparray(K).gt.temparray(K+1)) exit
-        END DO
-!        print *,'inversion hgt=',Z(I,J,K)
-        
-        EDMF_DEPTH2(I,J) = Z(I,J,K)
-     end do
-   end do
-   end if
 
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
