@@ -230,6 +230,11 @@ contains
 
     character(len=ESMF_MAXSTR)              :: FRIENDLIES_SHOC
 
+    type (MAPL_MetaComp), pointer           :: MAPL
+
+    integer :: DO_WAVES
+    integer :: DO_SEA_SPRAY
+
 !=============================================================================
 
 ! Begin...
@@ -241,6 +246,17 @@ contains
     call ESMF_GridCompGet( GC, CONFIG=CF, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+! Get my MAPL_Generic state
+!--------------------------
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Run entry points
 ! ------------------------
@@ -353,7 +369,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QCTOT',                                     &
+        SHORT_NAME = 'FCLD',                                      &
         LONG_NAME  = 'cloud_fraction',                            &
         UNITS      = '1',                                         &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -582,6 +598,30 @@ contains
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
+
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'SHFX_SPRAY',                        &
+            LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'LHFX_SPRAY',                        &
+            LONG_NAME          = 'latent_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS) 
+    end if
 
     call MAPL_AddImportSpec(GC,                                    &
        SHORT_NAME = 'WTHV2',                                       &
@@ -1943,6 +1983,22 @@ end if
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_SPRAY',                           &
+           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_SPRAY',                           &
+           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+    end if
+
 ! !INTERNAL STATE:
 
 !
@@ -2549,6 +2605,15 @@ end if
 ! Idealized SCM surface layer variables
     real, dimension(:,:), pointer :: cu_scm, ct_scm, ssurf_scm, qsurf_scm
 
+! Sea spray
+    integer :: DO_WAVES
+    integer :: DO_SEA_SPRAY
+    real, dimension(:,:), pointer :: SH_SPR  => null()
+    real, dimension(:,:), pointer :: LH_SPR  => null()
+    real, dimension(:,:), pointer :: SH_SPRX => null()
+    real, dimension(:,:), pointer :: LH_SPRX => null()
+
+
 ! Begin... 
 !---------
 
@@ -2583,6 +2648,28 @@ end if
 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
+
+! Sea spray
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+        call MAPL_GetPointer(IMPORT, SH_SPR, 'SHFX_SPRAY', RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, LH_SPR, 'LHFX_SPRAY', RC=STATUS)
+        VERIFY_(STATUS)
+
+        call MAPL_GetPointer(EXPORT, SH_SPRX, 'SHFX_SPRAY', RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, LH_SPRX, 'LHFX_SPRAY', RC=STATUS)
+        VERIFY_(STATUS)
+
+        if (associated(SH_SPRX)) SH_SPRX = SH_SPR
+        if (associated(LH_SPRX)) LH_SPRX = LH_SPR
+    end if    
 
 ! Get all pointers that are needed by both REFRESH and DIFFUSE
 !-------------------------------------------------------------
@@ -2849,7 +2936,7 @@ end if
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
-     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QCTOT
+     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, FCLD
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
@@ -3048,7 +3135,7 @@ end if
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, QCTOT,   'QCTOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  FCLD,    'FCLD', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
@@ -3068,7 +3155,7 @@ end if
      if (JASON_TRB) then
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,    RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3083,7 +3170,7 @@ end if
      call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
      if (JASON_TRB) then
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=30.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.0,         RC=STATUS); VERIFY_(STATUS)
      endif
@@ -3456,7 +3543,7 @@ end if
 
       QL  = QLTOT
       QI  = QITOT
-      QA  = QCTOT
+      QA  = FCLD
       Z   = 0.5*(ZL0(:,:,0:LM-1)+ZL0(:,:,1:LM)) ! layer height above surface
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
@@ -5059,6 +5146,18 @@ end if
 
     real, dimension(:,:),   pointer     :: SHOBS, LHOBS
 
+! Sea Spray
+    real, dimension(:,:), pointer       :: SH_SPRAY_ => NULL()
+    real, dimension(:,:), pointer       :: LH_SPRAY_ => NULL()
+    real, dimension(IM,JM)              :: SH_SPRAY
+    real, dimension(IM,JM)              :: LH_SPRAY
+
+    real, parameter :: SH_SPRAY_MIN = -500.0
+    real, parameter :: SH_SPRAY_MAX =  500.0
+    real, parameter :: LH_SPRAY_MIN = -500.0
+    real, parameter :: LH_SPRAY_MAX =  500.0
+
+
     ! Get info for idealized SCM surface layer
     call MAPL_GetResource(MAPL, SCM_SL, 'SCM_SL:', default=0, RC=STATUS)
     VERIFY_(STATUS)
@@ -5092,6 +5191,23 @@ end if
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(IMPORT, 'TRG',    TRG,    RC=STATUS); VERIFY_(STATUS)
+
+    if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+       call MAPL_GetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   RC=STATUS)
+       VERIFY_(STATUS)
+
+       call MAPL_GetPointer(IMPORT, LH_SPRAY_, 'LHFX_SPRAY',   RC=STATUS)
+       VERIFY_(STATUS)
+
+       SH_SPRAY = SH_SPRAY_
+       LH_SPRAY = LH_SPRAY_
+
+       where (SH_SPRAY < SH_SPRAY_MIN)  SH_SPRAY = SH_SPRAY_MIN
+       where (SH_SPRAY > SH_SPRAY_MAX)  SH_SPRAY = SH_SPRAY_MAX
+
+       where (LH_SPRAY < LH_SPRAY_MIN)  LH_SPRAY = LH_SPRAY_MIN
+       where (LH_SPRAY > LH_SPRAY_MAX)  LH_SPRAY = LH_SPRAY_MAX
+    end if
 
     call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(EXPORT, 'FSTAR',  FSTAR,  RC=STATUS); VERIFY_(STATUS)
@@ -5298,6 +5414,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           end if
        end if
 
+       if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
+          if (NAME == 'S') then
+             SF = SF + SH_SPRAY
+          end if
+
+          if (NAME == 'Q') then 
+             SF = SF + LH_SPRAY/MAPL_ALHL
+          end if
+       end if
+
 ! Create tendencies
 !------------------
 
@@ -5307,6 +5433,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           else
              SOI = ( (SX - S)/DT )
           endif
+       end if
+
+       if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
+          if (NAME == 'S') then
+             SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
+          end if
+
+          if (NAME == 'Q') then
+             SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
+          end if
        end if
 
        if( NAME=='S' ) then
@@ -6463,7 +6599,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, wsp, FKV_temp, Hefold
+      real    :: CBl, wsp0, wsp, FKV_temp, Hefold
 
       if (C_B > 0.0) then
       do I = 1, IM
@@ -6488,15 +6624,14 @@ end subroutine RUN1
         do J = 1, JM
           do I = 1, IM
            ! determine the resolution dependent tuning factor
-            CBl = ABS(C_B) * 1.08371722e-7 * VARFLT(i,j) * &
+            CBl = 1.08371722e-7 * VARFLT(i,j) * &
                   MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! determine the efolding height
             Hefold = LAMBDA_B !MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B)
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
-                  wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                 !wsp = SQRT(MIN(wsp/30.0,1.0))*MAX(30.0,wsp) ! enhance winds below 30 m/s
-                  wsp = SQRT(SIN(MAPL_PI*0.5*MIN(wsp/30.0,1.0)))*MAX(30.0,wsp) ! enhance winds below 30 m/s
+                  wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                  wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
                   FKV_temp = Z(I,J,L)/Hefold
                   FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                   FKV_temp = CBl*(FKV_temp/Hefold)*wsp
