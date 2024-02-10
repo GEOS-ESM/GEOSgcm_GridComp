@@ -1460,7 +1460,7 @@ module GEOSmoist_Process_Library
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
           else
-            sqrtthl  = 0.0
+            sqrtthl  = 1e-3
             skew_thl = 0.
           endif
           if (qwsec > 0.0) then
@@ -1496,7 +1496,7 @@ module GEOSmoist_Process_Library
 !           pdf_a = max(0.,min(0.5,mffrc))
 !         end if
 
-         if (pdf_a>1e-3) then
+         if (pdf_a>1e-3 .and. pdf_a<0.5) then
            aterm = pdf_a
          else
            aterm = 0.5
@@ -1612,21 +1612,26 @@ module GEOSmoist_Process_Library
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.eq.0.) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec
               qw2_2     = qwsec
               sqrtqw2_1 = sqrt(qw2_1)
               sqrtqw2_2 = sqrt(qw2_2)
+
             else
 !              qw1_1     = total_water
 !              qw1_2     = total_water
 !              qw2_1     = qwsec
 !              qw2_2     = qwsec
-              wrk1 = min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+!              wrk1 = max(min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+              wrk1 = qt3
               qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
               qw1_2 = (total_water -aterm*qw1_1)/onema
+              if (isnan(qw1_1)) print *,'qw1_1 nan L1636, qt=',total_water,' wrk1=',wrk1,' onema=',onema,' aterm=',aterm
+              if (isnan(qw1_2)) print *,'qw1_2 nan L1636'
+
               qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
               qw2_2 = qw2_1
               sqrtqw2_1 = sqrt(qw2_1)
@@ -1637,7 +1642,7 @@ module GEOSmoist_Process_Library
 
 !            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
             corrtest2 = max(-1.0,min(1.0,0.5*wqwsec/(sqrtw2*sqrtqt)))
-
+          
             qw1_1 = - corrtest2 / w1_2            ! A.7
             qw1_2 = - corrtest2 / w1_1            ! A.8
 
@@ -1905,31 +1910,12 @@ module GEOSmoist_Process_Library
             rwthl = 0.0
          end if
 
-         if (isnan(rwqt)) print *,'rwqt>1e3'
-         if (isnan(rwthl)) print *,'rwthl>1e3'
-         if (isnan(C1)) print *,'C1>1e3'
-         if (isnan(C2)) print *,'C2>1e3'
-         if (isnan(w1_1)) print *,'w1_1>1e3'
-         if (isnan(w1_2)) print *,'w1_2>1e3'
-         if (isnan(qw2_2)) print *,'qw2_2>1e3'
-         if (isnan(qw2_1)) print *,'qw2_1>1e3'
-         if (isnan(cqt1)) print *,'cqt1>1e3'
-         if (isnan(cqt2)) print *,'cqt2>1e3'
-         if (isnan(cthl1)) print *,'cthl1>1e3'
-         if (isnan(cthl2)) print *,'cthl2>1e3'
-         if (isnan(thl2_1)) print *,'thl2_1>1e3'
-         if (isnan(thl2_2)) print *,'thl2_2>1e3'
-
          wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
          wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
-         if (isnan(wql1)) print *,'wql1>1e3'
-         if (isnan(wql2)) print *,'wql2>1e3'
 
 ! Compute the liquid water flux
           wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
           wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
-          if (isnan(wqls)) wqls = 0.
-          if (isnan(wqis)) wqis = 0.
 
 ! diagnostic buoyancy flux.  Includes effects from liquid water, ice
 ! condensate, liquid & ice precipitation
@@ -2130,6 +2116,18 @@ module GEOSmoist_Process_Library
                                  WQL,          &
                                  CFn)
          endif
+         if (isnan(CFn)) then
+           print *,'CFn is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
+           CFn = CFp
+         end if
+         if (isnan(WQL)) then
+           print *,'WQL is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
+         end if
+         if (isnan(QCn)) then
+           print *,'QCn is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
+           QCn = QCp
+         end if
+
 
          IF(USE_BERGERON) THEN
            DQCALL = QCn - QCp

@@ -1232,9 +1232,15 @@ contains
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 1-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+!        where (ZL(:,:,k).lt.1.6e4)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
+        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
+!        elsewhere
+!        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+!        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
+!        end where
+
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
 
         ! Ensure realizibility
