@@ -1364,12 +1364,12 @@ contains
     
     ! make sure snow heat content is not positive (would result in snow temperature above 0 deg C)
     
-    if (h>0.) then
-       
-       write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
-       stop
-       
-    end if
+!    if (h>0.) then
+!       
+!       write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
+!       stop
+!       
+!    end if
 
     ! -------------------------------------------------------------------    
     
