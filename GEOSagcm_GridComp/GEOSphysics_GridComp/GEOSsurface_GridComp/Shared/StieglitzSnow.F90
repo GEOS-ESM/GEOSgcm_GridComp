@@ -1282,8 +1282,8 @@ contains
           
           ! set klfag to .true. under certain conditions:
           
-          if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
-               (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
+!          if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
+!               (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
           
           if(.not.ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: partially frozen and at    0 deg
                (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.      !    and after  relayer: fully     frozen and below 0 deg
