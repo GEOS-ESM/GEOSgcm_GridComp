@@ -184,7 +184,7 @@ module shoc
   real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
 
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, l_par
-!  real, dimension(nx,ny,nz)  :: brunt_edge, brunt_dry
+  real, dimension(nx,ny,nz)  :: brunt_edge !, brunt_dry
 
   real, dimension(nx,ny)     :: l_inf, l_mix, zcb, lts!, l_par!, denom, numer, cldarr
 
@@ -628,7 +628,7 @@ contains
 
 
 !          brunt_edge(i,j,k) = (2.*ggr/(thv(i,j,k)+thv(i,j,kb)))*(thv(i,j,k)-thv(i,j,kb))/adzi(i,j,k)  !g/thv/dz *(thv-thv)
-          brunt_dry(i,j,k) = (thv(i,j,kc)-thv(i,j,kb))*betdz
+!          brunt_dry(i,j,k) = (thv(i,j,kc)-thv(i,j,kb))*betdz
 
 ! Reinitialize the mixing length related arrays to zero
           smixt(i,j,k)    = 1.0   ! shoc_mod module variable smixt
@@ -912,7 +912,7 @@ contains
               wrk2 = 1.0/(400.*tkes)
               wrk3 = sqrt(brunt2(i,j,k))/(0.7*tkes)
               wrk1 = 1.0/(wrk2+wrk3)
-              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*l_par(i,j))))
+              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*zpbl(i,j))))
               smixt1(i,j,k) = 3.3*shocparams%LENFAC1/wrk2
               smixt2(i,j,k) = 3.3*shocparams%LENFAC1/wrk3
               smixt3(i,j,k) = 3.3*shocparams%LENFAC1*vonk*zl(i,j,k)
