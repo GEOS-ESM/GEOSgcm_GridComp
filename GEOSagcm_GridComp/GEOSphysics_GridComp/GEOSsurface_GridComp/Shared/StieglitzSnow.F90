@@ -1,3 +1,4 @@
+! dummy commit at 9d562a9
 
 module StieglitzSnow
   
@@ -1286,12 +1287,12 @@ contains
        
     end if
     
-    if ( (.not. allow_pos_tpsnow_tmp) .and. (h>0.) ) then
-       
-       write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
-       stop
-       
-    end if
+!    if ( (.not. allow_pos_tpsnow_tmp) .and. (h>0.) ) then
+!       
+!       write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
+!       stop
+!       
+!    end if
 
     ! -------------------------------------------------------------------    
     
