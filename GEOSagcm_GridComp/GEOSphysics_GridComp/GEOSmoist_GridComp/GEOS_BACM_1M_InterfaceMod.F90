@@ -184,7 +184,7 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 6.0e-3  )
+    call MAPL_GetResource( MAPL, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
     call MAPL_GetResource( MAPL, CLDPARAMS%HYSTPDFOPT,     'HYSTPDFOPT:',     DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%PDFSHAPE,       'PDFSHAPE:',       DEFAULT= 1.0     )
@@ -228,6 +228,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     if (CLDPARAMS%ICE_SETTLE==2) TMP_ICEFALL=TMP_ICEFALL*0.8
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
+    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM ,         'LIQ_RADII_PARAM:',DEFAULT= 1       )
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM ,         'ICE_RADII_PARAM:',DEFAULT= 1       )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )
     call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
@@ -778,7 +780,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR*RAD_CF,RAD_QS*RAD_CF,RAD_QG*RAD_CF,IM,JM,LM,1,0,0)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0

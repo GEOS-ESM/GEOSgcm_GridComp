@@ -211,6 +211,7 @@ contains
          VLOCATION  = MAPL_VLocationEdge,                           &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -222,6 +223,7 @@ contains
          VLOCATION  = MAPL_VLocationEdge,                           &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -233,6 +235,7 @@ contains
          VLOCATION  =  MAPL_VLocationEdge,                         &
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
+         RESTART    = MAPL_RestartSkip,                            &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -376,6 +379,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -387,6 +391,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -398,6 +403,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -409,6 +415,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
+         RESTART    = MAPL_RestartSkip,                            &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -517,6 +524,7 @@ contains
          SHORT_NAME = 'TAUOROX',                                   &
          LONG_NAME  = 'surface_eastward_orographic_gravity_wave_stress',      &
          UNITS      = 'N m-2',                                     &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -525,6 +533,7 @@ contains
          SHORT_NAME = 'TAUOROY',                                   &
          LONG_NAME  = 'surface_northward_orographic_gravity_wave_stress',     &
          UNITS      = 'N m-2',                                     &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -534,6 +543,7 @@ contains
          SHORT_NAME = 'OMEGA',                                     &
          LONG_NAME  = 'vertical_pressure_velocity',                &
          UNITS      = 'Pa s-1',                                  &
+         RESTART    = MAPL_RestartSkip,                            &         
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -570,6 +580,7 @@ contains
          SHORT_NAME = 'DTDTDYN',                                     &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_dynamics', &
          UNITS      = 'K s-1',                                     &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                             &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS    )
      VERIFY_(STATUS)
@@ -578,6 +589,7 @@ contains
          SHORT_NAME = 'DQVDTDYN',                                      &
          LONG_NAME  = 'tendency_of_specific_humidity_due_to_dynamics', &
          UNITS      = 'kg/kg/s',                                     &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 RC=STATUS  )
      VERIFY_(STATUS)
@@ -586,6 +598,7 @@ contains
          SHORT_NAME = 'QV_DYN_IN',                                 &
          LONG_NAME  = 'spec_humidity_at_begin_of_time_step',       &
          UNITS      = 'kg kg-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -594,6 +607,7 @@ contains
          SHORT_NAME = 'T_DYN_IN',                                 &
          LONG_NAME  = 'temperature_at_begin_of_time_step',       &
          UNITS      = 'K',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -602,6 +616,7 @@ contains
          SHORT_NAME = 'U_DYN_IN',                                 &
          LONG_NAME  = 'u_wind_at_begin_of_time_step',       &
          UNITS      = 'm s-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -610,6 +625,7 @@ contains
          SHORT_NAME = 'V_DYN_IN',                                 &
          LONG_NAME  = 'v_wind_at_begin_of_time_step',       &
          UNITS      = 'm s-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -618,6 +634,7 @@ contains
          SHORT_NAME = 'PLE_DYN_IN',                                 &
          LONG_NAME  = 'edge_pressure_at_begin_of_time_step',       &
          UNITS      = 'Pa',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
     VERIFY_(STATUS)
@@ -711,6 +728,7 @@ contains
         LONG_NAME          = 'surface geopotential height',       &
         UNITS              = 'm+2 s-2',                           &
         SHORT_NAME         = 'PHIS',                              &
+        RESTART    = MAPL_RestartSkip,                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
@@ -1149,7 +1167,72 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'CNV_TOPP_DP',                                    &  
+         LONG_NAME = 'pressure_at_deep_convective_cloud_top',            &
+         UNITS     = 'Pa',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'CNV_TOPP_MD',                                    &  
+         LONG_NAME = 'pressure_at_congestus_convective_cloud_top',            &
+         UNITS     = 'Pa',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'CNV_TOPP_SH',                                    &  
+         LONG_NAME = 'pressure_at_shallow_convective_cloud_top',            &
+         UNITS     = 'Pa',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'ENTR',                                    &
+         LONG_NAME = 'Lateral_entrainment_rate_input_to_gf',  &
+         UNITS     = 'km-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'ENTR_DP',                                    &
+         LONG_NAME = 'Lateral_entrainment_rate_in_gf_deep_convection_updraft',  &
+         UNITS     = 'm-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'ENTR_MD',                                    &
+         LONG_NAME = 'Lateral_entrainment_rate_in_gf_mid_convection_updraft',  &                
+         UNITS     = 'm-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &   
+         RC=STATUS  )
+         
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'ENTR_SH',                                    &
+         LONG_NAME = 'Lateral_entrainment_rate_in_gf_shallow_convection_updraft',  &                
+         UNITS     = 'm-1',                                           &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &   
+         RC=STATUS  )
+         
+    VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CNV_UPDF',                                    &
@@ -4786,34 +4869,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_a',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_b',                                  &
-         LONG_NAME  = 'dummy_array_for_output_GF',                &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_c',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME = 'VAR3d_d',                                    &
-         LONG_NAME  = 'dummy_array_for_output_GF',        &
-         UNITS      = 'unknown',                                  &
-         DIMS       = MAPL_DimsHorzVert,                              &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-       VERIFY_(STATUS)
        !-2d
        call MAPL_AddExportSpec(GC,                                &
         SHORT_NAME         = 'MFDP',                              &
@@ -5135,7 +5190,7 @@ contains
     real                            :: DT_MOIST
 
     ! Local variables
-    real                                :: Tmax
+    real                                :: Tmax, KCBLMIN, PMIN_CBL
     real, allocatable, dimension(:,:,:) :: PLEmb, PKE, ZLE0, PK, MASS
     real, allocatable, dimension(:,:,:) :: PLmb,  ZL0, DZET
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
@@ -5147,8 +5202,8 @@ contains
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
-    real, pointer, dimension(:,:)   :: SH, EVAP, KPBL
-    real, pointer, dimension(:,:,:) :: TKE, OMEGA
+    real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
+    real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
     ! Exports
@@ -5165,8 +5220,7 @@ contains
     real, pointer, dimension(:,:,:  ) :: NWFA
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-
-
+    real, pointer, dimension(:    ) :: PTR1D
 
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -5221,15 +5275,17 @@ contains
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, ZLE,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, T,       'T'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, W,       'W'       , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, KPBL,    'KPBL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
 
@@ -5284,6 +5340,71 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+
+       ! Recording of import/internal vars into export if desired
+       !---------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QX0'       , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QLLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLLS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QLCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'CLCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'CLLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLLS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QILSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QILS
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QICNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QICN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QCCNX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QICN+QLCN
+       call MAPL_GetPointer(EXPORT, PTR3D,     'QCLSX0'    , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = QILS+QLLS
+
+       ! Trajectory for the moist TLM/ADJ
+       !---------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, PTR3D,   'TH_moist'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = T/PK 
+       call MAPL_GetPointer(EXPORT, PTR3D,    'Q_moist'   , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = Q
+       call MAPL_GetPointer(EXPORT, PTR2D,   'TS_moist'  , RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) PTR2D = TS  
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KHu_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         PTR2D = -1 
+         do l = 0,LM
+            where( (PTR2D == -1) .AND. (KH(:,:,l) > 2.0) )
+              PTR2D = l * 1.0
+            end where
+         enddo 
+       endif
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KHl_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         PTR2D = -1
+         do l = LM,0,-1
+            where( (PTR2D == -1) .AND. (KH(:,:,l) > 2.0) )
+              PTR2D = l * 1.0
+            end where
+         enddo
+       endif
+
+       call MAPL_GetPointer(EXPORT, PTR2D,  'KCBL_moist',  RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         call MAPL_GetResource(MAPL, PMIN_CBL, 'PMIN_CBL', DEFAULT= 50000.0, RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(IMPORT, PTR1D, 'PREF'      ,  RC=STATUS); VERIFY_(STATUS)
+         KCBLMIN = count(PTR1D < PMIN_CBL)
+         do j = 1,JM
+            do i = 1,IM
+               if(nint(KPBL(i,j)).ne.0) then
+                  PTR2D(i,j) = max(min(nint(KPBL(i,j))+1,LM-1), 1)
+               else
+                  PTR2D(i,j) = LM-1
+               endif
+               PTR2D(I,J)   =  MAX( PTR2D(I,J), KCBLMIN )
+           enddo
+         enddo 
+       endif
 
        ! These may be used by children
        call MAPL_GetPointer(EXPORT, NWFA,    'NWFA'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5351,9 +5472,15 @@ contains
 
        call MAPL_TimerOff(MAPL,"---AERO_ACTIVATE")
 
-       if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-       if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-       if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+       if (SH_MD_DP) then
+         if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+       else
+         if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+       endif
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5669,7 +5796,7 @@ contains
        endif
 
        ! all deep convective precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(CN_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'CNPCPRATE' , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
@@ -5680,19 +5807,23 @@ contains
        ! all large-scale precip (rain+snow)
        call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP'   , RC=STATUS); VERIFY_(STATUS)
        if (associated(LS_PRCP)) then
-          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'    , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(EXPORT, PTR2D, 'LS_SNR'   , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'ICE'      , RC=STATUS); VERIFY_(STATUS)
+          if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
+          call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR'     , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
        endif
 
        ! all anvil precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, AN_PRCP, 'AN_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(AN_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'AN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) AN_PRCP = AN_PRCP + PTR2D
        endif
 
        ! all shallow precip (rain+snow)
-       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SC_PRCP, 'SC_PRCP'    , RC=STATUS); VERIFY_(STATUS)
        if (associated(SC_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) SC_PRCP = SC_PRCP + PTR2D
@@ -5783,7 +5914,7 @@ contains
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = MIN(CLLS+CLCN,1.0)
+       if (associated(PTR3D)) PTR3D = QLLS+QLCN+QILS+QICN
 
        ! Cloud condensate exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX1', RC=STATUS); VERIFY_(STATUS)
