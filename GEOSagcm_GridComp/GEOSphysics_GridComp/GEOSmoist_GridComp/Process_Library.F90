@@ -1669,8 +1669,6 @@ module GEOSmoist_Process_Library
               wrk1 = qt3
               qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
               qw1_2 = (total_water -aterm*qw1_1)/onema
-              if (isnan(qw1_1)) print *,'qw1_1 nan L1636, qt=',total_water,' wrk1=',wrk1,' onema=',onema,' aterm=',aterm
-              if (isnan(qw1_2)) print *,'qw1_2 nan L1636'
 
               qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
               qw2_2 = qw2_1
@@ -1914,11 +1912,6 @@ module GEOSmoist_Process_Library
           qi2 = qn2 - ql2
 
           qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
-!          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-!          diag_qi = diag_qn - diag_ql
-
-!!! temporary
-!          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
 
 
 ! Update temperature variable based on diagnosed cloud properties
@@ -2156,18 +2149,6 @@ module GEOSmoist_Process_Library
                                  WQL,          &
                                  CFn)
          endif
-         if (isnan(CFn)) then
-           print *,'CFn is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
-           CFn = CFp
-         end if
-         if (isnan(WQL)) then
-           print *,'WQL is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
-         end if
-         if (isnan(QCn)) then
-           print *,'QCn is nan! PL=',PL,' TEP=',TEP,' QVp=',QVp,' QT2=',QT2
-           QCn = QCp
-         end if
-
 
          IF(USE_BERGERON) THEN
            DQCALL = QCn - QCp

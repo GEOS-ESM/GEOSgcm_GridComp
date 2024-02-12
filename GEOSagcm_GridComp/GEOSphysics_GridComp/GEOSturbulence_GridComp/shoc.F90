@@ -59,8 +59,8 @@ module shoc
                  tkesbshear_inv,                                 &  ! out
                  smixt_inv, lmix_out, smixt1_inv,                &  ! out
                  smixt2_inv,smixt3_inv,                          &  ! out
-!                 bruntmst_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
-                 bruntmst_inv, bruntdry_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
+                 bruntmst_inv, ri_inv, prnum_inv,                &  ! out
+!                 bruntmst_inv, bruntdry_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
                  shocparams )
 
 
@@ -118,8 +118,8 @@ module shoc
   real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
   real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
   real, dimension(:,:,:), pointer :: bruntmst_inv ! moist Brunt vaisala frequency
-  real, dimension(:,:,:), pointer :: bruntdry_inv ! Brunt vaisala frequency on edges
-  real, dimension(:,:,:), pointer :: bruntedg_inv ! Brunt vaisala frequency on edges
+!  real, dimension(:,:,:), pointer :: bruntdry_inv ! Brunt vaisala frequency on edges
+!  real, dimension(:,:,:), pointer :: bruntedg_inv ! Brunt vaisala frequency on edges
   real, dimension(:,:,:), pointer :: ri_inv
   real, dimension(:,:,:), pointer :: prnum_inv
 
@@ -183,8 +183,8 @@ module shoc
   real isotropy    (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
   real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
 
-  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, brunt_smooth, l_par
-  real, dimension(nx,ny,nz)  :: brunt_edge, brunt_dry
+  real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, l_par
+!  real, dimension(nx,ny,nz)  :: brunt_edge, brunt_dry
 
   real, dimension(nx,ny)     :: l_inf, l_mix, zcb, lts!, l_par!, denom, numer, cldarr
 
@@ -196,7 +196,7 @@ module shoc
        tkeavg,    dtqw,     dtqi !,     l_par
 
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
-  integer, dimension(nx,ny) :: cldbasek
+!  integer, dimension(nx,ny) :: cldbasek
 
   real, parameter :: bruntmin = 1e-7
   real, parameter :: vonk = 0.4
@@ -265,7 +265,6 @@ module shoc
       enddo
     enddo
   enddo
-!  print *,'thv=',thv(i,j,1:20)
 
 
 ! Define vertical grid increments for later use in the vertical differentiation
@@ -308,8 +307,8 @@ module shoc
   if (associated(smixt2_inv))   smixt2_inv(:,:,1:nzm)   = smixt2(:,:,nzm:1:-1)
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
 
-  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
-  if (associated(bruntdry_inv)) bruntdry_inv(:,:,0:nzm) = l_par(:,:,nz:1:-1)
+!  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
+!  if (associated(bruntdry_inv)) bruntdry_inv(:,:,0:nzm) = brunt_dry(:,:,nz:1:-1)
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
   if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
   if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
@@ -654,7 +653,7 @@ contains
 !    brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
 
 ! Calculate the measure of PBL depth,  Eq. 11 in BK13 (Is this really PBL depth?)
-    cldbasek(:,:) = 1
+!    cldbasek(:,:) = 1
     do j=1,ny
       do i=1,nx
 
@@ -675,22 +674,21 @@ contains
         ! Identify mixed layer top as level where THV exceeds THV(3) + 0.4 K
         ! Interpolate for final height based on gradient
         ! Ignore single isolated levels
-        kk = 4
-        do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.4 .gt. thv(i,j,kk+1))
-          kk = kk+1
-        end do
-        dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
+!        kk = 4
+!        do while (thv(i,j,3)+0.4 .gt. thv(i,j,kk) .or. thv(i,j,3)+0.4 .gt. thv(i,j,kk+1))
+!          kk = kk+1
+!        end do
+!        dum = (thv(i,j,kk-1)-thv(i,j,kk-2))
 
-        if (abs(dum) .gt. 1e-3) then
-          l_mix(i,j) = max(zl(i,j,kk-1)+0.*(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
-        else
-          l_mix(i,j) = max(zl(i,j,kk-1),100.)
-        end if
+!        if (abs(dum) .gt. 1e-3) then
+!          l_mix(i,j) = max(zl(i,j,kk-1)+0.*(thv(i,j,3)+0.4-thv(i,j,kk-1))*(zl(i,j,kk-1)-zl(i,j,kk-2))/dum,100.)
+!        else
+!          l_mix(i,j) = max(zl(i,j,kk-1),100.)
+!        end if
 
-        do while ((zl(i,j,cldbasek(i,j)).lt.300.) .or. (cld_sgs(i,j,cldbasek(i,j)).lt.0.001 .and. cldbasek(i,j).lt.nzm))
-          cldbasek(i,j) = cldbasek(i,j) + 1
-        end do
-!        print *,'cldbase=',zl(i,j,cldbasek(i,j))
+!        do while ((zl(i,j,cldbasek(i,j)).lt.300.) .or. (cld_sgs(i,j,cldbasek(i,j)).lt.0.001 .and. cldbasek(i,j).lt.nzm))
+!          cldbasek(i,j) = cldbasek(i,j) + 1
+!        end do
 
         kk = 1
         do while (zl(i,j,kk) .lt. 3000. .or. kk.eq.nzm)
@@ -820,35 +818,26 @@ contains
       end do
       brunt_edge(:,:,1) = brunt_edge(:,:,2)
       brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
+      brunt2(:,:,1) = brunt2(:,:,2)
+      brunt2(:,:,nzm) = brunt2(:,:,nzm-1)
 
-      do j=1,ny
-        do i=1,nx
-          kk = 1
-          l_mix(i,j) = 0.
-          do while (l_mix(i,j).lt.1e-5 .and. kk.lt.nzm)
-            l_mix(i,j) = l_mix(i,j) + brunt(i,j,kk)*adzl(i,j,kk)
-            kk = kk+1
-          end do
-          l_mix(i,j) = zl(i,j,kk)
-        end do
-      end do
-!        print *,'lmix=',l_mix(i,j)
+!      do j=1,ny
+!        do i=1,nx
+!          kk = 1
+!          l_mix(i,j) = 0.
+!          do while (l_mix(i,j).lt.1e-5 .and. kk.lt.nzm)
+!            l_mix(i,j) = l_mix(i,j) + brunt(i,j,kk)*adzl(i,j,kk)
+!            kk = kk+1
+!          end do
+!          l_mix(i,j) = zl(i,j,kk)
+!        end do
+!      end do
 
 !         brunt_dry = max( bruntmin, brunt_dry )
-
-         brunt_smooth = brunt
-         brunt_smooth(:,:,nzm) = brunt(:,:,nzm-1)
-         brunt_smooth(:,:,1) = brunt(:,:,1)
-         brunt_smooth = max( bruntmin, brunt_smooth )
-
-
 
       do k=1,nzm
         do j=1,ny
           do i=1,nx
-
-
-!            if (k.eq.1) print *,'l_mix=',l_mix(i,j)
 
             tkes = sqrt(tke(i,j,k))
 
@@ -874,7 +863,6 @@ contains
               l_par(i,j,k) = l_par(i,j,k) - zl(i,j,kk) + max(0.,(thv(i,j,kk)-wrk)* &
                              (zl(i,j,kk)-zl(i,j,kk-1))/(thv(i,j,kk)-thv(i,j,kk-1)))
               l_par(i,j,k) = max(min(l_par(i,j,k),1500.),25.)
-!              if (zl(i,j,k).lt.600.) print *,'z=',zl(i,j,k),'  thv=',thv(i,j,k),'  thv pert=',max(0.001,3.*wthv_sec(i,j,k)) / max(0.05,sqrt(0.667)*tkes),'  l_par=',l_par(i,j,k)
 
 
           !----------------------------------
@@ -904,7 +892,7 @@ contains
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*(shocparams%LENFAC2)
 
                  ! Stability length scale
-                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt_smooth(i,j,k)))
+                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
 
 
                  !=== Combine component length scales ===
@@ -924,7 +912,7 @@ contains
               wrk2 = 1.0/(400.*tkes)
               wrk3 = sqrt(brunt2(i,j,k))/(0.7*tkes)
               wrk1 = 1.0/(wrk2+wrk3)
-              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*l_mix(i,j))))
+              smixt(i,j,k) = 3.3*shocparams%LENFAC1*(wrk1 + (vonk*zl(i,j,k)-wrk1)*exp(-zl(i,j,k)/(0.1*l_par(i,j))))
               smixt1(i,j,k) = 3.3*shocparams%LENFAC1/wrk2
               smixt2(i,j,k) = 3.3*shocparams%LENFAC1/wrk3
               smixt3(i,j,k) = 3.3*shocparams%LENFAC1*vonk*zl(i,j,k)
@@ -1231,14 +1219,9 @@ contains
         whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ MFWHL(:,:,k)
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
-        ! Restrict QT variance, 1-25% of total water.
-!        where (ZL(:,:,k).lt.1.6e4)
+        ! Restrict QT variance, 3-25% of total water.
         qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
         qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
-!        elsewhere
-!        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
-!        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.01*QT(:,:,k))**2)
-!        end where
 
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
