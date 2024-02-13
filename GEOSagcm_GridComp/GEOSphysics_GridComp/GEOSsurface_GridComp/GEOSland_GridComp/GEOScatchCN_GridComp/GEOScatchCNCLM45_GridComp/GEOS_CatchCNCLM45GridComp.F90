@@ -5185,6 +5185,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     character(len=100) :: lai_fname
     character(len=100) :: sand_fname
     character(len=100) :: k0_fname
+    character(len=100) :: canopy_fname
 
     ! Variables for FPAR
             ! --------------------------
@@ -6619,8 +6620,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ! read the k0 values
               k0_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_ksat.nc4'
               k0_fname = trim(k0_fname)
+              ! read the canopy height values
+              canopy_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_canopy_height.nc4'
+              canopy_fname = trim(canopy_fname)
               ! now call read_env for all of these
-              call read_env_data(precip_fname,lai_fname,sand_fname,k0_fname)
+              call read_env_data(precip_fname,lai_fname,sand_fname,k0_fname,canopy_fname)
               ! allocate our parameter values and get their values
               allocate(pso_vals%param_vals(num_params,pso_vals%total_ens))
               ! read the current PSO vals

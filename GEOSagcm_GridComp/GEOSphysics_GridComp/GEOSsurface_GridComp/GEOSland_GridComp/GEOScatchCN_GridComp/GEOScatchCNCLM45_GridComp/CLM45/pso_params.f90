@@ -19,6 +19,7 @@ module pso_params_type_mod
     real, allocatable, dimension(:)   :: lai_vals
     real, allocatable, dimension(:)   :: sand_vals
     real, allocatable, dimension(:)   :: k0_vals
+    real, allocatable, dimension(:)   :: canopy_vals
     integer, allocatable, dimension(:)   :: local_tile_nums
     integer, allocatable, dimension(:)   :: all_tile_nums
     integer                           :: total_ens

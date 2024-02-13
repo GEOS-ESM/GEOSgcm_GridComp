@@ -771,18 +771,18 @@
    integer:: fake_num_ensemble
    integer:: reason
    integer:: pso_pft
-   integer:: g0_pso_pft
+   integer:: a0_pso_pft,a1_pso_pft,a2_pso_pft
    real   :: pso_val, offline_const, offline_int, g1_pso_val, g0_pso_val
    real   :: pso_intercept, pso_slope
-   real,dimension(1) :: map_val_tile
-   real :: map_val_tile_real
+   real,dimension(1) :: map_val_tile,can_val_tile
+   real :: map_val_tile_real,can_val_tile_real
    logical:: pso_exists
    character (len = 100):: met_tag_map
    integer :: EXP_ID
    integer :: STATUS
    integer :: this_tile
    integer, dimension(1) :: this_map_idx
-
+   real, dimension(19) :: default_g1s
 
 !------------------------------------------------------------------------------
 
@@ -911,7 +911,26 @@
             if (stomatal_model_choice == 0) then
                mbbopt(p) = 9._r8
             else
-               mbbopt(p) = 8._r8
+               default_g1s(1) = 2.3 ! needleleaf evergreen temperate tree
+               default_g1s(2) = 2.3 ! needleleaf evergreen boreal tree
+               default_g1s(3) = 2.3 ! needleleaf deciduous boreal tree
+               default_g1s(4) = 4.1 ! broadleaf evergreen tropical tree
+               default_g1s(5) = 4.1 ! broadleaf evergreen temperate tree
+               default_g1s(6) = 4.4 ! broadleaf deciduous tropical tree
+               default_g1s(7) = 4.4 ! broadleaf deciduous temperate tree
+               default_g1s(8) = 4.4 ! broadleaf deciduous boreal tree
+               default_g1s(9) = 4.7 ! broadleaf evergreen temperate shrub
+               default_g1s(10) = 4.7 ! broadleaf deciduous temperate shrub [moisture + deciduous]
+               default_g1s(11) = 4.7 ! broadleaf deciduous temperate shrub [moisture stress only]
+               default_g1s(12) = 4.7 ! broadleaf deciduous boreal shrub
+               default_g1s(13) = 2.2 ! arctic c3 grass
+               default_g1s(14) = 5.3 ! cool c3 grass [moisutre + deciduous]
+               default_g1s(15) = 5.3 ! cool c3 grass [moisture stress only]
+               default_g1s(16) = 1.6 ! warm c4 grass [moisture + decidiuous]
+               default_g1s(17) = 1.6 ! warm c4 grass [moisture stress only]
+               default_g1s(18) = 5.79 ! crop [moisture + deciduous]
+               default_g1s(19) = 5.79 ! crop [moisture stress only]
+               mbbopt(p) = default_g1s(ityp(p,nv))
             endif
          else
             qe(p) = 0.05_r8
@@ -920,7 +939,7 @@
             if (stomatal_model_choice == 0) then
                mbbopt(p) = 4._r8
             else
-               mbbopt(p) = 8._r8
+               mbbopt(p) = 2._r8
             endif
          endif
       elseif (g1_ef_choice == 1) then
@@ -939,19 +958,25 @@
          this_map_idx = findloc(pso_vals%all_tile_nums,VALUE=this_tile)
          map_val_tile = pso_vals%map_vals(this_map_idx)
          map_val_tile_real = map_val_tile(1)
+         this_can_idx = findloc(pso_vals%all_tile_num,VALUE=this_tile)
+         can_val_tile = pso_vals%can_vals(this_can_idx)
+         can_val_tile_real = can_val_tile(1)
 
          !!!!! UNCOMMENT BELOW FOR PFT-BASED PSO OPTIMIZATION !!!!!!
          call pft_clm_to_pso(ityp(p, nv), pso_pft)
-         g1_pso_val = pso_vals%param_vals(pso_pft, this_particle)
-         g0_pso_pft = pso_pft + 5
-         g0_pso_val = pso_vals%param_vals(g0_pso_pft, this_particle)
+         a0_pso_pft = pso_pft
+         a1_pso_pft = a0_pso_pft + 8
+         a2_pso_pft = a1_pso_pft + 8
+         a0_pso_val = pso_vals%param_vals(a0_pso_pft,this_particle)
+         a1_pso_val = pso_vals%param_vals(a1_pso_pft,this_particle)
+         a2_pso_val = pso_vals%param_vals(a2_pso_pft,this_particle)
          !offline_const = 0.025
          !offline_int = -0.163747
          !mbbopt(p) = pso_val*(offline_int + map_val_tile_real*offline_const)
          ! for experiment to just set g1 equal to ai
          mbbopt(p) = g1_pso_val
          ! for experiment where both g0 and g1 are optimized
-         !mbbopt(p) = g0_pso_val + g1_pso_val*map_val_tile_real
+         !mbbopt(p) = a0_pso_val + a1_pso_val*map_val_tile_real + a2_pso_val*can_val_tile_real
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          !!!!! UNCOMMENT BELOW FOR C1 C2 BASED PSO OPTIMIZATION !!!!!
