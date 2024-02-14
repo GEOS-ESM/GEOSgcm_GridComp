@@ -936,9 +936,9 @@ contains
         
     ! call relayer *with* adjustment of heat content and hcorr accounting [incl. call to StieglitzSnow_calc_tpsnow()]
     
-    call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick,     &
-         htsnn, wesn, sndz, rconstit, tpsn, fices,                            &
-         conserve_ice10_tzero=.true., dts, hcorr, rc_calc_tpsn=rc_tmp      )      ! optional arguments
+    call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick,          &
+         htsnn, wesn, sndz, rconstit, tpsn, fices,                                 &
+         conserve_ice10_tzero=.true., dts=dts, hcorr=hcorr, rc_calc_tpsn=rc_tmp )      ! optional arguments
              
     if (rc_tmp/=0) write (*,*) 'PosSnowHeat: values printed above detected at lon, lat = ', tile_lon*180./PIE, tile_lat*180./PIE
     
@@ -1115,7 +1115,7 @@ contains
     
     integer                                  :: i, k, ilow, ihigh
     
-    real                                     :: dz, totalthick, hnew, hdum, fdum
+    real                                     :: dz, totalthick, hnew, tdum, fdum
     real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
     real,    dimension(N_snow)               :: thickness
 
@@ -1169,9 +1169,9 @@ contains
     if (conserve_ice10_tzero_tmp) then
        
        do i=1,N_snow
-          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i))
+          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i),ignore_pos_tpsnow=.true.)
        enddo
-       
+  
     end if
     
     ! -----------------------------------------------------------
