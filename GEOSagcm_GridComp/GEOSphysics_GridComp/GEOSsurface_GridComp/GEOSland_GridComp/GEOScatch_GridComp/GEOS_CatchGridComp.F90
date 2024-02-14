@@ -5536,7 +5536,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT,CATCH_INTERNAL_SuATE%USE_FWET_FOR_RUNOFF          ,&
+             DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
              CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
              cat_id, VEG, DZSF                                    ,&
              PCU      ,     PLS_IN       ,    SNO, ICE, FRZR         ,&
