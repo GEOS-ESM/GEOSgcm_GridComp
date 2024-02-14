@@ -5093,7 +5093,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Add irrigation model imports
         ! --------------------------------------------------------------------------
 
-        if(CATCH_INTERNAL_STATE%RUN_IRRIG == 1) then
+        if(CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) then
            where (SPRINKLERRATE > 0)
               PLS_IN = PLS_IN + SPRINKLERRATE
            end where
@@ -5750,7 +5750,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(IRRLAND)) then
-           if (CATCH_INTERNAL_STATE%RUN_IRRIG == 1) IRRLAND = SPRINKLERRATE + FLOODRATE + DRIPRATE
+           if (CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) IRRLAND = SPRINKLERRATE + FLOODRATE + DRIPRATE
         endif
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
