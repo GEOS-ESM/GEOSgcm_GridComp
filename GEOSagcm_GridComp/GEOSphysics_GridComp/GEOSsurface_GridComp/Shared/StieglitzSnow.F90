@@ -1095,7 +1095,7 @@ contains
     
     real,    intent(out),   dimension(N_snow)           :: tpsn, fices
 
-    logical, intent(in)                        optional :: maintain_ice10_tzero      
+    logical, intent(in),                       optional :: conserve_ice10_tzero      
     
     real,    intent(in),                       optional :: dts
     real,    intent(inout),                    optional :: hcorr
@@ -1119,7 +1119,7 @@ contains
     real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
     real,    dimension(N_snow)               :: thickness
 
-    logical                                  :: maintain_ice10_tzero_tmp, update_hcorr, kflag
+    logical                                  :: conserve_ice10_tzero_tmp, update_hcorr, kflag
     
     logical, dimension(N_snow)               :: ice10, tzero0
 
@@ -1145,19 +1145,19 @@ contains
     !
     ! process optional arguments
     
-    maintain_ice10_tzero_tmp = .true.   ! default
+    conserve_ice10_tzero_tmp = .true.   ! default
 
-    if (present(maintain_ice10_tzero))  maintain_ice10_tzero_tmp = maintain_ice10_tzero    
+    if (present(conserve_ice10_tzero))  conserve_ice10_tzero_tmp = conserve_ice10_tzero    
     
     update_hcorr             = .false.  ! default
     
-    if     (present(dts) .and. present(hcorr) .and. maintain_ice10_tzero_tmp) then
+    if     (present(dts) .and. present(hcorr) .and. conserve_ice10_tzero_tmp) then
        
        update_hcorr = .true.
        
     elseif (present(dts) .or.  present(hcorr)) then
        
-       write(*,*) Iam, '(): bad optional arguments (maintain_ice10_tzero, dts, hcorr)'
+       write(*,*) Iam, '(): bad optional arguments (conserve_ice10_tzero, dts, hcorr)'
        stop
        
     end if
@@ -1166,7 +1166,7 @@ contains
     !
     ! determine frozen fraction and temperature before relayering
 
-    if (maintain_ice10_tzero_tmp) then
+    if (conserve_ice10_tzero_tmp) then
        
        do i=1,N_snow
           call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i))
@@ -1294,7 +1294,7 @@ contains
 
     if (present(rc_calc_tpsn)) rc_calc_tpsn = rc_tmp
 
-    if (maintain_ice10_tzero) then
+    if (conserve_ice10_tzero) then
        
        !**** Check that (ice10,tzero) conditions are conserved through
        !**** relayering process (or at least that (fices,tpsn) conditions don't 
@@ -1338,7 +1338,7 @@ contains
 
        enddo
 
-    end if  ! (maintain_ice10_tzero)
+    end if  ! (conserve_ice10_tzero)
     
   end subroutine StieglitzSnow_relayer
   
