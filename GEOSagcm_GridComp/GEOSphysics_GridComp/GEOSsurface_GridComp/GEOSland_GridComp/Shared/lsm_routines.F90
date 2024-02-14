@@ -56,7 +56,7 @@ MODULE lsm_routines
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_zbar, catch_calc_peatclsm_waterlevel
   PUBLIC :: catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp, catch_calc_wtotl,  catch_calc_ght, catch_calc_FT
-  PUBLIC :: dampen_tc_oscillations, irrigation_rate
+  PUBLIC :: dampen_tc_oscillations
 
   INTERFACE catch_calc_zbar
      MODULE PROCEDURE catch_calc_zbar_scalar
