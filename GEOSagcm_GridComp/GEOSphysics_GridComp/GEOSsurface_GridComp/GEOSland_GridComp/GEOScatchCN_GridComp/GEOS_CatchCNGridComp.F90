@@ -671,6 +671,33 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'SPRINKLERRATE'                         ,&
+         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  
+    
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'DRIPRATE'                              ,&
+         LONG_NAME  = 'drip_irrigation_rate'	              ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  	 
+    
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'FLOODRATE'                             ,&
+         LONG_NAME  = 'flood_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
   !  EXPORT STATE:
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
@@ -789,6 +816,8 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
