@@ -52,7 +52,7 @@ module GEOS_IrrigationGridCompMod
   public SetServices
 
   integer    :: IRRIG_METHOD, IRRIG_TRIGGER
-  logical    :: RUN_IRRIG
+  integer    :: RUN_IRRIG
   
   type IRRIG_WRAP
      type (irrig_params), pointer   :: PTR => null()
@@ -130,14 +130,14 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG   , DEFAULT=.false., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG   , DEFAULT=0, __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_TRIGGER:', value=IRRIG_TRIGGER,DEFAULT=0, __RC__ )    
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:' , value=IRRIG_METHOD, DEFAULT=0, __RC__ )
    
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
     ! Leave GEOSirrigation_GridComp if RUN_IRRIG == .FALSE.
-    if(.not. RUN_IRRIG) then
+    if(RUN_IRRIG == 0) then
        RETURN_(ESMF_SUCCESS)
     endif
     
