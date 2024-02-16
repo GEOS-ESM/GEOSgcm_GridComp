@@ -136,7 +136,7 @@ contains
    
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-    ! Leave GEOSirrigation_GridComp if RUN_IRRIG == .FALSE.
+    ! Leave GEOSirrigation_GridComp if RUN_IRRIG == 0
     if(RUN_IRRIG == 0) then
        RETURN_(ESMF_SUCCESS)
     endif
