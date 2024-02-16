@@ -1302,9 +1302,6 @@ contains
 
        ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
        !   before and after relayer; in select cases, adjust snow heat content and temp
-       !
-       ! NOTE: logicals before relayer were computed with    "buffer" (use_threshold_fac=.true. )
-       !       reals    after  relayer were computed without "buffer" (use_threshold_fac=.false.)
 
        do i=1,N_snow                                                          
 
