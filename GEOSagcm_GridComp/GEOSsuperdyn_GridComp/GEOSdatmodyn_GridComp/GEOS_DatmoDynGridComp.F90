@@ -336,7 +336,7 @@ contains
          LONG_NAME ='pressure velocity',                        &
          UNITS     ='Pa/s',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
-         VLOCATION = MAPL_VLocationEdge,                         &
+         VLOCATION = MAPL_VLocationCenter,                         &
                                                         __RC__  )
 
     call MAPL_AddExportSpec(GC,                               &
@@ -2122,7 +2122,11 @@ contains
       if (associated(TOUT))   TOUT   = T
       if (associated(VOUT))   VOUT   = V
       if (associated(UOUT))   UOUT   = U
-      if (associated(OMOUT))  OMOUT  = OM
+      if (associated(OMOUT))  then
+         do l=lbound(om,3),ubound(om,3)-1
+            OMOUT(:,:,l+1) = (om(:,:,l+1)+om(:,:,l))/2.0
+         enddo
+      end if
       if (associated(PKEOUT))  PKEOUT  = PKE
 
       DEALLOCATE(THOBS)
