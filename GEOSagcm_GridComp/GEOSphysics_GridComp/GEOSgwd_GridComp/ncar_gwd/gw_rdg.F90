@@ -273,7 +273,6 @@ subroutine gw_rdg_ifc( band, &
    real :: zfac_layer
    real :: utfac,uhtmax
 
-   character(len=4) :: type         ! BETA or GAMMA (just BETA for now)
    character(len=1) :: cn
    character(len=9) :: fname(4)
    !----------------------------------------------------------------------------
@@ -282,8 +281,6 @@ subroutine gw_rdg_ifc( band, &
    allocate(tau(ncol,  -band%ngwv:band%ngwv  , pverp))
    allocate(gwut(ncol,pver,-band%ngwv:band%ngwv  ))
    allocate(c(ncol,-band%ngwv:band%ngwv))
-
-   type='BETA'
 
    ! initialize accumulated momentum fluxes and tendencies
    utrdg = 0.
@@ -323,18 +320,18 @@ subroutine gw_rdg_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha, &
-          kwvrdg=kwvrdg(:,nn), satfac_in=1.0, tau_adjust=pint_adj)
+          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha, &
+          kwvrdg=kwvrdg(:,nn))
 
      ! Apply efficiency and limiters to the totals
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                         effrdg(:,nn), t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                        tend_level, tndmax_in=orotndmax)
+                        tend_level, tndmax_in=orotndmax, pint_adj=pint_adj)
 
-     do i=1,ncol
+      do i=1,ncol
       !-------------------------------------------------------------------
       ! Apply tendency limiter to prevent unrealistically strong forcing
+      ! Accumulate ridge totals
       !-------------------------------------------------------------------
        uhtmax = 0.0
        utfac  = 1.0
@@ -350,37 +347,10 @@ subroutine gw_rdg_ifc( band, &
           utrdg(i,k) = utrdg(i,k)*utfac
           vtrdg(i,k) = vtrdg(i,k)*utfac
           ttrdg(i,k) = ttrdg(i,k)*utfac
-       end do
-     end do  ! i=1,ncol
-
-#ifdef CAM
-! disable tracer mixing in GW for now.
-      do icnst = 1, pcnst
-      do k = 1, pver
-         qtrdg(:,k,icnst) = qtrdg(:,k,icnst) + qtgw(:,k,icnst)
-      end do
-      end do
-      if (nn <= 6) then
-         write(cn, '(i1)') nn
-      end if
-#endif
+        end do
+      end do  ! i=1,ncol
 
    end do ! end of loop over multiple ridges
-
-   if (trim(type) == 'BETA') then
-      fname(1) = 'TAUGWX'
-      fname(2) = 'TAUGWY'
-      fname(3) = 'UTGWORO'
-      fname(4) = 'VTGWORO'
-   else if (trim(type) == 'GAMMA') then
-      fname(1) = 'TAURDGGMX'
-      fname(2) = 'TAURDGGMY'
-      fname(3) = 'UTRDGGM'
-      fname(4) = 'VTRDGGM'
-   else
-      call endrun('gw_rdg_calc: FATAL: type must be either BETA or GAMMA'&
-                  //' type= '//type)
-   end if
 
    deallocate(tau, gwut, c)
 

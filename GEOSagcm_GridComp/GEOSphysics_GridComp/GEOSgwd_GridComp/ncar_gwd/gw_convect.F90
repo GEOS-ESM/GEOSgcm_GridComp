@@ -125,11 +125,12 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   ! Number in each direction is half of total (and minus phase speed of 0).
   desc%maxuh = (desc%maxuh-1)/2
-  ! midpoint of spectrum in netcdf file is ps_mfcc (odd number) -1 divided by 2, plus 1
-  ! E.g., ps_mfcc = 5. So, ps_mfcc_mid = 3
-  !       1  2  3  4  5
-  !      -2 -1  0 +1 +2
-  ps_mfcc_mid= (ngwv_file-1)/2
+
+  ! midpoint of spectrum in netcdf file is ps_mfcc (odd number) divided by 2, plus 1
+  ! E.g., ps_mfcc = 81. So, ps_mfcc_mid = 41
+  !       1   11  21  31 32 33 34 35 36 37 38 39 40 41 42 43 ... 
+  !      -40 -30 -20 -10 -9 -8 -7 -6 -5 -4 -3 -2 -1  0 +1 +2 ...
+  ps_mfcc_mid= INT(ngwv_file/2) + 1
 
   desc%active = active
   if (active) then
@@ -410,16 +411,14 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
   ubi(:,1) = ubm(:,1)
   ubi(:,2:pver) = midpoint_interp(ubm)
 
-  ! Average wind in heating region, relative to storm cells.
   uh = 0.0
-  do k = minval(topi), maxval(boti)
-     where (k >= topi .and. k <= boti)
-       uh = uh + ubm(:,k)/(boti-topi+1)
-     end where
-  end do
-
   do i=1,ncol
      if (desc%storm_shift .and. (hd_idx(i) > 0)) then
+         ! Average wind in heating region, relative to storm cells.
+          do k = topi(i), boti(i)
+             uh(i) = uh(i) + ubm(i,k)
+          end do
+          uh(i) = uh(i)/(boti(i)-topi(i)+1)
          ! Find the cell speed where the storm speed is > 10 m/s.
          ! Storm speed is taken to be the source wind speed.
           CS(i) = sign(max(abs(ubm(i,desc%k(i)))-10.0, 0.0), ubm(i,desc%k(i)))
@@ -476,7 +475,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
         end if
 
         ! Adjust magnitude.
-        tau0 = tau0*(q0(i)**2)/AL
+        tau0 = tau0*q0(i)*q0(i)/AL
 
         ! Adjust for critical level filtering.
         tau0(Umini(i):Umaxi(i)) = 0.0
@@ -497,12 +496,12 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Maximum condensate change, for frontal detection
           q0(i) = 0.0
           do k = pver, 1, -1 ! Surface to top of atmosphere
-             if (dqcdt(i,k) < q0(i)) then ! Find max DQCDT level
+             if (dqcdt(i,k) > q0(i)) then ! Find max DQCDT level
                 q0(i) = dqcdt(i,k)
                 desc%k(i) = k
              endif
           end do
-          if (q0(i) < -1.e-8) then ! frontal region (large-scale forcing)
+          if (q0(i) > 1.e-8) then ! frontal region (large-scale forcing)
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
@@ -611,9 +610,6 @@ subroutine gw_beres_ifc( band, &
    ! Heating depth [m] and maximum heating in each column.
    real :: hdepth(ncol), maxq0(ncol)
 
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
-
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -635,31 +631,22 @@ subroutine gw_beres_ifc( band, &
         effgw = 0.0
      end where
 
-!GEOS pressure scaling near model top
-     zfac_layer = 0.35e2 ! 0.35mb
-     do k=1,pver+1
-       do i=1,ncol
-         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
-       enddo
-     enddo
-
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
           ubm, ubi, xv, yv, c, hdepth, maxq0, lats, dqcdt=dqcdt)
 
-     ! Solve for the drag profile with orographic sources.
+     ! Solve for the drag profile with convective sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, utgw, vtgw, &
-          ttgw, gwut, alpha) !, tau_adjust=pint_adj)
+          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 tend_level, tndmax_in=desc%tndmax) !, pint_adj=pint_adj)
- 
+                                 tend_level, tndmax_in=desc%tndmax)
+
    deallocate(tau, gwut, c)
 
 end subroutine gw_beres_ifc
