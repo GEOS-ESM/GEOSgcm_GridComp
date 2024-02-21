@@ -37,12 +37,12 @@ module GEOS_GcmGridCompMod
   integer            :: NUM_ICE_LAYERS
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: DO_CICE_THERMO
-  integer            :: DO_DATA_ATM4OCN
   integer            :: DO_OBIO
   integer            :: DO_DATASEA
   integer            :: DO_WAVES
   integer            :: DO_SEA_SPRAY
   logical            :: seaIceT_extData
+  logical            :: DO_DATA_ATM4OCN
 
 !=============================================================================
 
@@ -206,7 +206,7 @@ contains
     endif
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, _RC)
-    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATAATM:", DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:", DEFAULT=.FALSE., _RC)
     call MAPL_GetResource ( MAPL, DO_DATASEA, Label="USE_DATASEA:", DEFAULT=1, _RC)
     call MAPL_GetResource ( MAPL, seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:", DEFAULT=.FALSE., _RC )
     call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
@@ -245,7 +245,7 @@ contains
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
 
-    if(DO_DATA_ATM4OCN/=0) then
+    if(DO_DATA_ATM4OCN) then
        AGCM = MAPL_AddChild(GC, NAME='DATAATM', SS=DATAATM_SetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
@@ -378,7 +378,7 @@ contains
 
 ! Export for IAU and/or Analysis purposes
 ! ---------------------------------------
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'AK',       &
             CHILD_ID = AGCM,         &
@@ -536,7 +536,7 @@ contains
        VERIFY_(STATUS)
     endif
 
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
        call MAPL_AddConnectivity ( GC,                              &
             SHORT_NAME  = (/'PHIS  ','AK    ','BK    ','U     ','V     ','TV    ','PS    ','DELP  ','O3PPMV', 'TS    ','AREA  '/),       &
             DST_ID = AIAU,                                          &
@@ -617,10 +617,6 @@ contains
            _RC)
     endif 
 
-    if (DO_OBIO/=0) then
-      call OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
-    end if
-
     if (DO_CICE_THERMO == 1) then  
        call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/ &
@@ -629,6 +625,10 @@ contains
           CHILD      = OGCM,           &
           _RC)
     endif
+
+    if (DO_OBIO/=0) then
+      call OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
+    end if
 
    if (DO_WAVES /= 0) then
       ! Terminate the imports of WGCM with the exception 
@@ -740,7 +740,7 @@ contains
 
       subroutine OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
 
-        integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
+        logical,                    intent(IN   ) ::  DO_DATA_ATM4OCN
         integer, optional,          intent(  OUT) ::  RC
 
         character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
@@ -754,43 +754,25 @@ contains
            RC=STATUS  )
         VERIFY_(STATUS)
 
-        call MAPL_TerminateImport( GC,                               &
-           SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
-                          'RH    ', 'OZ    ', 'WV    '/),            &
-           CHILD      = OGCM,                                        &
-           RC=STATUS  )
-        VERIFY_(STATUS)
-
         call MAPL_TerminateImport    ( GC,                           &
            SHORT_NAME = (/'UU'/),                                    &
            CHILD      = OGCM,                                        &
            RC=STATUS  )
         VERIFY_(STATUS)
 
-        do k=1, 33
-         write(unit = suffix, fmt = '(i2.2)') k
-         call MAPL_TerminateImport( GC,           &
-            SHORT_NAME = [ character(len=(8)) ::  &
-               'TAUA_'//suffix,                   &
-               'ASYMP_'//suffix,                  &
-               'SSALB_'//suffix ],                &
-            CHILD      = OGCM,                    &
-            RC=STATUS  )
-         VERIFY_(STATUS)
-        enddo
+        call MAPL_TerminateImport    ( GC,                         &
+             SHORT_NAME = (/'DRBAND',  'DFBAND'/),                 &
+             CHILD      = OGCM,                                    &
+             RC=STATUS  )
+        VERIFY_(STATUS)
 
-        if(DO_DATA_ATM4OCN==0) then
+        if(.not. DO_DATA_ATM4OCN) then
           call MAPL_TerminateImport    ( GC,                         &
                SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),     &
                CHILD      = OGCM,                                    &
                RC=STATUS  )
           VERIFY_(STATUS)
 
-          call MAPL_TerminateImport    ( GC,                         &
-               SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),            &
-               CHILD      = OGCM,                                    &
-               RC=STATUS  )
-          VERIFY_(STATUS)
         end if
 
         RETURN_(ESMF_SUCCESS)
@@ -975,7 +957,7 @@ contains
     VERIFY_(STATUS)
     call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
     VERIFY_(STATUS)
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
        call ESMF_GridCompSet(GCS(AIAU),  grid=agrid, rc=status)
        VERIFY_(STATUS)
        call ESMF_GridCompSet(GCS(ADFI),  grid=agrid, rc=status)
@@ -1576,7 +1558,7 @@ contains
 
    subroutine AllocateExports_OBIO(DO_DATA_ATM4OCN, RC)
 
-     integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
+     logical,                    intent(IN   ) ::  DO_DATA_ATM4OCN
      integer, optional,          intent(  OUT) ::  RC
 
      integer                                   :: STATUS
@@ -1592,38 +1574,22 @@ contains
           RC=STATUS )
      VERIFY_(STATUS)
 
-     do k=1, 33
-        write(unit = suffix, fmt = '(i2.2)') k
-        call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-           [ character(len=8) ::                         &
-              'TAUA_'//suffix,                           &
-              'ASYMP_'//suffix,                          &
-              'SSALB_'//suffix] ,                        &
-           RC=STATUS)
-        VERIFY_(STATUS)
-     enddo
-
      call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
              (/'DUDP', 'DUWT', 'DUSD'/),             &
              RC=STATUS )
      VERIFY_(STATUS)
 
-     call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
-                       (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
-                         'OZ    ', 'WV    '/),                             &
-                       RC=STATUS)
+     call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
+          (/'DRBAND', 'DFBAND'/),                                        &
+          RC=STATUS )
      VERIFY_(STATUS)
 
-     if(DO_DATA_ATM4OCN==0) then
+     if(.not. DO_DATA_ATM4OCN) then
         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
              (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-             (/'FSWBAND  ', 'FSWBANDNA'/),               &
-             RC=STATUS )
-        VERIFY_(STATUS)
      endif
 
      RETURN_(ESMF_SUCCESS)
@@ -1752,9 +1718,9 @@ contains
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
     VERIFY_(STATUS)
 
-    ! Check for Default DO_DATA_ATM4OCN=0 (FALSE) mode
+    ! Check for Default DO_DATA_ATM4OCN FALSE mode
     ! -------------------------------------------
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
 
        call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
        VERIFY_(STATUS)
@@ -2046,7 +2012,7 @@ contains
     !--------------------
 
     call MAPL_TimerOn(MAPL,"--ATMOSPHERE"  )
-    if(DO_DATA_ATM4OCN/=0) then
+    if(DO_DATA_ATM4OCN) then
       call MAPL_TimerOn(MAPL,"DATAATM"     )
     else
       call MAPL_TimerOn(MAPL,"AGCM"        )
@@ -2055,14 +2021,14 @@ contains
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
 
-    if(DO_DATA_ATM4OCN/=0) then
+    if(DO_DATA_ATM4OCN) then
       call MAPL_TimerOff(MAPL,"DATAATM"     )
     else
       call MAPL_TimerOff(MAPL,"AGCM"        )
     endif
     call MAPL_TimerOff(MAPL,"--ATMOSPHERE"  )
 
-    if(DO_DATA_ATM4OCN==0) then
+    if(.not. DO_DATA_ATM4OCN) then
        ! Accumulate for digital filter
        ! -----------------------------
        call ESMF_GridCompRun ( GCS(ADFI), importState=GIM(ADFI), exportState=GEX(ADFI), clock=clock, userRC=status )
@@ -2441,7 +2407,7 @@ contains
 
    subroutine OBIO_A2O(DO_DATA_ATM4OCN, RC)
 
-     integer,                    intent(IN   ) ::  DO_DATA_ATM4OCN
+     logical,                    intent(IN   ) ::  DO_DATA_ATM4OCN
      integer, optional,          intent(  OUT) ::  RC
 
      integer                                   :: STATUS
@@ -2452,16 +2418,6 @@ contains
      call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
      VERIFY_(STATUS)
 
-     do k=1, 33
-       write(unit = suffix, fmt = '(i2.2)') k
-       call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
-       VERIFY_(STATUS)
-     enddo
-
      call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
      VERIFY_(STATUS)
      call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
@@ -2469,22 +2425,12 @@ contains
      call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
      VERIFY_(STATUS)
 
-     call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DRBAND', expSKIN, 'DRBAND', RC=STATUS)
      VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DFBAND', expSKIN, 'DFBAND', RC=STATUS)
      VERIFY_(STATUS)
 
-     if(DO_DATA_ATM4OCN==0) then
+     if(.not. DO_DATA_ATM4OCN) then
        call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
        VERIFY_(STATUS)
        call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
@@ -2494,10 +2440,6 @@ contains
        call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
        VERIFY_(STATUS)
 
-       call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
-       VERIFY_(STATUS)
      endif
 
      RETURN_(ESMF_SUCCESS)
