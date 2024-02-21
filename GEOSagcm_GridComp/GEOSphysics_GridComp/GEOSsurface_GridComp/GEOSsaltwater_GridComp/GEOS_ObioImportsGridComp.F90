@@ -3,7 +3,7 @@
 #include "MAPL_Generic.h"
 
 !=============================================================================
-module GEOS_ObioGridCompMod
+module GEOS_ObioImportsGridCompMod
 
 ! !USES:
 
@@ -29,6 +29,8 @@ module GEOS_ObioGridCompMod
   integer, parameter :: NB_CHOU_UV  = 5                        ! number of UV bands
   integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
+  integer, parameter :: NB_OBIO  = 33                          !total number of bands for OradBio
+  logical            :: DO_DATA_ATM4OCN
 
   contains
 
@@ -69,6 +71,10 @@ module GEOS_ObioGridCompMod
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
 
+! Are we running DataAtm?
+!------------------------
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:", DEFAULT=.FALSE., _RC)
+
 ! Set the state variable specs.
 ! -----------------------------
 
@@ -100,7 +106,7 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           _RC  ) 
- 
+
     call MAPL_AddExportSpec(GC,                    &
           SHORT_NAME         = 'DUSD'                      ,&
           LONG_NAME          = 'Dust Sedimentation'        ,&
@@ -109,60 +115,65 @@ module GEOS_ObioGridCompMod
           UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           _RC  ) 
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCDP'                            ,&
-          LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCWT'                            ,&
-          LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCDP'                            ,&
-          LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCWT'                            ,&
-          LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
+ 
+    call MAPL_AddExportSpec(GC,                   &
+         SHORT_NAME         = 'DRBAND'                         ,&
+         LONG_NAME          = 'surface_downwelling_shortwave_beam_flux_per_OBIO_band', &
+         UNITS              = 'W m-2'                          ,&
+         DIMS               = MAPL_DimsTileOnly                ,&
+         UNGRIDDED_DIMS     = (/NB_OBIO/)                      ,&
+         VLOCATION          = MAPL_VLocationNone               ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          _RC  ) 
+    call MAPL_AddExportSpec(GC,                   &
+         SHORT_NAME         = 'DFBAND'                         ,&
+         LONG_NAME          = 'surface_downwelling_shortwave_diffuse_flux_per_OBIO_band' ,&
+         UNITS              = 'W m-2'                          ,&
+         DIMS               = MAPL_DimsTileOnly                ,&
+         UNGRIDDED_DIMS     = (/NB_OBIO/)                      ,&
+         VLOCATION          = MAPL_VLocationNone               ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    if(.not. DO_DATA_ATM4OCN) then    
+      call MAPL_AddExportSpec(GC,                    &
+           SHORT_NAME         = 'BCDP'                            ,&
+           LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
+           UNITS              = 'kg m-2 s-1'                      ,&
+           DIMS               = MAPL_DimsTileOnly                 ,&
+           UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
+           VLOCATION          = MAPL_VLocationNone                ,&
+           _RC  ) 
+     
+      call MAPL_AddExportSpec(GC,                    &
+           SHORT_NAME         = 'BCWT'                            ,&
+           LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
+           UNITS              = 'kg m-2 s-1'                      ,&
+           DIMS               = MAPL_DimsTileOnly                 ,&
+           UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
+           VLOCATION          = MAPL_VLocationNone                ,&
+           _RC  ) 
+     
+      call MAPL_AddExportSpec(GC,                    &
+           SHORT_NAME         = 'OCDP'                            ,&
+           LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
+           UNITS              = 'kg m-2 s-1'                      ,&
+           DIMS               = MAPL_DimsTileOnly                 ,&
+           UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
+           VLOCATION          = MAPL_VLocationNone                ,&
+           _RC  ) 
+     
+      call MAPL_AddExportSpec(GC,                    &
+           SHORT_NAME         = 'OCWT'                            ,&
+           LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
+           UNITS              = 'kg m-2 s-1'                      ,&
+           DIMS               = MAPL_DimsTileOnly                 ,&
+           UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
+           VLOCATION          = MAPL_VLocationNone                ,&
+           _RC  ) 
+
+    endif 
 
 ! Following OBIO related imports are
 ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
@@ -205,9 +216,32 @@ module GEOS_ObioGridCompMod
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
           _RC  ) 
+   call MAPL_AddImportSpec(GC,                   &
+        SHORT_NAME         = 'DRBAND'                         ,&
+        LONG_NAME          = 'surface_downwelling_shortwave_beam_flux_per_OBIO_band', &
+        UNITS              = 'W m-2'                          ,&
+        DIMS               = MAPL_DimsTileOnly                ,&
+        UNGRIDDED_DIMS     = (/NB_OBIO/)                      ,&
+        VLOCATION          = MAPL_VLocationNone               ,&
+        RESTART            = MAPL_RestartSkip                 ,&
+        RC=STATUS  )
+   VERIFY_(STATUS)
+    
+   call MAPL_AddImportSpec(GC,                   &
+        SHORT_NAME         = 'DFBAND'                         ,&  
+        LONG_NAME          = 'surface_downwelling_shortwave_diffuse_flux_per_OBIO_band' ,&
+        UNITS              = 'W m-2'                          ,&  
+        DIMS               = MAPL_DimsTileOnly                ,&
+        UNGRIDDED_DIMS     = (/NB_OBIO/)                      ,&  
+        VLOCATION          = MAPL_VLocationNone               ,&
+        RESTART            = MAPL_RestartSkip                 ,&  
+        RC=STATUS  )
+   VERIFY_(STATUS)
 
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCDP'                            ,&
+
+   if(.not. DO_DATA_ATM4OCN) then
+     call MAPL_AddImportSpec(GC,                                  &
+          SHORT_NAME         = 'BCDP'                            ,&
           LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
           UNITS              = 'kg m-2 s-1'                      ,&
           DIMS               = MAPL_DimsTileOnly                 ,&
@@ -216,8 +250,8 @@ module GEOS_ObioGridCompMod
           RESTART            = MAPL_RestartSkip                  ,&
           _RC  ) 
 
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCWT'                            ,&
+     call MAPL_AddImportSpec(GC,                                  &
+          SHORT_NAME         = 'BCWT'                            ,&
           LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
           UNITS              = 'kg m-2 s-1'                      ,&
           DIMS               = MAPL_DimsTileOnly                 ,&
@@ -226,8 +260,8 @@ module GEOS_ObioGridCompMod
           RESTART            = MAPL_RestartSkip                  ,&
           _RC  ) 
 
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCDP'                            ,&
+     call MAPL_AddImportSpec(GC,                                  &
+          SHORT_NAME         = 'OCDP'                            ,&
           LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
           UNITS              = 'kg m-2 s-1'                      ,&
           DIMS               = MAPL_DimsTileOnly                 ,&
@@ -236,8 +270,8 @@ module GEOS_ObioGridCompMod
           RESTART            = MAPL_RestartSkip                  ,&
           _RC  ) 
 
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCWT'                            ,&
+     call MAPL_AddImportSpec(GC,                                  &
+          SHORT_NAME         = 'OCWT'                            ,&
           LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
           UNITS              = 'kg m-2 s-1'                      ,&
           DIMS               = MAPL_DimsTileOnly                 ,&
@@ -246,25 +280,7 @@ module GEOS_ObioGridCompMod
           RESTART            = MAPL_RestartSkip                  ,&
           _RC  ) 
 
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          _RC  ) 
-
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          _RC  ) 
+    endif 
 
 ! Set the Profiling timers
 ! ------------------------
@@ -457,8 +473,8 @@ contains
    real, pointer, dimension(:,:)  :: BCWTEX      => null()
    real, pointer, dimension(:,:)  :: OCDPEX      => null()
    real, pointer, dimension(:,:)  :: OCWTEX      => null()
-   real, pointer, dimension(:,:)  :: FSWBANDEX   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNAEX => null()
+   real, pointer, dimension(:,:)  :: DRBANDEX    => null()
+   real, pointer, dimension(:,:)  :: DFBANDEX    => null()
 
 ! pointers to import
    real, pointer, dimension(:)    :: CO2SC     => null()
@@ -469,8 +485,8 @@ contains
    real, pointer, dimension(:,:)  :: BCWT      => null()
    real, pointer, dimension(:,:)  :: OCDP      => null()
    real, pointer, dimension(:,:)  :: OCWT      => null()
-   real, pointer, dimension(:,:)  :: FSWBAND   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNA => null()
+   real, pointer, dimension(:,:)  :: DRBAND    => null()
+   real, pointer, dimension(:,:)  :: DFBAND    => null()
 
 !  Begin...
 !----------
@@ -484,39 +500,42 @@ contains
     call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   ,    _RC)
     call MAPL_GetPointer(IMPORT,DUWT   , 'DUWT'   ,    _RC)
     call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    _RC)
-    call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    _RC)
-    call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    _RC)
-    call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    _RC)
-    call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    _RC)
-    call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   _RC)
-    call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', _RC)
-
+    call MAPL_GetPointer(IMPORT,DRBAND , 'DRBAND' ,    _RC)
+    call MAPL_GetPointer(IMPORT,DFBAND , 'DFBAND' ,    _RC)
+    if(.not. DO_DATA_ATM4OCN) then
+      call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    _RC)
+      call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    _RC)
+      call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    _RC)
+      call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    _RC)
+    endif
 ! Pointers to outputs
 !--------------------
 
     call MAPL_GetPointer(EXPORT,CO2SCEX,    'CO2SC'   ,    _RC)
     call MAPL_GetPointer(EXPORT,DUDPEX ,    'DUDP'    ,    _RC)
     call MAPL_GetPointer(EXPORT,DUWTEX ,    'DUWT'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    _RC)
-    call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND',     _RC)
-    call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   _RC)
-
+    call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'   ,    _RC)
+    call MAPL_GetPointer(EXPORT,DRBANDEX,   'DRBAND'  ,    _RC)
+    call MAPL_GetPointer(EXPORT,DFBANDEX,   'DFBAND'  ,    _RC)
+    if(.not. DO_DATA_ATM4OCN) then 
+      call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'   ,    _RC)
+      call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    _RC)
+      call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    _RC)
+      call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    _RC)
+    endif
 
     if  (  associated(CO2SCEX)      )  CO2SCEX      =  CO2SC
     if  (  associated(DUDPEX)       )  DUDPEX       =  DUDP
     if  (  associated(DUWTEX)       )  DUWTEX       =  DUWT
     if  (  associated(DUSDEX)       )  DUSDEX       =  DUSD
-    if  (  associated(BCDPEX)       )  BCDPEX       =  BCDP
-    if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
-    if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
-    if  (  associated(OCWTEX)       )  OCWTEX       =  OCWT
-    if  (  associated(FSWBANDEX)    )  FSWBANDEX    =  FSWBAND
-    if  (  associated(FSWBANDNAEX)  )  FSWBANDNAEX  =  FSWBANDNA
-
+    if  (  associated(DRBANDEX)     )  DRBANDEX     =  DRBAND
+    if  (  associated(DFBANDEX)     )  DFBANDEX     =  DFBAND
+    if(.not. DO_DATA_ATM4OCN) then 
+      if  (  associated(BCDPEX)       )  BCDPEX       =  BCDP
+      if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
+      if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
+      if  (  associated(OCWTEX)       )  OCWTEX       =  OCWT
+    endif
 !  All done
 !-----------
 
@@ -528,5 +547,5 @@ contains
 
 end subroutine RUN2
 
-end module GEOS_ObioGridCompMod
+end module GEOS_ObioImportsGridCompMod
 
