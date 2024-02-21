@@ -93,6 +93,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     awqi3,                         &
                     awu3,                          &
                     awv3,                          &
+                    ssrc3,                         &
+                    qvsrc3,                        &
+                    qlsrc3,                        &
                     ! Outputs required for SHOC and ADG PDF
                     mfw2,                          &
                     mfw3,                          &
@@ -170,7 +173,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                              mftke
 
    REAL,DIMENSION(ITS:ITE,JTS:JTE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfhl3,&!mfqt2,mfhl2,&
-                                                        mfhlqt,dqrdt,dqsdt
+                                                        mfhlqt,dqrdt,dqsdt,ssrc3,qvsrc3,qlsrc3
 
 
   ! Diagnostic outputs
@@ -278,6 +281,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
    awqi3 =0.
    awu3  =0.
    awv3  =0.
+   ssrc3 =0.
+   qvsrc3=0.
+   qlsrc3=0.
    buoyf =0.
    mfw2  =0.
    mfw3  =0.
@@ -314,7 +320,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ! if CLASP disabled: mass-flux if positive surface buoyancy flux and
       !                    TKE at 2nd model level above threshold
 !      IF ( (wthv > 0.0 .and. TKE3(IH,JH,kte-1)>0.01 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
-      IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.2e4)      &
+      IF ( (wthv > 0.0 .and. MFPARAMS%doclasp==0 .and. phis(IH,JH).lt.3e4)      &
       .or. (any(mfsrcthl(IH,JH,1:MFPARAMS%NUP) >= -2.0) .and. MFPARAMS%doclasp/=0)) then
 
 !     print *,'wthv=',wthv,' wqt=',wqt,' wthl=',wthl,' edmfdepth=',edmfdepth(IH,JH)
@@ -615,6 +621,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               Wn2=EntW*UPW(k-1,I)**2+MFPARAMS%WA*B/WP*(1.-EntW)
             END IF
 
+
             IF (Wn2>0.) THEN
                UPW(K,I)=sqrt(Wn2)
                UPTHV(K,I)=THVn
@@ -625,6 +632,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                UPU(K,I)=Un
                UPV(K,I)=Vn
                UPA(K,I)=UPA(K-1,I)
+
+               ! trisolver source terms due to condensation. assumes that condensation is responsible
+               ! for any increase in condesate flux with height. ignores lateral mixing.
+               tmp = max(0.,UPA(K,I)*(RHOE(K)*UPW(K,I)*UPQL(K,I)-RHOE(K-1)*UPW(K-1,I)*UPQL(K-1,I)))
+               qlsrc3(IH,JH,KTE+KTS-K) = qlsrc3(IH,JH,KTE+KTS-K) + tmp
+               qvsrc3(IH,JH,KTE+KTS-K) = qvsrc3(IH,JH,KTE+KTS-K) - tmp
+               ssrc3(IH,JH,KTE+KTS-K)  = ssrc3(IH,JH,KTE+KTS-K)  + tmp*MAPL_ALHL
             ELSE
               UPW(K,I) = 0.
               UPA(K,I) = 0.
@@ -706,6 +720,21 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ENDDO
       DQRDT(IH,JH,KTS:KTE) = QR(KTE:KTS:-1)/DT
       DQSDT(IH,JH,KTS:KTE) = QS(KTE:KTS:-1)/DT
+
+      !
+      ! do tracer transport with 'bulk' plume
+      !
+
+!      DO n=1,NTR
+        ! Find tracer flux profile
+!        DO k=KTS-1,KTE
+!          trflx(
+!        END DO
+
+        ! Add tracer tendency directly to bundle
+        
+!      END DO
+
       !
       ! writing updraft properties for output
       ! all variables, except Areas are now multipled by the area
@@ -826,7 +855,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                          + mapl_alhl*( UPQL(K,i) - QLI(K) )   &
                          + mapl_alhs*( UPQI(K,I) - QII(K) )
           end if
-          ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
+          ltm=exfh(k)*(UPTHL(K,i)-THLI(K))
           s_aws(k)  = s_aws(K)+UPA(K,i)*UPW(K,i)*tmp ! for trisolver
           s_ahl2(k) = s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_ahl3(k) = s_ahl3(K)+UPA(K,i)*ltm*ltm*ltm
@@ -900,9 +929,14 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         buoyf(IH,JH,K)  = s_buoyf(KTE+KTS-K)    ! can be used in SHOC
         mfw2(IH,JH,K)   = 0.5*(s_aw2(KTE+KTS-K-1)+s_aw2(KTE+KTS-K))
         mfw3(IH,JH,K)   = 0.5*(s_aw3(KTE+KTS-K-1)+s_aw3(KTE+KTS-K))
-        mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
-        mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
         mfhlqt(IH,JH,K) = 0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
+        if (SUM(moist_a(KTS-1:KTE+KTS-K)).le.1e-4) then
+          mfqt3(IH,JH,K) = 0.
+          mfhl3(IH,JH,K) = 0.
+        else
+          mfqt3(IH,JH,K)  = 0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
+          mfhl3(IH,JH,K)  = 0.5*(s_ahl3(KTE+KTS-K-1)+s_ahl3(KTE+KTS-K))
+        end if
   !      mfhl2(IH,JH,K)=0.5*(s_ahl2(KTE+KTS-K-1)+s_ahl2(KTE+KTS-K))  ! no longer needed
   !      mfqt2(IH,JH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))  ! no longer needed
       ENDDO
@@ -942,7 +976,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
    thstar=max(0.,wthv)/wstar
 
 !   sigmaW=MFPARAMS%AlphaW*wstar
-   sigmaQT=1.0*qstar
+   sigmaQT=2.0*qstar
    sigmaTH=2.0*thstar
 
 ! print *,'sigQT=',sigmaQT,'  sigTH=',sigmaTH,'  wstar=',wstar
@@ -961,8 +995,10 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
     tep   = tep - MAPL_GRAV*( z2-z1 )/MAPL_CP
 
-    qp    = qp  + (0.25/300.)*(z2-z1)*(q(k)-qp)
-    tep   = tep + (0.25/300.)*(z2-z1)*(t(k)-tep)
+!    qp    = qp  + (0.25/300.)*(z2-z1)*(q(k)-qp)
+!    tep   = tep + (0.25/300.)*(z2-z1)*(t(k)-tep)
+    qp    = qp  + (0.7/1000.)*(z2-z1)*(q(k)-qp)   ! assume fractional entrainment rate of 0.75/km
+    tep   = tep + (0.7/1000.)*(z2-z1)*(t(k)-tep)
 
 !    print *,'mfdepth: tep=',tep,' pp=',pp
     dqsp  = GEOS_DQSAT(tep , pp , qsat=qsp,  pascals=.true. )
@@ -973,7 +1009,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
 
     ! compare Tv env vs parcel
-    if ( t2*(1.+MAPL_VIREPS*q(k)) .ge. tep*(1.+MAPL_VIREPS*qp)+0.1 ) then
+    if ( t2*(1.+MAPL_VIREPS*q(k)) .ge. tep*(1.+MAPL_VIREPS*qp)+0.2 ) then
       ztop = 0.5*(z2+z1)
       exit
     end if

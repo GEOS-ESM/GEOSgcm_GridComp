@@ -1,6 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
+!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -1330,8 +1331,7 @@ module GEOSmoist_Process_Library
 ! References in the comments in this code are given to                   !
 ! the Appendix A of Pete Bogenschutz's dissertation.                     !
 !------------------------------------------------------------------------!
- subroutine partition_dblgss( dt,           &  ! IN
-                              fQi,          &
+ subroutine partition_dblgss( fQi,          &  ! IN
                               tabs,         &
                               qwv,          &
                               qc,           &  ! OUT
@@ -1386,7 +1386,7 @@ module GEOSmoist_Process_Library
  use MAPL_SatVaporMod,  only: MAPL_EQsat
 
    real, intent(in   )  :: fQi         ! ice fraction
-   real, intent(in   )  :: DT          ! timestep [s]
+!   real, intent(in   )  :: DT          ! timestep [s]
    real, intent(in   )  :: tabs        ! absolute temperature [K]
    real, intent(in   )  :: qwv         ! specific humidity [kg kg-1]
    real, intent(  out)  :: qc          ! liquid+ice condensate [kg kg-1]
@@ -1500,7 +1500,7 @@ module GEOSmoist_Process_Library
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
           else
-            sqrtthl  = 0.0
+            sqrtthl  = 1e-3
             skew_thl = 0.
           endif
           if (qwsec > 0.0) then
@@ -1536,7 +1536,7 @@ module GEOSmoist_Process_Library
 !           pdf_a = max(0.,min(0.5,mffrc))
 !         end if
 
-         if (pdf_a>1e-3) then
+         if (pdf_a>1e-3 .and. pdf_a<0.5) then
            aterm = pdf_a
          else
            aterm = 0.5
@@ -1652,21 +1652,24 @@ module GEOSmoist_Process_Library
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.eq.0.) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec
               qw2_2     = qwsec
               sqrtqw2_1 = sqrt(qw2_1)
               sqrtqw2_2 = sqrt(qw2_2)
+
             else
 !              qw1_1     = total_water
 !              qw1_2     = total_water
 !              qw2_1     = qwsec
 !              qw2_2     = qwsec
-              wrk1 = min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+!              wrk1 = max(min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+              wrk1 = qt3
               qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
               qw1_2 = (total_water -aterm*qw1_1)/onema
+
               qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
               qw2_2 = qw2_1
               sqrtqw2_1 = sqrt(qw2_1)
@@ -1677,7 +1680,7 @@ module GEOSmoist_Process_Library
 
 !            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
             corrtest2 = max(-1.0,min(1.0,0.5*wqwsec/(sqrtw2*sqrtqt)))
-
+          
             qw1_1 = - corrtest2 / w1_2            ! A.7
             qw1_2 = - corrtest2 / w1_1            ! A.8
 
@@ -1909,11 +1912,6 @@ module GEOSmoist_Process_Library
           qi2 = qn2 - ql2
 
           qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
-!          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-!          diag_qi = diag_qn - diag_ql
-
-!!! temporary
-!          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
 
 
 ! Update temperature variable based on diagnosed cloud properties
@@ -1947,7 +1945,6 @@ module GEOSmoist_Process_Library
 
          wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
          wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
-
 
 ! Compute the liquid water flux
           wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
@@ -2112,8 +2109,7 @@ module GEOSmoist_Process_Library
            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
            HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
-           call partition_dblgss(DT/nmax,      &
-                                 fQi,          &
+           call partition_dblgss(fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &

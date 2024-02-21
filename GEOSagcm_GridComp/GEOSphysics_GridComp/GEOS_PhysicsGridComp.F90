@@ -1723,12 +1723,12 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+!    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
+!    VERIFY_(STATUS)
+!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+!    VERIFY_(STATUS)
+!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+!    VERIFY_(STATUS)
 
 ! Add Friendlies from Physics
     call MAPL_GridCompGetFriendlies(GC, "TURBULENCE", BUNDLE, RC=STATUS )
