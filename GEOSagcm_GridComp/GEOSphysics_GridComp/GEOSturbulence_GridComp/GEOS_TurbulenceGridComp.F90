@@ -1070,6 +1070,33 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_dry_static_energy_source_term',                    &
+       UNITS      = 'J kg-1 s-1',                                            &
+       SHORT_NAME = 'SSRCMF',                                                &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_specific_humidity_source_term',                    &
+       UNITS      = 'kg kg-1 s-1',                                           &
+       SHORT_NAME = 'QVSRCMF',                                               &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'EDMF_liquid_water_source_term',                         &
+       UNITS      = 'kg kg-1 s-1',                                           &
+       SHORT_NAME = 'QLSRCMF',                                               &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'SLFLXMF',                                               &
        LONG_NAME  = 'liquid_water_static_energy_flux_by_MF',                 &
        UNITS      = 'K m s-1',                                               &
@@ -1910,6 +1937,22 @@ end if
        UNITS      = 's-1',                                       &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'BRUNTDRY',                                 &
+       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
+       UNITS      = 's-1',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'BRUNTEDGE',                                 &
+       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
+       UNITS      = 's-1',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
@@ -2916,7 +2959,7 @@ end if
      real, dimension(:,:,:), pointer     :: AKQODT, CKQODT
      real, dimension(:,:,:), pointer     :: AKVODT, CKVODT
 
-     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
+     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,BRUNTDRY, BRUNTEDGE,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
@@ -2934,9 +2977,11 @@ end if
                                             edmf_w3, edmf_wqt, edmf_slqt, & 
                                             edmf_wsl, edmf_qt3, edmf_sl3, &
                                             edmf_entx, edmf_tke, slflxmf, &
-                                            qtflxmf, mfaw, edmf_dqrdt, edmf_dqsdt
+                                            qtflxmf, mfaw, edmf_dqrdt, edmf_dqsdt, &
+                                            ssrcmf,qvsrcmf,qlsrcmf
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
+   real, dimension(IM,JM,1:LM)          :: ssrc,qvsrc,qlsrc
 
    real, dimension(IM,JM) :: zpbl_test
 
@@ -3152,7 +3197,7 @@ end if
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-1.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.04, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.08, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
@@ -3160,17 +3205,17 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=10.0,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.5,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=3.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 5.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 1400.0, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, AFRC_TSCALE,'AFRC_TSCALE:',DEFAULT = 1400.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, AFRC_TSCALE,'AFRC_TSCALE:',DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
@@ -3344,6 +3389,12 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_mfx,    'EDMF_MF', RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  ssrcmf,      'SSRCMF', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  qvsrcmf,    'QVSRCMF', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT,  qlsrcmf,    'QLSRCMF', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_dry_a,  'EDMF_DRY_A',       RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_moist_a, 'EDMF_MOIST_A',   RC=STATUS)
@@ -3405,6 +3456,10 @@ end if
      call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, BRUNTSHOC, 'BRUNTSHOC', ALLOC=PDFALLOC, RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, BRUNTDRY, 'BRUNTDRY', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, BRUNTEDGE, 'BRUNTEDGE', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', RC=STATUS)
      VERIFY_(STATUS)
@@ -3533,7 +3588,6 @@ end if
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
-
    ! Calculate liquid water potential temperature (THL) and total water (QT)
     EXF=T/TH 
     THL=TH-(MAPL_ALHL*QL+MAPL_ALHS*QI)/(MAPL_CP*EXF)
@@ -3549,18 +3603,18 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.,    RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       !
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=1.2,   RC=STATUS)  
+      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=1.6,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=0.5,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=2.89,  RC=STATUS) 
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,  RC=STATUS) 
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.25,  RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=1.5,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.25,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=1.2,   RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3581,8 +3635,6 @@ end if
 !      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_TEST,  "EDMF_TEST:" , default=0,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_DEBUG, "EDMF_DEBUG:", default=0,  RC=STATUS)
-!      call MAPL_GetResource (MAPL, EDMF_WA, "EDMF_WA:", default=1.,  RC=STATUS)
-!      call MAPL_GetResource (MAPL, EDMF_WB, "EDMF_WB:", default=1.5,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_AU0, "EDMF_AU0:", default=0.14,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_CTH1, "EDMF_CTH1:", default=7.2,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, EDMF_CTH2, "EDMF_CTH2:", default=1.1,  RC=STATUS)
@@ -3644,11 +3696,11 @@ if (SCM_SL /= 0) then
        cu => cu_scm
        ct => ct_scm
        cq => ct_scm
-!       ustar_scm = 0.3! sqrt(CM*UU/RHOS)      
+       ustar_scm = 0.3 ! sqrt(CU*UU/RHOS)      
 !       bstar_scm = (MAPL_GRAV/(RHOS*sqrt(CM*max(UU,1.e-30)/RHOS))) *  &
 !                   (CT*(TH-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ*(QH-QA))
        
-!       ustar => ustar_scm
+       ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
 
@@ -3674,10 +3726,13 @@ end if
     mfwqt  = 0.0
     mfwsl  = 0.0
     mftke  = 0.0
+    ssrc   = 0.0
+    qvsrc  = 0.0
+    qlsrc  = 0.0
 
     IF(DOMF /= 0) then
 
-      call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,      &
+      call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,  &
                     !== Inputs ==
                     PHIS,                     &
                     Z,                        &
@@ -3708,6 +3763,9 @@ end if
                     awqi3,                    &
                     awu3,                     &
                     awv3,                     &
+                    ssrc,                     &
+                    qvsrc,                    &
+                    qlsrc,                    &
                     !== Outputs for ADG PDF ==
                     mfw2,                     &
                     mfw3,                     &
@@ -3742,25 +3800,29 @@ end if
                     EDMF_PLUMES_THL,          &
                     EDMF_PLUMES_QT )
 
-      if (associated(edmf_dry_a))     edmf_dry_a = edmfdrya 
+      !=== Fill Exports ===
+      if (associated(edmf_dry_a))     edmf_dry_a   = edmfdrya 
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
-      if (associated(edmf_buoyf))     edmf_buoyf = buoyf 
-      if (associated(edmf_mfx))       edmf_mfx = edmf_mf
-      if (associated(mfaw))           mfaw = edmf_mf/rhoe
-      if (associated(slflxmf))        slflxmf = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
-      if (associated(qtflxmf))        qtflxmf = awqv3+awql3+awqi3
+      if (associated(edmf_buoyf))     edmf_buoyf   = buoyf 
+      if (associated(edmf_mfx))       edmf_mfx     = edmf_mf
+      if (associated(mfaw))           mfaw         = edmf_mf/rhoe
+      if (associated(slflxmf))        slflxmf      = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
+      if (associated(qtflxmf))        qtflxmf      = awqv3+awql3+awqi3
+      if (associated(ssrcmf))         ssrcmf       = ssrc
+      if (associated(qvsrcmf))        qvsrcmf      = qvsrc
+      if (associated(qlsrcmf))        qlsrcmf      = qlsrc
 !      if (associated(edmf_sl2))       edmf_sl2 = mfsl2 
 !      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
-      if (associated(edmf_w2))        edmf_w2 = mfw2
-      if (associated(edmf_w3))        edmf_w3 = mfw3
-      if (associated(edmf_qt3))       edmf_qt3 = mfqt3
-      if (associated(edmf_sl3))       edmf_sl3 = mfsl3
-      if (associated(edmf_wqt))       edmf_wqt = mfwqt
-      if (associated(edmf_slqt))      edmf_slqt = mfslqt
-      if (associated(edmf_wsl))       edmf_wsl = mfwsl
-      if (associated(edmf_tke))       edmf_tke = mftke
-      if (associated(EDMF_FRC))       EDMF_FRC = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) &
-                                                    + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
+      if (associated(edmf_w2))        edmf_w2      = mfw2
+      if (associated(edmf_w3))        edmf_w3      = mfw3
+      if (associated(edmf_qt3))       edmf_qt3     = mfqt3
+      if (associated(edmf_sl3))       edmf_sl3     = mfsl3
+      if (associated(edmf_wqt))       edmf_wqt     = mfwqt
+      if (associated(edmf_slqt))      edmf_slqt    = mfslqt
+      if (associated(edmf_wsl))       edmf_wsl     = mfwsl
+      if (associated(edmf_tke))       edmf_tke     = mftke
+      if (associated(EDMF_FRC))       EDMF_FRC     = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) &
+                                                     + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
 
     ELSE            ! if there is no mass-flux
       ae3   = 1.0
@@ -3790,6 +3852,9 @@ end if
       if (associated(edmf_entx))      edmf_entx     = MAPL_UNDEF
       if (associated(edmf_mfx))       edmf_mfx      = 0.0 
       if (associated(mfaw))           mfaw          = 0.0
+      if (associated(ssrcmf))         ssrcmf        = 0.0
+      if (associated(qlsrcmf))        qlsrcmf       = 0.0
+      if (associated(qvsrcmf))        qvsrcmf       = 0.0
       if (associated(slflxmf))        slflxmf       = 0.0
       if (associated(qtflxmf))        qtflxmf       = 0.0
 !      if (associated(edmf_sl2))       edmf_sl2      = mfsl2 
@@ -3826,7 +3891,7 @@ end if
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        call RUN_SHOC( IM, JM, LM, LM+1, DT, &
+        call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        PLO(:,:,1:LM),         &
                        ZL0(:,:,0:LM),         &
@@ -4388,6 +4453,7 @@ end if
                           qt3_tscale,     &
                           afrc_tscale,    &
                           docanuto )
+
        end if
 
       KPBLMIN  = count(PREF < 50000.)
@@ -4815,16 +4881,16 @@ end if
 !
 ! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
 !
-   YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWS3(:,:,LM-1)
-   YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQV3(:,:,LM-1)
-   YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQL3(:,:,LM-1)
+   YS(:,:,LM)  = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWS3(:,:,LM-1) + SSRC(:,:,LM) )
+   YQV(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQV3(:,:,LM-1) + QVSRC(:,:,LM) )
+   YQL(:,:,LM) = -DMI(:,:,LM)*( RHOE(:,:,LM-1)*AWQL3(:,:,LM-1) + QLSRC(:,:,LM) )
    YQI(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQI3(:,:,LM-1)
    YU(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWU3(:,:,LM-1)
    YV(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWV3(:,:,LM-1)
 
-   YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) )
-   YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) )
-   YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) )
+   YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) + SSRC(:,:,1:LM-1) )
+   YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) + QVSRC(:,:,1:LM-1) )
+   YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) + QLSRC(:,:,1:LM-1) )
 
    YQI(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQI3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2) )
    YU(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWU3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2) )
