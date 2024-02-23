@@ -69,36 +69,149 @@ USE MAPL
 
 ! Species for which to provide diagnostics. Need to hardcode this since we create the export during SetServices,
 ! when we cannot yet import the species information from GEOS-Chem... 
- INTEGER, PARAMETER             :: GCCmax = 28
- CHARACTER(LEN=5), PARAMETER    :: GCCspecies(GCCmax) =     &
-                                            (/ 'SO2',   &
-                                               'SO4',   &
-                                               'HNO3',  &
+ INTEGER, PARAMETER             :: GCCmax = 141
+ CHARACTER(LEN=8), PARAMETER    :: GCCspecies(GCCmax) = &
+                                            (/ 'ACTA',  &
+                                               'AERI',  &
+                                               'ALD2',  &
+                                               'AONITA', &
+                                               'AROMP4', &
+                                               'AROMP5', &
+                                               'ATOOH',  &
+                                               'BALD',   &
+                                               'BCPI',  &
+                                               'BCPO',  &
+                                               'BENZP', &
+                                               'Br2',   &
+                                               'BrCl',  &
+                                               'BrSALA', &
+                                               'BrSALC', &
+                                               'BZCO3H', &
+                                               'BZPAN',  &
+                                               'CH2O',  &
+                                               'CSL',   &
                                                'DST1',  &
                                                'DST2',  &
                                                'DST3',  &
                                                'DST4',  &
-                                               'NIT',   &
-                                               'SALA',  &
-                                               'SALC',  &
-                                               'BCPI',  &
-                                               'BCPO',  &
-                                               'OCPI',  &
-                                               'OCPO',  &
-                                               'ALD2',  &
-                                               'ALK4',  &
-                                               'CH2O',  &
-                                               'Br2',   &
+                                               'EOH',   &
+                                               'ETHLN', &
+                                               'ETHN',  &
+                                               'ETHP',  &
+                                               'ETP',   &
+                                               'GLYC',  &
+                                               'GLYX',  &
+                                               'H2O2',  &
                                                'HBr',   &
+                                               'HC5A',  &
+                                               'HCl',   &
+                                               'HCOOH', &
+                                               'HI',    &
+                                               'HMHP',  &
+                                               'HMML',  &
+                                               'HMS',   &
+                                               'HNO3',  &
+                                               'HOBr',  &
+                                               'HOCl',  &
+                                               'HOI',   &
+                                               'HONIT', &
+                                               'HPETHNL', &
+                                               'I2',    &
+                                               'I2O2',  &
+                                               'I2O3',  &
+                                               'I2O4',  &
+                                               'IBr',   &
+                                               'ICHE',  &
+                                               'ICl',   &
+                                               'ICN',   &
+                                               'ICPDH', &
+                                               'IDCHP', &
+                                               'IDHDP', &
+                                               'IDHPE', &
+                                               'IEPOXA',&
+                                               'IEPOXB',&
+                                               'IEPOXD',&
+                                               'IHN1',  &
+                                               'IHN2',  &
+                                               'IHN3',  &
+                                               'IHN4',  &
+                                               'INDIOL',&
+                                               'INPB',  &
+                                               'INPD',  &
+                                               'IONITA',&
+                                               'IONO',  &
+                                               'IONO2', &
+                                               'ISALA', &
+                                               'ISALC', &
+                                               'ITCN',  &
+                                               'ITHN',  &
+                                               'LIMO',  &
+                                               'LVOC',  &
+                                               'LVOCOA',&
+                                               'MACR1OOH',&
                                                'MAP',   &
+                                               'MCRDH', &
+                                               'MCRENOL', &
+                                               'MCRHN', &
+                                               'MCRHNB', &
+                                               'MCRHP', &
+                                               'MCT',   &
                                                'MEK',   &
+                                               'MGLY',  &
+                                               'MOH',   &
+                                               'MONITA', &
+                                               'MONITS', &
+                                               'MONITU', &
+                                               'MP',    &
+                                               'MPAN'   &
+                                               'MPN',   &
+                                               'MSA',   &
                                                'MTPA',  &
                                                'MTPO',  &
                                                'MVK',   &
+                                               'MVKDH',  &
+                                               'MVKHC',  &
+                                               'MVKHCB', &
+                                               'MVKHP',  &
+                                               'MVKN',   &
+                                               'MVKPC',  &
                                                'NH3',   &
                                                'NH4',   &
+                                               'NIT',   &
+                                               'NITs', &
+                                               'NPHEN',  &
+                                               'OCPI',  &
+                                               'OCPO',  &
                                                'PAN',   &
-                                               'CFC12'  /)
+                                               'pFe',   &
+                                               'PHEN',  &
+                                               'PP',    &
+                                               'PPN',   &
+                                               'PROPNN', &
+                                               'PRPE',  &
+                                               'PRPN',  &
+                                               'PYAC',  &
+                                               'R4N2',  &
+                                               'R4P',   &
+                                               'RA3P',  &
+                                               'RB3P',  &
+                                               'RIPA',  &
+                                               'RIPB',  &
+                                               'RIPC',  &
+                                               'RIPD',  &
+                                               'RP',    &
+                                               'SALA',  &
+                                               'SALAAL', &
+                                               'SALACL', &
+                                               'SALC',  &
+                                               'SALCAL', &
+                                               'SALCCL', &
+                                               'SO2',   &
+                                               'SO4',   & 
+                                               'SO4s',  & 
+                                               'SOAGX', & 
+                                               'SOAIE', & 
+                                               'SOAS' /)
 
    ! Name templates for diagnostics
    CHARACTER(LEN=ESMF_MAXSTR), PARAMETER     :: Prefix_ConvScav = 'GCC_ConvScav_GF_'
