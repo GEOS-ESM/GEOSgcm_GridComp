@@ -2154,6 +2154,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   !integer, pointer                    :: TILETYPES(:)
   type(MAPL_SunOrbit)                 :: ORBIT
 
+  integer                             :: LANDICE_OFFLINE
 !=============================================================================
 
 ! Begin... 
@@ -2197,6 +2198,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if ( ESMF_AlarmIsRinging(ALARM, RC=STATUS) ) then
        VERIFY_(STATUS)
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
+       VERIFY_(STATUS)
+       ! borrow CATCHMENT_OFFLINE
+       call MAPL_GetResource ( MAPL, LANDICE_OFFLINE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
        VERIFY_(STATUS)
        call LANDICECORE(RC=STATUS )
        VERIFY_(STATUS)
@@ -2333,6 +2337,7 @@ contains
    real, pointer, dimension(:)    :: DRUVR
    real, pointer, dimension(:)    :: DFUVR
    real, pointer, dimension(:)    :: TA
+   real, pointer, dimension(:)    :: QA
    real, pointer, dimension(:)    :: UU
    real, pointer, dimension(:,:)  :: DUDP
    real, pointer, dimension(:,:)  :: DUSV
@@ -2367,6 +2372,8 @@ contains
    real,    allocatable           :: SWN(:)
    real,    allocatable           :: DIF(:)
    real,    allocatable           :: ULW(:)
+   real,    allocatable           :: ALWN(:)
+   real,    allocatable           :: BLWN(:)
 
    real                           :: DT
    real                           :: LANDICECAP
@@ -2484,6 +2491,7 @@ contains
    call MAPL_GetPointer(IMPORT,DRUVR  , 'DRUVR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DFUVR  , 'DFUVR'  , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TA     , 'TA'     , RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,QA     , 'QA'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,UU     , 'UU'     , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,DUSV   , 'DUSV'   , RC=STATUS); VERIFY_(STATUS)
@@ -2942,65 +2950,79 @@ contains
 !! The next sequence is to make sure that the albedo here and in solar are in sync
 !!
 ! Need to know when Solar was called last, so first get the solar alarm
-        call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
-        VERIFY_(STATUS)
+    call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
+    VERIFY_(STATUS)
 ! Get the interval of the solar alarm - first get it in seconds
-        call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
-        VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
+    VERIFY_(STATUS)
 ! Now make an ESMF interval from the increment in seconds
-        CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
-        VERIFY_(STATUS)
+    CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
+    VERIFY_(STATUS)
 ! Now print out the solar alarm interval
-        if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
+    if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
 ! Now find out if it is ringing now: if so, set "BEFORE" to last time it rang before now
-         solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
-         VERIFY_(STATUS)
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
+    solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
+    VERIFY_(STATUS)
+    if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
 !     if so, set "BEFORE" to last time it rang before now
-        if(solalarmison) then
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is ringing '
-         NOW = CURRENT_TIME
-         BEFORE = NOW - TINT
+    if(solalarmison) then
+       if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is ringing '
+       NOW = CURRENT_TIME
+       BEFORE = NOW - TINT
 ! Now print out the last time solar alarm rang
-         if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
+       if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
 !     If alarm is not ringing now, find out when it rang last
-        else
-         if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
-         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
+    else
+       if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
+       call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
+       VERIFY_(STATUS)
 ! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
-         if(BEFORE > CURRENT_TIME) then
+       if(BEFORE > CURRENT_TIME) then
           BEFORE = BEFORE-TINT
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time lied '
           if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         else
+       else
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time okay '
           if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
-         endif
+       endif
 ! Now print out the last time solar alarm rang
-        endif
+    endif
 
 ! Get the zenith angle at the center of the time between the last solar call and the next one
-        call MAPL_SunGetInsolation(LONS, LATS,      &
+    call MAPL_SunGetInsolation(LONS, LATS,      &
             ORBIT, ZTH, SLR, &
             INTV = TINT,     &
             currTime=BEFORE+DELT,  &
             RC=STATUS )
-        VERIFY_(STATUS)
+    VERIFY_(STATUS)
 
-        ZTH = max(0.0,ZTH)
-
+    ZTH = max(0.0,ZTH)
+    
     do N=1,NUM_SUBTILES  
+       if (LANDICE_OFFLINE == 0 ) then
+          CFT   = (CH(:,N)/CTATM)
+          CFQ   = (CQ(:,N)/CQATM)
+          SHF   = CFT*(SH   + DSH*(TS(:,N)-THATM))
+          LHF   = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
+          SHD   = CFT*DSH
+          LHD   = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          ALWN  = ALW
+          BLWN  = BLW
+       else
+          CFT    = 1.0
+          CFQ    = 1.0
+          SHF    = MAPL_CP*CH(:,N)*(TS(:,N)-TA)
+          LHF    = CQ(:,N)*(QS(:,N)-QA) * MAPL_ALHS
+          SHD    = MAPL_CP*CH(:,N)
+          LHD    = CQ(:,N)*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
+          BLWN   = LANDICEEMISS*MAPL_STFBOL*TS(:,N)*TS(:,N)*TS(:,N)
+          ALWN   = -3.0*BLWN*TS(:,N)
+          BLWN   =  4.0*BLWN 
+       endif
 
-       CFT = (CH(:,N)/CTATM)
-       CFQ = (CQ(:,N)/CQATM)
-       SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
-       LHF = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))*MAPL_ALHS
-       SHD = CFT*DSH
-       LHD = CFQ*DEV*MAPL_ALHS*GEOS_DQSAT(TS(:,N), PS, PASCALS=.TRUE., RAMP=0.0)
        SWN = ((DRUVR+DRPAR+DRNIR) + (DFUVR+DFPAR+DFNIR))*(1.0-LANDICEALB)
        DIF = 0.0
-       ULW = ALW + BLW*TS(:,N)
+       ULW = ALWN + BLWN*TS(:,N)
 
        LANDICECAP= (MAPL_RHOWTR*MAPL_CAPICE*LANDICEDEPTH)
 
@@ -3057,7 +3079,7 @@ contains
                 call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 0,   &
                                  MELTI(k), DTSS=DTS(k),  RUNOFF=PERC(k),                 &
                                  lhturb=LHF(k),hlwtc=ULW(k),hsturb=SHF(k),raddn=RADDN(k),        &
-                                 dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLW(k),rain=RAIN(k),    &
+                                 dlhdtc=LHD(k),dhsdtc=SHD(k),dhlwtc=BLWN(k),rain=RAIN(k),    &
                                  rainrf=RAINRF(k),                                          & 
                                  lhflux=LHFO(k),shflux=SHFO(k),hlwout=HLWO(k),evapout=EVAPO(k), &
                                  ghflxice=ghflxice(k))
@@ -3089,7 +3111,7 @@ contains
              call SNOWRT(1,NUM_SNOW_LAYERS,MAPL_LANDICE,                          &  ! in    
                       MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in    
                       LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in    
-                      EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLW(k),            &  ! in    
+                      EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),            &  ! in    
                       RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in    
                       WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout    
                       HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out    
