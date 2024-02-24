@@ -163,7 +163,7 @@ USE MAPL
                                                'MONITS', &
                                                'MONITU', &
                                                'MP',    &
-                                               'MPAN'   &
+                                               'MPAN',  &
                                                'MPN',   &
                                                'MSA',   &
                                                'MTPA',  &
