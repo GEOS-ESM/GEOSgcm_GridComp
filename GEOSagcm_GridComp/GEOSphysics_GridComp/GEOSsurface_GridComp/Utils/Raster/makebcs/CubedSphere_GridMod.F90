@@ -6,7 +6,10 @@ use MAPL_ConstantsMod
 
   implicit none
 
-  real(r8) :: pi = MAPL_PI
+  real(r8), parameter :: pi = MAPL_PI
+  integer, parameter :: R_GRID = 8
+  real(kind=R_GRID) , parameter:: torad = pi/180.0d0          !< convert to radians
+  real, public, parameter :: RADIUS   = 6371.0E3
 
   public Get_CubedSphere_Grid
   private
@@ -17,11 +20,11 @@ use MAPL_ConstantsMod
   end type stretch
   public stretch
 
-#ifdef EIGHT_BYTE
- integer, parameter:: f_p = 8!selected_real_kind(15)   ! same as 12 on Altix
+#ifdef NO_QUAD_PRECISION
+ integer, parameter:: f_p = selected_real_kind(15)   ! same as 12 on Altix
 #else
 ! Higher precisions for grid geometrical factors:
- integer, parameter:: f_p = 8!selected_real_kind(20)
+ integer, parameter:: f_p = selected_real_kind(20)
 #endif
 
 contains
@@ -128,8 +131,8 @@ contains
           alocs(2) = grid_global(i,j,2,myTile)
           i=ig-isg+1
           j=jg+(myTile-1)*npts
-          xlocs(i,j) = alocs(1)*180.0/pi
-          ylocs(i,j) = alocs(2)*180.0/pi
+          xlocs(i,j) = alocs(1)*180.0_8/pi
+          ylocs(i,j) = alocs(2)*180.0_8/pi
        enddo
     enddo
     enddo
@@ -147,8 +150,8 @@ contains
           alocs(2) = grid_global(i,j,2,myTile)
           i=ig-isg+1
           j=jg+(myTile-1)*npts
-          xlocs(i,j) = alocs(1)*180.0/pi
-          ylocs(i,j) = alocs(2)*180.0/pi
+          xlocs(i,j) = alocs(1)*180.0_8/pi
+          ylocs(i,j) = alocs(2)*180.0_8/pi
        enddo
     enddo
     enddo
@@ -161,42 +164,49 @@ contains
  end subroutine Get_CubedSphere_Grid
 
 
+!-----------------------------------------------------
+!>@brief The subroutine 'gnomonic_ed' computes the equal 
+!! distances along the 4 edges of the cubed sphere.
+!-----------------------------------------------------
+!>@details Properties: 
+!!  defined by intersections of great circles
+!!  max(dx,dy; global) / min(dx,dy; global) = sqrt(2) = 1.4142
+!!  Max(aspect ratio) = 1.06089
+!!  the N-S coordinate curves are const longitude on the 4 
+!!  faces with equator 
+!! For C2000: (dx_min, dx_max) = (3.921, 5.545) in km unit
+!! This is the grid of choice for global cloud resolving
  subroutine gnomonic_ed(im, lamda, theta)
-!-----------------------------------------------------
-! Equal distance along the 4 edges of the cubed sphere
-!-----------------------------------------------------
-! Properties: 
-!            * defined by intersections of great circles
-!            * max(dx,dy; global) / min(dx,dy; global) = sqrt(2) = 1.4142
-!            * Max(aspect ratio) = 1.06089
-!            * the N-S coordinate curves are const longitude on the 4 faces with equator 
-! For C2000: (dx_min, dx_max) = (3.921, 5.545)    in km unit
-! This is the grid of choice for global cloud resolving
- 
+
  integer, intent(in):: im
- real(r8), intent(out):: lamda(im+1,im+1)
- real(r8), intent(out):: theta(im+1,im+1)
-       
+ real(kind=R_GRID), intent(out):: lamda(im+1,im+1)
+ real(kind=R_GRID), intent(out):: theta(im+1,im+1)
+
 ! Local:
- real(r8) pp(3,im+1,im+1)
-! real(f_p):: pi, rsq3, alpha, delx, dely
- real(r8):: rsq3, alpha, delx, dely
+ real(kind=R_GRID) pp(3,im+1,im+1)
+ real(kind=R_GRID) p1(2), p2(2)
+ real(f_p):: rsq3, alpha, delx, dely
  integer i, j, k
- 
-  rsq3 = 1./sqrt(3.) 
+ real(f_p):: one, two, three
+
+ one   = real(1.,kind=f_p)
+ two   = real(2.,kind=f_p)
+ three = real(3.,kind=f_p)
+
+  rsq3 = one/sqrt(three) 
  alpha = asin( rsq3 )
- 
+
 ! Ranges:
 ! lamda = [0.75*pi, 1.25*pi]
 ! theta = [-alpha, alpha]
- 
-    dely = 2.*alpha / real(im)
-    
+
+    dely = two*alpha / real(im,kind=f_p)
+
 ! Define East-West edges:
  do j=1,im+1
-    lamda(1,   j) = 0.75*pi                  ! West edge
-    lamda(im+1,j) = 1.25*pi                  ! East edge
-    theta(1,   j) = -alpha + dely*real(j-1)  ! West edge
+    lamda(1,   j) = 0.75d0*pi                  ! West edge
+    lamda(im+1,j) = 1.25d0*pi                  ! East edge
+    theta(1,   j) = -alpha + dely*real(j-1,kind=f_p)  ! West edge
     theta(im+1,j) = theta(1,j)               ! East edge
  enddo
 
@@ -249,28 +259,35 @@ contains
 
  call cart_to_latlon( (im+1)*(im+1), pp, lamda, theta)
 
+! Compute great-circle-distance "resolution" along the face edge:
+! if ( is_master() ) then
+!      p1(1) = lamda(1,1);    p1(2) = theta(1,1)
+!      p2(1) = lamda(2,1);    p2(2) = theta(2,1)
+!      write(*,*) 'Grid distance at face edge (km)=',great_circle_dist( p1, p2, radius )   !! earth radius is assumed
+! endif
+
  end subroutine gnomonic_ed
 
-subroutine gnomonic_angl(im, lamda, theta)
+ subroutine gnomonic_angl(im, lamda, theta)
 ! This is the commonly known equi-angular grid
  integer im
- real(r8) lamda(im+1,im+1)
- real(r8) theta(im+1,im+1)
- real(r8) p(3,im+1,im+1)
+ real(kind=R_GRID) lamda(im+1,im+1)
+ real(kind=R_GRID) theta(im+1,im+1)
+ real(kind=R_GRID) p(3,im+1,im+1)
 ! Local
- real(r8) rsq3, xf, y0, z0, y, x, z, ds
- real(r8) dy, dz
+ real(kind=R_GRID) rsq3, xf, y0, z0, y, x, z, ds
+ real(kind=R_GRID) dy, dz
  integer j,k
- real(r8) dp
+ real(kind=R_GRID) dp
 
- dp = 0.5*pi/real(im)
+ dp = 0.5d0*pi/real(im,kind=R_GRID)
 
- rsq3 = 1./sqrt(3.)
+ rsq3 = 1.d0/sqrt(3.d0) 
  do k=1,im+1
     do j=1,im+1
        p(1,j,k) =-rsq3               ! constant
-       p(2,j,k) =-rsq3*tan(-0.25*pi+(j-1)*dp)
-       p(3,j,k) = rsq3*tan(-0.25*pi+(k-1)*dp)
+       p(2,j,k) =-rsq3*tan(-0.25d0*pi+(j-1)*dp)
+       p(3,j,k) = rsq3*tan(-0.25d0*pi+(k-1)*dp)
     enddo
  enddo
 
@@ -281,20 +298,20 @@ subroutine gnomonic_angl(im, lamda, theta)
  subroutine gnomonic_dist(im, lamda, theta)
 ! This is the commonly known equi-distance grid
  integer im
- real(r8) lamda(im+1,im+1)
- real(r8) theta(im+1,im+1)
- real(r8) p(3,im+1,im+1)
+ real(kind=R_GRID) lamda(im+1,im+1)
+ real(kind=R_GRID) theta(im+1,im+1)
+ real(kind=R_GRID) p(3,im+1,im+1)
 ! Local
- real(r8) rsq3, xf, y0, z0, y, x, z, ds
- real(r8) dy, dz
+ real(kind=R_GRID) rsq3, xf, y0, z0, y, x, z, ds
+ real(kind=R_GRID) dy, dz
  integer j,k
 
 ! Face-2
 
- rsq3 = 1./sqrt(3.)
+ rsq3 = 1.d0/sqrt(3.d0) 
  xf = -rsq3
- y0 =  rsq3;  dy = -2.*rsq3/im
- z0 = -rsq3;  dz =  2.*rsq3/im
+ y0 =  rsq3;  dy = -2.d0*rsq3/im 
+ z0 = -rsq3;  dz =  2.d0*rsq3/im
 
  do k=1,im+1
     do j=1,im+1
@@ -309,39 +326,37 @@ subroutine gnomonic_angl(im, lamda, theta)
 
       subroutine mirror_grid(grid_global,ng,npx,npy,ndims,nregions)
          integer, intent(IN)    :: ng,npx,npy,ndims,nregions
-         real(r8)   , intent(INOUT) :: grid_global(1-ng:npx  +ng,1-ng:npy  +ng,ndims,1:nregions)
+         real(kind=R_GRID)   , intent(INOUT) :: grid_global(1-ng:npx  +ng,1-ng:npy  +ng,ndims,1:nregions)
          integer :: i,j,n,n1,n2,nreg
-         real(r8) :: x1,y1,z1, x2,y2,z2, ang
-!
-!    Mirror Across the 0-longitude
-!
+         real(kind=R_GRID) :: x1,y1,z1, x2,y2,z2, ang
+
          nreg = 1
          do j=1,ceiling(npy/2.)
             do i=1,ceiling(npx/2.)
 
-            x1 = 0.25 * (ABS(grid_global(i        ,j        ,1,nreg)) + &
-                         ABS(grid_global(npx-(i-1),j        ,1,nreg)) + &
-                         ABS(grid_global(i        ,npy-(j-1),1,nreg)) + &
-                         ABS(grid_global(npx-(i-1),npy-(j-1),1,nreg)))
+            x1 = 0.25d0 * (ABS(grid_global(i        ,j        ,1,nreg)) + &
+                           ABS(grid_global(npx-(i-1),j        ,1,nreg)) + &
+                           ABS(grid_global(i        ,npy-(j-1),1,nreg)) + &
+                           ABS(grid_global(npx-(i-1),npy-(j-1),1,nreg)))
             grid_global(i        ,j        ,1,nreg) = SIGN(x1,grid_global(i        ,j        ,1,nreg))
             grid_global(npx-(i-1),j        ,1,nreg) = SIGN(x1,grid_global(npx-(i-1),j        ,1,nreg))
             grid_global(i        ,npy-(j-1),1,nreg) = SIGN(x1,grid_global(i        ,npy-(j-1),1,nreg))
             grid_global(npx-(i-1),npy-(j-1),1,nreg) = SIGN(x1,grid_global(npx-(i-1),npy-(j-1),1,nreg))
 
-            y1 = 0.25 * (ABS(grid_global(i        ,j        ,2,nreg)) + &
-                         ABS(grid_global(npx-(i-1),j        ,2,nreg)) + &
-                         ABS(grid_global(i        ,npy-(j-1),2,nreg)) + &
-                         ABS(grid_global(npx-(i-1),npy-(j-1),2,nreg)))
+            y1 = 0.25d0 * (ABS(grid_global(i        ,j        ,2,nreg)) + &   
+                           ABS(grid_global(npx-(i-1),j        ,2,nreg)) + &
+                           ABS(grid_global(i        ,npy-(j-1),2,nreg)) + &
+                           ABS(grid_global(npx-(i-1),npy-(j-1),2,nreg)))
             grid_global(i        ,j        ,2,nreg) = SIGN(y1,grid_global(i        ,j        ,2,nreg))
             grid_global(npx-(i-1),j        ,2,nreg) = SIGN(y1,grid_global(npx-(i-1),j        ,2,nreg))
             grid_global(i        ,npy-(j-1),2,nreg) = SIGN(y1,grid_global(i        ,npy-(j-1),2,nreg))
             grid_global(npx-(i-1),npy-(j-1),2,nreg) = SIGN(y1,grid_global(npx-(i-1),npy-(j-1),2,nreg))
-
+             
            ! force dateline/greenwich-meridion consitency
             if (mod(npx,2) /= 0) then
-              if ( (i==1+(npx-1)/2.0) ) then
-                 grid_global(i,j        ,1,nreg) = 0.0
-                 grid_global(i,npy-(j-1),1,nreg) = 0.0
+              if ( (i==1+(npx-1)/2.0d0) ) then
+                 grid_global(i,j        ,1,nreg) = 0.0d0
+                 grid_global(i,npy-(j-1),1,nreg) = 0.0d0
               endif
             endif
 
@@ -354,15 +369,15 @@ subroutine gnomonic_angl(im, lamda, theta)
 
                x1 = grid_global(i,j,1,1)
                y1 = grid_global(i,j,2,1)
-               z1 = 1.0
+               z1 = radius
 
                if (nreg == 2) then
-                  ang = -90.
+                  ang = -90.d0
                   call rot_3d( 3, x1, y1, z1, ang, x2, y2, z2, 1, 1)  ! rotate about the z-axis
                elseif (nreg == 3) then
-                  ang = -90.
+                  ang = -90.d0
                   call rot_3d( 3, x1, y1, z1, ang, x2, y2, z2, 1, 1)  ! rotate about the z-axis
-                  ang = 90.
+                  ang = 90.d0
                   call rot_3d( 1, x2, y2, z2, ang, x1, y1, z1, 1, 1)  ! rotate about the x-axis
                   x2=x1
                   y2=y1
@@ -370,22 +385,22 @@ subroutine gnomonic_angl(im, lamda, theta)
 
            ! force North Pole and dateline/greenwich-meridion consitency
                   if (mod(npx,2) /= 0) then
-                     if ( (i==1+(npx-1)/2.0) .and. (i==j) ) then
-                        x2 = 0.0
-                        y2 = pi/2.0
+                     if ( (i==1+(npx-1)/2.0d0) .and. (i==j) ) then
+                        x2 = 0.0d0
+                        y2 = pi/2.0d0
                      endif
-                     if ( (j==1+(npy-1)/2.0) .and. (i < 1+(npx-1)/2.0) ) then
-                        x2 = 0.0
+                     if ( (j==1+(npy-1)/2.0d0) .and. (i < 1+(npx-1)/2.0d0) ) then
+                        x2 = 0.0d0
                      endif
-                     if ( (j==1+(npy-1)/2.0) .and. (i > 1+(npx-1)/2.0) ) then
+                     if ( (j==1+(npy-1)/2.0d0) .and. (i > 1+(npx-1)/2.0d0) ) then
                         x2 = pi
                      endif
                   endif
 
                elseif (nreg == 4) then
-                  ang = -180.
+                  ang = -180.d0
                   call rot_3d( 3, x1, y1, z1, ang, x2, y2, z2, 1, 1)  ! rotate about the z-axis
-                  ang = 90.
+                  ang = 90.d0
                   call rot_3d( 1, x2, y2, z2, ang, x1, y1, z1, 1, 1)  ! rotate about the x-axis
                   x2=x1
                   y2=y1
@@ -393,23 +408,23 @@ subroutine gnomonic_angl(im, lamda, theta)
 
                ! force dateline/greenwich-meridion consitency
                   if (mod(npx,2) /= 0) then
-                    if ( (j==1+(npy-1)/2.0) ) then
+                    if ( (j==1+(npy-1)/2.0d0) ) then
                        x2 = pi
                     endif
                   endif
 
                elseif (nreg == 5) then
-                  ang = 90.
+                  ang = 90.d0
                   call rot_3d( 3, x1, y1, z1, ang, x2, y2, z2, 1, 1)  ! rotate about the z-axis
-                  ang = 90.
+                  ang = 90.d0
                   call rot_3d( 2, x2, y2, z2, ang, x1, y1, z1, 1, 1)  ! rotate about the y-axis
                   x2=x1
                   y2=y1
                   z2=z1
                elseif (nreg == 6) then
-                  ang = 90.
+                  ang = 90.d0
                   call rot_3d( 2, x1, y1, z1, ang, x2, y2, z2, 1, 1)  ! rotate about the y-axis
-                  ang = 0.
+                  ang = 0.d0
                   call rot_3d( 3, x2, y2, z2, ang, x1, y1, z1, 1, 1)  ! rotate about the z-axis
                   x2=x1
                   y2=y1
@@ -417,14 +432,14 @@ subroutine gnomonic_angl(im, lamda, theta)
 
            ! force South Pole and dateline/greenwich-meridion consitency
                   if (mod(npx,2) /= 0) then
-                     if ( (i==1+(npx-1)/2.0) .and. (i==j) ) then
-                        x2 = 0.0
-                        y2 = -pi/2.0
+                     if ( (i==1+(npx-1)/2.0d0) .and. (i==j) ) then
+                        x2 = 0.0d0
+                        y2 = -pi/2.0d0
                      endif
-                     if ( (i==1+(npx-1)/2.0) .and. (j > 1+(npy-1)/2.0) ) then
-                        x2 = 0.0
+                     if ( (i==1+(npx-1)/2.0d0) .and. (j > 1+(npy-1)/2.0d0) ) then
+                        x2 = 0.0d0
                      endif
-                     if ( (i==1+(npx-1)/2.0) .and. (j < 1+(npy-1)/2.0) ) then
+                     if ( (i==1+(npx-1)/2.0d0) .and. (j < 1+(npy-1)/2.0d0) ) then
                         x2 = pi
                      endif
                   endif
@@ -441,20 +456,19 @@ subroutine gnomonic_angl(im, lamda, theta)
   end subroutine mirror_grid
 
       subroutine rot_3d(axis, x1in, y1in, z1in, angle, x2out, y2out, z2out, degrees, convert)
+         integer, intent(IN) :: axis         !< axis of rotation 1=x, 2=y, 3=z
+         real(kind=R_GRID) , intent(IN)    :: x1in, y1in, z1in
+         real(kind=R_GRID) , intent(INOUT) :: angle        !< angle to rotate in radians
+         real(kind=R_GRID) , intent(OUT)   :: x2out, y2out, z2out
+         integer, intent(IN), optional :: degrees !< if present convert angle 
+                                                  !! from degrees to radians
+         integer, intent(IN), optional :: convert !< if present convert input point
+                                                  !! from spherical to cartesian, rotate, 
+                                                  !! and convert back
 
-         integer, intent(IN) :: axis         ! axis of rotation 1=x, 2=y, 3=z
-         real(r8) , intent(IN)    :: x1in, y1in, z1in
-         real(r8) , intent(INOUT) :: angle        ! angle to rotate in radians
-         real(r8) , intent(OUT)   :: x2out, y2out, z2out
-         integer, intent(IN), optional :: degrees ! if present convert angle 
-                                                  ! from degrees to radians
-         integer, intent(IN), optional :: convert ! if present convert input point
-                                                  ! from spherical to cartesian, rotate, 
-                                                  ! and convert back
-                     
-         real(r8)  :: c, s  
-         real(r8)  :: x1,y1,z1, x2,y2,z2
-                  
+         real(kind=R_GRID)  :: c, s
+         real(kind=R_GRID)  :: x1,y1,z1, x2,y2,z2
+
          if ( present(convert) ) then
            call spherical_to_cartesian(x1in, y1in, z1in, x1, y1, z1)
          else
@@ -462,16 +476,16 @@ subroutine gnomonic_angl(im, lamda, theta)
            y1=y1in
            z1=z1in
          endif
-            
+
          if ( present(degrees) ) then
-            angle = angle*pi/180.d0
+            angle = angle*torad
          endif
 
          c = COS(angle)
          s = SIN(angle)
 
          SELECT CASE(axis)
-                  
+             
             CASE(1)
                x2 =  x1
                y2 =  c*y1 + s*z1
@@ -488,7 +502,7 @@ subroutine gnomonic_angl(im, lamda, theta)
               write(*,*) "Invalid axis: must be 1 for X, 2 for Y, 3 for Z."
  
          END SELECT
- 
+
          if ( present(convert) ) then
            call cartesian_to_spherical(x2, y2, z2, x2out, y2out, z2out)
          else
@@ -499,16 +513,16 @@ subroutine gnomonic_angl(im, lamda, theta)
 
       end subroutine rot_3d
 
-      subroutine cartesian_to_spherical(x, y, z, lon, lat, r)
-      real(r8) , intent(IN)  :: x, y, z
-      real(r8) , intent(OUT) :: lon, lat, r
+      subroutine cartesian_to_spherical(x, y, z, lon, lat, r) 
+      real(kind=R_GRID) , intent(IN)  :: x, y, z
+      real(kind=R_GRID) , intent(OUT) :: lon, lat, r
 
       r = SQRT(x*x + y*y + z*z)
       if ( (abs(x) + abs(y)) < 1.E-10 ) then       ! poles:
            lon = 0.
       else
            lon = ATAN2(y,x)    ! range: [-pi,pi]
-      endif
+      endif 
 
 #ifdef RIGHT_HAND
       lat = asin(z/r)
@@ -518,29 +532,26 @@ subroutine gnomonic_angl(im, lamda, theta)
 
       end subroutine cartesian_to_spherical
 
-      subroutine spherical_to_cartesian(lon, lat, r, x, y, z)
-
-         real(r8) , intent(IN)  :: lon, lat, r
-         real(r8) , intent(OUT) :: x, y, z
+ subroutine spherical_to_cartesian(lon, lat, r, x, y, z)
+         real(kind=R_GRID) , intent(IN)  :: lon, lat, r
+         real(kind=R_GRID) , intent(OUT) :: x, y, z
 
          x = r * COS(lon) * cos(lat)
          y = r * SIN(lon) * cos(lat)
-
 #ifdef RIGHT_HAND
          z =  r * SIN(lat)
 #else
          z = -r * sin(lat)
 #endif
-
-      end subroutine spherical_to_cartesian
+ end subroutine spherical_to_cartesian
 
  subroutine symm_ed(im, lamda, theta)
 ! Make grid symmetrical to i=im/2+1
  integer im
- real(r8) lamda(im+1,im+1)
- real(r8) theta(im+1,im+1)
+ real(kind=R_GRID) lamda(im+1,im+1)
+ real(kind=R_GRID) theta(im+1,im+1)
  integer i,j,ip,jp
- real(r8) avg
+ real(kind=R_GRID) avg
 
  do j=2,im+1
     do i=2,im
@@ -551,10 +562,10 @@ subroutine gnomonic_angl(im, lamda, theta)
  do j=1,im+1
     do i=1,im/2
        ip = im + 2 - i
-       avg = 0.5*(lamda(i,j)-lamda(ip,j))
+       avg = 0.5d0*(lamda(i,j)-lamda(ip,j))
        lamda(i, j) = avg + pi
-       lamda(ip,j) = pi - avg
-       avg = 0.5*(theta(i,j)+theta(ip,j))
+       lamda(ip,j) = pi - avg 
+       avg = 0.5d0*(theta(i,j)+theta(ip,j))
        theta(i, j) = avg
        theta(ip,j) = avg
     enddo
@@ -564,10 +575,10 @@ subroutine gnomonic_angl(im, lamda, theta)
  do j=1,im/2
        jp = im + 2 - j
     do i=2,im
-       avg = 0.5*(lamda(i,j)+lamda(i,jp))
+       avg = 0.5d0*(lamda(i,j)+lamda(i,jp))
        lamda(i, j) = avg
        lamda(i,jp) = avg
-       avg = 0.5*(theta(i,j)-theta(i,jp))
+       avg = 0.5d0*(theta(i,j)-theta(i,jp))
        theta(i, j) =  avg
        theta(i,jp) = -avg
     enddo
@@ -578,14 +589,18 @@ subroutine gnomonic_angl(im, lamda, theta)
  subroutine cart_to_latlon(np, q, xs, ys)
 ! vector version of cart_to_latlon1
   integer, intent(in):: np
-  real(r8), intent(inout):: q(3,np)
-  real(r8), intent(inout):: xs(np), ys(np)
+  real(kind=R_GRID), intent(inout):: q(3,np)
+  real(kind=R_GRID), intent(inout):: xs(np), ys(np)
 ! local
-  real(r8), parameter:: esl=1.e-10
   real (f_p):: p(3)
   real (f_p):: dist, lat, lon
+  real (f_p):: two, zero, near_zero
   integer i,k
- 
+
+  two = real(2.,kind=f_p)
+  zero = real(0.,kind=f_p)
+  near_zero = tiny(near_zero)
+
   do i=1,np
      do k=1,3
         p(k) = q(k,i)
@@ -594,16 +609,17 @@ subroutine gnomonic_angl(im, lamda, theta)
      do k=1,3
         p(k) = p(k) / dist
      enddo
- 
-     if ( (abs(p(1))+abs(p(2)))  < esl ) then
-          lon = 0.
+
+     if ( (abs(p(1))+abs(p(2))) < near_zero ) then
+          lon = zero
      else
           lon = atan2( p(2), p(1) )   ! range [-pi,pi]
      endif
 
-     if ( lon < 0.) lon = 2.*pi + lon
+     if ( lon < zero) lon = two*pi + lon
+! RIGHT_HAND system:
      lat = asin(p(3))
-      
+     
      xs(i) = lon
      ys(i) = lat
 ! q Normalized:
@@ -611,61 +627,58 @@ subroutine gnomonic_angl(im, lamda, theta)
         q(k,i) = p(k)
      enddo
   enddo
- 
+
  end  subroutine cart_to_latlon
 
- subroutine mirror_latlon(lon1, lat1, lon2, lat2, lon0, lat0, lon, lat)
-!   
-! Given the "mirror" as defined by (lon1, lat1), (lon2, lat2), and center 
-! of the sphere, compute the mirror image of (lon0, lat0) as  (lon, lat)
- 
- real(r8), intent(in):: lon1, lat1, lon2, lat2, lon0, lat0
- real(r8), intent(inout):: lon(1), lat(1)
-!   
- real(r8) p0(3), p1(3), p2(3), nb(3), pp(3)
- real(r8) pdot
+ subroutine mirror_latlon(lon1, lat1, lon2, lat2, lon0, lat0, lon3, lat3)
+ real(kind=R_GRID), intent(in):: lon1, lat1, lon2, lat2, lon0, lat0
+ real(kind=R_GRID), intent(out):: lon3, lat3
+!
+ real(kind=R_GRID) p0(3), p1(3), p2(3), nb(3), pp(3), sp(2)
+ real(kind=R_GRID) pdot
  integer k
-    
+
  call latlon2xyz2(lon0, lat0, p0)
  call latlon2xyz2(lon1, lat1, p1)
  call latlon2xyz2(lon2, lat2, p2)
  call vect_cross(nb, p1, p2)
-    pdot = sqrt(nb(1)**2+nb(2)**2+nb(3)**2)
+
+ pdot = sqrt(nb(1)**2+nb(2)**2+nb(3)**2)
  do k=1,3
     nb(k) = nb(k) / pdot
  enddo
- 
+
  pdot = p0(1)*nb(1) + p0(2)*nb(2) + p0(3)*nb(3)
  do k=1,3
-    pp(k) = p0(k) - 2.*pdot*nb(k)
+    pp(k) = p0(k) - 2.d0*pdot*nb(k)
  enddo
- 
- call cart_to_latlon(1, pp, lon, lat)
- 
+
+ call cart_to_latlon(1, pp, sp(1), sp(2))
+ lon3 = sp(1)
+ lat3 = sp(2)
+
  end subroutine  mirror_latlon
 
  subroutine latlon2xyz2(lon, lat, p3)
- real(r8), intent(in):: lon, lat
- real(r8), intent(out):: p3(3)
- real(r8) e(2)
+ real(kind=R_GRID), intent(in):: lon, lat
+ real(kind=R_GRID), intent(out):: p3(3)
+ real(kind=R_GRID) e(2)
 
     e(1) = lon;    e(2) = lat
     call latlon2xyz(e, p3)
- 
+
  end subroutine latlon2xyz2
- 
     
- subroutine latlon2xyz(p, e)
-!   
-! Routine to map (lon, lat) to (x,y,z)
-!
- real(r8), intent(in) :: p(2)
- real(r8), intent(out):: e(3)
-    
+ subroutine latlon2xyz(p, e, id)
+
+ real(kind=R_GRID), intent(in) :: p(2)
+ real(kind=R_GRID), intent(out):: e(3)
+ integer, optional, intent(in):: id !< id=0 do nothing; id=1, right_hand
+
  integer n
  real (f_p):: q(2)
  real (f_p):: e1, e2, e3
- 
+
     do n=1,2
        q(n) = p(n)
     enddo
@@ -679,16 +692,16 @@ subroutine gnomonic_angl(im, lamda, theta)
     e(1) = e1
     e(2) = e2
     e(3) = e3
- 
+
  end subroutine latlon2xyz
 
  subroutine cell_center2(q1, q2, q3, q4, e2)
-      real(r8) , intent(in ) :: q1(2), q2(2), q3(2), q4(2)
-      real(r8) , intent(OUT) :: e2(2)
+      real(kind=R_GRID) , intent(in ) :: q1(2), q2(2), q3(2), q4(2)
+      real(kind=R_GRID) , intent(out) :: e2(2)
 ! Local
-      real(r8) p1(3), p2(3), p3(3), p4(3)
-      real(r8) ec(3)
-      real(r8) dd
+      real(kind=R_GRID) p1(3), p2(3), p3(3), p4(3)
+      real(kind=R_GRID) ec(3)
+      real(kind=R_GRID) dd
       integer k
 
       call latlon2xyz(q1, p1)
@@ -710,15 +723,13 @@ subroutine gnomonic_angl(im, lamda, theta)
  end subroutine cell_center2
 
  subroutine vect_cross(e, p1, p2)
- real(r8), intent(in) :: p1(3), p2(3)
- real(r8), intent(out):: e(3)
-!       
-! Perform cross products of 3D vectors: e = P1 X P2
-!    
+ real(kind=R_GRID), intent(in) :: p1(3), p2(3)
+ real(kind=R_GRID), intent(out):: e(3)
+
       e(1) = p1(2)*p2(3) - p1(3)*p2(2)
-      e(2) = p1(3)*p2(1) - p1(1)*p2(3) 
+      e(2) = p1(3)*p2(1) - p1(1)*p2(3)
       e(3) = p1(1)*p2(2) - p1(2)*p2(1)
-        
+
  end subroutine vect_cross
 
 !! The subroutine 'direct_transform' performs a direct transformation of the 
@@ -726,54 +737,63 @@ subroutine gnomonic_angl(im, lamda, theta)
 !! It is an application of the Schmidt transformation at the south pole 
 !! followed by a pole_shift_to_target (rotation) operation, ( May 2023 A.Trayanov) 
   subroutine direct_transform(c, i1, i2, j1, j2, lon_p, lat_p, n, lon, lat)
-    real(r8),    intent(in):: c              !< Stretching factor
-    real(r8),    intent(in):: lon_p, lat_p   !< center location of the target face, radian
+    real(kind=R_GRID),    intent(in):: c              !< Stretching factor
+    real(kind=R_GRID),    intent(in):: lon_p, lat_p   !< center location of the target face, radian
     integer, intent(in):: n              !< grid face number
     integer, intent(in):: i1, i2, j1, j2
 !  0 <= lon <= 2*pi ;    -pi/2 <= lat <= pi/2
-    real(r8), intent(inout), dimension(i1:i2,j1:j2):: lon, lat
+    real(kind=R_GRID), intent(inout), dimension(i1:i2,j1:j2):: lon, lat
 !
     real(f_p):: lat_t, sin_p, cos_p, sin_lat, cos_lat, sin_o, p2, two_pi
-    real(f_p):: c2p1, c2m1
+    real(f_p):: c2p1, c2m1, one, two, onehalf, near_zero, zero, f_p_lon, f_p_lat
     integer:: i, j
 
-    p2 = 0.5d0*pi
-    two_pi = 2.d0*pi
+    zero = real(0.,kind=f_p)
+    one = real(1.,kind=f_p)
+    two = real(2.,kind=f_p)
+    onehalf = one/two
+    near_zero = tiny(near_zero)
+    p2 = onehalf*real(pi,kind=f_p)
+    two_pi = two*real(pi,kind=f_p)
 
-    if( n==1 ) then
-        write(*,*) n, 'DEBUG::Schmidt transformation: stretching factor=', c, ' center=', lon_p, lat_p
-    endif
+!    if( is_master() .and. n==1 ) then
+!        write(*,*) n, 'Schmidt transformation: stretching factor=', c, ' center=', lon_p, lat_p
+!    endif
 
-    c2p1 = 1.d0 + c*c
-    c2m1 = 1.d0 - c*c
+    c2p1 = one + c*c
+    c2m1 = one - c*c
 
     sin_p = sin(lat_p)
     cos_p = cos(lat_p)
 
     do j=j1,j2
        do i=i1,i2
-          if ( abs(c2m1) > 1.d-7 ) then
-               sin_lat = sin(lat(i,j))
+          f_p_lon = lon(i,j)
+          f_p_lat = lat(i,j)
+          if ( abs(c2m1) > near_zero ) then
+               sin_lat = sin(f_p_lat) 
                lat_t = asin( (c2m1+c2p1*sin_lat)/(c2p1+c2m1*sin_lat) )
           else         ! no stretching
-               lat_t = lat(i,j)
+               lat_t = f_p_lat
           endif
-          sin_lat = sin(lat_t)
-          cos_lat = cos(lat_t)
-            sin_o = -(sin_p*sin_lat + cos_p*cos_lat*cos(lon(i,j)))
-          if ( (1.-abs(sin_o)) < 1.d-7 ) then    ! poles
-               lon(i,j) = 0.d0
-               lat(i,j) = sign( p2, sin_o )
+          sin_lat = sin(lat_t) 
+          cos_lat = cos(lat_t) 
+            sin_o = -(sin_p*sin_lat + cos_p*cos_lat*cos(f_p_lon))
+          if ( (one-abs(sin_o)) < near_zero ) then    ! poles
+               f_p_lon = zero
+               f_p_lat = sign( p2, sin_o )
           else
-               lat(i,j) = asin( sin_o )
-               lon(i,j) = lon_p + atan2( -cos_lat*sin(lon(i,j)),   &
-                          -sin_lat*cos_p+cos_lat*sin_p*cos(lon(i,j)))
-               if ( lon(i,j) < 0.d0 ) then
-                    lon(i,j) = lon(i,j) + two_pi
-               elseif( lon(i,j) >= two_pi ) then
-                    lon(i,j) = lon(i,j) - two_pi
+               f_p_lat = asin( sin_o )
+               f_p_lon = lon_p + atan2( -cos_lat*sin(f_p_lon),   &
+                          -sin_lat*cos_p+cos_lat*sin_p*cos(f_p_lon))
+               if ( f_p_lon < zero ) then
+                    f_p_lon = f_p_lon + two_pi
+               elseif( f_p_lon >= two_pi ) then
+                    f_p_lon = f_p_lon - two_pi
                endif
           endif
+          lon(i,j) = f_p_lon
+          lat(i,j) = f_p_lat
        enddo
     enddo
 
