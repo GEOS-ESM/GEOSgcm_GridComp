@@ -180,11 +180,11 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
        if (-15.3 < latdeg .and. latdeg < 15.3) then
-         flat_gw =  0.10
+         flat_gw =  0.1
        else if (latdeg > -31. .and. latdeg <= -15.3) then
-         flat_gw =  0.10
+         flat_gw =  0.1
        else if (latdeg <  31. .and. latdeg >=  15.3) then
-         flat_gw =  0.10
+         flat_gw =  0.1
        else if (latdeg > -60. .and. latdeg <= -31.) then
          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/23.)**2)
        else if (latdeg <  60. .and. latdeg >=  31.) then
@@ -197,9 +197,10 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
       enddo
     else
-      flat_gw = 0.5 ! constant scaling since DQCDT will be used for frontal detection
       do i=1,ncol
-       desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+        latdeg = lats(i)*rad2deg
+        flat_gw = MIN(1.0,ABS(latdeg)/40.0)**3
+        desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
       enddo
     end if
     deallocate( cw, cw4 )
@@ -378,7 +379,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      else
        do k = 0, pver-2
          ! spectrum source index for frontal scheme
-         if (pint(i,k+1) < 90000.0) desc%k(i) = k+1
+         if (pint(i,k+1) < 40000.0) desc%k(i) = k+1
        end do
      endif
   enddo
@@ -484,6 +485,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
 
      else
 
+        tau(i,:,:) = 0.0
         if (desc%et_bkg_lat_forcing) then
           ! use latitudinal dependence
           ! include forced background stress in extra tropical large-scale systems
@@ -493,15 +495,15 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
            tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
            topi(i) = desc%k(i)
         else
-          ! Maximum condensate change, for frontal detection
+          ! Find largest condensate change level, for frontal detection
+          ! condensate tendencies from microphysics will be negative
           q0(i) = 0.0
-          do k = pver, 1, -1 ! Surface to top of atmosphere
-             if (dqcdt(i,k) > q0(i)) then ! Find max DQCDT level
+          do k = pver, desc%k(i), -1 ! tend-level to top of atmosphere
+             if (dqcdt(i,k) < q0(i)) then ! Find min DQCDT
                 q0(i) = dqcdt(i,k)
-                desc%k(i) = k
              endif
           end do
-          if (q0(i) > 1.e-8) then ! frontal region (large-scale forcing)
+          if (q0(i) < -5.e-8) then ! frontal region (large-scale forcing)
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
@@ -610,6 +612,10 @@ subroutine gw_beres_ifc( band, &
    ! Heating depth [m] and maximum heating in each column.
    real :: hdepth(ncol), maxq0(ncol)
 
+   ! Vertical scaling options
+   real :: pint_adj(ncol,pver+1)
+   real :: zfac_layer
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -631,6 +637,14 @@ subroutine gw_beres_ifc( band, &
         effgw = 0.0
      end where
 
+!GEOS pressure scaling to slow decent below 0.1hPa
+     zfac_layer = 10.0 ! 0.1mb
+     do k=1,pver+1
+       do i=1,ncol
+         pint_adj(i,k) = MIN(1.0,MAX(0.5,(zfac_layer/pint(i,k))**0.125))
+       enddo
+     enddo
+
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
           u, v, netdt, zm, src_level, tend_level, tau, &
@@ -645,7 +659,7 @@ subroutine gw_beres_ifc( band, &
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                  effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                                 tend_level, tndmax_in=desc%tndmax)
+                                 tend_level, tndmax_in=desc%tndmax, pint_adj=pint_adj)
 
    deallocate(tau, gwut, c)
 
