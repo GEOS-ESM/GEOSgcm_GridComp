@@ -32,6 +32,18 @@ def make_bcs_ease(config):
 
   resolution = config['resolution']
 
+  # if resolution is M01 in EASEv1 or EASEv2, do not execute
+  # Instead, exist and print an on-screen message to the user
+  if resolution == "M01":
+      print("               ")
+      print("**********************************************")
+      print("The M01 resolution (1km) run is not submitted.")
+      print("Any other resolutions (if chosen) are submitted.")
+      print("If you need M01 (1km) output, please get in touch with Land Group (GMAO) for assistance.")
+      print("**********************************************")
+      print("               ")
+      return 
+
   GRIDNAME  = grid_type+'_'+ resolution
   now     = datetime.now()
   tmp_dir = now.strftime("%Y%m%d%H%M%S") 
