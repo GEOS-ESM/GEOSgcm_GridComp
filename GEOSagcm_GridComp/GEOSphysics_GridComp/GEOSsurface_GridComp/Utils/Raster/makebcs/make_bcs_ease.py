@@ -37,9 +37,9 @@ def make_bcs_ease(config):
   if resolution == "M01":
       print("               ")
       print("**********************************************")
-      print("The M01 resolution (1km) run is not submitted.")
+      print("The EASE M01 resolution (~1km) run is not submitted.")
       print("Any other resolutions (if chosen) are submitted.")
-      print("If you need M01 (1km) output, please get in touch with Land Group (GMAO) for assistance.")
+      print("If you need M01 output, please get in touch with Land Group (GMAO) for assistance.")
       print("**********************************************")
       print("               ")
       return 
