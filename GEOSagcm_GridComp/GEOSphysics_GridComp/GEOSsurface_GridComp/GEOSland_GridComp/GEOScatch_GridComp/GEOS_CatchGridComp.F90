@@ -4130,10 +4130,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         integer, save :: FIRST_YY, FIRST_MM
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
-        character(len=ESMF_MAXSTR) :: cn_rcuns_file
+        character(len=400) :: cn_rcuns_file, cn_rcuns_path
         logical :: s2s_forecast_mode = .false.
-        real, allocatable, dimension(:) :: cn_cond
+        real, allocatable, dimension(:), save  :: cn_cond
         integer :: cn_rcuns_fid, rcuns_varid
+        logical, save  :: first_rcuns = .true.
 
 !#---
 
@@ -4688,6 +4689,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! if in forecast mode, read unstressed stomatal conductance from previous month
         ! otherwise use current month
 
+        if (first_rcuns) then
         if (s2s_forecast_mode) then
              
            if (FIRST_MM == 1) then
@@ -4702,8 +4704,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         write (FIRST_YY_str,'(i4.4)') FIRST_YY
         write (FIRST_MM_str,'(i2.2)') FIRST_MM
 
-        cn_rcuns_file = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/Y' // FIRST_YY_str // '/M' // FIRST_MM_str //'/GEOSldas_CNCLM40_9km.tavg24_1d_lnd_Nt.monthly.' // FIRST_YY_str // FIRST_MM_str // '.nc4'
-        cn_rcuns_file = trim(cn_rcuns_file)
+        cn_rcuns_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNC     LM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
+        cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // FIRST_YY_str // '/M' // FIRST_MM_str // '/GEOSldas_CNCLM40_9km.tavg24_1d_lnd_Nt.monthly.' // FIRST_YY_str // FIRST_MM_str // '.nc4'
+   
         print *, 'cn_rcuns_file: ', cn_rcuns_file
 
         STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
@@ -4714,6 +4717,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         STATUS = NF_GET_VARA_REAL (cn_rcuns_fid, rcuns_varid, 1, NTILES, cn_cond)
         VERIFY_(STATUS) 
+
+        status = NF_CLOSE (cn_rcuns_fid)
+        VERIFY_(status)
+        first_rcuns = .false.
+
+        endif ! first_rcuns
 
         ! ----------------------------------------------------------------------------------
         ! Update the interpolation limits for MODIS albedo corrections
