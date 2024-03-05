@@ -62,6 +62,8 @@ module GEOS_CatchGridCompMod
 implicit none
 private
 
+  include "netcdf.inc"
+
 ! !PUBLIC MEMBER FUNCTIONS:
 
 public SetServices
@@ -4131,6 +4133,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=ESMF_MAXSTR) :: cn_rcuns_file
         logical :: s2s_forecast_mode = .false.
         real, allocatable, dimension(:) :: cn_cond
+        integer :: cn_rcuns_fid, rcuns_varid
 
 !#---
 
