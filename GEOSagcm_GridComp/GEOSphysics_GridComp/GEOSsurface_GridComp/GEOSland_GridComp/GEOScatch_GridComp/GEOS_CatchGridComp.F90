@@ -4122,6 +4122,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
+        !--------------------------------------------
+        ! variables needed for reading Catchment-CN unstressed stomatal conductance
+        !--------------------------------------------
+
+        integer, save :: FIRST_YY, FIRST_MM
+        character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
+        character(len=ESMF_MAXSTR) :: cn_rcuns_file
+        logical :: s2s_forecast_mode = .false.
+        real, allocatable, dimension(:) :: cn_cond
+
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4557,6 +4567,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
+        allocate(cn_cond  (NTILES))
+
         debugzth = .false.
 
         ! --------------------------------------------------------------------------
@@ -4662,6 +4674,43 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN (1,:) = SNDZN1
         SNDZN (2,:) = SNDZN2
         SNDZN (3,:) = SNDZN3
+
+        !----------------------------------------------------------------------------------
+        ! Read Catchment-CN unstressed stomatal conductance from file
+        !----------------------------------------------------------------------------------
+
+        call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY, MM = FIRST_MM,  rc=status ) 
+        VERIFY_(STATUS)
+
+        ! if in forecast mode, read unstressed stomatal conductance from previous month
+        ! otherwise use current month
+
+        if (s2s_forecast_mode) then
+             
+           if (FIRST_MM == 1) then
+              FIRST_YY = FIRST_YY-1
+              FIRST_MM = 12
+           else
+              FIRST_MM = FIRST_MM-1 
+           endif           
+  
+        endif
+
+        write (FIRST_YY_str,'(i4.4)') FIRST_YY
+        write (FIRST_MM_str,'(i2.2)') FIRST_MM
+
+        cn_rcuns_file = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/Y' // FIRST_YY_str // '/M' // FIRST_MM_str //'/GEOSldas_CNCLM40_9km.tavg24_1d_lnd_Nt.monthly.' // FIRST_YY_str // FIRST_MM_str // '.nc4'
+        cn_rcuns_file = trim(cn_rcuns_file)
+        print *, 'cn_rcuns_file: ', cn_rcuns_file
+
+        STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
+        VERIFY_(status)
+
+        STATUS = NF_INQ_VARID (cn_rcuns_fid, 'RCUNS', rcuns_varid)
+        VERIFY_(status)
+
+        STATUS = NF_GET_VARA_REAL (cn_rcuns_fid, rcuns_varid, 1, NTILES, cn_cond)
+        VERIFY_(STATUS) 
 
         ! ----------------------------------------------------------------------------------
         ! Update the interpolation limits for MODIS albedo corrections
@@ -5503,7 +5552,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              BEE, POROS, WPWET, COND, GNU	                  ,&
              ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4	          ,&
              ARW1, ARW2, ARW3, ARW4, TSA1, TSA2, TSB1, TSB2	  ,&
-             ATAU, BTAU, .false.			          ,&
+             ATAU, BTAU, cn_cond, .false.			          ,&
 
              TC(:,FSAT), TC(:,FTRN), TC(:,FWLT)		          ,& 
              QC(:,FSAT), QC(:,FTRN), QC(:,FWLT)		          ,&
