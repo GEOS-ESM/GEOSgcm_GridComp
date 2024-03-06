@@ -4133,6 +4133,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=400) :: cn_rcuns_file, cn_rcuns_path
         logical :: s2s_forecast_mode = .false.
         real, allocatable, dimension(:), save  :: cn_cond
+        real, allocatable, dimension(:)  :: cn_cond_tmp
         integer :: cn_rcuns_fid, rcuns_varid
         logical, save  :: first_rcuns = .true.
 
@@ -4585,6 +4586,64 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            print *,' start time of clock '
            CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
         endif
+
+        !----------------------------------------------------------------------------------
+        ! Read Catchment-CN unstressed stomatal conductance from file
+        !----------------------------------------------------------------------------------
+
+        if ((first_rcuns))  then
+
+           call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY, MM = FIRST_MM,  rc=status )
+           VERIFY_(STATUS)
+
+           call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
+           VERIFY_(STATUS)
+
+           ! if in forecast mode, read unstressed stomatal conductance from previous month
+           ! otherwise use current month
+           if (s2s_forecast_mode) then
+              if (FIRST_MM == 1) then
+                 FIRST_YY = FIRST_YY-1
+                 FIRST_MM = 12
+              else
+                 FIRST_MM = FIRST_MM-1
+              endif
+           endif
+
+           write (FIRST_YY_str,'(i4.4)') FIRST_YY
+           write (FIRST_MM_str,'(i2.2)') FIRST_MM
+
+           cn_rcuns_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
+           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.tavg24_1d_lnd_Nt.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
+
+           STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
+           VERIFY_(status)
+
+           STATUS = NF_INQ_VARID (cn_rcuns_fid, trim('SCUNS'), rcuns_varid)
+           VERIFY_(status)
+
+           allocate(cn_cond (NTILES))
+           allocate(cn_cond_tmp (NT_GLOBAL))
+
+           if (MAPL_AM_I_Root(VM)) then
+              STATUS = NF_GET_VARA_REAL(cn_rcuns_fid, rcuns_varid, (/1, 1/), (/NT_GLOBAL, 1/), cn_cond_tmp)
+              VERIFY_(STATUS)
+           endif  
+
+           call ArrayScatter(cn_cond, cn_cond_tmp, tilegrid, mask=mask, rc=status)
+           VERIFY_(STATUS)
+
+           status = NF_CLOSE (cn_rcuns_fid)
+           VERIFY_(status)
+           first_rcuns = .false.
+           deallocate(cn_cond_tmp)
+
+        endif ! first_rcuns
+
         
         ! --------------------------------------------------------------------------
         ! Offline land spinup.
