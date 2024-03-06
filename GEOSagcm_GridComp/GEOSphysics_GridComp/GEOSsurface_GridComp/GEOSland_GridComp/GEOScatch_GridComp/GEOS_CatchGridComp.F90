@@ -4572,8 +4572,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
-        allocate(cn_cond  (NTILES))
-
         debugzth = .false.
 
         ! --------------------------------------------------------------------------
