@@ -21,7 +21,9 @@ module GEOS_MoistGridCompMod
   use ESMF
   use MAPL
   use GEOS_BACM_1M_InterfaceMod
+#ifdef HAVE_FMS
   use GEOS_GFDL_1M_InterfaceMod
+#endif
   use GEOS_THOM_1M_InterfaceMod
   use GEOS_MGB2_2M_InterfaceMod
   use GEOS_RAS_InterfaceMod
@@ -175,6 +177,11 @@ contains
                adjustl(CLDMICR_OPTION)=="THOM_1M" .or. &
                adjustl(CLDMICR_OPTION)=="MGB2_2M"
     _ASSERT( LCLDMICR, 'Unsupported Cloud Microphysics Option' )
+
+! If we don't have FMS we should _FAIL if someone tries to use GFDL_1M
+#if !defined(HAVE_FMS)
+    _ASSERT( LCLDMICR /= "GFDL_1M", 'GFDL_1M is not supported without FMS' )
+#endif
 
     call MAPL_GetResource( CF, GF_ENV_SETTING, Label="GF_ENV_SETTING:",  default='DYNAMICS', RC=STATUS) ; VERIFY_(STATUS)
     if (trim(GF_ENV_SETTING)=='DYNAMICS') then
