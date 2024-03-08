@@ -22,12 +22,18 @@ bin/create_README.csh
 def make_bcs_ease(config):
   bin_dir = os.getcwd()
   if '/bin' not in bin_dir:
-    print("please run this program in installed bin directory")
-    return
+     print("                                                                  ")
+     print("******************************************************************")
+     print("ERROR: Must run this program in installed bin directory.          ")
+     print("******************************************************************")
+     return
 
   grid_type  = config['grid_type']
   if 'EASEv' not in grid_type :
-     print('This is not a EASE grid')
+     print("                                                                  ")
+     print("******************************************************************")
+     print("ERROR: " + GRIDNAME + " is not an EASE grid.                      ")
+     print("******************************************************************")
      return
 
   resolution = config['resolution']
@@ -35,14 +41,14 @@ def make_bcs_ease(config):
   # if resolution is M01 in EASEv1 or EASEv2, do not execute
   # Instead, exist and print an on-screen message to the user
   if resolution == "M01":
-      print("               ")
-      print("**********************************************")
-      print("The EASE M01 resolution (~1km) run is not submitted.")
-      print("Any other resolutions (if chosen) are submitted.")
-      print("If you need M01 output, please get in touch with Land Group (GMAO) for assistance.")
-      print("**********************************************")
-      print("               ")
-      return 
+     print("                                                                  ")
+     print("******************************************************************")
+     print("WARNING: Job for " + GRIDNAME + " not submitted!                  ")
+     print("         EASEv[x]_M01 (~1 km) resolution requires custom process. ")
+     print("         Contact GMAO Land Group for assistance.                  ")     
+     print("******************************************************************")
+     print("                                                                  ")
+     return 
 
   GRIDNAME  = grid_type+'_'+ resolution
   now     = datetime.now()
