@@ -71,9 +71,9 @@
   
 !	df = dfn/dx
 
-       if (a2 == 0.) then
-          a2 = tiny(a2)
-       end if
+!       if (a2 == 0.) then
+!          a2 = tiny(a2)
+!       end if
 
        df = ((k1*dic*b) - k1*x*dic*db)/b2 -                        &
              2.0*dic*k12*db/b2 -                                   &
