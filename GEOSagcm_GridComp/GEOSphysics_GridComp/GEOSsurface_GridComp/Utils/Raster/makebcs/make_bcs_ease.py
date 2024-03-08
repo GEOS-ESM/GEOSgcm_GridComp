@@ -29,14 +29,15 @@ def make_bcs_ease(config):
      return
 
   grid_type  = config['grid_type']
+  resolution = config['resolution']
+  GRIDNAME  = grid_type+'_'+ resolution
+
   if 'EASEv' not in grid_type :
      print("                                                                  ")
      print("******************************************************************")
      print("ERROR: " + GRIDNAME + " is not an EASE grid.                      ")
      print("******************************************************************")
      return
-
-  resolution = config['resolution']
 
   # if resolution is M01 in EASEv1 or EASEv2, do not execute
   # Instead, exist and print an on-screen message to the user
@@ -50,7 +51,6 @@ def make_bcs_ease(config):
      print("                                                                  ")
      return 
 
-  GRIDNAME  = grid_type+'_'+ resolution
   now     = datetime.now()
   tmp_dir = now.strftime("%Y%m%d%H%M%S") 
   tmp_dir = f"{resolution}_{tmp_dir}"
