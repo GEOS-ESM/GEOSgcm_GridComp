@@ -24,6 +24,7 @@
       public :: gammp
       public :: make_cnv_ice_drop_number
       public :: nsmx_par
+      public :: estimate_qcvar
 
       integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
       integer, parameter :: npgauss  = 10
@@ -201,6 +202,9 @@
       DATA Thom /236.0d0/   !Homogeneous freezing T (K)
       
       DATA S_CCN /.001, 0.004, 0.01/ !CCN at supersaturation diagnostics 
+      
+      DATA acorr_dust /2.7e7/! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
+      DATA acorr_bc /8.0e7/ !m2/m3 correction to the area due to non sphericity and aggregation Assumes 50 g/m2 (Popovicheva 1996)
 
 
       !=======end of decalarations================================================================
@@ -211,42 +215,9 @@
  
       subroutine aer_cloud_init()
   
-        real*8 :: daux, sigaux, ahet_bc
-        integer ::ix
-
-       call AerConversion_base
-
-       !heterogeneous freezing!!!!!!!!!!!!
-        acorr_dust=2.7e7! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
-	!acorr_dust=4.5e7! m2/m3 correction to the area due to non sphericity and aggregation Assumes 10 g/m2 (Murray 2011)
-        acorr_bc=8.0e7 !m2/m3 correction to the area due to non sphericity and aggregation Assumes 50 g/m2 (Popovicheva 1996)
-
-
-
-       !Calculate fractions above 0.1 microns (only for Gocart)
-       do ix =  1, 5          
-	 daux = AerPr_base_polluted%dpg(ix) 
-	 sigaux =  AerPr_base_polluted%sig(ix) 		 
-         frac_dust(ix)=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))
-			       
-	
-			
-       end do
-       
-       !black carbon
-	 daux = AerPr_base_polluted%dpg(12) 
-	 sigaux =  AerPr_base_polluted%sig(12) 		 
-         frac_bc=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))		       
-	 ahet_bc= daux*daux*daux*0.52*acorr_bc* &
-	                exp(4.5*sigaux*sigaux) !Assume spheres by no
-			       	  
-  	 daux = AerPr_base_polluted%dpg(13) 
-	 sigaux =  AerPr_base_polluted%sig(13) 		 
-         frac_org=0.5d0*(1d0-erfapp(log(0.1e-6/daux) & !fraction above 0.1 microns
-			       /sigaux/sq2_par))		       
-
+    	return
+      
+    
       end subroutine aer_cloud_init
   
  
@@ -270,9 +241,9 @@
 ! ===============Output=============:
 
 ! cdncr8 = Activated cloud droplet number concentration (Kg-1)
-! smaxliqr8 = Maximum supersaturation w.r.t liquid during droplet activation
+! smaxliqr8 = Maximum supersaturation w.r.t liquid during droplet activation (%)
 ! incr8  = Nucleated ice crystal concentration (Kg-1)
-! smaxicer8 = Maximum supersaturation w.r.t. ice during ice nucleation
+! smaxicer8 = Maximum supersaturation w.r.t. ice during ice nucleation (%)
 ! nheticer8 = Nucleated ice crystal concentration by het freezing (Kg-1)
 ! INimmr8 =  Nucleated nc by droplet immersion freezing in mixed-phase clouds (Kg-1)
 ! dINimmr8 = Ice crystal number tendency by immersion freezing (Kg-1 s-1)
@@ -288,13 +259,13 @@
 
   
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-					   npre_in, dpre_in, ccn_diagr8, Ndropr8, qc, &
+					   npre_in, dpre_in, ccn_diagr8,  &
 					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
 					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
                        so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
                        fd_dust, fd_soot, &
-					   pfrz_inc_r8,  rhi_cell, frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
                        Immersion_param)
 
 
@@ -302,21 +273,21 @@
   
       type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
 	
-       logical        ::   use_average_v
+      logical        ::   use_average_v
        
-      real(r8), intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-					   npre_in, dpre_in, Ndropr8, qc, fd_soot, fd_dust,  rhi_cell, &
+      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+					   npre_in, dpre_in, fd_soot, fd_dust,  &
                        frachet_dust, frachet_bc, frachet_org, frachet_ss
                        
       integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
             
       real(r8), dimension(:), intent(inout) :: ccn_diagr8 
       
-      real(r8), intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+     real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
-					   ndust_immr8, ndust_depr8,  nlimr8, pfrz_inc_r8
+					   ndust_immr8, ndust_depr8,  nlimr8
                         
-      real(r8), intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
       type(AerProps) :: Aeraux       
        
@@ -367,7 +338,6 @@
       ndust_depr8 = zero_par
       ndust_imm = zero_par
       ndust_dep = zero_par
-      pfrz_inc_r8 = zero_par
       ccn_diagr8 =  zero_par
       
       nact=zero_par
@@ -412,12 +382,6 @@
       kappa_par = zero_par
       sigw = zero_par
       
-       ! Mean droplet volume 
-      if (Ndropr8 .gt. 0.0) then 
-         Vdrop=  qc/Ndropr8
-     elseif (qc  .gt. 0.0) then 
-        Vdrop = 0.52*(10e-6**3.0)
-     end if
      
     call init_Aer(Aeraux)      
          
@@ -466,12 +430,12 @@
 
 !============== Calculate cloud droplet number concentration===================
    
-  if  (tparc .gt. 235.0) then  ! lower T for liquid water activation 
+  if  (tparc .gt. 240.0) then  ! lower T for liquid water activation doniff2022 
       if (antot .gt. 1.0) then !only if aerosol is present
        ! Get CCN spectra   		    	
-        call ccnspec (tparc,pparc,nmodes)	            
+       call ccnspec (tparc,pparc,nmodes)	            
                   
-	    if (wparc .ge. 0.005) then
+	   if (wparc .ge. 0.005) then
            if (act_param .gt. 1) then !ARG(2000) activation              		       
                 
 		        call arg_activ (wparc,0.d0,nact,smax) !      
@@ -479,11 +443,11 @@
 	      else !Nenes activation	      
       
     	          call pdfactiv (wparc,0.d0,nact,smax) !      
-          endif 
-        endif
+              endif 
+       	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-         smaxliqr8=max(smax, zero_par)
+         smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -628,60 +592,60 @@
    
 
 
-     if (antot .gt. 1.0e2) then !only if aer is present  
-    if (tparc .lt. To_ice)  then !only if T below freezing  
+    if (antot .gt. 1.0e2) then !only if aer is present  
+	    if (tparc .lt. To_ice)  then !only if T below freezing  
     
-          CALL prop_ice(tparc, pparc)
+        CALL prop_ice(tparc, pparc)
   
-              if (tparc .gt. Thom) then !only het freezing
-      
-                 !find immersion IN to do drop freezing, calculate IN for immersion        
-      
+            if (tparc .gt. Thom) then !only het freezing
+
+                !find immersion IN to do drop freezing, calculate IN for immersion        
+
                 ! For mixed-phase only a fraction of the aerosol is actually within droplets. 
-		! We prescribe it now but in the future it can be calculated directly.
+                ! We prescribe it now but in the future it can be calculated directly.
                 fdrop_dust  = fd_dust !fraction of dust incorporated into the droplets 
-		        fdrop_bc    =  fd_soot   !fraction of  bc incorporated into the droplets
-		        fcoa_dust   =  0.0  !fraction of dust that is coated with H2SO4 (not used right now)
-		 
-		 if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e3) then !only if IN are present 
-			 !Only immersion freezing considered for mixed-phase regime)		            
-			 call  INimmersion(INimm, dINimm, waux_ice,  Immersion_param) 		 
+                fdrop_bc    =  fd_soot   !fraction of  bc incorporated into the droplets
+                fcoa_dust   =  0.0  !fraction of dust that is coated with H2SO4 (not used right now)
 
-	        	   ndust_ice =max(ndust_ice*(1.0-fdrop_dust), 0.0)
-			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
-                  
+            	if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e3) then !only if IN are present 
+                    !Only immersion freezing considered for mixed-phase regime)		            
+                    call  INimmersion(INimm, dINimm, waux_ice,  Immersion_param) 		 
 
-   	        	  call IceParam (sigwparc,  &
-                		     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
-		  end if 
-		   
-		  sc_ice = 1.0
-		      
-      else !competitiion between homogeneous and heterogeneous freezing in cirrus regime	  	  
-	           
-		   call IceParam (sigwparc,  &
-                	     nhet, nice, smaxice, nlim) 
-	
-	end if	
+                    ndust_ice =max(ndust_ice*(1.0-fdrop_dust), 0.0)
+                    nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
+
+
+                    call IceParam (sigwparc,  &
+                    nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
+                end if 
+
+                sc_ice = 1.0
+
+            else !competitiion between homogeneous and heterogeneous freezing in cirrus regime	  	  
+
+                call IceParam (sigwparc,  &
+                nhet, nice, smaxice, nlim) 
+
+            end if	
 
 	! the distribution of relative humidity is assumed normal centered around the RH mean%
 
 	          
 		        ! pfrz_inc_r8  =    1.0d0- 0.5d0*(1.0d0+erf(aux))    
                 ! pfrz_inc_r8  =    min(max(pfrz_inc_r8, 0.0), 0.999)	
-	 		  		      
-      end if
+
+	    end if
     end if 
 
 
         
 
-!======================== use sc_ice only for cirrus
- If (tparc  .gt. Thom) sc_ice =1.0    
-!==========================
+    !======================== use sc_ice only for cirrus
+     If (tparc  .gt. Thom) sc_ice =1.0    
+    !==========================
 
 !All # m-3 except those passed to MG later
-   smaxicer8    = min(max(smaxice, zero_par), 2.0)   
+   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
    nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
    nlimr8       = min(max(nlim, zero_par), 1e10)   
@@ -1041,82 +1005,66 @@
 !=======================================================================
 !=======================================================================
  ! ==================================================================== 
-!*********** Calculate subgrid scale distribution of vertical velocity**** 
+!*********** Calculate subgrid scale distribution of vertical velocity from gravity waves**** 
 ! ==================================================================== 
 
-subroutine vertical_vel_variance(omeg, lc_turb, tm_gw, pm_gw, rad_cool, uwind_gw, tausurf_gw, nm_gw, LCCIRRUS, Nct, Wct, &
-                                                ksa1, fcn, KH, FRLAND, ZPBL, Z, maxkhpbl, &
-						 wparc_ls, wparc_gw, wparc_cgw, wparc_turb, EIS, tke)
 
+subroutine vertical_vel_variance(te, tke,   plev, pi_gw,  uwind_gw, tausurf_gw, airden,  LM, LCCIRRUS, hfs, hfl, ZPBL, &
+                                     wparc_gw, wparc_turb, wparc_cgw, swparc, w_ls)
 
- real(r8), intent(in)   :: omeg, tm_gw, lc_turb, rad_cool, uwind_gw, pm_gw
- real , intent(in)   :: LCCIRRUS, KH, ZPBL, Z, FRLAND, nm_gw, tausurf_gw, ksa1, fcn, &
-                           maxkhpbl, Nct, Wct, EIS, tke 
- 
- real(r8), intent(out)   ::   wparc_ls, wparc_gw, wparc_cgw, wparc_turb
- 
- real(r8) :: rho_gw, k_gw, h_gw, c2_gw, dummyW, maxkh, Wbreak
-  					   
-              
-
-!!!:========= mean V Large scale and radiative cooling 
-               rho_gw =  pm_gw*28.8d-3/rgas_par/tm_gw !Kg/m3
-	
-		       
-               wparc_ls =-omeg/rho_gw/grav_ice + cpa_ice*rad_cool/grav_ice
-
-!!!======== Orographic Gravity gwave (and brackground) initiated (According to Barahona et al. 2013 GMD)          
-
-               wparc_gw = 0.0
-	       k_gw = 2d0*pi_par/LCCIRRUS
-	   
-               h_gw= k_gw*rho_gw*uwind_gw*nm_gw
-
-                if (h_gw .gt. 0.0)  then 
-                     h_gw=sqrt(2.0*tausurf_gw/h_gw)
-		     else
-		     h_gw = 0.0		     
-                  end if
-                
-		Wbreak = 0.133*k_gw*uwind_gw/nm_gw !Vertical velocity variance at saturation
-		
-	        wparc_gw=k_gw*uwind_gw*h_gw*0.133  	        !account for gravity wave breaking     
-               	wparc_gw = min(wparc_gw, Wbreak)
-                wparc_gw=wparc_gw*wparc_gw
-		
-
-!!!======== Subgrid variability from Convective Sources According to Barahona et al. 2014 in prep
-
-                 wparc_cgw = 0.0
-                 c2_gw = (nm_gw+Nct)/Nct          
-                 wparc_cgw  =  sqrt(ksa1)*fcn*c2_gw*Wct*0.6334!!
-		 wparc_cgw = min(wparc_cgw, Wbreak)
- 		 wparc_cgw=wparc_cgw*wparc_cgw
-		
-!!!:=========Subgrid scale variance from turbulence  
+real,  dimension(:), intent(in) :: te, plev, pi_gw,  uwind_gw,  airden, tke
+real,  dimension(:), intent(inout) :: wparc_gw,  wparc_turb, wparc_cgw, swparc, w_ls
+real, intent(in) :: LCCIRRUS, tausurf_gw, hfs, hfl, ZPBL
+integer :: LM
+real,  dimension(:), pointer :: h_gw, Wbreak, nm_gw, rhoi_gw, ni_gw, ti_gw
+real :: aux2, zws
 
 
 
+    call   gw_prof (1, LM, 1, te, plev, pi_gw, &
+      rhoi_gw, ni_gw, ti_gw, nm_gw) !get Brunt_Vaisala Frequency and midpoint densities 
+
+    h_gw = (2d0*pi_par/LCCIRRUS)*airden*uwind_gw*nm_gw
+
+    where (h_gw .gt. 0.0) 
+    	h_gw=sqrt(2.0*tausurf_gw/h_gw)
+    end where
+    Wbreak = 0.133*(2d0*pi_par/LCCIRRUS)*uwind_gw/nm_gw !Vertical velocity variance at saturation
+
+    wparc_gw=(2d0*pi_par/LCCIRRUS)*uwind_gw*h_gw*0.133  	        !account for gravity wave breaking     
+    wparc_gw = min(wparc_gw, Wbreak)
+    
+    wparc_gw=wparc_gw*wparc_gw ! gravity waves 
+         
+    wparc_turb = max(tke, 0.04) !W variabioity from turbulence
+    
+    wparc_cgw =  0. ! place holder for convectively generated gravity waves
+    
+    swparc = sqrt(wparc_gw +wparc_turb+ wparc_cgw) !subgrid scale stdev
           
-	if (.false.) then 
-                   	        wparc_turb=KH/lc_turb                 	
-               !------different formulation for low level stratus---
-             !  if ((frland .lt. 0.1) .and. (zpbl .lt. 800.0) .and.  (tm_gw .lt. 298.0) .and. (tm_gw .gt. 274.0 )) then 
-	        if ((EIS .gt. 1.0) .and.  (frland .lt. 0.1)) then 	      	               
-                   dummyW= max(min((z- 2.0*zpbl)/200.0, 10.0), -10.0)		        
-                   dummyW= 1.0/(1.0+exp(dummyW))		                    
-	           wparc_turb=(1.0-dummyW)*wparc_turb + dummyW*maxkhpbl/lc_turb		
-		   end if
-	      wparc_turb=    wparc_turb*wparc_turb
-    else
-    !use tke instead
-        wparc_turb  =tke
-    end if 
-          
+    
 
-               
-	      
+    aux2= (hfs/MAPL_CP + 0.608*te(LM)*hfl)/airden(LM) ! buoyancy flux (h+le)    
+    zws = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*ZPBL/te(LM)) !-convective velocity scale W* (m/s)
+    zws = 1.2*zws**0.3333 !
+    
+    w_ls  =  w_ls + zws !large scale W (m/s)
 
+
+
+
+! original ZWS code
+    !aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q(i,j,LM)))) ! air_dens (kg m^-3)                          
+                         !hfs = -SH  (i,j) ! W m^-2
+                         !hfl = -EVAP(i,j) ! kg m^-2 s^-1
+                         !aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)                                                                        
+                         !aux3= ZLE(I, J, NINT(KPBLSC(I,J)))           ! pbl height (m)
+                         !-convective velocity scale W* (m/s)
+                         !ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
+                        ! ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s 
+                         
+    
+     
 
 end subroutine vertical_vel_variance
 !=======================================================================
@@ -1142,18 +1090,18 @@ subroutine getINsubset(typ, aerin, aerout)
    
       do k=1, nmd    
       
-       if (typ .eq. 1)  then !dust  
-            if (aerin%fdust(k) .gt. 0.9) then 	   
+       if (typ .eq. 1)  then !dust  #Donif 09/22 Changed the minimun fraction to be 0.25    
+            if (aerin%fdust(k) .gt. 0.25) then 	   
   	       bin=bin+1  
 	       call copy_mode(aerout,aerin, k,bin)
 	    end if  
        elseif   (typ .eq. 2)  then  !soot
-             if (aerin%fsoot(k) .gt. 0.9) then 	   
+             if (aerin%fsoot(k) .gt. 0.25) then 	   
   	       bin=bin+1  
 	       call copy_mode(aerout,aerin, k,bin)
 	    end if  
        elseif   (typ .eq. 3)  then  !organics
-             if (aerin%forg(k) .gt. 0.9) then 	   
+             if (aerin%forg(k) .gt. 0.25) then 	   
   	       bin=bin+1  
 	       call copy_mode(aerout,aerin, k,bin)
 	    end if  
@@ -1168,9 +1116,12 @@ end subroutine getINsubset
  
 !========================subroutines to handle aer strucuture=====================================
 
-   subroutine copy_Aer(a,b)
+
+ subroutine copy_Aer(a,b)
+      
       type (AerProps), intent(out) :: a
       type (AerProps), intent(in) :: b
+      
       a%num= b%num
       a%sig = b%sig
       a%dpg = b%dpg
@@ -1178,14 +1129,16 @@ end subroutine getINsubset
       a%den = b%den
       a%fdust = b%fdust
       a%fsoot = b%fsoot
-      a%forg  = b%forg
-      a%nmods = b%nmods
+      a%forg= b%forg
+      a%nmods =  b%nmods
+      	 	  
    end subroutine copy_Aer 
-
+      
    subroutine copy_mode(a_out,a_in, mode_in, mode_out)
       type (AerProps), intent(out) :: a_out
       type (AerProps), intent(in) :: a_in
       integer, intent (in) :: mode_in, mode_out
+      
       a_out%num(mode_out)= a_in%num(mode_in)
       a_out%sig(mode_out) = a_in%sig(mode_in)
       a_out%dpg(mode_out) = a_in%dpg(mode_in)
@@ -1194,22 +1147,28 @@ end subroutine getINsubset
       a_out%fdust(mode_out) = a_in%fdust(mode_in)
       a_out%fsoot(mode_out) = a_in%fsoot(mode_in)
       a_out%forg(mode_out) = a_in%forg(mode_in)
+           
    end subroutine copy_mode
    
    
-   subroutine init_Aer(aerout)
-     type (AerProps), intent(inout) :: aerout
-     aerout%num = 0.0
-     aerout%dpg = 1.0e-9
-     aerout%sig = 2.0
-     aerout%kap = 0.2
-     aerout%den = 2200.0
-     aerout%fdust = 0.0
-     aerout%fsoot = 0.0
-     aerout%forg  = 0.0
-     aerout%nmods = 1
+    subroutine init_Aer(aerout)
+
+    type (AerProps), intent(inout) :: aerout
+   
+           aerout%num = 0.0
+	   aerout%dpg =  1.0e-9
+	   aerout%sig =  2.0
+	   aerout%kap =  0.2
+	   aerout%den = 2200.0
+	   aerout%fdust  =  0.0
+           aerout%fsoot  =  0.0
+	   aerout%forg   =  0.0
+	   aerout%nmods = 1
+	   
    end subroutine init_Aer
    
+      
+      
 !!!!!!!!!!!!!!======================================     
 !!!!!!!!!   Subroutine ARG_act: finds the activated droplet number following Abdul_Razzak and Ghan 2000.
 !Written by Donifan Barahona
@@ -1243,7 +1202,7 @@ end subroutine getINsubset
       !ACTIVATE STUFF      
       
 	  SMI=MAX(SMI, 1.0e-5)
-      aux =alfa*wparc*G
+          aux =alfa*wparc*G
 	  aux = aux*sqrt(aux)/(2.d0*pi_par*980.d0*beta)
 	  citai = 0.667*Akoh*SQRT(alfa*wparc*G)
 
@@ -2112,7 +2071,7 @@ END
 
 !*************************************************************
 !    Subroutine nice_Vdist. Calculates the ice crystal number concentration
-!    at the maximum supersaturation using a PDF of updraft using a 
+!    at the maximum supersaturation over a PDF of updraft using a 
 !    sixth order Gauss-Legendre quadrature  
 !     Inputs:  T, and P all SI units)
 !    Output NC, smax, nhet, nlim (m-3)
@@ -2288,19 +2247,19 @@ END
       
    
       if (preex_effect .le. 0.0) then       
-          nhet=0d0
-	  NHOM=0d0
-	  smax=shom_ice
-	  DSH =0.d0
-	  FDS=1.d0
-      ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
+        nhet=0d0
+        NHOM=0d0
+        smax=shom_ice
+        DSH =0.d0
+        FDS=1.d0
+        ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
         sc_ice = 1.d0
         	 ! sc_ice = shom_ice + 1.d0
-       
-      !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
-      
-	  nice = 0.d0
-	  nlim_=0d0
+
+        !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
+
+        nice = 0.d0
+        nlim_=0d0
 	  return
       else
       
@@ -2694,7 +2653,7 @@ if (.false.) then
       END function DENSITYICE
       
 !*************************************************************
-!    Function WATDENSITY. Calculates the DENSITY OF ICE
+!    Function WATDENSITY. Calculates the DENSITY 
 !    of liquid water (Kg/m3) according to PK97 
 !    T in K (>240)
 !************************************************************         
@@ -4044,82 +4003,227 @@ end function
 
 
 
-subroutine make_cnv_ice_drop_number(Nd, Ni, Nad, z, zcb, T, qlcn, qicn, cf, nimm, rl_scale, ri_scale)
+subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_scale, b_scale)
 
 	! estimate convective Nd and Ni profiles.      
     !Written by Donifan Barahona
 
-    real, intent (in) :: Nad, z, zcb !Nadiabatic, Z, Zcb  
-    real, intent (in) :: T, qlcn, qicn, cf, rl_scale, ri_scale, nimm 
+    real, intent (in) ::  T, Nimm, cnvfice 
+    real, intent (in) ::   g_scale, b_scale, Nad,  z, zcb
     real, intent (out) :: Nd, Ni
      
-    real :: r3ad, Z12, alf, bet, gam_ad, LWCad 
-    real :: rei3, mui, zkm 
+    real :: r3ad, dZ12, alf, bet, gam_ad, LWCad 
+    real :: rei3, mui, zkm, Tx 
     real, parameter :: max_rel3 =  22.e-6**3.
-    real, parameter :: min_rel3 =  4.e-6**3.
+    real, parameter :: min_rel3 =  10.e-6**3.
     real, parameter :: max_rei3 =  300.e-6**3.
-    real, parameter :: min_rei3 =  5.e-6**3.
-    real, parameter :: ice_den =  900.
-    
-    
-      !========liquid droplet concentration
-      !Loosely based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+    real, parameter :: min_rei3 =  20.e-6**3.
+    real, parameter :: ice_den = 600. 
+    real, parameter :: wat_den = 1000.
+    real, parameter ::  beta =  0.38
+    real, parameter :: gamma =  1.0e-4
+   
      
-     alf=2.8915E-08*(T*T) - 2.1328E-05*T + 4.2523E-03
-     bet=exp(3.49996E-04*T*T - 2.27938E-01*T + 4.20901E+01)
-     gam_ad =  alf/bet
-     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC
-     
-     r3ad = max(min(3.63e-4*LWCad*rl_scale/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
-     Z12  =  4.8e-12*Nad/gam_ad !      
       
-     if (z-zcb .lt. z12) then
-     	Nd  = Nad
-     else
-     	Nd =  min(Nad, 3.6e-4*qlcn/r3ad)
-     end if      
+  ! print *, dqlcn
+  !========liquid droplet concentration
+  !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+     Nd =  0.
+     Ni =  0.
+     Tx =  max(273.15, T)
+     alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
+     bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
+     gam_ad =  alf/bet
+     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
      
-      !=========ice crystal concentration
+      !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+
+     dZ12  =  4.8e-12*Nad/gam_ad !      
+
+     if (z-zcb .lt. dz12) then
+     	Nd  = b_scale*Nad
+     else
+     	Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
+     end if
+
+     Ni =  Nd*cnvfice
+     if (T .lt. 238.) Ni =  Nd
+     Nd =  Nd - Ni
+     Ni =  max(Ni, Nimm)
+      
+      
+      !=========ice crystal concentration -- different approach
     
-      zkm =  z/1000. !to km
-      rei3 =  0.3667*zkm*zkm - 12.014*zkm + 113.86 !based on van Diedenhoven et al. 2016, GRL, Fig 2
-      rei3 =  min(max((1.e-6*rei3*ri_scale)**3., min_rei3), max_rei3)
-      mui = MUI_HEMP(T)
-      !assume gamma distribution
-      Ni = (mui+3.)*(mui+3.)/(mui+2.)/(mui+1.)
-      Ni = 2.15*Ni*qicn/ice_den/rei3/max(cf, 0.001) 
-      Ni =  max(Ni, nimm) 
+      !if (dqicn .gt. 0.) then 
+      !    zkm =  min(z/1000., 18.) !to km
+      !    rei3 =  0.3667*zkm*zkm - 12.014*zkm + 113.86 !based on van Diedenhoven et al. 2016, GRL, Fig 2
+      !    rei3 =  min(max((1.e-6*rei3*ri_scale)**3., min_rei3), max_rei3)
+      !    mui = MUI_HEMP(T)
+          !assume gamma distribution
+      !    dNi = (mui+3.)*(mui+3.)/(mui+2.)/(mui+1.)
+      !    dNi = 4.18*dNi*dqicn/ice_den/rei3
+      !end if
 
     
 end subroutine make_cnv_ice_drop_number     
     
+    
+!!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
+    
+subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
 
+    real, dimension (:, :), intent(out) ::  QCVAR
+    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, intent(in) :: xscale
+    integer, intent(in) :: IM, JM, LM
+    integer :: I, J, K    
+    real :: HMOIST_950, HSMOIST_500, SINST, QCV
+    
+    DO I  =  1, IM
+    	DO J =  1, JM
+            HMOIST_950 = 0.0
+            HSMOIST_500 = 0.0
+
+            IF (PLmb(I, J, LM) .le. 500.0) then                                        
+    	        QCVAR  = 2.0
+            ELSEIF (PLmb(I, J, LM) .lt. 950.0) then 
+                DO K=LM, 1, -1       
+                     if (PLmb(I,J,K) .lt. 500.0) exit  
+                     HSMOIST_500 = MAPL_CP*T(I, J, K) + GZLO(I, J, K) + QST3(I, J, K)*MAPL_ALHL
+                END DO 
+                HMOIST_950 = MAPL_CP*T(I, J, LM) + GZLO(I, J, LM) + Q(I, J, LM)*MAPL_ALHL               
+                SINST = (HMOIST_950 -  HSMOIST_500)/(PLmb(I,J,LM)*100.0- 50000.0)                   
+            ELSE
+                DO K=LM, 1, -1       
+                     if (PLmb(I,J,K) .lt. 500.0) exit  
+                     HSMOIST_500 = MAPL_CP*T(I, J, K) + GZLO(I, J, K) + QST3(I, J, K)*MAPL_ALHL
+                END DO 
+                DO K=LM, 1, -1       
+                     if (PLmb(I,J,K) .lt. 950.0) exit  
+                     HMOIST_950 = MAPL_CP*T(I, J, K) + GZLO(I, J, K) + Q(I, J, K)*MAPL_ALHL
+                END DO                                          
+                SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
+            ENDIF
+
+            QCV =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
+    	    QCVAR(I, J) = min(max(QCV, 0.5), 10.0)
+      end do
+    end do  
+        
+end subroutine estimate_qcvar    
+                      
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  !DONIF Calculate the Brunt_Vaisala frequency
 
 !cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
-         !Returns the value of the dispersion parameter according to Heymsfield et al 2002, Table3.
-         !T is in K
-         ! Written by Donifan Barahona donifan.barahona@nasa.gov
-         !**********************************
-         FUNCTION MUI_HEMP(T)
+     !Returns the value of the dispersion parameter according to Heymsfield et al 2002, Table3.
+     !T is in K
+     ! Written by Donifan Barahona donifan.barahona@nasa.gov
+     !**********************************
+     FUNCTION MUI_HEMP(T)
+
+        real :: MUI_HEMP
+        REAL, intent(in)  :: T
+        REAL              :: TC, mui, lambdai
+        TC=T-273.15
+
+        TC=MIN(MAX(TC, -70.0), -15.0)
+
+        if (TC .gt. -27.0) then 
+           lambdai=6.8*exp(-0.096*TC)
+        else
+           lambdai=24.8*exp(-0.049*TC)
+        end if
+        
+        mui=(0.13*(lambdai**0.64))-2.
+        MUI_HEMP=max(mui, 1.5_r8)
 
 
-            real :: MUI_HEMP
-            REAL, intent(in)  :: T
-            REAL              :: TC, mui, lambdai
-            TC=T-273.15
+     END FUNCTION MUI_HEMP
+  
+  !===============================================================================
+  subroutine gw_prof (pcols, pver, ncol, t, pm, pi, rhoi, ni, ti, nm)
+    !-----------------------------------------------------------------------
+    ! Compute profiles of background state quantities for the multiple
+    ! gravity wave drag parameterization.
+    ! 
+    ! The parameterization is assumed to operate only where water vapor 
+    ! concentrations are negligible in determining the density.
+    !-----------------------------------------------------------------------
+    !------------------------------Arguments--------------------------------
+    integer, intent(in)  :: ncol               ! number of atmospheric columns
+    integer, intent(in)  :: pcols              ! number of atmospheric columns
+    integer, intent(in)  :: pver               ! number of vertical layers
 
-            TC=MIN(MAX(TC, -70.0), -15.0)
+    !real,    intent(in)  :: u(pcols,pver)      ! midpoint zonal wind
+    !real,    intent(in)  :: v(pcols,pver)      ! midpoint meridional wind
+    real,    intent(in)  :: t(pcols,pver)      ! midpoint temperatures
+    real,    intent(in)  :: pm(pcols,pver)     ! midpoint pressures
+    real,    intent(in)  :: pi(pcols,0:pver)   ! interface pressures
 
-            if (TC .gt. -27.0) then 
-               lambdai=6.8*exp(-0.096*TC)
-            else
-               lambdai=24.8*exp(-0.049*TC)
-            end if
+    real,    intent(out) :: rhoi(pcols,0:pver) ! interface density
+    real,    intent(out) :: ni(pcols,0:pver)   ! interface Brunt-Vaisalla frequency
+    real,    intent(out) :: ti(pcols,0:pver)   ! interface temperature
+    real,    intent(out) :: nm(pcols,pver)     ! midpoint Brunt-Vaisalla frequency
 
-            mui=(0.13*(lambdai**0.64))-2.
-            MUI_HEMP=max(mui, 1.5_r8)
+    !---------------------------Local storage-------------------------------
+    integer :: ix,kx                            ! loop indexes
 
-         END FUNCTION MUI_HEMP
+    real    :: dtdp
+    real    :: n2, cpair, r,g                              ! Brunt-Vaisalla frequency squared
+    real :: n2min   = 1.e-8 
+    r=MAPL_RGAS
+    cpair=MAPL_CP
+    g=MAPL_GRAV
+
+    !-----------------------------------------------------------------------------
+    ! Determine the interface densities and Brunt-Vaisala frequencies.
+    !-----------------------------------------------------------------------------
+
+    ! The top interface values are calculated assuming an isothermal atmosphere 
+    ! above the top level.
+    kx = 0
+    do ix = 1, ncol
+       ti(ix,kx) = t(ix,kx+1)
+       rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+       ni(ix,kx) = sqrt (g*g / (cpair*ti(ix,kx)))
+    end do
+
+    ! Interior points use centered differences
+    do kx = 1, pver-1
+       do ix = 1, ncol
+          ti(ix,kx) = 0.5 * (t(ix,kx) + t(ix,kx+1))
+          rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+          dtdp = (t(ix,kx+1)-t(ix,kx)) / (pm(ix,kx+1)-pm(ix,kx))
+          n2 = g*g/ti(ix,kx) * (1./cpair - rhoi(ix,kx)*dtdp)
+          ni(ix,kx) = sqrt (max (n2min, n2))
+       end do
+    end do
+
+    ! Bottom interface uses bottom level temperature, density; next interface
+    ! B-V frequency.
+    kx = pver
+    do ix = 1, ncol
+       ti(ix,kx) = t(ix,kx)
+       rhoi(ix,kx) = pi(ix,kx) / (r*ti(ix,kx))
+       ni(ix,kx) = ni(ix,kx-1)
+    end do
+
+    !-----------------------------------------------------------------------------
+    ! Determine the midpoint Brunt-Vaisala frequencies.
+    !-----------------------------------------------------------------------------
+    do kx=1,pver
+       do ix=1,ncol
+          nm(ix,kx) = 0.5 * (ni(ix,kx-1) + ni(ix,kx))
+       end do
+    end do
+
+    return
+  end subroutine gw_prof
+!************************************************
 
 !    END ICE PARAMETERIZATION DONIF
 !

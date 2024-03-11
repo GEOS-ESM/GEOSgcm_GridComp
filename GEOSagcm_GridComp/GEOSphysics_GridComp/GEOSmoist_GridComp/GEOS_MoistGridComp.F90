@@ -4754,7 +4754,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME='QCVAR_EXP',                                   &
+         SHORT_NAME='QCVAR',                                   &
          LONG_NAME ='inverse relative variance of cloud water',        &
          UNITS      = '1',                                    &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5204,6 +5204,7 @@ contains
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
     real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
+    integer                         :: n_modes
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
     ! Exports
@@ -5223,7 +5224,7 @@ contains
     real, pointer, dimension(:    ) :: PTR1D
 
     integer :: IM,JM,LM
-    integer :: I, J, L
+    integer :: I, J, L, n
 
     !=============================================================================
 
@@ -5458,6 +5459,27 @@ contains
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                              AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+            call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
+            allocate ( AeroProps(IM,JM,LM) )
+            do L=1,LM
+              do J=1,JM
+                do I=1,IM
+                  AeroProps(I,J,L)%nmods    = n_modes
+                  do n=1,n_modes
+                  AeroProps(I,J,L)%num(n)   = AeroPropsNew(n)%num(I,J,L)
+                  AeroProps(I,J,L)%dpg(n)   = AeroPropsNew(n)%dpg(I,J,L)
+                  AeroProps(I,J,L)%sig(n)   = AeroPropsNew(n)%sig(I,J,L)
+                  AeroProps(I,J,L)%den(n)   = AeroPropsNew(n)%den(I,J,L)
+                  AeroProps(I,J,L)%kap(n)   = AeroPropsNew(n)%kap(I,J,L)
+                  AeroProps(I,J,L)%fdust(n) = AeroPropsNew(n)%fdust(I,J,L)
+                  AeroProps(I,J,L)%fsoot(n) = AeroPropsNew(n)%fsoot(I,J,L)
+                  AeroProps(I,J,L)%forg(n)  = AeroPropsNew(n)%forg(I,J,L)
+                  enddo
+                enddo
+              enddo
+            enddo
+         endif
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5526,7 +5548,7 @@ contains
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
 
-         ! Rain-out and Relative Humidity where RH > 110%
+         ! Rain-out of Relative Humidity where RH > 110%
          call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
           DTDT_ER = T
@@ -5550,6 +5572,10 @@ contains
          call FILLQ2ZERO(Q, MASS, TMP2D)
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
+
+       if (USE_AEROSOL_NN .and. adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+         deallocate ( AeroProps )
+       endif
 
        ! Export Total Moist Tendencies
 
