@@ -151,9 +151,11 @@ module gfdl2_cloud_microphys_mod
     logical :: do_sedi_heat = .false. !< transport of heat in sedimentation
     logical :: prog_ccn = .false. !< do prognostic ccn (yi ming's method)
     logical :: do_bigg = .false. !< do bigg mechanism freezing of supercooled liquid on aerosol nuclei
-    logical :: do_evap = .false. !< do evaporation
-    logical :: do_subl = .false. !< do sublimation
+    logical :: do_evap = .true. !< do evaporation
+    logical :: do_subl = .true. !< do sublimation
+    logical :: in_cloud = .false. !< use in-cloud autoconversion
     logical :: do_qa = .false. !< do inline cloud fraction (WMP: in FV3 dynamics)
+    logical :: do_icepsettle = .false. ! include ice pressure settling function
     logical :: preciprad = .true. !< consider precipitates in cloud fraciton calculation
     logical :: fix_negative = .false. !< fix negative water species
     logical :: do_setup = .true. !< setup constants and parameters
@@ -317,7 +319,8 @@ module gfdl2_cloud_microphys_mod
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
-        preciprad, cld_min, use_ppm, mono_prof,         &
+        preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
+        do_icepsettle, &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
 
     public                                                                    &
@@ -331,7 +334,8 @@ module gfdl2_cloud_microphys_mod
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
-        preciprad, cld_min, use_ppm, mono_prof,         &
+        preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
+        do_icepsettle, &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
 
 contains
@@ -1090,7 +1094,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! -----------------------------------------------------------------------
 
     ! Use In-Cloud condensates
-    if (.not. do_qa) then
+    if (in_cloud) then
       qadum = max(qa,qcmin)
     else
       qadum = 1.0
@@ -1108,13 +1112,13 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (qadum(k) > onemsig) then
+            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr) then
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
-                    sink = min(ql0_max, ql(k), max(0.,sink))
+                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
@@ -1130,7 +1134,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
         do k = ktop, kbot
-            if (qadum(k) > onemsig) then
+            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
@@ -1147,7 +1151,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max, ql(k), max(0.,sink))
+                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                 endif
@@ -1159,7 +1163,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! Revert In-Cloud condensate
     ql = ql*qadum
     qi = qi*qadum
- 
+
         ! -----------------------------------------------------------------------
         ! fall speed of rain
         ! -----------------------------------------------------------------------
@@ -3154,36 +3158,43 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
             else
                 tc (k) = tk (k) - tice ! deg C
                 IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
+
                ! -----------------------------------------------------------------------
                ! use deng and mace (2008, grl)
                ! https://doi.org/10.1029/2008GL035054
                ! -----------------------------------------------------------------------
-                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+               !viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                 viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                
                ! -----------------------------------------------------------------------
                ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
                !                               ice clouds: Results from SPartICus'
                ! -----------------------------------------------------------------------
-               !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+                viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
                !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
+
                ! Combine
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Update units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
-               ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-               !------ice cloud effective radius ----- [klaus wyser, 1998]
-               !if(tk(k)>t_ice) then
-               !   rBB  = -2.
-               !else
-               !   rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
-               !endif
-               !rBB   = MIN((MAX(rBB,-6.)),-2.)
-               !DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-               !lnP   = log(pl(k)/100.0)
-               !C0    = -1.04 + 0.298*lnP
-               !C1    =  0.67 - 0.097*lnP
-               ! apply pressure scaling
-               !vti (k) = vti (k) * (C0 + C1*log(DIAM))
+
+                if (do_icepsettle) then
+                  ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+                  !------ice cloud effective radius ----- [klaus wyser, 1998]
+                  if(tk(k)>t_ice) then
+                     rBB  = -2.
+                  else
+                     rBB  = -2. + log10(IWC/50.)*(1.e-3*(t_ice-tk(k))**1.5)
+                  endif
+                  rBB   = MIN((MAX(rBB,-6.)),-2.)
+                  DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+                  lnP   = log(pl(k)/100.0)
+                  C0    = -1.04 + 0.298*lnP
+                  C1    =  0.67 - 0.097*lnP
+                  ! apply pressure scaling
+                  vti (k) = vti (k) * (C0 + C1*log(DIAM))
+                endif
+
                ! Limits
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif

@@ -4,7 +4,7 @@ use gw_utils, only: GW_PRC, midpoint_interp
 !
 ! This module contains code common to different gravity wave
 ! parameterizations.
-!
+  !
 implicit none
 private
 
@@ -67,10 +67,6 @@ integer :: ktop = huge(1)
 
 ! Background diffusivity.
 real(GW_PRC), parameter :: dback = 0.05_GW_PRC
-
-
-! Newtonian cooling coefficients.
-!real, allocatable :: alpha(:) ! AOO global save/alloctable variable not thread-safe 
 
 !
 ! Limits to keep values reasonable.
@@ -263,8 +259,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  gwut, alpha, ro_adjust, tau_adjust, &
-     kwvrdg, satfac_in, tndmax_in )
+     ttgw,  gwut, alpha, pint_adj, ro_adjust, kwvrdg)
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -341,27 +336,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Gravity wave wind tendency for each wave.
   real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
-  real, intent(in) :: alpha(:)
+  real, intent(in) :: alpha(pver+1)
+
+  ! Pressure level tau adjustment
+  real, intent(in), optional :: pint_adj(ncol,pver+1)
 
   ! Adjustment parameter for IGWs.
   real, intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
 
-  ! Adjustment parameter for TAU.
-  real, intent(in), optional :: &
-       tau_adjust(ncol,pver+1)
-
   ! Diagnosed horizontal wavenumber for ridges.
   real, intent(in), optional :: &
        kwvrdg(ncol)
-
-  ! Factor for saturation calculation. Here backwards 
-  ! compatibility. I believe it should be 1.0 (jtb). 
-  ! Looks like it has been 2.0 for a while in CAM.
-  real, intent(in), optional :: &
-       satfac_in
-
-  real, intent(in), optional :: tndmax_in
 
   !---------------------------Local storage-------------------------------
 
@@ -387,29 +373,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Temporary effkwv
   real(GW_PRC) :: effkwv(ncol)
 
-  ! saturation factor. Defaults to 2.0
-  ! unless overidden by satfac_in
-  real(GW_PRC) :: satfac
-
-  real(GW_PRC) :: tndmax
-
   real(GW_PRC) :: near_zero = tiny(1.0_GW_PRC)
 
   ! LU decomposition.
   type(TriDiagDecomp) :: decomp
-
-  if (present(satfac_in)) then
-     satfac = satfac_in
-  else
-     satfac = 2.0
-  endif
-
-! Maximum wind tendency from stress divergence (before efficiency applied).
-  if (present(tndmax_in)) then
-     tndmax = tndmax_in
-  else
-     tndmax = 400._GW_PRC / 86400._GW_PRC
-  endif
 
   ! Lowest levels that loops need to iterate over.
   kbot_tend = maxval(tend_level)
@@ -442,10 +409,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-! !$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni,satfac, &
-! !$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau_adjust,tau) &
+! !$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
+! !$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
 ! !$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
-  do k = kbot_src, ktop, -1  !++ but this is in model now 
+  do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
 
@@ -460,50 +427,64 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
         if (src_level(i) >= k) then
 
-          ! Determine the absolute value of the saturation stress.
-          ! Define critical levels where the sign of (u-c) changes between
-          ! interfaces.
+        ! Determine the absolute value of the saturation stress.
+        ! Define critical levels where the sign of (u-c) changes between
+        ! interfaces.
           ubmc(i) = ubi(i,k) - c(i,l)
 
-          ! Test to see if u-c has the same sign here as the level below.
+              ! Test to see if u-c has the same sign here as the level below.
           if (ubmc(i) > 0.0 .eqv. ubi(i,k+1) > c(i,l)) then
              if (ni(i,k) /= 0.0) & 
-                 tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / &
-                                  (satfac*ni(i,k)) )
+                 tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
              if (present(ro_adjust)) &
                  tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
-             if (present(tau_adjust)) &
-                 tausat(i) = tausat(i) * tau_adjust(i,k)
           endif
 
-          ! Compute stress for each wave. The stress at this level is the
-          ! min of the saturation stress and the stress at the level below
-          ! reduced by damping. The sign of the stress must be the same as
-          ! at the level below.
+        ! Compute stress for each wave. The stress at this level is the
+        ! min of the saturation stress and the stress at the level below
+        ! reduced by damping. The sign of the stress must be the same as
+        ! at the level below.
           ubmc2(i) = max(ubmc(i)**2, ubmc2mn)
-          mi(i) = ni(i,k) / (2.0 * effkwv(i) * ubmc2(i)) * &  ! Is this 2.0 related to satfac?
+          mi(i) = ni(i,k) / (effkwv(i) * ubmc2(i)) * &
                  (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
-          wrk(i) = -2.0*mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
-          wrk(i) = max( wrk(i), -200.0 ) * exp(wrk(i))
+          wrk(i) = -mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
+          wrk(i) = max( wrk(i), -200.0 )
           taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
-          ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
-          ! we limit tau, so instead limit the arrays used to set it.
+
+        ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
+        ! we limit tau, so instead limit the arrays used to set it.
           if (tausat(i) <= taumin) tausat(i) = 0.0
           if (taudmp(i) <= taumin) taudmp(i) = 0.0
+
           tau(i,l,k) = min(taudmp(i), tausat(i))
 
         endif
         end do
      end do
+
   end do
-  
+
+  if (present(pint_adj)) then
+     do k=1,pver+1
+        do l = -band%ngwv, band%ngwv
+           tau(:,l,k) = tau(:,l,k)*pint_adj(:,k)
+        enddo
+     enddo
+  endif
+
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc) tau(:,:,ktop) = 0.0
+  if (tau_0_ubc) then
+     tau(:,:,ktop  ) =                 0.00
+     tau(:,:,ktop+1) = tau(:,:,ktop+1)*0.02
+     tau(:,:,ktop+2) = tau(:,:,ktop+2)*0.05
+     tau(:,:,ktop+3) = tau(:,:,ktop+3)*0.10
+     tau(:,:,ktop+4) = tau(:,:,ktop+4)*0.20
+     tau(:,:,ktop+5) = tau(:,:,ktop+5)*0.50
+  endif
 
   !------------------------------------------------------------------------
   ! Compute the tendencies from the stress divergence.
   !------------------------------------------------------------------------
-
 
   ! Loop over levels from top to bottom
 ! !$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
@@ -518,19 +499,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
         do i=1,ncol
 
-          ! Determine the wind tendency, including excess stress carried down
-          ! from above.
-          ubtl(i) = gravit * (tau(i,l,k+1)-tau(i,l,k)) * rdelp(i,k) ! p%rdel(i,k)  !/1/D_pint
-
-
-          ! Apply first tendency limit to maintain numerical stability.
-          ! Enforce du/dt < |c-u|/dt  so u-c cannot change sign
-          !    (u^n+1 = u^n + du/dt * dt)
-          ! The limiter is somewhat stricter, so that we don't come anywhere
-          ! near reversing c-u.
-          ubtl(i) = min(ubtl(i), umcfac * abs(c(i,l)-ubm(i,k)) / dt)
-
           if (k <= tend_level(i)) then
+
+           ! Determine the wind tendency, including excess stress carried down
+           ! from above.
+           ubtl(i) = gravit * (tau(i,l,k+1)-tau(i,l,k)) * rdelp(i,k)
+
+           ! Apply first tendency limit to maintain numerical stability.
+           ! Enforce du/dt < |c-u|/dt  so u-c cannot change sign
+           !    (u^n+1 = u^n + du/dt * dt)
+           ! The limiter is somewhat stricter, so that we don't come anywhere
+           ! near reversing c-u.
+           ubtl(i) = min(ubtl(i), umcfac * abs(c(i,l)-ubm(i,k)) / dt)
 
            ! Save tendency for each wave (for later computation of kzz).
            ! sign function returns magnitude of ubtl with sign of c-ubm 
@@ -560,7 +540,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
          if (k <= tend_level(i)) then
            tau(i,l,k+1) = tau(i,l,k) + & 
                 abs(gwut(i,k,l)) * delp(i,k) / gravit 
-                !!! abs(gwut(i,k,l)) * p%del(i,k) / gravit 
          end if
         end do
      end do
@@ -600,8 +579,8 @@ use interpolate_data, only: lininterp
   integer,  intent(in)  :: pver
   real, intent(in)  :: pref( pver+1 )
 ! Newtonian cooling coefficients.
-  real, intent(inout) :: alpha(:)  ! Make alpha argument instead of global for correct behavior under threading
-  
+  real, intent(inout) :: alpha( pver+1 )  ! Make alpha argument instead of global for correct behavior under threading
+
   ! Levels of pre-calculated Newtonian cooling (1/day).
   ! The following profile is digitized from:
   ! Wehrbein and Leovy (JAS, 39, 1532-1544, 1982) figure 5
@@ -661,8 +640,6 @@ use interpolate_data, only: lininterp
      alpha0(k) = max(alpha0(k), 1.e-6)
      palph(k) = palph(k)*1.e2
   end do
-
-  !allocate (alpha(pver+1)) ! Make alpha local instead of global for correct behavior under threading
 
   ! interpolate to current vertical grid and obtain alpha
   call lininterp (alpha0, palph, nalph , alpha, pref, pver+1)
@@ -796,7 +773,7 @@ subroutine momentum_fixer(ncol, pver, tend_level, p, um_flux, vm_flux, utgw, vtg
   integer :: i, k
   ! Reciprocal of total mass.
   real :: rdm(ncol)
-
+  
   ! Total mass from ground to source level: rho*dz = dp/gravit
   do i = 1, ncol
      rdm(i) = gravit/(p(i,pver+1)-p(i,tend_level(i)+1))
@@ -881,7 +858,7 @@ end subroutine energy_fixer
 
 subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                                effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, &
-                               tend_level, tndmax_in, pint_adj)
+                               tend_level, tndmax_in)
 
   integer, intent(in) :: ncol, pver
   ! Wavelengths.
@@ -907,14 +884,14 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
   real, intent(in) :: xv(ncol), yv(ncol)
   ! tendency level index index
   integer, intent(in) :: tend_level(ncol)
+! Optional
   ! Tendency limiter
   real, intent(in), optional :: tndmax_in
+! Output
   ! Tendencies.
   real, intent(inout) :: utgw(ncol,pver)
   real, intent(inout) :: vtgw(ncol,pver)
   real, intent(inout) :: ttgw(ncol,pver)
-  ! Pressure level efficiency adjustment
-  real, intent(in), optional :: pint_adj(ncol,pver+1)
 
   real :: taucd(ncol,pver+1,4)
   real :: um_flux(ncol), vm_flux(ncol)
@@ -940,13 +917,11 @@ subroutine energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau
    !---------------------------------------------------------------------------------------
    ! Apply efficiency factor and tendency limiter to prevent unrealistically strong forcing
    !---------------------------------------------------------------------------------------
-    ! efficiency factor and optional pressure adjustment
+   ! efficiency factor and optional pressure adjustment
     do k = ktop, pver
-                              utfac = 1.0 
-       if (present(pint_adj)) utfac = pint_adj(i,k) 
-       utgw(i,k) = utgw(i,k)*effgw(i)*utfac
-       vtgw(i,k) = vtgw(i,k)*effgw(i)*utfac
-       ttgw(i,k) = ttgw(i,k)*effgw(i)*utfac
+       utgw(i,k) = utgw(i,k)*effgw(i)
+       vtgw(i,k) = vtgw(i,k)*effgw(i)
+       ttgw(i,k) = ttgw(i,k)*effgw(i)
     end do
     ! tendency limiter
     uhtmax = 0.0

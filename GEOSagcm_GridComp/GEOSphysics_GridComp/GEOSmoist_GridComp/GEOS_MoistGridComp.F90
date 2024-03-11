@@ -5448,7 +5448,6 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
-         allocate ( AeroProps(IM,JM,LM) )
          ! get veritical velocity
          if (LHYDROSTATIC) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
@@ -5458,7 +5457,7 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5505,18 +5504,8 @@ contains
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
 
-         ! Rain-out and Relative Humidity where RH > 110%
-         call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-          DTDT_ER = T
-         DQVDT_ER = Q
-
          ! some diagnostics to export
-         if (.FALSE.) then
-          QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
-         else
-          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-         end if
+         QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            PTR3D = Q/QST3
@@ -5524,7 +5513,6 @@ contains
              PTR3D=0.0
            end where
          endif
-
          call MAPL_GetPointer(EXPORT, PTR3D, 'SAT_RAT', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            where (CFICE .lt. 0.99 .and. QST3 .gt. 1.0e-20)
@@ -5534,16 +5522,16 @@ contains
             PTR3D = 1.0
            end where
          endif
-
-         if (.FALSE.) then
-          QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
-         else
-          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-         end if
+         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
 
-         ! rainout excesive RH
+         ! Rain-out and Relative Humidity where RH > 110%
+         call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          DTDT_ER = T
+         DQVDT_ER = Q
+         DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
          call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          where ( Q > 1.1*QST3 )
@@ -5562,11 +5550,6 @@ contains
          call FILLQ2ZERO(Q, MASS, TMP2D)
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
-
-       if (USE_AEROSOL_NN) then
-         deallocate ( AeroProps )
-       endif
-
 
        ! Export Total Moist Tendencies
 

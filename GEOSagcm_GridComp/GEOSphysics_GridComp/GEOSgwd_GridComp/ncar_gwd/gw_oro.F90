@@ -246,7 +246,7 @@ subroutine gw_oro_ifc( band, &
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
-   real,         intent(in) :: alpha(:)
+   real,         intent(in) :: alpha(pver+1)
 
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
@@ -324,7 +324,8 @@ subroutine gw_oro_ifc( band, &
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           c,         kvtt,  tau,  utgw,  vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha)
+
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                         effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level)
