@@ -3395,16 +3395,16 @@ subroutine gfdl_cloud_microphys_init (comm)
         !nlunit=open_namelist_file()
         !rewind (nlunit)
         open(NEWUNIT=nlunit,file=trim(fn_nml), form='formatted',access='sequential',iostat=ios)
-        if(ios /= 0) stop('open namelist file gfdl_cloud_microphys_init failed, bailing out...')
+        if(ios /= 0) stop 'open namelist file gfdl_cloud_microphys_init failed, bailing out...'
         rewind (nlunit, iostat=ios)
-        if(ios /= 0) stop('rewind namelist file gfdl_cloud_microphys_init failed, bailing out...')
+        if(ios /= 0) stop 'rewind namelist file gfdl_cloud_microphys_init failed, bailing out...'
      ! Read Main namelist
         read (nlunit,gfdl_cloud_microphysics_nml,iostat=ios)
-        if(ios /= 0) stop('read namelist gfdl_cloud_microphys_init failed, bailing out...')
+        if(ios /= 0) stop 'read namelist gfdl_cloud_microphys_init failed, bailing out...'
         !ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
         !call close_file(nlunit)
         close(nlunit, iostat=ios)
-        if(ios /= 0) stop('close namelist file gfdl_cloud_microphys_init failed, bailing out...')
+        if(ios /= 0) stop 'close namelist file gfdl_cloud_microphys_init failed, bailing out...'
     endif
 #endif
 
