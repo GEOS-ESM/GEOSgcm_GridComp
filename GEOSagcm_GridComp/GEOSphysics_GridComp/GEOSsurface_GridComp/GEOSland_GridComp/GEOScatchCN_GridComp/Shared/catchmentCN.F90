@@ -135,7 +135,7 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &  ! LONS, LATS are in [radians] !!!
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
        DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -848,7 +848,7 @@ CONTAINS
 !     in process
 !     reichle, 29 May 03
 
-        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum)
         tgs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tgs_orig(n)=                       &
                   amin1( tf, tg1_orig(n)*ar1(n)+tg2_orig(n)*ar2(n)+            &
@@ -870,6 +870,7 @@ CONTAINS
         sumdepth=sum(sndz)
 
         CALL StieglitzSnow_snowrt(                                             &
+                   LONS(N), LATS(N),                                           &  ! in      [radians]  !!!
                    N_sm, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   

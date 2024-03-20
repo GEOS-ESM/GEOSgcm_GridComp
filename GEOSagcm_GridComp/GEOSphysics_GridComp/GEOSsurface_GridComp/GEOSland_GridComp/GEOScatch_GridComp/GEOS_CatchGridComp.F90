@@ -4183,13 +4183,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_Get ( MAPL                 ,&
              RUNALARM  = ALARM                            ,&
              ORBIT     = ORBIT                            ,&
-             TILELATS  = LATS                             ,&
-             TILELONS  = LONS                             ,&
+             TILELATS  = LATS                             ,&      ! [radians]
+             TILELONS  = LONS                             ,&      ! [radians]
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
         VERIFY_(STATUS)
-
-
+      
         ! --------------------------------------------------------------------------
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
@@ -4631,7 +4630,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
 
-        CAT_ID = 1
+        CAT_ID = -999                 ! meaningless!!!
         VEG    = nint(ITY)
 
         ! --------------------------------------------------------------------------
@@ -5469,10 +5468,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (ntiles >0) then
 
-             call CATCHMENT ( NTILES, LONS, LATS                  ,&
+             call CATCHMENT ( NTILES, LONS, LATS                  ,&     ! LONS, LATS are in [radians] !!!
              DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
              CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
-             cat_id, VEG, DZSF                                    ,&
+             cat_id, VEG, DZSF                                    ,&     ! cat_id is set to no-data above !!!
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5582,7 +5581,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             currTime=CURRENT_TIME+DELT,  &
             RC=STATUS )
         VERIFY_(STATUS)
-
+      
         ZTH = max(0.0,ZTH)
 
         ! --------------------------------------------------------------------------
