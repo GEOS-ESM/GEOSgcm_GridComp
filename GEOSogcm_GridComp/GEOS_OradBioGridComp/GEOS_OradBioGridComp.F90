@@ -1,4 +1,4 @@
-!  $Id: GEOS_OradBioGridComp.F90,v 1.8.2.2.4.1.2.5.6.2.4.2 2018/10/15 12:27:11 croussea Exp $
+!  $Id: GEOS_OradBioGridComp.F90,v 1.9.4.3 2023/06/21 18:31:58 mmehari Exp $
 
 #include "MAPL_Generic.h"
 !=============================================================================
@@ -21,11 +21,7 @@ module GEOS_OradBioGridCompMod
 ! !PUBLIC ROUTINES:
   public SetServices
 
-  integer, parameter :: NB_CHOU_UV  = 5 ! Number of UV bands
-  integer, parameter :: NB_CHOU_NIR = 3 ! Number of near-IR bands
-  integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
-  
-  logical            :: ocean_extData
+  logical          :: ocean_extData
 
 #include "definebio.h"
 #include "comlte.h"
@@ -37,24 +33,14 @@ module GEOS_OradBioGridCompMod
     real    :: ac(nchl,nlt),bc(nchl,nlt)
     real    :: bpic(nlt)
     real    :: rad,pi2
-    real    :: Fobar(nlt),thray(nlt),oza(nlt),awv(nlt),ao(nlt),aco2(nlt)
-    real    :: am,Vi
-    real   :: asl(ncld),bsl(ncld),csl(ncld),dsl(ncld),esl(ncld),fsl(ncld)
-    integer :: ica(nlt)
-    type(ESMF_Alarm) :: DayAlarm
   end type T_ORADBIO_STATE
 
-   type ORADBIO_WRAP
-      type (T_ORADBIO_STATE), pointer :: PTR => null()
-   end type ORADBIO_WRAP
-
-!  Structure to create arrays for aerosol variables
-  type bandptr
-    real, pointer, dimension(:,:) :: b => null()
-  end type bandptr
+  type ORADBIO_WRAP
+     type (T_ORADBIO_STATE), pointer :: PTR => null()
+  end type ORADBIO_WRAP
 
   integer :: nl
-  character(len = 2) :: suffix
+  integer, parameter :: NB_OBIO = 33
 
 !========================================================================
 
@@ -110,6 +96,7 @@ module GEOS_OradBioGridCompMod
 ! Local derived type aliases
 
     type (MAPL_MetaComp    ), pointer       :: MAPL => null()
+
 !=============================================================================
 
 ! Begin...
@@ -132,23 +119,36 @@ module GEOS_OradBioGridCompMod
 ! Set the state variable specs.
 ! -----------------------------
 
-   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
 
-   call MAPL_GetResource (MAPL,   ocean_extData, Label="OCEAN_EXT_DATA:",   DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
+    call MAPL_GetResource (MAPL, ocean_extData, Label="OCEAN_EXT_DATA:", DEFAULT=.FALSE., __RC__ ) ! .TRUE. or .FALSE.
 
 !BOC
 
+! !INTERNAL STATE:
+
+   if (ocean_extData) then
+     call MAPL_AddImportSpec(GC,                               &
+          SHORT_NAME = 'DATA_KPAR',                            &
+          LONG_NAME  = 'PAR_extinction_coefficient',           &
+          UNITS      = 'm-1',                                  &
+          DIMS       = MAPL_DimsHorzOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+   end if
+
 !  !IMPORT STATE:
 
-    call MAPL_AddImportSpec(GC,                               &
-    LONG_NAME  = 'cosine_of_the_solar_zenith_angle',          &
-    UNITS      = '1',                                         &
-    SHORT_NAME = 'COSZ',                                      &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RC=STATUS  )
-    VERIFY_(STATUS)
+!    call MAPL_AddImportSpec(GC,                               &
+!    LONG_NAME  = 'cosine_of_the_solar_zenith_angle',          &
+!    UNITS      = '1',                                         &
+!    SHORT_NAME = 'COSZ',                                      &
+!    DIMS       = MAPL_DimsHorzOnly,                           &
+!    VLOCATION  = MAPL_VLocationNone,                          &
+!    RC=STATUS  )
+!    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'PENUVR',                                    &
@@ -156,6 +156,7 @@ module GEOS_OradBioGridCompMod
     UNITS      = 'W m-2',                                     &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -165,6 +166,7 @@ module GEOS_OradBioGridCompMod
     UNITS      = 'W m-2',                                     &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -174,6 +176,7 @@ module GEOS_OradBioGridCompMod
     UNITS      = 'W m-2',                                     &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -183,26 +186,51 @@ module GEOS_OradBioGridCompMod
     UNITS      = 'W m-2',                                     &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                         ,&
-          LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
-          UNITS              = 'W m-2'                       ,&
-          SHORT_NAME         = 'DRNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-          RC=STATUS  )
-     VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                               &
+    LONG_NAME  = 'net_surface_downwelling_nir_beam_flux',     &
+    UNITS      = 'W m-2',                                     &
+    SHORT_NAME = 'DRNIR',                                     &
+    DIMS       = MAPL_DimsHorzOnly,                           &
+    VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                         ,&
-          LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
-          UNITS              = 'W m-2'                       ,&
-          SHORT_NAME         = 'DFNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-          RC=STATUS  )
-     VERIFY_(STATUS)
+    call MAPL_AddImportSpec(GC,                               &
+    LONG_NAME  = 'net_surface_downwelling_nir_diffuse_flux',  &
+    UNITS      = 'W m-2',                                     &
+    SHORT_NAME = 'DFNIR',                                     &
+    DIMS       = MAPL_DimsHorzOnly,                           &
+    VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME     = 'DRBAND',                                &
+    LONG_NAME      = 'surface_downwelling_shortwave_beam_flux_per_OBIO_band', &
+    UNITS          = 'W m-2',                                 &
+    DIMS           = MAPL_DimsHorzOnly,                       &
+    UNGRIDDED_DIMS = (/NB_OBIO/),                             &
+    VLOCATION      = MAPL_VLocationNone,                      &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME     = 'DFBAND',                                &
+    LONG_NAME      = 'surface_downwelling_shortwave_diffuse_flux_per_OBIO_band', &
+    UNITS          = 'W m-2',                                 &
+    DIMS           = MAPL_DimsHorzOnly,                       &
+    UNGRIDDED_DIMS = (/NB_OBIO/),                             &
+    VLOCATION      = MAPL_VLocationNone,                      &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'FROCEAN',                                   &
@@ -210,6 +238,7 @@ module GEOS_OradBioGridCompMod
     UNITS      = '1',                                         &
     DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -218,6 +247,15 @@ module GEOS_OradBioGridCompMod
     LONG_NAME  = 'layer_thickness',                           &
     UNITS      = 'm',                                         &
     DIMS       = MAPL_DimsHorzVert,                           &
+    VLOCATION  = MAPL_VLocationCenter,                        &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME = 'MASKO',                                     &
+    LONG_NAME  = 'ocean_mask',                                &
+    UNITS      = '1',                                         &
+    DIMS       = MAPL_DimsHorzOnly,                           &
     VLOCATION  = MAPL_VLocationCenter,                        &
     RC=STATUS  )
     VERIFY_(STATUS)
@@ -342,120 +380,6 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'OZ',                                        &
-    LONG_NAME  = 'ozone thickness',                           &
-    UNITS      = 'Dobson units',                              &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'WV',                                        &
-    LONG_NAME  = 'water vapor',                               &
-    UNITS      = 'cm',                                        &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'RH',                                        &
-    LONG_NAME  = 'relative humidity',                         &
-    UNITS      = 'percent',                                   &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    do nl = 1,nlt
-     write(unit = suffix, fmt = '(i2.2)') nl
-     call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'TAUA_'//suffix,                            &
-     LONG_NAME  = 'aerosol optical thickness',                &
-     UNITS      = '',                                         &
-     DIMS       = MAPL_DimsHorzOnly,                          &
-     VLOCATION  = MAPL_VLocationNone,                         &
-     RESTART    = MAPL_RestartSkip,                           &
-     RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'SSALB_'//suffix,                           &
-     LONG_NAME  = 'single scattering albedo',                 &
-     UNITS      = '',                                         &
-     DIMS       = MAPL_DimsHorzOnly,                          &
-     VLOCATION  = MAPL_VLocationNone,                         &
-     RESTART    = MAPL_RestartSkip,                           &
-     RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'ASYMP_'//suffix,                           &
-     LONG_NAME  = 'asymmetry parameter',                      &
-     UNITS      = '',                                         &
-     DIMS       = MAPL_DimsHorzOnly,                          &
-     VLOCATION  = MAPL_VLocationNone,                         &
-     RESTART    = MAPL_RestartSkip,                           &
-     RC=STATUS  )
-     VERIFY_(STATUS)
-    enddo
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'CCOVM',                                     &
-    LONG_NAME  = 'cloud cover',                               &
-    UNITS      = 'percent',                                   &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'CLDTCM',                                    &
-    LONG_NAME  = 'cloud optical thickness',                   &
-    UNITS      = 'dimensionless',                             &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'RLWPM',                                     &
-    LONG_NAME  = 'cloud liquid water path',                   &
-    UNITS      = 'dimensionless',                             &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'CDREM',                                     &
-    LONG_NAME  = 'cloud droplet effective radius',            &
-    UNITS      = 'dimensionless',                             &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    RESTART    = MAPL_RestartSkip,                            &
-    RC=STATUS  )
-    VERIFY_(STATUS)
-
-    if (ocean_extData) then
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'DATA_KPAR',                          &
-           LONG_NAME  = 'PAR_extinction_coefficient',         &
-           UNITS      = 'm-1',                                &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,                   &
-           RC=STATUS  )
-      VERIFY_(STATUS)
-    endif
-
 !  !EXPORT STATE:
 
     call MAPL_AddExportSpec(GC,                               &
@@ -493,7 +417,7 @@ module GEOS_OradBioGridCompMod
     VLOCATION  = MAPL_VLocationCenter,                        &
     RC=STATUS  )
     VERIFY_(STATUS)
-   
+
  !EOC
  
 ! Set the Profiling timers
@@ -549,7 +473,6 @@ module GEOS_OradBioGridCompMod
     type (MAPL_MetaComp),   pointer     :: MAPL => null()
     type (T_ORADBIO_STATE), pointer     :: State => null()
     type (ORADBIO_wrap)                 :: WRAP
-    type (ESMF_TimeInterval)            :: RingInterval
 !    type (ESMF_Bundle)                  :: BUNDLE
 
 ! Begin
@@ -590,27 +513,9 @@ module GEOS_OradBioGridCompMod
 ! Initialize OASIM parameters in private state
 !-----------------------------------------------
 
-    call setlte(State%lam,   State%aw,   State%bw,                    &
-                State%ac,    State%bc,   State%bpic,                  &
+    call setlte(State%rad, State%pi2, State%lam, State%aw,            &
+                State%bw, State%ac, State%bc, State%bpic,             &
                 State%excdom,State%exdet,State%WtoQ,State%wfac)
-    call setsfclte(State%rad,State%pi2,State%lam,State%Fobar,         &
-                   State%thray,State%oza,State%awv,State%ao,          &
-                   State%aco2, State%am, State%Vi,                    &
-                   State%asl,State%bsl,State%csl,State%dsl,State%esl, &
-                   State%fsl,State%ica)
-
-! Set Daily alarm
-!----------------
-
-    call ESMF_TimeIntervalSet(RingInterval,  D=1, RC=STATUS)
-    VERIFY_(STATUS)
-
-    State%DayAlarm = ESMF_AlarmCreate(NAME="OradAlarm", &
-                     CLOCK        = CLOCK,         &
-                     RingInterval = RingInterval,  &
-                     Sticky       = .FALSE.,       &
-                     RC=STATUS  )
-    VERIFY_(STATUS)
 
 ! Stop Total timer
 !-----------------
@@ -680,19 +585,18 @@ module GEOS_OradBioGridCompMod
     real, dimension(:,:,:), pointer     :: PIC => null()
     real, dimension(:,:,:), pointer     :: CDC => null()
     real, dimension(:,:,:), pointer     :: DH => null()
+    real, dimension(:,:), pointer       :: MASKO => null()
 
     logical :: IS_MIDNIGHT
-    integer :: YY,DOY
+    integer :: YY,DOY,hr,mn,sec
     real    :: DT
     real*8  :: DT8
     integer :: NumDBands, NumSBands
     integer :: i,j,n,nl
     integer :: IM, JM, LM
-    real    :: hr,rday,daycor,sunz
-    real    :: slp,wspd,ozone,wvapor,relhum
-    real    :: cov,cldtau,clwp,cldre
+    real    :: ohr,rday,daycor,sunz
+    real    :: slp,wspd
     real, dimension(nlt) :: Ed,Es
-    real, dimension(nlt) :: ta,wa,asym
     real, dimension(nlt) :: rod,ros
 
     real, parameter                 :: KUVR = 0.09
@@ -704,28 +608,20 @@ module GEOS_OradBioGridCompMod
     real, pointer, dimension(:,:)   :: PRPAR => null()
     real, pointer, dimension(:,:)   :: PRUVF => null()
     real, pointer, dimension(:,:)   :: PRPAF => null()
-    real, pointer, dimension(:,:,:) :: QSW => null()
-    real, pointer, dimension(:,:)   :: KPAR => null()
+    real, pointer, dimension(:,:)   :: DRNIR => null()
+    real, pointer, dimension(:,:)   :: DFNIR => null()
+    real, pointer, dimension(:,:,:) :: EDPR  => null()
+    real, pointer, dimension(:,:,:) :: ESPR  => null()
+    real, pointer, dimension(:,:,:) :: QSW   => null()
+    real, pointer, dimension(:,:)   :: KPAR  => null()
     real, pointer, dimension(:,:)   :: KPARX => null()
-    real, pointer, dimension(:,:)   :: Z => null()
+    real, pointer, dimension(:,:)   :: Z   => null()
     real, pointer, dimension(:,:)   :: UVR => null()
     real, pointer, dimension(:,:)   :: PAR => null()
-    real, pointer, dimension(:,:)   :: PS => null()
+    real, pointer, dimension(:,:)   :: NIR => null()
+    real, pointer, dimension(:,:)   :: PS  => null()
     real, pointer, dimension(:,:)   :: WSM => null()
-    real, pointer, dimension(:,:)   :: OZ => null()
-    real, pointer, dimension(:,:)   :: WV => null()
-    real, pointer, dimension(:,:)   :: RH => null()
-    real, pointer, dimension(:,:)   :: TAUA_T => null()
-    real, pointer, dimension(:,:)   :: SSALB_T => null()
-    real, pointer, dimension(:,:)   :: ASYMP_T => null()
-    type(bandptr), dimension(nlt) :: TAUA
-    type(bandptr), dimension(nlt) :: SSALB
-    type(bandptr), dimension(nlt) :: ASYMP
-    real, pointer, dimension(:,:)   :: CCOV => null()
-    real, pointer, dimension(:,:)   :: CLDTC => null()
-    real, pointer, dimension(:,:)   :: RLWP => null()
-    real, pointer, dimension(:,:)   :: CDRE => null()
-    real, pointer, dimension(:,:)   :: data_kpar => null()
+    real, pointer, dimension(:,:)   :: data_kpar => null() 
 
 !=============================================================================
 
@@ -796,7 +692,17 @@ module GEOS_OradBioGridCompMod
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PRPAR, 'PENPAR',  RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DRNIR, 'DRNIR',   RC=STATUS); 
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DFNIR, 'DFNIR',   RC=STATUS); 
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EDPR,  'DRBAND',  RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, ESPR,  'DFBAND',  RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DH,    'DH',      RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MASKO, 'MASKO',   RC=STATUS) 
     VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, QSW,   'SWHEAT', RC=STATUS)
@@ -812,35 +718,60 @@ module GEOS_OradBioGridCompMod
     allocate(   Z(IM,JM), __STAT__)
     allocate(UVR (IM,JM), __STAT__)
     allocate(PAR (IM,JM), __STAT__)
+    allocate(NIR (IM,JM), __STAT__)
 
 ! Get current time from clock
 !----------------------------
 
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
-    call ESMF_TimeGet (CurrentTime, YY=YY, DayOfYear=DOY, RC=STATUS)
+    call ESMF_TimeGet (CurrentTime, YY=YY, DayOfYear=DOY,   &
+          h=hr, m=mn, s=sec, RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (hr==0 .and. mn==0 .and. sec==0) then
+      IS_MIDNIGHT = .true.
+    else 
+      IS_MIDNIGHT = .false.
+    endif            
 
 ! Get KPAR from data file
 !------------------------
 
-    if (.not. ocean_extData) then
-      call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-      VERIFY_(STATUS)
-    else
-      call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
-      KPAR = data_kpar
-    end if
+   if (.not. ocean_extData) then
+     call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
+     VERIFY_(STATUS)
+
+     if (datafile == '/dev/null') then
+        kpar = 1.0
+     else
+        call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
+        VERIFY_(STATUS)
+     end if
+   else
+     call MAPL_GetPointer(import, data_kpar, 'DATA_KPAR', __RC__)
+     KPAR = data_kpar
+   end if
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------
    
-    UVR = (PRUVF+PRUVR)*FR
-    PAR = (PRPAF+PRPAR)*FR
+!    UVR = (PRUVF+PRUVR)*FR
+!    PAR = (PRPAF+PRPAR)*FR
+!    NIR = (DRNIR+DFNIR)*FR
+
+    UVR=0.0
+    PAR=0.0
+    NIR=0.0
+    where(FR > 0.0)
+       UVR = PRUVF+PRUVR
+       PAR = PRPAF+PRPAR
+       NIR = DRNIR+DFNIR
+    endwhere
+
     Z   = 0.0
 
     if ( associated(QSW) ) then
-      QSW(:,:,1) = UVR + PAR
+      QSW(:,:,1) = UVR + PAR + NIR
 
       do L=2,LM   
         Z = Z + DH(:,:,L-1)
@@ -855,6 +786,7 @@ module GEOS_OradBioGridCompMod
     deallocate(Z   )
     deallocate(PAR )
     deallocate(UVR )
+    deallocate(NIR )
 
 ! ==== end of copied section from Orad ======
 !============================================
@@ -896,34 +828,7 @@ module GEOS_OradBioGridCompMod
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WSM,       'UU',        RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, OZ,        'OZ',        RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WV,        'WV',        RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RH,        'RH',        RC=STATUS)
-    VERIFY_(STATUS)
-    do nl = 1,nlt
-      write(unit = suffix, fmt = '(i2.2)') nl
-      call MAPL_GetPointer(IMPORT, TAUA_T, 'TAUA_'//suffix,  RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, SSALB_T,'SSALB_'//suffix, RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, ASYMP_T,'ASYMP_'//suffix, RC=STATUS)
-      VERIFY_(STATUS)
-      TAUA(nl)%b => TAUA_T
-      SSALB(nl)%b => SSALB_T
-      ASYMP(nl)%b => ASYMP_T
-    enddo
 
-    call MAPL_GetPointer(IMPORT, CCOV,      'CCOVM',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CLDTC,     'CLDTCM',    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RLWP,      'RLWPM',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CDRE,      'CDREM',     RC=STATUS)
-    VERIFY_(STATUS)
-!
 ! Get solar zenith angle
 !-----------------------
 
@@ -936,12 +841,6 @@ module GEOS_OradBioGridCompMod
               RC=STATUS )
     VERIFY_(STATUS)
 
-! Alarm for midnight
-!-------------------
-
-   IS_MIDNIGHT = ESMF_AlarmIsRinging(State%DayAlarm, RC=STATUS)
-    VERIFY_(STATUS)
-
 ! Allocate 4D array for phytoplankton
 !----------------------------------------------
 
@@ -952,55 +851,35 @@ module GEOS_OradBioGridCompMod
    
     if ( associated(TIRRQ) ) TIRRQ = 0.0
     if ( associated(CDOMABSQ) ) CDOMABSQ = 0.0
-hr=1.0
+
+    ohr=1.0
 ! Obtain Earth-Sun distance 
-    rday = float(DOY) + hr/24.0
+    rday = float(DOY) + ohr/24.0
     daycor = (1.0+1.67E-2*cos(State%pi2*(rday-3.0)/365.0))**2
 !   if (Is_Leap)daycor = (1.0+1.67E-2*cos(State%pi2*(rday-3.0)/366.0))**2
 !
+
     do j = 1, JM
      do i = 1, IM
-      if (DH(i,j,1) < 1.0E10 .and. COSZ(i,j) > 0.0)then
+      if (MASKO(i,j) > 0.0 .and. COSZ(i,j) > 0.0 ) then
        slp = PS(i,j)*0.01  ! convert from Pa to mbar
        wspd = WSM(i,j)
-       ozone = OZ(i,j)
-       wvapor = WV(i,j)
-       relhum = RH(i,j)
-       do nl = 1,nlt
-        ta(nl) = TAUA(nl)%b(i,j)
-        wa(nl) = SSALB(nl)%b(i,j)
-        asym(nl) = ASYMP(nl)%b(i,j)
-       enddo
-       cov = CCOV(i,j)
-       cldtau = CLDTC(i,j)
-       clwp = RLWP(i,j)
-       cldre = CDRE(i,j)
+       Ed(:) = EDPR(i,j,:)
+       Es(:) = ESPR(i,j,:)      
 
-!  There are mismatches between the ocean, land and atmosphere in GEOS-5
-!  and live ocean points for MOM that do not have a corresponding
-!  atmosphere.  These are called "grottoes" because they are assumed
-!  to have ocean underneath with land overhead.  Set irradiance to 0
-!  to represent this condition.
-!       if (slp < 0.0 .or. slp >1.0E10)then ! original line, EMS
-       if ((slp < 0.0 .or. slp >1.0E10) .or. (wspd == MAPL_UNDEF) .or. (ozone == MAPL_UNDEF) &
-           .or. (wvapor == MAPL_UNDEF) .or. (relhum == MAPL_UNDEF)) then ! extended to include additional variables, EMS
+!!  There are mismatches between the ocean, land and atmosphere in GEOS-5
+!!  and live ocean points for MOM that do not have a corresponding
+!!  atmosphere.  These are called "grottoes" because they are assumed
+!!  to have ocean underneath with land overhead.  Set irradiance to 0
+!!  to represent this condition.
+       if (slp < 0.0 .or. slp >1.0E10)then
         Ed = 0.0
         Es = 0.0
         TIRRQ(i,j,:) = 0.0
         CDOMABSQ(i,j,:) = 0.0
         AVGQ(i,j,:) = 0.0
        else
-!   Spectral irradiance just above surface
-        call sfcirr(State%lam,State%Fobar,State%thray,State%oza,       &
-                    State%awv,State%ao,State%aco2,                     &
-                    State%asl,State%bsl,State%csl,State%dsl,           &
-                    State%esl,State%fsl,State%ica,                     &
-                    daycor,COSZ(i,j),                                  &
-                    slp,wspd,ozone,wvapor,relhum,                      &
-                    ta,wa,asym,State%am,State%Vi,                      &
-                    cov,cldtau,clwp,cldre,Ed,Es)
-
-!   Spectral irradiance just below surface
+!!   Spectral irradiance just below surface
         sunz = acos(COSZ(i,j))*State%rad
         call ocalbedo(State%rad,State%lam,State%aw,State%bw,State%wfac, &
          sunz,wspd,rod,ros)
@@ -1009,13 +888,14 @@ hr=1.0
          Es(nl) = Es(nl)*(1.0-ros(nl))
         enddo
 
+!
         PHYTO(:,1) = DIATOM(i,j,:)
         PHYTO(:,2) = CHLORO(i,j,:)
         PHYTO(:,3) = CYANO(i,j,:)
         PHYTO(:,4) = COCCO(i,j,:)
         PHYTO(:,5) = DINO(i,j,:)
         PHYTO(:,6) = PHAEO(i,j,:)
-!   Spectral irradiance in the water column
+!!   Spectral irradiance in the water column
         call glight(LM, IS_MIDNIGHT, COSZ(i,j),                        &
              State%lam,State%aw,State%bw,State%ac,State%bc,State%bpic, &
              State%excdom,State%exdet,State%WtoQ,                      &
@@ -1027,6 +907,11 @@ hr=1.0
       endif
      enddo
     enddo
+
+!if(mapl_am_i_root()) print*,trim(comp_name),' sum TIRRQ = ',sum(TIRRQ)
+!if(mapl_am_i_root()) print*,trim(comp_name),' sum CDOMABSQ = ',sum(CDOMABSQ)
+!if(mapl_am_i_root()) print*,trim(comp_name),' sum PIC = ',sum(PIC)
+
 
 !  Clean-up
 !----------

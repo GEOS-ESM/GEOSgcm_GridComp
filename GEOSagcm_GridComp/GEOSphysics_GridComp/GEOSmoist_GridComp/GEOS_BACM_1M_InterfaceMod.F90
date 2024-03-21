@@ -1,6 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
+!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -228,6 +229,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     if (CLDPARAMS%ICE_SETTLE==2) TMP_ICEFALL=TMP_ICEFALL*0.8
     call MAPL_GetResource( MAPL, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
     call MAPL_GetResource( MAPL, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
+    call MAPL_GetResource( MAPL, LIQ_RADII_PARAM ,         'LIQ_RADII_PARAM:',DEFAULT= 1       )
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM ,         'ICE_RADII_PARAM:',DEFAULT= 1       )
     call MAPL_GetResource( MAPL, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
     call MAPL_GetResource( MAPL, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  15.e-6 )
     call MAPL_GetResource( MAPL, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
@@ -299,7 +302,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, KH
     real, pointer, dimension(:,:)   :: FRLAND, TS, DTSX, SH, EVAP, KPBLSC
-    real, pointer, dimension(:,:,:) :: HL2, HL3, QT2, QT3, W2, W3, HLQT, WQT, WQL, WHL, EDMF_FRC
+    real, pointer, dimension(:,:,:) :: SL2, SL3, QT2, QT3, W2, W3, SLQT, WQT, WQL, WSL, PDF_A
     real, pointer, dimension(:,:,:) :: OMEGA
     real, pointer, dimension(:,:,:) :: CNV_MFD, CNV_DQCDT, CNV_PRC3, CNV_UPDF
     real, pointer, dimension(:,:,:) :: MFD_SC, QLDET_SC, QIDET_SC, SHLW_PRC3, SHLW_SNO3, CUFRC_SC
@@ -316,7 +319,6 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:)   :: maxrhcrit2D
     real, allocatable, dimension(:,:)   :: IKEX, IKEX2
     real, allocatable, dimension(:,:)   :: TMP2D
-    type(ESMF_State)                    :: AERO
     ! Exports
     real, pointer, dimension(:,:,:) :: DQVDT_macro, DQIDT_macro, DQLDT_macro, DQADT_macro
     real, pointer, dimension(:,:,:) :: DQVDT_micro, DQIDT_micro, DQLDT_micro, DQADT_micro
@@ -341,13 +343,19 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: ALPHT, ALPH1, ALPH2
     real, pointer, dimension(:,:,:) :: CFPDF, RHCLR
     real, pointer, dimension(:,:,:) :: DQRL, WTHV2
-    real, pointer, dimension(:,:,:) :: PDF_A, PDFITERS
+    real, pointer, dimension(:,:,:) :: PDFITERS
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:  ) :: LS_PRCP, CN_PRCP, AN_PRCP, SC_PRCP
     real, pointer, dimension(:,:  ) :: LS_ARF,  CN_ARF,  AN_ARF,  SC_ARF
     real, pointer, dimension(:,:  ) :: LS_SNR,  CN_SNR,  AN_SNR,  SC_SNR
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+#ifdef PDFDIAG
+    real, pointer, dimension(:,:,:) :: PDF_W1, PDF_W2, PDF_SIGW1, PDF_SIGW2,     &
+                                       PDF_QT1, PDF_QT2, PDF_SIGQT1, PDF_SIGQT2, &
+                                       PDF_TH1, PDF_TH2, PDF_SIGTH1, PDF_SIGTH2, &
+                                       PDF_RQTTH, PDF_RWTH, PDF_RWQT
+#endif
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ) 
     VERIFY_(STATUS)
@@ -395,22 +403,21 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, EDMF_FRC,'EDMF_FRC', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PDF_A,   'PDF_A'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, W2,      'W2'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, W3,      'W3'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WQT,     'WQT'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WHL,     'WHL'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, HL2,     'HL2'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, HL3,     'HL3'     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WSL,     'WSL'     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SL2,     'SL2'     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SL3,     'SL3'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QT2,     'QT2'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QT3,     'QT3'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, HLQT,    'HLQT'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SLQT,    'SLQT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, KPBLSC,  'KPBL_SC' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SH,      'SH'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, EVAP,    'EVAP'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
-    call   ESMF_StateGet(IMPORT, 'AERO', AERO, __RC__)
 
     ! Allocatables
      ! Edge variables 
@@ -588,10 +595,27 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CFPDF,     'CFPDF'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, RHCLR,     'RHCLR'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQRL,      'DQRL'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PDF_A,     'PDF_A'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, PDFITERS, 'PDFITERS', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WTHV2,     'WTHV2'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQL,       'WQL'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
+#ifdef PDFDIAG
+   call MAPL_GetPointer(EXPORT,  PDF_W1,  'PDF_W1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_W2,  'PDF_W2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGW1,  'PDF_SIGW1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGW2,  'PDF_SIGW2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_QT1,  'PDF_QT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_QT2,  'PDF_QT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGQT1,  'PDF_SIGQT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGQT2,  'PDF_SIGQT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_TH1,  'PDF_TH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_TH2,  'PDF_TH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGTH1,  'PDF_SIGTH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_SIGTH2,  'PDF_SIGTH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_RQTTH,  'PDF_RQTTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_RWTH,  'PDF_RWTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+#endif
 
          call  PROGNO_CLOUD (     &
               IM*JM, LM         , &
@@ -603,16 +627,15 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
               PK                , &
               FRLAND            , &   ! <- surf
               KH                , &   ! <- turb
-              EDMF_FRC          , &   ! <- turb
               WQT               , &   ! <- turb
-              WHL               , &   ! <- turb
+              WSL               , &   ! <- turb
               QT2               , &   ! <- turb
-              HL2               , &   ! <- turb
-              HLQT              , &   ! <- turb
+              SL2               , &   ! <- turb
+              SLQT              , &   ! <- turb
               W2                , &   ! <- turb
               W3                , &   ! <- turb
               QT3               , &   ! <- turb
-              HL3               , &   ! <- turb
+              SL3               , &   ! <- turb
               CNV_MFD           , &   ! <- deep
               CNV_DQCDT         , &   ! <- deep              
               CNV_PRC3          , &   ! <- deep   
@@ -692,6 +715,12 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                VFALLRN_AN  , VFALLRN_LS  ,VFALLRN_CN  ,VFALLRN_SC  ,  &
               PDF_A, PDFITERS, &
               DQVDT_macro, DQLDT_macro, DQIDT_macro, DQADT_macro, &
+#ifdef PDFDIAG
+              PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
+              PDF_SIGTH1, PDF_SIGTH2, PDF_TH1, PDF_TH2, &
+              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
+              PDF_RQTTH, PDF_RWTH, PDF_RWQT, &
+#endif
               WTHV2, WQL, &
               NACTL,    &
               NACTI,    &
@@ -782,7 +811,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR,RAD_QS,RAD_QG,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR*RAD_CF,RAD_QS*RAD_CF,RAD_QG*RAD_CF,IM,JM,LM,1,0,0)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0

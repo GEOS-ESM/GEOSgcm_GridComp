@@ -12,11 +12,11 @@ module GEOS_SeaIceGridCompMod
   use ESMF
   use MAPL
 #ifdef BUILD_MIT_OCEAN
-  use GEOS_MITDynaGridCompMod,          only : GEOSMITSeaIceSetServices  => SetServices
+  use GEOS_MITDynaGridCompMod,           only : GEOSMITSeaIceSetServices  => SetServices
 #else
-  use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices  => SetServices
+  use GEOS_CICEDynaGridCompMod,          only : CICE4SeaIceSetServices    => SetServices
 #endif
-  use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices   => SetServices
+  use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices     => SetServices
   use ice_prescribed_mod,                only : ice_nudging
 
    
@@ -81,7 +81,7 @@ contains
     type  (ESMF_Config)                :: CF
     integer                            :: iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
-    !character(len=ESMF_MAXSTR)         :: sharedObj
+    character(len=ESMF_MAXSTR)         :: sharedObj
 
 ! Begin...
 
@@ -124,6 +124,11 @@ contains
        select case (trim(SEAICE_NAME))
           case ("CICE4")
              ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
+          case ("CICE6")
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="CICE_GEOSPLUG:", DEFAULT="libCICE_GEOSPlug.so", __RC__ )
+             ICE = MAPL_AddChild(SEAICE_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+
+             !ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE6SeaIceSetServices, __RC__)
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
@@ -198,7 +203,17 @@ contains
     if(DO_DATASEAICE==0) then
 
         call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'VEL',                                  &
+             SHORT_NAME = 'AICE',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HICE',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HSNO',                                 &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
@@ -207,8 +222,32 @@ contains
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
+
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'TAUYBOT',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FRESH',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FSALT',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FHOCN',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+    endif
+
+    if(trim(SEAICE_NAME) == 'CICE4') then
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'VEL',                                  &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
@@ -232,6 +271,10 @@ contains
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HICE0',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'STRENGTH',                             &
@@ -268,20 +311,6 @@ contains
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'HICE',                                 &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'HICE0',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'HSNO',                                 &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'HSNO0',                                &
@@ -295,11 +324,6 @@ contains
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'DRAFT0',                               &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'AICE',                                 &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
@@ -448,20 +472,6 @@ contains
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FRESH',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FSALT',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
-
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FHOCN',                                &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'SIG1',                                 &
@@ -502,6 +512,23 @@ contains
              SHORT_NAME = 'HIFLXN',                               &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
+    endif
+
+    if (trim(SEAICE_NAME) == 'CICE6') then
+       call MAPL_AddExportSpec ( GC   ,                           &
+            SHORT_NAME = 'SURFSTATE',                             &
+            CHILD_ID   =  ICE ,                                   &
+                                                              _RC )
+
+       call MAPL_AddExportSpec ( GC   ,                           &
+            SHORT_NAME = 'TI',                                    &
+            CHILD_ID   =  ICE ,                                   &
+                                                              _RC )
+
+       call MAPL_AddExportSpec ( GC   ,                           &
+            SHORT_NAME = 'FRSEAICE',                              &
+            CHILD_ID   =  ICE ,                                   &
+                                                              _RC )
     endif
 
 !EOS
@@ -764,8 +791,10 @@ contains
     if (DO_CICE_THERMO /= 0) then
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       if (DO_CICE_THERMO == 1) then
+          call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+          VERIFY_(STATUS)
+       endif
     else
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1

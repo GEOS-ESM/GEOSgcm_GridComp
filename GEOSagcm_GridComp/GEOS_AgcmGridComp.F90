@@ -14,10 +14,12 @@
 #undef   FULLPHYSICS
 #endif
 
+
 #if defined SCM
 #define GEOS_superdynGridCompMod GEOS_singcolGridCompMod
 #undef  GCM
 #endif
+
 
 !=============================================================================
 !BOP
@@ -137,7 +139,7 @@ contains
 ! Locals
 
     integer                       :: I
-    integer                       :: RST
+    integer                       :: RST, SCM_SL
     logical                       :: ANA_TS
     type (ESMF_Config)            :: CF
     type (MAPL_MetaComp), pointer :: MAPL
@@ -188,6 +190,9 @@ contains
     else
         RST = MAPL_RestartSkip
     end if
+
+    call MAPL_GetResource(MAPL, SCM_SL, Label="SCM_SL:", default=0, _RC)
+
 
     call MAPL_GetResource(MAPL, ReplayMode, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
@@ -1042,14 +1047,16 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
-#ifdef SCMSURF
+    if (SCM_SL /= 0 ) then
+    print *,'AgcmGC: adding connectivity for LHOBS and SHOBS'
     call MAPL_AddConnectivity ( GC,    &
-         SHORT_NAME  = (/'TSKINOBS','QSKINOBS','LHOBS   ','SHOBS   '/), &
+!         SHORT_NAME  = (/'TSKINOBS','QSKINOBS','LHOBS   ','SHOBS   '/), &
+         SHORT_NAME  = (/'LHOBS   ','SHOBS   '/), &
          DST_ID = PHYS,         &
          SRC_ID = SDYN,         &
          RC=STATUS  )
      VERIFY_(STATUS)
-#endif
+     end if
 
 !ALT: we need this if we run with NCEP gwd
     call MAPL_AddConnectivity ( GC,    &
