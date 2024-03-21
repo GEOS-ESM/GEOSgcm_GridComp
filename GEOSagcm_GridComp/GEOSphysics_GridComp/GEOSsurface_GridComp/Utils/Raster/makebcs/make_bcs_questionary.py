@@ -85,7 +85,7 @@ def get_configs_from_answers(answers):
         if resolution == 'c2800': 
            NX = 21600
            NY = 10800
-        if resolution in ['c1536', 'c3072','c5760'] : 
+        if resolution in ['c3072','c5760'] : 
            NX = 43200
            NY = 21600
      
@@ -98,7 +98,9 @@ def get_configs_from_answers(answers):
         CUBED_SPHERE_OCEAN = False
         DATENAME = 'DE'
         POLENAME = 'PE'
+        OCEAN_VERSION='UNDEF'
         MOM_VERSION = 'UNDEF'
+        SG= 'UNDEF'
         if orslv in['O2','O3','O1']:
            LATLON_OCEAN = True
            DATENAME = 'DE'
@@ -106,15 +108,19 @@ def get_configs_from_answers(answers):
         if orslv in['T2','T3','T4']:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM5'
-           DATENAME = 'TM'
-           POLENAME = 'TM'
+           DATENAME = ''
+           POLENAME = ''
+           OCEAN_VERSION='M5TP'
         if 'MOM6' in orslv:
            TRIPOL_OCEAN = True
            MOM_VERSION = 'MOM6'
-           DATENAME = 'TM'
-           POLENAME = 'TM'
+           DATENAME = ''
+           POLENAME = ''
+           OCEAN_VERSION='M6TP'
         if  orslv == 'CS' :
            CUBED_SPHERE_OCEAN = True
+           DATENAME = 'CF'
+           POLENAME = ''
      
         config = {}
 
@@ -123,6 +129,7 @@ def get_configs_from_answers(answers):
         config['CUBED_SPHERE_OCEAN'] = CUBED_SPHERE_OCEAN
         config['DATENAME'] = DATENAME
         config['POLENAME'] = POLENAME
+        config['OCEAN_VERSION'] = OCEAN_VERSION
         config['MOM_VERSION'] =  MOM_VERSION
 
         config['skipland']  = skipland
@@ -143,6 +150,8 @@ def get_configs_from_answers(answers):
         config ['inputdir']  = make_bcs_input_dir
         config ['NCPUS'] = 20
 
+        for x in answers.get('Stretched_CS',[]):
+            config ['SG'] = answers['SG']
 
         configs = configs + [config]
 
@@ -183,6 +192,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v07 : NL3 + PEATMAP", \
    "v08 : NL3 + MODIS snow alb", \
    "v09 : NL3 + PEATMAP + MODIS snow alb", \
+   "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
+   "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
@@ -192,7 +203,12 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "type": "select",
             "name": "grid_type",
             "message": "Select grid types: \n ",
-            "choices": ["Cubed-Sphere", "Lat-Lon", "EASEv2", "EASEv1"],
+            "choices": [ \
+                    "Cubed-Sphere", \
+                    "Stretched_CS", \
+                    "Lat-Lon", \
+                    "EASEv2", \
+                    "EASEv1"],
         },
 
        {
@@ -201,6 +217,39 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "message": "Select lat-lon resolution (multiple choices): \n ",
             "choices": ["b -- 2   deg $144x91$", "c -- 1   deg $288x181$", "d -- 1/2 deg $576x361$","e -- 1/4 deg $1152x721$"],
             "when": lambda x: "Lat-Lon" == x['grid_type'],
+        },
+
+       {
+            "type": "select",
+            "name": "SG",
+            "message": f'''Select Stretched Cubed-Sphere (Stretched_CS) grid option:
+               Name   Stretch_Factor  Focus_Lat  Focus_Lon  Resolution_Options
+               -----  --------------  ---------  ---------  ------------------------
+               SG001      2.5            39.5      -98.35   c270, c540, c1080, c2160
+               SG002      3.0            39.5      -98.35   c1536                    \n ''',
+            "choices": ["SG001", "SG002"],
+            "when": lambda x: "Stretched_CS" == x['grid_type'],
+        },
+
+       {
+            "type": "checkbox",
+            "name": "Stretched_CS",
+            "message": "Select resolution(s) for SG001: \n ",
+            "choices": [ \
+                 "c270  -- 1/3  deg ( 37   km)", \
+                 "c540  -- 1/6  deg ( 18   km)", \
+                 "c1080 -- 1/12 deg (  9   km)", \
+                 "c2160 -- 1/12 deg (  4   km)"],
+            "when": lambda x: "Stretched_CS" == x['grid_type'] and "SG001" == x['SG'],
+        },
+
+       {
+            "type": "checkbox",
+            "name": "Stretched_CS",
+            "message": "Select resolution(s) for SG002: \n ",
+            "choices": [ \
+                 "c1536 -- 1/16 deg (  7   km)"],
+            "when": lambda x: "Stretched_CS" == x['grid_type'] and "SG002" == x['SG'],
         },
 
        {
@@ -219,7 +268,6 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c1000 -- 1/10 deg ( 10   km)", \
                  "c1152 -- 1/10 deg (  8   km)", \
                  "c1440 -- 1/16 deg (  7   km)", \
-                 "c1536 -- 1/16 deg (  7   km)", \
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
                  "c5760 -- 1/64 deg (  1.5 km)"],
@@ -231,19 +279,20 @@ def ask_questions(default_grid="Cubed-Sphere"):
             "name": "EASEv1",
             "message": "Select EASEv1 grid resolution: \n ",
             "choices": [ \
-                 "M01  --  1km $34668x14688$", \
+                 #"M01  --  1km $34668x14688$", \
                  "M03  --  3km $11556x4896$", \
                  "M09  --  9km  $3852x1632$", \
                  "M25  -- 25km  $1383x586$", \
                  "M36  -- 36km   $963x408$"],
             "when": lambda x: "EASEv1" ==  x['grid_type'] ,
         },
+
        {
             "type": "checkbox",
             "name": "EASEv2",
             "message": "Select EASEv2 grid resolution: \n ",
             "choices": [ \
-                 "M01  --  1km $34704x14616$", \
+                 #"M01  --  1km $34704x14616$", \
                  "M03  --  3km $11568x4872$", \
                  "M09  --  9km  $3856x1624$", \
                  "M25  -- 25km  $1388x584$", \
@@ -263,14 +312,23 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "T3     --  Tripolar (MOM5-Tripolar-Ocean:   $720x410$ )", \
                  "T4     --  Tripolar (MOM5-Tripolar-Ocean:  $1440x1080$)", \
                  "T1MOM6 --  Tripolar (MOM6-Tripolar-Ocean:    $72x36$  )", \
-                 "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $580x458$ )", \
+                 "T3MOM6 --  Tripolar (MOM6-Tripolar-Ocean:   $540x458$ )", \
                  "T4MOM6 --  Tripolar (MOM6-Tripolar-Ocean:  $1440x1080$)", \
                  "CS     --  Cubed-Sphere Ocean  (Cubed-Sphere Data-Ocean)"],
-            "when": lambda x:  "Cubed-Sphere" == x['grid_type'],
+            "when": lambda x:  "Stretched_CS" == x['grid_type'] or "Cubed-Sphere" == x['grid_type'],
         },
+
    ]
    answers = questionary.prompt(questions)
-   if "Cubed-Sphere" != answers['grid_type'] : answers['Ocean'] = ['O1  $360x180$']
+
+  # # List of excluded grid types
+   excluded_grid_types = ["Cubed-Sphere", "Stretched_CS"]
+
+   # Check if the grid_type is not in the list of excluded options and modify the 'Ocean' key
+   if answers['grid_type'] not in excluded_grid_types:
+     answers['Ocean'] = ['O1  $360x180$']
+
+   # Split the 'bcs_version' value by spaces and keep only the first part
    answers['bcs_version'] = answers['bcs_version'].split()[0]
 
    path_q  = [
@@ -313,6 +371,16 @@ def ask_questions(default_grid="Cubed-Sphere"):
       im[short_res] = i
       jm[short_res] = 6*i
    answers['Cubed-Sphere'] = res 
+
+   res = []
+   for x in answers.get('Stretched_CS',[]):
+      SG       = answers['SG']
+      short_res = x.split()[0]
+      res = res + [short_res]
+      i = int(short_res[1:])
+      im[short_res] = i
+      jm[short_res] = 6*i
+   answers['Stretched_CS'] = res 
 
    answers['im'] = im
    answers['jm'] = jm

@@ -21,7 +21,7 @@ bin/create_README.csh
 
 def make_bcs_ease(config):
   bin_dir = os.getcwd()
-  if 'install/bin' not in bin_dir:
+  if '/bin' not in bin_dir:
     print("please run this program in installed bin directory")
     return
 
@@ -32,17 +32,16 @@ def make_bcs_ease(config):
 
   resolution = config['resolution']
 
-  gridname  = grid_type+'_'+ resolution
+  GRIDNAME  = grid_type+'_'+ resolution
   now     = datetime.now()
   tmp_dir = now.strftime("%Y%m%d%H%M%S") 
   tmp_dir = f"{resolution}_{tmp_dir}"
   expdir  = config['expdir']
-  scratch_dir = expdir+ tmp_dir+'/'+gridname+'.scratch/'
-  log_dir     = expdir+'/'+tmp_dir+'/logs/' + gridname
-  job_script       = scratch_dir+'/'+gridname+'.j'
-  if os.path.exists(job_script):
-    print('please remove the run temprory directory: ' + expdir+'/'+ tmp_dir) 
-    return
+  scratch_dir = expdir+ tmp_dir+'/'+GRIDNAME+'.scratch/'
+  log_dir     = expdir+'/'+tmp_dir+'/logs/' + GRIDNAME
+  bcjob       = scratch_dir+'/'+GRIDNAME+'.j'
+
+  check_script(expdir, GRIDNAME+'.j')
 
   os.makedirs(scratch_dir)
   if not os.path.exists(log_dir):
@@ -59,8 +58,8 @@ def make_bcs_ease(config):
            account = account, \
            EXPDIR = config['expdir'], \
            TMP_DIR = tmp_dir, \
-           GRIDNAME  = gridname, \
-           GRIDNAME2 = gridname, \
+           GRIDNAME  = GRIDNAME, \
+           GRIDNAME2 = GRIDNAME, \
            bin_dir = bin_dir, \
            MAKE_BCS_INPUT_DIR = config['inputdir'], \
            IM = ims, \
@@ -75,7 +74,7 @@ def make_bcs_ease(config):
            SCRATCH_DIR = scratch_dir, \
            NCPUS = config['NCPUS'])
 
-  ease_job = open(job_script,'wt')
+  ease_job = open(bcjob,'wt')
   ease_job.write(script_string)
   ease_job.close()
 
@@ -86,13 +85,13 @@ def make_bcs_ease(config):
      if ( not ntasks):
         nnodes = int(os.getenv('SLURM_NNODES', default = '1'))
         ncpus  = int(os.getenv('SLURM_CPUS_ON_NODE', default = '28'))
-        subprocess.call(['chmod', '755', job_script])
-        log_name = job_script +'.log'
-        print(job_script+  '  1>' + log_name  + '  2>&1')
-        os.system(job_script + ' 1>' + log_name+ ' 2>&1')
+        subprocess.call(['chmod', '755', bcjob])
+        log_name = bcjob +'.log'
+        print(bcjob+  '  1>' + log_name  + '  2>&1')
+        os.system(bcjob + ' 1>' + log_name+ ' 2>&1')
   else:
-    print("sbatch " + job_script +"\n")
-    subprocess.call(['sbatch', job_script])
+    print("sbatch " + bcjob +"\n")
+    subprocess.call(['sbatch', bcjob])
 
   print( "cd " + bin_dir)
   os.chdir(bin_dir)

@@ -36,8 +36,10 @@ module GEOS_CatchCNCLM45GridCompMod
   use CATCHMENT_CN_MODEL
   use compute_rc_mod
   use CN_DriverMod
-  USE STIEGLITZSNOW,   ONLY :                 &
-       snow_albedo, StieglitzSnow_calc_tpsnow, N_CONSTIT,   &
+  USE STIEGLITZSNOW,   ONLY :                  &
+       StieglitzSnow_snow_albedo,              &
+       StieglitzSnow_calc_tpsnow,              &
+       N_CONSTIT,                              &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
        NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
        NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
@@ -48,10 +50,10 @@ module GEOS_CatchCNCLM45GridCompMod
   USE CATCH_CONSTANTS, ONLY :                 &
        N_GT           => CATCH_N_GT,          &
        N_SNOW         => CATCH_N_SNOW,        &
-       RHOFS          => CATCH_SNWALB_RHOFS,  &
-       SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
-       SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
-       SLOPE          => CATCH_SNWALB_SLOPE,  &
+       RHOFS          => CATCH_SNOW_RHOFS,    &
+       SNWALB_VISMAX  => CATCH_SNOW_VISMAX,   &
+       SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,   &
+       SLOPE          => CATCH_SNOW_SLOPE,    &
        PEATCLSM_POROS_THRESHOLD
 
   USE  clm_varpar, ONLY :                     &
@@ -67,6 +69,7 @@ module GEOS_CatchCNCLM45GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
+  use catch_wrap_stateMod
 
 implicit none
 private
@@ -164,25 +167,6 @@ real,   parameter :: EMSSNO        =    0.99999
 
 ! index map for CLM PFTs --> catchment veg types
 
-! pchakrab: save the logical variable OFFLINE
-! Internal state and its wrapper
-type T_OFFLINE_MODE
-   private
-   integer :: CATCH_OFFLINE
-end type T_OFFLINE_MODE
-type OFFLINE_WRAP
-   type(T_OFFLINE_MODE), pointer :: ptr=>null()
-end type OFFLINE_WRAP
-
-integer :: RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-integer :: ATM_CO2, CHOOSEMOSFC
-real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-real    :: CO2
-integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
-real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
-real    :: FWETC, FWETL
-logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -214,12 +198,8 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(T_OFFLINE_MODE), pointer :: internal=>null()
-    type(OFFLINE_WRAP) :: wrap
-    integer :: OFFLINE_MODE
-    integer :: RESTART
-    character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF 
+    integer :: OFFLINE_MODE, RUN_IRRIG, ATM_CO2, N_CONST_LAND4SNWALB
+    integer :: RESTART, SNOW_ALBEDO_INFO
 
 ! Begin...
 ! --------
@@ -237,66 +217,15 @@ subroutine SetServices ( GC, RC )
 ! unusual to read resource file in SetServices, but we need to know
 ! at this stage where we are running Catch in the offline mode or not
 
-    allocate(internal, stat=status)
-    VERIFY_(status)
-    wrap%ptr => internal
-    call ESMF_UserCompSetInternalState(gc, 'OfflineMode', wrap, status)
-
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
-    call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
- 
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-
-    call MAPL_GetResource (SCF, SURFLAY,             label='SURFLAY:',             DEFAULT=50.,     __RC__ )
-    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
-    call MAPL_GetResource (SCF, USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, RUN_IRRIG,           label='RUN_IRRIG:',           DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, IRRIG_METHOD,        label='IRRIG_METHOD:',        DEFAULT=0,       __RC__ )
-    call MAPL_GetResource (SCF, CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
-    call MAPL_GetResource (SCF, USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
-    
-    if (.NOT. USE_FWET_FOR_RUNOFF) then
-       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
-       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
-    else
-       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
-       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
-    endif
-
-    ! GOSWIM ANOW_ALBEDO 
-    ! 0 : GOSWIM snow albedo scheme is turned off
-    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )    
-
-    ! Get parameters to zero the deposition rate 
-    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-    ! __________________________________________
-    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:' , DEFAULT=0  , __RC__ )
-
-    ! CATCHCN
-    call MAPL_GetResource (SCF, DTCN, label='DTCN:', DEFAULT=5400. , __RC__ )
-    ! ATM_CO2
-    ! 0: uses a fix value defined by CO2
-    ! 1: CT tracker monthly mean diurnal cycle
-    ! 2: CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
-    ! 3: spatially fixed interannually varyiing CMIP from getco2.F90 look up table (AGCM only)
-    ! 4: import AGCM model CO2 (AGCM only)
-    call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2  , __RC__ )   
-
-
-    ! Global mean CO2 
-    call MAPL_GetResource (SCF, CO2,         label='CO2:',      DEFAULT=350.e-6, __RC__ )
-    call MAPL_GetResource (SCF, CO2_YEAR_IN, label='CO2_YEAR:', DEFAULT=  -9999, __RC__ )
-    call ESMF_ConfigDestroy(SCF, __RC__)
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, _RC)
+    call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, _RC)
+    call MAPL_GetResource ( MAPL, ATM_CO2,      Label="ATM_CO2:", _RC)
+    call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB,   Label="N_CONST_LAND4SNWALB:", _RC)
+    call MAPL_GetResource ( MAPL, RUN_IRRIG,   Label="RUN_IRRIG:", _RC)
+    call MAPL_GetResource ( MAPL, SNOW_ALBEDO_INFO,   Label="SNOW_ALBEDO_INFO:", _RC)
 
 ! Set the Run entry points
 ! ------------------------
@@ -913,7 +842,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'max_water_content'         ,&
+    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1452,6 +1381,19 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
+
+    if (SNOW_ALBEDO_INFO == 1) then
+    call MAPL_AddInternalSpec(GC                  ,&
+       LONG_NAME          = 'effective_snow_albedo'               ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SNOWALB'                   ,&
+       FRIENDLYTO         = trim(COMP_NAME)             ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartRequired        ,&
+                                           RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -2270,6 +2212,33 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_1' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE1'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_2' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE2'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    LONG_NAME          = 'snow_frozen_fraction_layer_3' ,&
+    UNITS              = '1'                            ,&
+    SHORT_NAME         = 'FICE3'                        ,&
+    DIMS               = MAPL_DimsTileOnly              ,&
+    VLOCATION          = MAPL_VLocationNone             ,&
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3902,7 +3871,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   ! Offline mode
 
-   type(OFFLINE_WRAP)             :: wrap
+   type(CATCHCN_WRAP)             :: wrap
+   type(T_CATCHCN_STATE), pointer :: catchcn_internal
    integer                        :: OFFLINE_MODE, CHOOSEZ0
 
 !=============================================================================
@@ -3919,9 +3889,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     Iam=trim(COMP_NAME)//"::RUN1"
 
     ! Get component's offline mode from its pvt internal state
-    call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
     VERIFY_(status)
-    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
+    catchcn_internal=>wrap%ptr
+    OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -4295,7 +4266,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   are the same for all subtiles.
 
    Z0T(:,N)  = Z0_BY_ZVEG*ZVG
-   IF (USE_ASCATZ0 == 1) THEN
+   IF (catchcn_internal%USE_ASCATZ0 == 1) THEN
       WHERE (NDVI <= 0.2)
          Z0T(:,N)  = ASCATZ0
       END WHERE
@@ -4311,13 +4282,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------
 
    call MAPL_TimerOn(MAPL,"-SURF")
-   if(CHOOSEMOSFC.eq.0) then
+   if(catchcn_internal%CHOOSEMOSFC.eq.0) then
    WW(:,N) = 0.
    CM(:,N) = 0.
 
     call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
 
-   elseif (CHOOSEMOSFC.eq.1)then
+   elseif (catchcn_internal%CHOOSEMOSFC.eq.1)then
   
     niter = 6   ! number of internal iterations in the helfand MO surface layer routine
     IWATER = 3
@@ -4616,6 +4587,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: psis
         real, dimension(:),   pointer :: bee
         real, dimension(:),   pointer :: poros
+        real, dimension(:),   pointer :: snowalb
         real, dimension(:),   pointer :: wpwet
         real, dimension(:),   pointer :: cond
         real, dimension(:),   pointer :: gnu
@@ -4738,6 +4710,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: bflow
         real, dimension(:),   pointer :: runsurf
         real, dimension(:),   pointer :: smelt
+        real, dimension(:),   pointer :: fice1 
+        real, dimension(:),   pointer :: fice2 
+        real, dimension(:),   pointer :: fice3 
         real, dimension(:),   pointer :: accum
         real, dimension(:),   pointer :: hlwup
         real, dimension(:),   pointer :: swndsrf
@@ -4917,7 +4892,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
 	real,pointer,dimension(:) :: fveg1, fveg2
-        real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
 
 !       real*8,pointer,dimension(:) :: fsum
@@ -4926,6 +4901,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:,:) :: wesnn
         real,pointer,dimension(:,:) :: htsnnn
         real,pointer,dimension(:,:) :: sndzn
+        real,pointer,dimension(:,:) :: ficesout
         real,pointer,dimension(:,:) :: shsbt
         real,pointer,dimension(:,:) :: dshsbt
         real,pointer,dimension(:,:) :: evsbt
@@ -5016,13 +4992,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        ! Offline case
 
-        type(OFFLINE_WRAP)          :: wrap
+        type(CATCHCN_WRAP)          :: wrap
+        type(T_CATCHCN_STATE), pointer :: catchcn_internal
         integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
-        ! un-adelterated TC's and QC's
+        ! unadulterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
         real, pointer               :: PLSIN(:)
+        
+        ! CATCHMENT_SPINUP
+        integer                     :: CurrMonth, CurrDay, CurrHour, CurrMin, CurrSec
 
         ! --------------------------------------------------------------------------
         ! Lookup tables
@@ -5211,14 +5191,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
 
         ! Get component's private internal state
-        call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
+        call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
         VERIFY_(status)
-
-        call ESMF_VMGetCurrent ( VM, RC=STATUS )
-        ! Component's offline mode
-        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
+        catchcn_internal => wrap%ptr
+        OFFLINE_MODE = catchcn_internal%CATCH_OFFLINE
         ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
 
+        call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
         ! --------------------------------------------------------------------------
@@ -5265,7 +5244,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,QHATM  ,'QHATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CTATM  ,'CTATM'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,CQATM  ,'CQATM'  ,RC=STATUS); VERIFY_(STATUS)        
-        IF (ATM_CO2 == 4) call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); VERIFY_(STATUS)
+        IF (catchcn_internal%ATM_CO2 == 4) call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,LAI    ,'LAI'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,GRN    ,'GRN'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,ROOTL  ,'ROOTL'  ,RC=STATUS); VERIFY_(STATUS)
@@ -5396,7 +5375,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,RUNSURF    ,'RUNSURF'    ,RC=STATUS); VERIFY_(STATUS)
  
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -5408,7 +5387,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_GetPointer(INTERNAL,ROC002     ,'ROC002'     , RC=STATUS); VERIFY_(STATUS)
         endif
 
-        IF (RUN_IRRIG /= 0) THEN
+        IF (catchcn_internal%RUN_IRRIG /= 0) THEN
            call MAPL_GetPointer(INTERNAL,IRRIGFRAC ,'IRRIGFRAC' , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,PADDYFRAC ,'PADDYFRAC' , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,LAIMAX    ,'LAIMAX'    , RC=STATUS); VERIFY_(STATUS)
@@ -5437,6 +5416,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,EVPSNO             , 'EVPSNO'              ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,BFLOW              , 'BASEFLOW',ALLOC=.true.,          RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SMELT              , 'SMELT'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE1              , 'FICE1'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE2              , 'FICE2'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,FICE3              , 'FICE3'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,HLWUP              , 'HLWUP'  ,ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SWNDSRF            , 'SWNDSRF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,LWNDSRF            , 'LWNDSRF',ALLOC=.true.,           RC=STATUS); VERIFY_(STATUS)
@@ -5572,7 +5554,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL'  ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE ,'PEATCLSM_FSWCHANGE'   ,           RC=STATUS); VERIFY_(STATUS)
 
-        IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,           RC=STATUS); VERIFY_(STATUS)
+        IF (catchcn_internal%RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,           RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
         
@@ -5626,7 +5608,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! OPTIONAL IMPOSE MONTHLY MEAN DIURNAL CYCLE FROM NOAA CARBON TRACKER
 ! -------------------------------------------------------------------
 
-    IF ((ATM_CO2 == 1).OR.(ATM_CO2 == 2)) THEN
+    IF ((catchcn_internal%ATM_CO2 == 1).OR.(catchcn_internal%ATM_CO2 == 2)) THEN
        READ_CT_CO2: IF(first_ct) THEN
 
           ! Carbon Tracker grid tiles mapping
@@ -5713,10 +5695,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ALLOCATE LOCAL POINTERS
         ! --------------------------------------------------------------------------
 
-        allocate(GHTCNT (6,NTILES))
-        allocate(WESNN  (3,NTILES))
-        allocate(HTSNNN (3,NTILES))
-        allocate(SNDZN  (3,NTILES))
+        allocate(GHTCNT  (N_GT,  NTILES))
+        allocate(WESNN   (N_SNOW,NTILES))
+        allocate(HTSNNN  (N_SNOW,NTILES))
+        allocate(SNDZN   (N_SNOW,NTILES))
+        allocate(FICESOUT(N_SNOW,NTILES))
+
         allocate(TILEZERO (NTILES))
         allocate(DZSF     (NTILES))
         allocate(SWNETFREE(NTILES))
@@ -5781,8 +5765,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(SUMEV     (NTILES))
 	allocate(fveg1     (NTILES))
 	allocate(fveg2     (NTILES))
-        allocate(FICE1     (NTILES)) 
-        allocate(SLDTOT    (NTILES)) 
+        allocate(FICE1TMP  (NTILES)) 
+        allocate(SLDTOT    (NTILES))             ! total solid precip 
         allocate(FSW_CHANGE(NTILES))
 
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
@@ -5812,6 +5796,73 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(PLSIN    (NTILES))
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
+        
+        debugzth = .false.
+
+        ! --------------------------------------------------------------------------
+        ! Get the current time. 
+        ! --------------------------------------------------------------------------
+        
+        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
+        VERIFY_(STATUS)
+        if (MAPL_AM_I_Root(VM).and.debugzth) then
+           print *,' start time of clock '
+           CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+        endif
+
+        ! --------------------------------------------------------------------------
+        ! Offline land spin-up.
+        ! --------------------------------------------------------------------------
+        
+        if (CATCHCN_INTERNAL%CATCH_SPINUP /= 0) then
+           
+           ! remove snow every Aug 1, 0z (Northern Hemisphere) or Feb 1, 0z (Southern Hemisphere)
+           !
+           ! assumes that CURRENT_TIME actually hits 0z on first of month (which seems safe enough)
+
+           call ESMF_TimeGet(CURRENT_TIME, mm=CurrMonth, dd=CurrDay, h=CurrHour, m=CurrMin, s=CurrSec, rc=STATUS) 
+           VERIFY_(STATUS)
+           
+           if (CurrDay==1 .and. CurrHour==0 .and. CurrMin==0 .and. CurrSec==0) then
+              
+              if      (CurrMonth==8) then
+                 
+                 where ( LATS >= 0. )    ! [radians]
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                                  
+              else if (CurrMonth==2) then
+                 
+                 where ( LATS <  0. )    ! [radians]
+                    
+                    WESNN1  = 0.
+                    WESNN2  = 0.
+                    WESNN3  = 0.
+                    HTSNNN1 = 0.
+                    HTSNNN2 = 0.
+                    HTSNNN3 = 0.
+                    SNDZN1  = 0.
+                    SNDZN2  = 0.
+                    SNDZN3  = 0.
+                 
+                 end where
+                 
+              end if              
+              
+           end if  ! 0z on first of month
+              
+        end if     ! if (CATCHCN_INTERNAL%CATCH_SPINUP /= 0)
+        
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
@@ -5864,7 +5915,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! surface layer depth for soil moisture
         ! --------------------------------------------------------------------------
         
-        DZSF(    :) = SURFLAY
+        DZSF(    :) = catchcn_internal%SURFLAY
 
         ! --------------------------------------------------------------------------
         ! build arrays from internal state
@@ -5888,19 +5939,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN (1,:) = SNDZN1
         SNDZN (2,:) = SNDZN2
         SNDZN (3,:) = SNDZN3
-
-        debugzth = .false.
-
-        ! --------------------------------------------------------------------------
-        ! Get the current time. 
-        ! --------------------------------------------------------------------------
-
-        call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-        VERIFY_(STATUS)
-        if (MAPL_AM_I_Root(VM).and.debugzth) then
-         print *,' start time of clock '
-         CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
-        endif
 
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
@@ -5969,7 +6007,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !---------------------------------------------------
 
         Z0   = Z0_BY_ZVEG*ZVG
-        IF (USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0        
+        IF (catchcn_internal%USE_ASCATZ0 == 1) WHERE (NDVI <= 0.2) Z0 = ASCATZ0        
         D0   = D0_BY_ZVEG*ZVG
 
         UUU = max(UU,MAPL_USMIN) * (log((ZVG-D0+Z0)/Z0) &
@@ -5984,7 +6022,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
 
-        select case (AEROSOL_DEPOSITION)
+        select case (catchcn_internal%AEROSOL_DEPOSITION)
         case (0)
            DUDP(:,:)=0.
            DUSV(:,:)=0.
@@ -6057,7 +6095,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
 
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -6145,7 +6183,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
+           if(catchcn_internal%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
@@ -6364,7 +6402,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Thus moved reading lnfm here
     ! ------------------------------------------------
     
-    if(mod(AGCM_S_ofday,nint(dtcn)) == 0) then
+    if(mod(AGCM_S_ofday,nint(catchcn_internal%DTCN)) == 0) then
         ! Get lightening frequency clim file name from configuration
        call MAPL_GetResource ( MAPL, LNFMFILE, label = 'LNFM_FILE:', default = 'lnfm.dat', RC=STATUS )
        VERIFY_(STATUS)
@@ -6602,14 +6640,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! get CO2
 ! -------
 
-    if(ATM_CO2 == 3) CO2 = GETCO2(AGCM_YY,dofyr)
+    if(catchcn_internal%ATM_CO2 == 3) catchcn_internal%CO2 = GETCO2(AGCM_YY,dofyr)
 
-    CO2V (:) = CO2
+    CO2V (:) = catchcn_internal%CO2
     
 ! use CO2SC from GOCART/CO2
 ! -------------------------
     
-    IF (ATM_CO2 == 4) THEN
+    IF (catchcn_internal%ATM_CO2 == 4) THEN
        
        where ((CO2SC >= 0.) .and. (CO2SC <= 1000.))
           CO2V = CO2SC * 1e-6
@@ -6617,13 +6655,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
     endif
 
-    IF(ATM_CO2 == 1) co2g = 1.    ! DO NOT SCALE USE CT CLIMATOLOGY
+    IF(catchcn_internal%ATM_CO2 == 1) co2g = 1.    ! DO NOT SCALE USE CT CLIMATOLOGY
 
-    CALC_CTCO2_SF: IF(ATM_CO2 == 2)  THEN
+    CALC_CTCO2_SF: IF(catchcn_internal%ATM_CO2 == 2)  THEN
 
        ! Compute scale factor to scale CarbonTracker CO2 monthly mean diurnal cycle (3-hourly)
        CO2_YEAR = AGCM_YY
-       IF(CO2_YEAR_IN > 0) CO2_YEAR = CO2_YEAR_IN
+       IF(catchcn_internal%CO2_YEAR_IN > 0) CO2_YEAR = catchcn_internal%CO2_YEAR_IN
 
        ! update EEA global average CO2 and co2 scalar at the beginning of each year, fz, 26 Sep 2016
        ! -------------------------------------------------------------------------------------------
@@ -6689,7 +6727,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(tp1(n) < (Tzero-0.01)) btran(n) = 0. ! no photosynthesis if ground fully frozen
       end do
 
-      USE_CT_CO2: IF((ATM_CO2 == 1).OR.(ATM_CO2 == 2)) THEN
+      USE_CT_CO2: IF((catchcn_internal%ATM_CO2 == 1).OR.(catchcn_internal%ATM_CO2 == 2)) THEN
 
          IF(AGCM_DD < 16) THEN
 
@@ -6749,7 +6787,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     BGALBVR, BGALBVF, BGALBNR, BGALBNF,     &              ! gkw: MODIS soil background albedo
                     ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )      ! instantaneous snow-free albedos on tiles
 
-        call SNOW_ALBEDO(ntiles, N_snow, N_CONST_LAND4SNWALB, ityp_tmp,   &
+        call StieglitzSnow_snow_albedo(ntiles, N_snow, catchcn_internal%N_CONST_LAND4SNWALB, ityp_tmp,   &
                     elaz(:,nv), ZTH,                                      &
                     RHOFS,                                                &   
                     SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                  & 
@@ -6827,10 +6865,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
 
-    call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
+    call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )
     TPSN1OUT1 =  TPSN1OUT1 + Tzero
 
-    call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
+    call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
          RHOFS,                                              &   
          SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
          WESNN, HTSNNN, SNDZN,                               &
@@ -6843,7 +6881,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE. ) ! instantaneous snow-free albedos on tiles
   
 
-    call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
+    call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
          RHOFS,                                              &   
          SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
          WESNN, HTSNNN, SNDZN,                               &
@@ -6860,7 +6898,23 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
     SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
     SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
- 
+
+    if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+
+        ! use MODIS-derived snow albedo from bcs (via Catch restart)
+        !
+        ! as a restart parameter from the bcs, snow albedo must not have no-data-values
+        ! (checks for unphysical values should be in the make_bcs package)
+
+        call MAPL_GetPointer(INTERNAL,SNOWALB,'SNOWALB',RC=STATUS); VERIFY_(STATUS)
+
+        SNOVR = SNOWALB
+        SNONR = SNOWALB
+        SNOVF = SNOWALB
+        SNONF = SNOWALB
+
+    endif
+
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
     ! --------------------------------------------------------------------------
@@ -6891,10 +6945,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
     ! ------------------------------------------------------------------------------------------
-    dtcn = min(dtcn,14400.)
-    if(mod(dtcn,dt) /= 0) stop 'dtcn'
+    catchcn_internal%DTCN = min(catchcn_internal%DTCN,14400.)
+    if(mod(catchcn_internal%DTCN,dt) /= 0) stop 'dtcn'
     
-    ndt = get_step_size( nint(dtcn) ) ! gkw: get_step_size must be called here to set CN model time step
+    ndt = get_step_size( nint(catchcn_internal%DTCN) ) ! gkw: get_step_size must be called here to set CN model time step
     
     ! sum over interval for CN
     ! ------------------------
@@ -6926,7 +6980,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! call CN model every DTCN seconds
     ! --------------------------------
 
-    if(mod(AGCM_S_ofday,nint(dtcn)) == 0) then
+    if(mod(AGCM_S_ofday,nint(catchcn_internal%DTCN)) == 0) then
        
        ! fzeng: pass current date_time to the CN routines.
        call upd_curr_date_time( AGCM_YY, AGCM_MM, AGCM_DD, dofyr, &
@@ -7265,14 +7319,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Call Irrigation Model 
     ! --------------------------------------------------------------------------
     
-    IF ((RUN_IRRIG /= 0).AND.(ntiles >0))  THEN  
+    IF ((catchcn_internal%RUN_IRRIG /= 0).AND.(ntiles >0))  THEN  
        
        CALL CATCH_CALC_SOIL_MOIST (                                            &
             NTILES,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,               &
             ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,    &
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
 	    
-       call irrigation_rate (IRRIG_METHOD,                                 & 
+       call irrigation_rate (catchcn_internal%IRRIG_METHOD,                                 & 
             NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
             CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI0,               &
             POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
@@ -7379,7 +7433,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
+           call WRITE_PARALLEL(catchcn_internal%USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -7464,8 +7518,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS, DT,USE_FWET_FOR_RUNOFF, &
-                FWETC, FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
+           call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &
+                catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
                 PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
@@ -7529,7 +7583,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 TSURF                                                ,&
                 SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
                 LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE            ,&
+                TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
@@ -7591,10 +7645,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
 
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )
         TPSN1OUT1 =  TPSN1OUT1 + Tzero        
 
-        call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
+        call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -7607,7 +7661,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
 
-        call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
+        call StieglitzSnow_snow_albedo(NTILES,N_snow, catchcn_internal%N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -7624,6 +7678,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
         SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
         SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
+
+        if (catchcn_internal%SNOW_ALBEDO_INFO == 1) then
+           
+           ! use MODIS-derived snow albedo from bcs (via Catch restart)
+           !  
+           ! as a restart parameter from the bcs, snow albedo must not have no-data-values 
+           ! (checks for unphysical values should be in the make_bcs package)
+        
+           SNOVR = SNOWALB
+           SNONR = SNOWALB
+           SNOVF = SNOWALB
+           SNONF = SNOWALB
+           
+        endif 
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
@@ -7728,6 +7796,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(SNOMAS)) SNOMAS = WESNN (1,:) + WESNN (2,:) + WESNN (3,:)
         if(associated(SNOWDP)) SNOWDP = SNDZN (1,:) + SNDZN (2,:) + SNDZN (3,:)
 
+        if(associated(FICE1 )) FICE1  = max( min( FICESOUT(1,:),1.0 ), 0.0 )
+        if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
+        if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
+
         if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
         if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
         if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
@@ -7813,7 +7885,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (N_CONST_LAND4SNWALB /= 0) then
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -7843,6 +7915,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(WESNN    )
         deallocate(HTSNNN   )
         deallocate(SNDZN    )
+        deallocate(FICESOUT )
         deallocate(TILEZERO )
         deallocate(DZSF     )
         deallocate(SWNETFREE)
@@ -7931,7 +8004,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RCONSTIT )
         deallocate(TOTDEPOS )
         deallocate(RMELT    )
-        deallocate(FICE1    )
+        deallocate(FICE1TMP )
         deallocate(SLDTOT   )
         deallocate(FSW_CHANGE)
         deallocate(   btran )
@@ -8255,6 +8328,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   real,    allocatable :: fveg(:,:,:), elai(:,:,:), esai(:,:,:), wtzone(:,:), lai1(:), lai2(:), wght(:)
   real, allocatable,dimension(:) :: fveg1, fveg2
 
+  type(T_CATCHCN_STATE), pointer :: catchcn_internal
+  type(CATCHCN_WRAP) :: wrap
+
   ! Begin...
 
   ! Get component name and setup traceback handle
@@ -8270,6 +8346,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
   VERIFY_(status)
 
+  call ESMF_UserCompGetInternalState(gc, 'CatchcnInternal', wrap, status)
+  VERIFY_(status)
+  catchcn_internal => wrap%ptr 
   ! Pointers to IMPORTs
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
@@ -8437,7 +8516,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   wesnn(1,:) = wesnn1
   wesnn(2,:) = wesnn2
   wesnn(3,:) = wesnn3
-  call StieglitzSnow_calc_asnow(3, ntiles, wesnn, asnow)
+  call StieglitzSnow_calc_asnow(N_snow, ntiles, wesnn, asnow)
 
   EMIS    = fveg1*(EMSVEG(NINT(VEG1)) + (EMSBARESOIL - EMSVEG(NINT(VEG1)))*exp(-LAI1)) + &
        fveg2*(EMSVEG(NINT(VEG2)) + (EMSBARESOIL - EMSVEG(NINT(VEG2)))*exp(-LAI2))
@@ -8452,7 +8531,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! -step-1-
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
-  dzsf = SURFLAY
+  dzsf = catchcn_internal%SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
