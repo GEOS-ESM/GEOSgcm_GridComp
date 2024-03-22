@@ -245,4 +245,12 @@
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
 
+#--------------------------------------------------------#
+#        Fire weather and fuel conditions (IGNI)         #
+#--------------------------------------------------------#
 
+# ---- FIRE_DANGER
+#    .FALSE. : Default - do not run IGNI
+#    .TRUE.  : run IGNI
+
+FIRE_DANGER: .TRUE.
