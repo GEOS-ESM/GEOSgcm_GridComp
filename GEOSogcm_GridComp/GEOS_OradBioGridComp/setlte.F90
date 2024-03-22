@@ -1,5 +1,5 @@
-      subroutine setlte(lam,aw,bw,ac,bc,bpic,excdom,exdet,WtoQ,  &
-       wfac)
+      subroutine setlte(rad,pi2,lam,aw,bw,ac,bc,bpic,excdom,exdet,    &
+                        WtoQ,wfac)
 
 !  Sets parameters for ocean irradiance.
 
@@ -15,6 +15,10 @@
       data a0,a1,a2,a3 /0.9976,0.2194,5.554E-2,6.7E-3/
       data b0,b1,b2,b3 /5.026,-0.01138,9.552E-6,-2.698E-9/
 
+!  Degrees to radians conversion
+      pi = dacos(-1.0D0)
+      pi2 = pi*2.0
+      rad = 180.0D0/pi
 !   Obtain Light data
       call lidata(lam,aw,bw,ac,bc,bpic)
 !   Quanta conversion
