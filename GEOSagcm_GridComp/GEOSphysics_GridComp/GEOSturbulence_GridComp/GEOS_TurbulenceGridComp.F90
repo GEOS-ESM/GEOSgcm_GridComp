@@ -2931,7 +2931,7 @@ contains
      real                                :: PRANDTLSFC,PRANDTLRAD,BETA_RAD,BETA_SURF,KHRADFAC,TPFAC_SURF,ENTRATE_SURF
      real                                :: PCEFF_SURF, KHSFCFAC_LND, KHSFCFAC_OCN, ZCHOKE
 
-     integer                             :: I,J,K,L,LOCK_ON,ITER
+     integer                             :: I,J,K,KMIN,LTOP,L,LOCK_ON,ITER
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      real                                :: a1,a2
@@ -4600,10 +4600,32 @@ contains
       tmp3d = tmp3d + (a2/T**2)*dum3d
 
       ! ZPBL is height of minimum in refractivity (tmp3d)
+      ZPBLRFRCT = 0.
       do I = 1,IM
         do J = 1,JM
-          K = MINLOC(tmp3d(I,J,:),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
-          ZPBLRFRCT(I,J) = Z(I,J,K)
+
+          LTOP = LM
+          do while (Z(I,J,LTOP).lt.6000.)
+             LTOP = LTOP-1
+          end do
+
+          KMIN = LTOP-1+MINLOC(tmp3d(I,J,LTOP:),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
+
+          ! Identify shallowest local minimum that is at least 80% of overall minimum below 6 km
+          if (KMIN.ne.LM) then
+            K = LM-1
+            do while (K.gt.LTOP)
+               if (tmp3d(I,J,K).lt.tmp3d(I,J,K+1) .and. tmp3d(I,J,K).lt.tmp3d(I,J,K-1) .and. tmp3d(I,J,K).lt.0.8*tmp3d(I,J,KMIN)) then
+                ZPBLRFRCT(I,J) = Z(I,J,K)
+                exit
+              end if
+              K = K-1
+            end do
+          else
+            ZPBLRFRCT(I,J) = Z(I,J,KMIN)
+          end if
+          if (ZPBLRFRCT(I,J).eq.0.) ZPBLRFRCT(I,J) = Z(I,J,KMIN)
+
         end do
       end do
 
