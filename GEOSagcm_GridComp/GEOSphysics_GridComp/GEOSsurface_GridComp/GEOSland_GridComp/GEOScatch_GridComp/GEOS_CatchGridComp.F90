@@ -1097,6 +1097,31 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
+        ! for helfsurface
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'pert_canopy_temperature'   ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC_pert'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+       
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'pert_canopy_specific_humidity'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC_pert'                   ,&
+    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)     
+
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity'  ,&
     UNITS              = 'kg kg-1'                   ,&
@@ -1350,6 +1375,51 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                    ,&
                                            RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+        ! for helfsurface
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'surface_heat_exchange_coeff_pert_tc_helfsurface',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'VKH_pert_tc'               ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'surface_heat_exchange_coeff_pert_qc_helfsurface',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'VKH_pert_qc'               ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'DTC'                       ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'qc difference, optional in helfsurface'  ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'DQC'                       ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -3005,6 +3075,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: DCH
     real, dimension(:,:), pointer :: DCQ
 
+        ! for helfsurface
+    real, dimension(:,:), pointer :: TC_pert
+    real, dimension(:,:), pointer :: QC_pert
+
+    real,   allocatable :: VKH_pert_tc(:)
+    real,   allocatable :: VKH_pert_qc(:)
+
+    real, dimension(:,:), pointer :: DQC
+    real, dimension(:,:), pointer :: DTC
+
 ! -----------------------------------------------------
 ! EXPORT Pointers
 ! -----------------------------------------------------
@@ -3086,9 +3166,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4ZVG
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
+
+        ! for helfsurface
+    integer                        :: incl_HelfandMO_extra_derivs
+    real(ESMF_KIND_R8), parameter  :: small_TC = 0.0001
+    real(ESMF_KIND_R8), parameter  :: small_QC = 0.000001
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
+
+    incl_HelfandMO_extra_derivs = 0
 
 !=============================================================================
 ! Begin...
@@ -3189,6 +3276,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    
+      ! for helfsurface
+    call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
+    VERIFY_(STATUS)   
+    call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to outputs
@@ -3324,6 +3417,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
+        ! for helfsurface
+    allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VKH_pert_tc(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+    allocate(VKH_pert_qc(NT),STAT=STATUS)
+    VERIFY_(STATUS)
+
 !  Vegetation types used to index into tables
 !--------------------------------------------
 
@@ -3438,6 +3541,29 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                       IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
                       t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+
+           ! for helfsurface
+        if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+           TC_pert(:,N)=TC(:,N)+small_TC
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           VKH_pert_tc =VKH
+
+           QC_pert(:,N)=QC(:,N)+small_QC
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           VKH_pert_qc=VKH
+
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                           IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,       &
+                           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+
+           DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
+           DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
+
+         endif
   
         CM(:,N)  = VKM
         CH(:,N)  = VKH
@@ -3533,6 +3659,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
+       ! for helfsurface
+    deallocate(VKH_pert_tc)
+    deallocate(VKH_pert_qc)
+    deallocate(TC_pert    )
+    deallocate(QC_pert    )
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3572,17 +3703,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Local derived type aliases
 ! ------------------------------------------------------------------------------
 
-    type(MAPL_MetaComp),pointer :: MAPL
-    type(ESMF_Alarm)                :: ALARM
+    type(MAPL_MetaComp),pointer      :: MAPL
+    type(ESMF_Alarm)                 :: ALARM
 
-    integer :: IM,JM
-    integer :: incl_Louis_extra_derivs
-    real                           :: SCALE4ZVG
-    real                           :: SCALE4Z0_u
-    real                            :: MIN_VEG_HEIGHT
-    type(ESMF_VM)                   :: VM
-    type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
-    type (CATCH_WRAP)                       :: wrap
+    integer                          :: IM,JM
+    integer                          :: incl_Louis_extra_derivs
+    integer                          :: incl_HelfandMO_extra_derivs
+
+    real                             :: SCALE4ZVG
+    real                             :: SCALE4Z0_u
+    real                             :: MIN_VEG_HEIGHT
+    type(ESMF_VM)                    :: VM
+    type (T_CATCH_STATE), pointer    :: CATCH_INTERNAL_STATE
+    type (CATCH_WRAP)                :: wrap
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3611,6 +3744,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+
+        ! for helfsurface
+    call MAPL_GetResource ( MAPL, incl_HelfandMO_extra_derivs, Label="INCL_HELFANDMO_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
@@ -3809,6 +3946,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: RBC002
         real, dimension(:,:), pointer :: ROC001
         real, dimension(:,:), pointer :: ROC002
+                ! for helfsurface
+        real, dimension(:,:), pointer :: DQC
+        real, dimension(:,:), pointer :: DTC
 
         ! -----------------------------------------------------
         ! EXPORT Pointers
@@ -4340,6 +4480,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
+                ! for helfsurface
+        call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
+
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -4979,6 +5123,29 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  DHSDQA(:,N)=max(0.0,-MAPL_CP*DCH(:,N)*MAPL_VIREPS*TC(:,N)*(TC(:,N)-TA))
               enddo
            endif
+
+           ! for helfsurface (adding derivatives for helfand MO scheme helfsurface)
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+
+              do N=1,NUM_SUBTILES
+
+                 ! getting DSHSBT - derivative of sensible heat flux w.r.t. Tc (ground temperature)
+                 ! note CH and CQ are VKH (values are assigned in RUN1 after the helfsurf call is returned)
+                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
+
+                 ! getting DHSDQA - cross derivative of sensible heat flux  w.r.t. Qc (ground humidity)
+                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
+
+                 ! getting DEVSBT - derivative of latent heat flux w.r.t. Qc (ground humidity)
+                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
+
+                ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
+                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
+
+              enddo ! N-loop (NUM_SUBTILES)
+
+           endif ! if Helfand
+
           ! BLWX = EMIS*MAPL_STFBOL*TA*TA*TA
           ! ALWX = -3.0*BLWX*TA
           ! BLWX =  4.0*BLWX
@@ -5959,6 +6126,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: fr(:,:)=>null()
   real, pointer :: DCQ(:,:)=>null()
   real, pointer :: DCH(:,:)=>null()
+
+  ! for helfsurface
+  real, pointer :: DTC(:,:)=>null()
+  real, pointer :: DQC(:,:)=>null()
+
   !! -prognostic-variables-
   real, pointer :: tc(:,:)=>null()
   real, pointer :: qc(:,:)=>null()
@@ -6099,6 +6271,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, catdef, 'CATDEF', rc=status)
+  VERIFY_(status)
+
+  ! for helfsurface
+  call MAPL_GetPointer(INTERNAL, DTC, 'DTC', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, DQC, 'DQC', rc=status)
   VERIFY_(status)
 
   ! Number of tiles and a dummy real array
