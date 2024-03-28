@@ -3168,7 +3168,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: MIN_VEG_HEIGHT 
 
         ! for helfsurface
-    integer :: incl_HelfandMO_extra_derivs
+    integer                        :: incl_HelfandMO_extra_derivs
     real(ESMF_KIND_R8), parameter  :: small_TC = 0.0001
     real(ESMF_KIND_R8), parameter  :: small_QC = 0.000001
     
@@ -3278,13 +3278,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
     VERIFY_(STATUS)
     
-    !if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
       ! for helfsurface
-      call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
-      VERIFY_(STATUS)   
-      call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
-      VERIFY_(STATUS)
-    !endif
+    call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
+    VERIFY_(STATUS)   
+    call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Pointers to outputs
 !--------------------
@@ -4483,10 +4481,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
                 ! for helfsurface
-        !if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
-          call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
-        !endif
+        call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
 
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
