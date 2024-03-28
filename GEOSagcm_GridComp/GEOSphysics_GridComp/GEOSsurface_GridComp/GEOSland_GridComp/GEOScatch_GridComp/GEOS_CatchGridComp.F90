@@ -1096,8 +1096,8 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-   
-  ! Biljana
+
+        ! for helfsurface
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'pert_canopy_temperature'   ,&
     UNITS              = 'K'                         ,&
@@ -1107,9 +1107,9 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
-
+       
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'pert_canopy_specific_humidity'  ,&
     UNITS              = 'kg kg-1'                   ,&
@@ -1119,9 +1119,8 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
-  ! Biljana
+                                           RC=STATUS  )
+  VERIFY_(STATUS)     
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity'  ,&
@@ -1378,7 +1377,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  ! Biljana
+        ! for helfsurface
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coeff_pert_tc_helfsurface',&
     UNITS              = 'kg m-2 s-1'                ,&
@@ -1387,7 +1386,7 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1398,7 +1397,7 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1409,7 +1408,7 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1420,10 +1419,8 @@ subroutine SetServices ( GC, RC )
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
-
-  ! Biljana
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_momentum_exchange_coefficient',&
@@ -3078,7 +3075,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: DCH
     real, dimension(:,:), pointer :: DCQ
 
-    ! Biljana for helfsurface
+        ! for helfsurface
     real, dimension(:,:), pointer :: TC_pert
     real, dimension(:,:), pointer :: QC_pert
 
@@ -3087,8 +3084,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     real, dimension(:,:), pointer :: DQC
     real, dimension(:,:), pointer :: DTC
-
-    real,   allocatable :: VKH(:)
 
 ! -----------------------------------------------------
 ! EXPORT Pointers
@@ -3151,6 +3146,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real,   allocatable :: U2M (:)
     real,   allocatable :: V2M (:)
     real,   allocatable :: RHOH(:)
+    real,   allocatable :: VKH(:)
     real,   allocatable :: VKM(:)
     real,   allocatable :: USTAR(:)
     real,   allocatable :: XX(:)
@@ -3171,13 +3167,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
 
-    ! Biljana (Helfsurface)
+        ! for helfsurface
+    integer :: incl_HelfandMO_extra_derivs
     real(ESMF_KIND_R8), parameter  :: small_TC = 0.0001
-    real(ESMF_KIND_R8), parameter  :: small_QC = 0.000001 
-    
+    real(ESMF_KIND_R8), parameter  :: small_QC = 0.000001
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
+
+    incl_HelfandMO_extra_derivs = 0
 
 !=============================================================================
 ! Begin...
@@ -3279,12 +3277,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
     VERIFY_(STATUS)
-
-    ! Biljana helfsurface
-    call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
-    VERIFY_(STATUS)
+    
+    !if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+      ! for helfsurface
+      call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
+      VERIFY_(STATUS)   
+      call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
+      VERIFY_(STATUS)
+    !endif
 
 ! Pointers to outputs
 !--------------------
@@ -3396,6 +3396,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     allocate(PSL(NT) ,STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(VKH(NT) ,STAT=STATUS)
+    VERIFY_(STATUS)
     allocate(VKM(NT) ,STAT=STATUS)
     VERIFY_(STATUS)
     allocate(USTAR(NT) ,STAT=STATUS)
@@ -3416,7 +3418,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
-    ! Biljana Helfsurface
+
+        ! for helfsurface
     allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
@@ -3424,8 +3427,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(VKH_pert_tc(NT),STAT=STATUS)
     VERIFY_(STATUS)
     allocate(VKH_pert_qc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VKH(NT) ,STAT=STATUS)
     VERIFY_(STATUS)
 
 !  Vegetation types used to index into tables
@@ -3538,26 +3539,34 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
         PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
                (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
-         ! Biljana helfsurface
-         TC_pert(:,N)=TC(:,N)+small_TC
-         CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                          IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
-                          t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-         VKH_pert_tc =VKH   
-
-         QC_pert(:,N)=QC(:,N)+small_QC
-         CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                          IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
-                          t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-         VKH_pert_qc=VKH   
-
-         CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                         IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,       &
-                         t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
   
-        DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
-        DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
+        CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                      IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
+                      t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
+           ! for helfsurface
+        if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+           TC_pert(:,N)=TC(:,N)+small_TC
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           VKH_pert_tc =VKH
+
+           QC_pert(:,N)=QC(:,N)+small_QC
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           VKH_pert_qc=VKH
+
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                           IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,       &
+                           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+
+           DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
+           DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
+
+         endif
+  
         CM(:,N)  = VKM
         CH(:,N)  = VKH
         CQ(:,N)  = VKH
@@ -3639,6 +3648,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(U2M )
     deallocate(V2M )
     deallocate(RHOH)
+    deallocate(VKH)
     deallocate(VKM)
     deallocate(USTAR)
     deallocate(XX)
@@ -3651,12 +3661,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-   ! Biljana helfsurface
+       ! for helfsurface
     deallocate(VKH_pert_tc)
     deallocate(VKH_pert_qc)
     deallocate(TC_pert    )
     deallocate(QC_pert    )
-    deallocate(VKH)
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3696,22 +3705,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Local derived type aliases
 ! ------------------------------------------------------------------------------
 
-    type(MAPL_MetaComp),pointer :: MAPL
-    type(ESMF_Alarm)                :: ALARM
+    type(MAPL_MetaComp),pointer      :: MAPL
+    type(ESMF_Alarm)                 :: ALARM
 
-    integer                         :: IM,JM
-    integer                         :: incl_Louis_extra_derivs
+    integer                          :: IM,JM
+    integer                          :: incl_Louis_extra_derivs
+    integer                          :: incl_HelfandMO_extra_derivs
 
-    ! Biljana helfsurface
-    integer                         :: incl_HelfandMO_extra_derivs
-    real                            :: SCALE4Z0 
-
-    real                            :: SCALE4ZVG
-    real                            :: SCALE4Z0_u
-    real                            :: MIN_VEG_HEIGHT
-    type(ESMF_VM)                   :: VM
-    type (T_CATCH_STATE), pointer   :: CATCH_INTERNAL_STATE
-    type (CATCH_WRAP)               :: wrap
+    real                             :: SCALE4ZVG
+    real                             :: SCALE4Z0_u
+    real                             :: MIN_VEG_HEIGHT
+    type(ESMF_VM)                    :: VM
+    type (T_CATCH_STATE), pointer    :: CATCH_INTERNAL_STATE
+    type (CATCH_WRAP)                :: wrap
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3742,34 +3748,34 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! Biljana helfsurface
+        ! for helfsurface
     call MAPL_GetResource ( MAPL, incl_HelfandMO_extra_derivs, Label="INCL_HELFANDMO_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
-    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
-       case (0)  ! no scaled at all
-          SCALE4ZVG   = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01
-       case (1) ! This case is bugged
-          SCALE4ZVG   = 1
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (2)
-          SCALE4ZVG   = 1
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.01         
-       case (3)
-          SCALE4ZVG   = 0.5
-          SCALE4Z0_u  = 1
-          MIN_VEG_HEIGHT = 0.01         
-       case (4) 
-          SCALE4ZVG   = 1
-          SCALE4Z0_u  = 2
-          MIN_VEG_HEIGHT = 0.1
-    end select
+   select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
+      case (0)  ! no scaled at all
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01
+      case (1) ! This case is bugged
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01         
+      case (2)
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 2
+         MIN_VEG_HEIGHT = 0.01         
+      case (3)
+         SCALE4ZVG   = 0.5
+         SCALE4Z0_u  = 1
+         MIN_VEG_HEIGHT = 0.01         
+      case (4) 
+         SCALE4ZVG   = 1
+         SCALE4Z0_u  = 2
+         MIN_VEG_HEIGHT = 0.1
+   end select
     
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -3942,8 +3948,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: RBC002
         real, dimension(:,:), pointer :: ROC001
         real, dimension(:,:), pointer :: ROC002
-
-        ! Biljana for helfsurface
+                ! for helfsurface
         real, dimension(:,:), pointer :: DQC
         real, dimension(:,:), pointer :: DTC
 
@@ -4259,7 +4264,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
-
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4478,9 +4482,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
-        ! Biljana helfsurface
-        call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
+                ! for helfsurface
+        !if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+          call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
+        !endif
+
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -5112,7 +5119,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-
            if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
@@ -5122,7 +5128,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               enddo
            endif
 
-           ! Biljana (adding derivatives for helfand MO scheme helfsurface)
+           ! for helfsurface (adding derivatives for helfand MO scheme helfsurface)
            if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
 
               do N=1,NUM_SUBTILES
@@ -5147,7 +5153,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           ! BLWX = EMIS*MAPL_STFBOL*TA*TA*TA
           ! ALWX = -3.0*BLWX*TA
           ! BLWX =  4.0*BLWX
-        else  
+        else
            do N=1,NUM_SUBTILES
               CFT   (:,N) = (CH(:,N)/CTATM)
               CFQ   (:,N) = (CQ(:,N)/CQATM)
@@ -6124,6 +6130,11 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: fr(:,:)=>null()
   real, pointer :: DCQ(:,:)=>null()
   real, pointer :: DCH(:,:)=>null()
+
+  ! for helfsurface
+  real, pointer :: DTC(:,:)=>null()
+  real, pointer :: DQC(:,:)=>null()
+
   !! -prognostic-variables-
   real, pointer :: tc(:,:)=>null()
   real, pointer :: qc(:,:)=>null()
@@ -6264,6 +6275,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, catdef, 'CATDEF', rc=status)
+  VERIFY_(status)
+
+  ! for helfsurface
+  call MAPL_GetPointer(INTERNAL, DTC, 'DTC', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, DQC, 'DQC', rc=status)
   VERIFY_(status)
 
   ! Number of tiles and a dummy real array
