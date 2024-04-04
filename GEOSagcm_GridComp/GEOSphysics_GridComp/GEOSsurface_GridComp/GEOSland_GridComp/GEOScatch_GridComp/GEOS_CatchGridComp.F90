@@ -1097,31 +1097,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-        ! for helfsurface
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'pert_canopy_temperature'   ,&
-    UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TC_pert'                   ,&
-    FRIENDLYTO         = trim(COMP_NAME)             ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-       
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'pert_canopy_specific_humidity'  ,&
-    UNITS              = 'kg kg-1'                   ,&
-    SHORT_NAME         = 'QC_pert'                   ,&
-    FRIENDLYTO         = trim(COMP_NAME)             ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)     
-
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity'  ,&
     UNITS              = 'kg kg-1'                   ,&
@@ -1377,28 +1352,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-        ! for helfsurface
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'surface_heat_exchange_coeff_pert_tc_helfsurface',&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'VKH_pert_tc'               ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'surface_heat_exchange_coeff_pert_qc_helfsurface',&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'VKH_pert_qc'               ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
+  ! for helfsurface
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
@@ -3075,9 +3029,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: DCH
     real, dimension(:,:), pointer :: DCQ
 
-        ! for helfsurface
-    real, dimension(:,:), pointer :: TC_pert
-    real, dimension(:,:), pointer :: QC_pert
+    ! for helfsurface
+    real, dimension(:,:), allocatable :: TC_pert
+    real, dimension(:,:), allocatable :: QC_pert
 
     real,   allocatable :: VKH_pert_tc(:)
     real,   allocatable :: VKH_pert_qc(:)
@@ -3167,15 +3121,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
 
-        ! for helfsurface
+    ! for helfsurface
     integer                        :: incl_HelfandMO_extra_derivs
-    real(ESMF_KIND_R8), parameter  :: small_TC = 0.0001
-    real(ESMF_KIND_R8), parameter  :: small_QC = 0.000001
+    !real(ESMF_KIND_R8), parameter  :: small_TC = 0.1
+    !real(ESMF_KIND_R8), parameter  :: small_QC = 0.0000001
+    real, parameter   :: small_factor = 0.01
+    real, allocatable :: small_TC(:)
+    real, allocatable :: small_QC(:)
     
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
 
-    incl_HelfandMO_extra_derivs = 0
 
 !=============================================================================
 ! Begin...
@@ -3220,7 +3176,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          INTERNAL_ESMF_STATE=INTERNAL  , &
          RC=STATUS )
     VERIFY_(STATUS)
-    
+
+    call MAPL_GetResource ( MAPL, incl_HelfandMO_extra_derivs, Label="INCL_HELFANDMO_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+ 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
@@ -3278,7 +3237,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
     VERIFY_(STATUS)
     
-      ! for helfsurface
+    ! for helfsurface
     call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
     VERIFY_(STATUS)   
     call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
@@ -3417,15 +3376,21 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-        ! for helfsurface
-    allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VKH_pert_tc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
-    allocate(VKH_pert_qc(NT),STAT=STATUS)
-    VERIFY_(STATUS)
+    ! for helfsurface
+    if(incl_HelfandMO_extra_derivs ==1) then
+       allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(VKH_pert_tc(NT),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(VKH_pert_qc(NT),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(small_qc(NT),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(small_tc(NT),STAT=STATUS)
+       VERIFY_(STATUS)
+    endif
 
 !  Vegetation types used to index into tables
 !--------------------------------------------
@@ -3538,18 +3503,21 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
                (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
   
-        CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+        if(incl_HelfandMO_extra_derivs == 0) then
+           CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                       IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
                       t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
            ! for helfsurface
-        if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_HelfandMO_extra_derivs ==1) then
+        else if(incl_HelfandMO_extra_derivs ==1 ) then
+           small_TC = small_factor*TC(:,N)
            TC_pert(:,N)=TC(:,N)+small_TC
            CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                             IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
                             t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
            VKH_pert_tc =VKH
 
+           small_QC = small_factor*QC(:,N)
            QC_pert(:,N)=QC(:,N)+small_QC
            CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                             IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
@@ -3563,7 +3531,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
            DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
 
-         endif
+        endif
   
         CM(:,N)  = VKM
         CH(:,N)  = VKH
@@ -3659,12 +3627,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-       ! for helfsurface
-    deallocate(VKH_pert_tc)
-    deallocate(VKH_pert_qc)
-    deallocate(TC_pert    )
-    deallocate(QC_pert    )
-
+    ! for helfsurface
+    if(incl_HelfandMO_extra_derivs ==1 ) then
+      deallocate(VKH_pert_tc)
+      deallocate(VKH_pert_qc)
+      deallocate(TC_pert    )
+      deallocate(QC_pert    )
+      deallocate(small_QC)
+      deallocate(small_TC)
+    endif
 !  All done
 ! ------------------------------------------------------------------------------
 
@@ -3746,7 +3717,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-        ! for helfsurface
+    ! for helfsurface
     call MAPL_GetResource ( MAPL, incl_HelfandMO_extra_derivs, Label="INCL_HELFANDMO_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
