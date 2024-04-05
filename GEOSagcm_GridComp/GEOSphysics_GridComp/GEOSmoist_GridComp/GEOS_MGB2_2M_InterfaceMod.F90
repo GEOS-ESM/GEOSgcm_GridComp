@@ -95,7 +95,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
     
-    call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=1, __RC__)
+    call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
     call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', __RC__) ! Note: Default set in GEOS_GcmGridComp.F90
 
 

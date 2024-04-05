@@ -50,6 +50,8 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 
+  real, parameter :: infinite = huge(1.d0)
+
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -2626,42 +2628,6 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
-
-#if 0
-    ! taken out since they are now friendly to dynamics
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='QLCN',                                       &
-         LONG_NAME  ='mass_fraction_of_convective_cloud_liquid_water', &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='QICN',                                       &
-         LONG_NAME  ='mass_fraction_of_convective_cloud_ice_water', &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='CLLS',                                       &
-         LONG_NAME  ='large_scale_cloud_volume_fraction',            &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='CLCN',                                       &
-         LONG_NAME  ='convective_cloud_volume_fraction',             &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-#endif
-
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RH1',                                         &
