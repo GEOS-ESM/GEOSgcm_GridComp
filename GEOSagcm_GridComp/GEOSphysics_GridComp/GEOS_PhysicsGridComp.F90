@@ -1223,16 +1223,18 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
+     IF (DO_OBIO /= 0) THEN 
+        call MAPL_AddConnectivity ( GC,                               &
+             SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
+             SRC_ID      = RAD,                                       &
+             DST_ID      = SURF,                                      &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+     ENDIF
+
      call MAPL_AddConnectivity ( GC,                               &
          SHORT_NAME  = (/'AERO_DP'/),                              &
          SRC_ID      = CHEM,                                       &
-         DST_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'FSWBAND  ', 'FSWBANDNA'/),               &
-         SRC_ID      = RAD,                                        &
          DST_ID      = SURF,                                       &
                                                         RC=STATUS  )
      VERIFY_(STATUS)
@@ -1774,12 +1776,12 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+!    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
+!    VERIFY_(STATUS)
+!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+!    VERIFY_(STATUS)
+!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+!    VERIFY_(STATUS)
 
 ! Add Friendlies from Physics
     call MAPL_GridCompGetFriendlies(GC, "TURBULENCE", BUNDLE, RC=STATUS )

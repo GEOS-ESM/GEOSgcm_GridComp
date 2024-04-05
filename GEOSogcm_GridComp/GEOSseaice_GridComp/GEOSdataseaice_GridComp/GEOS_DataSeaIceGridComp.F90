@@ -539,7 +539,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
 !---------------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,   RC=STATUS)
+    call MAPL_GetResource(MAPL,IFCST,LABEL="OGCM_IS_FCST:",default=0,   RC=STATUS)
     VERIFY_(STATUS)
 
     FCST = IFCST==1
