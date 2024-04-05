@@ -852,6 +852,7 @@ contains
 
     type(ESMF_Calendar)                 :: cal
     type(ESMF_Time)                     :: rep_StartTime
+    type(ESMF_Time)                     :: rep_EndTime
     type(ESMF_Time)                     :: rep_RefTime
     type(ESMF_Time)                     :: currTime
     type(ESMF_Time)                     :: ringTime
@@ -875,6 +876,7 @@ contains
     integer                             ::   MKIAU_REFERENCE_TIME
     integer                             :: rplshut
     integer                             :: rep_startdate(2)
+    integer                             :: rep_enddate(2)
     integer                             :: rep_YY
     integer                             :: rep_MM
     integer                             :: rep_DD
@@ -1000,17 +1002,12 @@ contains
        i_MKIAU_FREQUENCY      = gcm_internal_state%rplfreq
          MKIAU_REFERENCE_TIME = gcm_internal_state%rplreft
 
-       call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=-3600, rc=status)
-       VERIFY_(STATUS)
        call ESMF_ClockGet(clock, currTime=currTime, calendar=cal, rc=status)
        VERIFY_(STATUS)
 
        call ESMF_TimeIntervalSet(CORRECTOR_DURATION,    S=i_CORRECTOR_DURATION, rc=status)
        VERIFY_(STATUS)
        call ESMF_TimeIntervalSet(MKIAU_FREQUENCY, S=i_MKIAU_FREQUENCY, rc=status)
-       VERIFY_(STATUS)
-
-       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
        VERIFY_(STATUS)
 
        rep_StartTime = currTime
@@ -1033,7 +1030,9 @@ contains
        ! Update REPLAY_STARTDATE with User-Supplied values from CONFIG
        ! -------------------------------------------------------------
        call MAPL_GetResource( MAPL, rep_startdate(1), label='REPLAY_STARTDATE:', default=rep_startdate(1), rc=STATUS )
+       VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, rep_startdate(2), label='REPLAY_STARTTIME:', default=rep_startdate(2), rc=STATUS )
+       VERIFY_(STATUS)
 
        ! REPACK REPLAY_STARTTIME
        ! -----------------------
@@ -1066,6 +1065,54 @@ contains
                                          M = rep_M , &
                                          S = rep_S , &
                           calendar=cal, rc = STATUS  )
+       VERIFY_(STATUS)
+
+       ! Initialize REPLAY_ENDDATE in YYYYMMDD & HHMMSS format
+       ! -------------------------------------------------------
+       rep_enddate(1) = -10000*rep_YY - 100*rep_MM - rep_DD
+       rep_enddate(2) =  10000*rep_H  + 100*rep_M  + rep_S
+
+       ! Update REPLAY_ENDDATE with User-Supplied values from CONFIG
+       ! -------------------------------------------------------------
+       call MAPL_GetResource( MAPL, rep_enddate(1), label='REPLAY_ENDDATE:', default=rep_enddate(1), rc=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, rep_enddate(2), label='REPLAY_ENDTIME:', default=rep_enddate(2), rc=STATUS )
+       VERIFY_(STATUS)
+
+       ! REPACK REPLAY_ENDTIME
+       ! -----------------------
+       if (rep_enddate(1) > 0) then
+         rep_YY =     rep_enddate(1)/10000
+         rep_MM = mod(rep_enddate(1),10000)/100
+         rep_DD = mod(rep_enddate(1),100)
+         rep_H  =     rep_enddate(2)/10000
+         rep_M  = mod(rep_enddate(2),10000)/100
+         rep_S  = mod(rep_enddate(2),100)
+
+         call ESMF_TimeSet( rep_EndTime,   YY = rep_YY, &
+                                           MM = rep_MM, &
+                                           DD = rep_DD, &
+                                            H = rep_H , &
+                                            M = rep_M , &
+                                            S = rep_S , &
+                            calendar=cal,  rc = STATUS  )
+         VERIFY_(STATUS)
+
+         ! Determine REPLAY_INTERVAL
+         ! --------------------------
+         Shutoff = rep_EndTime - currTime
+         call ESMF_TimeIntervalGet(Shutoff, S=rplshut, rc=STATUS)
+         VERIFY_(STATUS)
+         rplshut = MAX(0,rplshut)
+       else
+         rplshut = -3600
+       endif
+
+       ! Initialize REPLAY_SHUTOFF (if USER specified this overrides REPLAY_ENDDATE)
+       ! ---------------------------------------------------------------------------
+       call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=rplshut, rc=status)
+       VERIFY_(STATUS)
+       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
        VERIFY_(STATUS)
 
      ! Compute Time of First Call to MKIAU
@@ -1229,7 +1276,7 @@ contains
            VERIFY_(ESMF_FAILURE)
        endif
 
-       if (rplshut <= 0) then ! this is a "flag" to never use Shutoff alarm
+       if (rplshut < 0) then ! this is a "flag" to never use Shutoff alarm
           call ESMF_AlarmDisable(replayShutoffAlarm, RC=STATUS)
           VERIFY_(STATUS)
        end if
