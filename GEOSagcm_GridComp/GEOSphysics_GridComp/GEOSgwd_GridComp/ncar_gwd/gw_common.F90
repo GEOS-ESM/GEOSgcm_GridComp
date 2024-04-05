@@ -50,8 +50,9 @@ real(GW_PRC) :: rog = huge(1._GW_PRC)
 
 ! Scaling factor for generating QBO
 real(GW_PRC), protected :: qbo_hdepth_scaling
-! Whether or not to enforce an upper boundary condition of tau = 0.
-logical :: tau_0_ubc = .false.
+! Pressure (Pa) to begin transition to an upper boundary condition of tau = 0.
+!  default(0.0) is not active
+real :: tau_0_ubc = 0.0
 ! Inverse Prandtl number.
 real(GW_PRC) :: prndl
 ! Heating rate conversion factor
@@ -142,7 +143,7 @@ subroutine gw_common_init(   &
      tau_0_ubc_in, ktop_in, gravit_in, rair_in, cpair_in, & 
      prndl_in, qbo_hdepth_scaling_in, hr_cf_in, errstring)
 
-  logical,  intent(in) :: tau_0_ubc_in
+  real, intent(in) :: tau_0_ubc_in
   integer,  intent(in) :: ktop_in
   real, intent(in) :: gravit_in
   real, intent(in) :: rair_in       ! Gas constant for dry air (J kg-1 K-1)
@@ -378,6 +379,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! LU decomposition.
   type(TriDiagDecomp) :: decomp
 
+  real(GW_PRC) :: tau_0_scaling
+
   ! Lowest levels that loops need to iterate over.
   kbot_tend = maxval(tend_level)
   kbot_src = maxval(src_level)
@@ -448,7 +451,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           mi(i) = ni(i,k) / (effkwv(i) * ubmc2(i)) * &
                  (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
           wrk(i) = -mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
-          wrk(i) = max( wrk(i), -200.0 )
+          wrk(i) = max( wrk(i), -75.0 ) ! Protect against underflow in exp(wrk(i))
           taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
 
         ! For some reason, PGI 14.1 loses bit-for-bit reproducibility if
@@ -473,13 +476,14 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   endif
 
   ! Force tau at the top of the model to zero, if requested.
-  if (tau_0_ubc) then
-     tau(:,:,ktop  ) =                 0.00
-     tau(:,:,ktop+1) = tau(:,:,ktop+1)*0.02
-     tau(:,:,ktop+2) = tau(:,:,ktop+2)*0.05
-     tau(:,:,ktop+3) = tau(:,:,ktop+3)*0.10
-     tau(:,:,ktop+4) = tau(:,:,ktop+4)*0.20
-     tau(:,:,ktop+5) = tau(:,:,ktop+5)*0.50
+  if (tau_0_ubc > 0.0) then
+     do k=1,pver+1 
+       do i=1,ncol
+        !tau_0_scaling = MIN(1.0,MAX(0.0,((pint(i,k)-pint(i,ktop))/tau_0_ubc)**2))
+         tau_0_scaling = TANH((pint(i,k)-pint(i,ktop))/tau_0_ubc)
+         tau(i,:,k) = tau(i,:,k)*tau_0_scaling
+       enddo
+     enddo
   endif
 
   !------------------------------------------------------------------------

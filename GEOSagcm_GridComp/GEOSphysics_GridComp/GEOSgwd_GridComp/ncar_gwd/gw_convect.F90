@@ -44,6 +44,8 @@ type :: BeresSourceDesc
    real, allocatable :: mfcc(:,:,:)
    ! Forced background for extratropics
    real, allocatable :: taubck(:,:)
+   ! Efficiency TR:ET function
+   real, allocatable :: effbck(:)
    logical :: et_bkg_lat_forcing
 end type BeresSourceDesc
 
@@ -54,7 +56,8 @@ contains
 
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
-                          spectrum_source, min_hdepth, storm_shift, tau_et, et_uselats, tndmax, &
+                          spectrum_source, min_hdepth, storm_shift, eff_tr, eff_et, &
+                          tau_et, et_uselats, tndmax, &
                           active, ncol, lats)
 #include <netcdf.inc>
 
@@ -65,7 +68,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
 
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
-  real, intent(in) :: spectrum_source, min_hdepth, tau_et, tndmax
+  real, intent(in) :: spectrum_source, min_hdepth, eff_tr, eff_et, tau_et, tndmax
   logical, intent(in) :: storm_shift, active, et_uselats
   real, intent(in) :: lats(ncol)
 
@@ -157,9 +160,11 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
     desc%tndmax = tndmax
 
     ! Intialize forced background wave speeds
+    allocate(desc%effbck(ncol))
     allocate(desc%taubck(ncol,-band%ngwv:band%ngwv))
     allocate(cw(-band%ngwv:band%ngwv))
     allocate(cw4(-band%ngwv:band%ngwv))
+    desc%effbck = 1.0
     desc%taubck = 0.0
     cw  = 0.0
     cw4 = 0.0
@@ -179,11 +184,14 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
       ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
        if (ABS(latdeg) <  60.) then
-          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/23.)**2)
-       else
-          flat_gw =  0.50*exp(-((abs(latdeg)-60.)/70.)**2)
+          flat_gw =  max(0.15,0.50*exp(-((abs(latdeg)-60.)/23.)**2))
+       elseif (ABS(latdeg) >= 60.) then
+          flat_gw =           0.50*exp(-((abs(latdeg)-60.)/70.)**2)
        endif
        desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
+      ! efficiency function
+       desc%effbck(i) = eff_tr*cos(lats(i))**2 + &
+                        eff_et*sin(lats(i))**2
     enddo
     deallocate( cw, cw4 )
   end if
@@ -471,20 +479,18 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
         else
           ! Find largest condensate change level, for frontal detection
           ! condensate tendencies from microphysics will be negative
-          q0(i) = 0.0
-          do k = pver, desc%k(i), -1 ! tend-level to top of atmosphere
+           q0(i) = 0.0
+           do k = pver, desc%k(i), -1 ! tend-level to top of atmosphere
              if (dqcdt(i,k) < q0(i)) then ! Find min DQCDT
                 q0(i) = dqcdt(i,k)
              endif
-          end do
-          if (q0(i) < -5.e-8) then ! frontal region (large-scale forcing)
+           end do
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
           ! stress is the same as (c-u).
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:)
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(2.0,MAX(1.0,abs(q0(i)/5.e-8)))
            topi(i) = desc%k(i)
-          endif
         endif
 
      endif
@@ -586,10 +592,6 @@ subroutine gw_beres_ifc( band, &
    ! Heating depth [m] and maximum heating in each column.
    real :: hdepth(ncol), maxq0(ncol)
 
-   ! Vertical scaling options
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
-
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -604,20 +606,7 @@ subroutine gw_beres_ifc( band, &
    allocate(c(ncol,-band%ngwv:band%ngwv))
 
      ! Efficiency of gravity wave momentum transfer.
-     ! This is really only to remove the pole points.
-     where (pi/2.0 - abs(lats(:ncol)) >= 1.e-4 )  !-4*epsilon(1.0))
-        effgw = effgw_dp
-     elsewhere
-        effgw = 0.0
-     end where
-
-!GEOS pressure scaling to slow decent below 0.1hPa
-     zfac_layer = 10.0 ! 0.1mb
-     do k=1,pver+1
-       do i=1,ncol
-         pint_adj(i,k) = MIN(1.0,MAX(0.375,(zfac_layer/pint(i,k))**0.1875))
-       enddo
-     enddo
+     effgw = effgw_dp*desc%effbck
 
      ! Determine wave sources for Beres deep scheme
      call gw_beres_src(ncol, pver, band, desc, pint, &
@@ -628,7 +617,7 @@ subroutine gw_beres_ifc( band, &
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level, dt, t,    &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
-          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha) !, pint_adj=pint_adj)
+          c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha)
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
