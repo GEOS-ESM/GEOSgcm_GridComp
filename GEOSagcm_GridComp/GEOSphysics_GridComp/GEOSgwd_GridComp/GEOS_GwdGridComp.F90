@@ -773,7 +773,7 @@ contains
     real    :: NCAR_TR_EFF     ! Convective region efficiency factor
     real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-    logical :: NCAR_ET_USELATS  
+    logical :: NCAR_ET_USE_DQCDT  
     logical :: NCAR_DC_BERES
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
@@ -868,7 +868,7 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=15.0, _RC) ! 0.15 hPa
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=35.0, _RC) ! 0.35 hPa
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
                                    NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
@@ -891,7 +891,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USELATS,     Label="NCAR_ET_USELATS:",     default=.TRUE., _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE.,_RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
@@ -906,7 +906,7 @@ contains
                                 self%workspaces(thread)%beres_dc_desc, &
                                 NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                                 NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USELATS, &
+                                1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
                                 NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                 IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
       end do

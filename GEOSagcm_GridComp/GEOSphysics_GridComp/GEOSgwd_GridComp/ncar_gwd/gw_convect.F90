@@ -46,7 +46,7 @@ type :: BeresSourceDesc
    real, allocatable :: taubck(:,:)
    ! Efficiency TR:ET function
    real, allocatable :: effbck(:)
-   logical :: et_bkg_lat_forcing
+   logical :: et_bkg_dqcdt_forcing
 end type BeresSourceDesc
 
 
@@ -57,7 +57,7 @@ contains
 !------------------------------------
 subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength, &
                           spectrum_source, min_hdepth, storm_shift, eff_tr, eff_et, &
-                          tau_et, et_uselats, tndmax, &
+                          tau_et, et_use_dqcdt, tndmax, &
                           active, ncol, lats)
 #include <netcdf.inc>
 
@@ -69,7 +69,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
   integer, intent(in) :: pgwv, ncol
   real, intent(in) :: gw_dc, fcrit2, wavelength
   real, intent(in) :: spectrum_source, min_hdepth, eff_tr, eff_et, tau_et, tndmax
-  logical, intent(in) :: storm_shift, active, et_uselats
+  logical, intent(in) :: storm_shift, active, et_use_dqcdt
   real, intent(in) :: lats(ncol)
 
   ! Stuff for Beres convective gravity wave source.
@@ -177,7 +177,7 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
        cw(kc) =  exp(-(cw(kc)/30.)**2)
     enddo
     cw = cw*(sum(cw4)/sum(cw)) 
-    desc%et_bkg_lat_forcing = et_uselats
+    desc%et_bkg_dqcdt_forcing = et_use_dqcdt
     do i=1,ncol
       ! include forced background stress in extra tropics
       ! Determine the background stress at c=0
@@ -468,7 +468,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
      else
 
         tau(i,:,:) = 0.0
-        if (desc%et_bkg_lat_forcing) then
+        if (.not. desc%et_bkg_dqcdt_forcing) then
           ! use latitudinal dependence
           ! include forced background stress in extra tropical large-scale systems
           ! Set the phase speeds and wave numbers in the direction of the source wind.
@@ -481,7 +481,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! condensate tendencies from microphysics will be negative
            q0(i) = 0.0
            do k = pver, desc%k(i), -1 ! tend-level to top of atmosphere
-             if (dqcdt(i,k) < q0(i)) then ! Find min DQCDT
+             if (dqcdt(i,k) < q0(i)) then ! Find largest negative DQCDT tendency
                 q0(i) = dqcdt(i,k)
              endif
            end do
