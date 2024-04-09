@@ -3206,7 +3206,7 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=10.0,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=3.0,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=1,    RC=STATUS); VERIFY_(STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -3630,6 +3630,7 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
 
       ! Future options
 !      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
@@ -3751,8 +3752,8 @@ end if
                     QI,                       & 
                     SH,                       & 
                     EVAP,                     & 
-                    FRLAND,                   & 
-                    ZPBL,                     & 
+                    FRLAND,                   &
+                    ZPBL,                     &
 !                   MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP inputs
                     !== Outputs for trisolver ==
                     ae3,                      &
@@ -4766,10 +4767,12 @@ end if
          PPBL = MAX(PPBL,PLO(:,:,KPBLMIN))
       end if
 
+      RHOAW3=RHOE*AW3
+
       ! Second difference coefficients for scalars; RDZ is RHO/DZ, DMI is (G DT)/DP
       ! ---------------------------------------------------------------------------
 
-      CKS(:,:,1:LM-1) = -KH(:,:,1:LM-1) * RDZ(:,:,1:LM-1)
+      CKS(:,:,1:LM-1) = -(KH(:,:,1:LM-1)+MFPARAMS%TREFF*RHOAW3(:,:,1:LM-1)) * RDZ(:,:,1:LM-1)
       AKS(:,:,1     ) = 0.0
       AKS(:,:,2:LM  ) = CKS(:,:,1:LM-1) * DMI(:,:,2:LM  )
       CKS(:,:,1:LM-1) = CKS(:,:,1:LM-1) * DMI(:,:,1:LM-1)
@@ -4820,7 +4823,6 @@ end if
      AKSS(:,:,1)=0.0
      AKUU(:,:,1)=0.0
 
-     RHOAW3=RHOE*AW3
 
      if (MFPARAMS%IMPLICIT == 1 .and. MFPARAMS%DISCRETE == 0) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
