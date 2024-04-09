@@ -279,9 +279,6 @@ subroutine gw_oro_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
- 
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -310,14 +307,6 @@ subroutine gw_oro_ifc( band, &
            tau(i,:,:) = tau(i,:,:) * gw_oro_south_fac
         end if
      end do
-
-!GEOS pressure scaling near model top
-     zfac_layer = 1000.0 ! 10mb
-     do k=1,pver+1
-       do i=1,ncol
-         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
-       enddo
-     enddo
 
      ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 

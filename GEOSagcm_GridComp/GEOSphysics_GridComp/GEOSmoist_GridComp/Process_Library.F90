@@ -87,6 +87,9 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! base grid length for sigma calculation
+  real :: SIGMA_DX = 1000.0
+
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
 
@@ -138,6 +141,7 @@ module GEOSmoist_Process_Library
   public :: make_IceNumber, make_DropletNumber, make_RainNumber
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
+  public :: SIGMA_DX
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: SH_MD_DP, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
@@ -334,7 +338,7 @@ module GEOSmoist_Process_Library
 
   real function sigma (dx)
       real, intent(in) :: dx
-      sigma = 1.0-0.9839*exp(-0.09835*(dx/1000.)) ! Arakawa 2011 sigma
+      sigma = 1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)) ! Arakawa 2011 sigma
   end function sigma
 
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)

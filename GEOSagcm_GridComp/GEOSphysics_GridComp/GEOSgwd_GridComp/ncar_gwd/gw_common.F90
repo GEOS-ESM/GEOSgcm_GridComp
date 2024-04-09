@@ -260,7 +260,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  gwut, alpha, pint_adj, ro_adjust, kwvrdg)
+     ttgw,  gwut, alpha, ro_adjust, kwvrdg)
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -339,9 +339,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   real(GW_PRC), intent(out) :: gwut(ncol,pver,-band%ngwv:band%ngwv)
   real, intent(in) :: alpha(pver+1)
 
-  ! Pressure level tau adjustment
-  real, intent(in), optional :: pint_adj(ncol,pver+1)
-
   ! Adjustment parameter for IGWs.
   real, intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
@@ -413,7 +410,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Loop from bottom to top to get stress profiles.
 ! !$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
-! !$OMP                                  ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
+! !$OMP                        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
 ! !$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
   do k = kbot_src, ktop, -1
      
@@ -436,8 +433,8 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
           ubmc(i) = ubi(i,k) - c(i,l)
 
               ! Test to see if u-c has the same sign here as the level below.
-          if (ubmc(i) > 0.0 .eqv. ubi(i,k+1) > c(i,l)) then
-             if (ni(i,k) /= 0.0) & 
+          if (ubmc(i) > near_zero .eqv. ubi(i,k+1) > c(i,l)) then
+             if ( (abs(effkwv(i)) > near_zero) .AND. (abs(ni(i,k)) > near_zero) ) & 
                  tausat(i) = abs( effkwv(i) * rhoi(i,k) * ubmc(i)**3 / ni(i,k) )
              if (present(ro_adjust)) &
                  tausat(i) = tausat(i) * sqrt(ro_adjust(i,l,k))
@@ -448,8 +445,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! reduced by damping. The sign of the stress must be the same as
         ! at the level below.
           ubmc2(i) = max(ubmc(i)**2, ubmc2mn)
-          mi(i) = ni(i,k) / (effkwv(i) * ubmc2(i)) * &
-                 (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
+          if (abs(effkwv(i)) > near_zero) &
+            mi(i) = ni(i,k) / (effkwv(i) * ubmc2(i)) * &
+                  (alpha(k) + ni(i,k)**2/ubmc2(i) * d(i))
           wrk(i) = -mi(i)*rog*t(i,k)*(piln(i,k+1) - piln(i,k))
           wrk(i) = max( wrk(i), -75.0 ) ! Protect against underflow in exp(wrk(i))
           taudmp(i) = tau(i,l,k+1) * exp(wrk(i))
@@ -467,19 +465,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   end do
 
-  if (present(pint_adj)) then
-     do k=1,pver+1
-        do l = -band%ngwv, band%ngwv
-           tau(:,l,k) = tau(:,l,k)*pint_adj(:,k)
-        enddo
-     enddo
-  endif
-
   ! Force tau at the top of the model to zero, if requested.
   if (tau_0_ubc > 0.0) then
      do k=1,pver+1 
        do i=1,ncol
-        !tau_0_scaling = MIN(1.0,MAX(0.0,((pint(i,k)-pint(i,ktop))/tau_0_ubc)**2))
          tau_0_scaling = TANH((pint(i,k)-pint(i,ktop))/tau_0_ubc)
          tau(i,:,k) = tau(i,:,k)*tau_0_scaling
        enddo
@@ -498,13 +487,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
      ! Accumulate the mean wind tendency over wavenumber.
      ubt(:,k) = 0.0
-
      do l = -band%ngwv, band%ngwv    ! loop over wave
-
         do i=1,ncol
-
           if (k <= tend_level(i)) then
-
            ! Determine the wind tendency, including excess stress carried down
            ! from above.
            ubtl(i) = gravit * (tau(i,l,k+1)-tau(i,l,k)) * rdelp(i,k)
@@ -520,12 +505,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            ! sign function returns magnitude of ubtl with sign of c-ubm 
            ! Renders ubt/ubm check for mountain waves unecessary
            gwut(i,k,l) = sign(ubtl(i), c(i,l)-ubm(i,k))
+           if ( abs(gwut(i,k,l)) < near_zero ) then
+             gwut(i,k,l) = 0.0 ! protection against underflow
+           end if
            ubt(i,k) = ubt(i,k) + gwut(i,k,l)
-
           end if
-
         end do
-
      end do
 
      do l = -band%ngwv, band%ngwv
@@ -538,9 +523,6 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! issues.
         !--------------------------------------------------
         do i=1,ncol
-         if ( abs(gwut(i,k,l)) < near_zero ) then
-           gwut(i,k,l) = 0.0
-         end if   
          if (k <= tend_level(i)) then
            tau(i,l,k+1) = tau(i,l,k) + & 
                 abs(gwut(i,k,l)) * delp(i,k) / gravit 

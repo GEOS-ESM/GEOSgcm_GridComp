@@ -183,10 +183,14 @@ subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, fcrit2, wavelength
       ! Determine the background stress at c=0
       ! Include dependence on latitude:
        latdeg = lats(i)*rad2deg
-       if (ABS(latdeg) <  60.) then
-          flat_gw =  max(0.15,0.50*exp(-((abs(latdeg)-60.)/23.)**2))
-       elseif (ABS(latdeg) >= 60.) then
-          flat_gw =           0.50*exp(-((abs(latdeg)-60.)/70.)**2)
+       if (desc%et_bkg_dqcdt_forcing) then
+          flat_gw = 0.15
+       else
+          if (ABS(latdeg) <  60.) then
+            flat_gw =  max(0.15,0.50*exp(-((abs(latdeg)-60.)/23.)**2))
+          elseif (ABS(latdeg) >= 60.) then
+            flat_gw =           0.50*exp(-((abs(latdeg)-60.)/70.)**2)
+          endif
        endif
        desc%taubck(i,:) = tau_et*0.001*flat_gw*cw
       ! efficiency function
@@ -489,7 +493,7 @@ subroutine gw_beres_src(ncol, pver, band, desc, pint, u, v, &
           ! Set the phase speeds and wave numbers in the direction of the source wind.
           ! Set the source stress magnitude (positive only, note that the sign of the 
           ! stress is the same as (c-u).
-           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(2.0,MAX(1.0,abs(q0(i)/5.e-8)))
+           tau(i,:,desc%k(i)+1) = desc%taubck(i,:) * MIN(10.0,MAX(1.0,abs(q0(i)/1.e-8)))
            topi(i) = desc%k(i)
         endif
 
