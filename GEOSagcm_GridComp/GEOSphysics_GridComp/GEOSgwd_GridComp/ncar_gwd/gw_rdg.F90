@@ -269,8 +269,6 @@ subroutine gw_rdg_ifc( band, &
    real :: qtgw(ncol,pver,pcnst) ! constituents tendencies
 #endif
 
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
    real :: utfac,uhtmax
 
    character(len=1) :: cn
@@ -286,15 +284,6 @@ subroutine gw_rdg_ifc( band, &
    utrdg = 0.
    vtrdg = 0.
    ttrdg = 0.
-  
-!GEOS pressure scaling near model top
-   zfac_layer = 1000.0 ! 10mb
-   do k=1,pver+1 
-     do i=1,ncol
-       pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
-     enddo
-   enddo
-
    isoflag = 0
  
    do nn = 1, n_rdg
@@ -321,7 +310,7 @@ subroutine gw_rdg_ifc( band, &
           src_level, tend_level,dt, t, &
           piln, rhoi, nm, ni, ubm, ubi, xv, yv, &
           c, kvtt, tau, utgw, vtgw, ttgw, gwut, alpha, &
-          kwvrdg=kwvrdg(:,nn)) !, pint_adj=pint_adj)
+          kwvrdg=kwvrdg(:,nn))
 
      ! Apply efficiency and limiters to the totals
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
