@@ -362,7 +362,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               end if
            end do
            lts = lts - thv3(IH,JH,kte)
-           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.25*(lts-18.5))) )
+           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
         end if
       else ! if mfparams%ET not 2
         L0 = mfparams%L0
