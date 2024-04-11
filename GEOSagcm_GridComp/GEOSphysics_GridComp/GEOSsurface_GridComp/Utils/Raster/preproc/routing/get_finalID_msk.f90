@@ -14,7 +14,15 @@ program main
   integer :: fulli(12),fullj(12)
   real    :: val(9)
   
-  open(77,file="/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat", form="formatted", status="old")
+  character(len=100) :: file_path !/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat
+
+  if (command_argument_count() /= 1) then
+      print *, "no <file_path> found"
+      stop
+  endif
+  call get_command_argument(1, file_path)
+
+  open(77,file=file_path, form="formatted", status="old")
   read(77,*)num
   
   allocate(downid(nc),finalid(nc),pfaf(nc),pfaf_digit(nc,12),res(nc),pfaf_last(nc),pfaf_msk(nc))

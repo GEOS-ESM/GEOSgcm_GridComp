@@ -13,8 +13,18 @@ program main
   integer :: i,j,ret,ncid,varid,ntile
   real    :: val(4)
   
+  character(len=100) :: file_path1 !/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc
+  character(len=100) :: file_path2 !/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/GreenlandID_30s.nc
+
+  if (command_argument_count() /= 2) then
+      print *, "no <file_path1> <file_path2> found"
+      stop
+  endif
+  call get_command_argument(1, file_path1)
+  call get_command_argument(2, file_path2)
+
   allocate(catchind(nlon1m,nlat1m))
-  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_open(file_path1,0,ncid)
   ret=nf_inq_varid(ncid,"CatchIndex",varid)
   ret=nf_get_var_int(ncid,varid,catchind)
   ret=nf_close(ncid)
@@ -31,15 +41,15 @@ program main
 
   allocate(Greenland(nlon_G,nlat_G))
   allocate(lon_G(nlon_G),lat_G(nlat_G))
-  ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+  ret=nf_open(file_path2,0,ncid)
   ret=nf_inq_varid(ncid,"lon",varid)
   ret=nf_get_var_double(ncid,varid,lon_G)
   ret=nf_close(ncid)
-  ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+  ret=nf_open(file_path2,0,ncid)
   ret=nf_inq_varid(ncid,"lat",varid)
   ret=nf_get_var_double(ncid,varid,lat_G)
   ret=nf_close(ncid)
-  ret=nf_open("inputs/GreenlandID_30s.nc",0,ncid)
+  ret=nf_open(file_path2,0,ncid)
   ret=nf_inq_varid(ncid,"data",varid)
   ret=nf_get_var_int(ncid,varid,Greenland)
   ret=nf_close(ncid)

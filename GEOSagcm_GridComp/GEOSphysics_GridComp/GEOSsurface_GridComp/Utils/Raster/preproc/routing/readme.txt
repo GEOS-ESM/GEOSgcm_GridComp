@@ -4,7 +4,7 @@ The "preproc/routing" package is used for creating a 30-arcsec raster file with 
 
 The output from this package is a binary file "Outlet_latlon.43200x21600".  
 
-The river outlets are located in land or landice tiles as defined in the raster file "Pfafstetter.rst" from the makebcs package. 
+The river outlets are located in land or landice tiles as defined in the file "SRTM_PfafData.nc". 
 
 The "Outlet_latlon.43200x21600" file is the input for "mk_runofftbl.F90" in the makebcs package, which further adjusts the outlet locations to be consistent with the ocean model resolution and domain ("mk_runofftbl.F90").
 

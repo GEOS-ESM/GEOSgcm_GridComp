@@ -12,6 +12,20 @@ program main
   
   integer :: id,xi,yi,i,k,xis,yis,ntot,ncid,ret,varid
   
+  character(len=100) :: file_path1 !/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc
+  character(len=100) :: file_path2 !/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/HydroSHEDS_drainage_area.nc
+  character(len=100) :: file_path3 !/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/Greenland_outlets_lat.txt
+  character(len=100) :: file_path4 !/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/Greenland_outlets_lon.txt  
+
+  if (command_argument_count() /= 4) then
+      print *, "no <file_path1> <file_path2> <file_path3> <file_path4> found"
+      stop
+  endif
+  call get_command_argument(1, file_path1)
+  call get_command_argument(2, file_path2)
+  call get_command_argument(3, file_path3)
+  call get_command_argument(4, file_path4)
+
   ntot=nl+ng
   allocate(catchind(nlon,nlat),acah(nlon,nlat))
   allocate(lon(nlon),lat(nlat))
@@ -19,21 +33,21 @@ program main
   allocate(long(ng),latg(ng),lons(ntot),lats(ntot))
   
   
-  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_open(file_path1,0,ncid)
   ret=nf_inq_varid(ncid,"longitude",varid)
   ret=nf_get_var_double(ncid,varid,lon)
   ret=nf_close(ncid)
-  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_open(file_path1,0,ncid)
   ret=nf_inq_varid(ncid,"latitude",varid)
   ret=nf_get_var_double(ncid,varid,lat)
   ret=nf_close(ncid)
   
-  ret=nf_open("/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc",0,ncid)
+  ret=nf_open(file_path1,0,ncid)
   ret=nf_inq_varid(ncid,"CatchIndex",varid)
   ret=nf_get_var_int(ncid,varid,catchind)
   ret=nf_close(ncid)
   
-  ret=nf_open("inputs/HydroSHEDS_drainage_area.nc",0,ncid)
+  ret=nf_open(file_path2,0,ncid)
   ret=nf_inq_varid(ncid,"data",varid)
   ret=nf_get_var_real(ncid,varid,acah)
   ret=nf_close(ncid)
@@ -70,9 +84,9 @@ program main
      endif
   enddo
   
-  open(77,file="inputs/Greenland_outlets_lat.txt")
+  open(77,file=file_path3)
   read(77,*)latg
-  open(77,file="inputs/Greenland_outlets_lon.txt")
+  open(77,file=file_path4)
   read(77,*)long
   
   lons(k+1:ntot)=long
