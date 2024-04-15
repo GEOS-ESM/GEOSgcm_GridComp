@@ -3122,10 +3122,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: MIN_VEG_HEIGHT 
 
     ! for helfsurface
-    integer                        :: incl_HelfandMO_extra_derivs
-    !real(ESMF_KIND_R8), parameter  :: small_TC = 0.1
-    !real(ESMF_KIND_R8), parameter  :: small_QC = 0.0000001
-    real, parameter   :: small_factor = 0.01
+    integer           :: incl_HelfandMO_extra_derivs
+    real, parameter   :: small_factor = 0.001
     real, allocatable :: small_TC(:)
     real, allocatable :: small_QC(:)
     
