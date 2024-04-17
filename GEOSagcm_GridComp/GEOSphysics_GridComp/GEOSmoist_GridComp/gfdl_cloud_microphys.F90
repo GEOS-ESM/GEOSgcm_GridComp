@@ -142,22 +142,22 @@ module gfdl2_cloud_microphys_mod
 
     ! cloud microphysics switchers
 
-    integer :: icloud_f = 0 !< cloud scheme
+    integer :: icloud_f = 3 !< cloud scheme
     integer :: irain_f = 0 !< cloud water to rain auto conversion scheme
 
     logical :: de_ice = .false. !< to prevent excessive build - up of cloud ice from external sources
-    logical :: sedi_transport = .false. !< transport of momentum in sedimentation
+    logical :: sedi_transport = .true. !< transport of momentum in sedimentation
     logical :: do_sedi_w = .false. !< transport of vertical motion in sedimentation
     logical :: do_sedi_heat = .false. !< transport of heat in sedimentation
     logical :: prog_ccn = .false. !< do prognostic ccn (yi ming's method)
     logical :: do_bigg = .false. !< do bigg mechanism freezing of supercooled liquid on aerosol nuclei
     logical :: do_evap = .true. !< do evaporation
     logical :: do_subl = .true. !< do sublimation
-    logical :: in_cloud = .false. !< use in-cloud autoconversion
+    logical :: in_cloud = .true. !< use in-cloud autoconversion
     logical :: do_qa = .false. !< do inline cloud fraction (WMP: in FV3 dynamics)
     logical :: do_icepsettle = .true. ! include ice pressure settling function
     logical :: preciprad = .true. !< consider precipitates in cloud fraciton calculation
-    logical :: fix_negative = .false. !< fix negative water species
+    logical :: fix_negative = .true. !< fix negative water species
     logical :: do_setup = .true. !< setup constants and parameters
     logical :: p_nonhydro = .false. !< perform hydrosatic adjustment on air density
 
@@ -202,36 +202,36 @@ module gfdl2_cloud_microphys_mod
 
     ! relative humidity increment
 
-    real :: rh_inc = 0.25 !< rh increment for complete evaporation of cloud water and cloud ice
-    real :: rh_inr = 0.25 !< rh increment for minimum evaporation of rain
-    real :: rh_ins = 0.25 !< rh increment for sublimation of snow
+    real :: rh_inc = 0.30 !< rh increment for complete evaporation of cloud water and cloud ice
+    real :: rh_inr = 0.30 !< rh increment for minimum evaporation of rain
+    real :: rh_ins = -99. !< rh increment for sublimation of snow [wmp: not used]
 
     ! conversion time scale
 
-    real :: tau_r2g = 900. !< rain freezing during fast_sat
-    real :: tau_smlt = 900. !< snow melting
-    real :: tau_g2r = 600. !< graupel melting to rain
-    real :: tau_imlt = 600. !< cloud ice melting
-    real :: tau_i2s = 1000. !< cloud ice to snow auto - conversion
-    real :: tau_l2r = 900. !< cloud water to rain auto - conversion
-    real :: tau_v2l = 150. !< water vapor to cloud water (condensation)
-    real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
-    real :: tau_i2v = 300. !< cloud ice to water vapor (sublimation)
-    real :: tau_s2v = 600. !< snow sublimation
-    real :: tau_v2s = 21600. !< snow deposition -- make it a slow process
-    real :: tau_g2v = 900. !< graupel sublimation
-    real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
-    real :: tau_revp = 600. !< rain re-evaporation
-    real :: tau_frz = 450. !, timescale for liquid-ice freezing
+    real :: tau_r2g  = -9999. !< rain freezing during fast_sat [wmp: not used]
+    real :: tau_smlt =   900. !< snow melting
+    real :: tau_g2r  =   600. !< graupel melting to rain
+    real :: tau_imlt =   600. !< cloud ice melting
+    real :: tau_i2s  =  1000. !< cloud ice to snow auto - conversion
+    real :: tau_l2r  = -9999. !< cloud water to rain auto - conversion [wmp: not used]
+    real :: tau_v2l  = -9999. !< water vapor to cloud water (condensation) [wmp: not used]
+    real :: tau_l2v  =   300. !< cloud water to water vapor (evaporation)
+    real :: tau_i2v  =   300. !< cloud ice to water vapor (sublimation)
+    real :: tau_s2v  =   600. !< snow sublimation
+    real :: tau_v2s  = 21600. !< snow deposition -- make it a slow process
+    real :: tau_g2v  =   900. !< graupel sublimation
+    real :: tau_v2g  = 21600. !< graupel deposition -- make it a slow process
+    real :: tau_revp =   600. !< rain re-evaporation
+    real :: tau_frz  =   600. !, timescale for liquid-ice freezing
     ! horizontal subgrid variability
 
-    real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
+    real :: dw_land = 0.05 !< base value for subgrid deviation / variability over land
     real :: dw_ocean = 0.10 !< base value for ocean
 
     ! prescribed ccn
 
-    real :: ccn_o = 90. !< ccn over ocean (cm^ - 3)
-    real :: ccn_l = 270. !< ccn over land (cm^ - 3)
+    real :: ccn_o = 100. !< ccn over ocean (cm^ - 3)
+    real :: ccn_l = 300. !< ccn over land (cm^ - 3)
 
     real :: rthreshu =  7.0e-6 !< critical cloud drop radius (micro m)
     real :: rthreshs = 10.0e-6 !< critical cloud drop radius (micro m)
@@ -245,7 +245,7 @@ module gfdl2_cloud_microphys_mod
     real :: ql_mlt = 2.0e-3 !< max value of cloud water allowed from melted cloud ice
     real :: qs_mlt = 1.0e-6 !< max cloud water due to snow melt
     
-    real :: ql_gen = 1.0e-3 !< max cloud water generation 
+    real :: ql_gen = 1.0e-3 !< max cloud water generation [WMP: never used]
     real :: qi_gen = 9.82679e-5 !< max cloud ice generation at -40 C
 
     ! cloud condensate upper bounds: "safety valves" for ql & qi
@@ -253,18 +253,18 @@ module gfdl2_cloud_microphys_mod
     real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
     real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources)
 
-    real :: qi0_crt = 1.0e-4 !< cloud ice to snow autoconversion threshold (was 1.e-4)
+    real :: qi0_crt = 5.0e-4 !< cloud ice to snow autoconversion threshold (was 1.e-4)
                              !! qi0_crt is highly dependent on horizontal resolution
-    real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold
+    real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold  [WMP: never used]
                              !! lfo used * mixing ratio * = 1.e-4 (hail in lfo)
-    real :: qs0_crt = 1.0e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    real :: qs0_crt = 0.8e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
-    real :: c_paut = 0.55 !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
-    real :: c_psaci = 0.02 !< accretion: cloud ice to snow (was 0.1 in zetac)
-    real :: c_piacr = 5.0 !< accretion: rain to ice:
-    real :: c_cracw = 0.9 !< rain accretion efficiency
-    real :: c_pgacs = 2.0e-3 !< snow to graupel "accretion" eff. (was 0.1 in zetac)
-    real :: c_pgaci = 0.05   !<  ice to graupel "accretion" eff.
+    real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
+    real :: c_psaci = 0.05  !< accretion: cloud ice to snow (was 0.1 in zetac)
+    real :: c_piacr = 5.00  !< accretion: rain to ice:
+    real :: c_cracw = 1.00  !< rain accretion efficiency
+    real :: c_pgacs = 0.01  !< snow to graupel "accretion" eff. (was 0.1 in zetac)
+    real :: c_pgaci = 0.05  !<  ice to graupel "accretion" eff.
 
     ! decreasing clin to reduce csacw (so as to reduce cloud water --- > snow)
 
@@ -295,12 +295,12 @@ module gfdl2_cloud_microphys_mod
     ! cloud microphysics switchers
 
     logical :: fast_sat_adj = .false. !< has fast saturation adjustments
-    logical :: z_slope_liq = .true. !< use linear mono slope for autocconversions
-    logical :: z_slope_ice = .false. !< use linear mono slope for autocconversions
-    logical :: use_ccn = .false. !< use input ccn when .T. else use ccn_o/ccn_l
-    logical :: use_ppm = .false. !< use ppm fall scheme
-    logical :: mono_prof = .true. !< perform terminal fall with mono ppm scheme
-    logical :: mp_print = .false. !< cloud microphysics debugging printout
+    logical :: z_slope_liq  = .true.  !< use linear mono slope for autocconversions
+    logical :: z_slope_ice  = .true.  !< use linear mono slope for autocconversions
+    logical :: use_ccn      = .true.  !< use input ccn when .T. else use ccn_o/ccn_l
+    logical :: use_ppm      = .false. !< use ppm fall scheme
+    logical :: mono_prof    = .true.  !< perform terminal fall with mono ppm scheme
+    logical :: mp_print     = .false. !< cloud microphysics debugging printout
 
     ! real :: global_area = - 1.
 
@@ -775,8 +775,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         
         cpaut = c_paut * 0.104 * grav / 1.717e-5
       
-        ! 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr 
-        onemsig = 1.0 - sigma(sqrt(area1(i))) 
+        ! 1 minus sigma used to control resolution sensitive parameters
+        onemsig = 1.0 - sigma(sqrt(area1(i)))
  
         ! ccn needs units #/m^3 
         if (prog_ccn) then
@@ -872,7 +872,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                 denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
-                ccn, cnv_fraction(i), srf_type(i))
+                ccn, cnv_fraction(i), srf_type(i), onemsig)
 
             do k = ktop, kbot
                 isubl (i,j,k) = isubl (i,j,k) + subl1(k)
@@ -1121,6 +1121,9 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
+                    ! new total condensate / old condensate
+                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)-sink),0.0  ) / &
+                                                     max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
                 endif
             endif
             endif
@@ -1154,6 +1157,9 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
+                    ! new total condensate / old condensate
+                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
+                                                     max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
                 endif
             endif
             endif
@@ -1323,7 +1329,7 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
                     ! q_minus < qsat < q_plus
                     ! dq == dqh if qsat == q_minus
                     ! -----------------------------------------------------------------------
-                    dq = 0.25 * (qsat - q_minus) ** 2 / dqh
+                    dq = 0.25 * (q_minus - qsat) ** 2 / dqh
                 endif
                 qden = qr (k) * den (k)
                 t2 = tin * tin
@@ -1423,7 +1429,7 @@ end subroutine linear_prof
 ! =======================================================================
 
 subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
-        den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type)
+        den, denfac, vts, vtg, vtr, qak, dts, subl1, h_var, ccn, cnv_fraction, srf_type, onemsig)
     
     implicit none
 
@@ -1435,14 +1441,14 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
     real, intent (out), dimension (ktop:kbot) :: subl1
 
-    real, intent (in) :: dts, cnv_fraction, srf_type
+    real, intent (in) :: dts, cnv_fraction, srf_type, onemsig
 
     real, intent (in), dimension (ktop:kbot) :: h_var, ccn
     
     real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, di, lhl, lhi
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
 
-    real :: rdts, fac_g2v, fac_i2s, fac_imlt, fac_frz, newice, newliq
+    real :: rdts, fac_i2s, fac_imlt, fac_frz, newice, newliq
     real :: tz, qv, ql, qr, qi, qs, qg, melt, frez, ifrac, newqi, newql
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
@@ -1450,6 +1456,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real :: factor, sink, qi_crt
     real :: tmp, qsw, qsi, dqsdt, dq
     real :: dtmp, qc, q_plus, q_minus
+    real :: qadum
+    real :: critical_qi_factor
 
     integer :: k, it
     
@@ -1459,9 +1467,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! define conversion scalar / factor
     ! -----------------------------------------------------------------------
 
-    fac_i2s = 1. - exp (- dts / tau_i2s)
-    fac_g2v = 1. - exp (- dts / tau_g2v)
-    
+    fac_i2s  = 1. - exp (- dts / tau_i2s)
     fac_imlt = 1. - exp (- dts / tau_imlt)
     fac_frz  = 1. - exp (- dts / tau_frz)
     
@@ -1484,42 +1490,72 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
     ! -----------------------------------------------------------------------
 
+    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig)
 
     do k = ktop, kbot
 
-        newice = max(0.0,qik (k) + new_ice_condensate(tzk (k), qlk (k), qik (k), cnv_fraction, srf_type))
-        newliq = max(0.0,qlk (k) + qik (k) - newice)
+      ! Use In-Cloud condensates
+      if (in_cloud) then
+        qadum = max(qak (k),qcmin)
+      else    
+        qadum = 1.0
+      endif
+      if (qadum >= onemsig) then
 
-        melt = fac_imlt * max(0.0,newliq - qlk (k)) 
-        frez = fac_frz  * max(0.0,newice - qik (k))
+        ql = qlk (k)/qadum
+        qi = qik (k)/qadum
 
-        if (melt > 0.0 .and. tzk (k) > tice .and. qik (k) > qcmin) then
+        newice = max(0.0,qi + new_ice_condensate(tzk (k), ql, qi, cnv_fraction, srf_type))
+        newliq = max(0.0,ql + qi - newice)
+
+        melt = fac_imlt * max(0.0,newliq - ql) 
+        frez = fac_frz  * max(0.0,newice - qi)
+
+        if (melt > 0.0 .and. tzk (k) > tice .and. qi > qcmin) then
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
-            tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
-            qlk (k) = qlk (k) + tmp
-            qrk (k) = qrk (k) + melt - tmp
-            qik (k) = qik (k) - melt
-            q_liq (k) = q_liq (k) + melt
-            q_sol (k) = q_sol (k) - melt
+            tmp = min (melt, dim (ql_mlt, ql)) ! max ql amount
+
+            ! new total condensate / old condensate
+            qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
+                                             max(qi+ql         ,qcmin) ) )
+
+            ql = ql +         tmp
+            qr = qr + (melt - tmp)*qadum
+            qi = qi -  melt
+            q_liq (k) = q_liq (k) + melt*qadum
+            q_sol (k) = q_sol (k) - melt*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
-        elseif (frez > 0.0 .and. tzk (k) <= tice .and. qlk (k) > qcmin) then
+        elseif (frez > 0.0 .and. tzk (k) <= tice .and. ql > qcmin) then
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            qi_crt = ice_fraction(tzk(k),cnv_fraction,srf_type) * qi0_crt / den (k)
-            tmp = min (frez, dim (qi_crt, qik (k)))
-            qlk (k) = qlk (k) - frez
-            qsk (k) = qsk (k) + frez - tmp
-            qik (k) = qik (k) + tmp
-            q_liq (k) = q_liq (k) - frez
-            q_sol (k) = q_sol (k) + frez
+            qi_crt = ice_fraction(tzk(k),cnv_fraction,srf_type) * critical_qi_factor / qadum / den (k)
+            tmp = min (frez, dim (qi_crt, qi))
+
+            ! new total condensate / old condensate
+            qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
+                                             max(qi+ql         ,qcmin) ) )
+
+            ql = ql -  frez
+            qs = qs + (frez - tmp)*qadum
+            qi = qi +         tmp
+            q_liq (k) = q_liq (k) - frez*qadum
+            q_sol (k) = q_sol (k) + frez*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) + frez * lhi (k) / cvm (k)
         endif
+
+        ! Revert In-Cloud condensate
+        qlk (k) = ql*qadum
+        qik (k) = qi*qadum
+
+      endif
 
     enddo
 
@@ -1606,12 +1642,14 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     den (k), denfac (k)))
                 sink = min (qs, dts * (psmlt + pracs), tc / icpk (k))
                 qs = qs - sink
-                ! sjl, 20170321:
                 tmp = min (sink, dim (qs_mlt, ql)) ! max ql due to snow melt
+
+                ! new total condensate / old condensate
+                qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql+tmp,0.0  ) / &
+                                                 max(qi+ql    ,qcmin) ) )
+
                 ql = ql + tmp
                 qr = qr + sink - tmp
-                ! qr = qr + sink
-                ! sjl, 20170321:
                 q_liq (k) = q_liq (k) + sink
                 q_sol (k) = q_sol (k) - sink
                 cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
@@ -1695,10 +1733,10 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 ! -----------------------------------------------------------------------
                 ! similar to lfo 1983: eq. 21 solved implicitly
-                ! threshold from wsm6 scheme, hong et al 2004, eq (13) : qi0_crt ~0.8e-4
+                ! threshold from wsm6 scheme, hong et al 2004, eq (13)
                 ! -----------------------------------------------------------------------
                
-                qim = qi0_crt / den (k)
+                qim = ice_fraction(tz,cnv_fraction,srf_type) * critical_qi_factor / den (k)
 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
@@ -1724,6 +1762,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     psaut = 0.
                 endif
                 sink = min (qi, psaci + psaut)
+
+                ! new total condensate / old condensate
+                qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-sink,0.0  ) / &
+                                                 max(qi+ql     ,qcmin) ) )
+
                 qi = qi - sink
                 qs = qs + sink
 
@@ -1738,6 +1781,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     ! -----------------------------------------------------------------------
                     factor = dts * cgaci * sqrt (den (k)) * qg
                     pgaci = factor / (1. + factor) * qi
+
+                    ! new total condensate / old condensate
+                    qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-pgaci,0.0  ) / &
+                                                     max(qi+ql      ,qcmin) ) )
+
                     qi = qi - pgaci
                     qg = qg + pgaci
                 endif
@@ -1924,7 +1972,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, tcp3, lhl, lhi
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol, q_cond
 
-    real :: fac_v2l, fac_l2v, fac_i2v
+    real :: fac_l2v, fac_i2v
 
     real :: pidep, qi_crt
 
@@ -1947,7 +1995,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     ! define conversion scalar / factor
     ! -----------------------------------------------------------------------
     
-    fac_v2l = 1. - exp (- dts / tau_v2l)
     fac_l2v = 1. - exp (- dts / tau_l2v)
     fac_i2v = 1. - exp (- dts / tau_i2v)
     fac_s2v = 1. - exp (- dts / tau_s2v)
@@ -3139,8 +3186,7 @@ subroutine fall_speed (ktop, kbot, pl, onemsig, cnv_fraction, anv_icefall, lsc_i
                ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
                !                               ice clouds: Results from SPartICus'
                ! -----------------------------------------------------------------------
-               !viLSC  = (    onemsig)*viLSC + &
-               !         (1.0-onemsig)*MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+               !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
                !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
 
                ! Combine
