@@ -336,9 +336,14 @@ module GEOSmoist_Process_Library
 
   end subroutine CNV_Tracers_Init
 
-  real function sigma (dx)
+  real function sigma (dx, BASE_DX)
       real, intent(in) :: dx
-      sigma = 1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)) ! Arakawa 2011 sigma
+      real, optional , intent(in) :: BASE_DX
+      if (present(BASE_DX)) then
+        sigma = 1.0-0.9839*exp(-0.09835*(dx/ BASE_DX))
+      else
+        sigma = 1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)) ! Arakawa 2011 sigma
+      endif
   end function sigma
 
   function ICE_FRACTION_3D (TEMP,CNV_FRACTION,SRF_TYPE) RESULT(ICEFRCT)
