@@ -50,6 +50,8 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 
+  real, parameter :: infinite = huge(1.d0)
+
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -157,6 +159,8 @@ contains
                adjustl(CONVPAR_OPTION)=="GF" .or. &
                adjustl(CONVPAR_OPTION)=="NONE"
     _ASSERT( LCONVPAR, 'Unsupported Deep Convection Option' )
+    call MAPL_GetResource( CF, SIGMA_DX, Label='SIGMA_DX:', default=SIGMA_DX, RC=STATUS)
+
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
     !----------------------------------------------------------------------
@@ -2627,42 +2631,6 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-#if 0
-    ! taken out since they are now friendly to dynamics
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='QLCN',                                       &
-         LONG_NAME  ='mass_fraction_of_convective_cloud_liquid_water', &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='QICN',                                       &
-         LONG_NAME  ='mass_fraction_of_convective_cloud_ice_water', &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='CLLS',                                       &
-         LONG_NAME  ='large_scale_cloud_volume_fraction',            &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME ='CLCN',                                       &
-         LONG_NAME  ='convective_cloud_volume_fraction',             &
-         UNITS      ='1',                                          &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
-#endif
-
-
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RH1',                                         &
          LONG_NAME ='relative_humidity_before_moist',              &
@@ -4754,7 +4722,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME='QCVAR_EXP',                                   &
+         SHORT_NAME='QCVAR',                                   &
          LONG_NAME ='inverse relative variance of cloud water',        &
          UNITS      = '1',                                    &
          DIMS      = MAPL_DimsHorzOnly,                            &
@@ -5204,6 +5172,7 @@ contains
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
     real, pointer, dimension(:,:)   :: SH, TS, EVAP, KPBL
     real, pointer, dimension(:,:,:) :: KH, TKE, OMEGA
+    integer                         :: n_modes
     type(ESMF_State)                :: AERO
     type(ESMF_FieldBundle)          :: TR
     ! Exports
@@ -5223,7 +5192,7 @@ contains
     real, pointer, dimension(:    ) :: PTR1D
 
     integer :: IM,JM,LM
-    integer :: I, J, L
+    integer :: I, J, L, n
 
     !=============================================================================
 
@@ -5448,7 +5417,6 @@ contains
        ! Get aerosol activation properties
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
-         allocate ( AeroProps(IM,JM,LM) )
          ! get veritical velocity
          if (LHYDROSTATIC) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
@@ -5458,7 +5426,28 @@ contains
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+                             AeroPropsNew, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
+            call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, RC=STATUS); VERIFY_(STATUS)
+            allocate ( AeroProps(IM,JM,LM) )
+            do L=1,LM
+              do J=1,JM
+                do I=1,IM
+                  AeroProps(I,J,L)%nmods    = n_modes
+                  do n=1,n_modes
+                  AeroProps(I,J,L)%num(n)   = AeroPropsNew(n)%num(I,J,L)
+                  AeroProps(I,J,L)%dpg(n)   = AeroPropsNew(n)%dpg(I,J,L)
+                  AeroProps(I,J,L)%sig(n)   = AeroPropsNew(n)%sig(I,J,L)
+                  AeroProps(I,J,L)%den(n)   = AeroPropsNew(n)%den(I,J,L)
+                  AeroProps(I,J,L)%kap(n)   = AeroPropsNew(n)%kap(I,J,L)
+                  AeroProps(I,J,L)%fdust(n) = AeroPropsNew(n)%fdust(I,J,L)
+                  AeroProps(I,J,L)%fsoot(n) = AeroPropsNew(n)%fsoot(I,J,L)
+                  AeroProps(I,J,L)%forg(n)  = AeroPropsNew(n)%forg(I,J,L)
+                  enddo
+                enddo
+              enddo
+            enddo
+         endif
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
@@ -5505,18 +5494,8 @@ contains
            CFLIQ=MAX(MIN(CFLIQ, 1.0), 0.0)
          endif
 
-         ! Rain-out and Relative Humidity where RH > 110%
-         call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-          DTDT_ER = T
-         DQVDT_ER = Q
-
          ! some diagnostics to export
-         if (.FALSE.) then
-          QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
-         else
-          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-         end if
+         QST3  = GEOS_QsatICE (T, PLmb*100.0, DQ=DQST3)
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHICE', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            PTR3D = Q/QST3
@@ -5524,7 +5503,6 @@ contains
              PTR3D=0.0
            end where
          endif
-
          call MAPL_GetPointer(EXPORT, PTR3D, 'SAT_RAT', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) then
            where (CFICE .lt. 0.99 .and. QST3 .gt. 1.0e-20)
@@ -5534,16 +5512,16 @@ contains
             PTR3D = 1.0
            end where
          endif
-
-         if (.FALSE.) then
-          QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
-         else
-          DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
-         end if
+         QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          call MAPL_GetPointer(EXPORT, PTR3D, 'RHLIQ', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D)) PTR3D = Q/QST3
 
-         ! rainout excesive RH
+         ! Rain-out of Relative Humidity where RH > 110%
+         call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+          DTDT_ER = T
+         DQVDT_ER = Q
+         DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
          call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          where ( Q > 1.1*QST3 )
@@ -5563,10 +5541,9 @@ contains
          call MAPL_GetPointer(EXPORT, PTR2D, 'FILLNQV', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR2D)) PTR2D = TMP2D/DT_MOIST
 
-       if (USE_AEROSOL_NN) then
+       if (USE_AEROSOL_NN .and. adjustl(CLDMICR_OPTION)=="MGB2_2M") then
          deallocate ( AeroProps )
        endif
-
 
        ! Export Total Moist Tendencies
 

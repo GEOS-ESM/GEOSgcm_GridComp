@@ -724,6 +724,33 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQRDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_rain_tendency_due_to_moist_processes',        &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQSDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_snow_tendency_due_to_moist_processes',        &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQGDTMSTINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_graupel_tendency_due_to_moist_processes',     &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DOXDTCHMINT',                                                       &
          LONG_NAME  = 'vertically_integrated_odd_oxygen_tendency_due_to_chemistry',        &
          UNITS      = 'kg m-2 s-1',                                                        &
@@ -753,6 +780,33 @@ contains
     call MAPL_AddExportSpec(GC,                                                            &
          SHORT_NAME = 'DQIDTPHYINT',                                                       &
          LONG_NAME  = 'vertically_integrated_ice_tendency_due_to_physics',                 &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQRDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_rain_tendency_due_to_physics',                &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQSDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_snow_tendency_due_to_physics',                &
+         UNITS      = 'kg m-2 s-1',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'DQGDTPHYINT',                                                       &
+         LONG_NAME  = 'vertically_integrated_graupel_tendency_due_to_physics',             &
          UNITS      = 'kg m-2 s-1',                                                        &
          DIMS       = MAPL_DimsHorzOnly,                                                   &
          VLOCATION  = MAPL_VLocationNone,                                                  &
@@ -2090,6 +2144,7 @@ contains
    real, pointer, dimension(:,:,:)     :: DQLDTTRB, DQIDTTRB
    real, pointer, dimension(:,:,:)     :: DQLDTSCL, DQIDTSCL, DQVDTSCL
    real, pointer, dimension(:,:,:)     :: DQLDTMST, DQIDTMST
+   real, pointer, dimension(:,:,:)     :: DQRDTMST, DQSDTMST, DQGDTMST
    real, pointer, dimension(:,:,:)     :: DPDTMST,  DPDTTRB
 
    real, pointer, dimension(:,:,:)     :: RNDPERT,RNDPTR
@@ -2108,8 +2163,10 @@ contains
    real, pointer, dimension(:,:  )     :: SRFDIS
 
    real, pointer, dimension(:,:  )     :: DQVDTPHYINT, DQLDTPHYINT, DQIDTPHYINT, DOXDTPHYINT
+   real, pointer, dimension(:,:  )     :: DQRDTPHYINT, DQSDTPHYINT, DQGDTPHYINT
    real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
    real, pointer, dimension(:,:  )     :: DQLDTMSTINT, DQIDTMSTINT, DOXDTCHMINT
+   real, pointer, dimension(:,:  )     :: DQRDTMSTINT, DQSDTMSTINT, DQGDTMSTINT
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
@@ -2324,6 +2381,9 @@ contains
     call MAPL_GetPointer(EXPORT, DQVDTMSTINT, 'DQVDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTMSTINT, 'DQLDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDTMSTINT, 'DQIDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDTMSTINT, 'DQRDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDTMSTINT, 'DQSDTMSTINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQGDTMSTINT, 'DQGDTMSTINT', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTTRBINT, 'DQVDTTRBINT', RC=STATUS); VERIFY_(STATUS)
 
@@ -2333,6 +2393,9 @@ contains
     call MAPL_GetPointer(EXPORT, DQVDTPHYINT, 'DQVDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTPHYINT, 'DQLDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDTPHYINT, 'DQIDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQRDTPHYINT, 'DQRDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQSDTPHYINT, 'DQSDTPHYINT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQGDTPHYINT, 'DQGDTPHYINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DOXDTPHYINT, 'DOXDTPHYINT', RC=STATUS); VERIFY_(STATUS)
 
 ! Get and allocate pointers to Exports that have been put in turbulence
@@ -2407,6 +2470,12 @@ contains
        call MAPL_GetPointer ( GEX(MOIST), DQLDTMST, 'DQLDT',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer ( GEX(MOIST), DQIDTMST, 'DQIDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQRDTMST, 'DQRDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQSDTMST, 'DQSDT',    alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer ( GEX(MOIST), DQGDTMST, 'DQGDT',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
 
        call MAPL_GetPointer (EXPORT, DQVDTSCL, 'DQVDTSCL', RC=STATUS)
@@ -3193,6 +3262,54 @@ contains
        DQIDTMSTINT = 0.0
        do L=1,LM
        DQIDTMSTINT = DQIDTMSTINT + DQIDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+
+! QRAIN Tendencies
+! -------------
+    if(associated(DQRDTPHYINT)) then                                     
+       DQRDTPHYINT = 0.0
+       do L=1,LM
+       DQRDTPHYINT = DQRDTPHYINT + DQRDTMST(:,:,L)*DM(:,:,L)             
+       end do       
+    end if
+         
+    if(associated(DQRDTMSTINT)) then
+       DQRDTMSTINT = 0.0
+       do L=1,LM
+       DQRDTMSTINT = DQRDTMSTINT + DQRDTMST(:,:,L)*DM(:,:,L)             
+       end do
+    end if
+
+! QSNOW Tendencies
+! -------------
+    if(associated(DQSDTPHYINT)) then
+       DQSDTPHYINT = 0.0
+       do L=1,LM
+       DQSDTPHYINT = DQSDTPHYINT + DQSDTMST(:,:,L)*DM(:,:,L) 
+       end do
+    end if
+
+    if(associated(DQSDTMSTINT)) then
+       DQSDTMSTINT = 0.0
+       do L=1,LM
+       DQSDTMSTINT = DQSDTMSTINT + DQSDTMST(:,:,L)*DM(:,:,L)
+       end do
+    end if
+       
+! QGRAUPEL Tendencies
+! -------------
+    if(associated(DQGDTPHYINT)) then
+       DQGDTPHYINT = 0.0
+       do L=1,LM
+       DQGDTPHYINT = DQGDTPHYINT + DQGDTMST(:,:,L)*DM(:,:,L) 
+       end do
+    end if
+
+    if(associated(DQGDTMSTINT)) then
+       DQGDTMSTINT = 0.0
+       do L=1,LM
+       DQGDTMSTINT = DQGDTMSTINT + DQGDTMST(:,:,L)*DM(:,:,L)
        end do
     end if
 

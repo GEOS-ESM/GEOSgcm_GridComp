@@ -759,7 +759,7 @@ contains
     character(len=ESMF_MAXSTR)     :: ERRstring
 
     logical :: JASON_BKG, JASON_ORO
-    logical :: NCAR_TAU_TOP_ZERO
+    real    :: NCAR_TAU_TOP_ZERO
     real    :: NCAR_PRNDL
     real    :: NCAR_QBO_HDEPTH_SCALING
     integer :: NCAR_ORO_PGWV, NCAR_BKG_PGWV
@@ -770,8 +770,10 @@ contains
     real    :: NCAR_ORO_TNDMAX
     real    :: NCAR_BKG_TNDMAX
     real    :: NCAR_HR_CF      ! Grid cell convective conversion factor
+    real    :: NCAR_TR_EFF     ! Convective region efficiency factor
+    real    :: NCAR_ET_EFF     ! Frontal region efficiency factor
     real    :: NCAR_ET_TAUBGND ! Extratropical background frontal forcing
-    logical :: NCAR_ET_USELATS  
+    logical :: NCAR_ET_USE_DQCDT  
     logical :: NCAR_DC_BERES
     integer :: GEOS_PGWV
     real :: NCAR_EFFGWBKG
@@ -833,16 +835,16 @@ contains
         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.900, _RC)
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, _RC)
         call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.000, _RC)
-        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
+!!!     call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=172800., _RC)
       else
                                           GEOS_PGWV = NINT(32*LM/181.0)
         call MAPL_GetResource( MAPL, self%GEOS_PGWV,     Label="GEOS_PGWV:",     default=GEOS_PGWV, _RC)
         call MAPL_GetResource( MAPL, self%GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, _RC)
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.000, _RC)
-                                     self%NCAR_EFFGWBKG = 1.0 !(1.0 - 0.5*sigma)
-        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=self%NCAR_EFFGWBKG, _RC)
-        call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.00, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.250, _RC)
+!!!     call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000, _RC)
       endif
+      call MAPL_GetResource( MAPL, self%TAU1,          Label="RAYLEIGH_TAU1:", default=0.000, _RC)
 
 ! Orographic Gravity wave drag
 ! ----------------------------
@@ -867,11 +869,11 @@ contains
 
 ! NCAR GWD settings
 ! -----------------
-      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=.true., _RC)
+      call MAPL_GetResource( MAPL, NCAR_TAU_TOP_ZERO, Label="NCAR_TAU_TOP_ZERO:", default=35.0, _RC) ! 0.35 hPa
       call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50, _RC)
-                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.25*sigma
+                                   NCAR_QBO_HDEPTH_SCALING = 1.0 - 0.75*sigma
       call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=NCAR_QBO_HDEPTH_SCALING, _RC)
-                                   NCAR_HR_CF = CEILING(30.0*sigma)
+                                   NCAR_HR_CF = CEILING(20.0*sigma)
       call MAPL_GetResource( MAPL, NCAR_HR_CF, Label="NCAR_HR_CF:", default=NCAR_HR_CF, _RC)
          
       call gw_common_init( NCAR_TAU_TOP_ZERO , 1 , &
@@ -887,9 +889,11 @@ contains
       call MAPL_GetResource( MAPL, NCAR_BKG_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_FCRIT2,     Label="NCAR_BKG_FCRIT2:",     default=1.0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_BKG_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5,   _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=3.2,    _RC)
-      call MAPL_GetResource( MAPL, NCAR_ET_USELATS,     Label="NCAR_ET_USELATS:",     default=.TRUE., _RC)
-      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=800.0,  _RC)
+      call MAPL_GetResource( MAPL, NCAR_TR_EFF,         Label="NCAR_TR_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_EFF,         Label="NCAR_ET_EFF:",         default=1.0,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_TAUBGND,     Label="NCAR_ET_TAUBGND:",     default=6.4,    _RC)
+      call MAPL_GetResource( MAPL, NCAR_ET_USE_DQCDT,   Label="NCAR_ET_USE_DQCDT:",   default=.FALSE.,_RC)
+      call MAPL_GetResource( MAPL, NCAR_BKG_TNDMAX,     Label="NCAR_BKG_TNDMAX:",     default=250.0,  _RC)
       NCAR_BKG_TNDMAX = NCAR_BKG_TNDMAX/86400.0
       ! Beres DeepCu
       call MAPL_GetResource( MAPL, NCAR_DC_BERES_SRC_LEVEL, "NCAR_DC_BERES_SRC_LEVEL:", DEFAULT=70000.0, _RC)
@@ -903,7 +907,8 @@ contains
                                 self%workspaces(thread)%beres_dc_desc, &
                                 NCAR_BKG_PGWV, NCAR_BKG_GW_DC, NCAR_BKG_FCRIT2, &
                                 NCAR_BKG_WAVELENGTH, NCAR_DC_BERES_SRC_LEVEL, &
-                                1000.0, .TRUE., NCAR_ET_TAUBGND, NCAR_ET_USELATS, NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
+                                1000.0, .TRUE., NCAR_TR_EFF, NCAR_ET_EFF, NCAR_ET_TAUBGND, NCAR_ET_USE_DQCDT, &
+                                NCAR_BKG_TNDMAX, NCAR_DC_BERES, &
                                 IM*JM_thread, LATS(:,bounds(thread+1)%min:bounds(thread+1)%max))
       end do
 
@@ -1461,7 +1466,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------------------------
     if(associated(TTMGW   )) TTMGW    = DTDT_TOT
 
-! Fille additional exports
+! Fill additional exports
 !-------------------------
     if(associated(    Q_EXP ))    Q_EXP = Q
     if(associated(    U_EXP ))    U_EXP = U + DUDT_TOT*DT

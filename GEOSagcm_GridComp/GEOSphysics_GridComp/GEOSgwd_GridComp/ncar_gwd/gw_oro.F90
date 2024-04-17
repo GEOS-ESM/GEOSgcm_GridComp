@@ -246,7 +246,7 @@ subroutine gw_oro_ifc( band, &
 
    real,         intent(in) :: sgh(ncol)       ! subgrid orographic std dev (m)
    real,         intent(in) :: lats(ncol)      ! latitudes
-   real,         intent(in) :: alpha(:)
+   real,         intent(in) :: alpha(pver+1)
 
 
    real, intent(out) :: utgw(ncol,pver)       ! zonal wind tendency
@@ -279,9 +279,6 @@ subroutine gw_oro_ifc( band, &
    real :: xv(ncol)
    real :: yv(ncol)
 
-   real :: pint_adj(ncol,pver+1)
-   real :: zfac_layer
- 
    character(len=1) :: cn
    character(len=9) :: fname(4)
 
@@ -311,20 +308,13 @@ subroutine gw_oro_ifc( band, &
         end if
      end do
 
-!GEOS pressure scaling near model top
-     zfac_layer = 1000.0 ! 10mb
-     do k=1,pver+1
-       do i=1,ncol
-         pint_adj(i,k) = MIN(1.0,MAX(0.0,(pint(i,k)/zfac_layer)**3))
-       enddo
-     enddo
-
      ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           c,         kvtt,  tau,  utgw,  vtgw, &
-          ttgw, gwut, alpha, tau_adjust=pint_adj)
+          ttgw, gwut, alpha)
+
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
                         effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level)

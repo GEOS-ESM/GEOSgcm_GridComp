@@ -542,6 +542,30 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'QRFILL',                                           &
+         LONG_NAME  = 'vertically_integrated_qr_adjustment_from_filling', &
+         UNITS      = 'kg m-2 s-1',                                       &
+         DIMS       = MAPL_DimsHorzOnly,                                  &
+         VLOCATION  = MAPL_VLocationNone,                      RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'QSFILL',                                           &
+         LONG_NAME  = 'vertically_integrated_qs_adjustment_from_filling', &
+         UNITS      = 'kg m-2 s-1',                                       &
+         DIMS       = MAPL_DimsHorzOnly,                                  &
+         VLOCATION  = MAPL_VLocationNone,                      RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'QGFILL',                                           &
+         LONG_NAME  = 'vertically_integrated_qg_adjustment_from_filling', &
+         UNITS      = 'kg m-2 s-1',                                       &
+         DIMS       = MAPL_DimsHorzOnly,                                  &
+         VLOCATION  = MAPL_VLocationNone,                      RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'OXFILL',                                           &
          LONG_NAME  = 'vertically_integrated_ox_adjustment_from_filling', &
          UNITS      = 'kg m-2 s-1',                                       &
@@ -614,6 +638,30 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQR',                                        &
+         LONG_NAME        = 'total_suspended_rain',                       &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQS',                                        &
+         LONG_NAME        = 'total_suspended_snow',                       &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQG',                                        &
+         LONG_NAME        = 'total_suspended_graupel',                    &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME       = 'TOX',                                        &
          LONG_NAME        = 'total_column_odd_oxygen',                    &
          UNITS            = 'kg m-2'  ,                                   &
@@ -664,6 +712,30 @@ contains
     call MAPL_AddExportSpec ( GC,                                         &
          SHORT_NAME       = 'QITOT',                                      &
          LONG_NAME        = 'mass_fraction_of_cloud_ice_water',           &
+         UNITS            = 'kg kg-1',                                    &
+         DIMS             = MAPL_DimsHorzVert,                            &
+         VLOCATION        = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC,                                         &
+         SHORT_NAME       = 'QRTOT',                                      &
+         LONG_NAME        = 'mass_fraction_of_suspended_rain',            &
+         UNITS            = 'kg kg-1',                                    &
+         DIMS             = MAPL_DimsHorzVert,                            &
+         VLOCATION        = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC,                                         &
+         SHORT_NAME       = 'QSTOT',                                      &
+         LONG_NAME        = 'mass_fraction_of_suspended_snow',            &
+         UNITS            = 'kg kg-1',                                    &
+         DIMS             = MAPL_DimsHorzVert,                            &
+         VLOCATION        = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC,                                         &
+         SHORT_NAME       = 'QGTOT',                                      &
+         LONG_NAME        = 'mass_fraction_of_suspended_graupel',         &
          UNITS            = 'kg kg-1',                                    &
          DIMS             = MAPL_DimsHorzVert,                            &
          VLOCATION        = MAPL_VLocationCenter,              RC=STATUS  )
@@ -1485,6 +1557,9 @@ contains
    real, pointer, dimension(:,:,:)     :: EPV    => null()
    real, pointer, dimension(:,:,:)     :: QLTOT  => null()
    real, pointer, dimension(:,:,:)     :: QITOT  => null()
+   real, pointer, dimension(:,:,:)     :: QRTOT  => null()
+   real, pointer, dimension(:,:,:)     :: QSTOT  => null()
+   real, pointer, dimension(:,:,:)     :: QGTOT  => null()
    real, pointer, dimension(:,:,:)     :: DPEDT  => null()
    real, pointer, dimension(:,:,:)     :: DTDT   => null()
    real, pointer, dimension(:,:,:)     :: TENDAN => null()
@@ -1509,9 +1584,15 @@ contains
    real, pointer, dimension(:,:)       :: QVFILL => null()
    real, pointer, dimension(:,:)       :: QIFILL => null()
    real, pointer, dimension(:,:)       :: QLFILL => null()
+   real, pointer, dimension(:,:)       :: QRFILL => null()
+   real, pointer, dimension(:,:)       :: QSFILL => null()
+   real, pointer, dimension(:,:)       :: QGFILL => null()
    real, pointer, dimension(:,:)       :: TQV    => null()
    real, pointer, dimension(:,:)       :: TQI    => null()
    real, pointer, dimension(:,:)       :: TQL    => null()
+   real, pointer, dimension(:,:)       :: TQR    => null()                
+   real, pointer, dimension(:,:)       :: TQS    => null()                
+   real, pointer, dimension(:,:)       :: TQG    => null()                
    real, pointer, dimension(:,:)       :: TOX    => null()
    real, pointer, dimension(:,:)       :: TROPP1 => null()
    real, pointer, dimension(:,:)       :: TROPP2 => null()
@@ -1533,6 +1614,9 @@ contains
    real, pointer, dimension(:,:)       :: DQVDTPHYINT  => null()
    real, pointer, dimension(:,:)       :: DQLDTPHYINT  => null()
    real, pointer, dimension(:,:)       :: DQIDTPHYINT  => null()
+   real, pointer, dimension(:,:)       :: DQRDTPHYINT  => null()
+   real, pointer, dimension(:,:)       :: DQSDTPHYINT  => null()
+   real, pointer, dimension(:,:)       :: DQGDTPHYINT  => null()
    real, pointer, dimension(:,:)       :: DOXDTPHYINT  => null()
 
    real, pointer, dimension(:,:,:)     :: DP
@@ -1946,6 +2030,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     call MAPL_GetPointer( GEX(PHYS), DQLDTPHYINT,  'DQLDTPHYINT',  rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(PHYS), DQIDTPHYINT,  'DQIDTPHYINT',  rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer( GEX(PHYS), DQRDTPHYINT,  'DQRDTPHYINT',  rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer( GEX(PHYS), DQSDTPHYINT,  'DQSDTPHYINT',  rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer( GEX(PHYS), DQGDTPHYINT,  'DQGDTPHYINT',  rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(PHYS), DOXDTPHYINT,  'DOXDTPHYINT',  rc=STATUS )
     VERIFY_(STATUS)
@@ -2552,6 +2642,12 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QLFILL, 'QLFILL', rc=STATUS )
     VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QRFILL, 'QRFILL', rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QSFILL, 'QSFILL', rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QGFILL, 'QGFILL', rc=STATUS )
+    VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, OXFILL, 'OXFILL', rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, TOX   , 'TOX'   , rc=STATUS )
@@ -2562,10 +2658,23 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, TQL   , 'TQL'   , rc=STATUS )
     VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQR   , 'TQR'   , rc=STATUS )          
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQS   , 'TQS'   , rc=STATUS )          
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQG   , 'TQG'   , rc=STATUS )          
+    VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QLTOT , 'QLTOT' , rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QITOT , 'QITOT' , rc=STATUS )
     VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QRTOT , 'QRTOT' , rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QSTOT , 'QSTOT' , rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, QGTOT , 'QGTOT' , rc=STATUS )
+    VERIFY_(STATUS)
+
     call MAPL_GetPointer ( EXPORT, PERES       , 'PERES'        , rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, PEFILL      , 'PEFILL'       , rc=STATUS )
@@ -2576,10 +2685,19 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     if(associated(QTFILL)) QTFILL = 0.0
     if(associated(QIFILL)) QIFILL = 0.0
     if(associated(QLFILL)) QLFILL = 0.0
+    if(associated(QRFILL)) QRFILL = 0.0
+    if(associated(QSFILL)) QSFILL = 0.0
+    if(associated(QGFILL)) QGFILL = 0.0
     if(associated(TQI)   ) TQI    = 0.0
     if(associated(TQL)   ) TQL    = 0.0
+    if(associated(TQR)   ) TQR    = 0.0
+    if(associated(TQS)   ) TQS    = 0.0
+    if(associated(TQG)   ) TQG    = 0.0
     if(associated(QLTOT) ) QLTOT  = 0.0
     if(associated(QITOT) ) QITOT  = 0.0
+    if(associated(QRTOT) ) QRTOT  = 0.0
+    if(associated(QSTOT) ) QSTOT  = 0.0
+    if(associated(QGTOT) ) QGTOT  = 0.0
 
     allocate(QFILL(IM,JM)    ,STAT=STATUS )
     VERIFY_(STATUS)
@@ -2695,6 +2813,39 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
           if(associated(DQLDTPHYINT)) DQLDTPHYINT = DQLDTPHYINT + QFILL
           if(associated(TQL))                 TQL = TQL         + QINT
           if(associated(QLTOT))             QLTOT = QLTOT       + Q
+       endif
+
+! Rain
+! ------------
+       if(NAMES(K)=='QRAIN') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT ) 
+          if(associated(QRFILL))           QRFILL = QRFILL      + QFILL
+          if(associated(QTFILL))           QTFILL = QTFILL      + QFILL
+          if(associated(DQRDTPHYINT)) DQRDTPHYINT = DQRDTPHYINT + QFILL
+          if(associated(TQR))                 TQR = TQR         + QINT
+          if(associated(QRTOT))             QRTOT = QRTOT       + Q
+       endif
+
+! Snow
+! ------------
+       if(NAMES(K)=='QSNOW') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(QSFILL))           QSFILL = QSFILL      + QFILL
+          if(associated(QTFILL))           QTFILL = QTFILL      + QFILL
+          if(associated(DQSDTPHYINT)) DQSDTPHYINT = DQSDTPHYINT + QFILL
+          if(associated(TQS))                 TQS = TQS         + QINT
+          if(associated(QSTOT))             QSTOT = QSTOT       + Q
+       endif
+
+! Graupel
+! ------------
+       if(NAMES(K)=='QGRAUPEL') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(QGFILL))           QGFILL = QGFILL      + QFILL
+          if(associated(QTFILL))           QTFILL = QTFILL      + QFILL
+          if(associated(DQGDTPHYINT)) DQGDTPHYINT = DQGDTPHYINT + QFILL
+          if(associated(TQG))                 TQG = TQG         + QINT
+          if(associated(QGTOT))             QGTOT = QGTOT       + Q
        endif
 
 ! Total Odd-Oxygen
