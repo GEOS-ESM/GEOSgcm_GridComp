@@ -305,13 +305,16 @@ contains
   end subroutine write_route_file
   
   ! ------------------------------------------------------------------------
-  
+  ! The subroutine moves outlets of each land&Greenland gridcell (with endpoint to ocean only) 
+  ! to the nearest ocean gridcell defiend by "file" and ocean mask if the origional outlets are not in the ocean.
   subroutine outlets_to_ocean(file,lons,lats,nx,ny)
     
-    integer,           intent(in)      :: nx,ny
-    character(len=*),  intent(in)      :: file
+    integer,           intent(in)      :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution
+    character(len=*),  intent(in)      :: file !name of the domain, eg: CF0180x6C_TM1440xTM1080-Pfafstetter
     integer,           intent(inout)   :: lons(nx,ny),lats(nx,ny)
-    
+    !lons(nx,ny): lon idx of outlets of each land&Greenland gridcell (with endpoint to ocean only)
+    !lats(nx,ny): lat idx of outlets of each land&Greenland gridcell (with endpoint to ocean only)
+    !lons(nx,ny) and lats(nx,ny) are got from input binary file, eg: Outlet_latlon.43200x21600 
     ! -----------------------------------------------------------
     
     integer,       allocatable, dimension(:)   :: lati_lnd,loni_lnd  
@@ -323,23 +326,86 @@ contains
     real*8,        allocatable, dimension(:)   :: lons_adj,lats_adj
     integer,       allocatable, dimension(:)   :: lati_ocn,loni_ocn   
     character*100                              :: file_ocn
-    character*100                              :: fileT_ocn, fileR_ocn
     character*100                              :: file_ocn_lnd
-    character*100                              :: fileT_ocn_lnd, fileR_ocn_lnd
-    character*100                              :: res_MAPL
-    character*100                              :: nx_str,ny_str  
+    character*100                              :: res_MAPL 
     integer,       allocatable, dimension(:,:) :: rst_ocn,rst_ocn_lnd
-    real                                       :: num1,num2,num3,num4
     integer                                    :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
-    integer,       allocatable, dimension(:)   :: t2lati,t2loni
+    integer,       pointer, dimension(:)       :: t2lati,t2loni
     real*8,        allocatable, dimension(:)   :: lon30s,lat30s
-    real*8                                     :: dx,dy
-    integer                                    :: ns,nstr1,nstr2
+    integer                                    :: ns
     integer,       allocatable, dimension(:,:) :: ns_map
     real*8,        allocatable, dimension(:)   :: lat_lnd,lon_lnd
     integer                                    :: i,j,l,k,status,type,np,flag,flag2
-    integer                                    :: px,plats,plate,plons,plone,plonss,pocns,pocne
     
+    call get_domain_name(file,file_ocn,file_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
+    allocate(rst_ocn(nx,ny),rst_ocn_lnd(nx,ny))
+    allocate(lon30s(nx),lat30s(ny))
+    call read_rst_til_files(nx,ny,file_ocn,file_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
+    !print *,"running outlets_num() ..."
+    call outlets_num(rst_ocn_lnd,nl_ocn_lnd,nt_ocn_lnd,lons,lats,nx,ny,ns)
+    !print *,"outlets num is ",ns
+    allocate(loni_lnd(ns),lati_lnd(ns))
+    allocate(lons_adj(ns),lats_adj(ns))
+    allocate(loni_ocn(ns),lati_ocn(ns))  
+    allocate(ns_map(nx,ny))
+    allocate(lon_lnd(ns),lat_lnd(ns))
+    !print *,"running retrieve_outlets() ..."
+    call retrieve_outlets(lons,lats,lon30s,lat30s,loni_lnd,lati_lnd,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
+    !print *,"running mask_MAPL_1d() ..."
+    allocate(msk1d(nt_ocn))  
+    call mask_MAPL_1d(msk1d,t2loni,t2lati,nt_ocn,res_MAPL,nx_MAPL,ny_MAPL)
+    deallocate(t2loni,t2lati)
+    !print *,"running mask_MAPL_2d() ..."
+    allocate(msk2d(nx,ny))  
+    call mask_MAPL_2d(rst_ocn,msk1d,msk2d,nt_ocn,nx,ny)
+    deallocate(rst_ocn,msk1d)
+    !print *,"running mask_MAPL_bcs() ..."
+    allocate(mask(nx,ny))
+    call mask_MAPL_bcs(rst_ocn_lnd,msk2d,mask,nx,ny,nl_ocn_lnd,nt_ocn_lnd)
+    deallocate(msk2d,rst_ocn_lnd)
+    !print *,"running ocean_boundary() ..."
+    allocate(boundary(nx,ny))  
+    call ocean_boundary(mask,boundary,nx,ny)
+    !print *,"running ocean_boundary_num() ..."
+    call ocean_boundary_num(boundary,nx,ny,nsh)  
+    !print *,"ocean boundary point num is ",nsh
+    allocate(lonsh(nsh),latsh(nsh))  
+    !print *,"running ocean_boundary_points() ..."
+    call ocean_boundary_points(boundary,lon30s,lat30s,lonsh,latsh,nx,ny,nsh)
+    deallocate(boundary)
+    !print *,"running move_to_ocean() ..."
+    call move_to_ocean(loni_lnd,lati_lnd,lon_lnd,lat_lnd,mask,lonsh,latsh,lons_adj,lats_adj,ns,nx,ny,nsh) 
+    deallocate(mask,lonsh,latsh) 
+    !print *,"running sinkxy_ocean() ..."
+    call sinkxy_ocean(lons_adj,lats_adj,lon30s,lat30s,loni_ocn,lati_ocn,ns,nx,ny)  
+    !print *,"running update_outlets() ..."
+    call update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
+    
+    deallocate(loni_lnd,lati_lnd,lons_adj,lats_adj,loni_ocn,lati_ocn)
+    deallocate(lon30s,lat30s)
+    deallocate(ns_map,lon_lnd,lat_lnd)
+    
+  end subroutine outlets_to_ocean
+
+!-------------------------------------------------------------------------
+! This subroutine gets the name of 'file_ocn' and 'file_ocn_lnd' from the input name 'file'.
+! It also gets resolution of the ocean domain.
+  subroutine get_domain_name(file,file_ocn,file_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
+
+    character(len=*),  intent(in)      :: file !input domain name, eg: CF0180x6C_TM1440xTM1080-Pfafstetter
+    character(len=*),  intent(out)     :: file_ocn,file_ocn_lnd,res_MAPL
+    !file_ocn: ocean domain name, eg: TM1440xTM1080
+    !file_ocn_land: ocean-land domain name, eg: TM1440xTM1080-Pfafstetter
+    !res_MAPL: ocean resolution name, eg: 1440x1080
+    integer,           intent(out)     :: nx_MAPL,ny_MAPL
+    !nx_MAPL: number of lon of ocean domain, eg: 1440
+    !ny_MAPL: number of lat of ocean domain, eg: 1080
+
+    character*100   :: nx_str,ny_str 
+    integer         :: px,plats,plate,plons,plone,plonss,pocns,pocne  
+    integer         :: nstr1,nstr2
+    integer         :: i
+
     nx_str=""
     ny_str=""
     px=0;plats=0;plate=0;plons=0;plone=0;plonss=0
@@ -410,6 +476,29 @@ contains
     read(nx_str,*)nx_MAPL
     read(ny_str,*)ny_MAPL  
 
+  end subroutine get_domain_name
+
+!-------------------------------------------------------------------------
+! This subroutine reads rst and til files
+  subroutine read_rst_til_files(nx,ny,file_ocn,file_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
+
+    integer,           intent(in)              :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution  
+    character(len=*),  intent(in)              :: file_ocn,file_ocn_lnd ! input filename, eg: TM1440xTM1080 and TM1440xTM1080-Pfafstetter
+
+    integer,       intent(out)                 :: rst_ocn(nx,ny),rst_ocn_lnd(nx,ny) !data from rst files
+    integer,pointer,intent(out), dimension(:)  :: t2loni,t2lati !relationship between ocn tile idx in TM1440xTM1080.rst and lat/lon idx in MAPL_Tripolar.nc
+    integer,       intent(out)                 :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn
+    !nt_ocn_lnd: number of total tiles in the TM1440xTM1080-Pfafstetter
+    !nl_ocn_lnd: number of land tiles in the TM1440xTM1080-Pfafstetter
+    !nt_ocn: number of total tiles in the TM1440xTM1080
+    real*8,        intent(out)                 :: lon30s(nx),lat30s(ny)!lon and lat value arrays of the 30s map
+
+    character*100  :: fileT_ocn, fileR_ocn
+    character*100  :: fileT_ocn_lnd, fileR_ocn_lnd    
+    integer        :: i,j,type,np,k,l
+    real           :: num1,num2,num3,num4    
+    real*8         :: dx,dy
+
     fileT_ocn = "til/"//trim(file_ocn)//".til"          ! input
     fileR_ocn = "rst/"//trim(file_ocn)//".rst"          ! input
     fileT_ocn_lnd = "til/"//trim(file_ocn_lnd)//".til"  ! input
@@ -417,11 +506,6 @@ contains
     
     !print *, "Reading rst file "//trim(fileR_ocn) 
     open(20,file=fileR_ocn,form="unformatted",status="old")
-    allocate(rst_ocn(nx,ny),stat=status)
-    if(status/=0) then
-       print *, "Out of Memory"
-       stop 
-    endif
     do j=1,ny
        read(20) rst_ocn(:,j)
     enddo
@@ -429,11 +513,6 @@ contains
     
     !print *, "Reading rst file "//trim(fileR_ocn_lnd) 
     open(21,file=fileR_ocn_lnd,form="unformatted",status="old")
-    allocate(rst_ocn_lnd(nx,ny),stat=status)
-    if(status/=0) then
-       print *, "Out of Memory"
-       stop 
-    endif
     do j=1,ny
        read(21) rst_ocn_lnd(:,j)
     enddo
@@ -465,7 +544,6 @@ contains
     nt_ocn_lnd=np
     nl_ocn_lnd=k
     
-    allocate(lon30s(nx),lat30s(ny))
     dx=360.d0/nx
     dy=180.d0/ny
     do i=1,nx
@@ -473,61 +551,22 @@ contains
     enddo
     do j=1,ny
        lat30s(j)=-90.d0+dy/2.d0+dy*(j-1)
-    enddo
-    
-    !print *,"running outlets_num() ..."
-    call outlets_num(rst_ocn_lnd,nl_ocn_lnd,nt_ocn_lnd,lons,lats,nx,ny,ns)
-    !print *,"outlets num is ",ns
-    allocate(loni_lnd(ns),lati_lnd(ns))
-    allocate(lons_adj(ns),lats_adj(ns))
-    allocate(loni_ocn(ns),lati_ocn(ns))  
-    allocate(ns_map(nx,ny))
-    allocate(lon_lnd(ns),lat_lnd(ns))
-    !print *,"running retrieve_outlets() ..."
-    call retrieve_outlets(lons,lats,lon30s,lat30s,loni_lnd,lati_lnd,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
-    !print *,"running mask_MAPL_1d() ..."
-    allocate(msk1d(nt_ocn))  
-    call mask_MAPL_1d(msk1d,t2loni,t2lati,nt_ocn,res_MAPL,nx_MAPL,ny_MAPL)
-    !print *,"running mask_MAPL_2d() ..."
-    allocate(msk2d(nx,ny))  
-    call mask_MAPL_2d(rst_ocn,msk1d,msk2d,nt_ocn,nx,ny)
-    deallocate(rst_ocn,msk1d)
-    !print *,"running mask_MAPL_bcs() ..."
-    allocate(mask(nx,ny))
-    call mask_MAPL_bcs(rst_ocn_lnd,msk2d,mask,nx,ny,nl_ocn_lnd,nt_ocn_lnd)
-    deallocate(msk2d,rst_ocn_lnd)
-    !print *,"running ocean_boundary() ..."
-    allocate(boundary(nx,ny))  
-    call ocean_boundary(mask,boundary,nx,ny)
-    !print *,"running ocean_boundary_num() ..."
-    call ocean_boundary_num(boundary,nx,ny,nsh)  
-    !print *,"ocean boundary point num is ",nsh
-    allocate(lonsh(nsh),latsh(nsh))  
-    !print *,"running ocean_boundary_points() ..."
-    call ocean_boundary_points(boundary,lon30s,lat30s,lonsh,latsh,nx,ny,nsh)
-    deallocate(boundary)
-    !print *,"running move_to_ocean() ..."
-    call move_to_ocean(loni_lnd,lati_lnd,lon_lnd,lat_lnd,mask,lonsh,latsh,lons_adj,lats_adj,ns,nx,ny,nsh) 
-    deallocate(mask,lonsh,latsh) 
-    !print *,"running sinkxy_ocean() ..."
-    call sinkxy_ocean(lons_adj,lats_adj,lon30s,lat30s,loni_ocn,lati_ocn,ns,nx,ny)  
-    !print *,"running update_outlets() ..."
-    call update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
-    
-    deallocate(loni_lnd,lati_lnd,lons_adj,lats_adj,loni_ocn,lati_ocn)
-    deallocate(lon30s,lat30s)
-    deallocate(ns_map,lon_lnd,lat_lnd)
-    
-  end subroutine outlets_to_ocean
+    enddo    
+
+  end subroutine read_rst_til_files
 
 !-------------------------------------------------------------------------
- 
+ ! This subroutine counts the number of outlet points from input outlets lon/lat idx map.
   subroutine outlets_num(rst_ocn_lnd,nl,nt,lons,lats,nx,ny,ns)
 
     integer, intent(in)                  :: nx,ny,nl,nt
-    integer, intent(inout)               :: lons(nx,ny),lats(nx,ny)
-    integer, intent(in)                  :: rst_ocn_lnd(nx,ny)
-    integer, intent(out)                 :: ns
+    !nx: number of lon of 30s map, 43200
+    !ny: number of lat of 30s map, 21600
+    !nl: number of land tiles
+    !nt: number of total tiles
+    integer, intent(inout)               :: lons(nx,ny),lats(nx,ny) !map of lon/lat idx of outlets for each cells on the 30s map
+    integer, intent(in)                  :: rst_ocn_lnd(nx,ny) !map of tile idx from ocean-land rst map, eg: from TM1440xTM1080-Pfafstetter.rst
+    integer, intent(out)                 :: ns !number of the outlets
     
     integer, allocatable, dimension(:)   :: lonp,latp
     integer, allocatable, dimension(:,:) :: acc,np_map
@@ -535,6 +574,8 @@ contains
     
     allocate(acc(nx,ny))
     
+    !It first masks out the outlets map with the ocean-land rst map...
+    !If a cell is not defined as land or glacier in the ocean-land rst map, we ignore it.
     do i=1,nx
        do j=1,ny
           if(rst_ocn_lnd(i,j)>nl.and.rst_ocn_lnd(i,j)/=nt)then
@@ -544,6 +585,7 @@ contains
        enddo
     enddo
     
+    !Counting the outlets...
     acc=0
     k=0
     do i=1,nx
@@ -566,15 +608,19 @@ contains
   end subroutine outlets_num
 
   !------------------------------------------------------------------------
-
+  ! This subroutine retrives the outlets locations from the outlets map (nx,ny) to a list (ns)
+  ! It also stores the outlets idx on the 30s map
   subroutine retrieve_outlets(lons,lats,lon30s,lat30s,lonp,latp,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
     
     integer, intent(in)                 :: nx,ny,ns
-    integer, intent(in)                 :: lons(nx,ny),lats(nx,ny)
-    real*8,  intent(in)                 :: lon30s(nx),lat30s(ny)
-    integer, intent(out)                :: lonp(ns),latp(ns)
-    real*8,  intent(out)                :: lon_lnd(ns),lat_lnd(ns)
-    integer, intent(out)                :: ns_map(nx,ny)
+    !nx: number of lon of 30s map, 43200
+    !ny: number of lat of 30s map, 21600
+    !ns: number of the outlets
+    integer, intent(in)                 :: lons(nx,ny),lats(nx,ny) !input map of outlets idx
+    real*8,  intent(in)                 :: lon30s(nx),lat30s(ny) !lon and lat value arrays of the 30s map 
+    integer, intent(out)                :: lonp(ns),latp(ns) !list of lon and lat idx for the ns outlets 
+    real*8,  intent(out)                :: lon_lnd(ns),lat_lnd(ns) !list of lon and lat value for the ns outlets 
+    integer, intent(out)                :: ns_map(nx,ny) !It stores the outlets idx on the 30s map
     
     integer, allocatable,dimension(:,:) :: acc
     integer                             :: i,j,k,l,lonc,latc
@@ -611,14 +657,17 @@ contains
   end subroutine retrieve_outlets
 
   !------------------------------------------------------------------------
-
+  ! convert the ocean mask in MAPL_Tripolar.nc to 1d list for each ocean tile defined by ocn rst, eg: TM1440xTM1080.rst
   subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
     
     integer,           intent(in)     :: nt,nlon,nlat
-    integer,           intent(in)     :: t2loni(nt),t2lati(nt)
-    character(len=*),  intent(in)     :: res_MAPL
-    integer,           intent(out)    :: msk_tile(nt)
-    
+    !nt: number of ocean tiles
+    !nlon: number of lon in MAPL_Tripolar.nc, eg 1440
+    !nlat: number of lat in MAPL_Tripolar.nc, eg 1080   
+    integer,           intent(in)     :: t2loni(nt),t2lati(nt) !relationship between ocn tile idx in TM1440xTM1080.rst and lat/lon idx in MAPL_Tripolar.nc
+    character(len=*),  intent(in)     :: res_MAPL !name of the ocean resolution, eg 1440x1080
+    integer,           intent(out)    :: msk_tile(nt) !1d list for the ocean msk for each ocean tile
+
     real, allocatable, dimension(:,:) :: msk_MAPL
     integer                           :: i
     
@@ -634,14 +683,13 @@ contains
   end subroutine mask_MAPL_1d
 
   !------------------------------------------------------------------------
-
+  ! read ocean mask from "MAPL_Tripolar.nc"
   subroutine read_oceanModel_mapl(res_MAPL,wetMask,nx,ny)
     
-    ! read oceand model mask from "MAPL_Tripolar.nc"
 
-    character(len=*),    intent(in)  :: res_MAPL
-    integer,             intent(in)  :: nx, ny
-    real,                intent(out) :: wetMask(nx,ny)
+    character(len=*),    intent(in)  :: res_MAPL !ocn resolution name
+    integer,             intent(in)  :: nx, ny !ocn resolution numbers
+    real,                intent(out) :: wetMask(nx,ny) !ocn mask from MAPL_Tripolar.nc
     
     integer                          :: ncid, varid, ret
     character(len=4)                 :: subname="read"
@@ -700,20 +748,23 @@ contains
   end subroutine endrun
   
   !------------------------------------------------------------------------
-  
-  subroutine mask_MAPL_2d(landocean,mask1d,msk2d,nt,nlon,nlat)
+  ! convert 1d list of ocn mask to a 30s map
+  subroutine mask_MAPL_2d(ocean,mask1d,msk2d,nt,nlon,nlat)
     
     integer, intent(in)               :: nt,nlon,nlat
-    integer, intent(in)               :: landocean(nlon,nlat)
-    integer, intent(in)               :: mask1d(nt)
-    integer, intent(out)              :: msk2d(nlon,nlat)
+    !nt: number of ocean tiles
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600   
+    integer, intent(in)               :: ocean(nlon,nlat) !tile idx from ocn rst file, eg: from TM1440xTM1080.rst
+    integer, intent(in)               :: mask1d(nt) !1d list of ocn mask got from subroutine mask_MAPL_1d
+    integer, intent(out)              :: msk2d(nlon,nlat) !output of the ocn mask on the 30s map
     
     real*8,  allocatable,dimension(:) :: lon,lat
     integer                           :: i,j,xi,yi,tid
     
     do i=1,nlon
        do j=1,nlat
-          tid=landocean(i,j)
+          tid=ocean(i,j)
           msk2d(i,j)=mask1d(tid)
        enddo
     enddo
@@ -721,27 +772,37 @@ contains
   end subroutine mask_MAPL_2d
 
   !------------------------------------------------------------------------
-
+  ! further mask the ocn mask from MAPL_Tripolar.nc based on the land-ocean rst eg: TM1440xTM1080-Pfafstetter.rst
   subroutine mask_MAPL_bcs(rst_ocn_lnd,mask_mapl,mask,nlon,nlat,nl,nt)
     
     integer,intent(in)  :: nlon,nlat,nl,nt
-    integer,intent(in)  :: rst_ocn_lnd(nlon,nlat)
-    integer,intent(in)  :: mask_mapl(nlon,nlat)
-    integer,intent(out) :: mask(nlon,nlat)
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600  
+    !nl: number of lnd tile
+    !nt: number of total tile
+    integer,intent(in)  :: rst_ocn_lnd(nlon,nlat) !tile idx from land-ocean rst eg: TM1440xTM1080-Pfafstetter.rst
+    integer,intent(in)  :: mask_mapl(nlon,nlat) !ocn mask map from subroutine mask_MAPL_2d
+    integer,intent(out) :: mask(nlon,nlat) !ocn mask map masked further by land-ocean rst 
     
     mask=0
+    !tile idx<=nl are land tiles
+    !tile idx==nt are glacier tiles
+    !tile idx==nt-1 are lake tiles
+    !rest are all ocean tiles
     where(rst_ocn_lnd>nl.and.rst_ocn_lnd/=nt.and.rst_ocn_lnd/=nt-1.and.mask_mapl==1)mask=1
     
   end subroutine mask_MAPL_bcs
 
   !------------------------------------------------------------------------
-
+  !find the ocean boundary cells (that are next to non-ocean cell) on the 30s map based on the ocn mask from mask_MAPL_bcs
   subroutine ocean_boundary(mask,boundary,nlon,nlat)
 
     integer, intent(in)  :: nlon,nlat
-    integer, intent(in)  :: mask(nlon,nlat)
-    integer, intent(out) :: boundary(nlon,nlat)
-    
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600      
+    integer, intent(in)  :: mask(nlon,nlat) !ocn mask from subroutine mask_MAPL_bcs
+    integer, intent(out) :: boundary(nlon,nlat) !map of ocean boundary cells
+
     real*8,  allocatable :: lon(:),lat(:)
     integer              :: xi,yi,id
     integer              :: xp1,xm1,yp1,ym1
@@ -771,19 +832,21 @@ contains
   end subroutine ocean_boundary
 
   !------------------------------------------------------------------------
-
-  subroutine ocean_boundary_num(mskh,nlon,nlat,nsh)
+  ! counting the number of ocean boundary cells
+  subroutine ocean_boundary_num(boundary,nlon,nlat,nsh)
     
     integer, intent(in)  :: nlon,nlat
-    integer, intent(in)  :: mskh(nlon,nlat)
-    integer, intent(out) :: nsh
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600          
+    integer, intent(in)  :: boundary(nlon,nlat) !map of ocean boundary cells   
+    integer, intent(out) :: nsh   !number of ocean boundary cells 
     
     integer              :: i,xi,yi,k
     
     k=0
     do xi=1,nlon
        do yi=1,nlat
-          if(mskh(xi,yi)==0)then
+          if(boundary(xi,yi)==0)then
              k=k+1
           endif
        enddo
@@ -793,19 +856,22 @@ contains
   end subroutine ocean_boundary_num
 
   !------------------------------------------------------------------------
-
-  subroutine ocean_boundary_points(mskh,lon30s,lat30s,lonsh,latsh,nlon,nlat,nsh)
+  ! list the lat and lon of ocean boundary cells
+  subroutine ocean_boundary_points(boundary,lon30s,lat30s,lonsh,latsh,nlon,nlat,nsh)
 
     integer,intent(in) :: nlon,nlat,nsh
-    integer,intent(in) :: mskh(nlon,nlat)
-    real*8,intent(in)  :: lon30s(nlon),lat30s(nlat)
-    real*8,intent(out) :: lonsh(nsh),latsh(nsh)
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600   
+    !nsh: number of ocean boundary cells    
+    integer,intent(in) :: boundary(nlon,nlat) !map of ocean boundary cells
+    real*8,intent(in)  :: lon30s(nlon),lat30s(nlat) !lon and lat value arrays of the 30s map
+    real*8,intent(out) :: lonsh(nsh),latsh(nsh) !lists of the lat and lon values of the ocean boundary cells
     integer i,xi,yi,k
     
     k=0
     do xi=1,nlon
        do yi=1,nlat
-          if(mskh(xi,yi)==0)then
+          if(boundary(xi,yi)==0)then
              k=k+1
              lonsh(k)=lon30s(xi)
              latsh(k)=lat30s(yi)
@@ -815,15 +881,19 @@ contains
   end subroutine ocean_boundary_points
 
   !------------------------------------------------------------------------
-
+  ! move the outlet locations to the nearest ocean boundary cell 
   subroutine move_to_ocean(lonsi,latsi,lons,lats,mask,lonsh,latsh,lons_adj,lats_adj,ns,nlon,nlat,nsh)
 
     integer, intent(in)  :: ns,nlon,nlat,nsh
-    integer, intent(in)  :: lonsi(ns),latsi(ns)
-    real*8,  intent(in)  :: lons(ns),lats(ns)
-    integer, intent(in)  :: mask(nlon,nlat)
-    real*8,  intent(in)  :: lonsh(nsh),latsh(nsh)
-    real*8,  intent(out) :: lons_adj(ns),lats_adj(ns)
+    !ns: number of the outlets
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600   
+    !nsh: number of ocean boundary cells        
+    integer, intent(in)  :: lonsi(ns),latsi(ns) !lon and lat idx of the outlets before moving
+    real*8,  intent(in)  :: lons(ns),lats(ns) !lon and lat values of the outlets before moving
+    integer, intent(in)  :: mask(nlon,nlat) !!ocn mask from subroutine mask_MAPL_bcs
+    real*8,  intent(in)  :: lonsh(nsh),latsh(nsh) !lists of the lat and lon values of the ocean boundary cells
+    real*8,  intent(out) :: lons_adj(ns),lats_adj(ns) !lon and lat values of the outlets after moving
     
     real,allocatable :: dist(:)
     
@@ -859,13 +929,17 @@ contains
   end subroutine move_to_ocean
 
   !------------------------------------------------------------------------
-
+  !convert the lon and lat values of the outlets to lon and lat idx on the 30s map
   subroutine sinkxy_ocean(lons,lats,lon30s,lat30s,loni,lati,ns,nlon,nlat)
     
     integer, intent(in)                :: ns,nlon,nlat
-    real*8,  intent(in)                :: lons(ns),lats(ns)
-    real*8,  intent(in)                :: lon30s(nlon),lat30s(nlat)
-    integer, intent(out)               :: loni(ns),lati(ns)
+    !ns: number of the outlets
+    !nlon: number of lon in 30s map, eg 43200
+    !nlat: number of lat in 30s map, eg 21600       
+    real*8,  intent(in)                :: lons(ns),lats(ns) !lon and lat values of the outlets
+    real*8,  intent(in)                :: lon30s(nlon),lat30s(nlat) !lon and lat value arrays of the 30s map
+    integer, intent(out)               :: loni(ns),lati(ns) !lon and lat idx of the outlets
+
     real*8,  allocatable, dimension(:) :: lat_dis,lon_dis
     integer                            :: i,temp(1)
     
@@ -887,13 +961,16 @@ contains
   end subroutine sinkxy_ocean
 
   !------------------------------------------------------------------------
-
+  ! put the list of lon and lat idx of the outlets back to the 30s map lons(nx,ny),lats(nx,ny)
   subroutine update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
 
     integer,intent(in)    :: nx,ny,ns
-    integer,intent(in)    :: loni_ocn(ns),lati_ocn(ns)
-    integer,intent(in)    :: ns_map(nx,ny)
-    integer,intent(inout) :: lons(nx,ny),lats(nx,ny)
+    !nx: number of lon in 30s map, eg 43200
+    !ny: number of lat in 30s map, eg 21600  
+    !ns: number of the outlets
+    integer,intent(in)    :: loni_ocn(ns),lati_ocn(ns) !lon and lat idx of the outlets
+    integer,intent(in)    :: ns_map(nx,ny) !it stores the outlets idx on the 30s map
+    integer,intent(inout) :: lons(nx,ny),lats(nx,ny) !map of lon/lat idx of outlets for each land/Greenland cells 
     
     integer               :: i,j,lonc,latc,ind
     
