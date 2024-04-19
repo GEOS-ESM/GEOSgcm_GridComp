@@ -131,9 +131,9 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       if (INT(ZERO_DIFF) == 0) then
         call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 3.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 4.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 6.0e-4,RC=STATUS );VERIFY_(STATUS)
                                     SGS_W_TIMESCALE = 1
                  if (LHYDROSTATIC)  SGS_W_TIMESCALE = 0
         call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)

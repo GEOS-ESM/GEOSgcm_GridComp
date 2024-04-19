@@ -1490,10 +1490,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
     ! -----------------------------------------------------------------------
 
-    ! qi0_crt (ice to snow conversion) has strong resolution dependence
-    !    account for this using onemsig to convert more ice to snow at coarser resolutions
-    critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig)
-
     do k = ktop, kbot
 
       ! Use In-Cloud condensates
@@ -1503,6 +1499,10 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         qadum = 1.0
       endif
       if (qadum >= onemsig) then
+
+        ! qi0_crt (ice to snow conversion) has strong resolution dependence
+        !    account for this using onemsig to convert more ice to snow at coarser resolutions
+        critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tzk(k),cnv_fraction,srf_type)
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1535,7 +1535,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            qi_crt = ice_fraction(tzk(k),cnv_fraction,srf_type) * critical_qi_factor / qadum / den (k)
+            qi_crt = critical_qi_factor / qadum / den (k)
             tmp = min (frez, dim (qi_crt, qi))
 
             ! new total condensate / old condensate
@@ -1735,8 +1735,12 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! similar to lfo 1983: eq. 21 solved implicitly
                 ! threshold from wsm6 scheme, hong et al 2004, eq (13)
                 ! -----------------------------------------------------------------------
+
+                ! qi0_crt (ice to snow conversion) has strong resolution dependence
+                !    account for this using onemsig to convert more ice to snow at coarser resolutions
+                critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tz,cnv_fraction,srf_type)
                
-                qim = ice_fraction(tz,cnv_fraction,srf_type) * critical_qi_factor / den (k)
+                qim = critical_qi_factor / den (k)
 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice

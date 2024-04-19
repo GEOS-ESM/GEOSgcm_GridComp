@@ -629,7 +629,7 @@ module GEOSmoist_Process_Library
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
-       REAL :: TC,ZFSR,AA
+       REAL :: TC,AA
 
        !- air density (kg/m^3)
        RHO = (100.*PL) / (MAPL_RGAS*TE )
@@ -668,12 +668,12 @@ module GEOSmoist_Process_Library
             RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
           else
             !------ice cloud effective radius ----- [Sun, 2001]
+            ! https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
             TC = TE - MAPL_TICE
-            ZFSR = 1.2351 + 0.0105 * TC
             AA = 45.8966 * (WC**0.2214)
-            BB = 0.79570 * (WC**0.2535)
-            RADIUS = ZFSR * (AA + BB * (TE - 83.15))
-            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS*0.64952))
+            BB = 0.79570 * (WC**0.2535) * (TC + 190.0)
+            RADIUS = (1.2351 + 0.0105*TC) * (AA + BB)
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
           endif
 
       ELSE
