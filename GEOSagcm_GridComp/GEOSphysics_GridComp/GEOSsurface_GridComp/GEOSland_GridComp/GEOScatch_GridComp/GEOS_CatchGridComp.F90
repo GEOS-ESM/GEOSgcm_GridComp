@@ -2732,6 +2732,10 @@ subroutine SetServices ( GC, RC )
     end if
     call MAPL_TimerAdd(GC,    name="-SURF"  ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="-LOUIS"  ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="-HELFAND"  ,RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-CATCH" ,RC=STATUS)
@@ -3486,13 +3490,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       call MAPL_TimerOn(MAPL,"-SURF")
       if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
+        call MAPL_TimerOn(MAPL, '-LOUIS')
         WW(:,N) = 0.
         CM(:,N) = 0.
-
         call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
-
+        call MAPL_TimerOff(MAPL, '-LOUIS')
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
   
+        call MAPL_TimerOn(MAPL, '-HELFAND')
         niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
         IWATER = 3
   
@@ -3554,7 +3559,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
         if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
         if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
-
+        call MAPL_Timeroff(MAPL, "-HELFAND")
       endif
       call MAPL_TimerOff(MAPL,"-SURF")
 
