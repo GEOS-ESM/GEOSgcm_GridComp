@@ -677,7 +677,7 @@ integer :: n_threads=1
        inquire(file='clsm/irrig.dat', exist=file_exists)
        if (.not.file_exists) call create_irrig_params (nc,nr,fnameRst)
        write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
-       
+       endif
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
