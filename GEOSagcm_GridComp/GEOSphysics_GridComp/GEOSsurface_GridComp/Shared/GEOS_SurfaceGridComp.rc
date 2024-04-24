@@ -56,7 +56,6 @@
 #    CATCHMENT-CN model versions
 #    ---------------------------
 #    CN_CLM40 : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)   
-#    CN_CLM45 : Eunjee Lee's Catchment-CN.4.5 simulations 
 #
 # GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
@@ -264,8 +263,6 @@
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
-#      ! Important: PRESCRIBE_DVG is NOT functional for CN_CLM45 land model choice (LSM_CHOICE = 3);
-#      !            setting will be ignored
 #
 #    0 : NO,  run CN Model interactively (default)
 #    1 : YES, prescribe interannually varying LAI and SAI

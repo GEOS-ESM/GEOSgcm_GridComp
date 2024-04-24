@@ -113,11 +113,11 @@ subroutine SetServices ( GC, RC )
     if ( LSM_CHOICE == 2 ) then
        CATCHCN = MAPL_AddChild('CATCHCNCLM40'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM40_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)
-    else if ( LSM_CHOICE == 3 ) then
-       CATCHCN = MAPL_AddChild('CATCHCNCLM45'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
-       VERIFY_(STATUS)
+!    else if ( LSM_CHOICE == 3 ) then
+!       CATCHCN = MAPL_AddChild('CATCHCNCLM45'//trim(tmp), 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
+!       VERIFY_(STATUS)
     else
-       _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")
+       _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40)")
     endif
 
     wrap%ptr =>CATCHCN_INTERNAL_STATE
