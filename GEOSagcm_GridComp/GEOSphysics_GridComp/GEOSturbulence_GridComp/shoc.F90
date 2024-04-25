@@ -375,7 +375,7 @@ contains
           if (shocparams%BUOYOPT==2) then
             a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
           else
-            a_prod_bu = -1.*wrk*brunt(i,j,k) !+ (ggr / thv(i,j,k))*wthv_mf(i,j,k)
+            a_prod_bu = -1.*wrk*brunt(i,j,k) + (ggr / thv(i,j,k))*wthv_mf(i,j,k)
           end if
 
           buoy_sgs = brunt(i,j,k)
