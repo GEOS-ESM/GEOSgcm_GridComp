@@ -477,7 +477,7 @@ contains
       real,    device, intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    device, intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
-      real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
+      real,    device, intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
       real,    device, intent(inout), dimension(icol,jcol,1:nlev+1)  :: diff_m,diff_t
       real,    device, intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_m_entr,k_t_entr
       real,    device, intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
@@ -495,7 +495,7 @@ contains
       real,    intent(in),    dimension(icol,jcol)           :: u_star,b_star,frland,evap,sh
       real,    intent(in),    dimension(icol,jcol,nlev)      :: t,qv,qlls,qils
       real,    intent(in),    dimension(icol,jcol,nlev)      :: u,v,zfull,pfull
-      real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf ! 0:72 in GC, 1:73 here.
+      real,    intent(in),    dimension(icol,jcol,1:nlev+1)  :: zhalf, phalf
       real,    intent(inout), dimension(icol,jcol,1:nlev+1)  :: diff_m,diff_t
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_m_entr,k_t_entr
       real,    intent(out),   dimension(icol,jcol,1:nlev+1)  :: k_rad,k_sfc
@@ -774,7 +774,7 @@ contains
                            (vsurf3 + vshear3)/zsml(i,j))/ &
                            (tmp1+tmp2) ) )
 
-            if (pertopt_sfc == 0) then
+            if (pertopt_sfc == 1) then
 !----------------------------------------
 ! fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
@@ -1053,7 +1053,7 @@ contains
 
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
-         if (pertopt_sfc == 0) then
+         if (pertopt_sfc == 1) then
 !----------------------------------------
 ! fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
@@ -1254,7 +1254,7 @@ contains
 
 !calculate surface parcel properties
 
-    if (pertopt /= 0) then
+    if (pertopt < 0) then
       zrho = p(i,j,nlev)/(287.04*(t(i,j,nlev)*(1.+0.608*q(i,j,nlev))))
 
       buoyflx = (sh(i,j)/MAPL_CP+0.608*t(i,j,nlev)*evap(i,j))/zrho ! K m s-1                                                                                                  
@@ -1263,16 +1263,13 @@ contains
 
       if (wstar > 0.001) then
         wstar = 1.0*wstar**.3333
-!        print *,'sh=',sh(i,j),'evap=',evap(i,j),'wstar=',wstar
         tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
         qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
-!        print *,'tpert=',2.*sh(i,j)/(zrho*wstar*MAPL_CP)
-      else
-
       end if
+
     else   ! tpfac scales up bstar by inv. ratio of
            ! heat-bubble area to stagnant area
-      if (nlev.eq.72) then
+      if (pertopt == 1) then
         tep  = (t(i,j,nlev) + 0.4) * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
       else
         tep  = (t(i,j,nlev) + 0.4) * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV))
@@ -1293,8 +1290,8 @@ contains
 !search for level where this is exceeded              
 
       lts =  0.0
-!  LTS using TH at 3km abve surface
-      if (nlev.ne.72) then
+      if (pertopt == 0) then
+        ! LTS using TH at 3km abve surface
          do k = nlev-1,2,-1
             if (z(i,j,k).gt.3000.0) then
               lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
@@ -1316,7 +1313,6 @@ contains
          v2 = v(i,j,k)
          pp = p(i,j,k)
 
-!!Old Shear     du = sqrt ( ( u(i,j,k) - u1 )**2 + ( v(i,j,k) - v1 )**2 )
          du = sqrt ( ( u2 - u1 )**2 + ( v2 - v1 )**2 ) / (z2-z1)
          du = min(du,1.0e-8)
 
@@ -1428,11 +1424,7 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      if (nlev.eq.72) then
-        entrate = 0.2/200.
-      else
-        entrate = 1.0/1000.
-      endif
+      entrate = 1.0/1000.
 
       !search for level where parcel is warmer than env             
 

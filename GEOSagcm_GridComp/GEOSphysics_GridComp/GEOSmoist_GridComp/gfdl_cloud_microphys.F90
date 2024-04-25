@@ -257,13 +257,13 @@ module gfdl2_cloud_microphys_mod
                              !! qi0_crt is highly dependent on horizontal resolution
     real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold  [WMP: never used]
                              !! lfo used * mixing ratio * = 1.e-4 (hail in lfo)
-    real :: qs0_crt = 0.8e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    real :: qs0_crt = 0.6e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
     real :: c_psaci = 0.05  !< accretion: cloud ice to snow (was 0.1 in zetac)
     real :: c_piacr = 5.00  !< accretion: rain to ice:
     real :: c_cracw = 1.00  !< rain accretion efficiency
-    real :: c_pgacs = 0.01  !< snow to graupel "accretion" eff. (was 0.1 in zetac)
+    real :: c_pgacs = 0.10  !< snow to graupel "accretion" eff. (was 0.1 in zetac)
     real :: c_pgaci = 0.05  !<  ice to graupel "accretion" eff.
 
     ! decreasing clin to reduce csacw (so as to reduce cloud water --- > snow)
@@ -1502,7 +1502,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
         ! qi0_crt (ice to snow conversion) has strong resolution dependence
         !    account for this using onemsig to convert more ice to snow at coarser resolutions
-        critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tzk(k),cnv_fraction,srf_type)
+        critical_qi_factor = qi0_crt*onemsig + 0.2*qi0_crt*(1.0-onemsig) * ice_fraction(tzk(k),cnv_fraction,srf_type)
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1738,7 +1738,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 ! qi0_crt (ice to snow conversion) has strong resolution dependence
                 !    account for this using onemsig to convert more ice to snow at coarser resolutions
-                critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tz,cnv_fraction,srf_type)
+                critical_qi_factor = qi0_crt*onemsig + 0.2*qi0_crt*(1.0-onemsig)
                
                 qim = critical_qi_factor / den (k)
 
@@ -3149,6 +3149,7 @@ subroutine fall_speed (ktop, kbot, pl, onemsig, cnv_fraction, anv_icefall, lsc_i
 
     real :: vi1, viCNV, viLSC, IWC
     real :: rBB, C0, C1, DIAM, lnP
+    real :: vfall_lsc, vfall_anv
     integer :: k
 
     ! -----------------------------------------------------------------------
@@ -3168,6 +3169,9 @@ subroutine fall_speed (ktop, kbot, pl, onemsig, cnv_fraction, anv_icefall, lsc_i
     ! ice:
     ! -----------------------------------------------------------------------
 
+    vfall_lsc = lsc_icefall*(onemsig + 0.8*(1.0-onemsig))
+    vfall_anv = anv_icefall*(onemsig + 0.9*(1.0-onemsig))
+
     if (const_vi) then
         vti (:) = vi_fac
     else
@@ -3183,15 +3187,15 @@ subroutine fall_speed (ktop, kbot, pl, onemsig, cnv_fraction, anv_icefall, lsc_i
                ! use deng and mace (2008, grl)
                ! https://doi.org/10.1029/2008GL035054
                ! -----------------------------------------------------------------------
-                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
-                viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
+                viLSC   = vfall_lsc*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+                viCNV   = vfall_anv*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
                 
                ! -----------------------------------------------------------------------
                ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
                !                               ice clouds: Results from SPartICus'
                ! -----------------------------------------------------------------------
-               !viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
-               !viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
+               !viLSC  = MAX(10.0,vfall_lsc*(1.411*tc(k) + 11.71*log10(IWC*1.e3) + 82.35))
+               !viCNV  = MAX(10.0,vfall_anv*(1.119*tc(k) + 14.21*log10(IWC*1.e3) + 68.85))
 
                ! Combine
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
