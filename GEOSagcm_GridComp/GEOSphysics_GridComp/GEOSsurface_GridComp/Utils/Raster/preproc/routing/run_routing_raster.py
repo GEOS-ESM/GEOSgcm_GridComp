@@ -5,6 +5,9 @@
 import os
 import subprocess
 
+# Input files
+# For NAS users, please replace the Discover base path "/discover/nobackup/projects/gmao/bcs_shared/"
+# by the NAS path "/nobackup/gmao_SIteam/ModelData/bcs_shared/"
 file_Pfafcatch="/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat"
 file_SRTMPfaf="/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc"
 file_Drainage="/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/HydroSHEDS_drainage_area.nc"

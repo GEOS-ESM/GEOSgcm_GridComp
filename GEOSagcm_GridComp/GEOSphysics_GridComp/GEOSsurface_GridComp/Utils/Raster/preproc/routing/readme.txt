@@ -33,16 +33,3 @@ Insert the Greenland index map into the catchment index map.
 7. Pfaf_to_2d_30s_land.f90: 
 Transform the 1d list above to the unformatted Fortran binary file "Outlet_latlon.43200x21600" that can be read directly by "mk_runofftbl.F90" of makebcs.
 
-The input data are briefly described as follows:
-
-1. HydroSHEDS_drainage_area.nc: 
-The drainage_area dataset provided by the HydroSHEDS (https://www.hydrosheds.org/).
-
-2. GreenlandID_30s.nc: 
-The Greenland ID map provided by Lauren Andrews (Lauren.c.andrews@nasa.gov).
-
-3. Greenland_outlets_lat.txt: 
-The latitude of the routing outlet for each Greenland catchment provided by Lauren Andrews.
-
-4. Greenland_outlets_lon.txt: 
-The longitude of the routing outlet for each Greenland catchment provided by Lauren Andrews.
