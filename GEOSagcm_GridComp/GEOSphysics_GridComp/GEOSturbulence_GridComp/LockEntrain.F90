@@ -774,6 +774,7 @@ contains
                            (vsurf3 + vshear3)/zsml(i,j))/ &
                            (tmp1+tmp2) ) )
 
+            if (pertopt_sfc == 0) then
 !----------------------------------------
 ! fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
@@ -794,6 +795,7 @@ contains
 !!AMM106      wentr_tmp = wentr_tmp * ( vbulk_scale -  vbulkshr ) *2 &
 !!AMM106                                  / vbulk_scale
 !!AMM106 endif
+            endif
 
             k_entr_tmp = wentr_tmp*(zfull(i,j,ipbl-1)-zfull(i,j,ipbl))  
             k_entr_tmp = min ( k_entr_tmp, akmax )
@@ -1051,7 +1053,7 @@ contains
 
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
-
+         if (pertopt_sfc == 0) then
 !----------------------------------------
 ! fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
@@ -1071,6 +1073,7 @@ contains
             wentr_rad = 3.*wentr_rad
          endif
 !-----------------------------------------
+         endif
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
 
