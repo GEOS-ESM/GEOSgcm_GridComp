@@ -7,7 +7,7 @@ program mk_LakeLandiceSaltRestarts
   use MAPL
   use mk_restarts_getidsMod, only: GetIDS,ReadTileFile_IntLatLon
   use PFIO
-  use gFTL_StringVector
+  use gFTL2_StringVector
 
   implicit none
 

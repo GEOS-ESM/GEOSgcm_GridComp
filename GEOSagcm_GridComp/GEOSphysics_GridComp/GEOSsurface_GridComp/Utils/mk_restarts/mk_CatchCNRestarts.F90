@@ -196,7 +196,7 @@ program  mk_CatchCNRestarts
 
   use MAPL
   use ESMF
-  use gFTL_StringVector
+  use gFTL2_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
   use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &

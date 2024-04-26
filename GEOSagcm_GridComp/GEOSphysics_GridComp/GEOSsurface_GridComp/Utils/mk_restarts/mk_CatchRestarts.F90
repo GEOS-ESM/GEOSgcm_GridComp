@@ -6,7 +6,7 @@ program  mk_CatchRestarts
 
   use MAPL
   use mk_restarts_getidsMod, only: GetIDs,ReadTileFile_RealLatLon
-  use gFTL_StringVector
+  use gFTL2_StringVector
 
   implicit none
   include 'mpif.h'
