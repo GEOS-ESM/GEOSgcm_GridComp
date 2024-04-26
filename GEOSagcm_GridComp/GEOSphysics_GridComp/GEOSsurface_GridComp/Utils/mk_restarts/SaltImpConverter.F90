@@ -7,7 +7,7 @@ program SaltImpConverter
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
-  use gFTL_StringVector
+  use gFTL2_StringVector
   implicit none
 
   character*256 :: Usage="SaltImpConverter InTileFile InImpRestart InIntRestart"

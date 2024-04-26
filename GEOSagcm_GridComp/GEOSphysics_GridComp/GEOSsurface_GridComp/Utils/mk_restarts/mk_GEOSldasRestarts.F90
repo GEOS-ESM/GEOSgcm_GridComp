@@ -18,7 +18,7 @@ PROGRAM mk_GEOSldasRestarts
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
-  use gFTL_StringVector 
+  use gFTL2_StringVector 
   use ieee_arithmetic, only: isnan => ieee_is_nan
   USE STIEGLITZSNOW,   ONLY :                 &
        StieglitzSnow_calc_tpsnow 

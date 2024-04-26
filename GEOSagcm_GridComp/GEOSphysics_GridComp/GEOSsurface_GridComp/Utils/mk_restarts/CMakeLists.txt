@@ -30,7 +30,7 @@ foreach (src ${exe_srcs})
   ecbuild_add_executable (
     TARGET ${exe}
     SOURCES ${src}
-    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared ${this})
+    LIBS MAPL GFTL_SHARED::gftl-shared-v2 GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared ${this})
 endforeach ()
 
 install(PROGRAMS mk_Restarts DESTINATION bin)

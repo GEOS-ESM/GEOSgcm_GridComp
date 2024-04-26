@@ -6,8 +6,8 @@ program SaltIntSplitter
   use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
-  use gFTL_StringVector
-  use gFTL_StringIntegerMap 
+  use gFTL2_StringVector
+  use gFTL2_StringIntegerMap 
 
   implicit none
 
@@ -107,13 +107,13 @@ program SaltIntSplitter
 
      water_dimensions = dimensions
      d_iter = water_dimensions%find('unknown_dim1')
-     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     if (d_iter /= water_dimensions%end()) d_iter = water_dimensions%erase(d_iter)
      d_iter = water_dimensions%find('unknown_dim2')
-     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     if (d_iter /= water_dimensions%end()) d_iter = water_dimensions%erase(d_iter)
      d_iter = water_dimensions%find('unknown_dim3')
-     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     if (d_iter /= water_dimensions%end()) d_iter =water_dimensions%erase(d_iter)
      d_iter = water_dimensions%find('unknown_dim4')
-     if (d_iter /= water_dimensions%end()) call water_dimensions%erase(d_iter)
+     if (d_iter /= water_dimensions%end()) d_iter = water_dimensions%erase(d_iter)
 
      WaterCfg = FileMetaData(dimensions= water_dimensions, global=global)
 
