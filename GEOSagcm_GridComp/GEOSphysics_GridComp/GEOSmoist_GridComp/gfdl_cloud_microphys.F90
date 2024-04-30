@@ -36,7 +36,7 @@
 
 module gfdl2_cloud_microphys_mod
 
-      use mpp_mod, only: mpp_pe, mpp_root_pe
+    ! use mpp_mod, only: mpp_pe, mpp_root_pe
     ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
     ! mpp_clock_begin, mpp_clock_end, clock_routine, &
     ! input_nml_file
@@ -46,10 +46,11 @@ module gfdl2_cloud_microphys_mod
     ! use fms_mod, only: write_version_number, open_namelist_file, &
     ! check_nml_error, file_exist, close_file
 
-    use fms_mod,             only: write_version_number, open_namelist_file, &
-                                   check_nml_error, close_file, file_exist,  &
-                                   fms_init
+    !use fms_mod,             only: write_version_number, open_namelist_file, &
+    !                               check_nml_error, close_file, file_exist,  &
+    !                               fms_init
     use GEOSmoist_Process_Library, only: sigma, ice_fraction
+    use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
 
@@ -1490,6 +1491,10 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
     ! -----------------------------------------------------------------------
 
+    ! qi0_crt (ice to snow conversion) has strong resolution dependence
+    !    account for this using onemsig to convert more ice to snow at coarser resolutions
+    critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig)
+
     do k = ktop, kbot
 
       ! Use In-Cloud condensates
@@ -1499,10 +1504,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         qadum = 1.0
       endif
       if (qadum >= onemsig) then
-
-        ! qi0_crt (ice to snow conversion) has strong resolution dependence
-        !    account for this using onemsig to convert more ice to snow at coarser resolutions
-        critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tzk(k),cnv_fraction,srf_type)
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1535,7 +1536,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            qi_crt = critical_qi_factor / qadum / den (k)
+            qi_crt = ice_fraction(tzk(k),cnv_fraction,srf_type) * critical_qi_factor / qadum / den (k)
             tmp = min (frez, dim (qi_crt, qi))
 
             ! new total condensate / old condensate
@@ -1735,12 +1736,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! similar to lfo 1983: eq. 21 solved implicitly
                 ! threshold from wsm6 scheme, hong et al 2004, eq (13)
                 ! -----------------------------------------------------------------------
-
-                ! qi0_crt (ice to snow conversion) has strong resolution dependence
-                !    account for this using onemsig to convert more ice to snow at coarser resolutions
-                critical_qi_factor = qi0_crt*onemsig + 1.e-1*qi0_crt*(1.0-onemsig) * ice_fraction(tz,cnv_fraction,srf_type)
                
-                qim = critical_qi_factor / den (k)
+                qim = ice_fraction(tz,cnv_fraction,srf_type) * critical_qi_factor / den (k)
 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
@@ -3411,7 +3408,7 @@ subroutine gfdl_cloud_microphys_init (comm)
     ! logical :: flag
     ! real :: tmp, q1, q2
 
-    call fms_init(comm)
+    !call fms_init(comm)
 
     ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
 
@@ -3423,16 +3420,23 @@ subroutine gfdl_cloud_microphys_init (comm)
         write (6, *) 'gfdl - mp :: namelist file: ', trim (fn_nml), ' does not exist'
         stop
     else
-        nlunit=open_namelist_file()
-        rewind (nlunit)
+        !nlunit=open_namelist_file()
+        !rewind (nlunit)
+        open(NEWUNIT=nlunit,file=trim(fn_nml), form='formatted',access='sequential',iostat=ios)
+        if(ios /= 0) stop 'open namelist file gfdl_cloud_microphys_init failed, bailing out...'
+        rewind (nlunit, iostat=ios)
+        if(ios /= 0) stop 'rewind namelist file gfdl_cloud_microphys_init failed, bailing out...'
      ! Read Main namelist
         read (nlunit,gfdl_cloud_microphysics_nml,iostat=ios)
-        ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
-        call close_file(nlunit)
+        if(ios /= 0) stop 'read namelist gfdl_cloud_microphys_init failed, bailing out...'
+        !ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
+        !call close_file(nlunit)
+        close(nlunit, iostat=ios)
+        if(ios /= 0) stop 'close namelist file gfdl_cloud_microphys_init failed, bailing out...'
     endif
 #endif
 
-    if (mpp_pe() .EQ. mpp_root_pe()) then
+    if (MAPL_AM_I_ROOT()) then
         write (*, *) " ================================================================== "
         write (*, *) "gfdl_cloud_microphys_mod"
         write (*, nml = gfdl_cloud_microphysics_nml)
