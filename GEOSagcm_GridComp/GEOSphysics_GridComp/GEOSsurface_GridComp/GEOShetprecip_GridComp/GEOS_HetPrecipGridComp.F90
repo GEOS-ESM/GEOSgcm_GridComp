@@ -18,6 +18,12 @@ module GEOS_HetPrecipGridCompMod
 
   real, pointer :: norm_tile_area(:) => null()
 
+  type MyTileIndex
+     integer, pointer :: tileId(:) => null()
+  end type MyTileIndex
+
+  type (MyTileIndex), allocatable :: tileIndex(:,:)
+  
 contains
   subroutine SetServices ( GC, RC )
 
@@ -115,13 +121,16 @@ contains
     type (ESMF_State) :: INTERNAL
     type (MAPL_LocStream) :: LocStream
     real :: DT, TAU_HETPR, SEED_OPT
-    integer :: IM, JM, NT, I
+    integer :: IM, JM, NT, I, J
     real, pointer :: qvar(:) => null()
-    real :: totalArea
     integer, pointer :: tiletypes(:) => null()
     integer, allocatable :: the_seed(:)
+    integer, allocatable :: tcount(:,:)
+    integer, pointer :: local_i(:) => null()
+    integer, pointer :: local_j(:) => null()
+    integer :: it
     integer :: seed_len
-
+    
     call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
 
     E = EXP(1.0)
@@ -142,7 +151,7 @@ contains
                                 __RC__ )
 
 !ALT: For now restrict usage only for single column mode
-    _ASSERT(IM==1 .and. JM == 1, 'Only single column supported')
+!@@    _ASSERT(IM==1 .and. JM == 1, 'Only single column supported')
 
     call MAPL_LocStreamGet(LocStream, NT_LOCAL=NT, __RC__)
 
@@ -158,12 +167,50 @@ contains
     SQRHO = SQRT(1.0-RHO**2)
 
 
+    !get local_i, local_j
+    call MAPL_LocStreamGet(LocStream, NT_LOCAL=NT, &
+         LOCAL_I=local_i, LOCAL_J=local_j, _RC)
+    allocate(tcount(im,jm), _STAT) ! integer
+    tcount = 0
+    !loop over tiles
+    do it=1,NT
+       tcount(local_i(it), local_j(it)) = tcount(local_i(it), local_j(it)) + 1
+    enddo
+
+!@    allocate(mystate%tileIndex(im,jm), _STAT)
+    allocate(tileIndex(im,jm), _STAT)
+    do j=1,jm
+       do i=1,im
+!@          allocate(mystate%tileIndex(i,j)%tileId(tcount(i,j)), _STAT)
+          allocate(tileIndex(i,j)%tileId(tcount(i,j)), _STAT)
+       enddo
+    enddo
+    tcount = 0
+    do it=1,NT
+       i = local_i(it)
+       j = local_j(it)
+       tcount(i,j) = tcount(i,j) + 1
+!@       mystate%tileIndex(i,j)%tileId(tcount(i,j)) = it
+       tileIndex(i,j)%tileId(tcount(i,j)) = it
+    enddo
+
+    deallocate(tcount)
+#ifdef __GFORTRAN__
+    deallocate(local_i, local_j)
+#endif
+
 
     ! get qvar
 
-    _ASSERT(all(tiletypes == MAPL_Land), 'Currently supporting cells exclusively covered by land')
-    totalArea = sum(norm_tile_area)
-    norm_tile_area = norm_tile_area / totalArea
+!@@@@ hetprecip-ovel-land restriction
+!@@@@    _ASSERT(all(tiletypes == MAPL_Land), 'Currently supporting cells exclusively covered by land')
+    !@@@@ single column assumption (next 2 lines)
+    do j=1,jm
+       do i=1,im
+!@          call normalizeTileArea(norm_tile_area(mystate%tileIndex(i,j)%tileId))
+          call normalizeTileArea(norm_tile_area(tileIndex(i,j)%tileId))
+       enddo
+    enddo
 
     call MAPL_GetPointer(INTERNAL, QVAR, 'QVAR', __RC__)
 
@@ -185,6 +232,18 @@ contains
     deallocate(THE_SEED)
 
     _RETURN(ESMF_SUCCESS)
+
+  contains
+    subroutine normalizeTileArea(norm_tile_area)
+      real  :: norm_tile_area(:)
+
+      real :: totalArea
+      totalArea = sum(norm_tile_area)
+      norm_tile_area = norm_tile_area / totalArea
+
+      return
+    end subroutine normalizeTileArea
+
   end subroutine Initialize
 
   subroutine Run ( GC, IMPORT, EXPORT, CLOCK, RC )
@@ -204,10 +263,74 @@ contains
     real, pointer :: sno(:,:) => null()
     real, pointer :: ice(:,:) => null()
     real, pointer :: frzr(:,:) => null()
+    real, pointer :: psub(:) => null()
     type (ESMF_State) :: INTERNAL
-
-    real, allocatable :: rn(:)
+    integer :: i, j, im, jm
+    integer, pointer :: tileIdx(:)
     real :: totalPrecip
+    
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, __RC__)
+
+    ! get qvar
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, IM=IM, JM=JM, __RC__)
+    call MAPL_GetPointer(INTERNAL, QVAR, 'QVAR', __RC__)
+
+
+    call MAPL_GetPointer(IMPORT, PCU, 'PCU', __RC__)
+    call MAPL_GetPointer(IMPORT, PLS, 'PLS', __RC__)
+    call MAPL_GetPointer(IMPORT, SNO, 'SNO', __RC__)
+    call MAPL_GetPointer(IMPORT, ICE, 'ICE', __RC__)
+    call MAPL_GetPointer(IMPORT, FRZR, 'FRZR', __RC__)
+
+    !ALT: the alloc-.true. is there from laziness
+    call MAPL_GetPointer(EXPORT, psub, 'WEIGHT', alloc=.true., __RC__)
+
+    DO J=1,JM
+       DO I=1,IM
+
+          totalPrecip = PCU(I,J)+PLS(I,J)+SNO(I,J)+ICE(I,J)+FRZR(I,J)
+!@          tileIdx => mystate%tileIndex(i,j)%tileId
+          tileIdx => tileIndex(i,j)%tileId
+          
+          call generateHetWeight(qvar(tileIdx), totalPrecip, psub(tileIdx), _RC)
+       END DO
+    END DO
+    _RETURN(ESMF_SUCCESS)
+
+
+  contains
+     subroutine rankdata (nt, qtest, krank, rc)
+       integer, intent(in) :: nt
+       real, intent(in) :: qtest(:)
+       integer, intent(out) :: krank(:)
+       integer, optional, intent(out) :: rc
+       
+       integer :: status
+       integer, allocatable :: ptest(:)
+       integer, parameter :: large_int = 2**21
+       
+       allocate(ptest(nt), __STAT__)
+       ptest=int(qtest*large_int)
+       krank = [1:nt]
+
+       call MAPL_Sort(ptest, krank)
+
+       deallocate(ptest)
+
+       _RETURN(ESMF_SUCCESS)
+     end subroutine rankdata
+
+    subroutine generateHetWeight(qvar, totalPrecip, psub, rc)
+      real :: qvar(:)
+      real, intent(in) :: totalPrecip
+      real :: psub(:)
+      integer, optional, intent(out) :: rc
+      
+    real, allocatable :: rn(:)
     real :: total
     real, parameter :: xlo=log10(1.5e-2), xhi=log10(10.) ! parameters for 1 deg domain
     real, parameter :: ylo=.973, yhi=0.0, fracdrymax=0.9722
@@ -221,22 +344,14 @@ contains
     integer :: i, iopt, n, itile
     integer :: ilargest
     integer, allocatable :: krank(:)
-    real, pointer :: psub(:) => null()
     real, allocatable :: psum(:)
     real, allocatable :: lowerlimit(:)
     real, allocatable :: upperlimit(:)
+    integer :: status
 
 
-! Get my internal MAPL_Generic state
-!-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, __RC__)
-
-    ! get qvar
-    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, __RC__)
-    call MAPL_GetPointer(INTERNAL, QVAR, 'QVAR', __RC__)
-
-    NT = size(QVAR)
+    NT = size(qvar)
     allocate(rn(NT), __STAT__)
 
     call random_normal(rn) ! rn is array of size NT
@@ -244,19 +359,8 @@ contains
 !   generate new QVAR
     qvar=rho*qvar+sqrho*rn
 
-    call MAPL_GetPointer(IMPORT, PCU, 'PCU', __RC__)
-    call MAPL_GetPointer(IMPORT, PLS, 'PLS', __RC__)
-    call MAPL_GetPointer(IMPORT, SNO, 'SNO', __RC__)
-    call MAPL_GetPointer(IMPORT, ICE, 'ICE', __RC__)
-    call MAPL_GetPointer(IMPORT, FRZR, 'FRZR', __RC__)
-
-    !ALT: the alloc-.true. is there from laziness
-    call MAPL_GetPointer(EXPORT, psub, 'WEIGHT', alloc=.true., __RC__)
-
-!ALT: single column assumption: 1 grid cell
-    totalPrecip = PCU(1,1)+PLS(1,1)+SNO(1,1)+ICE(1,1)+FRZR(1,1)
     if (totalPrecip == 0.0) then
-       print *,'WARNING: zero precip.'
+!       print *,'WARNING: zero precip.'
        psub = 1.0
        _RETURN(ESMF_SUCCESS)
     end if
@@ -346,29 +450,7 @@ contains
 
     _RETURN(ESMF_SUCCESS)
 
-   contains
-
-     subroutine rankdata (nt, qtest, krank, rc)
-       integer, intent(in) :: nt
-       real, intent(in) :: qtest(:)
-       integer, intent(out) :: krank(:)
-       integer, optional, intent(out) :: rc
-       
-       integer :: status
-       integer, allocatable :: ptest(:)
-       integer, parameter :: large_int = 2**21
-       
-       allocate(ptest(nt), __STAT__)
-       ptest=int(qtest*large_int)
-       krank = [1:nt]
-
-       call MAPL_Sort(ptest, krank)
-
-       deallocate(ptest)
-
-       _RETURN(ESMF_SUCCESS)
-     end subroutine rankdata
-
+   end subroutine generateHetWeight
   end subroutine Run
 
 end module GEOS_HetPrecipGridCompMod
