@@ -22,17 +22,35 @@ bin/create_README.csh
 def make_bcs_ease(config):
   bin_dir = os.getcwd()
   if '/bin' not in bin_dir:
-    print("please run this program in installed bin directory")
-    return
-
-  grid_type  = config['grid_type']
-  if 'EASEv' not in grid_type :
-     print('This is not a EASE grid')
+     print("                                                                  ")
+     print("******************************************************************")
+     print("ERROR: Must run this program in installed bin directory.          ")
+     print("******************************************************************")
      return
 
+  grid_type  = config['grid_type']
   resolution = config['resolution']
-
   GRIDNAME  = grid_type+'_'+ resolution
+
+  if 'EASEv' not in grid_type :
+     print("                                                                  ")
+     print("******************************************************************")
+     print("ERROR: " + GRIDNAME + " is not an EASE grid.                      ")
+     print("******************************************************************")
+     return
+
+  # if resolution is M01 in EASEv1 or EASEv2, do not execute
+  # Instead, exist and print an on-screen message to the user
+  if resolution == "M01":
+     print("                                                                  ")
+     print("******************************************************************")
+     print("WARNING: Job for " + GRIDNAME + " not submitted!                  ")
+     print("         EASEv[x]_M01 (~1 km) resolution requires custom process. ")
+     print("         Contact GMAO Land Group for assistance.                  ")     
+     print("******************************************************************")
+     print("                                                                  ")
+     return 
+
   now     = datetime.now()
   tmp_dir = now.strftime("%Y%m%d%H%M%S") 
   tmp_dir = f"{resolution}_{tmp_dir}"
