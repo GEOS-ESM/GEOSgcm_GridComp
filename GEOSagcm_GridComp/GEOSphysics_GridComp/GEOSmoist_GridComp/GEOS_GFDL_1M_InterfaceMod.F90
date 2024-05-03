@@ -259,6 +259,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
+
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -875,7 +877,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
             if (associated(PTR3D)) PTR3D = TMP3D
 
             if (associated(DBZ_MAX)) then
@@ -915,6 +917,31 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                END DO ; END DO
             endif
 
+        endif
+
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_R' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,0.0*QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO
+        endif
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_S' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,QSNOW,0.0*QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO 
+        endif
+        call MAPL_GetPointer(EXPORT, PTR2D , 'DBZ_MAX_G' , RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,0.0*QRAIN,0.0*QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
+             PTR2D=-9999.0
+             DO L=1,LM ; DO J=1,JM ; DO I=1,IM
+                PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
+             END DO ; END DO ; END DO  
         endif
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)

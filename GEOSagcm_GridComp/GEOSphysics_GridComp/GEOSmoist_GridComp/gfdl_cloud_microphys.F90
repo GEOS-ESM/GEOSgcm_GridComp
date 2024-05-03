@@ -166,24 +166,11 @@ module gfdl2_cloud_microphys_mod
 
     logical :: tables_are_initialized = .false.
 
-    ! logical :: root_proc
-    ! integer :: id_rh, id_vtr, id_vts, id_vtg, id_vti, id_rain, id_snow, id_graupel, &
-    ! id_ice, id_prec, id_cond, id_var, id_droplets
-    ! integer :: gfdl_mp_clock ! clock for timing of driver routine
-
     real, parameter :: dt_fr = 8. !< epsilon on homogeneous freezing of cloud water at t_wfr + dt_fr
     ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
     ! dt_fr can be considered as the error bar
 
     real :: p_min = 100. !< minimum pressure (pascal) for mp to operate
-
-    ! slj, the following parameters are for cloud - resolving resolution: 1 - 5 km
-
-    ! qi0_crt = 0.8e-4
-    ! qs0_crt = 0.6e-3
-    ! c_psaci = 0.1
-    ! c_pgacs = 0.1
-    ! c_pgaci = 0.05
 
     ! -----------------------------------------------------------------------
     !> namelist parameters
@@ -209,20 +196,20 @@ module gfdl2_cloud_microphys_mod
     ! conversion time scale
 
     real :: tau_r2g  = -9999. !< rain freezing during fast_sat [wmp: not used]
-    real :: tau_smlt =   900. !< snow melting
-    real :: tau_g2r  =   600. !< graupel melting to rain
-    real :: tau_imlt =   600. !< cloud ice melting
-    real :: tau_i2s  =  1000. !< cloud ice to snow auto - conversion
     real :: tau_l2r  = -9999. !< cloud water to rain auto - conversion [wmp: not used]
     real :: tau_v2l  = -9999. !< water vapor to cloud water (condensation) [wmp: not used]
     real :: tau_l2v  =   300. !< cloud water to water vapor (evaporation)
     real :: tau_i2v  =   300. !< cloud ice to water vapor (sublimation)
     real :: tau_s2v  =   600. !< snow sublimation
+    real :: tau_g2v  =   600. !< graupel sublimation
+    real :: tau_g2r  =   600. !< graupel melting to rain
     real :: tau_v2s  = 21600. !< snow deposition -- make it a slow process
-    real :: tau_g2v  =   900. !< graupel sublimation
     real :: tau_v2g  = 21600. !< graupel deposition -- make it a slow process
     real :: tau_revp =   600. !< rain re-evaporation
-    real :: tau_frz  =   600. !, timescale for liquid-ice freezing
+    real :: tau_frz  =   600. !< timescale for liquid-ice freezing
+    real :: tau_imlt =   600. !< cloud ice melting
+    real :: tau_smlt =   600. !< snow melting
+    real :: tau_i2s  =   600. !< cloud ice to snow auto - conversion
     ! horizontal subgrid variability
 
     real :: dw_land = 0.05 !< base value for subgrid deviation / variability over land
@@ -249,27 +236,31 @@ module gfdl2_cloud_microphys_mod
     real :: qi_gen = 9.82679e-5 !< max cloud ice generation at -40 C
 
     ! cloud condensate upper bounds: "safety valves" for ql & qi
-
     real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
     real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources)
 
-    real :: qi0_crt = 5.0e-4 !< cloud ice to snow autoconversion threshold (was 1.e-4)
+    ! critical autoconverion parameters
+    real :: qi0_crt = 1.0e-3 !< cloud ice to snow autoconversion threshold
                              !! qi0_crt is highly dependent on horizontal resolution
     real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold  [WMP: never used]
                              !! lfo used * mixing ratio * = 1.e-4 (hail in lfo)
-    real :: qs0_crt = 0.6e-3 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    real :: qs0_crt = 0.8e-4 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
-    real :: c_psaci = 0.05  !< accretion: cloud ice to snow (was 0.1 in zetac)
-    real :: c_piacr = 5.00  !< accretion: rain to ice:
-    real :: c_cracw = 1.00  !< rain accretion efficiency
-    real :: c_pgacs = 0.10  !< snow to graupel "accretion" eff. (was 0.1 in zetac)
-    real :: c_pgaci = 0.05  !<  ice to graupel "accretion" eff.
 
-    ! decreasing clin to reduce csacw (so as to reduce cloud water --- > snow)
+    ! collection efficiencies for accretion
+    !   Dry processes (frozen to frozen: 0.1)
+    !   Wet processes (liquid to/from frozen: 1.0)
+    real :: c_psaci = 0.10  !< accretion: cloud ice to snow (was 0.1 in zetac)
+    real :: c_piacr = 1.00  !< accretion: rain to cloud ice: [WMP: never used]
+    real :: c_cracw = 1.00  !< accretion: cloud water to rain
+    real :: c_pgacs = 0.10  !< accrection: snow to graupel (was 0.1 in zetac)
+    real :: c_pgaci = 0.10  !< accrection: cloud ice to graupel
 
-    real :: alin = 842.0 !< "a" in lin1983
-    real :: clin = 4.8 !< "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
+    ! accretion efficiencies
+    real :: alin = 2115.  !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
+    real :: clin = 152.93 !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
+    real :: gcon = 40.74 * sqrt (sfcrho) ! [Graupel] (increase to ehance ql/qi -- > qg)
 
     ! fall velocity tuning constants:
 
@@ -278,19 +269,18 @@ module gfdl2_cloud_microphys_mod
     logical :: const_vg = .false. !< if .t. the constants are specified by v * _fac
     logical :: const_vr = .false. !< if .t. the constants are specified by v * _fac
 
-    ! good values:
-
     real :: vi_fac = 1. !< if const_vi: 1 / 3
     real :: vs_fac = 1. !< if const_vs: 1.
     real :: vg_fac = 1. !< if const_vg: 2.
     real :: vr_fac = 1. !< if const_vr: 4.
 
     ! upper bounds of fall speed (with variable speed option)
-    
+    ! https://www.atmos.albany.edu/facstaff/rfovell/ATM562/lin-etal-1983.pdf
+    ! based on lin 1983: Fig 2
     real :: vi_max = 1.0 !< max fall speed for ice
-    real :: vs_max = 2.0 !< max fall speed for snow
-    real :: vg_max = 12. !< max fall speed for graupel
-    real :: vr_max = 12. !< max fall speed for rain
+    real :: vs_max = 3.0 !< max fall speed for snow
+    real :: vr_max = 10. !< max fall speed for rain
+    real :: vg_max = 20. !< max fall speed for graupel
 
     ! cloud microphysics switchers
 
@@ -1502,7 +1492,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
         ! qi0_crt (ice to snow conversion) has strong resolution dependence
         !    account for this using onemsig to convert more ice to snow at coarser resolutions
-        critical_qi_factor = qi0_crt*onemsig + 0.2*qi0_crt*(1.0-onemsig) * ice_fraction(tzk(k),cnv_fraction,srf_type)
+        critical_qi_factor = qi0_crt*(onemsig + 0.01*(1.0-onemsig))
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1738,8 +1728,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 ! qi0_crt (ice to snow conversion) has strong resolution dependence
                 !    account for this using onemsig to convert more ice to snow at coarser resolutions
-                critical_qi_factor = qi0_crt*onemsig + 0.2*qi0_crt*(1.0-onemsig)
-               
+                critical_qi_factor = qi0_crt*(onemsig + 0.01*(1.0-onemsig))
+ 
                 qim = critical_qi_factor / den (k)
 
                 ! -----------------------------------------------------------------------
@@ -3270,7 +3260,7 @@ subroutine setupm
 
     implicit none
 
-    real :: gcon, cd, scm3, pisq, act (8)
+    real :: cd, scm3, pisq, act (8)
     real :: vdifu, tcond
     real :: visk
     real :: ch2o, hltf
@@ -3335,20 +3325,17 @@ subroutine setupm
         enddo
     enddo
 
-    gcon = 40.74 * sqrt (sfcrho) ! 44.628
-
+    ! decreasing clin will reduce accretion of snow from cloud water/ice
     csacw = pie * rnzs * clin * gam325 / (4. * act (1) ** 0.8125)
-    ! decreasing csacw to reduce cloud water --- > snow
+    csaci = c_psaci * csacw 
 
+    ! decreasing alin will reduce accretion of rain from cloud ice/water
     craci = pie * rnzr * alin * gam380 / (4. * act (2) ** 0.95)
-    csaci = csacw * c_psaci
+    cracw = c_cracw * craci
 
-    cgacw = pie * rnzg * gam350 * gcon / (4. * act (6) ** 0.875)
-
-    cgaci = cgacw * c_pgaci
-
-    cracw = craci ! cracw = 3.27206196043822
-    cracw = c_cracw * cracw
+    ! decreasing gcon will reduce accretion of graupel from cloud ice/water
+    cgacw = pie * rnzg * gcon * gam350 / (4. * act (6) ** 0.875)
+    cgaci = c_pgaci * cgacw 
 
     ! subl and revp: five constants for three separate processes
 

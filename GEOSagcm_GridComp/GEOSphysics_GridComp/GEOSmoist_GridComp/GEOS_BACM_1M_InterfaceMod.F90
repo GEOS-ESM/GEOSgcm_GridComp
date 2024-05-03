@@ -246,6 +246,8 @@ subroutine BACM_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CLDPARAMS%FR_AN_ICE,      'FR_AN_ICE:',      DEFAULT= 0.0     )
     call MAPL_GetResource( MAPL, CFPBL_EXP,                'CFPBL_EXP:',      DEFAULT= 1       )
 
+    call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
+
     call MAPL_GetResource(MAPL, GRIDNAME, 'AGCM.GRIDNAME:', RC=STATUS)
     VERIFY_(STATUS)
     GRIDNAME =  AdjustL(GRIDNAME)
@@ -780,7 +782,7 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          call MAPL_GetPointer(EXPORT, PTR3D, 'DBZ'    , RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D, 'DBZ_MAX', RC=STATUS); VERIFY_(STATUS)
          if (associated(PTR3D) .OR. associated(PTR2D)) then
-            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR*RAD_CF,RAD_QS*RAD_CF,RAD_QG*RAD_CF,IM,JM,LM,1,0,0)
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,RAD_QR*RAD_CF,RAD_QS*RAD_CF,RAD_QG*RAD_CF,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
             if (associated(PTR3D)) PTR3D = TMP3D
             if (associated(PTR2D)) then
                PTR2D=-9999.0
