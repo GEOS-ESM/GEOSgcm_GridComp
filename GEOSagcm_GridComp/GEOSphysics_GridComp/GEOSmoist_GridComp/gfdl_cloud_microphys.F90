@@ -227,7 +227,7 @@ module gfdl2_cloud_microphys_mod
 
     real :: qc_crt = 5.0e-8 !< mini condensate mixing ratio to allow partial cloudiness
 
-    real :: qi_lim = 1. !< cloud ice limiter to prevent large ice build up
+    real :: qi_lim = 1. !< cloud ice limiter to prevent large ice build up by deposition
 
     real :: ql_mlt = 2.0e-3 !< max value of cloud water allowed from melted cloud ice
     real :: qs_mlt = 1.0e-6 !< max cloud water due to snow melt
@@ -237,7 +237,7 @@ module gfdl2_cloud_microphys_mod
 
     ! cloud condensate upper bounds: "safety valves" for ql & qi
     real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
-    real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources)
+    real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources) [WMP: never used]
 
     ! critical autoconverion parameters
     real :: qi0_crt = 1.0e-3 !< cloud ice to snow autoconversion threshold
@@ -251,10 +251,10 @@ module gfdl2_cloud_microphys_mod
     ! collection efficiencies for accretion
     !   Dry processes (frozen to frozen: 0.1)
     !   Wet processes (liquid to/from frozen: 1.0)
-    real :: c_psaci = 0.10  !< accretion: cloud ice to snow (was 0.1 in zetac)
+    real :: c_psaci = 0.10  !< accretion: cloud ice to snow
     real :: c_piacr = 1.00  !< accretion: rain to cloud ice: [WMP: never used]
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
-    real :: c_pgacs = 0.10  !< accrection: snow to graupel (was 0.1 in zetac)
+    real :: c_pgacs = 0.10  !< accrection: snow to graupel
     real :: c_pgaci = 0.10  !< accrection: cloud ice to graupel
 
     ! accretion efficiencies
@@ -3307,15 +3307,17 @@ subroutine setupm
     cgacs = pisq * rnzg * rnzs * rhos
     cgacs = cgacs * c_pgacs
 
-    ! act: 1 - 2:racs (s - r) ; 3 - 4:sacr (r - s) ;
-    ! 5 - 6:gacr (r - g) ; 7 - 8:gacs (s - g)
+  ! act: 1 - 2:racs (s - r)
+  !      3 - 4:sacr (r - s)
+  !      5 - 6:gacr (r - g)
+  !      7 - 8:gacs (s - g)
 
     act (1) = pie * rnzs * rhos
     act (2) = pie * rnzr * rhor
-    act (6) = pie * rnzg * rhog
     act (3) = act (2)
     act (4) = act (1)
     act (5) = act (2)
+    act (6) = pie * rnzg * rhog
     act (7) = act (1)
     act (8) = act (6)
 
@@ -3349,9 +3351,9 @@ subroutine setupm
     cgsub (3) = 0.31 * scm3 * gam275 * sqrt (gcon / visk) / act (6) ** 0.6875
     crevp (3) = 0.31 * scm3 * gam290 * sqrt (alin / visk) / act (2) ** 0.725
     cssub (4) = tcond * rvgas
-    cssub (5) = hlts ** 2 * vdifu
     cgsub (4) = cssub (4)
     crevp (4) = cssub (4)
+    cssub (5) = hlts ** 2 * vdifu
     cgsub (5) = cssub (5)
     crevp (5) = hltc ** 2 * vdifu
 
