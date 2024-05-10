@@ -5821,21 +5821,6 @@ end subroutine RUN1
                !   INTDIS(:,:,L) = INTDIS(:,:,L) + DF(:,:,1)*DP(:,:,L)
                !end do
 
-               ! Add surface dissipation to lower 200m
-!               do J=1,JM
-!                  do I=1,IM
-!                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
-!                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
-!                  end do
-!               end do
-!               do J=1,JM
-!                  do I=1,IM
-!                     do L=L200(I,J),LM
-!                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
-!                     end do
-!                  end do
-!               end do
-
                if(associated(KETRB)) then
                   do L=1,LM
                      KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
@@ -5846,6 +5831,22 @@ end subroutine RUN1
                      KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
                   end do
                end if
+
+               ! Add surface dissipation to lower 200m
+               do J=1,JM
+                  do I=1,IM
+                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
+                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
+                  end do
+               end do
+               do J=1,JM
+                  do I=1,IM
+                     do L=L200(I,J),LM
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
+                     end do
+                  end do
+               end do
+
             endif
             if(associated(TOPDIS)) then
                TOPDIS = TOPDIS + (1.0/(MAPL_CP))*FKV*SX**2
