@@ -5822,19 +5822,19 @@ end subroutine RUN1
                !end do
 
                ! Add surface dissipation to lower 200m
-               do J=1,JM
-                  do I=1,IM
-                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
-                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
-                  end do
-               end do
-               do J=1,JM
-                  do I=1,IM
-                     do L=L200(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
-                     end do
-                  end do
-               end do
+!               do J=1,JM
+!                  do I=1,IM
+!                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
+!                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
+!                  end do
+!               end do
+!               do J=1,JM
+!                  do I=1,IM
+!                     do L=L200(I,J),LM
+!                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
+!                     end do
+!                  end do
+!               end do
 
                if(associated(KETRB)) then
                   do L=1,LM
