@@ -1265,7 +1265,8 @@ contains
         qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
 !        print *,'tpert=',2.*sh(i,j)/(zrho*wstar*MAPL_CP)
       else
-
+        tep  = t(i,j,nlev) + 0.4
+        qp   = q(i,j,nlev)
       end if
     else   ! tpfac scales up bstar by inv. ratio of
            ! heat-bubble area to stagnant area
