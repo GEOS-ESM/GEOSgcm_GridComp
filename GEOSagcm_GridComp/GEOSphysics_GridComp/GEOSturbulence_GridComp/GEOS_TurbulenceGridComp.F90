@@ -5821,17 +5821,6 @@ end subroutine RUN1
                !   INTDIS(:,:,L) = INTDIS(:,:,L) + DF(:,:,1)*DP(:,:,L)
                !end do
 
-               if(associated(KETRB)) then
-                  do L=1,LM
-                     KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
-               if(associated(KEINT)) then
-                  do L=1,LM
-                     KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
-
                ! Add surface dissipation to lower 200m
                do J=1,JM
                   do I=1,IM
@@ -5846,6 +5835,17 @@ end subroutine RUN1
                      end do
                   end do
                end do
+
+               if(associated(KETRB)) then
+                  do L=1,LM
+                     KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+                  end do
+               end if
+               if(associated(KEINT)) then
+                  do L=1,LM
+                     KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+                  end do
+               end if
 
             endif
             if(associated(TOPDIS)) then
@@ -5863,8 +5863,8 @@ end subroutine RUN1
              endif
             if(associated(SRFDIS)) then
                SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
-               if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
                if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
+               if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
             endif
          end if
 
