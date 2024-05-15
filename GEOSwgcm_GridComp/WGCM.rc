@@ -1,0 +1,3 @@
+verbose: .true.
+
+wave_model: WW3   # Wave model: UMWM, WW3, JONSWAP, None  

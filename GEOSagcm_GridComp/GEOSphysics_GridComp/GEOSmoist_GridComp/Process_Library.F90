@@ -1,6 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
+!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -31,22 +32,32 @@ module GEOSmoist_Process_Library
     module procedure ICE_FRACTION_1D
     module procedure ICE_FRACTION_SC
   end interface ICE_FRACTION
-  ! In anvil/convective clouds
-  real, parameter :: aT_ICE_ALL = 252.16
-  real, parameter :: aT_ICE_MAX = 268.16
-  real, parameter :: aICEFRPWR  = 2.0
-  ! Over snow/ice SRF_TYPE = 2
-  real, parameter :: iT_ICE_ALL = 236.16
-  real, parameter :: iT_ICE_MAX = 261.16
-  real, parameter :: iICEFRPWR  = 6.0
-  ! Over Land     SRF_TYPE = 1
-  real, parameter :: lT_ICE_ALL = 239.16
-  real, parameter :: lT_ICE_MAX = 261.16
-  real, parameter :: lICEFRPWR  = 2.0
-  ! Over Oceans   SRF_TYPE = 0
-  real, parameter :: oT_ICE_ALL = 238.16
-  real, parameter :: oT_ICE_MAX = 263.16
-  real, parameter :: oICEFRPWR  = 4.0
+  ! ICE_FRACTION constants
+   ! In anvil/convective clouds
+   real, parameter :: aT_ICE_ALL = 252.16
+   real, parameter :: aT_ICE_MAX = 268.16
+   real, parameter :: aICEFRPWR  = 2.0
+   ! Over snow/ice SRF_TYPE = 2
+   real, parameter :: iT_ICE_ALL = 236.16
+   real, parameter :: iT_ICE_MAX = 261.16
+   real, parameter :: iICEFRPWR  = 6.0
+   ! Over Land     SRF_TYPE = 1
+   real, parameter :: lT_ICE_ALL = 239.16
+   real, parameter :: lT_ICE_MAX = 261.16
+   real, parameter :: lICEFRPWR  = 2.0
+   ! Over Oceans   SRF_TYPE = 0
+   real, parameter :: oT_ICE_ALL = 238.16
+   real, parameter :: oT_ICE_MAX = 263.16
+   real, parameter :: oICEFRPWR  = 4.0
+   ! Jason
+   ! In anvil/convective clouds
+   real, parameter :: JaT_ICE_ALL = 245.16
+   real, parameter :: JaT_ICE_MAX = 261.16
+   real, parameter :: JaICEFRPWR  = 2.0
+        ! Over snow/ice
+   real, parameter :: JiT_ICE_ALL = MAPL_TICE-40.0
+   real, parameter :: JiT_ICE_MAX = MAPL_TICE
+   real, parameter :: JiICEFRPWR  = 4.0
 
  ! parameters
   real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
@@ -55,6 +66,10 @@ module GEOSmoist_Process_Library
   real, parameter :: taufrz  =  450.0
   real, parameter :: dQCmax  =  1.e-4
   ! LDRADIUS4
+  ! Jason
+  real, parameter :: abeta = 0.07
+  real, parameter :: r13bbeta = 1./3. - 0.14
+  real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)
   ! Liquid  based on DOI 10.1088/1748-9326/3/4/045021
   real, parameter :: RHO_W   = 1000.0  ! Density of liquid water in kg/m^3
   real, parameter :: Ldiss   = 0.07    ! tunable dispersion effect
@@ -72,12 +87,19 @@ module GEOSmoist_Process_Library
   real, parameter :: alhfbcp = MAPL_ALHF/MAPL_CP
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
+  ! control for order of plumes
+  logical :: SH_MD_DP = .FALSE.
+
+  ! option for cloud liq/ice radii
+  integer :: LIQ_RADII_PARAM = 1
+  integer :: ICE_RADII_PARAM = 1
+
   ! defined to determine CNV_FRACTION
   real    :: CNV_FRACTION_MIN
   real    :: CNV_FRACTION_MAX
   real    :: CNV_FRACTION_EXP
 
- ! Storage of aerosol properties for activation
+  ! Storage of aerosol properties for activation
   type(AerProps), allocatable, dimension (:,:,:) :: AeroProps
 
   ! Tracer Bundle things for convection
@@ -92,9 +114,9 @@ module GEOSmoist_Process_Library
       real                       :: online_cldliq
       real                       :: online_vud
       real                       :: ftemp_threshold
-      logical                    :: use_gcc_washout 
+      logical                    :: use_gcc_washout
       logical                    :: use_gocart
-      logical                    :: is_wetdep  
+      logical                    :: is_wetdep
       character(len=ESMF_MAXSTR) :: QNAME ! Tracer Name
       character(len=ESMF_MAXSTR) :: CNAME ! Component Name
   end type CNV_Tracer_Type
@@ -115,11 +137,13 @@ module GEOSmoist_Process_Library
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
+  public :: SH_MD_DP, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-  public :: sigma 
- 
- 
+  public :: pdf_alpha
+
+  public :: sigma
+
   contains
 
   subroutine CNV_Tracers_Init(TR, RC)
@@ -144,7 +168,7 @@ module GEOSmoist_Process_Library
        call ESMF_AttributeGet  (FIELD, "FriendlyToMOIST",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
        if(isPresent) then
           call ESMF_AttributeGet(FIELD, "FriendlyToMOIST", isFriendly, RC=STATUS); VERIFY_(STATUS)
-          if (isFriendly) FriendlyTracers = FriendlyTracers + 1 
+          if (isFriendly) FriendlyTracers = FriendlyTracers + 1
        end if
     enddo
 
@@ -187,35 +211,35 @@ module GEOSmoist_Process_Library
                if (isPresent) then
                   call ESMF_AttributeGet(FIELD, "SetofHenryLawCts", CNV_Tracers(F)%Vect_Hcts,  RC=STATUS); VERIFY_(STATUS)
                end if
-               ! Additional items, needed for GEOS-Chem washout parameterization 
+               ! Additional items, needed for GEOS-Chem washout parameterization
                !-------------------------------------------------------------------------------------
                ! Defaults
                CNV_Tracers(F)%is_wetdep       = .FALSE.
                CNV_Tracers(F)%use_gcc_washout = .FALSE.
-               CNV_Tracers(F)%KcScal(:)       = 1.0 
-               CNV_Tracers(F)%retfactor       = 1.0 
-               CNV_Tracers(F)%liq_and_gas     = 0.0 
-               CNV_Tracers(F)%convfaci2g      = 0.0 
-               CNV_Tracers(F)%online_cldliq   = 0.0 
-               CNV_Tracers(F)%online_vud      = 1.0 
-               CNV_Tracers(F)%use_gocart      = .FALSE. 
-               CNV_Tracers(F)%ftemp_threshold = -999.0 
-               ! Check if GEOS-Chem washout should be used. Assume this is the case if Kc scale factors are 
-               ! present 
-               call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
-               CNV_Tracers(F)%use_gcc_washout = isPresent 
+               CNV_Tracers(F)%KcScal(:)       = 1.0
+               CNV_Tracers(F)%retfactor       = 1.0
+               CNV_Tracers(F)%liq_and_gas     = 0.0
+               CNV_Tracers(F)%convfaci2g      = 0.0
+               CNV_Tracers(F)%online_cldliq   = 0.0
+               CNV_Tracers(F)%online_vud      = 1.0
+               CNV_Tracers(F)%use_gocart      = .FALSE.
+               CNV_Tracers(F)%ftemp_threshold = -999.0
+               ! Check if GEOS-Chem washout should be used. Assume this is the case if Kc scale factors are
+               ! present
+               call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
+               CNV_Tracers(F)%use_gcc_washout = isPresent
                ! If using GEOS-Chem parameterization, retrieve all necessary parameter
                if ( CNV_Tracers(F)%use_gcc_washout ) then
-                  ! KC scale factors 
-                  call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
+                  ! KC scale factors
+                  call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
-                     call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", CNV_Tracers(F)%KcScal, RC=STATUS); VERIFY_(STATUS) 
+                     call ESMF_AttributeGet(FIELD, "SetofKcScalFactors", CNV_Tracers(F)%KcScal, RC=STATUS); VERIFY_(STATUS)
                   end if
-                  ! is this a wetdep species? 
-                  call ESMF_AttributeGet(FIELD, "IsWetDep", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS) 
+                  ! is this a wetdep species?
+                  call ESMF_AttributeGet(FIELD, "IsWetDep", isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
-                     call ESMF_AttributeGet(FIELD, "IsWetDep", rtmp, RC=STATUS); VERIFY_(STATUS) 
-                     CNV_Tracers(F)%is_wetdep = ( rtmp == 1.0 ) 
+                     call ESMF_AttributeGet(FIELD, "IsWetDep", rtmp, RC=STATUS); VERIFY_(STATUS)
+                     CNV_Tracers(F)%is_wetdep = ( rtmp == 1.0 )
                   end if
                   ! Gas-phase washout parameter for GEOS-Chem
                   call ESMF_AttributeGet (FIELD, "RetentionFactor",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
@@ -241,7 +265,7 @@ module GEOSmoist_Process_Library
                   call ESMF_AttributeGet (FIELD,"UseGOCART",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
                      call ESMF_AttributeGet (FIELD,"UseGOCART", rtmp, RC=STATUS); VERIFY_(STATUS)
-                     CNV_Tracers(F)%use_gocart = ( rtmp == 1.0 ) 
+                     CNV_Tracers(F)%use_gocart = ( rtmp == 1.0 )
                   endif
                   call ESMF_AttributeGet (FIELD,"GOCARTfTempThreshold",isPresent=isPresent, RC=STATUS); VERIFY_(STATUS)
                   if (isPresent) then
@@ -266,7 +290,7 @@ module GEOSmoist_Process_Library
 101            FORMAT(a,' ScavengingFractionPerKm:',1(1x,f3.1))
 102            FORMAT(a,' SetofHenryLawCts:',4(1x,es9.2))
 103            FORMAT(a,' is transported by Moist')
-               ! Additional information for GEOS-Chem washout species 
+               ! Additional information for GEOS-Chem washout species
                !-----------------------------------------------------
                if (CNV_Tracers(F)%use_gcc_washout .and. CNV_Tracers(F)%is_wetdep) then
                    STR_CNV_TRACER = TRIM(QNAME)//": will use GEOS-Chem washout formulation"
@@ -350,32 +374,52 @@ module GEOSmoist_Process_Library
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M
 
-      ! Anvil clouds
-      ! Anvil-Convective sigmoidal function like figure 6(right)
-      ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+#ifdef MODIS_ICE_POLY
+     ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
+      tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
+      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+#else
+     ! Anvil clouds
+     ! Anvil-Convective sigmoidal function like figure 6(right)
+     ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+      if (ICE_RADII_PARAM == 1) then
+        ! Jason formula
+        ICEFRCT_C  = 0.00
+        if ( TEMP <= JaT_ICE_ALL ) then
+           ICEFRCT_C = 1.000
+        else if ( (TEMP > JaT_ICE_ALL) .AND. (TEMP <= JaT_ICE_MAX) ) then
+           ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - JaT_ICE_ALL ) / ( JaT_ICE_MAX - JaT_ICE_ALL ) ) )
+        end if
+      else
         ICEFRCT_C  = 0.00
         if ( TEMP <= aT_ICE_ALL ) then
            ICEFRCT_C = 1.000
         else if ( (TEMP > aT_ICE_ALL) .AND. (TEMP <= aT_ICE_MAX) ) then
            ICEFRCT_C = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
         end if
-        ICEFRCT_C = MIN(ICEFRCT_C,1.00)
-        ICEFRCT_C = MAX(ICEFRCT_C,0.00)
-        ICEFRCT_C = ICEFRCT_C**aICEFRPWR
-#ifdef MODIS_ICE_POLY
-      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
-        tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
-        ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-        ICEFRCT_M = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-#else
-  ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+      end if
+      ICEFRCT_C = MIN(ICEFRCT_C,1.00)
+      ICEFRCT_C = MAX(ICEFRCT_C,0.00)
+      ICEFRCT_C = ICEFRCT_C**aICEFRPWR
+     ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
       if (SRF_TYPE == 2.0) then
         ! Over snow/ice
-        ICEFRCT_M  = 0.00
-        if ( TEMP <= iT_ICE_ALL ) then
-           ICEFRCT_M = 1.000
-        else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+        if (ICE_RADII_PARAM == 1) then
+          ! Jason formula
+          ICEFRCT_M  = 0.00
+          if ( TEMP <= JiT_ICE_ALL ) then
+             ICEFRCT_M = 1.000
+          else if ( (TEMP > JiT_ICE_ALL) .AND. (TEMP <= JiT_ICE_MAX) ) then
+             ICEFRCT_M = 1.00 -  ( TEMP - JiT_ICE_ALL ) / ( JiT_ICE_MAX - JiT_ICE_ALL )
+          end if
+        else
+          ICEFRCT_M  = 0.00
+          if ( TEMP <= iT_ICE_ALL ) then
+             ICEFRCT_M = 1.000
+          else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
+             ICEFRCT_M = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+          end if
         end if
         ICEFRCT_M = MIN(ICEFRCT_M,1.00)
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
@@ -403,9 +447,9 @@ module GEOSmoist_Process_Library
         ICEFRCT_M = MAX(ICEFRCT_M,0.00)
         ICEFRCT_M = ICEFRCT_M**oICEFRPWR
       endif
-#endif
       ! Combine the Convective and MODIS functions
         ICEFRCT  = ICEFRCT_M*(1.0-CNV_FRACTION) + ICEFRCT_C*(CNV_FRACTION)
+#endif
 
   end function ICE_FRACTION_SC
 
@@ -423,7 +467,7 @@ module GEOSmoist_Process_Library
          NI      , &
          QS        )
 
-      real, intent(in   ) :: DT 
+      real, intent(in   ) :: DT
       real, intent(in   ) :: A_EFF
       real, intent(in   ) :: RHCR
       real, intent(in   ) :: PL
@@ -442,11 +486,11 @@ module GEOSmoist_Process_Library
       !!  DelGenio et al (1996, J. Clim., 9, 270-303)    !!
       !!  formulation  (Eq.s 15-17)                      !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      
+
       !   QS  = QSAT(         &
       !               TE    , &
       !               PL      )
-      
+
       ES = 100.* PL * QS  / ( (EPSILON) + (1.0-(EPSILON))*QS )  ! (100's <-^ convert from mbar to Pa)
 
       RHx = MIN( QV/QS , 1.00 )
@@ -460,7 +504,7 @@ module GEOSmoist_Process_Library
       !! so 1000./PR accounts for inc-    !!
       !! reased diffusivity at lower      !!
       !! pressure.                        !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       if ( ( F > 0.) .and. ( QL > 0. ) ) then
          QCm=QL/F
@@ -469,7 +513,7 @@ module GEOSmoist_Process_Library
       end if
 
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,1)
-      
+
       if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
          EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
          EVAP = MIN( EVAP , QL  )
@@ -521,7 +565,7 @@ module GEOSmoist_Process_Library
       !!  DelGenio et al (1996, J. Clim., 9, 270-303)    !!
       !!  formulation  (Eq.s 15-17)                      !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      
+
       !   QS  = QSAT(         &
       !               TE    , &
       !               PL      )
@@ -539,7 +583,7 @@ module GEOSmoist_Process_Library
       !! so 1000./PR accounts for inc-    !!
       !! reased diffusivity at lower      !!
       !! pressure.                        !!
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       if ( ( F > 0.) .and. ( QI > 0. ) ) then
          QCm=QI/F
@@ -548,7 +592,7 @@ module GEOSmoist_Process_Library
       end if
 
       RADIUS = LDRADIUS4(PL,TE,QCm,NL,NI,2)
-      
+
       if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
          SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
          SUBL = MIN( SUBL , QI  )
@@ -575,39 +619,52 @@ module GEOSmoist_Process_Library
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: LIQUID=1, ICE=2
        REAL :: NNX,RHO,BB,WC
+       REAL :: TC,ZFSR,AA
 
        !- air density (kg/m^3)
        RHO = (100.*PL) / (MAPL_RGAS*TE )
        IF(ITYPE == LIQUID) THEN
 
-       !- liquid cloud effective radius ----- 
+       !- liquid cloud effective radius -----
           !- liquid water content
           WC = 1.e3*RHO*QC ! air density [g/m3] * liquid cloud mixing ratio [kg/kg]
           !- cloud drop number concentration
           !- from the aerosol model + ....
           NNX = max(NNL*1.e-6, 10.0)
           !- radius in meters
-          !- [liu&daum, 2000 and 2005. liu et al 2008]
-          RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+          if (LIQ_RADII_PARAM == 1) then
+            !- Jason Version
+            RADIUS= MIN(60.e-6,MAX(2.5e-6, 1.e-6*bx*(WC/NNX)**r13bbeta*abeta*6.92))
+          else
+            !- [liu&daum, 2000 and 2005. liu et al 2008]
+            RADIUS = MIN(60.e-6,MAX(2.5e-6, 1.e-6*Lbx*(WC/NNX)**Lbe))
+          endif
 
        ELSEIF(ITYPE == ICE) THEN
 
-       !- ice cloud effective radius ----- 
+       !- ice cloud effective radius -----
           !- ice water content
           WC = 1.e3*RHO*QC ! air density [g/m3] * ice cloud mixing ratio [kg/kg]
-          !- cloud ice number concentration #/m3
-          !- from the aerosol model + ....
-          NNX = NNI*1.e-6 ! #/m3
           !- radius in meters
-          !------ice cloud effective radius ----- [klaus wyser, 1998]
-          if(TE>MAPL_TICE .or. QC <=0.) then
-            BB = -2.
+          if (ICE_RADII_PARAM == 1) then
+            !------ice cloud effective radius ----- [klaus wyser, 1998]
+            if(TE>MAPL_TICE .or. QC <=0.) then
+              BB = -2.
+            else
+              BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+            endif
+            BB     = MIN((MAX(BB,-6.)),-2.)
+            RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
           else
-            BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+            !------ice cloud effective radius ----- [Sun, 2001]
+            TC = TE - MAPL_TICE
+            ZFSR = 1.2351 + 0.0105 * TC
+            AA = 45.8966 * (WC**0.2214)
+            BB = 0.79570 * (WC**0.2535)
+            RADIUS = ZFSR * (AA + BB * (TE - 83.15))
+            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS*0.64952))
           endif
-          BB     = MIN((MAX(BB,-6.)),-2.)
-          RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-          RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
@@ -619,8 +676,8 @@ module GEOSmoist_Process_Library
   subroutine BUOYANCY2( IM, JM, LM, T, Q, QS, DQS, DZ, ZLO, PLO, PS, SBCAPE, MLCAPE, MUCAPE, &
                         SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
 
-    ! Computes surface-based (SB), mixed-layer (ML) and most unstable (MU) versions 
-    ! of CAPE and CIN. 
+    ! Computes surface-based (SB), mixed-layer (ML) and most unstable (MU) versions
+    ! of CAPE and CIN.
 
     integer,                intent(in)  :: IM, JM, LM
     real, dimension(:,:,:), intent(in)  :: T, Q, QS, DQS, DZ, ZLO, PLO
@@ -646,8 +703,8 @@ module GEOSmoist_Process_Library
        tmp1 = 0.
        Lev0 = LM
        do L = LM,1,-1
-         where (PS-PLO(:,:,L).lt.90.) 
-            MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L) 
+         where (PS-PLO(:,:,L).lt.90.)
+            MSEp = MSEp + (T(:,:,L) + gravbcp*ZLO(:,:,L) + alhlbcp*Q(:,:,L))*DZ(:,:,L)
             Qp   = Qp   + Q(:,:,L)*DZ(:,:,L)
             tmp1 = tmp1 + DZ(:,:,L)
             Lev0 = L
@@ -660,7 +717,7 @@ module GEOSmoist_Process_Library
        end where
        do I = 1,IM
           do J = 1,JM
-             call RETURN_CAPE_CIN( ZLO(I,J,1:Lev0(I,J)), PLO(I,J,1:Lev0(I,J)), DZ(I,J,1:Lev0(I,J)),      & 
+             call RETURN_CAPE_CIN( ZLO(I,J,1:Lev0(I,J)), PLO(I,J,1:Lev0(I,J)), DZ(I,J,1:Lev0(I,J)),      &
                                    MSEp(I,J), Qp(I,J), Tve(I,J,1:Lev0(I,J)), QS(I,J,1:Lev0(I,J)), DQS(I,J,1:Lev0(I,J)),       &
                                    MLCAPE(I,J), MLCIN(I,J), BYNCY(I,J,1:Lev0(I,J)), LFC(I,J), LNB(I,J) )
           end do
@@ -684,7 +741,7 @@ module GEOSmoist_Process_Library
                 if (PS(I,J)-PLO(I,J,L).gt.255.) exit
                 MSEp(I,J) = T(I,J,L) + gravbcp*ZLO(I,J,L) + alhlbcp*Q(I,J,L)
                 Qp(I,J)   = Q(I,J,L)
-                call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      & 
+                call RETURN_CAPE_CIN( ZLO(I,J,1:L), PLO(I,J,1:L), DZ(I,J,1:L),      &
                                       MSEp(I,J), Qp(I,J), Tve(I,J,1:L), QS(I,J,1:L), DQS(I,J,1:L),       &
                                       tmp1(I,J), tmp2(I,J), BYNCY(I,J,1:L), LFC(I,J), LNB(I,J) )
                 if (tmp1(I,J) .gt. MUCAPE(I,J)) then
@@ -693,7 +750,7 @@ module GEOSmoist_Process_Library
                 end if
              end do
           end do
-       end do        
+       end do
 
        where (MUCAPE.le.0.)
           MUCAPE = MAPL_UNDEF
@@ -706,7 +763,7 @@ module GEOSmoist_Process_Library
     Qp   = Q(:,:,LM)                                            ! parcel specific humidity
     do I = 1,IM
        do J = 1,JM
-          call RETURN_CAPE_CIN( ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:),      & 
+          call RETURN_CAPE_CIN( ZLO(I,J,:), PLO(I,J,:), DZ(I,J,:),      &
                                 MSEp(I,J), Qp(I,J), Tve(I,J,:), QS(I,J,:), DQS(I,J,:),       &
                                 SBCAPE(I,J), SBCIN(I,J), BYNCY(I,J,:), LFC(I,J), LNB(I,J) )
        end do
@@ -746,12 +803,12 @@ module GEOSmoist_Process_Library
     Tp = MSEp - gravbcp*ZLO(LM) - alhlbcp*Qp  ! initial parcel temp at source level LM
     Tlcl = find_tlcl( Tp, 100.*Qp/QSATE(LM) )
     aboveLCL = (Tp.lt.Tlcl)
-  
+
     do L = LM-1,1,-1   ! start at level above source air
 
-      ! determine parcel Qp, Tp      
+      ! determine parcel Qp, Tp
       if ( .not. aboveLCL ) then
-         Tp = Tp - gravbcp*(ZLO(L)-ZLO(L+1))                ! new parcel temperature w/o condensation 
+         Tp = Tp - gravbcp*(ZLO(L)-ZLO(L+1))                ! new parcel temperature w/o condensation
          if (Tp.lt.Tlcl) then
             Tp = Tp + gravbcp*(ZLO(L)-ZLO(L+1))             ! if cross LCL, revert Tp and go to aboveLCL below
             aboveLCL = .true.
@@ -789,7 +846,7 @@ module GEOSmoist_Process_Library
              KLFC = L
              aboveLFC = .true.
           end if
-          if (aboveLFC .and. BYNCY(L).lt.0. ) then 
+          if (aboveLFC .and. BYNCY(L).lt.0. ) then
              KLNB = L
              exit
           end if
@@ -860,29 +917,29 @@ module GEOSmoist_Process_Library
   end subroutine BUOYANCY
 
    subroutine RADCOUPLE(  &
-         TE,              & 
-         PL,              & 
-         CF,              & 
-         AF,              & 
+         TE,              &
+         PL,              &
+         CF,              &
+         AF,              &
          QV,              &
-         QClLS,           & 
-         QCiLS,           & 
-         QClAN,           & 
-         QCiAN,           & 
-         QRN_ALL,         & 
-         QSN_ALL,         & 
+         QClLS,           &
+         QCiLS,           &
+         QClAN,           &
+         QCiAN,           &
+         QRN_ALL,         &
+         QSN_ALL,         &
          QGR_ALL,         &
          NL,              &
          NI,              &
          RAD_QV,          &
-         RAD_QL,          &  
-         RAD_QI,          & 
-         RAD_QR,          & 
-         RAD_QS,          & 
+         RAD_QL,          &
+         RAD_QI,          &
+         RAD_QR,          &
+         RAD_QS,          &
          RAD_QG,          &
-         RAD_CF,          & 
-         RAD_RL,          & 
-         RAD_RI,          & 
+         RAD_CF,          &
+         RAD_RL,          &
+         RAD_RI,          &
          FAC_RL, MIN_RL, MAX_RL, &
          FAC_RI, MIN_RI, MAX_RI)
 
@@ -896,7 +953,7 @@ module GEOSmoist_Process_Library
 
       ! Limits on Radii needed to ensure
       ! correct behavior of cloud optical
-      ! properties currently calculated in 
+      ! properties currently calculated in
       ! sorad and irrad (1e-6 m = micron)
 
       ! water vapor
@@ -951,13 +1008,13 @@ module GEOSmoist_Process_Library
       RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! LIQUID RADII
-      !-BRAMS formulation     
+      !-BRAMS formulation
       RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NL,NI,1)
      ! apply limits
       RAD_RL = MAX( MIN_RL, MIN(RAD_RL*FAC_RL, MAX_RL) )
 
     ! ICE RADII
-     !-BRAMS formulation  
+     !-BRAMS formulation
       RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NL,NI,2)
     ! apply limits
       RAD_RI = MAX( MIN_RI, MIN(RAD_RI*FAC_RI, MAX_RI) )
@@ -993,29 +1050,29 @@ module GEOSmoist_Process_Library
          QLC = 0.
          QIC = 0.
       end if
-      
+
       ! LS LIQUID too small
       if ( QLC  < 1.E-8 ) then
-         QV = QV + QLC 
+         QV = QV + QLC
          TE = TE - (alhlbcp)*QLC
          QLC = 0.
       end if
       ! LS ICE too small
       if ( QIC  < 1.E-8 ) then
-         QV = QV + QIC 
+         QV = QV + QIC
          TE = TE - (alhsbcp)*QIC
          QIC = 0.
       end if
 
       ! Anvil LIQUID too small
       if ( QLA  < 1.E-8 ) then
-         QV = QV + QLA 
+         QV = QV + QLA
          TE = TE - (alhlbcp)*QLA
          QLA = 0.
       end if
       ! Anvil ICE too small
       if ( QIA  < 1.E-8 ) then
-         QV = QV + QIA 
+         QV = QV + QIA
          TE = TE - (alhsbcp)*QIA
          QIA = 0.
       end if
@@ -1049,7 +1106,7 @@ module GEOSmoist_Process_Library
          QIA,&
          AF, &
          NL, &
-         NI, & 
+         NI, &
          QR, &
          QS, &
          QG, &
@@ -1057,18 +1114,18 @@ module GEOSmoist_Process_Library
          NS, &
          NG)
 
-      real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG 
+      real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG
       real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
-    
+
       real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
       real, parameter :: nmin  = 100.0
-  
 
 
-    
+
+
       ! Fix if Anvil cloud fraction too small
-      where (AF < cfmin) 
+      where (AF < cfmin)
          QV  = QV + QLA + QIA
          TE  = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
          AF  = 0.
@@ -1077,7 +1134,7 @@ module GEOSmoist_Process_Library
       end where
 
       ! Fix if LS cloud fraction too small
-      where ( CF < cfmin) 
+      where ( CF < cfmin)
          QV = QV + QLC + QIC
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLC - (MAPL_ALHS/MAPL_CP)*QIC
          CF  = 0.
@@ -1087,32 +1144,32 @@ module GEOSmoist_Process_Library
 
       ! LS LIQUID too small
       where ( QLC  < qmin )
-         QV = QV + QLC 
+         QV = QV + QLC
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLC
          QLC = 0.
       end where
       ! LS ICE too small
       where ( QIC  < qmin)
-         QV = QV + QIC 
+         QV = QV + QIC
          TE = TE - (MAPL_ALHS/MAPL_CP)*QIC
          QIC = 0.
       end where
 
       ! Anvil LIQUID too small
       where ( QLA  < qmin )
-         QV = QV + QLA 
+         QV = QV + QLA
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLA
          QLA = 0.
       end where
       ! Anvil ICE too small
-      where ( QIA  < qmin) 
-         QV = QV + QIA 
+      where ( QIA  < qmin)
+         QV = QV + QIA
          TE = TE - (MAPL_ALHS/MAPL_CP)*QIA
          QIA = 0.
       end where
 
       ! Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
-      where ( ( QLA + QIA ) < qmin) 
+      where ( ( QLA + QIA ) < qmin)
          QV = QV + QLA + QIA
          TE = TE - (MAPL_ALHL/MAPL_CP)*QLA - (MAPL_ALHS/MAPL_CP)*QIA
          AF  = 0.
@@ -1127,26 +1184,26 @@ module GEOSmoist_Process_Library
          QLC = 0.
          QIC = 0.
       end where
-      
-      
-      
-      !make sure no negative number concentrations are passed 
-      !and that N goes to minimum defaults in the microphysics when mass is too small 
-      
+
+
+
+      !make sure no negative number concentrations are passed
+      !and that N goes to minimum defaults in the microphysics when mass is too small
+
       NL =  max(NL, 0.)
       NI =  max(NI, 0.)
       NR =  max(NR, 0.)
       NS =  max(NS, 0.)
       NG =  max(NG, 0.)
-      
+
       where ((QLA+QLC) .le. qmin) NL = 0.0
 
       where ((QIA+QIC) .le. qmin) NI = 0.0
 
       where (QR .le. qmin) NR = 0.
-      
+
       where (QS .le. qmin) NS = 0.
-      
+
       where (QG .le. qmin) NG = 0.
 
    end subroutine fix_up_clouds_2M
@@ -1274,9 +1331,8 @@ module GEOSmoist_Process_Library
 ! References in the comments in this code are given to                   !
 ! the Appendix A of Pete Bogenschutz's dissertation.                     !
 !------------------------------------------------------------------------!
- subroutine partition_dblgss( dt,           &  ! IN
-                              fQi,          &
-                              tabs,         &  
+ subroutine partition_dblgss( fQi,          &  ! IN
+                              tabs,         &
                               qwv,          &
                               qc,           &  ! OUT
 !                              qi,           &
@@ -1330,7 +1386,7 @@ module GEOSmoist_Process_Library
  use MAPL_SatVaporMod,  only: MAPL_EQsat
 
    real, intent(in   )  :: fQi         ! ice fraction
-   real, intent(in   )  :: DT          ! timestep [s]
+!   real, intent(in   )  :: DT          ! timestep [s]
    real, intent(in   )  :: tabs        ! absolute temperature [K]
    real, intent(in   )  :: qwv         ! specific humidity [kg kg-1]
    real, intent(  out)  :: qc          ! liquid+ice condensate [kg kg-1]
@@ -1414,7 +1470,7 @@ module GEOSmoist_Process_Library
    real, parameter :: epsv=MAPL_H2OMW/MAPL_AIRMW
 
    real, parameter :: use_aterm_memory = 1.
-   real, parameter :: tauskew = 2400. 
+   real, parameter :: tauskew = 2400.
 
 ! define conserved variables
    gamaz = gocp * zl
@@ -1444,7 +1500,7 @@ module GEOSmoist_Process_Library
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
           else
-            sqrtthl  = 0.0
+            sqrtthl  = 1e-3
             skew_thl = 0.
           endif
           if (qwsec > 0.0) then
@@ -1480,7 +1536,7 @@ module GEOSmoist_Process_Library
 !           pdf_a = max(0.,min(0.5,mffrc))
 !         end if
 
-         if (pdf_a>1e-3) then
+         if (pdf_a>1e-3 .and. pdf_a<0.5) then
            aterm = pdf_a
          else
            aterm = 0.5
@@ -1596,21 +1652,24 @@ module GEOSmoist_Process_Library
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.eq.0.) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec
               qw2_2     = qwsec
               sqrtqw2_1 = sqrt(qw2_1)
               sqrtqw2_2 = sqrt(qw2_2)
+
             else
 !              qw1_1     = total_water
 !              qw1_2     = total_water
 !              qw2_1     = qwsec
 !              qw2_2     = qwsec
-              wrk1 = min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+!              wrk1 = max(min(10.,skew_qw*sqrtqt**3)   ! third moment qt
+              wrk1 = qt3
               qw1_1 = total_water + (wrk1/(2.*aterm-aterm**3/onema**2))**(1./3.)
               qw1_2 = (total_water -aterm*qw1_1)/onema
+
               qw2_1 = qwsec - min(0.5*qwsec,max(0.,(aterm/onema)*(qw1_1-total_water)**2))
               qw2_2 = qw2_1
               sqrtqw2_1 = sqrt(qw2_1)
@@ -1621,7 +1680,7 @@ module GEOSmoist_Process_Library
 
 !            corrtest2 = max(-1.0,min(1.0,wqtntrgs/(sqrtw2*sqrtqt)))
             corrtest2 = max(-1.0,min(1.0,0.5*wqwsec/(sqrtw2*sqrtqt)))
-
+          
             qw1_1 = - corrtest2 / w1_2            ! A.7
             qw1_2 = - corrtest2 / w1_1            ! A.8
 
@@ -1717,7 +1776,7 @@ module GEOSmoist_Process_Library
 
 ! Now compute qs
 
-! I assume that temperature difference is small between plumes, and 
+! I assume that temperature difference is small between plumes, and
 ! om1=om2=ice_fraction() from hystpdf
           esval1_1 = 0.
           esval1_2 = 0.
@@ -1728,18 +1787,18 @@ module GEOSmoist_Process_Library
 
 ! Partition based on temperature for the first plume
 
-          IF (Tl1_1 >= tbgmax) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1)
-            lstarn1  = lcond
-          ELSE IF (Tl1_1 < tbgmin) THEN
-            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            lstarn1  = lsub
-          ELSE
+!          IF (Tl1_1 >= tbgmax) THEN
+!            esval1_1 = MAPL_EQsat(Tl1_1)
+!            lstarn1  = lcond
+!          ELSE IF (Tl1_1 < tbgmin) THEN
+!            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
+!            lstarn1  = lsub
+!          ELSE
             esval1_1 = MAPL_EQsat(Tl1_1)
             esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-            om1      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))  ! may be inconsistent with hystpdf ice fraction
+            om1      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))  ! may be inconsistent with hystpdf ice fraction
             lstarn1  = lcond + (1.-om1)*lfus
-          ENDIF
+!          ENDIF
 
           ! this is qs evaluated at Tl
           qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
@@ -1755,18 +1814,18 @@ module GEOSmoist_Process_Library
             beta2 = beta1
           ELSE
 
-            IF (Tl1_2 < tbgmin) THEN
-              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-              lstarn2  = lsub
-            ELSE IF (Tl1_2 >= tbgmax) THEN
-              esval1_2 = MAPL_EQsat(Tl1_2)
-              lstarn2  = lcond
-            ELSE
+!            IF (Tl1_2 < tbgmin) THEN
+!              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
+!              lstarn2  = lsub
+!            ELSE IF (Tl1_2 >= tbgmax) THEN
+!              esval1_2 = MAPL_EQsat(Tl1_2)
+!              lstarn2  = lcond
+!            ELSE
               esval1_2 = MAPL_EQsat(Tl1_2)
               esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-              om2      = 1.-fQi !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
+              om2      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
               lstarn2  = lcond + (1.-om2)*lfus
-            ENDIF
+!            ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
                   + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
@@ -1846,18 +1905,13 @@ module GEOSmoist_Process_Library
           qn1 = min(qn1,qw1_1)
           qn2 = min(qn2,qw1_2)
 
-!          ql1 = qn1*om1
-!          ql2 = qn2*om2
+          ql1 = qn1*om1
+          ql2 = qn2*om2
 
-!          qi1 = qn1 - ql1
-!          qi2 = qn2 - ql2
+          qi1 = qn1 - ql1
+          qi2 = qn2 - ql2
 
           qc = min(max(0.0, aterm*qn1 + onema*qn2), total_water)
-!          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-!          diag_qi = diag_qn - diag_ql
-
-!!! temporary
-!          if (abs(qc-diag_qn)>0.001) print *,'SHOC: t=',tabs,' s1=',s1,' qn1=',qn1,' qs1=',qs1,' qt1=',qw1_1
 
 
 ! Update temperature variable based on diagnosed cloud properties
@@ -1891,7 +1945,6 @@ module GEOSmoist_Process_Library
 
          wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
          wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
-
 
 ! Compute the liquid water flux
           wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
@@ -1933,7 +1986,7 @@ module GEOSmoist_Process_Library
          WQT         , &
          HL2         , &
          QT2         , &
-         HLQT        , & 
+         HLQT        , &
          W3          , &
          W2          , &
          MFQT3       , &
@@ -1960,7 +2013,8 @@ module GEOSmoist_Process_Library
          WTHV2,      &
          WQL,        &
          needs_preexisting, &
-         USE_BERGERON )
+         USE_BERGERON, &
+         SC_ICE )
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: PDFSHAPE
@@ -1976,18 +2030,19 @@ module GEOSmoist_Process_Library
       real, intent(out)   :: WTHV2, WQL
       real, intent(out)   :: PDFITERS
       logical, intent(in) :: needs_preexisting, USE_BERGERON
+      real, optional , intent(in) :: SC_ICE
 
       ! internal arrays
       real :: TAU,HL
-      real :: QT, sigmaqt1, sigmaqt2
+      real :: QT, sigmaqt1, sigmaqt2, scice
 
       real :: QSx,DQsx,QS,DQs
 
       real :: TEp, QSp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
-      real :: QAo, QAx, QCx, QC, fQi
-      real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv 
+      real :: QAo, QAx, QCx, QC, fQi, QCi, qsnx
+      real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv
 
       real :: tmpARR
       real :: alhxbcp, DQCALL
@@ -1996,14 +2051,18 @@ module GEOSmoist_Process_Library
 
       character*(10) :: Iam='Process_Library:hystpdf'
 
+      scice =  1.0
+
+
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
 
-                      QAx = 0.0
-      if (CLCN > 0.0) QAx = (QLCN+QICN)/CLCN
+                            QAx = 0.0
+      if (CLCN > tiny(0.0)) QAx = (QLCN+QICN)/CLCN
 
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
+      QCi = (QILS)*tmpARR
       TEn = TE
 
       DQS = GEOS_DQSAT( TEn, PL, QSAT=QSx )
@@ -2014,11 +2073,18 @@ module GEOSmoist_Process_Library
       nmax = 20
       do n=1,nmax
 
-         QVp = QVn 
+         QVp = QVn
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         if (PDFSHAPE.lt.5) DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+         DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
+
+         if(present(SC_ICE)) then
+         	scice = min(max(SC_ICE, 1.0), 1.7)
+            qsnx= Qsn*scice !
+            if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
+         end if
+
          if(PDFSHAPE.lt.2) then  ! top-hat
             sigmaqt1  = ALPHA*QSn
             sigmaqt2  = ALPHA*QSn
@@ -2043,8 +2109,7 @@ module GEOSmoist_Process_Library
            alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
            HL = TEn + gravbcp*ZL - alhxbcp*QCn
 
-           call partition_dblgss(DT/nmax,      &
-                                 fQi,          &
+           call partition_dblgss(fQi,          &
                                  TEn,          &
                                  QVn,          &
                                  QCn,          &
@@ -2057,7 +2122,7 @@ module GEOSmoist_Process_Library
                                  WQT,          &
                                  HL2,          &
                                  QT2,          &
-                                 HLQT,         & 
+                                 HLQT,         &
                                  W3,           &
                                  W2,           &
                                  MFQT3,        &
@@ -2104,7 +2169,7 @@ module GEOSmoist_Process_Library
                  NLv              , &
                  NIv              , &
                  DQCALL           , &
-                 fQi              , & 
+                 fQi              , &
                  CNVFRC,SRF_TYPE  , &
                  needs_preexisting)
          ELSE
@@ -2112,7 +2177,7 @@ module GEOSmoist_Process_Library
          ENDIF
 
          alhxbcp = (1.0-fQi)*alhlbcp + fQi*alhsbcp
-         if(PDFSHAPE.eq.1) then 
+         if(PDFSHAPE.eq.1) then
             QCn = QCp +     (QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
          elseif(PDFSHAPE.eq.2) then
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
@@ -2133,22 +2198,22 @@ module GEOSmoist_Process_Library
                    +      fQi *(alhsbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN )
 
          PDFITERS = n
-         if (abs(TEn - TEp) .lt. 0.00001) exit 
+         if (abs(TEn - TEp) .lt. 0.00001) exit
 
       enddo ! qsat iteration
 
       if ( CLCN < 1.0 ) then
          CLLS = CFn * (1.-CLCN)
          QCn  = QCn * (1.-CLCN)
-         QAo  = QAo *     CLCN  
+         QAo  = QAo *     CLCN
       else
-         ! Special case CLCN=1, i.e., box filled with anvil. 
+         ! Special case CLCN=1, i.e., box filled with anvil.
          !   - Note: no guarantee QV_box > QS_box
          CLLS = 0.              ! Remove any LS cloud
          QAo  = QLCN+QICN+QLLS+QILS  ! Add all LS condensate to anvil type
-         QCn  = 0.              ! Remove same from new LS   
+         QCn  = 0.              ! Remove same from new LS
          QT   = QAo + QV        ! Update total water
-         ! Now set anvil condensate to any excess of total water 
+         ! Now set anvil condensate to any excess of total water
          ! over QSx (saturation value at top)
          QAo = MAX( QT - QSx, 0. )
       end if
@@ -2194,7 +2259,7 @@ module GEOSmoist_Process_Library
 
       ! We need to take care of situations where QS moves past QA
       ! during QSAT iteration. This should be only when QA/AF is small
-      ! to begin with. Effect is to make QAo negative. So, we 
+      ! to begin with. Effect is to make QAo negative. So, we
       ! "evaporate" offending QA's
       !
       ! We get rid of anvil fraction also, although strictly
@@ -2209,6 +2274,51 @@ module GEOSmoist_Process_Library
 
    end subroutine hystpdf
 
+!==========Estimate RHcrit========================
+!==============================
+ subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, EIS, RHC_OPTION)
+
+      real,    intent(in)  :: PP, P_LM !mbar
+      real,    intent(out) :: ALPHA
+      real,    intent(in)  :: FRLAND
+      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS
+      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
+      real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
+      real :: dw_ocean = 0.10 !< base value for ocean
+      real :: sloperhcrit =20.
+      real :: TURNRHCRIT_UPPER = 300.
+      real ::  aux1, aux2, maxalpha
+
+      IF (RHC_OPTION .lt. 1) then
+
+          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
+          !Reformulated by Donifan Barahona
+
+          maxalpha=1.0-MINRHCRIT
+          aux1 = min(max((pp- TURNRHCRIT)/sloperhcrit, -20.0), 20.0)
+          aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
+
+          if (FRLAND > 0.05)  then
+             aux1=1.0
+          else
+             aux1 = 1.0/(1.0+exp(aux1)) !this function reproduces the old Sligo function.
+          end if
+
+          !aux2= 1.0/(1.0+exp(aux2)) !this function would reverse the profile P< TURNRHCRIT_UPPER
+           aux2=1.0
+           ALPHA  = min(maxalpha*aux1*aux2, 0.3)
+
+       ELSE
+           ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
+             if (EIS > 5.0) then ! Stable
+                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
+             else ! Unstable
+                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
+             endif
+       END IF
+
+   end subroutine pdf_alpha
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2220,24 +2330,24 @@ module GEOSmoist_Process_Library
          QILS             , &
          QICN             , &
          QLLS             , &
-         QLCN             , &     
+         QLCN             , &
          CF               , &
          AF               , &
          NL               , &
-         NI               , & 
+         NI               , &
          DQALL            , &
          FQI              , &
          CNVFRC, SRF_TYPE , &
          needs_preexisting )
 
       real ,  intent(in   )    :: DTIME, PL, TE       !, RHCR
-      real ,  intent(inout   )    ::  DQALL 
+      real ,  intent(inout   )    ::  DQALL
       real ,  intent(in)    :: QV, QLLS, QLCN, QICN, QILS
       real ,  intent(in)    :: CF, AF, NL, NI
       real, intent (out) :: FQI
       real, intent(in) :: CNVFRC, SRF_TYPE
       logical, intent (in)  :: needs_preexisting
-      
+
       real  :: DC, TEFF,QCm,DEP, &
             QC, QS, RHCR, DQSL, DQSI, QI, TC, &
             DIFF, DENAIR, DENICE, AUX, &
@@ -2245,15 +2355,15 @@ module GEOSmoist_Process_Library
             QVINC, QSLIQ, CFALL,  new_QI, new_QL, &
             QSICE, fQI_0, QS_0, DQS_0, FQA, NIX
 
-      DIFF = 0.0     
-      DEP  = 0.0 
-      QI   = QILS + QICN !neccesary because NI is for convective and large scale 
+      DIFF = 0.0
+      DEP  = 0.0
+      QI   = QILS + QICN !neccesary because NI is for convective and large scale
       QL   = QLLS + QLCN
       QTOT = QI+QL
       FQA  = 0.0
       if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
       NIX  = (1.0-FQA)*NI
- 
+
       DQALL = DQALL/DTIME
       CFALL = min(CF+AF, 1.0)
       TC    = TE-MAPL_TICE
@@ -2266,38 +2376,38 @@ module GEOSmoist_Process_Library
          FQI   = 1.0
       else !mixed phase cloud
          FQI   = 0.0
-         if (QILS .le. 0.0) then 
+         if (QILS .le. 0.0) then
               if (needs_preexisting) then
               ! new 0518 this line ensures that only preexisting ice can grow by deposition.
-              ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
+              ! Only works if explicit ice nucleation is available (2 moment muphysics and up)
               else
                   fQi = ice_fraction( TE, CNVFRC, SRF_TYPE )
-              end if                      
-              return 
-         end if 
-         
-         QVINC =  QV 
+              end if
+              return
+         end if
+
+         QVINC =  QV
          QSLIQ = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
          QSICE = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
-         QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation 
+         QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation
 
-         ! Calculate deposition onto preexisting ice 
+         ! Calculate deposition onto preexisting ice
 
          DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
          DENAIR=PL*100.0/MAPL_RGAS/TE
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
 
-         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then 
-            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution 
+         if  ((NIX .gt. 1.0) .and. (QILS .gt. 1.0e-10)) then
+            DC=max((QILS/(NIX*DENICE*MAPL_PI))**(0.333), 20.0e-6) !Assumme monodisperse size dsitribution
          else
             DC=20.0e-6
          end if
 
-         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale 
+         TEFF= NIX*DENAIR*2.0*MAPL_PI*DIFF*DC/LHcorr ! 1/Dep time scale
 
          DEP=0.0
-         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then 
+         if ((TEFF .gt. 0.0) .and. (QILS .gt. 1.0e-14)) then
             AUX=max(min(DTIME*TEFF, 20.0), 0.0)
             DEP=(QVINC-QSICE)*(1.0-EXP(-AUX))/DTIME
          end if
@@ -2308,21 +2418,21 @@ module GEOSmoist_Process_Library
          FQI = 0.0
          !Partition DQALL accounting for Bergeron-Findensen process
          if  (DQALL .ge. 0.0) then !net condensation. Note: do not allow bergeron with QLCN
-            if (DEP .gt. 0.0) then 
+            if (DEP .gt. 0.0) then
                DQI = min(DEP, DQALL + QLLS/DTIME)
                DQL = DQALL - DQI
             else
                DQL = DQALL ! could happen because the PDF allows condensation in subsaturated conditions
-               DQI = 0.0 
+               DQI = 0.0
             end if
          end if
-         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP   
-            DQL = max(DQALL, -QLLS/DTIME)   
-            DQI = max(DQALL - DQL, -QILS/DTIME)        
+         if  (DQALL .lt. 0.0) then  !net evaporation. Water evaporates first regaardless of DEP
+            DQL = max(DQALL, -QLLS/DTIME)
+            DQI = max(DQALL - DQL, -QILS/DTIME)
          end if
          if (DQALL .ne. 0.0)  FQI=max(min(DQI/DQALL, 1.0), 0.0)
 
-      end if !=====  
+      end if !=====
 
    end subroutine Bergeron_Partition
 
@@ -2588,7 +2698,7 @@ module GEOSmoist_Process_Library
             SNOW = TPREC
          END WHERE
          ICE = 0.0
-         WHERE ( (PTYPE == 2) .OR. (PTYPE == 1.5) ) 
+         WHERE ( (PTYPE == 2) .OR. (PTYPE == 1.5) )
             ICE = TPREC
          END WHERE
          FRZR = 0.0
@@ -2724,10 +2834,10 @@ module GEOSmoist_Process_Library
   end subroutine FIND_EIS
 
   FUNCTION FIND_TLCL ( tk, rh ) result( tlcl )
-  ! Description:                                                            
+  ! Description:
   !    This function calculates the temperature of a parcel of air would have
-  !    if lifed dry adiabatically to it's lifting condensation level (lcl).  
-  ! References:                                                              
+  !    if lifed dry adiabatically to it's lifting condensation level (lcl).
+  ! References:
   !    Bolton (1980), Monthly Weather Review, pg. 1048, Eq. 22
     IMPLICIT NONE
     REAL, INTENT ( IN ) :: tK   !~ Temperature ( K )
@@ -2737,7 +2847,7 @@ module GEOSmoist_Process_Library
     term1 = 1.0 / ( tK - 55.0 )
     term2 = ( LOG (max(0.1,rh)/100.0)  / 2840.0 )
     denom = term1 - term2
-    tlcl = ( 1.0 / denom ) + 55.0 
+    tlcl = ( 1.0 / denom ) + 55.0
   END FUNCTION FIND_TLCL
 
   function FIND_KLCL( T, Q, PL, IM, JM, LM ) result( KLCL )
@@ -2917,8 +3027,8 @@ module GEOSmoist_Process_Library
   end subroutine gw_prof
 
 
-!+---+-----------------------------------------------------------------+ 
-!+---+-----------------------------------------------------------------+  
+!+---+-----------------------------------------------------------------+
+!+---+-----------------------------------------------------------------+
 !----- module_mp_thompson_make_number_concentrations
 !- Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
 !-----------------------------------------------------------------------
@@ -2931,8 +3041,8 @@ module GEOSmoist_Process_Library
 !      make_RainNumber    is rain number mixing ratio, units of number per kg of m3
 !      qnwfa              is number of water-friendly aerosols in number per kg
 
-!+---+-----------------------------------------------------------------+ 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
+!+---+-----------------------------------------------------------------+
       elemental real function make_IceNumber (Q_ice, temp)
 
       implicit none
@@ -2943,12 +3053,12 @@ module GEOSmoist_Process_Library
 
       double precision lambda
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 !..Table of lookup values of radiative effective radius of ice crystals
 !.. as a function of Temperature from -94C to 0C.  Taken from WRF RRTMG
 !.. radiation code where it is attributed to Jon Egill Kristjansson
 !.. and coauthors.
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
       real, dimension(95), parameter:: retab = (/                       &
          5.92779, 6.26422, 6.61973, 6.99539, 7.39234,                   &
@@ -2973,11 +3083,11 @@ module GEOSmoist_Process_Library
          return
       end if
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 !..From the model 3D temperature field, subtract 179K for which
 !.. index value of retab as a start.  Value of corr is for
 !.. interpolating between neighboring values in the table.
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
       idx_rei = int(temp-179.)
       idx_rei = min(max(idx_rei,1),94)
@@ -2985,7 +3095,7 @@ module GEOSmoist_Process_Library
       reice = retab(idx_rei)*(1.-corr) + retab(idx_rei+1)*corr
       deice = 2.*reice * 1.E-6
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 !..Now we have the final radiative effective size of ice (as function
 !.. of temperature only).  This size represents 3rd moment divided by
 !.. second moment of the ice size distribution, so we can compute a
@@ -2993,44 +3103,44 @@ module GEOSmoist_Process_Library
 !.. The mean (radiative effective) diameter is 3./Slope for an inverse
 !.. exponential size distribution.  So, starting with slope, work
 !.. backwords to get number concentration.
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
       lambda = 3.0 / deice
-      
-      
+
+
       ! value of the dispersion parameter according to Heymsfield et al 2002, Table3.
             TC=temp-273.15
 
             TC=MIN(MAX(TC, -70.0), -15.0)
 
-            if (TC .gt. -27.0) then 
+            if (TC .gt. -27.0) then
                lambdai=6.8*exp(-0.096*TC)
             else
                lambdai=24.8*exp(-0.049*TC)
             end if
 
             mui=(0.13*(lambdai**0.64))-2.
-           
-            
-      
+
+
+
 
       k =  (mui+3)*(mui*3)/(mui+2)/(mui+1)
       make_IceNumber = k*Q_ice * lambda*lambda*lambda / (MAPL_PI*Ice_density)
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 !..Example1: Common ice size coming from Thompson scheme is about 30 microns.
 !.. An example ice mixing ratio could be 0.001 g/kg for a temperature of -50C.
 !.. Remember to convert both into MKS units.  This gives N_ice=357652 per kg.
 !..Example2: Lower in atmosphere at T=-10C matching ~162 microns in retab,
-!.. and assuming we have 0.1 g/kg mixing ratio, then N_ice=28122 per kg, 
+!.. and assuming we have 0.1 g/kg mixing ratio, then N_ice=28122 per kg,
 !.. which is 28 crystals per liter of air if the air density is 1.0.
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
       return
       end function make_IceNumber
 
-!+---+-----------------------------------------------------------------+ 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
+!+---+-----------------------------------------------------------------+
 
       elemental real function make_DropletNumber (Q_cloud, qnwfa)
 
@@ -3059,12 +3169,12 @@ module GEOSmoist_Process_Library
       lambda = (4.0D0 + nu_c) / xDc
       qnc = Q_cloud / g_ratio(nu_c) * lambda*lambda*lambda / am_r
       make_DropletNumber = SNGL(qnc)
-      
+
 
       return
       end function make_DropletNumber
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
       elemental real function make_RainNumber (Q_rain, temp)
 
@@ -3079,14 +3189,14 @@ module GEOSmoist_Process_Library
          return
       end if
 
-      !+---+-----------------------------------------------------------------+ 
+      !+---+-----------------------------------------------------------------+
       !.. Not thrilled with it, but set Y-intercept parameter to Marshal-Palmer value
       !.. that basically assumes melting snow becomes typical rain. However, for
       !.. -2C < T < 0C, make linear increase in exponent to attempt to keep
       !.. supercooled collision-coalescence (warm-rain) similar to drizzle rather
       !.. than bigger rain drops.  While this could also exist at T>0C, it is
       !.. more difficult to assume it directly from having mass and not number.
-      !+---+-----------------------------------------------------------------+ 
+      !+---+-----------------------------------------------------------------+
 
       N0 = 8.E6
 
@@ -3103,7 +3213,7 @@ module GEOSmoist_Process_Library
       return
       end function make_RainNumber
 
-!+---+-----------------------------------------------------------------+ 
+!+---+-----------------------------------------------------------------+
 
    SUBROUTINE  dissipative_ke_heating(IM,JM,LM &
                              ,mass,us,vs,du,dv,ttend)
@@ -3146,8 +3256,8 @@ module GEOSmoist_Process_Library
 
 
 
-   
-!+---+-----------------------------------------------------------------+ 
+
+!+---+-----------------------------------------------------------------+
 
 subroutine update_cld( &
          DT          , &
@@ -3199,31 +3309,31 @@ subroutine update_cld( &
       SHOM=2.349-(TE/259.0) !hom threeshold Si according to Ren & McKenzie, 2005
 
       !================================================
-      ! First find the cloud fraction that would correspond to the current condensate 
+      ! First find the cloud fraction that would correspond to the current condensate
       QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQx )
       QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQX )
 
-      if ((QC+QA) .gt. 1.0e-13) then 
-         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)               
+      if ((QC+QA) .gt. 1.0e-13) then
+         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)
       else
 		 DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
       end if
-      
+
       if (TE .gt. 240.0)   SCICE = 1.0
-      QCx=QC+QA   
+      QCx=QC+QA
       QX=QT-QSx*SCICE
       CFo=0.
-      
+
       !====== recalculate QX if too low and SCICE<SHOM
-        if ((QX .gt. QCx) .and. (QCx .gt. 0.0)) then     
+        if ((QX .gt. QCx) .and. (QCx .gt. 0.0)) then
            QX=QT-QSx*SHOM
-       end if 
-      
+       end if
+
       !=======================
 
-     DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)   
-      
-      if  ((QX .le. QCx)  .and. (QCx .gt. tiny(1.0)))  then          
+     DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)
+
+      if  ((QX .le. QCx)  .and. (QCx .gt. tiny(1.0)))  then
          CFo =  (1.0+SQRT(1.0-(QX/QCx)))
          if (CFo .gt. 1.e-6) then
             CFo = min(1.0/CFo, 1.0)
@@ -3231,39 +3341,39 @@ subroutine update_cld( &
          else
             CFo = 0.0
          end if
-      elseif (QCx .gt. tiny(1.0)) then  
-         !   CFo = 1.0  !Outside of distribution but still with condensate         
-        DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)          
-        CFo = SQRT(2.0*QCx/DELQ)        
+      elseif (QCx .gt. tiny(1.0)) then
+         !   CFo = 1.0  !Outside of distribution but still with condensate
+        DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)
+        CFo = SQRT(2.0*QCx/DELQ)
       else
-        CFo = 0.0         
+        CFo = 0.0
       end if
 
-      if  (QSx .gt. tiny(1.0)) then 
+      if  (QSx .gt. tiny(1.0)) then
          RHCmicro = SCICE - 0.5*DELQ/Qsx
       else
          RHCmicro = 0.0
       end if
 
-      CFALL   = max(CFo, 0.0) 
-      CFALL   = min(CFo, 1.0) 
+      CFALL   = max(CFo, 0.0)
+      CFALL   = min(CFo, 1.0)
 
       CF=CFALL*(1.0-FQA)
       AF=CFALL*FQA
 
 
    end subroutine update_cld
-   
-   
-   
-   
+
+
+
+
    subroutine meltfrz_inst2M  (     &
          IM,JM,LM , &
          TE       , &
          QCL       , &
          QAL       , &
          QCI        , &
-         QAI        , &               
+         QAI        , &
          NL       , &
          NI            )
 
@@ -3290,21 +3400,21 @@ subroutine update_cld( &
 
       ! freeze liquid instantaneosly below -40 C
       where( TE <= T_ICE_ALL )
-         DQmax = (T_ICE_ALL - TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
-         dQil = min(QLTOT , DQmax)  
+         DQmax = (T_ICE_ALL - TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
+         dQil = min(QLTOT , DQmax)
       end where
 
       where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
          dNil = NL
       end where
 
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0)) 
-         dNil  =  NL*DQmax/dQil 
+      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+         dNil  =  NL*DQmax/dQil
       end where
 
       dQil = max(  0., dQil )
       QITOT = max(QITOT + dQil, 0.0)
-      QLTOT= max(QLTOT -  dQil, 0.0)                  
+      QLTOT= max(QLTOT -  dQil, 0.0)
       NL  = NL - dNil
       NI   = NI  + dNil
       TE   = TE + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
@@ -3315,31 +3425,31 @@ subroutine update_cld( &
 
       ! melt ice instantly above 0^C
       where( TE > T_ICE_MAX )
-         DQmax =  (TE-T_ICE_MAX) *MAPL_CP/(MAPL_ALHS-MAPL_ALHL)   
-         dQil = min(QITOT, DQmax)  
+         DQmax =  (TE-T_ICE_MAX) *MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
+         dQil = min(QITOT, DQmax)
       endwhere
 
       where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
          dNil = NI
       end where
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0)) 
-         dNil  =  NI*DQmax/dQil 
+      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+         dNil  =  NI*DQmax/dQil
       end where
       dQil = max(  0., dQil )
       QLTOT =  max(QLTOT+ dQil, 0.)
-      QITOT = max(QITOT - dQil, 0.) 
+      QITOT = max(QITOT - dQil, 0.)
       NL  = NL + dNil
       NI   = NI  - dNil
 
       TE   = TE - (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
 
       QCI   = QITOT*(1.0-FQA)
-      QAI = QITOT*FQA      
+      QAI = QITOT*FQA
       QCL   = QLTOT*(1.0-FQA)
       QAL = QLTOT*FQA
 
    end subroutine meltfrz_inst2M
-   
+
       subroutine FIX_NEGATIVE_PRECIP(QRAIN, QSNOW, QGRAUPEL)
           real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL
 
@@ -3374,10 +3484,10 @@ subroutine update_cld( &
       WHERE (CF < 1.E-5)
          QV = QV + QL + QI
          TE = TE - alhlbcp*QL - alhsbcp*QI
-         CF  = 0. 
+         CF  = 0.
          QL  = 0.
-         QI  = 0. 
-      END WHERE 
+         QI  = 0.
+      END WHERE
 
      ! Redistribute liquid CN/LS portions based on prior fractions
       ! FCN Needs to be calculated first
@@ -3405,7 +3515,7 @@ subroutine update_cld( &
       DQC = QI - (QICN+QILS)
       WHERE (DQC > 0.0)
         QILS = QILS+DQC
-        DQC = 0.0 
+        DQC = 0.0
       END WHERE
       ! any loss of condensate uses the FCN ratio
       QICN = QICN + DQC*(    FCN)
@@ -3421,14 +3531,14 @@ subroutine update_cld( &
       DQC = CF - (CLCN+CLLS)
       WHERE (DQC > 0.0)
         CLLS = CLLS+DQC
-        DQC = 0.0 
+        DQC = 0.0
       END WHERE
-      ! any loss of condensate uses the FCN ratio 
+      ! any loss of condensate uses the FCN ratio
       CLCN = CLCN + DQC*(    FCN)
       CLLS = CLLS + DQC*(1.0-FCN)
 
    end subroutine REDISTRIBUTE_CLOUDS
-         
+
  subroutine cs_interpolator(is, ie, js, je, km, qin, zout, wz, qout, qmin)
  integer,  intent(in):: is, ie, js, je, km
  real, intent(in):: zout, qmin

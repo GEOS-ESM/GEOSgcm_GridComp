@@ -38,7 +38,7 @@ module GEOS_SaltwaterGridCompMod
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
   use GEOS_SeaiceInterfaceGridComp,         only : SeaiceInterfaceSetServices => SetServices
-  use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
+  use GEOS_ObioImportsGridCompMod,          only : ObioImportsSetServices     => SetServices
   
   implicit none
   private
@@ -53,10 +53,7 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: ICE           = 1  ! index(id) of two children fixed here 
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
   integer, parameter :: OBIO          = 3   
-
-    type bandptr
-      real, pointer, dimension(:) :: b
-    end type bandptr
+  logical            :: DO_DATA_ATM4OCN
 
    contains
 
@@ -100,6 +97,7 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: I, k
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
+    integer                                 :: DO_WAVES
     logical                                 :: seaIceT_extData ! default (=.FALSE.) is to NOT use data sea ice thickness from ExtData
 
     character(len = 2) :: suffix
@@ -129,6 +127,15 @@ module GEOS_SaltwaterGridCompMod
 
     call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, _RC)
 
+! Are we running DataAtm?
+!------------------------
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN,  Label="USE_DATA_ATM4OCN:", DEFAULT=.FALSE., _RC)
+
+! Waves: active or disabled?
+!------------------------------------------------
+
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, _RC)
+
 ! Data sea ice thickness from ExtData or not?
 !--------------------------------------------
 
@@ -157,7 +164,7 @@ module GEOS_SaltwaterGridCompMod
     I = MAPL_AddChild(GC,    NAME='OPENWATER', SS=OpenWaterSetServices,    _RC)
 
     if(DO_OBIO /= 0) then
-       I = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSetServices, _RC)
+       I = MAPL_AddChild(GC, NAME='OBIOIMPORTS', SS=ObioImportsSetServices, _RC)
     endif  
 
 ! Set the state variable specs.
@@ -647,6 +654,17 @@ module GEOS_SaltwaterGridCompMod
           RESTART            = MAPL_RestartSkip            ,&
           _RC  ) 
 
+  if (DO_WAVES /= 0) then
+     call MAPL_AddImportSpec(GC,                            &
+          SHORT_NAME         = 'CHARNOCK',                  &
+          LONG_NAME          = 'charnock_coefficient',      &
+          UNITS              = '1',                         &
+          RESTART            = MAPL_RestartSkip,            &
+          DIMS               = MAPL_DimsTileOnly,           &
+          VLOCATION          = MAPL_VLocationNone,          &
+          _RC  )
+  end if
+
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, _RC)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, _RC)  
@@ -732,108 +750,14 @@ module GEOS_SaltwaterGridCompMod
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUDP'      , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUWT'      , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUSD'      , CHILD_ID = OBIO, __RC__)
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCDP'      , CHILD_ID = OBIO, __RC__)
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
-     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
-
-!    ! We are setting these variable values for OBIORAD temporarily. These variables should be read from
-!    ! file or computed.
-     do k=1, 33
-        write(unit = suffix, fmt = '(i2.2)') k
-        call MAPL_AddExportSpec(GC,                               &
-             SHORT_NAME = 'TAUA_'//suffix,                        &
-             LONG_NAME  = 'aerosol optical thickness',            &
-             UNITS      = '',                                     &
-             DIMS       = MAPL_DimsTileOnly,                      &
-             VLOCATION  = MAPL_VLocationNone,                     &
-             default    = 1.0, &
-             __RC__)
-
-        call MAPL_AddExportSpec(GC,                               &
-             SHORT_NAME = 'ASYMP_'//suffix,                       &
-             LONG_NAME  = 'asymmetry parameter',                  &
-             UNITS      = '',                                     &
-             DIMS       = MAPL_DimsTileOnly,                      &
-             VLOCATION  = MAPL_VLocationNone,                     &
-             default    = 0.0, &
-             __RC__)
-
-        call MAPL_AddExportSpec(GC,                               &
-             SHORT_NAME = 'SSALB_'//suffix,                       &
-             LONG_NAME  = 'single scattering albedo',             &
-             UNITS      = '',                                     &
-             DIMS       = MAPL_DimsTileOnly,                      &
-             VLOCATION  = MAPL_VLocationNone,                     &
-             default    = 0.95, &
-             __RC__)
-     enddo
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'RH',                                   &
-          LONG_NAME  = 'relative humidity',             &
-          UNITS      = 'percent',                                     &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'CCOVM',                                &
-          LONG_NAME  = 'cloud cover',                          &
-          UNITS      = 'fraction (dimensionless)',             &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'CDREM',                                   &
-          LONG_NAME  = 'cloud droplet effective radius',             &
-          UNITS      = '',                                     &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-     
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'RLWPM',                                &
-          LONG_NAME  = 'cloud liquid water path',              &
-          UNITS      = '',                                     &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'CLDTCM',                               &
-          LONG_NAME  = 'cloud optical thickness',              &
-          UNITS      = '',                                     &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'OZ',                                   &
-          LONG_NAME  = 'ozone thickness',                      &
-          UNITS      = 'Dobson units',                         &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
-     call MAPL_AddExportSpec(GC,                               &
-          SHORT_NAME = 'WV',                                   &
-          LONG_NAME  = 'water vapor',                          &
-          UNITS      = 'cm',                                   &
-          DIMS       = MAPL_DimsTileOnly,                      &
-          VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 1.0, &
-          __RC__)
-
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DRBAND'    , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DFBAND'    , CHILD_ID = OBIO, __RC__)
+     if(.not. DO_DATA_ATM4OCN) then
+       call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCDP'      , CHILD_ID = OBIO, __RC__)
+       call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
+       call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)
+       call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
+     endif
   end if
 
 
@@ -1115,9 +1039,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    _RC)
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    _RC)
 
-!  Retrieve pointers to exports from all children except OBIO
+!  Retrieve pointers to exports from all children except OBIOIMPORTS
    do I = 1, size(GCS)
-      if (trim(GCnames(I)) .ne. 'OBIO') then
+      if (trim(GCnames(I)) .ne. 'OBIOIMPORTS') then
 
          if(associated(MOT2M)) then
             call MAPL_GetPointer(GEX(I), dummy, 'MOT2M'  , alloc=.true., _RC)
@@ -1588,7 +1512,7 @@ contains
    call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,_RC)
 
    do I = 1, size(GCS)
-      if (trim(GCnames(I)) .ne. 'OBIO') then
+      if (trim(GCnames(I)) .ne. 'OBIOIMPORTS') then
          if(associated(TST)) then
             call MAPL_GetPointer(GEX(I), dummy, 'TST'   , alloc=.true., _RC)
          endif 

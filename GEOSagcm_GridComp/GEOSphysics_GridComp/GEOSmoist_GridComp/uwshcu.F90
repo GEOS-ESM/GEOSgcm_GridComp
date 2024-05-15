@@ -1139,8 +1139,8 @@ contains
       do i = 1, idim
 
          id_exit = .false.
-         frc_rasn        = (1.0-frland_in(i)) * shlwparams%frc_rasn
 
+         frc_rasn        = shlwparams%frc_rasn
          pifc0(0:k0)     = pifc0_in(i,0:k0)
          zifc0(0:k0)     = zifc0_in(i,0:k0)
          pmid0(:k0)      = pmid0_in(i,:k0)
@@ -2658,8 +2658,9 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (min(scaleh,mixscale).ne.0.0) then
-!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)                                  ) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+! regression bug due to cnvtr
+! WMP         rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
