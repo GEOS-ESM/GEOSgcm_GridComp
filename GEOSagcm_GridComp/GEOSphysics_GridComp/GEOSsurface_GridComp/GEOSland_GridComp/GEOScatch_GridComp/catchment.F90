@@ -893,7 +893,7 @@
 !     in process
 !     reichle, 29 May 03
 
-        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
         tcs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig(n)=                       &
                   amin1( tf, tc1_orig(n)*ar1(n)+tc2_orig(n)*ar2(n)+            &
@@ -2959,7 +2959,7 @@
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
           call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
-               ice1, tzero ) 
+               ice1, tzero, .false. ) 
           
           tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
