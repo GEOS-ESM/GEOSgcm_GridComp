@@ -255,7 +255,7 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2",   __RC__ )
     elseif (LSM_CHOICE.eq.2) then                                                                                             
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )           
-    elseif (LSM_CHOICE.eq.3) then                                                                                  
+    elseif (LSM_CHOICE.eq.4) then                                                                                  
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM51", __RC__ )   
     else
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')

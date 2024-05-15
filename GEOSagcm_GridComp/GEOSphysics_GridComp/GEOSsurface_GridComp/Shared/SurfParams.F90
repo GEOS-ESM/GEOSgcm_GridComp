@@ -109,7 +109,7 @@ contains
           _ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')
        end select
        
-    else if (LSM_CHOICE==3) then
+    else if (LSM_CHOICE==4) then
        select case (LAND_PARAMS)
 
        case ("CN_CLM51")
