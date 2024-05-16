@@ -370,11 +370,14 @@ contains
       enddo
 
       do i = 1, NQ
-        if (NAMES(i) == 'AOADAYS') then
-          TendUnits = 'days s-1'
-        else
-          TendUnits = 'UNITS'
-        end if
+        select case (trim(NAMES(i)))
+        case ('AOADAYS')
+           TendUnits = 'days s-1'
+        case ('PCHEM::OX')
+           TendUnits = 'mol mol-1 s-1'
+        case default
+           TendUnits = 'UNITS'
+        end select
 
         call MAPL_AddExportSpec(GC,                                           &
           SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
