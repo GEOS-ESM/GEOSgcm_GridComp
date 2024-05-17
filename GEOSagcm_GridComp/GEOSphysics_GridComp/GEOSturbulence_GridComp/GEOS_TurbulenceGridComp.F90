@@ -3100,7 +3100,7 @@ end if
      if (JASON_TRB) then
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-0.00001,RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -5986,6 +5986,7 @@ end subroutine RUN1
                SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
                if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
                if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
+               if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
             endif
          end if
 
@@ -6516,7 +6517,8 @@ end subroutine RUN1
             CBl = 1.08371722e-7 * VARFLT(i,j) * &
                   MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! determine the efolding height
-            Hefold = LAMBDA_B !MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B)
+           !Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B) ! From UFS
+            Hefold = LAMBDA_B 
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
                   wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
