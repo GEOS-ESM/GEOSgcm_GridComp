@@ -1483,7 +1483,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME= 'DQRC   ',                                     &
-         LONG_NAME = 'convective_rainwater_source',                 &
+         LONG_NAME = 'net_convective_rainwater_source',             &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -2829,7 +2829,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REV_CN',                                      & 
-         LONG_NAME ='evaporation_of_convective_precipitation',     &
+         LONG_NAME ='diagnostic_evaporation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -2837,7 +2837,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REV_CN_GF',                                   & 
-         LONG_NAME ='evaporation_of_convective_precipitation',     &
+         LONG_NAME ='diagnostic_evaporation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -2869,7 +2869,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RSU_CN',                                      & 
-         LONG_NAME ='sublimation_of_convective_precipitation',     &
+         LONG_NAME ='diagnostic_sublimation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -2877,7 +2877,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RSU_CN_GF',                                   & 
-         LONG_NAME ='sublimation_of_convective_precipitation',     &
+         LONG_NAME ='diagnostic_sublimation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -3712,6 +3712,14 @@ contains
     VERIFY_(STATUS)                                                                          
 
 
+    call MAPL_AddExportSpec(GC,                              &
+         SHORT_NAME = 'W_DIAG',                                        &
+         LONG_NAME  = 'Diagnostic_vertical_velocity',                  &
+         UNITS      = 'm s-1',                                        &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'KHX0',                                         &
@@ -5687,7 +5695,7 @@ contains
       real, pointer, dimension(:,:)   :: PGENTOT , PREVTOT
 
       !Record vars at top pf moist
-      real, pointer, dimension(:,:,:) :: Ux0, Vx0, THx0, KHx0
+      real, pointer, dimension(:,:,:) :: Ux0, Vx0, THx0, KHx0, W_DIAG
       real, pointer, dimension(:,:)   :: TSx0, FRLANDx0
       real, pointer, dimension(:,:,:) :: Qx0, Qx1, QLLSx0, QLCNx0, CLLSx0, CLCNx0, QILSx0, QICNx0, QCLSX0, QCCNX0
 
@@ -7693,6 +7701,8 @@ contains
       call MAPL_GetPointer(EXPORT, Vx0,     'VX0'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, TSx0,    'TSX0'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, FRLANDx0,'FRLANDX0' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, W_DIAG,  'W_DIAG'   , RC=STATUS); VERIFY_(STATUS)
+
 
       if(associated(Qx0       )) Qx0        = Q
       if(associated(QLLSx0    )) QLLSx0     = QLLS
@@ -7869,6 +7879,9 @@ contains
 
       IF (ASSOCIATED(DTSX)) DTSX = DTS
       IF (ASSOCIATED(KHX )) KHX  = KH(:,:,0:LM-1)
+
+
+      if (associated(W_DIAG)) W_DIAG = OMEGA*(ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1))/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
       IRAS       = nint(LONS*100)
       JRAS       = nint(LATS*100)
@@ -8734,7 +8747,11 @@ contains
          irccode  = -99
          trdlx    =  1.0   
          KEX      =  1.E-04
-             
+
+         ! adjust units to be [kg kg-1 s-1]
+         REV_CN_GF = REV_CN_GF*iMASS
+         RSU_CN_GF = RSU_CN_GF*iMASS
+
          call MAPL_TimerOff(STATE,"-GF")
       ENDIF
 !-srf-gf-scheme 
@@ -8909,7 +8926,7 @@ contains
       end where
         
       if(associated(ZCBL   )) ZCBL     = ZCBLx
-      if(associated(DQRC   )) DQRC     = CNV_PRC3           / DT_MOIST
+      if(associated(DQRC   )) DQRC     = CNV_PRC3 / DT_MOIST
       if(associated(DQDTCN )) DQDTCN   = ( Q1  -  DQDTCN  ) / DT_MOIST
       if(associated(DTHDTCN)) DTHDTCN  = ( TH1 -  DTHDTCN ) / DT_MOIST
       if(associated(DQCDTCN)) DQCDTCN  = CNV_DQLDT * MAPL_GRAV / ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )
@@ -12492,9 +12509,9 @@ do K= 1, LM
 
      IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
          REV_CN_X = REV_CN_GF
-	 RSU_CN_X = RSU_CN_GF
-         ACLL_CN_X = 0.5*(PFL_CN_GF(:,:,0:LM-1) + PFL_CN_GF(:,:,1:LM))
-         ACIL_CN_X = 0.5*(PFI_CN_GF(:,:,0:LM-1) + PFI_CN_GF(:,:,1:LM))
+	 RSU_CN_X = RSU_CN_GF 
+         ACLL_CN_X = 0.
+         ACIL_CN_X = 0.
      ENDIF 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -12718,8 +12735,7 @@ do K= 1, LM
            + ACLL_SC_X + ACIL_SC_X       & 
            + ACLL_LS_X + ACIL_LS_X ) * MASS , 3 ) + ER_PRC2
 
-      if (associated(PREVTOT   ))   PREVTOT    =  SUM( ( REV_CN_X  + RSU_CN_X        & 
-           + REV_AN_X  + RSU_AN_X        & 
+      if (associated(PREVTOT   ))   PREVTOT    =  SUM( ( REV_AN_X  + RSU_AN_X        & 
            + REV_SC_X  + RSU_SC_X        & 
            + REV_LS_X  + RSU_LS_X ) * MASS , 3 )
 
@@ -13170,10 +13186,10 @@ do K= 1, LM
       if (associated(CNVIZ      ))   CNVIZ     =  SUM( DCNVI_X * MASS , 3 )
 
       if (associated(EVPCZ      ))   EVPCZ     =  SUM( ( EVAPC_X  + DLFIX_X ) * MASS , 3 )
-      if (associated(EVPPZ      ))   EVPPZ     =  SUM( ( REV_CN_X + REV_AN_X + REV_LS_X + REV_SC_X ) * MASS , 3 )
+      if (associated(EVPPZ      ))   EVPPZ     =  SUM( ( REV_AN_X + REV_LS_X + REV_SC_X ) * MASS , 3 )
 
       if (associated(SUBCZ      ))   SUBCZ     =  SUM( ( SUBLC_X  + DIFIX_X ) * MASS , 3 )
-      if (associated(SUBPZ      ))   SUBPZ     =  SUM( ( RSU_CN_X + RSU_AN_X + RSU_LS_X + RSU_SC_X ) * MASS , 3 )
+      if (associated(SUBPZ      ))   SUBPZ     =  SUM( ( RSU_AN_X + RSU_LS_X + RSU_SC_X ) * MASS , 3 )
 
       if (associated(FRZCZ      ))   FRZCZ     =  SUM( FRZ_TT_X * MASS , 3 )
       if (associated(FRZPZ      ))   FRZPZ     =  SUM( FRZ_PP_X * MASS , 3 )
