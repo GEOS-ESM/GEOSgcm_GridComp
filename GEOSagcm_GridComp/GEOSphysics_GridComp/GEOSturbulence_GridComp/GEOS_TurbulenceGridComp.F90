@@ -5846,6 +5846,7 @@ end subroutine RUN1
                      KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
                   end do
                end if
+
             endif
             if(associated(TOPDIS)) then
                TOPDIS = TOPDIS + (1.0/(MAPL_CP))*FKV*SX**2
@@ -5862,8 +5863,8 @@ end subroutine RUN1
              endif
             if(associated(SRFDIS)) then
                SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
-               if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
                if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
+               if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
             endif
          end if
 
