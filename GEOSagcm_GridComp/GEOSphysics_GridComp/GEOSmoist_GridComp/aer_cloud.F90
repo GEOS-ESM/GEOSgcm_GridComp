@@ -257,49 +257,37 @@
 
 !===================================================================================
 
-  
+ 
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-					   npre_in, dpre_in, ccn_diagr8,  &
-					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
-					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
-					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
-                       so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
-                       fd_dust, fd_soot, &
-					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
-                       Immersion_param)
-
-
-
+      npre_in, dpre_in, use_average_v, CCN_param, IN_param, fd_dust, fd_soot, &
+      frachet_dust, frachet_bc, frachet_org, frachet_ss, Immersion_param, &
+      ccn_diagr8, cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8) 
   
-      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
-	
-      logical        ::   use_average_v
-       
-      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-					   npre_in, dpre_in, fd_soot, fd_dust,  &
-                       frachet_dust, frachet_bc, frachet_org, frachet_ss
-                       
-      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
-            
-      real(r8), dimension(:), intent(inout) :: ccn_diagr8 
-      
-     real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
-					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
-					   ndust_immr8, ndust_depr8,  nlimr8
-                        
-      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+      type(AerProps), intent(in) :: Aer_Props !Aerosol Properties
+      logical,        intent(in) :: use_average_v
+      real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+                                    npre_in, dpre_in, fd_soot, fd_dust,  &
+                                    frachet_dust, frachet_bc, frachet_org, frachet_ss
+      integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+     
+      real(r8), dimension(:), intent(inout) :: ccn_diagr8
+      real,                   intent(out)   :: cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8
 
-      type(AerProps) :: Aeraux       
-       
+!     real, intent(out)  :: smaxliqr8, smaxicer8, nheticer8, INimmr8, &
+!                           ndust_immr8, ndust_depr8,  nlimr8
+!     real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+
       !local 
       integer  ::  k, n,  I, J, naux, index      
-     
+   
+      type(AerProps) :: Aeraux
+
       !Variables for liquid       
-       real*8 ::   nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
+      real*8 :: nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
       !variables for ice
         
-       real*8          :: nhet, nice, smaxice, nlim, air_den, &
-                        frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
+      real*8 :: nhet, nice, smaxice, nlim, air_den, &
+                frac, norg, nbc, nhom, dorg, dbc, kappa, INimm, dINimm, aux
    
 !=============inputs================
       tparc=tparc_in      
@@ -320,22 +308,22 @@
       
    !initialize output    
       
-      smaxicer8  = zero_par      
+     !smaxicer8  = zero_par      
       smaxice = zero_par
       cdncr8     = zero_par
-      smaxliqr8  = zero_par
+     !smaxliqr8  = zero_par
       incr8      = zero_par
       smaxice  = max(2.349d0-(tparc/259d0) -1.0 , 0.0)
-      nheticer8  = zero_par
-      nlimr8     = zero_par
+     !nheticer8  = zero_par
+     !nlimr8     = zero_par
       sc_ice   = max(2.349d0-(tparc/259d0), 1.0)
       If (tparc  .gt. Thom) sc_ice =1.0   
  
-      INimmr8    = zero_par
+     !INimmr8    = zero_par
       dINimmr8    = zero_par
       Ncdepr8    = zero_par
-      ndust_immr8 = zero_par
-      ndust_depr8 = zero_par
+     !ndust_immr8 = zero_par
+     !ndust_depr8 = zero_par
       ndust_imm = zero_par
       ndust_dep = zero_par
       ccn_diagr8 =  zero_par
@@ -447,7 +435,7 @@
        	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-         smaxliqr8=100.*max(smax, zero_par)
+        !smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -499,8 +487,8 @@
     end if 
  end do     
 
-  seasalt_conc =   nseasalt_ice          
-  so4_conc =   np_ice - nseasalt_ice    
+! seasalt_conc =   nseasalt_ice          
+! so4_conc =   np_ice - nseasalt_ice    
   
  
 
@@ -522,7 +510,7 @@
      ndust_ice=DBLE(Aeraux%num(1:nbindust_ice))*air_den*hetfracice_dust
      sigdust_ice=DBLE(Aeraux%sig(1:nbindust_ice))
 
-     dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
+!    dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
   
          DO index =1,nbindust_ice                
         	    ! areadust_ice(index)= ddust_ice(index)*ddust_ice(index)*pi_ice*exp(2.0*sigdust_ice(index)*sigdust_ice(index))
@@ -544,7 +532,7 @@
       areabc_ice =  dbc_ice*dbc_ice*dbc_ice*0.52*acorr_bc*exp(4.5*sigbc_ice*sigbc_ice)  
   
   
-     bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
+!    bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
  !Soluble organics 
    
    call getINsubset(3, Aer_Props, Aeraux) 
@@ -553,7 +541,7 @@
      norg_ice=DBLE(sum(Aeraux%num(1:naux)))*air_den*hetfracice_org
      sigorg_ice=DBLE(sum(Aeraux%sig(1:naux)))/naux
 
-         org_conc  =  sum(Aeraux%num(1:naux))*air_den
+!        org_conc  =  sum(Aeraux%num(1:naux))*air_den
      
   nhet     = zero_par
   nice     = zero_par
@@ -645,16 +633,16 @@
     !==========================
 
 !All # m-3 except those passed to MG later
-   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
-   nheticer8    = min(max(nhet, zero_par), 1e10)  
+  !smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
+  !nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
-   nlimr8       = min(max(nlim, zero_par), 1e10)   
+  !nlimr8       = min(max(nlim, zero_par), 1e10)   
    sc_icer8     = min(max(sc_ice, 1.0), 2.0)   
-   INimmr8      = min(max(INimm, zero_par), 1e10) 
+  !INimmr8      = min(max(INimm, zero_par), 1e10) 
    dINimmr8     = min(max(dINimm/air_den, zero_par), 1e10)  !Kg-1
    Ncdepr8      = min(max(Nhet_dep, zero_par), 1e10) 
-   ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
-   ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
+  !ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
+  !ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
 
        
     deallocate (ndust_ice)
@@ -4073,8 +4061,8 @@ end subroutine make_cnv_ice_drop_number
 subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
-    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
-    real, intent(in) :: xscale
+    real, dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, dimension (:, :), intent(in) :: xscale
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
     real :: HMOIST_950, HSMOIST_500, SINST, QCV
@@ -4105,7 +4093,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale)
                 SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
             ENDIF
 
-            QCV =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
+            QCV =  0.67 -0.38*SINST +  4.96*xscale(I,J) - 8.32*SINST*xscale(I,J)
     	    QCVAR(I, J) = min(max(QCV, 0.5), 10.0)
       end do
     end do  

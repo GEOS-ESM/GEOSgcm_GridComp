@@ -917,28 +917,52 @@ contains
 
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QCTOT',                                      &
-         LONG_NAME  = 'mass_fraction_of_total_cloud_water',         &
-         UNITS      = 'kg kg-1',                                    &
+         SHORT_NAME = 'QCTOT',                                     &
+         LONG_NAME  = 'mass_fraction_of_total_cloud_water',        &
+         UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QLTOT',                                      &
-         LONG_NAME  = 'grid_box_mass_fraction_of_cloud_liquid_water',        &
-         UNITS      = 'kg kg-1',                                    &
-         DIMS       = MAPL_DimsHorzVert,                           &
+         SHORT_NAME = 'QLTOT',                                        &
+         LONG_NAME  = 'grid_box_mass_fraction_of_cloud_liquid_water', &
+         UNITS      = 'kg kg-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'QITOT',                                      &
-         LONG_NAME  = 'grid_box_mass_fraction_of_cloud_ice_water',           &
-         UNITS      = 'kg kg-1',                                    &
+         SHORT_NAME = 'QITOT',                                     &
+         LONG_NAME  = 'grid_box_mass_fraction_of_cloud_ice_water', &
+         UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'QRTOT',                                     &
+         LONG_NAME  = 'grid_box_mass_fraction_of_suspended_rain',  &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           & 
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  ) 
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'QSTOT',                                     &
+         LONG_NAME  = 'grid_box_mass_fraction_of_suspended_snow',  &
+         UNITS      = 'kg kg-1',                                   &
+         DIMS       = MAPL_DimsHorzVert,                           & 
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  ) 
+    VERIFY_(STATUS) 
+
+    call MAPL_AddExportSpec(GC,                                      &
+         SHORT_NAME = 'QGTOT',                                       &
+         LONG_NAME  = 'grid_box_mass_fraction_of_suspended_graupel', &
+         UNITS      = 'kg kg-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                             & 
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  ) 
+    VERIFY_(STATUS) 
 
     call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QPTOTLS',                                    &
@@ -1884,15 +1908,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'FCLD'  ,                                      &
-         LONG_NAME = 'cloud_fraction_for_radiation',                &
-         UNITS     = '1',                                           &
+         SHORT_NAME = 'FCLD'  ,                                    &
+         LONG_NAME = 'cloud_fraction_for_radiation',               &
+         UNITS     = '1',                                          &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME ='QV',                                          &
+         SHORT_NAME ='QV',                                         &
          LONG_NAME ='water_vapor_for_radiation',                   &
          UNITS     ='kg kg-1',                                     &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -1900,41 +1924,41 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QL',                                          &
-         LONG_NAME = 'in_cloud_cloud_liquid_for_radiation',                  &
-         UNITS     = 'kg kg-1',                                     &
+         SHORT_NAME = 'QL',                                        &
+         LONG_NAME = 'in_cloud_cloud_liquid_for_radiation',        &
+         UNITS     = 'kg kg-1',                                    &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QI',                                          &
-         LONG_NAME = 'in_cloud_cloud_ice_for_radiation',                     &
-         UNITS     = 'kg kg-1',                                     &
+         SHORT_NAME = 'QI',                                        &
+         LONG_NAME = 'in_cloud_cloud_ice_for_radiation',           &
+         UNITS     = 'kg kg-1',                                    &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QR',                                          &
-         LONG_NAME = 'Falling_rain_for_radiation',                  &
-         UNITS     = 'kg kg-1',                                     &
+         SHORT_NAME = 'QR',                                        &
+         LONG_NAME = 'in_cloud_ralling_rain_for_radiation',        &
+         UNITS     = 'kg kg-1',                                    &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QS',                                          &
-         LONG_NAME = 'Falling_snow_for_radiation',                  &
-         UNITS     = 'kg kg-1',                                     &
+         SHORT_NAME = 'QS',                                        &
+         LONG_NAME = 'in_cloud_falling_snow_for_radiation',        &
+         UNITS     = 'kg kg-1',                                    &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME = 'QG',                                          &
-         LONG_NAME = 'Falling_graupel_for_radiation',                  &
-         UNITS     = 'kg kg-1',                                     &
+         SHORT_NAME = 'QG',                                        &
+         LONG_NAME = 'in_cloud_falling_graupel_for_radiation',     &
+         UNITS     = 'kg kg-1',                                    &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)

@@ -5,17 +5,17 @@
 !=============================================================================
 !BOP
 
-! !MODULE: GEOS_GFDL_1M_InterfaceMod -- A Module to interface with the
-!   GFDL_1M cloud microphysics
+! !MODULE: GEOS_NSSL_2M_InterfaceMod -- A Module to interface with the
+!   NSSL_2M cloud microphysics
 
-module GEOS_GFDL_1M_InterfaceMod
+module GEOS_NSSL_2M_InterfaceMod
 
   use ESMF
   use MAPL
   use GEOS_UtilsMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
-  use gfdl2_cloud_microphys_mod
+  use module_mp_nssl_2mom
 
   implicit none
 
@@ -36,6 +36,9 @@ module GEOS_GFDL_1M_InterfaceMod
          character(len=ESMF_MAXSTR) :: QRAIN
          character(len=ESMF_MAXSTR) :: QSNOW
          character(len=ESMF_MAXSTR) :: QGRAUPEL
+         character(len=ESMF_MAXSTR) :: NCPL                     
+         character(len=ESMF_MAXSTR) :: NCPI
+         character(len=ESMF_MAXSTR) :: NRAIN
   end type FRIENDLIES_TYPE
   type (FRIENDLIES_TYPE) FRIENDLIES
 
@@ -58,17 +61,17 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
 
-  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
+  public :: NSSL_2M_Setup, NSSL_2M_Initialize, NSSL_2M_Run
 
 contains
 
-subroutine GFDL_1M_Setup (GC, CF, RC)
+subroutine NSSL_2M_Setup (GC, CF, RC)
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     type(ESMF_Config),   intent(inout) :: CF
     integer, optional                  :: RC  ! return code
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
-    IAm = "GEOS_GFDL_1M_InterfaceMod"
+    IAm = "GEOS_NSSL_2M_InterfaceMod"
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
@@ -85,6 +88,9 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
       FRIENDLIES%QRAIN    = "DYNAMICS:TURBULENCE"
       FRIENDLIES%QSNOW    = "DYNAMICS:TURBULENCE"
       FRIENDLIES%QGRAUPEL = "DYNAMICS:TURBULENCE"
+      FRIENDLIES%NCPL     = "DYNAMICS:TURBULENCE"                  
+      FRIENDLIES%NCPI     = "DYNAMICS:TURBULENCE"
+      FRIENDLIES%NRAIN    = "DYNAMICS:TURBULENCE"
 
     !BOS
 
@@ -183,6 +189,33 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='NCPL',                                       &
+         LONG_NAME  ='particle_number_for_liquid_cloud',           &
+         UNITS      ='kg-1',                                       &
+         FRIENDLYTO = trim(FRIENDLIES%NCPL),                       &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         DEFAULT = 50.0e6 ,                             __RC__  )
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='NCPI',                                       &
+         LONG_NAME  ='particle_number_for_ice_cloud',              &
+         UNITS      ='kg-1',                                       &
+         FRIENDLYTO = trim(FRIENDLIES%NCPI),                       &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         DEFAULT = 1.0e3,                               __RC__  )
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='NRAIN',                                      &
+         LONG_NAME  ='particle_number_for_rain',                   &
+         UNITS      ='kg-1',                                       &
+         FRIENDLYTO = trim(FRIENDLIES%NRAIN),                      &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         DEFAULT = 0.0 ,                                __RC__  )
+
     call MAPL_AddInternalSpec(GC,                               &
          SHORT_NAME = 'NACTL',                                  &
          LONG_NAME  = 'activ aero # conc liq phase for 1-mom',  &
@@ -201,12 +234,12 @@ subroutine GFDL_1M_Setup (GC, CF, RC)
          VLOCATION  = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_TimerAdd(GC, name="--GFDL_1M", RC=STATUS)
+    call MAPL_TimerAdd(GC, name="--NSSL_2M", RC=STATUS)
     VERIFY_(STATUS)
 
-end subroutine GFDL_1M_Setup
+end subroutine NSSL_2M_Setup
 
-subroutine GFDL_1M_Initialize (MAPL, RC)
+subroutine NSSL_2M_Initialize (MAPL, RC)
     type (MAPL_MetaComp), intent(inout) :: MAPL
     integer, optional                   :: RC  ! return code
 
@@ -220,6 +253,28 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
+    integer :: IM, JM, LM
+
+    integer :: NSSL_CONFIG
+
+    integer, parameter :: NSSL_1MOM  = 1
+    integer, parameter :: NSSL_2MOM  = 2
+    integer, parameter :: NSSL_2MOMG = 3
+
+    real, parameter :: con_g    = MAPL_GRAV
+    real, parameter :: con_rd   = MAPL_RGAS
+    real, parameter :: con_cp   = MAPL_CP
+    real, parameter :: con_rv   = MAPL_RVAP
+    real, parameter :: con_t0c  = MAPL_TICE
+    real, parameter :: con_cliq = MAPL_CAPWTR
+    real, parameter :: con_csol = MAPL_CAPICE
+    real, parameter :: con_eps  = MAPL_EPSILON
+
+    REAL, DIMENSION(20) :: nssl_params
+
+    character(len=ESMF_MAXSTR) :: errmsg
+    integer                    :: errflg
+
     type(ESMF_VM) :: VM
     integer :: comm
 
@@ -230,7 +285,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         INTERNAL_ESMF_STATE=INTERNAL, &         
+         RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_Get( MAPL, &
          RUNALARM = ALARM,             &
@@ -254,8 +311,38 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call ESMF_VMGetCurrent(VM, _RC)
     call ESMF_VMGet(VM, mpiCommunicator=comm, _RC)
 
-    call gfdl_cloud_microphys_init(comm)
-    call WRITE_PARALLEL ("INITIALIZED GFDL_1M microphysics in non-generic GC INIT")
+    call nssl_2mom_init_const(  &
+         con_g, con_rd, con_cp, con_rv, con_t0c, con_cliq, con_csol, con_eps )
+
+     nssl_params(1)  = 0.6e9 ! nssl_cccn    CCN base value
+     nssl_params(2)  = 0.    ! nssl_alphah  PSD shape parameter for graupel (2-moment)
+     nssl_params(3)  = 1.    ! nssl_alphahl PSD shape parameter for hail (2-moment)
+     nssl_params(4)  = 4.e5  ! nssl_cnoh    graupel intercept (1-moment only)
+     nssl_params(5)  = 4.e4  ! nssl_cnohl   hail intercept (1-moment only)
+     nssl_params(6)  = 8.e5  ! nssl_cnor    rain intercept (1-moment only)
+     nssl_params(7)  = 3.e6  ! nssl_cnos    snow intercept (1-moment only)
+     nssl_params(8)  = 500.  ! nssl_rho_qh  graupel density
+     nssl_params(9)  = 800.  ! nssl_rho_qhl hail density
+     nssl_params(10) = 100.  ! nssl_rho_qs  snow density
+     nssl_params(11) = 0.    ! nssl_ipelec_tmp
+     nssl_params(12) = 0.    ! nssl_isaund
+
+    call MAPL_GetResource( MAPL, NSSL_CONFIG, Label="NSSL_CONFIG:",  default=1, RC=STATUS)
+    VERIFY_(STATUS)
+    mp_select: SELECT CASE(NSSL_CONFIG)
+
+     CASE (NSSL_1MOM)
+         call nssl_2mom_init(1,IM, 1,JM, 1,LM, nssl_params,ipctmp=0,mixphase=0,ihvol=0, errmsg=errmsg, errflg=errflg)
+     CASE (NSSL_2MOM)
+         call nssl_2mom_init(1,IM, 1,JM, 1,LM, nssl_params,ipctmp=5,mixphase=0,ihvol=1, errmsg=errmsg, errflg=errflg)
+     CASE (NSSL_2MOMG)
+         call nssl_2mom_init(1,IM, 1,JM, 1,LM, nssl_params,ipctmp=5,mixphase=0,ihvol=-1, errmsg=errmsg, errflg=errflg) ! turn off hail
+     CASE DEFAULT
+
+    END SELECT mp_select
+
+
+    call WRITE_PARALLEL ("INITIALIZED NSSL_2M microphysics in non-generic GC INIT")
 
     call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
 
@@ -274,20 +361,20 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCW_EVAP_EFF = 8.e-3
+                                 CCW_EVAP_EFF = 2.e-3
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCI_EVAP_EFF = 8.e-3
+                                 CCI_EVAP_EFF = 2.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
-end subroutine GFDL_1M_Initialize
+end subroutine NSSL_2M_Initialize
 
-subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+subroutine NSSL_2M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -305,7 +392,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
-    real, pointer, dimension(:,:,:) :: NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: NCPL, NCPI, NRAIN, NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH
     real, pointer, dimension(:,:)   :: AREA, FRLAND, TS, DTSX, SH, EVAP, KPBLSC
@@ -359,7 +446,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_TimerOn (MAPL,"--GFDL_1M",RC=STATUS)
+    call MAPL_TimerOn (MAPL,"--NSSL_2M",RC=STATUS)
 
     ! Get parameters from generic state.
     !-----------------------------------
@@ -385,6 +472,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(INTERNAL, CLLS,     'CLLS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QILS,     'QILS'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPL,     'NCPL'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NCPI,     'NCPI'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, NACTL,    'NACTL'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, NACTI,    'NACTI'   , RC=STATUS); VERIFY_(STATUS)
 
@@ -557,7 +647,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! Send the condensates through the pdf after convection
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
            ! determine combined minrhcrit in stable/unstable regimes
-             minrhcrit  = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
+             minrhcrit  = (0.9)*(1.0-facEIS) + (0.95)*facEIS
              if (TURNRHCRIT_PARAM <= 0.0) then
               ! determine the turn pressure using the LCL
                 turnrhcrit  = PLmb(I, J, KLCL(I,J)) - 250.0 ! 250mb above the LCL
@@ -583,7 +673,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! fill RHCRIT export
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
            ! Put condensates in touch with the PDF
-             if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
              call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
@@ -618,7 +707,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-             endif
              if (LMELTFRZ) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
@@ -635,7 +723,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             QILS(I,J,L) )
              endif
            ! evaporation for CN
-             if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
+             if (CCW_EVAP_EFF > 0.0) then
              RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
@@ -654,7 +742,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
              endif
            ! sublimation for CN
-             if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
+             if (CCI_EVAP_EFF > 0.0) then
              RHCRIT = 1.0
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
@@ -714,7 +802,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      DVDT_micro = V
      DTDT_micro = T
 
-        ! Delta-Z layer thickness (gfdl expects this to be negative)
+        ! Delta-Z layer thickness (MP expects this to be negative)
          DZ = -1.0*DZET
         ! Zero-out local microphysics tendencies
          DQVDTmic = 0.
@@ -746,39 +834,127 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = QSNOW
         ! GRAUPEL
          RAD_QG = QGRAUPEL
+#ifdef INTERFACE
+SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw, chl,  &
+                              cn, vhw, vhl, cna, cni, f_cn, f_cna, f_cina,               &
+                              zrw, zhw, zhl,                                            &
+                              qsw, qhw, qhlw,                                           &
+                              tt, th, pii, p, w, dn, dz, dtp, itimestep,                &
+                              RAINNC,RAINNCV,                                           &
+                              dx, dy,                                                   &
+                              axtra,                                                    &
+                              SNOWNC, SNOWNCV, GRPLNC, GRPLNCV,                         &
+                              SR,HAILNC, HAILNCV,                                       &
+                              tkediss,                                                  &
+                              re_cloud, re_ice, re_snow, re_rain,                       &
+                              has_reqc, has_reqi, has_reqs, has_reqr,                   &
+                              rainncw2, rainnci2,                                       &
+                              dbz, vzf,compdbz,                                         &
+                              rscghis_2d,rscghis_2dp,rscghis_2dn,                       &
+                              scr,scw,sci,scs,sch,schl,sctot,                           &
+                              elec_physics,                                             &
+                              induc,elecz,scion,sciona,                                 &
+                              noninduc,noninducp,noninducn,                             &
+                              pcc2, pre2, depsubr,      &
+                              mnucf2, melr2, ctr2,     &
+                              rim1_2, rim2_2,rim3_2, &
+                              nctr2, nnuccd2, nnucf2, &
+                              effc2,effr2,effi2,       &
+                              effs2, effg2,                       &
+                              fc2, fr2,fi2,fs2,fg2, &
+                              fnc2, fnr2,fni2,fns2,fng2, &
+!                              qcond,qdep,qfrz,qrauto,qhcnvi,qhcollw,qscollw,            &
+!                              ncauto, niinit,nifrz,                                     &
+!                              re_liquid, re_graupel, re_hail, re_icesnow,               &
+!                              vtcloud, vtrain, vtsnow, vtgraupel, vthail,               &
+                              ipelectmp,                                                &
+                              diagflag,ke_diag,                                         &
+                              errmsg, errflg, &
+                              nssl_progn,                                              & ! wrf-chem 
+! 20130903 acd_mb_washout start
+                              wetscav_on, rainprod, evapprod,                           & ! wrf-chem 
+! 20130903 acd_mb_washout end
+                              cu_used, qrcuten, qscuten, qicuten, qccuten,              & ! hm added
+                              ids,ide, jds,jde, kds,kde,                                &  ! domain dims
+                              ims,ime, jms,jme, kms,kme,                                &  ! memory dims
+                              its,ite, jts,jte, kts,kte)                                   ! tile dims
+#endif
+#ifdef RUN_MP
         ! Run the driver
-         call gfdl_cloud_microphys_driver( &
-                             ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
-                               RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
-                             ! Output tendencies
-                               DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
-                               DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
-                             ! Input fields
-                               T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
-                             ! constant inputs
-                               AREA, DT_MOIST, FRLAND, CNV_FRC, SRF_TYPE, EIS, &
-                               RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
-                             ! Output rain re-evaporation and sublimation
-                               REV_LS, RSU_LS, &
-                             ! Output precipitates
-                               PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
-                             ! Output mass flux during sedimentation (Pa kg/kg)
-                               PFL_LS(:,:,1:LM), PFI_LS(:,:,1:LM), &
-                             ! constant grid/time information
-                               LHYDROSTATIC, LPHYS_HYDROSTATIC, &
-                               1,IM, 1,JM, 1,LM, 1, LM)
-     ! Apply tendencies
-         T = T + DTDTmic * DT_MOIST
-         U = U + DUDTmic * DT_MOIST
-         V = V + DVDTmic * DT_MOIST
-     ! Apply moist/cloud species tendencies
-         RAD_QV = RAD_QV + DQVDTmic * DT_MOIST
-         RAD_QL = RAD_QL + DQLDTmic * DT_MOIST
-         RAD_QR = RAD_QR + DQRDTmic * DT_MOIST
-         RAD_QI = RAD_QI + DQIDTmic * DT_MOIST
-         RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
-         RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
-         RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+         CALL nssl_2mom_driver(                          &
+                     TT=t,                               &
+                     QV=qv_curr,                         &
+                     QC=qc_curr,                         &
+                     QR=qr_curr,                         &
+                     QI=qi_curr,                         &
+                     QS=qs_curr,                         &
+                     QH=qg_curr,                         &
+                     QHL=qh_curr,                        &
+                     CCW=qndrop_curr,                    &
+                     CRW=qnr_curr,                       &
+                     CCI=qni_curr,                       &
+                     CSW=qns_curr,                       &
+                     CHW=qng_curr,                       &
+                     CHL=qnh_curr,                       &
+                     VHW=qvolg_curr, f_vhw=F_QVOLG,      &
+                     VHL=qvolh_curr, f_vhl=F_QVOLH,      &
+                     ZRW=qzr_curr,  f_zrw = f_qzr,       &
+                     ZHW=qzg_curr,  f_zhw = f_qzg,       &
+                     ZHL=qzh_curr,  f_zhl = f_qzh,       &
+                     cn=qnn_curr,  f_cn=f_qnn,           &
+                     PII=pi_phy,                         &
+                     P=p,                                &
+                     W=w,                                &
+                     DZ=dz8w,                            &
+                     DTP=dt,                             &
+                     DN=rho,                             &
+                     RAINNC   = RAINNC,                  &
+                     RAINNCV  = RAINNCV,                 &
+                     SNOWNC   = SNOWNC,                  &
+                     SNOWNCV  = SNOWNCV,                 &
+                     HAILNC   = HAILNC,                  &
+                     HAILNCV  = HAILNCV,                 &
+                     GRPLNC   = GRAUPELNC,               &
+                     GRPLNCV  = GRAUPELNCV,              &
+                     SR=SR,                              &
+                     dbz      = refl_10cm,               &
+#if ( WRF_CHEM == 1 )
+                    WETSCAV_ON = config_flags%wetscav_onoff == 1, &
+                    EVAPPROD=evapprod,RAINPROD=rainprod, &
+#endif
+                     nssl_progn=nssl_progn,              &
+                     diagflag = diagflag,                &
+                     ke_diag = ke_diag,                &
+                     cu_used=cu_used,                    &
+                     qrcuten=qrcuten,                    &  ! hm
+                     qscuten=qscuten,                    &  ! hm
+                     qicuten=qicuten,                    &  ! hm
+                     qccuten=qccuten,                    &  ! hm
+                     re_cloud=re_cloud,                  &
+                     re_ice=re_ice,                      &
+                     re_snow=re_snow,                    &
+                     has_reqc=has_reqc,                  & ! ala G. Thompson
+                     has_reqi=has_reqi,                  & ! ala G. Thompson
+                     has_reqs=has_reqs,                  & ! ala G. Thompson
+                     hail_maxk1=hail_maxk1,              &
+                     hail_max2d=hail_max2d,              &
+                     nwp_diagnostics=config_flags%nwp_diagnostics, &
+                  IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
+                  IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
+                  ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte  &
+                                                                    )
+     ! RESHAPE
+         RAD_QV = RESHAPE(qv/(1.0+qv),(/IM,JM,LM/))
+         RAD_QL = RESHAPE(qc,(/IM,JM,LM/))
+         RAD_QR = RESHAPE(qr,(/IM,JM,LM/))
+         RAD_QI = RESHAPE(qi,(/IM,JM,LM/))
+         RAD_QS = RESHAPE(qs,(/IM,JM,LM/))
+         RAD_QG = RESHAPE(qg,(/IM,JM,LM/))
+         T      = RESHAPE(tt,(/IM,JM,LM/))
+         NCPL   = RESHAPE(nc,(/IM,JM,LM/))*AIRDEN
+         NCPI   = RESHAPE(ni,(/IM,JM,LM/))*AIRDEN
+         NRAIN  = RESHAPE(nr,(/IM,JM,LM/))*AIRDEN
+#endif
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
@@ -820,7 +996,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-               if (do_qa) RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
             enddo
           enddo
          enddo
@@ -949,12 +1124,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QSNOW
-
+    
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
-     call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
+     call MAPL_TimerOff(MAPL,"--NSSL_2M",RC=STATUS)
 
-end subroutine GFDL_1M_Run
+end subroutine NSSL_2M_Run
 
-end module GEOS_GFDL_1M_InterfaceMod
+end module GEOS_NSSL_2M_InterfaceMod

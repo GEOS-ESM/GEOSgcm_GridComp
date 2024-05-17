@@ -1265,6 +1265,9 @@ contains
         wstar = 1.0*wstar**.3333
         tep  = t(i,j,nlev) + 0.4 + 2.*sh(i,j)/(zrho*wstar*MAPL_CP)
         qp   = q(i,j,nlev) + 2.*evap(i,j)/(zrho*wstar)
+      else
+        tep  = t(i,j,nlev) + 0.4
+        qp   = q(i,j,nlev)
       end if
 
     else   ! tpfac scales up bstar by inv. ratio of

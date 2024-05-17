@@ -201,15 +201,15 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v  =   300. !< cloud water to water vapor (evaporation)
     real :: tau_i2v  =   300. !< cloud ice to water vapor (sublimation)
     real :: tau_s2v  =   600. !< snow sublimation
-    real :: tau_g2v  =   600. !< graupel sublimation
+    real :: tau_g2v  =   900. !< graupel sublimation
     real :: tau_g2r  =   600. !< graupel melting to rain
     real :: tau_v2s  = 21600. !< snow deposition -- make it a slow process
     real :: tau_v2g  = 21600. !< graupel deposition -- make it a slow process
     real :: tau_revp =   600. !< rain re-evaporation
     real :: tau_frz  =   600. !< timescale for liquid-ice freezing
     real :: tau_imlt =   600. !< cloud ice melting
-    real :: tau_smlt =   600. !< snow melting
-    real :: tau_i2s  =   600. !< cloud ice to snow auto - conversion
+    real :: tau_smlt =   900. !< snow melting
+    real :: tau_i2s  =  1000. !< cloud ice to snow auto - conversion
     ! horizontal subgrid variability
 
     real :: dw_land = 0.05 !< base value for subgrid deviation / variability over land
@@ -240,26 +240,27 @@ module gfdl2_cloud_microphys_mod
     real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources) [WMP: never used]
 
     ! critical autoconverion parameters
-    real :: qi0_crt = 1.0e-3 !< cloud ice to snow autoconversion threshold
+    real :: qi0_crt = 5.0e-4 !< cloud ice to snow autoconversion threshold
                              !! qi0_crt is highly dependent on horizontal resolution
+                             !! this sensitivity is handled with onemsig later in the code
     real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold  [WMP: never used]
                              !! lfo used * mixing ratio * = 1.e-4 (hail in lfo)
-    real :: qs0_crt = 0.8e-4 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    real :: qs0_crt = 8.0e-4 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
 
     ! collection efficiencies for accretion
     !   Dry processes (frozen to frozen: 0.1)
     !   Wet processes (liquid to/from frozen: 1.0)
-    real :: c_psaci = 0.10  !< accretion: cloud ice to snow
-    real :: c_piacr = 1.00  !< accretion: rain to cloud ice: [WMP: never used]
+    real :: c_psaci = 0.05  !< accretion: cloud ice to snow
+    real :: c_piacr = 5.00  !< accretion: rain to cloud ice: [WMP: never used]
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
-    real :: c_pgacs = 0.10  !< accrection: snow to graupel
-    real :: c_pgaci = 0.10  !< accrection: cloud ice to graupel
+    real :: c_pgacs = 0.01  !< accrection: snow to graupel
+    real :: c_pgaci = 0.05  !< accrection: cloud ice to graupel
 
     ! accretion efficiencies
-    real :: alin = 2115.  !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
-    real :: clin = 152.93 !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
+    real :: alin = 842.0  !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
+    real :: clin = 4.8    !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
     real :: gcon = 40.74 * sqrt (sfcrho) ! [Graupel] (increase to ehance ql/qi -- > qg)
 
     ! fall velocity tuning constants:
@@ -278,9 +279,9 @@ module gfdl2_cloud_microphys_mod
     ! https://www.atmos.albany.edu/facstaff/rfovell/ATM562/lin-etal-1983.pdf
     ! based on lin 1983: Fig 2
     real :: vi_max = 1.0 !< max fall speed for ice
-    real :: vs_max = 3.0 !< max fall speed for snow
-    real :: vr_max = 10. !< max fall speed for rain
-    real :: vg_max = 20. !< max fall speed for graupel
+    real :: vs_max = 2.0 !< max fall speed for snow
+    real :: vr_max = 12. !< max fall speed for rain
+    real :: vg_max = 12. !< max fall speed for graupel
 
     ! cloud microphysics switchers
 

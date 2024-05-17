@@ -3293,13 +3293,13 @@ subroutine update_cld( &
          CF          , &
          AF          , &
          SCICE       , &
-         NI          , &
          NL          , &
+         NI          , &
          RHcmicro)
 
       real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
       integer, intent(in) :: pdfflag
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF, NI, RHCmicro, NL,  SCICE
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,SCICE,NL,NI,RHCmicro
 
       ! internal arrays
       real :: CFO
