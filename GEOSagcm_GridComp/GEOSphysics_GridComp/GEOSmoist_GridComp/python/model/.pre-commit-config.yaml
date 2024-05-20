@@ -1,6 +1,8 @@
 default_language_version:
   python: python3
 
+files: pyMoist
+
 repos:
 -   repo: https://github.com/psf/black
     rev: 20.8b1
@@ -19,9 +21,10 @@ repos:
     hooks:
     - id: mypy
       name: mypy-pyMoist
-      args: [--config-file, setup.cfg]
+      args: [--config, GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/python/model/setup.cfg]
       additional_dependencies: [types-PyYAML]
       files: pyMoist
+
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
@@ -29,6 +32,7 @@ repos:
     - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
+
 -   repo: https://github.com/pycqa/flake8
     rev: 3.9.2
     hooks:
