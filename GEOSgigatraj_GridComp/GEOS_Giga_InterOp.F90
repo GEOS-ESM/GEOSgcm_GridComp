@@ -8,7 +8,7 @@ module GEOS_Giga_InterOpMod
    public :: initMetGEOSDistributedLatLonData
    public :: initMetGEOSDistributedCubedData
    public :: updateFields
-   public :: rk4a_advance
+   public :: RK4_advance
    public :: setData
    public :: getData
    public :: getData2d
@@ -41,7 +41,7 @@ module GEOS_Giga_InterOpMod
        type(c_ptr), intent(in), value    :: metSrc_ptr, ctime_ptr, u_ptr, v_ptr, w_ptr, p_ptr
      end subroutine
 
-     subroutine rk4a_advance(metsrc_ptr, ctime_ptr, dt, n, lons_ptr, lats_ptr, levs_ptr) bind( C, name='rk4a_advance')
+     subroutine RK4_advance(metsrc_ptr, ctime_ptr, dt, n, lons_ptr, lats_ptr, levs_ptr) bind( C, name='RK4_advance')
        import :: c_ptr, c_int, c_double
        type(c_ptr), intent(in), value    :: metsrc_ptr
        real(c_double), intent(in), value :: dt

@@ -286,7 +286,7 @@ contains
               farrayPtr=centerX, rc=status)
     VERIFY_(STATUS)
 
-    ptr(2:imc+1,2:jmc+1)=centerX
+    ptr(1:imc,1:jmc)=centerX
     call ESMF_FieldHalo(field,rh,rc=status)
     _VERIFY(status)
     lons_2dcenter = ptr
@@ -295,7 +295,8 @@ contains
               staggerloc=ESMF_STAGGERLOC_CENTER, &
               farrayPtr=centerY, rc=status)
     VERIFY_(STATUS)
-    ptr(2:imc+1,2:jmc+1)=centerY
+    ptr = 0.0d0
+    ptr(1:imc,1:jmc)=centerY
     call ESMF_FieldHalo(field,rh,rc=status)
      _VERIFY(status)
     lats_2dcenter = ptr
@@ -325,6 +326,8 @@ contains
     else
        cube_lons_center = lons_2dcenter/MAPL_PI*180.0
        cube_lats_center = lats_2dcenter/MAPL_PI*180.0
+       where (cube_lons_center < -180.) cube_lons_center = cube_lons_center + 360.
+       where (cube_lons_center >  180.) cube_lons_center = cube_lons_center - 360.
     endif
 
     call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
@@ -362,6 +365,7 @@ contains
       GigaTrajInternalPtr%metSrc = initMetGEOSDistributedCubedData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1),   &
                                    npz, i1, i2, j1, j2, npz, &
                                    c_loc(cube_lons_center), c_loc(cube_lats_center), c_loc(levs_center), c_loc(ctime))
+
       deallocate(cube_lons_center, cube_lats_center,levs_center)
 
     endif
@@ -925,7 +929,7 @@ contains
 !---------------
 ! Step 4) Time advance 
 !---------------
-    call rk4a_advance( GigaTrajInternalPtr%metSrc, c_loc(ctime0), DT, GigaTrajInternalPtr%parcels%num_parcels,  &
+    call RK4_advance( GigaTrajInternalPtr%metSrc, c_loc(ctime0), DT, GigaTrajInternalPtr%parcels%num_parcels,  &
                        c_loc(GigaTrajInternalPtr%parcels%lons), &
                        c_loc(GigaTrajInternalPtr%parcels%lats), &
                        c_loc(GigaTrajInternalPtr%parcels%zs))
