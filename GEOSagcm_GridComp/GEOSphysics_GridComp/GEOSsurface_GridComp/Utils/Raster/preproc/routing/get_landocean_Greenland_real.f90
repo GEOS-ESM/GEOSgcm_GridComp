@@ -16,6 +16,8 @@ program main
   character(len=100) :: file_path1 !/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/topo/v1/SRTM-TopoData/SRTM_PfafData.nc
   character(len=100) :: file_path2 !/discover/nobackup/projects/gmao/bcs_shared/preprocessing_bcs_inputs/land/routing/GreenlandID_30s.nc
 
+! Insert the Greenland index map into the catchment index map.
+
   if (command_argument_count() /= 2) then
       print *, "no <file_path1> <file_path2> found"
       stop

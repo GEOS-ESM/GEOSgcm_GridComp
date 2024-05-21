@@ -26,6 +26,17 @@ program main
   call get_command_argument(3, file_path3)
   call get_command_argument(4, file_path4)
 
+! Get sink points on land or in Greenland (from Lauren Andrews) by picking the point (i.e., 1 minute grid cell) within each sink catchment that has the largest drainage area per the HydroSHEDS (https://www.hydrosheds.org/) dataset.
+! acah = map of drainage area with a resolution of 1m from HydroSHEDS.
+! down = catchment index of the downstream catchment.
+! sx = the lon index (on a 1m map) of the outlet point (>0 only for sink catchments).
+! sy = the lat index (on a 1m map) of the outlet point (>0 only for sink catchments). 
+! msk: 1 = has downstream catchment; 2 = drains to ocean; 3 = drains to inland lake
+! acas = maximum drainage area, defined (>0) only for sink catchments 
+! ntot = number of the total outlets (including Greenland) 
+! nl = number of outlets to ocean in land (not including Greenland) 
+! ng = number of outlets to ocean in Greenland
+
   ntot=nl+ng
   allocate(catchind(nlon,nlat),acah(nlon,nlat))
   allocate(lon(nlon),lat(nlat))
@@ -56,7 +67,9 @@ program main
   read(77,*)down
   open(77,file="outputs/Pfaf_msk.txt")
   read(77,*)msk
-  
+
+! For each long/lat location, determine if the catchment holding it is an outlet catchment to the ocean, 
+! and if so, determine if this point has the maximum drainage area  
   acas=-9999.
   sx=0
   sy=0
@@ -72,7 +85,8 @@ program main
         endif
      enddo
   enddo
-  
+
+! Construct arrays of longitudes and latitudes of sink points.  
   where(down/=-1)sx=-1
   where(down/=-1)sy=-1
   k=0
@@ -83,7 +97,8 @@ program main
         lats(k)=lat(sy(i))
      endif
   enddo
-  
+
+! Append Greenland values to the longitude and latitude arrays.  
   open(77,file=file_path3)
   read(77,*)latg
   open(77,file=file_path4)
@@ -92,6 +107,7 @@ program main
   lons(k+1:ntot)=long
   lats(k+1:ntot)=latg
   
+! Write out arrays of sink point longitudes and latitudes
   open(88,file="outputs/outlet_sinklat.txt")
   do i=1,ntot
      write(88,*)lats(i)
