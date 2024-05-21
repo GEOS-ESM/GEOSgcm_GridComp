@@ -21,7 +21,14 @@ repos:
     hooks:
     - id: mypy
       name: mypy-pyMoist
-      args: [--config, GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/python/model/setup.cfg]
+      args: [
+        --ignore-missing-imports,
+        "--follow-imports=normal",
+        --namespace-packages,
+        --no-strict-optional,
+        --warn-unreachable,
+        --explicit-package-bases,
+      ]
       additional_dependencies: [types-PyYAML]
       files: pyMoist
 
@@ -39,7 +46,11 @@ repos:
     - id: flake8
       name: flake8
       language_version: python3
-      args: [--config, setup.cfg]
+      args: [
+        "--exclude=docs",
+        "--ignore=W503,E302,E203,F841",
+        "--max-line-length=88"
+      ]
       exclude: |
         (?x)^(
         .*/__init__.py |
@@ -48,4 +59,7 @@ repos:
       name: flake8 __init__.py files
       files: "__init__.py"
       # ignore unused import error in __init__.py files
-      args: ["--ignore=F401,E203", --config, setup.cfg]
+      args: [
+        "--exclude=docs",
+        "--ignore=W503,E302,E203,F841,F401",
+        "--max-line-length=88",]

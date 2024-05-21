@@ -1,5 +1,5 @@
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl import Namelist, StencilFactory
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
 
 
@@ -11,10 +11,10 @@ class TranslateRadiationCoupling(TranslateFortranData2Py):
         stencil_factory: StencilFactory,
     ):
         super().__init__(grid, stencil_factory)
-        self.compute_func = RadiationCoupling(   # type: ignore
+        self.compute_func = RadiationCoupling(  # type: ignore
             self.stencil_factory,
             self.grid.quantity_factory,
-            do_qa=namelist.do_qa
+            do_qa=namelist.do_qa,
         )
 
         # ADAPT BELOW TO INPUTS
@@ -30,7 +30,6 @@ class TranslateRadiationCoupling(TranslateFortranData2Py):
         #     "fillq": fillq_info,
         #     "q": self.grid.compute_dict(),
         # }
-
 
     def compute_from_storage(self, inputs):
         self.compute_func(**inputs)

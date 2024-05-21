@@ -9,8 +9,6 @@ from setuptools import find_namespace_packages, setup
 with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
-requirements = []
-
 test_requirements = ["pytest", "pytest-subtests", "serialbox", "coverage"]
 ndsl_requirements = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@2024.04.00"]
 develop_requirements = test_requirements + ndsl_requirements + ["pre-commit"]
@@ -32,8 +30,8 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3.11",
     ],
-    description="pyMoist is the NDSL version of NASA GMAO's GEOS Moist physics.",
-    install_requires=requirements,
+    description=("pyMoist is the NDSL version of NASA GMAO's GEOS Moist physics."),
+    install_requires=[],
     extras_require=extras_requires,
     license="BSD license",
     long_description=readme,
