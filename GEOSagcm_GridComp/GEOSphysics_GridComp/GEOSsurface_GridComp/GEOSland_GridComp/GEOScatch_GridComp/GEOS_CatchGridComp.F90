@@ -4616,7 +4616,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            write (FIRST_MM_str,'(i2.2)') FIRST_MM
 
            cn_rcuns_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
-           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.tavg24_1d_lnd_Nt.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
+           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.SCUNS.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
 
            STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
            VERIFY_(status)
