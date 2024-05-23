@@ -59,6 +59,8 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
 
+  integer, save :: timestep = 0
+
   public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
 contains
@@ -356,6 +358,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real    :: minrhcrit, turnrhcrit, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
+
+    integer :: comm, rank, mpierr
+    
+    type(ESMF_VM) :: vm
+    call ESMF_VMGetCurrent(vm,rc=status)
+    call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+    call MPI_COMM_rank(comm,rank,mpierr)
 
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
@@ -851,6 +860,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          QRAIN    = RAD_QR
          QSNOW    = RAD_QS
          QGRAUPEL = RAD_QG
+
+       timestep = timestep + 1
+      !  print*, "TIMESTEP = ", timestep, ' rank = ', rank, ' do_qa = ', do_qa, "6 * rank + TIMESTEP = ", 6*rank+timestep
+!$ser init directory='./rad_coup_data' prefix='RAD_COUPLING_DATA' mpi_rank=rank unique_id=.true.
+!$ser savepoint RadCouple-In timestep=timestep
+!$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN
+!$ser data PLmb=PLmb QRAIN=QRAIN QSNOW=QSNOW QGRAUPEL=QGRAUPEL NACTL=NACTL NACTI=NACTI
+!$ser data FAC_RL=FAC_RL MIN_RL=MIN_RL MAX_RL=MAX_RL FAC_RI=FAC_RI MIN_RI=MIN_RI MAX_RI=MAX_RI
+
      ! Radiation Coupling
          do L = 1, LM
            do J = 1, JM
@@ -867,6 +885,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             enddo
           enddo
          enddo
+!$ser savepoint RadCouple-Out timestep=timestep
+!$ser data Q=Q T=T QLLS=QLLS QILS=QILS CLLS=CLLS QLCN=QLCN QICN=QICN CLCN=CLCN 
+!$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QI=RAD_QI RAD_QR=RAD_QR RAD_QS=RAD_QS
+!$ser data RAD_QG=RAD_QG RAD_CF=RAD_CF CLDREFFL=CLDREFFL CLDREFFI=CLDREFFI
+
          call FILLQ2ZERO(RAD_QV, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QL, MASS, TMP2D)
          call FILLQ2ZERO(RAD_QI, MASS, TMP2D)

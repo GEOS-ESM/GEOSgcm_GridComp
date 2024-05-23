@@ -31,6 +31,8 @@ MODULE Aer_Actv_Single_Moment
        real, parameter :: NN_MAX      = 1000.0e6
 
        LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
+
+       integer, save :: timestep = 0
       CONTAINS          
 
 !>----------------------------------------------------------------------------------------------------------------------
@@ -85,6 +87,14 @@ MODULE Aer_Actv_Single_Moment
       character(len=ESMF_MAXSTR)              :: IAm="Aer_Activation"
       integer                                 :: STATUS
 
+      integer :: comm, rank, mpierr
+    
+      type(ESMF_VM) :: vm
+      call ESMF_VMGetCurrent(vm,rc=status)
+      call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+      call MPI_COMM_rank(comm,rank,mpierr)
+  
+
       do k = 1, LM
           do j = 1, JM
               do i = 1, IM
@@ -98,6 +108,11 @@ MODULE Aer_Actv_Single_Moment
       if (USE_AEROSOL_NN) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+
+          timestep = timestep + 1
+
+!$ser savepoint Aer_Actv_aero_aci-In timestep=timestep
+!$ser data n_modes=n_modes
 
           if (n_modes > 0) then
 
@@ -165,6 +180,9 @@ MODULE Aer_Actv_Single_Moment
                  call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
                  call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
 
+!$ser savepoint Aer_Actv_aero_aci_multi-In timestep=(timestep-1)*n_modes+n
+!$ser data aci_num=aci_num aci_dgn=aci_dgn aci_sigma=aci_sigma aci_hygroscopicity=aci_hygroscopicity
+!$ser data aci_density=aci_density aci_f_dust=aci_f_dust aci_f_soot=aci_f_soot aci_f_organic=aci_f_organic
                  if (USE_AERO_BUFFER) then
                     buffer(:,:,:,n,1) = aci_num
                     buffer(:,:,:,n,2) = aci_dgn

@@ -50,6 +50,8 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 
+  integer, save :: timestep = 0
+
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -5225,6 +5227,13 @@ contains
     integer :: IM,JM,LM
     integer :: I, J, L
 
+    integer :: comm, rank, mpierr
+    
+    type(ESMF_VM) :: vm
+    call ESMF_VMGetCurrent(vm,rc=status)
+    call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+    call MPI_COMM_rank(comm,rank,mpierr)
+
     !=============================================================================
 
     ! Begin...
@@ -5455,10 +5464,27 @@ contains
          else
            TMP3D = W
          endif
+
+         timestep = timestep + 1
+         print*,'timestep = ', timestep, ' : rank = ', rank
+
+! Note : AeroProps is allocated above, so serialization of AeroProps isn't necessary as an input since it does not 
+!        contain any preset data.
+
+!$ser init directory='./aer_activation_data' prefix='AER_ACTIVATION_DATA' mpi_rank=rank unique_id=.true.
+!$ser savepoint Aer_Actv-In timestep=timestep
+!$ser data IM=IM JM=JM LM=LM Q=Q T=T PLmb=PLmb PLE=PLE ZL0=ZL0 ZLE0=ZLE0 QLCN=QLCN QICN=QICN
+!$ser data QLLS=QLLS QILS=QILS SH=SH EVAP=EVAP KPBL=KPBL TKE=TKE TMP3D=TMP3D FRLAND=FRLAND 
+!$ser data USE_AERO_BUFFER=USE_AERO_BUFFER CCN_LND=CCN_LND CCN_OCN=CCN_OCN
+
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                              SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                              AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+
+!$ser savepoint Aer_Actv-Out timestep=timestep
+!$ser data NACTL=NACTL NACTI=NACTI NWFA=NWFA
+
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
