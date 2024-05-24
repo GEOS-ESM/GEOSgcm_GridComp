@@ -3869,7 +3869,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
       !   of soildepth data read above but is the same as of 29 Apr 2022).
 
-      fname =trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H11V13.nc'
+      !fname =trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H11V13.nc'
+      ! Rolf's update May24th 2024
+      fname =trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v3/SoilProperties_H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)  ! cannot be needed here
       !status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)  ! cannot be needed here
@@ -3925,7 +3927,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       	 do ix = 1,36
 	    write (vv,'(i2.2)')jx
 	    write (hh,'(i2.2)')ix 
-	    fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H'//hh//'V'//vv//'.nc'
+             ! Rolf's update May24th 2024
+	    !fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v2/SoilProperties_H'//hh//'V'//vv//'.nc'
+	    fname = trim(MAKE_BCS_INPUT_DIR)//'/land/soil/SOIL-DATA/soil_properties/v3/SoilProperties_H'//hh//'V'//vv//'.nc'
             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 	    if(status == 0) then
 		status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
