@@ -3871,7 +3871,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       if      (trim(SOILBCS)=='HWSD_b')  then
          tmpversion = 'v3'
-      else if (trim(SOILBCS)='HWSD')    then
+      else if (trim(SOILBCS)=='HWSD')    then
          tmpversion = 'v2'
       else
          print *, 'Unknown SOILBCS: ', SOILBCS  
