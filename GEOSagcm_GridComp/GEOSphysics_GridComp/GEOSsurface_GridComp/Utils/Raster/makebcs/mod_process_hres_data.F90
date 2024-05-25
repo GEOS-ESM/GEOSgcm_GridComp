@@ -3869,7 +3869,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! get info common to all H[xx]V[yy] rectangles (could in theory differ from that
       !   of soildepth data read above but is the same as of 29 Apr 2022).
 
-      if      (trim(SOILBCS)='HWSD_b')  then
+      if      (trim(SOILBCS)=='HWSD_b')  then
          tmpversion = 'v3'
       else if (trim(SOILBCS)='HWSD')    then
          tmpversion = 'v2'
