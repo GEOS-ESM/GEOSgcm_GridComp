@@ -76,6 +76,8 @@ module CN_initMod
   use SoilBiogeochemCompetitionMod       , only : readSoilBiogeochemCompetitionParams    => readParams
   use SoilBiogeochemCompetitionMod       , only : SoilBiogeochemCompetitionInit
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
+  use CNGapMortalityMod                  , only : readCNGapMortalityParams               => readParams
+
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
  
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
@@ -336,6 +338,7 @@ module CN_initMod
    call readSoilBiogeochemNLeachingParams(ncid)
    call readSoilBiogeochemCompetitionParams(ncid)
    call readSoilBiogeochemPotentialParams(ncid)
+   call readCNGapMortalityParams(ncid)
 
    call ncid%close(rc=status)
 
