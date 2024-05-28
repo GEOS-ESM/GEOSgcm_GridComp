@@ -116,6 +116,11 @@ mkdir -p land/{GRIDNAME}/clsm
 /bin/mv clsm/lnfm.dat    land/{GRIDNAME}/lnfm_clim_{RC}.data
 /bin/mv clsm/ndvi.dat    land/{GRIDNAME}/ndvi_clim_{RC}.data
 
+# vegdyn_{RC}.dat file is nc4; for clarification, create link with proper file name extension
+cd land/{GRIDNAME}
+ln -s vegdyn_{RC}.dat vegdyn_{RC}.nc4
+cd ../../
+
 /bin/mv clsm/ar.new \\
         clsm/bf.dat \\
         clsm/ts.dat \\
