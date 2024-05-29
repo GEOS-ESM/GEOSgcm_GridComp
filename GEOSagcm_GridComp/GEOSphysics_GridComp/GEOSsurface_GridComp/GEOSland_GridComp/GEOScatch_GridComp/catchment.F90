@@ -129,8 +129,8 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
+                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &  ! LONS, LATS are in [radians] !!!
+                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp !!!
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -297,6 +297,8 @@
       integer  n_out
       integer  n_outs(20)
 
+      ! ---------------------------------
+      
       numout =  0
 
 ! choose output point by lon and lat Input lons and lats are in radians
@@ -911,8 +913,9 @@
         tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
 
         sumdepth=sum(sndz)
-
+        
         CALL StieglitzSnow_snowrt(                                             &
+                   LONS(N), LATS(N),                                           &  ! in    [radians]  !!!
                    N_sm, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
@@ -924,8 +927,7 @@
                    EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
                    sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
                    wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
-                   excs, drho0, wesnbot, tksno, dtss                   )          ! out     
-
+                   excs, drho0, wesnbot, tksno, dtss     )                        ! out     
 
         FICESOUT(:,N)  = fices
 
@@ -2938,8 +2940,6 @@
 
     logical                    :: ice1, tzero
 
-    logical, parameter         :: use_threshold_fac = .false.
-
     ! ------------------------------------------------------------------
 
     ! Compute tsurf excluding snow
@@ -2959,7 +2959,7 @@
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
           call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
-               ice1, tzero, use_threshold_fac ) 
+               ice1, tzero, .false. ) 
           
           tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
