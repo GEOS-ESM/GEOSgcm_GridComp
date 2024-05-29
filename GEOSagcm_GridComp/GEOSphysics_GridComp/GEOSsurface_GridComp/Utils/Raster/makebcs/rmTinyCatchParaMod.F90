@@ -48,6 +48,7 @@ module rmTinyCatchParaMod
 
   logical,      public, save :: use_PEATMAP = .false.
   logical,      public, save :: jpl_height  = .false.
+  logical,      public, save :: IRRIGBCS    = .false.
   character*8,  public, save :: LAIBCS      = 'UNDEF'
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
@@ -194,6 +195,17 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
+
+     case ("v12")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+       IRRIGBCS    = .true.
+
     case default
 
        print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'

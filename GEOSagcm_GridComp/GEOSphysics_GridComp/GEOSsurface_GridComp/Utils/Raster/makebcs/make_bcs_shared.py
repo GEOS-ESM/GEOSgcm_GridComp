@@ -15,7 +15,7 @@ def get_script_head() :
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
-#SBATCH --constraint=sky|cas
+#SBATCH --constraint=sky|cas|mil
 
 echo "-----------------------------" 
 echo "make_bcs starts date/time" 

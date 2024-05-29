@@ -30,7 +30,7 @@ contains
     
     integer,       parameter :: NX_gripc = 86400
     integer,       parameter :: NY_gripc = 43200,  NY_GripcData = 36000
-    character*300, parameter :: GRIPC_file = 'data/CATCH/IRRIGATION/irrigtype_salmon2013.flt'
+    character*300, parameter :: GRIPC_file = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/crop_fraction_data/v1/irrigtype_salmon2013.flt'
     real, allocatable, dimension (:) :: IGRIPC, RGRIPC, PGRIPC, NGRIPC
     
     ! MIRCA2000 data
@@ -42,7 +42,8 @@ contains
     real,    parameter       :: DXY_mirca= 360./REAL(NX_mirca)
     real,    parameter       :: lat1_mirca =   90.0 - DXY_mirca / 2.0    !1st grid center lat
     real,    parameter       :: lon1_mirca = -180.0 + DXY_mirca / 2.0   !1st grid center lon 
-    character*300, parameter :: MIRCA_path = 'data/CATCH/IRRIGATION/crop_' 
+    character*300, parameter :: MIRCA_pathIrr = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/crop_fraction_data/v1/irrigated/crop_' 
+    character*300, parameter :: MIRCA_pathRain = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/crop_fraction_data/v1/rainfed/crop_' 
     real, allocatable, dimension(:,:,:) :: MIFRAC, MRFRAC
 
     ! Global Irrigated Area data (GIA)
@@ -50,7 +51,7 @@ contains
     
     integer,       parameter :: NX_GIA = 43200
     integer,       parameter :: NY_GIA = 21600,  NY_GIAData = 18000  
-    character*300, parameter :: GIA_file = 'data/CATCH/IRRIGATION/global_irrigated_areas.nc4'
+    character*300, parameter :: GIA_file = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/irrigation_class/v1/global_irrigated_areas.nc4'
     real, allocatable, dimension (:) :: GIAFRAC
 
     ! LAI data
@@ -62,7 +63,7 @@ contains
 
     ! Irrigation Method
     ! -----------------
-    character*300, parameter :: IM_path = 'data/CATCH/IRRIGATION/'
+    character*300, parameter :: IM_path = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/country_code_IMethod/v1/'
       
     ! Global/Local variables
     ! ----------------------
@@ -212,7 +213,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)       ; VERIFY_(STATUS)
         
-         status = NF_DEF_VAR(NCOutID, 'FIELDCAP'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'FIELDCAP'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('soil field capacity'),      &
         'soil field capacity')                                         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 5,'m3/m3')                       ; VERIFY_(STATUS)    
@@ -345,11 +346,12 @@ contains
         ! Put field capacity
         
         open (10,file='clsm/CLM4.5_abm_peatf_gdp_hdm_fc',  &
-             form='formatted',status='old',action = 'read')
+             form='formatted',status='unknown',action = 'read')
         allocate (field_cap(1:NTILES))
-        
+ 
         do n = 1, NTILES
-           read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
+           read (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
+           !read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
         end do
 
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FIELDCAP'  ) ,(/1/),(/NTILES/),field_cap ) ; VERIFY_(STATUS)
@@ -906,8 +908,8 @@ contains
         print *, '.........................................................................'   
         print *, 'PROCESSING IRRIGATION METHOD DATA '
         
-        open (10, file = 'data/CATCH/IRRIGATION/US_IMethod.2015'    , form = 'formatted', status ='old', action = 'read')
-        open (11, file = 'data/CATCH/IRRIGATION/Global_IMethod.data', form = 'formatted', status ='old', action = 'read')    
+        open (10, file = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/country_code_IMethod/v1/US_IMethod.2015'    , form = 'formatted', status ='old', action = 'read')
+        open (11, file = '/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/country_code_IMethod/v1/Global_IMethod.data', form = 'formatted', status ='old', action = 'read')    
         
         READ (11, *) N_METHOD
         
@@ -1035,7 +1037,7 @@ contains
 
         POLYID = -9999
 
-        status = NF_OPEN ('data/CATCH/IRRIGATION/cb_2015_us_county_30arcsec.nc4',NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
+        status = NF_OPEN ('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/fraction_drip_flood_sprinkler/v1/cb_2015_us_county_30arcsec.nc4',NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
         do j = 1, NY_cbData
            status = NF_GET_VARA_INT(NCID,VarID(NCID,'POLYID') ,(/1,j/),(/NX_cb, 1/), POLYID (:,NY_cb - j + 1)) ; VERIFY_(STATUS) ! reading north to south
         end do
@@ -1189,9 +1191,9 @@ contains
               mon_ir = UNDEF
               mon_rn = UNDEF
               
-              open (50 + t_count, file = trim(MIRCA_path)//tt//'_irrigated_12.flt', action = 'read',        &
+              open (50 + t_count, file = trim(MIRCA_pathIrr)//tt//'_irrigated_12.flt', action = 'read',        &
                    form = 'unformatted', access='direct', recl=NX_mirca*12)
-              open (100 + t_count, file = trim(MIRCA_path)//tt//'_rainfed_12.flt',   action = 'read',        &
+              open (100 + t_count, file = trim(MIRCA_pathRain)//tt//'_rainfed_12.flt',   action = 'read',        &
                    form = 'unformatted', access='direct', recl=NX_mirca*12)
               
               mirca_rows : do j = 1, NY_mirca
@@ -1273,7 +1275,7 @@ contains
          ! Process LAI first
          ! -----------------
       
-         status = NF_CREATE ('data/CATCH/IRRIGATION/MCD15A2H.006_LAI_climMinMax.nc4' , NF_NETCDF4, NCIDW) ; VERIFY_(STATUS)
+         status = NF_CREATE ('land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4' , NF_NETCDF4, NCIDW) ; VERIFY_(STATUS)
          status = NF_DEF_DIM(NCIDW, 'lon'        , NX_LAI, xid)    ; VERIFY_(STATUS)
          status = NF_DEF_DIM(NCIDW, 'lat'        , NY_LAI, yid)    ; VERIFY_(STATUS)
          status = NF_DEF_VAR(NCIDW, 'LAIMIN'   , NF_FLOAT, 2 ,(/xid,yid/), vid) ; VERIFY_(STATUS)
@@ -1350,7 +1352,7 @@ contains
       ! Read Min/Max LAI
       allocate (clim_min  (1:NX_LAI, 1: NY_LAI))
       allocate (clim_max  (1:NX_LAI, 1: NY_LAI))
-      status = NF_OPEN('data/CATCH/IRRIGATION/MCD15A2H.006_LAI_climMinMax.nc4', NF_NOWRITE, NCIDW); VERIFY_(STATUS)
+      status = NF_OPEN('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4', NF_NOWRITE, NCIDW); VERIFY_(STATUS)
       STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMIN'),(/1,1/),(/NX_LAI,NY_LAI/),clim_min)  ; VERIFY_(STATUS)
       STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMAX'),(/1,1/),(/NX_LAI,NY_LAI/),clim_max)  ; VERIFY_(STATUS)
       STATUS = NF_CLOSE (NCIDW)
@@ -1431,8 +1433,8 @@ contains
       var_in = UNDEF
 
       print *, 'PROCESSING GIA : ', trim (GIA_file)
-      status = NF_OPEN (trim(GIA_file),NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
-
+      status = NF_OPEN (trim (GIA_file),NF_NOWRITE, NCID) ; VERIFY_(STATUS)    
+      
       do j = NY_GIAData, 1, -1
          status = NF_GET_VARA_INT(NCID,VarID(NCID,'IrrigClass') ,(/1,j/),(/NX_GIA, 1/), var_in (:,j + 3600 )) ; VERIFY_(STATUS)    
 
