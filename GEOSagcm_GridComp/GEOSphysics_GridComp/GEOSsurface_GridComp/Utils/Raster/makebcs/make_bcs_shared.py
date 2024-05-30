@@ -5,9 +5,11 @@
 import os
 import glob
 
+CONSTRAINT = 'sky|cas'
+BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
-   return  """#!/bin/csh -x
+   head =  """#!/bin/csh -x
 
 #SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
 #SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
@@ -15,8 +17,12 @@ def get_script_head() :
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
-#SBATCH --constraint=sky|cas|mil
+"""
+  constraint = "#SBATCH --constraint=sky|cas"
+  if BUILT_ON_SLES15 :
+     constraint = "#SBATCH --constraint=mil"
 
+  head = head + constraint + """
 echo "-----------------------------" 
 echo "make_bcs starts date/time" 
 echo `date` 
@@ -37,6 +43,7 @@ if( ! -d geometry ) then
   mkdir -p geometry land/shared til rst data/MOM5 data/MOM6 clsm/plots
 endif
 """
+  return head
 
 def get_change_til_file(grid_type):
   script = ""
