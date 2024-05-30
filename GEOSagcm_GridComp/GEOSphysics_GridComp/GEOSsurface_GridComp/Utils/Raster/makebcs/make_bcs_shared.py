@@ -5,7 +5,6 @@
 import os
 import glob
 
-CONSTRAINT = 'sky|cas'
 BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
