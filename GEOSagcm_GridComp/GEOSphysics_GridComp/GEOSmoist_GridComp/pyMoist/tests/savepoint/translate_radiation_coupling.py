@@ -3,7 +3,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
 
 
-class TranslateRadiationCoupling(TranslateFortranData2Py):
+class TranslateRadCouple(TranslateFortranData2Py):
     def __init__(
         self,
         grid,
@@ -21,15 +21,12 @@ class TranslateRadiationCoupling(TranslateFortranData2Py):
         #
         # fillq_info = self.grid.compute_dict()
         # fillq_info["serialname"] = "fq"
-        # self.in_vars["data_vars"] = {
-        #     "mass": self.grid.compute_dict(),
-        #     "q": self.grid.compute_dict(),
-        #     "fillq": fillq_info,
-        # }
-        # self.out_vars = {
-        #     "fillq": fillq_info,
-        #     "q": self.grid.compute_dict(),
-        # }
+        self.in_vars["data_vars"] = {
+            "Q": self.grid.compute_dict(),
+        }
+        self.out_vars = {
+            "Q": self.grid.compute_dict(),
+        }
 
     def compute_from_storage(self, inputs):
         self.compute_func(**inputs)
