@@ -671,7 +671,7 @@ contains
           if(-dw > wesn(1) ) then
              dw = -wesn(1)
              evap = -dw/(dts*areasc)
-             hcorr=hcorr+(lhflux-evap*alhv)*areasc
+             !hcorr=hcorr+(lhflux-evap*alhv)*areasc  ! removed, was double-counting corr, see "Store excess heat in hcorr" below; koster+reichle, 31 May 2024
              lhflux=evap*alhv
           endif
           wesn(1)  = wesn(1) + dw
