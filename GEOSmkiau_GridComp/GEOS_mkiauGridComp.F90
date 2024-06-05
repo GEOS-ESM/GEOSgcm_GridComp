@@ -1075,9 +1075,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           print *, 'DEBUG_RT: ana rep are cubed'
 
        else
-          print *, 'DEBUG_RT: ana rep are lat-lon'
 
          block
+!          class(AbstractGridFactory), allocatable :: factory
+!          allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
+!          GRIDrep = grid_manager%make_grid(factory)
+!          GRIDana = grid_manager%make_grid(factory)
            use MAPL_LatLonGridFactoryMod
            GRIDrep = grid_manager%make_grid(                                                 &
                      LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
@@ -3425,9 +3428,29 @@ CONTAINS
 
       character(len=*), intent(inout) :: rnames(:)
       ! completely wired
-      where(rnames=='t')
-        rnames = 't-bypass' 
-      endwhere
+      ! at the moment, the files generated for/by JEDI
+      ! largely ignore GEOS naming convensions, this
+      ! here a paliative to a solution/clean-up to come
+      ! in the future (Todling).
+
+      ! when both t and tv are in file, bypass t
+      if (any(rnames=='t') .and. any(rnames=='tv')) then
+        where(rnames=='t')
+          rnames = 't-bypass' 
+        endwhere
+      endif
+      ! when both u and ua are in file, bypass u
+      if (any(rnames=='u') .and. any(rnames=='ua')) then
+        where(rnames=='u')
+          rnames = 'u-bypass' 
+        endwhere
+      endif
+      ! when both v and va are in file, bypass v
+      if (any(rnames=='v') .and. any(rnames=='va')) then
+        where(rnames=='v')
+          rnames = 'v-bypass' 
+        endwhere
+      endif
       end subroutine RedanduncyCheck
 
 end module GEOS_mkiauGridCompMod
