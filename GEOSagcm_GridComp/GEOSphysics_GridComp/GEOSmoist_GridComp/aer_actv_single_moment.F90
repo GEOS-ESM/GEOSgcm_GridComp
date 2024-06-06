@@ -30,7 +30,8 @@ MODULE Aer_Actv_Single_Moment
        real, parameter :: NN_MIN      =  100.0e6
        real, parameter :: NN_MAX      = 1000.0e6
 
-       LOGICAL  :: USE_BERGERON, USE_AEROSOL_NN
+       LOGICAL  :: USE_BERGERON = .TRUE.
+       LOGICAL  :: USE_AEROSOL_NN = .TRUE.
       CONTAINS          
 
 !>----------------------------------------------------------------------------------------------------------------------

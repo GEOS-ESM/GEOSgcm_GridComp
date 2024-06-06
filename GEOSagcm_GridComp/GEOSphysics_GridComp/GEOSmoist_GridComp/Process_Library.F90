@@ -79,7 +79,7 @@ module GEOSmoist_Process_Library
   ! Ice
   real, parameter :: RHO_I   =  916.8  ! Density of ice crystal in kg/m^3
 
-  ! combined constantc
+  ! combined constants
   real, parameter :: cpbgrav = MAPL_CP/MAPL_GRAV
   real, parameter :: gravbcp = MAPL_GRAV/MAPL_CP
   real, parameter :: alhlbcp = MAPL_ALHL/MAPL_CP
@@ -94,6 +94,9 @@ module GEOSmoist_Process_Library
 
   ! Radar parameter
   integer :: DBZ_LIQUID_SKIN=1
+
+  ! ice vfall param in GFDL
+  integer :: ICE_VFALL_PARAM = 1
 
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
@@ -145,7 +148,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: SIGMA_DX
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
+  public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM, ICE_VFALL_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: pdf_alpha
@@ -387,12 +390,13 @@ module GEOSmoist_Process_Library
       real             :: tc, ptc
       real             :: ICEFRCT_C, ICEFRCT_M
 
-#ifdef MODIS_ICE_POLY
+#ifdef USE_MODIS_ICE_POLY
      ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
       ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
 #else
+     ! Use sigmoidal functions based on surface type from Hu et al, DOI: (10.1029/2009JD012384)
      ! Anvil clouds
      ! Anvil-Convective sigmoidal function like figure 6(right)
      ! Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
@@ -674,9 +678,9 @@ module GEOSmoist_Process_Library
             ! https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
             TC = TE - MAPL_TICE
             AA = 45.8966 * (WC**0.2214)
-            BB = 0.79570 * (WC**0.2535) * (TC + 190.0)
-            RADIUS = (1.2351 + 0.0105*TC) * (AA + BB)
-            RADIUS = MIN(150.e-6,MAX(5.e-6, 1.e-6*RADIUS))
+            BB = 0.79570 * (WC**0.2535) * (TE - 83.15)
+            RADIUS = MIN(155.0  ,MAX(30.0  , (1.2351 + 0.0105*TC) * (AA + BB)))
+            RADIUS = MIN(150.e-6,MAX( 5.e-6, 1.e-6*0.64952*RADIUS))
           endif
 
       ELSE
@@ -2387,7 +2391,7 @@ module GEOSmoist_Process_Library
       TC    = TE-MAPL_TICE
       fQI_0 = fQI
 
-      !Completelely glaciated cloud:
+      !Completely glaciated cloud:
       if (TE .ge. iT_ICE_MAX) then   !liquid cloud
          FQI   = 0.0
       elseif(TE .le. iT_ICE_ALL) then !ice cloud

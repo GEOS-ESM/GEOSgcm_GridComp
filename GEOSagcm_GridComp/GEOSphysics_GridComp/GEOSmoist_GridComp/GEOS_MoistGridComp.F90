@@ -1811,12 +1811,44 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
- call MAPL_AddExportSpec(GC,                               &
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'RG',                                          &
          LONG_NAME  = 'falling_graupel_particle_effective_radius',       &
          UNITS     = 'm',                                           &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &    
+         SHORT_NAME = 'VFALL_ICE',                                          &
+         LONG_NAME  = 'terminal_velocity_of_falling_ice',       &
+         UNITS      = 'm s-1',                                           &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'VFALL_SNOW',                                          &
+         LONG_NAME  = 'terminal_velocity_of_falling_snow',       &
+         UNITS      = 'm s-1',                                           &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'VFALL_GRAUPEL',                                          &
+         LONG_NAME  = 'terminal_velocity_of_falling_graupel',       &
+         UNITS      = 'm s-1',                                           &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'VFALL_RAIN',                                          &
+         LONG_NAME  = 'terminal_velocity_of_falling_rain',       &
+         UNITS      = 'm s-1',                                           &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &

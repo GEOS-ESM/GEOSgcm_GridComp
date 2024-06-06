@@ -3092,8 +3092,8 @@ loop0:       do k=kts,ktf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
             dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)=  3600.0*(    sig(i)) + &
-                          21600.0*(1.0-sig(i)) + &
+            tau_ecmwf(i)= tau_mid *(    sig(i)) + &
+                          tau_deep*(1.0-sig(i)) + &
                           (dz / vvel1d(i))
             tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
          ENDDO
