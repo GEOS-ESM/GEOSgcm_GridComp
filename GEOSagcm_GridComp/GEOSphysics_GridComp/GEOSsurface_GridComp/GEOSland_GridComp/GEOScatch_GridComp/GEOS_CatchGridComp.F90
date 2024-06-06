@@ -3046,8 +3046,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), allocatable :: TC_pert
     real, dimension(:,:), allocatable :: QC_pert
     
-    real, dimension(:),   allocatable :: VKH_pert_tc
-    real, dimension(:),   allocatable :: VKH_pert_qc
+    real, dimension(:),   allocatable :: pert_tc
+    real, dimension(:),   allocatable :: pert_qc
+    real, dimension(:,:),   allocatable :: louis_pert_tc
+    real, dimension(:,:),   allocatable :: louis_pert_qc
 
 ! -----------------------------------------------------
 ! EXPORT Pointers
@@ -3133,10 +3135,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! for optional extra derivatives in helfsurface
 
-    integer            :: incl_Helfand_extra_derivs
+    integer            :: incl_Helfand_extra_derivs, incl_Louis_extra_derivs
     real, parameter    :: small_factor = 0.001       ! determines size of perturbation for computation of numerical derivatives
     real, allocatable  :: small_TC(:)
     real, allocatable  :: small_QC(:)
+
+    real, allocatable  :: louis_small_TC(:,:)
+    real, allocatable  :: louis_small_QC(:,:)
     
     ! -------------------------------------
     
@@ -3189,6 +3194,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
  
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
@@ -3385,21 +3391,29 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    if (incl_Helfand_extra_derivs ==1) then
+    if (incl_Helfand_extra_derivs ==1 .or. incl_Louis_extra_derivs ==2 ) then
        
        allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
        VERIFY_(STATUS)
        allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
        VERIFY_(STATUS)
-       allocate(VKH_pert_tc(NT),         STAT=STATUS)
+       allocate(pert_tc(NT),         STAT=STATUS)
        VERIFY_(STATUS)
-       allocate(VKH_pert_qc(NT),         STAT=STATUS)
+       allocate(pert_qc(NT),         STAT=STATUS)
        VERIFY_(STATUS)
        allocate(small_qc(NT),            STAT=STATUS)
        VERIFY_(STATUS)
        allocate(small_tc(NT),            STAT=STATUS)
        VERIFY_(STATUS)
        
+       allocate(louis_small_qc(NT,NUM_SUBTILES), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_small_tc(NT,NUM_SUBTILES), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_pert_tc(NT,NUM_SUBTILES),         STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_pert_qc(NT,NUM_SUBTILES),         STAT=STATUS)
+       VERIFY_(STATUS)
     end if
 
 !  Vegetation types used to index into tables
@@ -3503,7 +3517,30 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_TimerOn(MAPL, '-LOUIS')
         WW(:,N) = 0.
         CM(:,N) = 0.
-        call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+
+        if (incl_Louis_extra_derivs ==1) then
+
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+
+        else if (incl_Louis_extra_derivs ==2 ) then
+
+           louis_small_TC = small_factor*TC
+           TC_pert=TC+louis_small_TC
+           call louissurface(3,N,UU,WW,PS,TA,TC_pert,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+           louis_pert_tc=CH
+
+           louis_small_QC = small_factor*QC
+           QC_pert=QC+louis_small_QC
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC_pert,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+           louis_pert_qc=CQ
+
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+
+           DTC(:,N) = (louis_pert_tc(:,N) - CH(:,N) ) / louis_small_TC(:,N)
+           DQC(:,N) = (louis_pert_qc(:,N) - CQ(:,N) ) / louis_small_QC(:,N)
+
+        endif 
+
         call MAPL_TimerOff(MAPL, '-LOUIS')
 
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
@@ -3530,21 +3567,21 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                             IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
                             t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-           VKH_pert_tc =VKH
+           pert_tc =VKH
 
            small_QC = small_factor*QC(:,N)
            QC_pert(:,N)=QC(:,N)+small_QC
            CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
                             IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
                             t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-           VKH_pert_qc=VKH
+           pert_qc=VKH
 
            CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,       &
                             IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
                             t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
-           DTC(:,N)   = (VKH_pert_tc - VKH ) / small_TC
-           DQC(:,N)   = (VKH_pert_qc - VKH ) / small_QC
+           DTC(:,N)   = (pert_tc - VKH ) / small_TC
+           DQC(:,N)   = (pert_qc - VKH ) / small_QC
 
         endif
   
@@ -3573,6 +3610,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
         call MAPL_Timeroff(MAPL, "-HELFAND")
       endif
+
       call MAPL_TimerOff(MAPL,"-SURF")
 
 !  Aggregate to tile
@@ -3642,13 +3680,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    if (incl_Helfand_extra_derivs==1) then
-       deallocate(VKH_pert_tc)
-       deallocate(VKH_pert_qc)
+    if (incl_Helfand_extra_derivs==1 .or. incl_Louis_extra_derivs==2 ) then
+       deallocate(pert_tc)
+       deallocate(pert_qc)
        deallocate(TC_pert    )
        deallocate(QC_pert    )
        deallocate(small_QC   )
        deallocate(small_TC   )
+       deallocate(louis_small_QC   )
+       deallocate(louis_small_TC   )
+       deallocate(louis_pert_tc)
+       deallocate(louis_pert_qc)
     end if
 
     !  All done
@@ -3728,8 +3770,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=1, RC=STATUS)
+    !
+    ! original
+    !call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=0, RC=STATUS)
@@ -5097,12 +5141,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
+
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1 ) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
                  DSHSBT(:,N)=MAPL_CP*(CH(:,N)+max(0.0,-DCH(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(TC(:,N)-TA)))
                  DHSDQA(:,N)=max(0.0,-MAPL_CP*DCH(:,N)*MAPL_VIREPS*TC(:,N)*(TC(:,N)-TA))
+              enddo
+           endif
+                 
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs==2) then
+              do N=1,NUM_SUBTILES
+                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
+                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
+                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
+                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
               enddo
            endif
 
