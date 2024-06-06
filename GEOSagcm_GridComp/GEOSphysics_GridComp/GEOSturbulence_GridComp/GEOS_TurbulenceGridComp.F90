@@ -3098,9 +3098,9 @@ end if
      endif
 
      if (JASON_TRB) then
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default= 6.0,    RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-0.00001,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,    RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3149,8 +3149,8 @@ end if
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=15.0,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.25e-3,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,       RC=STATUS); VERIFY_(STATUS)
@@ -6522,7 +6522,11 @@ end subroutine RUN1
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
                   wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
+                  if (ABS(C_B) > 1.0) then
+                     wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
+                  else
+                     wsp  = wsp0
+                  endif
                   FKV_temp = Z(I,J,L)/Hefold
                   FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                   FKV_temp = CBl*(FKV_temp/Hefold)*wsp
