@@ -1,5 +1,6 @@
 !  $Id: GEOS_mkiauGridComp.F90,v 1.38.2.21.18.5.2.5 2019/10/22 20:53:09 ltakacs Exp $
 
+!_RT #define _CUBED_BKG_ANA_
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -668,7 +669,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: REPLAY_TS_FACTOR
 
   type (CubedSphereGridFactory) :: cs_factory
-  type (LatlonGridFactory) :: ll_factory
 
   class (AbstractRegridder), pointer :: ANA2BKG => null()
   class (AbstractRegridder), pointer :: BKG2ANA => null()
@@ -1059,7 +1059,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call CFIO_Close      ( fid, STATUS )
        VERIFY_(STATUS)
-       print *, 'DEBUG_RT: pass 1 (2nd diminq)', IMana_World, JMana_world
 
        call WRITE_PARALLEL("Creating GRIDana...")
        write(imstr,*) IMana_World
@@ -1068,41 +1067,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        ! Get grid_dimensions from file.
        if ( JMana_world == 6*IMana_World ) then
-
           call MAPL_MakeDecomposition(NX_CUBE,NY_CUBE,reduceFactor=6,__RC__)
           cs_factory = CubedSphereGridFactory(im_world=IMana_World,lm=LMana,nx=nx_cube,ny=ny_cube,__RC__)
           GRIDana = grid_manager%make_grid(cs_factory,__RC__)
           GRIDrep = grid_manager%make_grid(cs_factory,__RC__)
-          print *, 'DEBUG_RT: ana rep are cubed'
 
        else
 
          block
-           class(AbstractGridFactory), allocatable :: factory
-           allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
-           GRIDrep = grid_manager%make_grid(factory)
-           GRIDana = grid_manager%make_grid(factory)
-
-!          use MAPL_LatLonGridFactoryMod
-!          GRIDrep = grid_manager%make_grid(                                                 &
-!                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-!                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-!          VERIFY_(STATUS)
-!          GRIDana = grid_manager%make_grid(                                                 &
-!                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-!                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-!          VERIFY_(STATUS)
+           use MAPL_LatLonGridFactoryMod
+           GRIDrep = grid_manager%make_grid(                                                 &
+                     LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
+                     nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
+           VERIFY_(STATUS)
+           GRIDana = grid_manager%make_grid(                                                 &
+                     LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
+                     nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
+           VERIFY_(STATUS)
          end block
-
-!        call MAPL_DefGridName (IMana_World,JMana_World,gridAnaName,MAPL_AM_I_ROOT())
-!        ll_factory = LatLonGridFactory(grid_name=trim(gridAnaName), &
-!                         Nx=Nx, Ny=Ny,          &
-!                         IM_World=IMana_World,  &
-!                         JM_World=JMana_World,  &
-!                         LM=LMana, pole='PC', dateline='DC', __RC__)
-!        GRIDana = grid_manager%make_grid(ll_factory,__RC__)
-!        GRIDrep = grid_manager%make_grid(ll_factory,__RC__)
-
 
        endif
 
@@ -1613,7 +1595,6 @@ CONTAINS
          VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( RBUNDLEP0, fieldNameList=RNAMES, rc=STATUS )
          VERIFY_(STATUS)
-         call RedanduncyCheck(RNAMES)
          if( first ) then
              if(MAPL_AM_I_ROOT() ) then
              print *
@@ -3435,34 +3416,5 @@ CONTAINS
 
       return
       end subroutine myremap
-
-      subroutine RedanduncyCheck(rnames)
-
-      character(len=*), intent(inout) :: rnames(:)
-      ! completely wired
-      ! at the moment, the files generated for/by JEDI
-      ! largely ignore GEOS naming convensions, this
-      ! here a paliative to a solution/clean-up to come
-      ! in the future (Todling).
-
-      ! when both t and tv are in file, bypass t
-      if (any(rnames=='t') .and. any(rnames=='tv')) then
-        where(rnames=='t')
-          rnames = 't-bypass' 
-        endwhere
-      endif
-      ! when both u and ua are in file, bypass u
-      if (any(rnames=='u') .and. any(rnames=='ua')) then
-        where(rnames=='u')
-          rnames = 'u-bypass' 
-        endwhere
-      endif
-      ! when both v and va are in file, bypass v
-      if (any(rnames=='v') .and. any(rnames=='va')) then
-        where(rnames=='v')
-          rnames = 'v-bypass' 
-        endwhere
-      endif
-      end subroutine RedanduncyCheck
 
 end module GEOS_mkiauGridCompMod
