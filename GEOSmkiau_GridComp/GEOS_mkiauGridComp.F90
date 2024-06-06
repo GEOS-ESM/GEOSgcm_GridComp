@@ -1024,7 +1024,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
-   print *, 'DEBUG_RT : pass diminq: ', IMana_World, JMana_world
 
     call MAPL_MakeDecomposition(nx,ny,rc=status)
     VERIFY_(status)
@@ -1059,7 +1058,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call CFIO_Close      ( fid, STATUS )
        VERIFY_(STATUS)
-       print *, 'DEBUG_RT: pass 1 (2nd diminq)', IMana_World, JMana_world
 
        call WRITE_PARALLEL("Creating GRIDana...")
        write(imstr,*) IMana_World
@@ -1073,7 +1071,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           cs_factory = CubedSphereGridFactory(im_world=IMana_World,lm=LMana,nx=nx_cube,ny=ny_cube,__RC__)
           GRIDana = grid_manager%make_grid(cs_factory,__RC__)
           GRIDrep = grid_manager%make_grid(cs_factory,__RC__)
-          print *, 'DEBUG_RT: ana rep are cubed'
 
        else
 
@@ -1128,23 +1125,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           VERIFY_(status)
        end if
 
-   print *, 'DEBUG_RT : pass 5a: before bkg2ana'
        if (bkg2anaConsrv) then
           mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
           VERIFY_(status)
        else
           mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
           VERIFY_(status)
-   print *, 'DEBUG_RT : pass 5a: after bkg2ana'
        end if
-   print *, 'DEBUG_RT : pass 5b'
 
     else
        if(first) call WRITE_PARALLEL("Using stored GRIDana...")
        GRIDana = mkiau_internal_state%GRIDana
        GRIDrep = mkiau_internal_state%GRIDrep
     end if
-   print *, 'DEBUG_RT : pass 5c'
 
     !ALT: Get current VM and the mpi communicator
     !--------------------------------------------
@@ -1152,12 +1145,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call ESMF_VmGet(VM, mpicommunicator=vm_comm, rc=status)
     VERIFY_(STATUS)
-   print *, 'DEBUG_RT : pass 5d'
 
     ANA2BKG => mkiau_internal_state%ANA2BKG_regridder
     BKG2ANA => mkiau_internal_state%BKG2ANA_regridder
 
-   print *, 'DEBUG_RT : pass 5e'
 !   Set Local Dimensions to GRIDana and GRIDbkg
 !   -------------------------------------------
     call MAPL_GridGet(GRIDrep, localCellCountPerDim=DIMS, RC=STATUS)
@@ -1165,14 +1156,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     IMana   = DIMS(1)
     JMana   = DIMS(2)
     LMana   = DIMS(3)
-   print *, 'DEBUG_RT : pass 5f', IMana, JMana, LMana
 
     call MAPL_GridGet(GRIDbkg, localCellCountPerDim=DIMS, RC=STATUS)
     VERIFY_(STATUS)
     IMbkg   = DIMS(1)
     JMbkg   = DIMS(2)
     LMbkg   = DIMS(3)
-   print *, 'DEBUG_RT : pass 5g, ', IMbkg, JMbkg, LMbkg
 
 !   Set Local Dimensions to GRIDINC (i.e., the GRID on which the increments are computed)
 !   Note:  In all cases, the vertical resolution is defined by the Background
@@ -1197,7 +1186,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOff(MAPL,"-RUN")
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
-   print *, 'DEBUG_RT : pass 99'
 
 CONTAINS
 
@@ -1493,7 +1481,6 @@ CONTAINS
     else
        qdum2=qdum1
     endif
-   print *, 'DEBUG_RT : ANA pass 6'
     phis_bkg = qdum2(:,:,1)
       ts_bkg = qdum2(:,:,2)
       ps_bkg = qdum2(:,:,3)
@@ -1521,29 +1508,22 @@ CONTAINS
 ! ****   READ Internal STATE (ie. ANA.ETA) from REPLAY File into BUNDLE    ****
 ! *****************************************************************************
 
-   print *, 'DEBUG_RT : ANA pass 7'
     if( NEED_BUNDLEP0 ) then
-   print *, 'DEBUG_RT : ANA pass 7a0: ',trim(GRIDINC)
         RBUNDLEP0 = ESMF_FieldBundleCreate( RC=STATUS)
         VERIFY_(STATUS)
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
         call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
-   print *, 'DEBUG_RT : ANA pass 7a1'
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
-   print *, 'DEBUG_RT : ANA pass 7a2'
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
-   print *, 'DEBUG_RT : ANA pass 7a3'
     else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
-   print *, 'DEBUG_RT : ANA pass 7b0'
         call MAPL_read_bundle( RBUNDLEP0, REPLAY_FILEP0, REPLAY_TIMEP0, RC=status)
         VERIFY_(STATUS)
              FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
-   print *, 'DEBUG_RT : ANA pass 7b1'
     endif
 
     if( currTime /= REPLAY_TIMEP0 ) then
@@ -1603,7 +1583,6 @@ CONTAINS
             endif
         endif
     endif
-   print *, 'DEBUG_RT : ANA pass 8'
 
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
     VERIFY_(STATUS)
