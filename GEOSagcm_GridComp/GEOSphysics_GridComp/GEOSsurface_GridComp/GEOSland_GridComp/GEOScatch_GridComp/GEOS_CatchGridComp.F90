@@ -5652,20 +5652,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TST     = TST   +           TC(:,N)          *FR(:,N)
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
-
-        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
-!amm add correction term to latent heat diagnostics (HLATN is always allocated)
-!    this will impact the export LHLAND
-        HLATN = HLATN - LHACC
-! also add some portion of the correction term to evap from soil, int, veg and snow
-        SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
-        where(SUMEV>0.)
-        EVPICE = EVPICE - EVACC*EVPICE/SUMEV
-        EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
-        EVPINT = EVPINT - EVACC*EVPINT/SUMEV
-        EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
-        endwhere
-        endif
+! test energy budget - Biljana 
+!        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
+!!amm add correction term to latent heat diagnostics (HLATN is always allocated)
+!!    this will impact the export LHLAND
+!        HLATN = HLATN - LHACC
+!! also add some portion of the correction term to evap from soil, int, veg and snow
+!        SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
+!        where(SUMEV>0.)
+!        EVPICE = EVPICE - EVACC*EVPICE/SUMEV
+!        EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
+!        EVPINT = EVPINT - EVACC*EVPINT/SUMEV
+!        EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
+!        endwhere
+!        endif
 
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
