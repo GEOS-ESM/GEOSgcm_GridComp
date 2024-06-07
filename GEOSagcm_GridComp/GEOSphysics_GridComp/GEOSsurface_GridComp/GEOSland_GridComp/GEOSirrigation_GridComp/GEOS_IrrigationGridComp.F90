@@ -564,13 +564,14 @@ contains
     ! of the two fractions is the dominant surface type.
 
     where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
-       where (PADDYFRAC >= IRRIGFRAC)
-          PADDYFRAC = 1.
-          IRRIGFRAC = 0.
-       elsewhere
-          PADDYFRAC = 0.
-          IRRIGFRAC = 1.
-       endwhere
+!To assign the entire cell to the largest fraction remove comments 568-574
+        ! where (PADDYFRAC >= IRRIGFRAC)
+        !    PADDYFRAC = 1.
+        !    IRRIGFRAC = 0.
+        ! elsewhere
+        !    PADDYFRAC = 0.
+        !    IRRIGFRAC = 1.
+        ! endwhere
     elsewhere
        PADDYFRAC = 0.
        IRRIGFRAC = 0.

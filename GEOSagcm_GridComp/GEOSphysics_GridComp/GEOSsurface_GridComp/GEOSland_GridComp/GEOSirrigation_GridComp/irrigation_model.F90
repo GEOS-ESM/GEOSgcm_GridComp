@@ -286,7 +286,7 @@ contains
                 END SELECT
              endif
                           
-          ELSEIF (PADDYFRAC (N) > 0.) THEN
+          IF (PADDYFRAC (N) > 0.) THEN
              
              H1 = this%flood_stime
              H2 = this%flood_stime + this%flood_dur

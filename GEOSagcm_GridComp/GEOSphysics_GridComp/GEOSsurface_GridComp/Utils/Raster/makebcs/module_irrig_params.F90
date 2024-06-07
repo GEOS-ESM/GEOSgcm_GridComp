@@ -984,7 +984,7 @@ contains
         f_drip   = 0.
         
         tile_loop : do n = 1, NTILES
-           read (10, '(i8, 2I4)') j, cnt_code, st_code
+           read (10, '(i10, 2I4)') j, cnt_code, st_code 
            if (cnt_code < 257) then
               if(tarea (cnt_code) > 0.) then
                  f_flood (n) = flood (cnt_code)
