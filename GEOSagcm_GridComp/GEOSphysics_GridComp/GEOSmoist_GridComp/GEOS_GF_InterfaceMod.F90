@@ -178,8 +178,8 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
       if (INT(ZERO_DIFF) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 21600.,RC=STATUS );VERIFY_(STATUS)
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)

@@ -3143,9 +3143,9 @@ end if
      endif
 
      if (JASON_TRB) then
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default= 6.0,    RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.0,    RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF
@@ -3177,21 +3177,27 @@ end if
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
      if (JASON_TRB) then
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,           RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      else  
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.3,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,           RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,           RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,       RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
@@ -6046,6 +6052,7 @@ end subroutine RUN1
                SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
                if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
                if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
+               if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
             endif
          end if
 
@@ -6576,11 +6583,16 @@ end subroutine RUN1
             CBl = 1.08371722e-7 * VARFLT(i,j) * &
                   MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
            ! determine the efolding height
-            Hefold = LAMBDA_B !MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B)
+           !Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B) ! From UFS
+            Hefold = LAMBDA_B 
             FKV(I,J,L) = 0.0
             if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
                   wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
+                  if (ABS(C_B) > 1.0) then
+                     wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
+                  else
+                     wsp  = wsp0
+                  endif
                   FKV_temp = Z(I,J,L)/Hefold
                   FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                   FKV_temp = CBl*(FKV_temp/Hefold)*wsp

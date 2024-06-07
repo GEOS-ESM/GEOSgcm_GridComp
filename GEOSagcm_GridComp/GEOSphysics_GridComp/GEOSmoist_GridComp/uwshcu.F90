@@ -27,6 +27,7 @@ module uwshcu
      integer  :: windsrcavg         ! Source air uses PBL mean momentum
      real     :: rpen               ! Penentrative entrainment factor
      real     :: rle
+     real     :: rkfre              ! fraction_of_tke_associated_with_vertical_velocity
      real     :: rkm                ! Factor controlling lateral mixing rate
      real     :: mixscale           ! Controls vertical structure of mixing
      real     :: detrhgt            ! Mixing rate increases above this height
@@ -73,7 +74,7 @@ contains
    subroutine compute_uwshcu_inv(idim, k0,        dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland,& 
+         t0_inv, tke_inv, rkfre, kpbl_inv, shfx,evap, cnvtr, frland, rkm2d, & 
          cush,                                                      & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
@@ -117,6 +118,7 @@ contains
       real, intent(in)    :: evap(idim)                 ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)                ! convective tracer
       real, intent(in)    :: frland(idim)               ! land fraction
+      real, intent(in)    :: rkm2d(idim)                !  Resolution dependent lateral mixing parameter
       real, intent(inout) :: cush(idim)                 !  Convective scale height [m]
 
       real, intent(out)   :: umf_inv(idim,k0+1)         !  Updraft mass flux at interfaces [kg/m2/s]
@@ -297,7 +299,7 @@ contains
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
+           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, rkm2d, cush, umf, &
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
@@ -394,7 +396,7 @@ contains
    subroutine compute_uwshcu(idim, k0, dt,ncnst, pifc0_in,zifc0_in,& ! IN
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
-         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, cush_inout, & ! OUT
+         tr0_inout, kpbl_in, frland_in, tke_in, rkfre, rkm2d, cush_inout, & ! OUT
          umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
@@ -453,7 +455,8 @@ contains
       real, intent(in)    :: qi0_in( idim,k0 )        ! Environmental ice specific humidity
       real, intent(in)    :: th0_in( idim,k0 )        ! Environmental potential temperature [K]
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
-      real, intent(in)    :: rkfre(idim)              !  Resolution dependent Vertical velocity variance as fraction of tke. 
+      real, intent(in)    :: rkfre(idim)              ! Resolution dependent Vertical velocity variance as fraction of tke. 
+      real, intent(in)    :: rkm2d(idim)              ! Resolution dependent lateral mixing parameter
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(in)    :: cnvtr(idim)              ! Convective tracer
@@ -2658,9 +2661,9 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (min(scaleh,mixscale).ne.0.0) then
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)                                  ) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)                                  ) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
 ! regression bug due to cnvtr
-! WMP         rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+! WMP         rei(k) = ( (rkm2d(i)+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
