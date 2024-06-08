@@ -5109,8 +5109,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_Get ( MAPL                 ,&
              RUNALARM  = ALARM                            ,&
              ORBIT     = ORBIT                            ,&
-             TILELATS  = LATS                             ,&
-             TILELONS  = LONS                             ,&
+             TILELATS  = LATS                             ,&      ! [radians]
+             TILELONS  = LONS                             ,&      ! [radians]
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
         VERIFY_(STATUS)
@@ -7148,7 +7148,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &
+           call CATCHCN ( NTILES, LONS, LATS, DT,catchcn_internal%USE_FWET_FOR_RUNOFF, &                    ! LONS, LATS are in [radians] !!!
                 catchcn_internal%FWETC, catchcn_internal%FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
                 PCU      ,     PLS_IN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
