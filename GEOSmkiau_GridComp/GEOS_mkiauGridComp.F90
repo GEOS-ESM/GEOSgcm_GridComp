@@ -1079,27 +1079,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            allocate(factory, source = grid_manager%make_factory(trim(REPLAY_FILEP0),force_file_coordinates = .false.)) 
            GRIDrep = grid_manager%make_grid(factory)
            GRIDana = grid_manager%make_grid(factory)
-
-!          use MAPL_LatLonGridFactoryMod
-!          GRIDrep = grid_manager%make_grid(                                                 &
-!                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-!                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-!          VERIFY_(STATUS)
-!          GRIDana = grid_manager%make_grid(                                                 &
-!                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-!                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-!          VERIFY_(STATUS)
          end block
-
-!        call MAPL_DefGridName (IMana_World,JMana_World,gridAnaName,MAPL_AM_I_ROOT())
-!        ll_factory = LatLonGridFactory(grid_name=trim(gridAnaName), &
-!                         Nx=Nx, Ny=Ny,          &
-!                         IM_World=IMana_World,  &
-!                         JM_World=JMana_World,  &
-!                         LM=LMana, pole='PC', dateline='DC', __RC__)
-!        GRIDana = grid_manager%make_grid(ll_factory,__RC__)
-!        GRIDrep = grid_manager%make_grid(ll_factory,__RC__)
-
 
        endif
 
