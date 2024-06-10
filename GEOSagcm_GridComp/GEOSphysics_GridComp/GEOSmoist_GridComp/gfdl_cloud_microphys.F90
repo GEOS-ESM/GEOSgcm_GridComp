@@ -1355,6 +1355,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real :: tmp, qsw, qsi, dqsdt, dq
     real :: dtmp, qc, q_plus, q_minus
     real :: qadum
+    real :: critical_qi_factor
 
     integer :: k, it
     
@@ -1397,6 +1398,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
       endif
       if (qadum >= onemsig) then
 
+        ! qi0_crt (ice to snow conversion) has strong resolution dependence
+        !    account for this using onemsig to convert more ice to snow at coarser resolutions
+        critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
+                                       ice_fraction(tzk(k),cnv_fraction,srf_type)
+
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
 
@@ -1427,11 +1433,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
-            ! this has a strong resolution dependence
-            ! account for this using onemsig to convert more ice to snow at coarser resolutions
             ! -----------------------------------------------------------------------
-            qi_crt = qi_gen * (onemsig + 0.01*(1.0-onemsig)) * &
-                     ice_fraction(tzk(k),cnv_fraction,srf_type) / qadum / den (k)
+            qi_crt = critical_qi_factor / qadum / den (k)
             tmp = min (frez, dim (qi_crt, qi))
 
             ! new total condensate / old condensate
@@ -1634,7 +1637,10 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
                 ! qi0_crt (ice to snow conversion) has strong resolution dependence
                 !    account for this using onemsig to convert more ice to snow at coarser resolutions
-                qim = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) / den (k)
+                critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
+                                               ice_fraction(tz,cnv_fraction,srf_type)
+               
+                qim = critical_qi_factor / den (k)
 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
@@ -1937,9 +1943,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             q_sol (k) = q_sol (k) + sink
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
-            ! new total condensate / old condensate
-            qa (k) = max(0.0,min(1.,qa (k) * max(qi(k)+ql(k)     ,0.0  ) / &
-                                             max(qi(k)+ql(k)-sink,qcmin) ) )
+            if (do_qa) qa (k) = 1. ! air fully saturated; 100 % cloud cover
+            cycle
         endif
 
         ! -----------------------------------------------------------------------
