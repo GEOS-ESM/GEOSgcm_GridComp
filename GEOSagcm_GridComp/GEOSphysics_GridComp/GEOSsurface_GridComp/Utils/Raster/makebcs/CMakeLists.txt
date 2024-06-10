@@ -51,4 +51,9 @@ ecbuild_add_executable (TARGET mkEASETilesParam.x SOURCES mkEASETilesParam.F90 L
 
 install(PROGRAMS clsm_plots.pro create_README.csh  DESTINATION bin)
 file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
+list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS  ${MAKE_BCS_PYTHON} DESTINATION bin)
+
+set(file ./make_bcs_shared.py)
+configure_file(${file} ${file} @ONLY)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${file} DESTINATION bin)
