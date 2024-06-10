@@ -29,6 +29,7 @@ list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_orbital.F90
    icepack/columnphysics/icepack_parameters.F90
    icepack/columnphysics/icepack_shortwave.F90
+   icepack/columnphysics/icepack_shortwave_data.F90
    icepack/columnphysics/icepack_snow.F90
    icepack/columnphysics/icepack_therm_bl99.F90
    icepack/columnphysics/icepack_therm_itd.F90
@@ -40,7 +41,6 @@ list( APPEND CICE6_SRCS
    icepack/columnphysics/icepack_wavefracspec.F90
    icepack/columnphysics/icepack_zbgc.F90
    icepack/columnphysics/icepack_zbgc_shared.F90
-   icepack/columnphysics/icepack_zsalinity.F90
    cicecore/shared/ice_arrays_column.F90
    cicecore/shared/ice_calendar.F90
    cicecore/shared/ice_constants.F90
@@ -52,53 +52,54 @@ list( APPEND CICE6_SRCS
    cicecore/shared/ice_restart_column.F90
    cicecore/shared/ice_restart_shared.F90
    cicecore/shared/ice_spacecurve.F90
-   cicecore/cicedynB/dynamics/ice_dyn_eap.F90
-   cicecore/cicedynB/dynamics/ice_dyn_shared.F90
-   cicecore/cicedynB/dynamics/ice_transport_driver.F90
-   cicecore/cicedynB/dynamics/ice_dyn_evp_1d.F90
-   cicecore/cicedynB/dynamics/ice_transport_remap.F90
-   cicecore/cicedynB/dynamics/ice_dyn_vp.F90
-   cicecore/cicedynB/dynamics/ice_dyn_evp.F90
-   cicecore/cicedynB/general/ice_init.F90
-   cicecore/cicedynB/general/ice_state.F90
-   cicecore/cicedynB/general/ice_flux_bgc.F90
-   cicecore/cicedynB/general/ice_step_mod.F90
-   cicecore/cicedynB/general/ice_forcing_bgc.F90
-   cicecore/cicedynB/general/ice_flux.F90
-   cicecore/cicedynB/general/ice_forcing.F90
-   cicecore/cicedynB/analysis/ice_diagnostics_bgc.F90
-   cicecore/cicedynB/analysis/ice_history_drag.F90
-   cicecore/cicedynB/analysis/ice_history_shared.F90
-   cicecore/cicedynB/analysis/ice_history_mechred.F90
-   cicecore/cicedynB/analysis/ice_history_bgc.F90
-   cicecore/cicedynB/analysis/ice_history.F90
-   cicecore/cicedynB/analysis/ice_history_fsd.F90
-   cicecore/cicedynB/analysis/ice_diagnostics.F90
-   cicecore/cicedynB/analysis/ice_history_snow.F90
-   cicecore/cicedynB/analysis/ice_history_pond.F90
-   cicecore/cicedynB/infrastructure/ice_domain.F90
-   cicecore/cicedynB/infrastructure/ice_grid.F90
-   cicecore/cicedynB/infrastructure/ice_memusage.F90
-   cicecore/cicedynB/infrastructure/ice_restoring.F90
-   cicecore/cicedynB/infrastructure/ice_restart_driver.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_global_reductions.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_reprosum.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_exit.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_timers.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_communicate.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_broadcast.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_gather_scatter.F90
-   cicecore/cicedynB/infrastructure/comm/mpi/ice_boundary.F90
-   cicecore/cicedynB/infrastructure/io/io_netcdf/ice_restart.F90
-   cicecore/cicedynB/infrastructure/io/io_netcdf/ice_history_write.F90
-   cicecore/cicedynB/infrastructure/ice_blocks.F90
-   cicecore/cicedynB/infrastructure/ice_read_write.F90
+   cicecore/cicedyn/dynamics/ice_dyn_core1d.F90
+   cicecore/cicedyn/dynamics/ice_dyn_eap.F90
+   cicecore/cicedyn/dynamics/ice_dyn_shared.F90
+   cicecore/cicedyn/dynamics/ice_transport_driver.F90
+   cicecore/cicedyn/dynamics/ice_dyn_evp1d.F90
+   cicecore/cicedyn/dynamics/ice_transport_remap.F90
+   cicecore/cicedyn/dynamics/ice_dyn_vp.F90
+   cicecore/cicedyn/dynamics/ice_dyn_evp.F90
+   cicecore/cicedyn/general/ice_init.F90
+   cicecore/cicedyn/general/ice_state.F90
+   cicecore/cicedyn/general/ice_flux_bgc.F90
+   cicecore/cicedyn/general/ice_step_mod.F90
+   cicecore/cicedyn/general/ice_forcing_bgc.F90
+   cicecore/cicedyn/general/ice_flux.F90
+   cicecore/cicedyn/general/ice_forcing.F90
+   cicecore/cicedyn/analysis/ice_diagnostics_bgc.F90
+   cicecore/cicedyn/analysis/ice_history_drag.F90
+   cicecore/cicedyn/analysis/ice_history_shared.F90
+   cicecore/cicedyn/analysis/ice_history_mechred.F90
+   cicecore/cicedyn/analysis/ice_history_bgc.F90
+   cicecore/cicedyn/analysis/ice_history.F90
+   cicecore/cicedyn/analysis/ice_history_fsd.F90
+   cicecore/cicedyn/analysis/ice_diagnostics.F90
+   cicecore/cicedyn/analysis/ice_history_snow.F90
+   cicecore/cicedyn/analysis/ice_history_pond.F90
+   cicecore/cicedyn/infrastructure/ice_domain.F90
+   cicecore/cicedyn/infrastructure/ice_grid.F90
+   cicecore/cicedyn/infrastructure/ice_memusage.F90
+   cicecore/cicedyn/infrastructure/ice_restoring.F90
+   cicecore/cicedyn/infrastructure/ice_restart_driver.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_global_reductions.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_reprosum.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_exit.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_timers.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_communicate.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_broadcast.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_gather_scatter.F90
+   cicecore/cicedyn/infrastructure/comm/mpi/ice_boundary.F90
+   cicecore/cicedyn/infrastructure/io/io_netcdf/ice_restart.F90
+   cicecore/cicedyn/infrastructure/io/io_netcdf/ice_history_write.F90
+   cicecore/cicedyn/infrastructure/ice_blocks.F90
+   cicecore/cicedyn/infrastructure/ice_read_write.F90
 )
 
 list( APPEND CICE6_SRCS
    # a single c source file
-   cicecore/cicedynB/infrastructure/ice_shr_reprosum86.c
-   cicecore/cicedynB/infrastructure/ice_memusage_gptl.c
+   cicecore/cicedyn/infrastructure/ice_shr_reprosum86.c
+   cicecore/cicedyn/infrastructure/ice_memusage_gptl.c
    # drivers for mapl: ls -1 cicecore/drivers/mapl/geos/*0
    cicecore/drivers/mapl/geos/CICE_FinalMod.F90
    cicecore/drivers/mapl/geos/CICE_InitMod.F90
