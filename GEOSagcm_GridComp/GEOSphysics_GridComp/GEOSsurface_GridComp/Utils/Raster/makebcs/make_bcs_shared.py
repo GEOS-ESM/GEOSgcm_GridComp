@@ -5,9 +5,10 @@
 import os
 import glob
 
+BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 def get_script_head() :
 
-   return  """#!/bin/csh -x
+  head =  """#!/bin/csh -x
 
 #SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
 #SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
@@ -15,8 +16,12 @@ def get_script_head() :
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME2}.j
-#SBATCH --constraint=sky|cas
+"""
+  constraint = "#SBATCH --constraint=sky|cas"
+  if BUILT_ON_SLES15 :
+     constraint = "#SBATCH --constraint=mil"
 
+  head = head + constraint + """
 echo "-----------------------------" 
 echo "make_bcs starts date/time" 
 echo `date` 
@@ -37,6 +42,7 @@ if( ! -d geometry ) then
   mkdir -p geometry land/shared til rst data/MOM5 data/MOM6 clsm/plots
 endif
 """
+  return head
 
 def get_change_til_file(grid_type):
   script = ""
@@ -115,6 +121,11 @@ mkdir -p land/{GRIDNAME}/clsm
 /bin/mv clsm/green.dat   land/{GRIDNAME}/green_clim_{RC}.data
 /bin/mv clsm/lnfm.dat    land/{GRIDNAME}/lnfm_clim_{RC}.data
 /bin/mv clsm/ndvi.dat    land/{GRIDNAME}/ndvi_clim_{RC}.data
+
+# vegdyn_{RC}.dat file is nc4; for clarification, create link with proper file name extension
+cd land/{GRIDNAME}
+ln -s vegdyn_{RC}.dat vegdyn_{RC}.nc4
+cd ../../
 
 /bin/mv clsm/ar.new \\
         clsm/bf.dat \\
