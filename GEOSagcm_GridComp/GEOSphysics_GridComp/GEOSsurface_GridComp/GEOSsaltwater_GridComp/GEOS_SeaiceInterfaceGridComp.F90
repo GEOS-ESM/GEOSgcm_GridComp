@@ -2704,9 +2704,13 @@ contains
           DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
           QS(:,N) = QS(:,N) + DQS
 
-          LHF     = LHF + EVD * MAPL_ALHS * DTS
+          EVP     = EVP + EVD * DTS
           SHF     = SHF + SHD * DTS
+          LHF     = EVP * MAPL_ALHS
 
+
+          if(associated(SUBLIM )) SUBLIM  = SUBLIM  + EVP    *FR(:,N)
+          if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
           if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
           if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
           if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
@@ -2724,6 +2728,8 @@ contains
     if(associated(QST    )) call Normalize(QST,    FRCICE) 
     if(associated(HLATICE)) call Normalize(HLATICE,FRCICE)
     if(associated(SHICE  )) call Normalize(SHICE,  FRCICE)
+    if(associated(SUBLIM )) call Normalize(SUBLIM, FRCICE)
+    if(associated(EVAPOUT)) call Normalize(EVAPOUT, FRCICE)
 
     if(associated(LWNDICE)) call Normalize(LWNDICE,  FRCICE, set_undef=.True.)
           
