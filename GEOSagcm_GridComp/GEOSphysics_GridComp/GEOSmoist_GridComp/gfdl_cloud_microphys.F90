@@ -2076,7 +2076,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
               if (do_subl) then
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
                 sink = fac_i2v * max (pidep, sink, - qi (k))
-                subl1(k) = subl1(k) + pssub / dts
+                subl1(k) = subl1(k) - sink / dts
               else
                 sink = 0.
               endif
