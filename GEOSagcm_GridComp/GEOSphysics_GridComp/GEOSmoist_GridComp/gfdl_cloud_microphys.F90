@@ -249,13 +249,13 @@ module gfdl2_cloud_microphys_mod
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
 
     ! collection efficiencies for accretion
-    !   Dry processes (frozen to frozen: 0.1)
-    !   Wet processes (liquid to/from frozen: 1.0)
-    real :: c_psaci = 0.10  !< accretion: cloud ice to snow
+    !   Dry processes (frozen to/from frozen)
+    real :: c_psaci = 0.05  !< accretion: cloud ice to snow
+    real :: c_pgacs = 0.01  !< accretion: snow to graupel
+    real :: c_pgaci = 0.05  !< accretion: cloud ice to graupel
+    !   Wet processes (liquid to/from frozen)
     real :: c_piacr = 1.00  !< accretion: rain to cloud ice: [WMP: never used]
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
-    real :: c_pgacs = 0.10  !< accrection: snow to graupel
-    real :: c_pgaci = 0.10  !< accrection: cloud ice to graupel
 
     ! accretion efficiencies
     real :: alin = 842.0 !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
@@ -1422,9 +1422,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
                                              max(qi+ql         ,qcmin) ) )
 
-            ql = ql +         tmp
-            qr = qr + (melt - tmp)*qadum
-            qi = qi -  melt
+            ql      = ql      +         tmp
+            qrk (k) = qrk (k) + (melt - tmp)*qadum
+            qi      = qi      -  melt
             q_liq (k) = q_liq (k) + melt*qadum
             q_sol (k) = q_sol (k) - melt*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
@@ -1441,9 +1441,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
                                              max(qi+ql         ,qcmin) ) )
 
-            ql = ql -  frez
-            qs = qs + (frez - tmp)*qadum
-            qi = qi +         tmp
+            ql      = ql      -  frez
+            qsk (k) = qsk (k) + (frez - tmp)*qadum
+            qi      = qi      +         tmp
             q_liq (k) = q_liq (k) - frez*qadum
             q_sol (k) = q_sol (k) + frez*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
