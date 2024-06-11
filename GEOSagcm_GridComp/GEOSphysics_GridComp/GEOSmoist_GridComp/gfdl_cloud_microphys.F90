@@ -1422,9 +1422,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
                                              max(qi+ql         ,qcmin) ) )
 
-            ql = ql +         tmp
-            qr = qr + (melt - tmp)*qadum
-            qi = qi -  melt
+            ql      = ql      +         tmp
+            qrk (k) = qrk (k) + (melt - tmp)*qadum
+            qi      = qi      -  melt
             q_liq (k) = q_liq (k) + melt*qadum
             q_sol (k) = q_sol (k) - melt*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
@@ -1441,9 +1441,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
                                              max(qi+ql         ,qcmin) ) )
 
-            ql = ql -  frez
-            qs = qs + (frez - tmp)*qadum
-            qi = qi +         tmp
+            ql      = ql      -  frez
+            qsk (k) = qsk (k) + (frez - tmp)*qadum
+            qi      = qi      +         tmp
             q_liq (k) = q_liq (k) - frez*qadum
             q_sol (k) = q_sol (k) + frez*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
