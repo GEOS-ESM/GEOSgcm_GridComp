@@ -1330,6 +1330,13 @@ contains
          c = patch%column(p)
          g = patch%gridcell(p)
 
+         ! jkolassa Jun 2024: make water stress threshold depedent on the wilting point
+         !                    at a given location instead of using global constant value
+         !                    (following similar implementation in older versions of
+         !                    Catchment-CN) 
+         soilpsi_on = soilstate_inst%psiwilt_col(c,1)
+         soilpsi_off = soilstate_inst%psiwilt_col(c,1)
+
          if (stress_decid(ivt(p)) == 1._r8) then
             soilt = t_soisno(c, phenology_soil_layer)
             psi = soilpsi(c, phenology_soil_layer)

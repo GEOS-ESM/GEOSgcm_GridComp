@@ -43,6 +43,7 @@ module SoilStateType
      real(r8), pointer :: soilalpha_col        (:)   ! col factor that reduces ground saturated specific humidity (-)
      real(r8), pointer :: soilalpha_u_col      (:)   ! col urban factor that reduces ground saturated specific humidity (-) 
      real(r8), pointer :: soilpsi_col          (:,:) ! col soil water potential in each soil layer (MPa) (CN)
+     real(r8), pointer :: psiwilt_col          (:,:) ! col soil water potential at wilting point (added by jkolassa to use for assessing water stress instead of globally constant value)
      real(r8), pointer :: wtfact_col           (:)   ! col maximum saturated fraction for a gridcell
      real(r8), pointer :: porosity_col         (:,:) ! col soil porisity (1-bulk_density/soil_density) (VIC)
      real(r8), pointer :: eff_porosity_col     (:,:) ! col effective porosity = porosity - vol_ice (nlevgrnd) 
@@ -129,6 +130,7 @@ contains
     allocate(this%soilalpha_col        (begc:endc))                     ; this%soilalpha_col        (:)   = nan
     allocate(this%soilalpha_u_col      (begc:endc))                     ; this%soilalpha_u_col      (:)   = nan
     allocate(this%soilpsi_col          (begc:endc,nlevgrnd))            ; this%soilpsi_col          (:,:) = nan
+    allocate(this%psiwilt_col          (begc:endc,nlevgrnd))            ; this%psiwilt_col          (:,:) = nan
     allocate(this%wtfact_col           (begc:endc))                     ; this%wtfact_col           (:)   = nan
     allocate(this%porosity_col         (begc:endc,nlayer))              ; this%porosity_col         (:,:) = spval
     allocate(this%eff_porosity_col     (begc:endc,nlevgrnd))            ; this%eff_porosity_col     (:,:) = spval

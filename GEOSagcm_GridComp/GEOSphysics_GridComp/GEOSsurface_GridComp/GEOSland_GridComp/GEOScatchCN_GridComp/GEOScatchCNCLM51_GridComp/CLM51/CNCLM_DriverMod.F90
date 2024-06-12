@@ -242,6 +242,7 @@ contains
         temperature_inst%t_grnd_col(n) = temperature_inst%t_soisno_col(n,1)
         temperature_inst%t_soi17cm_col(n) = temperature_inst%t_grnd_col(n)
         soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
+        soilstate_inst%psiwilt_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*wpwet(nc)**(-bee(nc)) ! jkolassa: soil water potential at wilting point (not a CLM variable, but added to use instead of constant threshold to determine water stress)
         soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
         atm2lnd_inst%forc_t_downscaled_col(n)  = tairm(nc)
         water_inst%wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
