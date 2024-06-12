@@ -65,7 +65,7 @@ contains
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
-                      psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham,   &
+                      psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, wpwet,   &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -120,6 +120,7 @@ contains
  real, dimension(nch,num_veg,num_zon), intent(in) :: lmrsham
  real, dimension(nch,num_veg,num_zon), intent(in) :: laisunm
  real, dimension(nch,num_veg,num_zon), intent(in) :: laisham
+ real, dimension(nch),                 intent(in) :: wpwet    ! wetness at wilting point
 
 
  ! OUTPUT
