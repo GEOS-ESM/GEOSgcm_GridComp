@@ -1,10 +1,11 @@
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Int 
+from ndsl.dsl.typing import FloatField, Int, Float 
 from ndsl import Quantity, QuantityFactory, StencilFactory, orchestrate
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10, exp  # type: ignore
 import pyMoist.constants as radconstants
 
+'''
 # GEOS_QSAT Function --This might be wrong
 def GEOS_QSAT(
     T: FloatField, 
@@ -24,13 +25,13 @@ def GEOS_QSAT(
 
 #@gtscript.function
 def LDRADIUS4(
-    PL: FloatField,
-    TE: FloatField, 
-    QC: FloatField, 
-    NNL: FloatField,
-    NNI: FloatField,
+    PL: Float,
+    TE: Float, 
+    QC: Float, 
+    NNL: Float,
+    NNI: Float,
     ITYPE: Int,
-)-> FloatField:
+)-> Float:
     RHO = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
     if ITYPE == 1:  # Liquid
         WC = 1.0e3 * RHO * QC
@@ -59,16 +60,16 @@ def LDRADIUS4(
     else:
         raise ValueError("WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2")
     return RADIUS
-
+'''
 def _fix_up_clouds_stencil(
     QV: FloatField,
     TE: FloatField,
     QLC: FloatField, 
+    QIC: FloatField,
     CF: FloatField, 
     QLA: FloatField, 
-    AF: FloatField, 
-    QIC: FloatField, 
     QIA: FloatField,
+    AF: FloatField, 
 ):
     '''
     from __externals__ import (
@@ -148,14 +149,13 @@ def _radcouple_stencil(
         RAD_CF: FloatField, 
         RAD_RL: FloatField, 
         RAD_RI: FloatField, 
-        FAC_RL: FloatField, 
-        MIN_RL: FloatField, 
-        MAX_RL: FloatField, 
-        FAC_RI: FloatField, 
-        MIN_RI: FloatField, 
-        MAX_RI: FloatField,
-        ):
-     
+        FAC_RL: Float,
+        MIN_RL: Float,
+        MAX_RL: Float,
+        FAC_RI: Float,
+        MIN_RI: Float,
+        MAX_RI: Float,
+):
     with computation(PARALLEL), interval(...):
         #water vapor
         RAD_QV = QV
@@ -198,16 +198,14 @@ class RadiationCoupling:
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=_fix_up_clouds_stencil, 
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals = {
-
-            }
+            #externals = {
+            #}
         )
         self._radcouple = stencil_factory.from_dims_halo(
             func=_radcouple_stencil, 
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals = {
-
-            }
+            #externals = {
+            #}
         )
         self.do_qa = do_qa
 
@@ -246,25 +244,52 @@ class RadiationCoupling:
         RAD_CF: FloatField,
         CLDREFFL: FloatField,
         CLDREFFI: FloatField,
-        FAC_RL: FloatField,
-        MIN_RL: FloatField,
-        MAX_RL: FloatField,
-        FAC_RI: FloatField,
-        MIN_RI: FloatField,
-        MAX_RI: FloatField,
+        FAC_RL: Float,
+        MIN_RL: Float,
+        MAX_RL: Float,
+        FAC_RI: Float,
+        MIN_RI: Float,
+        MAX_RI: Float,
     ):
-        self._fix_up_clouds(Q, 
-                            T, 
-                            QLLS, 
-                            CLLS, 
-                            QLCN, 
-                            CLCN, 
-                            QICN, 
-                            QGRAUPEL,
+        self._fix_up_clouds(QV = Q, 
+                            TE = T, 
+                            QLC = QLLS, 
+                            QIC = QILS,
+                            CF = CLLS, 
+                            QLA = QLCN,  
+                            QIA = QICN, 
+                            AF = CLCN,
                             )
-        #self._fix_up_clouds(Q)
-        self._radcouple(T, PLmb, CLLS, CLCN, Q, QLLS, QILS, QLCN, QICN, QRAIN, QSNOW, QGRAUPEL, NACTL, NACTI, RAD_QV, RAD_QL, RAD_QI, RAD_QR, RAD_QS, RAD_QG, RAD_CF, CLDREFFL, CLDREFFI, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-        #self._radcouple(Q)
+        self._radcouple(TE = T, 
+                        PL = PLmb,
+                        CF = CLLS, 
+                        AF = CLCN, 
+                        QV = Q, 
+                        QClLS = QLLS, 
+                        QCiLS = QILS, 
+                        QClAN = QLCN, 
+                        QCiAN = QICN, 
+                        QRN_ALL = QRAIN, 
+                        QSN_ALL = QSNOW, 
+                        QGR_ALL = QGRAUPEL, 
+                        NL = NACTL, 
+                        NI = NACTI, 
+                        RAD_QV = RAD_QV, 
+                        RAD_QL = RAD_QL, 
+                        RAD_QI = RAD_QI, 
+                        RAD_QR = RAD_QR, 
+                        RAD_QS = RAD_QS, 
+                        RAD_QG = RAD_QG, 
+                        RAD_CF = RAD_CF, 
+                        RAD_RL = CLDREFFL, 
+                        RAD_RI = CLDREFFI, 
+                        FAC_RL = FAC_RL, 
+                        MIN_RL = MIN_RL, 
+                        MAX_RL = MAX_RL, 
+                        FAC_RI = FAC_RI, 
+                        MIN_RI = MIN_RI, 
+                        MAX_RI = MAX_RI,
+                        )
         #if self.do_qa:
             # Implement QA logic if needed
-          #  RHX = Q / GEOS_QSAT(T, PLmb)
+            #RHX = Q / GEOS_QSAT(T, PLmb)

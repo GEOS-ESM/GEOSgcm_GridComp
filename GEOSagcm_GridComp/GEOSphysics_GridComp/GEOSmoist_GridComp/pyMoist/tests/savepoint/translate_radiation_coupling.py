@@ -1,6 +1,7 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateRadCouple(TranslateFortranData2Py):
@@ -16,6 +17,7 @@ class TranslateRadCouple(TranslateFortranData2Py):
             self.grid.quantity_factory,
             do_qa=namelist.do_qa,
         )
+        self._grid = grid
 
         # ADAPT BELOW TO INPUTS
         #
@@ -36,13 +38,10 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "QGRAUPEL": self.grid.compute_dict(),
             "NACTL": self.grid.compute_dict(),
             "NACTI": self.grid.compute_dict(),
-            "FAC_RL": self.grid.compute_dict(),
-            "MIN_RL": self.grid.compute_dict(),
-            "MAX_RL": self.grid.compute_dict(),
-            "FAC_RI": self.grid.compute_dict(),
-            "MIN_RI": self.grid.compute_dict(),
-            "MAX_RI": self.grid.compute_dict(),
         }
+
+        self.in_vars["parameters"] = ['FAC_RL', 'MIN_RL', 'MAX_RL', 'FAC_RI', 'MIN_RI', 'MAX_RI']
+
         self.out_vars = {
             "Q": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),
@@ -59,10 +58,22 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "RAD_QS": self.grid.compute_dict(),
             "RAD_QG": self.grid.compute_dict(),
             "RAD_CF": self.grid.compute_dict(),
-            "CLDREFFL": self.grid.compute_dict(),
+            "CLDREFFI": self.grid.compute_dict(),
             "CLDREFFL": self.grid.compute_dict(),
         }
 
     def compute_from_storage(self, inputs):
-        self.compute_func(**inputs)
-        return inputs
+        #self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
+        outputs = {
+            "RAD_QV": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_QL": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_QI": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_QR": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_QS": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_QG": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "RAD_CF": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "CLDREFFI": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "CLDREFFL": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
+        }
+        self.compute_func(**inputs, **outputs)
+        return {**outputs, "T": inputs["T"], "Q": inputs["Q"], "QLLS": inputs["QLLS"], "QILS": inputs["QILS"], "CLLS": inputs["CLLS"], "QLCN": inputs["QLCN"], "QICN": inputs["QICN"], "CLCN": inputs["CLCN"]}
