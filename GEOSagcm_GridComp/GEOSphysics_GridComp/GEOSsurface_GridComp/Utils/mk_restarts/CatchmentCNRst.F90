@@ -1034,7 +1034,7 @@ contains
                var_lai(:,nv,nz) = this%laisunm(this%id_glb(:), nv,nz)
            enddo
         enddo
-        this%psnlai= var_lai
+        this%laisunm= var_lai
 
         do nz = 1, nzone
            do nv = 1, nveg
