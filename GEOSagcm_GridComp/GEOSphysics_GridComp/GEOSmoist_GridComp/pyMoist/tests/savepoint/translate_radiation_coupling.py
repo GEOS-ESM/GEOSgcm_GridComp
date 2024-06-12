@@ -39,7 +39,7 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "FAC_RL": self.grid.compute_dict(),
             "MIN_RL": self.grid.compute_dict(),
             "MAX_RL": self.grid.compute_dict(),
-            "FAC_RI": self.grid.comppute_dict(),
+            "FAC_RI": self.grid.compute_dict(),
             "MIN_RI": self.grid.compute_dict(),
             "MAX_RI": self.grid.compute_dict(),
         }
