@@ -1801,6 +1801,29 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartOptional        ,&  
        RC=STATUS  )         
   VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sunlit leaf area index',&
+       UNITS              = '1'                              ,&
+       SHORT_NAME         = 'LAISUNM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for shaded leaf area index',&
+       UNITS              = '1'                   ,&
+       SHORT_NAME         = 'LAISHAM'                  ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  )       
+  VERIFY_(STATUS)
+
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'CN sum for snow depth'     ,&
@@ -5429,6 +5452,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,LMRSUNM    ,'LMRSUNM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,LMRSHAM    ,'LMRSHAM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LAISUNM    ,'LAISUNM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,LAISHAM    ,'LAISHAM'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,SNDZM5D    ,'SNDZM5D'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)

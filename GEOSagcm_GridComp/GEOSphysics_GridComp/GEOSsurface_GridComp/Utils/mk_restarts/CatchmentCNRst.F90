@@ -69,6 +69,10 @@ module CatchmentCNRstMod
      real, allocatable :: sfmcm(:)
      real, allocatable :: psnsunm(:,:,:)
      real, allocatable :: psnsham(:,:,:)
+     real, allocatable :: lmrsunm(:,:,:)
+     real, allocatable :: lmrsham(:,:,:)
+     real, allocatable :: laisunm(:,:,:)
+     real, allocatable :: laisham(:,:,:)
      real, allocatable :: rh30d(:) 
      real, allocatable :: tg10d(:)
      real, allocatable :: t2mmin5d(:)
@@ -223,6 +227,10 @@ contains
         call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
         call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
         call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
+        call MAPL_VarRead(formatter,  "LMRSUNM", catch%lmrsunm,_RC)
+        call MAPL_VarRead(formatter,  "LMRSHAM", catch%lmrsham,_RC)
+        call MAPL_VarRead(formatter,  "LAISUNM", catch%psnsunm,_RC)
+        call MAPL_VarRead(formatter,  "LAISHAM", catch%psnsham,_RC)
         call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
         call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
@@ -331,6 +339,8 @@ contains
         call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
         call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
         call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
+        call MAPL_VarWrite(formatter,"LMRSUNM", this%LMRSUNM )
+        call MAPL_VarWrite(formatter,"LMRSHAM", this%LMRSHAM )
 
      elseif (this%isCLM51) then
 
@@ -354,6 +364,10 @@ contains
           call MAPL_VarWrite(formatter,"RH30D",   this%RH30D)
           call MAPL_VarWrite(formatter,"TPREC10D",this%TPREC10D)
           call MAPL_VarWrite(formatter,"TPREC60D",this%TPREC60D)
+          call MAPL_VarWrite(formatter,"LMRSUNM", this%LMRSUNM )
+          call MAPL_VarWrite(formatter,"LMRSHAM", this%LMRSHAM )
+          call MAPL_VarWrite(formatter,"LAISUNM", this%LAISUNM )
+          call MAPL_VarWrite(formatter,"LAISHAM", this%LAISHAM )
 
      endif
 
@@ -409,6 +423,10 @@ contains
      allocate(this%asnowm  (ntiles))
      allocate(this%psnsunm(ntiles,nveg,nzone))
      allocate(this%psnsham(ntiles,nveg,nzone))
+     allocate(this%lmrsunm(ntiles,nveg,nzone))
+     allocate(this%lmrsham(ntiles,nveg,nzone))
+     allocate(this%laisunm(ntiles,nveg,nzone))
+     allocate(this%laisham(ntiles,nveg,nzone))
      allocate(this%rzmm   (ntiles,nzone))
      allocate(this%tgwm   (ntiles,nzone))
 
@@ -696,7 +714,7 @@ contains
 
      real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
      real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
-                          var_out_zone(:,:)
+                          var_out_zone(:,:), var_lmr(:,:,:), var_lai(:,:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs, npft_int
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft, nveg
@@ -996,6 +1014,35 @@ contains
            enddo
         enddo
         this%psnsham = var_psn
+
+        do nz = 1, nzone   
+           do nv = 1, nveg 
+               var_lmr(:,nv,nz) = this%lmrsunm(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%lmrsunm= var_lmr
+
+        do nz = 1, nzone
+           do nv = 1, nveg
+               var_lmr(:,nv,nz) = this%lmrsham(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%lmrsham = var_lmr
+
+        do nz = 1, nzone   
+           do nv = 1, nveg 
+               var_lai(:,nv,nz) = this%laisunm(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%psnlai= var_lai
+
+        do nz = 1, nzone
+           do nv = 1, nveg
+               var_lai(:,nv,nz) = this%laisham(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%laisham = var_lai
+
 
         do nz = 1, nzone
            var_out_zone(:,nz) = this%rzmm(this%id_glb(:), nz)
