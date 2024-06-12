@@ -4723,6 +4723,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:,:),   pointer :: psnsham
         real, dimension(:,:,:), pointer :: lmrsunm
         real, dimension(:,:,:), pointer :: lmrsham
+        real, dimension(:,:,:), pointer :: laisunm
+        real, dimension(:,:,:), pointer :: laisham
         real, dimension(:),   pointer :: sndzm
         real, dimension(:),   pointer :: sndzm5d
         real, dimension(:),   pointer :: asnowm
@@ -6969,10 +6971,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     snowfm  = snowfm  + SNO
     runsrfm = runsrfm + RUNSURF
     ar1m    = ar1m    + car1        
-    psnsunm = psnsunm + psnsun*laisun
-    psnsham = psnsham + psnsha*laisha
-    lmrsunm = lmrsunm + lmrsun*laisun
-    lmrsham = lmrsham + lmrsha*laisha
+    psnsunm = psnsunm + psnsun
+    psnsham = psnsham + psnsha
+    lmrsunm = lmrsunm + lmrsun
+    lmrsham = lmrsham + lmrsha
+    laisunm = laisunm + laisun
+    laisham = laisham + laisha
     do n = 1,N_snow
        sndzm(:) = sndzm(:) + sndzn(n,:)
     end do
@@ -7008,6 +7012,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              psnsham(:,nv,nz) = psnsham(:,nv,nz) / cnsum(:)
              lmrsunm(:,nv,nz) = lmrsunm(:,nv,nz) / cnsum(:)
              lmrsham(:,nv,nz) = lmrsham(:,nv,nz) / cnsum(:)
+             laisunm(:,nv,nz) = laisunm(:,nv,nz) / cnsum(:)
+             laisham(:,nv,nz) = laisham(:,nv,nz) / cnsum(:)
           end do
        end do
        tpm     = tpm     / cnsum
@@ -7027,7 +7033,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                       rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, first_cn, &
-                      psnsunm, psnsham, lmrsunm, lmrsham,                 &
+                      psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, &
                       elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
                       fire_nloss,leafn,leafc,gross_nmin,net_nmin,&
@@ -7128,6 +7134,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        psnsham = 0.
        lmrsunm = 0.
        lmrsham = 0.
+       laisunm = 0.
+       laisham = 0.
        sndzm   = 0.
        asnowm  = 0.
        cnsum   = 0.

@@ -65,7 +65,7 @@ contains
                       rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
-                      psnsunm, psnsham, lmrsunm, lmrsham,         &
+                      psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham,   &
                       zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
@@ -118,6 +118,8 @@ contains
  real, dimension(nch,num_veg,num_zon), intent(in) :: psnsham
  real, dimension(nch,num_veg,num_zon), intent(in) :: lmrsunm
  real, dimension(nch,num_veg,num_zon), intent(in) :: lmrsham
+ real, dimension(nch,num_veg,num_zon), intent(in) :: laisunm
+ real, dimension(nch,num_veg,num_zon), intent(in) :: laisham
 
 
  ! OUTPUT
@@ -287,6 +289,8 @@ contains
                  photosyns_inst%psnsha_patch(p) = psnsham(nc,nv,nz)
                  photosyns_inst%lmrsun_patch(p) = lmrsunm(nc,nv,nz)
                  photosyns_inst%lmrsha_patch(p) = lmrsham(nc,nv,nz)
+                 canopystate_inst%laisun_patch(p) = laisunm(nc,nv,nz)
+                 canopystate_inst%laisha_patch(p) = laisham(nc,nv,nz)
               end if 
            end do ! nv
         end do ! np
