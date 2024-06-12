@@ -320,7 +320,7 @@ contains
     class(pftcon_type) :: this
 
 
-    integer            :: ierr, clm_varid,  status, m
+    integer            :: ierr, clm_varid,  status, m, n
     logical            :: readv ! has variable been read in or not
     type(Netcdf4_fileformatter) :: ncid
 
@@ -593,6 +593,12 @@ contains
     call ncd_io('fcur', this%fcur, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
+    do n = 0,mxpft
+       if (this%fcur(n)==0.) then
+          this%fcur(n) = 0.5     
+       end if 
+    end do
+
     call ncd_io('fcurdv', this%fcurdv, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
 
@@ -616,6 +622,13 @@ contains
 
     call ncd_io('leaf_long', this%leaf_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
+
+    do n = 0,mxpft
+       if (this%leaf_long(n) .lt. 1.) then
+          this%leaf_long(n) = 1.
+       end if
+    end do
+
 
     call ncd_io('evergreen', this%evergreen, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(sourcefile, __LINE__))
