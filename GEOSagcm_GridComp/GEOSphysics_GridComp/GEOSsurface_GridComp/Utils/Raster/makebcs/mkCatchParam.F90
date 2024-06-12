@@ -545,7 +545,7 @@ integer :: n_threads=1
        ! this block is for n_threads>1
        !==============================
        
-       if(SOILBCS=='NGDC') then
+       if(trim(SOILBCS)=='NGDC') then
           write (log_file,'(a)')'Creating (intermediate) NGDC soil types file...'
           call create_soil_types_files (nc,nr,ease_grid,fnameTil,fnameRst)    
           write (log_file,'(a)')'         Done.'
@@ -562,11 +562,11 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp), exist=file_exists)
        if (.not.file_exists) then
           write (log_file,'(a)')'         Creating file...'
-          if(SOILBCS=='NGDC')  then 
+          if(trim(SOILBCS)=='NGDC')  then 
              if(     F25Tag) call soil_para_high (nc,nr,regrid,fnameRst,F25Tag=F25Tag)
              if(.not.F25Tag) call soil_para_high (nc,nr,regrid,fnameRst)
           endif
-          if(SOILBCS=='HWSD') call soil_para_hwsd (nc,nr,fnameRst)
+          if(SOILBCS(1:4)=='HWSD') call soil_para_hwsd (nc,nr,fnameRst)
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a,a)')'         Using existing file.'
@@ -586,8 +586,8 @@ integer :: n_threads=1
        inquire(file=trim(fname_tmp4), exist=file_exists4)
        if ((.not.file_exists).or.(.not.file_exists2).or.(.not.file_exists3).or.(.not.file_exists4)) then
           write (log_file,'(a)')'         Creating files...'
-          if(SOILBCS=='NGDC') call create_model_para (MaskFile)
-          if(SOILBCS=='HWSD') call create_model_para_woesten (MaskFile) 
+          if(trim(SOILBCS)=='NGDC') call create_model_para(        MaskFile)
+          if(SOILBCS(1:4) =='HWSD') call create_model_para_woesten(MaskFile) 
           write (log_file,'(a)')'         Done.'           
        else
           write (log_file,'(a,a)')'         Using existing files.'

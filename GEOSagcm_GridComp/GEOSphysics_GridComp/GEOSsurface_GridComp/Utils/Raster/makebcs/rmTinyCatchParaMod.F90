@@ -88,8 +88,10 @@ contains
     !   MODC061   : Static snow albedo derived from MODIS Collection 6.1 data where available, fill value of 0.56 elsewhere. 
     !   MODC061v2 : Same as MODC061 but using tile ID instead of tile bounding box for mapping from raster to tile.
     !
-    ! SOILBCS: Soil parameter data.             DEFAULT : HWSD                                                       
-    !   HWSD      : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
+    ! SOILBCS: Soil parameter data.             DEFAULT : HWSD    
+    !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
+    !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
+    !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
     
     implicit none
     
@@ -196,7 +198,16 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-     case ("v12")
+     case ("v12")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD_b'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+
+     case ("v13")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -205,6 +216,8 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
        IRRIGBCS    = .true.
+
+
 
     case default
 
