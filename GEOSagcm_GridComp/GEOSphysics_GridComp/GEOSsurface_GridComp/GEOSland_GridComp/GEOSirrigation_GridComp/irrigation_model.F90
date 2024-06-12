@@ -230,75 +230,77 @@ contains
        
        CHECK_LAITHRES : IF (LAI(N) >= LAITHRES) THEN
           season_end = .false.
-          CHECK_IRRIGFRACS: IF (IRRIGFRAC(N) > 0.) THEN
+          CHECK_IRRIGFRACS: IF ((IRRIGFRAC(N) > 0.).OR.(PADDYFRAC(N)>0.)) THEN
 
              !-----------------------------------------------------------------------------
              !     Get the root zone moisture availability to the plant
              !-----------------------------------------------------------------------------
-
-             if(SMREF(N) > SMWP(N))then
-                ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
-             else
-                ma = -1.
-             endif
+             if (IRRIGFRAC(N) > 0.) then
+                if(SMREF(N) > SMWP(N))then
+                        ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                else
+                        ma = -1.
+                endif
              
-             if(ma >= 0) then
+                if(ma >= 0) then
                                 
-                SELECT CASE (IRRIG_METHOD)                
-                CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + DRIP on corresponding fractions
+                        SELECT CASE (IRRIG_METHOD)                
+                        CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + DRIP on corresponding fractions
 
-                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
-                        SRATE = SRATE (N,1), &
-                        DRATE = DRATE (N,1), &
-                        FRATE = FRATE (N,1))
+                        call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                                SRATE = SRATE (N,1), &
+                                DRATE = DRATE (N,1), &
+                                FRATE = FRATE (N,1))
 
-                   SRATE (N,1) =  SRATE (N,1)*SPRINKLERFR(N)
-                   DRATE (N,1) =  DRATE (N,1)*DRIPFR (N)
-                   FRATE (N,1) =  FRATE (N,1)*FLOODFR (N) 
+                        SRATE (N,1) =  SRATE (N,1)*SPRINKLERFR(N)
+                        DRATE (N,1) =  DRATE (N,1)*DRIPFR (N)
+                        FRATE (N,1) =  FRATE (N,1)*FLOODFR (N) 
                    
-                CASE (1)  ! SPRINKLER only
+                        CASE (1)  ! SPRINKLER only
 
-                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
-                        SRATE = SRATE (N,1))
+                        call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                                SRATE = SRATE (N,1))
                    
-                   DRATE (N,1) = 0.
-                   FRATE (N,1) = 0.
+                        DRATE (N,1) = 0.
+                        FRATE (N,1) = 0.
                                       
-                CASE (2)  ! DRIP only
+                        CASE (2)  ! DRIP only
 
-                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
-                        DRATE = DRATE (N,1))
+                        call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                                DRATE = DRATE (N,1))
                    
-                   SRATE (N,1) = 0.
-                   FRATE (N,1) = 0.
+                        SRATE (N,1) = 0.
+                        FRATE (N,1) = 0.
 
-                CASE (3)  ! FLOOD only
+                        CASE (3)  ! FLOOD only
 
-                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
-                        FRATE = FRATE (N,1))
+                        call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                                FRATE = FRATE (N,1))
 
-                   SRATE (N,1) = 0.
-                   DRATE (N,1) = 0.
+                        SRATE (N,1) = 0.
+                        DRATE (N,1) = 0.
                    
-                CASE DEFAULT
-                   PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
-                   CALL EXIT(1)
-                END SELECT
+                        CASE DEFAULT
+                        PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
+                        CALL EXIT(1)
+                        END SELECT
+                endif
              endif
-                          
-          IF (PADDYFRAC (N) > 0.) THEN
+                     
+             if (PADDYFRAC (N) > 0.) then
              
-             H1 = this%flood_stime
-             H2 = this%flood_stime + this%flood_dur
-             if ((HC >= H1).AND.(HC < H2)) then
-                ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate for paddy. 
-                if(H1 == HC) FRATE (N,2) = RZDEF(N) *0.1/(H2 - H1)/ 3600.
-             else
-                FRATE (N,2) = 0.
-             endif
-             SRATE (N,2) = 0.
-             DRATE (N,2) = 0.
-             
+                H1 = this%flood_stime
+                H2 = this%flood_stime + this%flood_dur
+                if ((HC >= H1).AND.(HC < H2)) then
+                        ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate for paddy. 
+                        if(H1 == HC) FRATE (N,2) = RZDEF(N) *0.1/(H2 - H1)/ 3600.
+                        else
+                        FRATE (N,2) = 0.
+                endif
+                SRATE (N,2) = 0.
+                DRATE (N,2) = 0.
+             endif 
+          
           ELSE
              
              SRATE (N,:) = 0.

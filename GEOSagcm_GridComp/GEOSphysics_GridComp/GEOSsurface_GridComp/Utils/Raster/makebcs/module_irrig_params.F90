@@ -351,7 +351,6 @@ contains
  
         do n = 1, NTILES
            read (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
-           !read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
         end do
 
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FIELDCAP'  ) ,(/1/),(/NTILES/),field_cap ) ; VERIFY_(STATUS)
@@ -1009,6 +1008,8 @@ contains
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'DRIPFR'     ) ,(/1/),(/NTILES/), f_drip  ) ; VERIFY_(STATUS)
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FLOODFR'    ) ,(/1/),(/NTILES/), f_flood ) ; VERIFY_(STATUS)
         
+        print *, 'DONE PROCESSING IRRIGATION METHOD DATA '
+
         deallocate (us_sprink, us_drip, us_flood, us_tarea, sprink, drip, flood, tarea)
 
       END SUBROUTINE ReadProcess_IMethod
