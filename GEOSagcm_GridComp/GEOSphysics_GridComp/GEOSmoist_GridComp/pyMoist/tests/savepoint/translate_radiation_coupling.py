@@ -3,27 +3,23 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
-
 class TranslateRadCouple(TranslateFortranData2Py):
     def __init__(
         self,
         grid,
-        namelist: Namelist,
+        namelist: Namelist, 
         stencil_factory: StencilFactory,
     ):
         super().__init__(grid, stencil_factory)
         self.compute_func = RadiationCoupling(  # type: ignore
             self.stencil_factory,
             self.grid.quantity_factory,
-            do_qa=namelist.do_qa,
+            do_qa = False, #Change to do_qa=namelist.do_qa, if QSAT module procedures QSAT0 and QSAT3 are implemented
         )
         self._grid = grid
         self.max_error = 1e-9
 
-        # ADAPT BELOW TO INPUTS
-        #
-        # fillq_info = self.grid.compute_dict()
-        # fillq_info["serialname"] = "fq"
+        #FloatField Inputs
         self.in_vars["data_vars"] = {
             "Q": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),
@@ -40,10 +36,11 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "NACTL": self.grid.compute_dict(),
             "NACTI": self.grid.compute_dict(),
         }
-        #Inputs that are Floats
+
+        #Float Inputs
         self.in_vars["parameters"] = ['FAC_RL', 'MIN_RL', 'MAX_RL', 'FAC_RI', 'MIN_RI', 'MAX_RI']
 
-        #Outputs
+        #FloatField Outputs
         self.out_vars = {
             "Q": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),
@@ -64,8 +61,9 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "CLDREFFL": self.grid.compute_dict(),
         }
 
+    #Calculated Outputs
     def compute_from_storage(self, inputs):
-        #self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown")
+        #Original test data was missing these allocations. New test data will be generated that contain these allocations. 
         outputs = {
             "RAD_QV": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
             "RAD_QL": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),

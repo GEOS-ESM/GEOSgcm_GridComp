@@ -1,5 +1,6 @@
 from gt4py.cartesian import gtscript
 
+#All these constants are taken from GEOS/src/Shared/@MAPL/shared/Constants
 #Math constants
 MAPL_PI_R8 = 3.14159265358979323846e0 
 MAPL_PI = MAPL_PI_R8 
@@ -72,7 +73,7 @@ MAPL_RHO_SEAICE = 917.0  # sea ice density [kg/m^3]
 MAPL_RHO_SNOW = 330.0  # snow density [kg/m^3]
 MAPL_CELSIUS_TO_KELVIN = 273.15  # K
 
-# Define constants
+# Define constants for 
 alhlbcp = MAPL_ALHL / MAPL_CP
 alhsbcp = MAPL_ALHS / MAPL_CP
 
@@ -92,9 +93,7 @@ Lk = 0.75
 Lbx = Ldiss * 1.0e3 * (3.0 / (4.0 * MAPL_PI * Lk * RHO_W * 1.0e-3)) ** (1.0 / 3.0)
 Lbe = 1.0 / 3.0 - 0.14
 
-#Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274
-#Uses MAPL_GetResource to get variables. These do not change in the radiation coupling unless stated otherwise in the code.
-#These might be wrong... Checking on it atm.
+#Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274 - uses MAPL_GetResource to get variables. These do not change in the radiation coupling loop
 MIN_RL = 2.5e-6
 MAX_RL = 60.0e-6
 FAC_RL = 1.0
