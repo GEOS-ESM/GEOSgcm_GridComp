@@ -1,9 +1,8 @@
 from gt4py.cartesian import gtscript
-from gt4py.cartesian.gtscript import exp, log, log10, sqrt
 
 #Math constants
-MAPL_PI_R8 = 3.14159265358979323846e0
-MAPL_PI = MAPL_PI_R8
+MAPL_PI_R8 = 3.14159265358979323846e0 
+MAPL_PI = MAPL_PI_R8 
 MAPL_DEGREES_TO_RADIANS_R8 = MAPL_PI_R8 / 180.e0
 MAPL_DEGREES_TO_RADIANS = MAPL_PI / 180.0
 MAPL_RADIANS_TO_DEGREES = 180.e0 / MAPL_PI_R8

@@ -18,6 +18,7 @@ class TranslateRadCouple(TranslateFortranData2Py):
             do_qa=namelist.do_qa,
         )
         self._grid = grid
+        self.max_error = 1e-9
 
         # ADAPT BELOW TO INPUTS
         #
@@ -39,9 +40,10 @@ class TranslateRadCouple(TranslateFortranData2Py):
             "NACTL": self.grid.compute_dict(),
             "NACTI": self.grid.compute_dict(),
         }
-
+        #Inputs that are Floats
         self.in_vars["parameters"] = ['FAC_RL', 'MIN_RL', 'MAX_RL', 'FAC_RI', 'MIN_RI', 'MAX_RI']
 
+        #Outputs
         self.out_vars = {
             "Q": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),

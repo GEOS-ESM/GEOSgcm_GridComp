@@ -9,7 +9,7 @@ import pyMoist.constants as radconstants
 # GEOS_QSAT Function --This might be wrong
 def GEOS_QSAT(
     T: FloatField, 
-    P: FloatField,
+    PLmb: FloatField,
 ):
     Rv = 461.5  # Gas constant for water vapor [J/(kg·K)]
     Lv = 2.5e6  # Latent heat of vaporization [J/kg]
@@ -22,45 +22,57 @@ def GEOS_QSAT(
     qsat = 0.622 * es / (P - es)
     
     return qsat
+'''
 
-#@gtscript.function
-def LDRADIUS4(
+@gtscript.function
+def RHO(PL, TE):
+    RHO = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
+    return RHO
+
+@gtscript.function
+def LDRADIUS4_ICE(
     PL: Float,
     TE: Float, 
     QC: Float, 
     NNL: Float,
     NNI: Float,
-    ITYPE: Int,
 )-> Float:
-    RHO = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
-    if ITYPE == 1:  # Liquid
-        WC = 1.0e3 * RHO * QC
-        NNX = max(NNL * 1.0e-6, 10.0)
-        if radconstants.LIQ_RADII_PARAM == 1:
-            RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.bx * (WC / NNX)**radconstants.r13bbeta * radconstants.abeta * 6.92))
+
+    WC = 1.0e3 * RHO(PL, TE) * QC
+    if radconstants.ICE_RADII_PARAM == 1:
+        if TE > radconstants.MAPL_TICE or QC <= 0.0:
+            BB = -2.0
         else:
-            RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.Lbx * (WC / NNX)**radconstants.Lbe))
-    elif ITYPE == 2:  # Ice
-        WC = 1.0e3 * RHO * QC
-        if radconstants.ICE_RADII_PARAM == 1:
-            if TE > radconstants.MAPL_TICE or QC <= 0.0:
-                BB = -2.0
-            else:
-                BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (radconstants.MAPL_TICE - TE)**1.5)
-            BB = min(max(BB, -6.0), -2.0)
-            RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
-            RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
-        else:
-            TC = TE - radconstants.MAPL_TICE
-            ZFSR = 1.2351 + 0.0105 * TC
-            AA = 45.8966 * (WC**0.2214)
-            BB = 0.79570 * (WC**0.2535)
-            RADIUS = ZFSR * (AA + BB * (TE - 83.15))
-            RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
+            BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (radconstants.MAPL_TICE - TE)**1.5)
+        BB = min(max(BB, -6.0), -2.0)
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
+        RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
-        raise ValueError("WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2")
+        TC = TE - radconstants.MAPL_TICE
+        ZFSR = 1.2351 + 0.0105 * TC
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
+        RADIUS = ZFSR * (AA + BB * (TE - 83.15))
+        RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
-'''
+
+@gtscript.function
+def LDRADIUS4_LIQUID(
+    PL: Float,
+    TE: Float, 
+    QC: Float, 
+    NNL: Float,
+    NNI: Float,
+)-> Float:
+    
+    WC = 1.0e3 * RHO(PL,TE) * QC
+    NNX = max(NNL * 1.0e-6, 10.0)
+    if radconstants.LIQ_RADII_PARAM == 1:
+        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.bx * (WC / NNX)**radconstants.r13bbeta * radconstants.abeta * 6.92))
+    else:
+        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.Lbx * (WC / NNX)**radconstants.Lbe))
+    return RADIUS
+
 def _fix_up_clouds_stencil(
     QV: FloatField,
     TE: FloatField,
@@ -71,10 +83,7 @@ def _fix_up_clouds_stencil(
     QIA: FloatField,
     AF: FloatField, 
 ):
-    '''
-    from __externals__ import (
-    )
-    '''
+
     with computation(PARALLEL), interval(...):
         if AF < 1.E-5:
             QV = QV + QLA + QIA
@@ -123,7 +132,6 @@ def _fix_up_clouds_stencil(
             CF = 0.0
             QLC = 0.0
             QIC = 0.0
-
 
 def _radcouple_stencil(
         TE: FloatField,
@@ -184,9 +192,9 @@ def _radcouple_stencil(
         RAD_QG = min(RAD_QG, 0.01)
 
         #Liquid radii - Brams formulation with limits
-        #RAD_RL = max(MIN_RL, min(LDRADIUS4(PL, TE, RAD_QL, NL, NI, 1) * FAC_RL, MAX_RL))
+        RAD_RL = max(MIN_RL, min(LDRADIUS4_LIQUID(PL, TE, RAD_QL, NL, NI) * FAC_RL, MAX_RL))
         #Ice radii - Brams formulation with limits
-        #RAD_RI = max(MIN_RI, min(LDRADIUS4(PL, TE, RAD_QI, NL, NI, 2) * FAC_RI, MAX_RI))
+        RAD_RI = max(MIN_RI, min(LDRADIUS4_ICE(PL, TE, RAD_QI, NL, NI) * FAC_RI, MAX_RI))
 
 class RadiationCoupling:
     def __init__(
@@ -216,7 +224,6 @@ class RadiationCoupling:
         self._a12 = grid_data.a12
         self._a21 = grid_data.a21
         self._a22 = grid_data.a22
-        self.comm = comm
         '''
 
     def __call__(
@@ -290,6 +297,8 @@ class RadiationCoupling:
                         MIN_RI = MIN_RI, 
                         MAX_RI = MAX_RI,
                         )
+        #RHX: FloatField
         #if self.do_qa:
-            # Implement QA logic if needed
-            #RHX = Q / GEOS_QSAT(T, PLmb)
+            # Implement QA logic if needed --> For diagnostics
+        #    RHX = Q / GEOS_QSAT(T, PLmb)
+#QSAT3
