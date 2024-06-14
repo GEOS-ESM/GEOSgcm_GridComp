@@ -1,24 +1,4 @@
-#define ACC_PREFIX !$acc
 MODULE Aer_Actv_Single_Moment
-
-#ifdef SERIALIZE
-USE m_serialize, ONLY: &
-  fs_add_savepoint_metainfo, &
-  fs_read_field, &
-  fs_write_field, &
-  fs_create_savepoint
-USE utils_ppser, ONLY:  &
-  ppser_get_mode, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
-  ppser_intlength, &
-  ppser_reallength, &
-  ppser_realtype, &
-  ppser_zrperturb, &
-  ppser_get_mode
-#endif
-
 !
 #include "MAPL_Generic.h"
 
@@ -130,9 +110,6 @@ USE utils_ppser, ONLY:  &
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
           timestep = timestep + 1
-
-!!$ser savepoint Aer_Actv_aero_aci-In timestep=timestep
-!!$ser data n_modes=n_modes
 
           if (n_modes > 0) then
 
@@ -246,83 +223,15 @@ USE utils_ppser, ONLY:  &
                  end do
 
 ! Since USE_AERO_BUFFER is True, we can use 'buffer' to get appropriate data
-#ifdef SERIALIZE
-! file: aer_actv_single_moment.F90 lineno: #229
-call fs_create_savepoint('Aer_Actv_Aeroprops-In', ppser_savepoint)
-call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
-! file: aer_actv_single_moment.F90 lineno: #230
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #231
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #232
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #233
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #234
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #235
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #236
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #237
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8), ppser_zrperturb)
-END SELECT
-#endif
+!$ser savepoint Aer_Actv_Aeroprops-In timestep=timestep
+!$ser data AP_num=buffer(:,:,:,:,1)
+!$ser data AP_dpg=buffer(:,:,:,:,2)
+!$ser data AP_sig=buffer(:,:,:,:,3)
+!$ser data AP_kap=buffer(:,:,:,:,4)
+!$ser data AP_den=buffer(:,:,:,:,5)
+!$ser data AP_fdust=buffer(:,:,:,:,6)
+!$ser data AP_fsoot=buffer(:,:,:,:,7)
+!$ser data AP_forg=buffer(:,:,:,:,8)
 
                  deallocate(buffer, __STAT__)
               end if
