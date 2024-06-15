@@ -641,6 +641,12 @@ module GEOSmoist_Process_Library
 
        !- air density (kg/m^3)
        RHO = (100.*PL) / (MAPL_RGAS*TE )
+       
+       IF (QC .LT. 1.0e-9) then !DONIF2024 
+           RADIUS = 10.e-6
+           return
+       end if 
+       
        IF(ITYPE == LIQUID) THEN
 
        !- liquid cloud effective radius -----
@@ -1130,16 +1136,19 @@ module GEOSmoist_Process_Library
          QG, &
          NR, &
          NS, &
-         NG)
+         NG, &
+         MASS, & 
+         TMP2D)
 
       real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG
       real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
+      real, dimension(:,:,:),   intent(in)     :: MASS
+      real, dimension(:,:),     intent(  out)  :: TMP2D
+      integer :: IM, JM, LM
 
       real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
       real, parameter :: nmin  = 100.0
-
-
 
 
       ! Fix if Anvil cloud fraction too small
@@ -1202,9 +1211,22 @@ module GEOSmoist_Process_Library
          QLC = 0.
          QIC = 0.
       end where
+      
+        IM = SIZE( QV, 1 )
+    	JM = SIZE( QV, 2 )
+    	LM = SIZE( QV, 3 )
 
 
-
+      !make sure QI , NI stay within T limits 
+         call meltfrz_inst2M  ( IM, JM, LM,    &
+              TE              , &
+              QLC          , &
+              QLA         , &
+              QIC           , &
+              QIA          , &               
+              NL         , &
+              NI          )
+              
       !make sure no negative number concentrations are passed
       !and that N goes to minimum defaults in the microphysics when mass is too small
 
@@ -1223,6 +1245,18 @@ module GEOSmoist_Process_Library
       where (QS .le. qmin) NS = 0.
 
       where (QG .le. qmin) NG = 0.
+      
+      ! need to clean up small negative values. MG does can't handle them
+          call FILLQ2ZERO( QV, MASS, TMP2D) 
+          call FILLQ2ZERO( QG, MASS, TMP2D) 
+          call FILLQ2ZERO( QR, MASS, TMP2D) 
+          call FILLQ2ZERO( QS, MASS, TMP2D) 
+          call FILLQ2ZERO( QLC, MASS, TMP2D)
+          call FILLQ2ZERO( QLA, MASS, TMP2D)  
+          call FILLQ2ZERO( QIC, MASS, TMP2D)
+          call FILLQ2ZERO( QIA, MASS, TMP2D)
+          call FILLQ2ZERO( CF, MASS, TMP2D)
+          call FILLQ2ZERO( AF, MASS, TMP2D)
 
    end subroutine fix_up_clouds_2M
 
@@ -2073,7 +2107,7 @@ module GEOSmoist_Process_Library
 
 
                       tmpARR = 0.0
-      if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
+      if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN + 1.0e-12)
 
                             QAx = 0.0
       if (CLCN > tiny(0.0)) QAx = (QLCN+QICN)/CLCN
@@ -2379,7 +2413,7 @@ module GEOSmoist_Process_Library
       QL   = QLLS + QLCN
       QTOT = QI+QL
       FQA  = 0.0
-      if (QTOT .gt. 0.0) FQA = (QICN+QILS)/QTOT
+      if (QTOT .gt. tiny(0.0)) FQA = (QICN+QILS)/QTOT
       NIX  = (1.0-FQA)*NI
 
       DQALL = DQALL/DTIME
@@ -3385,8 +3419,7 @@ subroutine update_cld( &
 
 
 
-   subroutine meltfrz_inst2M  (     &
-         IM,JM,LM , &
+   subroutine meltfrz_inst2M  ( IM, JM, LM,    &
          TE       , &
          QCL       , &
          QAL       , &
@@ -3395,8 +3428,8 @@ subroutine update_cld( &
          NL       , &
          NI            )
 
-      integer, intent(in)                             :: IM,JM,LM
       real ,   intent(inout), dimension(:,:,:)   :: TE,QCL,QCI, QAL, QAI, NI, NL
+      integer, intent(in) :: IM, JM, LM
 
       real ,   dimension(im,jm,lm)              :: dQil, DQmax, QLTOT, QITOT, dNil, FQA
       real :: T_ICE_ALL =  240.
@@ -3406,8 +3439,7 @@ subroutine update_cld( &
       QLTOT=QCL + QAL
       FQA = 0.0
 
-
-      where (QITOT+QLTOT .gt. 0.0)
+      where (QITOT+QLTOT .gt. tiny(0.0))
          FQA= (QAI+QAL)/(QITOT+QLTOT)
       end where
 
@@ -3426,7 +3458,7 @@ subroutine update_cld( &
          dNil = NL
       end where
 
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NL*DQmax/dQil
       end where
 
@@ -3450,7 +3482,7 @@ subroutine update_cld( &
       where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
          dNil = NI
       end where
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NI*DQmax/dQil
       end where
       dQil = max(  0., dQil )

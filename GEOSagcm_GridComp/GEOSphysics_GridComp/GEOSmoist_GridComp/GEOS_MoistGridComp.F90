@@ -5238,7 +5238,7 @@ contains
     real, allocatable, dimension(:,:)   :: TMP2D
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
-    real, pointer, dimension(:,:,:) :: NACTL, NACTI
+    real, pointer, dimension(:,:,:) :: NACTL, NACTI, NCPL, NCPI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
     real, pointer, dimension(:,:)   :: FRLAND, FRLANDICE, FRACI, SNOMAS
@@ -5312,6 +5312,8 @@ contains
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
 
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)

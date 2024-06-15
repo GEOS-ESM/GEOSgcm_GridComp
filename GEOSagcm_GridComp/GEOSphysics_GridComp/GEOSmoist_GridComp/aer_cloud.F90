@@ -16,7 +16,7 @@
       public :: aerosol_activate
       public :: AerConversion	
       public :: AerProps
-      public :: AerPropsNew
+      !public :: AerPropsNew
       public :: getINsubset
       public :: init_Aer
       public :: aer_cloud_init
@@ -29,18 +29,18 @@
       integer, parameter :: nsmx_par = 20 !maximum number of modes allowed    
       integer, parameter :: npgauss  = 10
     
-      type :: AerPropsNew
-      sequence 
-      real, dimension(:,:,:), pointer :: num !Num conc m-3
-      real, dimension(:,:,:), pointer :: dpg !dry Geometric size, m
-      real, dimension(:,:,:), pointer :: sig  !logarithm (base e) of the dry geometric disp
-      real, dimension(:,:,:), pointer :: den  !dry density , Kg m-3
-      real, dimension(:,:,:), pointer :: kap !Hygroscopicity parameter 
-      real, dimension(:,:,:), pointer :: fdust! mass fraction of dust 
-      real, dimension(:,:,:), pointer :: fsoot ! mass fraction of soot
-      real, dimension(:,:,:), pointer :: forg ! mass fraction of organics
-      integer :: nmods  ! total number of modes (nmods<nmodmax)
-      end type AerPropsNew
+      !type :: AerPropsNew
+      !sequence 
+      !real, dimension(:,:,:), pointer :: num !Num conc m-3
+      !real, dimension(:,:,:), pointer :: dpg !dry Geometric size, m
+      !real, dimension(:,:,:), pointer :: sig  !logarithm (base e) of the dry geometric disp
+      !real, dimension(:,:,:), pointer :: den  !dry density , Kg m-3
+      !real, dimension(:,:,:), pointer :: kap !Hygroscopicity parameter 
+      !real, dimension(:,:,:), pointer :: fdust! mass fraction of dust 
+      !real, dimension(:,:,:), pointer :: fsoot ! mass fraction of soot
+      !real, dimension(:,:,:), pointer :: forg ! mass fraction of organics
+      !integer :: nmods  ! total number of modes (nmods<nmodmax)
+      !end type AerPropsNew
    
       type :: AerProps            
       sequence 
@@ -259,23 +259,35 @@
 
  
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-      npre_in, dpre_in, use_average_v, CCN_param, IN_param, fd_dust, fd_soot, &
-      frachet_dust, frachet_bc, frachet_org, frachet_ss, Immersion_param, &
-      ccn_diagr8, cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8) 
-  
-      type(AerProps), intent(in) :: Aer_Props !Aerosol Properties
-      logical,        intent(in) :: use_average_v
-      real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-                                    npre_in, dpre_in, fd_soot, fd_dust,  &
-                                    frachet_dust, frachet_bc, frachet_org, frachet_ss
-      integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
-     
-      real(r8), dimension(:), intent(inout) :: ccn_diagr8
-      real,                   intent(out)   :: cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8
+					   npre_in, dpre_in, ccn_diagr8,  &
+					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
+                       so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
+                       fd_dust, fd_soot, &
+					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+                       Immersion_param)
 
-!     real, intent(out)  :: smaxliqr8, smaxicer8, nheticer8, INimmr8, &
-!                           ndust_immr8, ndust_depr8,  nlimr8
-!     real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+
+
+  
+      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
+	
+      logical        ::   use_average_v
+       
+      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+					   npre_in, dpre_in, fd_soot, fd_dust,  &
+                       frachet_dust, frachet_bc, frachet_org, frachet_ss
+                       
+      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+            
+      real(r8), dimension(:), intent(inout) :: ccn_diagr8 
+      
+     real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8
+                        
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
       !local 
       integer  ::  k, n,  I, J, naux, index      
@@ -435,7 +447,7 @@
        	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-        !smaxliqr8=100.*max(smax, zero_par)
+         smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -633,8 +645,8 @@
     !==========================
 
 !All # m-3 except those passed to MG later
-  !smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
-  !nheticer8    = min(max(nhet, zero_par), 1e10)  
+   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
+   nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
   !nlimr8       = min(max(nlim, zero_par), 1e10)   
    sc_icer8     = min(max(sc_ice, 1.0), 2.0)   
@@ -4058,19 +4070,22 @@ end subroutine make_cnv_ice_drop_number
     
 !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
     
-subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
+subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
-    real, dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
-    real, dimension (:, :), intent(in) :: xscale
+    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, dimension (:, :), intent(in) :: AREA
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
-    real :: HMOIST_950, HSMOIST_500, SINST, QCV
+    real :: HMOIST_950, HSMOIST_500, SINST, QCV, xscale
     
     DO I  =  1, IM
     	DO J =  1, JM
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
+            
+            xscale =  min(max(SQRT(AREA(I, J))/1000., 1.0), 200.)
+            xscale =  xscale**(-0.6666)
 
             IF (PLmb(I, J, LM) .le. 500.0) then                                        
     	        QCVAR  = 2.0
@@ -4093,7 +4108,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale)
                 SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
             ENDIF
 
-            QCV =  0.67 -0.38*SINST +  4.96*xscale(I,J) - 8.32*SINST*xscale(I,J)
+            QCV =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
     	    QCVAR(I, J) = min(max(QCV, 0.5), 10.0)
       end do
     end do  
