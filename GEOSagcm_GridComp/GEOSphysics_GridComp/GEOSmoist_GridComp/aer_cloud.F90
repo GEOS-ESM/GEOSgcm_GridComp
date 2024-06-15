@@ -4070,19 +4070,22 @@ end subroutine make_cnv_ice_drop_number
     
 !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
     
-subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
+subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
     real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
-    real, intent(in) :: xscale
+    real, dimension (:, :), intent(in) :: AREA
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
-    real :: HMOIST_950, HSMOIST_500, SINST, QCV
+    real :: HMOIST_950, HSMOIST_500, SINST, QCV, xscale
     
     DO I  =  1, IM
     	DO J =  1, JM
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
+            
+            xscale =  min(max(SQRT(AREA(I, J))/1000., 1.0), 200.)
+            xscale =  xscale**(-0.6666)
 
             IF (PLmb(I, J, LM) .le. 500.0) then                                        
     	        QCVAR  = 2.0

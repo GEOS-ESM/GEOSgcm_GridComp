@@ -866,7 +866,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
     call MAPL_GetPointer(EXPORT, CFICE,   'CFICE'   ,  ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, CFLIQ,   'CFLIQ'   ,  ALLOC=.TRUE., __RC__)
-    call MAPL_GetPointer(EXPORT, CNV_FICE,   'CNV_FICE'   ,  ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, CCNCOLUMN,   'CCNCOLUMN'   ,  ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, NDCOLUMN,   'NDCOLUMN'   ,  ALLOC=.TRUE., __RC__)
     call MAPL_GetPointer(EXPORT, NCCOLUMN,   'NCCOLUMN'   ,  ALLOC=.TRUE., __RC__)
@@ -934,8 +933,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, KAPPA,   'KAPPA'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
   ! This export MUST have been filled in the GridComp
-    call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SRF_TYPE,     'SRF_TYPE'     , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_FRC,      'CNV_FRC'      , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE,     'SRF_TYPE'     , RC=STATUS); VERIFY_(STATUS)
   
 
     ! Allocatables
@@ -1027,11 +1026,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
       call MAPL_TimerOn(MAPL,"---ACTIV") !Activation timer
     
-        !xscale = 8.7475*(real(imsize)**(-0.328)) ! scale for resolutions =! 50 km for WSUB_OPTION >= 1                   
-        xscale  =  1.
-        !ÃSIGW_RC  =  -OMEGA/AIRDEN/MAPL_GRAV + (RADLW + RADSW)*MAPL_CP/MAPL_GRAV
-        SIGW_RC =  0.
-	
+       
+        SIGW_RC  =  -OMEGA/AIRDEN/MAPL_GRAV + (RADLW + RADSW)*MAPL_CP/MAPL_GRAV
+       
      !!=============== find vertical velocity variance
 
 
@@ -1053,10 +1050,18 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
          else  !WSUB climatology 
 
-          WSUB  =  WSUB_CLIM    
+          WSUB  =  WSUB_CLIM   
+          DO J=1, JM
+            DO I = 1, IM 
+               xscale = log10(AREA(I, J)) 
+               xscale = 0.089*xscale*xscale - 1.1812*xscale + 4.2627 ! scale for resolutions =! 50 km for WSUB_OPTION >= 1                   
+               xscale  =  min(max(xscale, 0.1), 1.6)
+               WSUB(I, J, :)  = WSUB_CLIM(I, J, :)*xscale 
+           END DO
+          END DO 
           SIGW_TURB = WSUB                    
-                 !call WRITE_PARALLEL ('Using Wclim***************') 
-
+          !call WRITE_PARALLEL ('Using Wclim***************') 
+        
         end if      
                          
    ! ==========================================================================================    
@@ -1070,9 +1075,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
           
             kbmin= min(NINT(KPBL_SC(I, J)), LM-1)-2
             npre =   NPRE_FRAC   
-            dpre=  1.0e-9      
+            dpre=  1.0e-9   
             if (NPRE_FRAC < 0.0) npre =  CNV_FRC(I,J)*ABS(NPRE_FRAC) + (1-CNV_FRC(I,J))*0.05                       
-                            
+                        
         	do K = 1, LM-1 !limit to troposphere and no activation at the surface
             
                  npre =  npre*NCPI(I,J,K)
@@ -1098,12 +1103,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
                   CDNC_NUC(I, J, K) =  nact
 
-
                end do 
             enddo
          enddo
         
-        CDNC_NUC =  1.0e6 
         WSUB  =  SIGW_RC + 0.8*WSUB !diagnostic	
 
         where (T .gt. 238.0)
@@ -1132,38 +1135,43 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         
       !====== Add convective detrainment of number concentration 
         
-      call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE',  ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE',  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_FICE,   'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+
       ! CNV_MFD includes Deep+Shallow mass flux
 
-      call MAPL_GetPointer(EXPORT, CNV_MFD, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_MFD, 'CNV_MFD', RC=STATUS); VERIFY_(STATUS)
       
-      DO I=  1, IM
-          DO J =  1, JM 
-           kbmin =  max(min(NINT(KPBL_SC(I,J)), LM-1), NINT(0.8*LM))
-           aux2= ZL0(I, J, kbmin ) !assume cldbase as PBLheight
-           aux3  =  CDNC_NUC(I, J, kbmin)
-           Do K  =  1, LM       
-            call   make_cnv_ice_drop_number(CNV_NDROP(I, J, K), CNV_NICE(I, J, K), NHET_IMM(I, J, K),  \
-                             aux3, ZL0(I, J, K), aux2, T(I, J, K), CNV_FICE(I, J, K), CNV_GSC, CNV_BSC)
-           
-           end do
-          end do
-         end do                            
+      DNDCNV =  0.
+      DNICNV =  0.
+      
+      if (associated(CNV_MFD) .AND. associated(CNV_FICE)) then 
 
-      DNDCNV =  CNV_NDROP*CNV_MFD*iMASS
-      DNICNV =  CNV_NICE*CNV_MFD*iMASS
-            
-      !update Number concentrations   
-      NCPL = NCPL + DNDCNV*DT_MOIST
-      NCPI = NCPI  + DNICNV*DT_MOIST
+          DO I=  1, IM
+              DO J =  1, JM 
+               kbmin =  max(min(NINT(KPBL_SC(I,J)), LM-1), NINT(0.8*LM))
+               aux2= ZL0(I, J, kbmin ) !assume cldbase as PBLheight
+               aux3  =  CDNC_NUC(I, J, kbmin)
+               Do K  =  1, LM       
+                call   make_cnv_ice_drop_number(CNV_NDROP(I, J, K), CNV_NICE(I, J, K), NHET_IMM(I, J, K),  \
+                                 aux3, ZL0(I, J, K), aux2, T(I, J, K), CNV_FICE(I, J, K), CNV_GSC, CNV_BSC)
+
+               end do
+              end do
+             end do                            
+
+          DNDCNV =  CNV_NDROP*CNV_MFD*iMASS
+          DNICNV =  CNV_NICE*CNV_MFD*iMASS
+
+          !update Number concentrations   
+          NCPL = NCPL + DNDCNV*DT_MOIST
+          NCPI = NCPI  + DNICNV*DT_MOIST
       
+      end if 
          
-    !  NCPL =  50.0e6
-    !  NCPI =  1.0e6
-    
-      NACTL =  50.0e6
-      NACTI = 1.e6
+    !  NACTL =  50.0e6
+    !  NACTI = 1.e6
  
          
     !==========================================================================================================
@@ -1577,12 +1585,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     mtimesc  = DT_MOIST     
     if (TS_AUTO_ICE .gt. 0.) ts_autice= TS_AUTO_ICE    
     if (MTIME .gt. 0.0) mtimesc=MTIME    
-    !xscale = (9000.0/real(imsize))**(-0.666)
-	xscale =  1. !better use area
+ 
     IF (QCVAR_CST .gt. 0.) then 
     	QCVAR =  QCVAR_CST
     else    
-	    call estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale)
+	    call estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA)
     end if    
       
    
@@ -1873,8 +1880,6 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                DNCHMSPLIT(I,J,1:LM)    = REAL(nsacwior8(1,1:LM)) !ice number tendency from H-M process
     
             
-               
-            
             enddo !I
          enddo !J
          !============================================Finish 2-moment micro implementation===========================
@@ -2016,16 +2021,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = MIN( RAD_QG , 0.01  )  ! value.
         ! !Set rain water for radiation to 0 if preciprad flag is off (set to 0)
         !if(CLDPARAMS%PRECIPRAD .eq. 0.) then
-        !   RAD_QR = 0.
+        !    RAD_QR = 0.
         !    RAD_QS = 0.
         !    RAD_QG = 0.      
         ! endif
-         
-         !***************
-         !NGRAUPEL =  0.
-         !QGRAUPEL =  0.
-         
-     
          
          !=================================================================================
          !    Fill up diagnostics
@@ -2139,7 +2138,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          
 
 
-      if (associated(CCNCOLUMN))   CCNCOLUMN  = SUM(    CCN1*MASS/AIRDEN , 3)
+      if (associated(CCNCOLUMN))    CCNCOLUMN  = SUM(    CCN1*MASS/AIRDEN , 3)
       if (associated(NDCOLUMN ))    NDCOLUMN  = SUM(NCPL_VOL*MASS/AIRDEN , 3)
       if (associated(NCCOLUMN ))    NCCOLUMN  = SUM(NCPI_VOL*MASS/AIRDEN , 3)
 
