@@ -404,77 +404,34 @@ contains
     character*100   :: nx_str,ny_str 
     integer         :: px,plats,plate,plons,plone,plonss,pocns,pocne  
     integer         :: nstr1,nstr2
-    integer         :: i
+    integer         :: i,length
 
+    file_ocn=""
+    file_ocn_lnd=""
+    res_MAPL=""
+    nx_MAPL=""
+    ny_MAPL=""
+    open(10,file=fileT, form="formatted", status="old")
+    do i=1,5
+      read(10,*)      
+    enddo
+    read(10,*)file_ocn_lnd
+    do i=100,1,-1
+      if(file_ocn_lnd(i:i).eq."-")then
+        file_ocn(1:i-1)=file_ocn_lnd(1:i-1)
+        exit
+      endif
+    enddo
+    read(10,*)nx_MAPL
+    read(10,*)ny_MAPL
     nx_str=""
     ny_str=""
-    px=0;plats=0;plate=0;plons=0;plone=0;plonss=0
-    do i=100,1,-1
-       if(file(i:i).eq."x")then
-          px=i
-          exit
-       endif
-    enddo
-    do i=px+1,100
-       if(file(i:i).eq."1".or.file(i:i).eq."2".or.file(i:i).eq."3".or.file(i:i).eq."4".or.file(i:i).eq."5"&
-            .or.file(i:i).eq."6".or.file(i:i).eq."7".or.file(i:i).eq."8".or.file(i:i).eq."9")then
-          plats=i
-          exit
-       endif
-    enddo
-    do i=plats+1,100
-       if(file(i:i).ne."1".and.file(i:i).ne."2".and.file(i:i).ne."3".and.file(i:i).ne."4".and.file(i:i).ne."5"&
-            .and.file(i:i).ne."6".and.file(i:i).ne."7".and.file(i:i).ne."8".and.file(i:i).ne."9".and.file(i:i).ne."0")then
-          plate=i-1
-          exit
-       endif
-    enddo
-    ny_str(1:plate-plats+1)=file(plats:plate)
-    nstr1=plate-plats+1
-    
-    plone=px-1   
-    do i=plone,1,-1
-       if(file(i:i).ne."1".and.file(i:i).ne."2".and.file(i:i).ne."3".and.file(i:i).ne."4".and.file(i:i).ne."5"&
-            .and.file(i:i).ne."6".and.file(i:i).ne."7".and.file(i:i).ne."8".and.file(i:i).ne."9".and.file(i:i).ne."0")then
-          plonss=i+1
-          exit
-       endif
-    enddo
-    do i=plonss,plone
-       if(file(i:i).eq."1".or.file(i:i).eq."2".or.file(i:i).eq."3".or.file(i:i).eq."4".or.file(i:i).eq."5"&
-            .or.file(i:i).eq."6".or.file(i:i).eq."7".or.file(i:i).eq."8".or.file(i:i).eq."9")then
-          plons=i
-          exit
-       endif
-    enddo
-    nx_str(1:plone-plons+1)=file(plons:plone)
-    nstr2=plone-plons+1
-    
-    do i=1,100
-       if(file(i:i).eq."_")then
-          pocns=i+1
-          exit
-       endif
-    enddo
-    
-    do i=1,100
-       if(file(i:i+10).eq."Pfafstetter")then
-          pocne=i-2
-          exit
-       endif
-    enddo
-    
-    file_ocn=""
-    file_ocn(1:pocne-pocns+1)=file(pocns:pocne)  
-    file_ocn_lnd=""
-    file_ocn_lnd(1:pocne-pocns+1)=file_ocn(1:pocne-pocns+1)
-    file_ocn_lnd(pocne-pocns+2:pocne-pocns+13)="-Pfafstetter"
-    
+    write(nx_str,*)nx_MAPL
+    write(ny_str,*)ny_MAPL
     res_MAPL=""
-    res_MAPL(1:nstr1+nstr2+1)=trim(nx_str)//"x"//trim(ny_str)
-
-    read(nx_str,*)nx_MAPL
-    read(ny_str,*)ny_MAPL  
+    length = len( trim(adjustl(nx_str))//"x"//trim(adjustl(ny_str)) )
+    res_MAPL(1:length)=trim(adjustl(nx_str))//"x"//trim(adjustl(ny_str))
+  
 
   end subroutine get_domain_name
 
@@ -596,8 +553,6 @@ contains
              if(acc(lonc,latc)==0)then
                 k=k+1
                 acc(lonc,latc)=1
-             else
-                acc(lonc,latc)=acc(lonc,latc)+1
              endif
           endif
        enddo
@@ -640,8 +595,6 @@ contains
                 lonp(k)=lonc
                 latp(k)=latc
                 ns_map(lonc,latc)=k
-             else
-                acc(lonc,latc)=acc(lonc,latc)+1
              endif
           endif
        enddo
