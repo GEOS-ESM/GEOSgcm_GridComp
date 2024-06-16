@@ -9,6 +9,18 @@ program main
   integer :: i,temp(1),ns
   real*8  :: dlat,dlon
 
+! Convert outlet locations in degree lat/lon to indices on the 30 arc-sec raster grid.
+! lats = lat degree of the outlets
+! lons = lon degree of the outlets
+! lati = lat index of the outlets on the 30s map
+! loni =lon index of the outlets on the 30s map 
+! lat30s = lat coordinate  of the 30s map
+! lon30s =lon coordinate of the 30s map
+! lat_dis = distance of lat between the center of each 30s pixel and the outlet point.
+! lon_dis = distance of lon between the center of each 30s pixel and the outlet point.
+! nlat = number of latitude indices. For 30s map, nlat = 21600
+! nlon = number of longitude indices.  For 30s map, nlon = 43200
+
   ns=nl+ng
   allocate(lats(ns),lons(ns),lati(ns),loni(ns))
   allocate(lat30s(nlat),lon30s(nlon),lat_dis(nlat),lon_dis(nlon))
@@ -28,7 +40,7 @@ program main
     lon30s(i)=lon30s(i-1)+dlon
   enddo  
 
-  
+! For each sink catchment, find the 30s-latitude and 30s-longitude closest to its outlet point.  
   do i=1,ns
      lat_dis=abs(lat30s-lats(i))
      temp=minloc(lat_dis)
