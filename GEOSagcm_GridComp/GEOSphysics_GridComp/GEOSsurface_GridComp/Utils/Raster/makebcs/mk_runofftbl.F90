@@ -1,4 +1,22 @@
 program Runoff
+
+! !INTERFACE:
+!
+! !ARGUMENTS:
+!
+!  Usage = "mk_runofftbl.x Gridname"       
+!     Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
+!               eg, CF0180x6C_M6TP0072x0036-Pfafstetter 
+!
+! This program is used to generate the runoff table *.trn and *.TRN files that are used in the Catchment Land model
+! for directing runoff to its sink in ocean. The input are bcs geometry files associated with the Gridname and a 
+! binary file Outlet_latlon.43200x21600 that saves the outlets locations in land (this file can be created by running 
+! GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/Raster/preproc/routing/run_routing_raster.py).
+! The program first moves the outlet locations in land to their nearest ocean pixels by calling outlets_to_ocean, 
+! and then generates runoff table files.
+!  
+! Yujin Zeng - June 17, 2024 
+! Email: yujin.zeng@nasa.gov
   
   use mapl_hashmod
   use mapl_sortmod
@@ -25,7 +43,7 @@ program Runoff
 
   integer                :: nxt, command_argument_count
   character*(128)        :: arg
-  character*(128)        :: Usage = "mk_runofftbl.x M6TP0072x0036-Pfafstetter"
+  character*(128)        :: Usage = "mk_runofftbl.x CF0180x6C_M6TP0072x0036-Pfafstetter"
   character*(128)        :: mapl_tp_file
   
   ! ------------------------------------------------------------------
