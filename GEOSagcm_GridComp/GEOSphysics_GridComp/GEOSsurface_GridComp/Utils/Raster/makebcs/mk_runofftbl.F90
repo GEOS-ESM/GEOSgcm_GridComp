@@ -16,7 +16,7 @@ program Runoff
   integer                :: type, np,lnd, is,ie,ww
   integer                :: numtrans,  numclosed
   integer                :: status
-  character*100          :: file, fileT, fileR, fileO, fileB
+  character*100          :: Gridname, fileT, fileR, fileO, fileB
 
   character*400          :: fileLL
   character*400          :: MAKE_BCS_INPUT_DIR
@@ -25,7 +25,7 @@ program Runoff
 
   integer                :: nxt, command_argument_count
   character*(128)        :: arg
-  character*(128)        :: Usage = "mk_runofftbl.x CF0012x6C_TM0072xTM0036-Pfafstetter"
+  character*(128)        :: Usage = "mk_runofftbl.x M6TP0072x0036-Pfafstetter"
   character*(128)        :: mapl_tp_file
   
   ! ------------------------------------------------------------------
@@ -47,17 +47,17 @@ program Runoff
   end if
   
   nxt = 1
-  call get_command_argument(nxt, file)
+  call get_command_argument(nxt, Gridname)
   print *, " "
-  print*, "Working with input BCs string: ", file
+  print*, "Working with input BCs string: ", Gridname
   print *, " "
 
   ! ------------------------------------------------------------------
   
-  fileT = "til/"//trim(file)//".til" ! input
-  fileR = "rst/"//trim(file)//".rst" ! input
-  fileO = "til/"//trim(file)//".trn" ! output
-  fileB = "til/"//trim(file)//".TRN" ! output
+  fileT = "til/"//trim(Gridname)//".til" ! input
+  fileR = "rst/"//trim(Gridname)//".rst" ! input
+  fileO = "til/"//trim(Gridname)//".trn" ! output
+  fileB = "til/"//trim(Gridname)//".TRN" ! output
   
   ! Read I and J indices of river outlets.
   ! These should all be ocean pixels
@@ -92,7 +92,7 @@ program Runoff
   print *, "Determining river outlets to ocean:"
   print *, "- Output file: ", fileB
   print *, " "
-  call outlets_to_ocean(file,lons,lats,nx,ny)
+  call outlets_to_ocean(Gridname,lons,lats,nx,ny)
   
   open(10,file=fileT, form="formatted", status="old")
   
@@ -306,11 +306,11 @@ contains
   
   ! ------------------------------------------------------------------------
   ! The subroutine moves outlets of each land&Greenland gridcell (with endpoint to ocean only) 
-  ! to the nearest ocean gridcell defiend by "file" and ocean mask if the origional outlets are not in the ocean.
-  subroutine outlets_to_ocean(file,lons,lats,nx,ny)
+  ! to the nearest ocean gridcell defiend by "Gridname" and ocean mask if the origional outlets are not in the ocean.
+  subroutine outlets_to_ocean(Gridname,lons,lats,nx,ny)
     
     integer,           intent(in)      :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution
-    character(len=*),  intent(in)      :: file !name of the domain, eg: CF0180x6C_TM1440xTM1080-Pfafstetter
+    character(len=*),  intent(in)      :: Gridname !name of the domain, eg: CF0180x6C_M6TP0072x0036-Pfafstetter
     integer,           intent(inout)   :: lons(nx,ny),lats(nx,ny)
     !lons(nx,ny): lon idx of outlets of each land&Greenland gridcell (with endpoint to ocean only)
     !lats(nx,ny): lat idx of outlets of each land&Greenland gridcell (with endpoint to ocean only)
@@ -337,10 +337,10 @@ contains
     real*8,        allocatable, dimension(:)   :: lat_lnd,lon_lnd
     integer                                    :: i,j,l,k,status,type,np,flag,flag2
     
-    call get_domain_name(file,file_ocn,file_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
+    call get_domain_name(Gridname,Gridname_ocn,Gridname_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
     allocate(rst_ocn(nx,ny),rst_ocn_lnd(nx,ny))
     allocate(lon30s(nx),lat30s(ny))
-    call read_rst_til_files(nx,ny,file_ocn,file_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
+    call read_rst_til_files(nx,ny,Gridname_ocn,Gridname_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
     !print *,"running outlets_num() ..."
     call outlets_num(rst_ocn_lnd,nl_ocn_lnd,nt_ocn_lnd,lons,lats,nx,ny,ns)
     !print *,"outlets num is ",ns
@@ -388,38 +388,38 @@ contains
   end subroutine outlets_to_ocean
 
 !-------------------------------------------------------------------------
-! This subroutine gets the name of 'file_ocn' and 'file_ocn_lnd' from the input name 'file'.
+! This subroutine gets the name of 'Gridname_ocn' and 'file_ocn_lnd' from the input name 'Gridname'.
 ! It also gets resolution of the ocean domain.
-  subroutine get_domain_name(file,file_ocn,file_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
+  subroutine get_domain_name(Gridname,Gridname_ocn,Gridname_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
 
-    character(len=*),  intent(in)      :: file !input domain name, eg: CF0180x6C_TM1440xTM1080-Pfafstetter
-    character(len=*),  intent(out)     :: file_ocn,file_ocn_lnd,res_MAPL
-    !file_ocn: ocean domain name, eg: TM1440xTM1080
-    !file_ocn_land: ocean-land domain name, eg: TM1440xTM1080-Pfafstetter
-    !res_MAPL: ocean resolution name, eg: 1440x1080
+    character(len=*),  intent(in)      :: Gridname !input domain name, eg: CF0180x6C_M6TP0072x0036-Pfafstetter
+    character(len=*),  intent(out)     :: Gridname_ocn,Gridname_ocn_lnd,res_MAPL
+    !Gridname_ocn: ocean domain name, eg: M6TP0072x0036
+    !Gridname_ocn_lnd: ocean-land domain name, eg: M6TP0072x0036-Pfafstetter
+    !res_MAPL: ocean resolution name, eg: M6TP0072x0036
     integer,           intent(out)     :: nx_MAPL,ny_MAPL
-    !nx_MAPL: number of lon of ocean domain, eg: 1440
-    !ny_MAPL: number of lat of ocean domain, eg: 1080
+    !nx_MAPL: number of lon of ocean domain, eg: 72
+    !ny_MAPL: number of lat of ocean domain, eg: 36
 
     character*100   :: nx_str,ny_str,fileT 
     integer         :: px,plats,plate,plons,plone,plonss,pocns,pocne  
     integer         :: nstr1,nstr2
     integer         :: i,length
 
-    file_ocn=""
-    file_ocn_lnd=""
+    Gridname_ocn=""
+    Gridname_ocn_lnd=""
     res_MAPL=""
     nx_MAPL=""
     ny_MAPL=""
-    fileT = "til/"//trim(file)//".til" 
+    fileT = "til/"//trim(Gridname)//".til" 
     open(10,file=fileT, form="formatted", status="old")
     do i=1,5
       read(10,*)      
     enddo
-    read(10,*)file_ocn_lnd
+    read(10,*)Gridname_ocn_lnd
     do i=100,1,-1
-      if(file_ocn_lnd(i:i).eq."-")then
-        file_ocn(1:i-1)=file_ocn_lnd(1:i-1)
+      if(Gridname_ocn_lnd(i:i).eq."-")then
+        Gridname_ocn(1:i-1)=Gridname_ocn_lnd(1:i-1)
         exit
       endif
     enddo
@@ -438,17 +438,17 @@ contains
 
 !-------------------------------------------------------------------------
 ! This subroutine reads rst and til files
-  subroutine read_rst_til_files(nx,ny,file_ocn,file_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
+  subroutine read_rst_til_files(nx,ny,Gridname_ocn,Gridname_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
 
     integer,           intent(in)              :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution  
-    character(len=*),  intent(in)              :: file_ocn,file_ocn_lnd ! input filename, eg: TM1440xTM1080 and TM1440xTM1080-Pfafstetter
+    character(len=*),  intent(in)              :: Gridname_ocn,Gridname_ocn_lnd ! input filename, eg: M6TP0072x0036 and M6TP0072x0036-Pfafstetter
 
     integer,       intent(out)                 :: rst_ocn(nx,ny),rst_ocn_lnd(nx,ny) !data from rst files
-    integer,pointer,intent(out), dimension(:)  :: t2loni,t2lati !relationship between ocn tile idx in TM1440xTM1080.rst and lat/lon idx in MAPL_Tripolar.nc
+    integer,pointer,intent(out), dimension(:)  :: t2loni,t2lati !relationship between ocn tile idx in M6TP0072x0036.rst and lat/lon idx in MAPL_Tripolar.nc
     integer,       intent(out)                 :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn
-    !nt_ocn_lnd: number of total tiles in the TM1440xTM1080-Pfafstetter
-    !nl_ocn_lnd: number of land tiles in the TM1440xTM1080-Pfafstetter
-    !nt_ocn: number of total tiles in the TM1440xTM1080
+    !nt_ocn_lnd: number of total tiles in the M6TP0072x0036-Pfafstetter
+    !nl_ocn_lnd: number of land tiles in the M6TP0072x0036-Pfafstetter
+    !nt_ocn: number of total tiles in the M6TP0072x0036
     real*8,        intent(out)                 :: lon30s(nx),lat30s(ny)!lon and lat value arrays of the 30s map
 
     character*100  :: fileT_ocn, fileR_ocn
@@ -457,10 +457,10 @@ contains
     real           :: num1,num2,num3,num4    
     real*8         :: dx,dy
 
-    fileT_ocn = "til/"//trim(file_ocn)//".til"          ! input
-    fileR_ocn = "rst/"//trim(file_ocn)//".rst"          ! input
-    fileT_ocn_lnd = "til/"//trim(file_ocn_lnd)//".til"  ! input
-    fileR_ocn_lnd = "rst/"//trim(file_ocn_lnd)//".rst"  ! input  
+    fileT_ocn = "til/"//trim(Gridname_ocn)//".til"          ! input
+    fileR_ocn = "rst/"//trim(Gridname_ocn)//".rst"          ! input
+    fileT_ocn_lnd = "til/"//trim(Gridname_ocn_lnd)//".til"  ! input
+    fileR_ocn_lnd = "rst/"//trim(Gridname_ocn_lnd)//".rst"  ! input  
     
     !print *, "Reading rst file "//trim(fileR_ocn) 
     open(20,file=fileR_ocn,form="unformatted",status="old")
@@ -523,7 +523,7 @@ contains
     !nl: number of land tiles
     !nt: number of total tiles
     integer, intent(inout)               :: lons(nx,ny),lats(nx,ny) !map of lon/lat idx of outlets for each cells on the 30s map
-    integer, intent(in)                  :: rst_ocn_lnd(nx,ny) !map of tile idx from ocean-land rst map, eg: from TM1440xTM1080-Pfafstetter.rst
+    integer, intent(in)                  :: rst_ocn_lnd(nx,ny) !map of tile idx from ocean-land rst map, eg: from M6TP0072x0036-Pfafstetter.rst
     integer, intent(out)                 :: ns !number of the outlets
     
     integer, allocatable, dimension(:)   :: lonp,latp
@@ -611,15 +611,15 @@ contains
   end subroutine retrieve_outlets
 
   !------------------------------------------------------------------------
-  ! convert the ocean mask in MAPL_Tripolar.nc to 1d list for each ocean tile defined by ocn rst, eg: TM1440xTM1080.rst
+  ! convert the ocean mask in MAPL_Tripolar.nc to 1d list for each ocean tile defined by ocn rst, eg: M6TP0072x0036.rst
   subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
     
     integer,           intent(in)     :: nt,nlon,nlat
     !nt: number of ocean tiles
-    !nlon: number of lon in MAPL_Tripolar.nc, eg 1440
-    !nlat: number of lat in MAPL_Tripolar.nc, eg 1080   
-    integer,           intent(in)     :: t2loni(nt),t2lati(nt) !relationship between ocn tile idx in TM1440xTM1080.rst and lat/lon idx in MAPL_Tripolar.nc
-    character(len=*),  intent(in)     :: res_MAPL !name of the ocean resolution, eg 1440x1080
+    !nlon: number of lon in MAPL_Tripolar.nc, eg 72
+    !nlat: number of lat in MAPL_Tripolar.nc, eg 36   
+    integer,           intent(in)     :: t2loni(nt),t2lati(nt) !relationship between ocn tile idx in M6TP0072x0036.rst and lat/lon idx in MAPL_Tripolar.nc
+    character(len=*),  intent(in)     :: res_MAPL !name of the ocean resolution, eg M6TP0072x0036
     integer,           intent(out)    :: msk_tile(nt) !1d list for the ocean msk for each ocean tile
 
     real, allocatable, dimension(:,:) :: msk_MAPL
@@ -709,7 +709,7 @@ contains
     !nt: number of ocean tiles
     !nlon: number of lon in 30s map, eg 43200
     !nlat: number of lat in 30s map, eg 21600   
-    integer, intent(in)               :: ocean(nlon,nlat) !tile idx from ocn rst file, eg: from TM1440xTM1080.rst
+    integer, intent(in)               :: ocean(nlon,nlat) !tile idx from ocn rst file, eg: from M6TP0072x0036.rst
     integer, intent(in)               :: mask1d(nt) !1d list of ocn mask got from subroutine mask_MAPL_1d
     integer, intent(out)              :: msk2d(nlon,nlat) !output of the ocn mask on the 30s map
     
@@ -726,7 +726,7 @@ contains
   end subroutine mask_MAPL_2d
 
   !------------------------------------------------------------------------
-  ! further mask the ocn mask from MAPL_Tripolar.nc based on the land-ocean rst eg: TM1440xTM1080-Pfafstetter.rst
+  ! further mask the ocn mask from MAPL_Tripolar.nc based on the land-ocean rst eg: M6TP0072x0036-Pfafstetter.rst
   subroutine mask_MAPL_bcs(rst_ocn_lnd,mask_mapl,mask,nlon,nlat,nl,nt)
     
     integer,intent(in)  :: nlon,nlat,nl,nt
@@ -734,7 +734,7 @@ contains
     !nlat: number of lat in 30s map, eg 21600  
     !nl: number of lnd tile
     !nt: number of total tile
-    integer,intent(in)  :: rst_ocn_lnd(nlon,nlat) !tile idx from land-ocean rst eg: TM1440xTM1080-Pfafstetter.rst
+    integer,intent(in)  :: rst_ocn_lnd(nlon,nlat) !tile idx from land-ocean rst eg: M6TP0072x0036-Pfafstetter.rst
     integer,intent(in)  :: mask_mapl(nlon,nlat) !ocn mask map from subroutine mask_MAPL_2d
     integer,intent(out) :: mask(nlon,nlat) !ocn mask map masked further by land-ocean rst 
     
