@@ -1,8 +1,8 @@
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, Int, Float 
-from ndsl import Quantity, QuantityFactory, StencilFactory, orchestrate
+from ndsl import QuantityFactory, StencilFactory
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10, exp  # type: ignore
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10
 import pyMoist.radiation_coupling_constants as radconstants
 
 @gtscript.function
