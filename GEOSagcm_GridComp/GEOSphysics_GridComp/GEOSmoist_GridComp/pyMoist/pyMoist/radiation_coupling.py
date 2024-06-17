@@ -3,23 +3,48 @@ from ndsl.dsl.typing import FloatField, Int, Float
 from ndsl import Quantity, QuantityFactory, StencilFactory, orchestrate
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10, exp  # type: ignore
-import pyMoist.constants as radconstants
+import pyMoist.radiation_coupling_constants as radconstants
 
-#Calculate air density [kg/m^3]
 @gtscript.function
-def RHO(PL, TE):
+def RHO(
+    PL: Float,
+    TE: Float
+    )-> Float:
+    '''
+    Calculate air density [kg/m^3]
+
+    Parameters:
+    PL (Float): Pressure level.
+    TE (Float): Temperature.
+
+    Returns:
+    Float: Calculated air density.
+    '''
     RHO = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
     return RHO
 
-#Calculate ice cloud effective radius [m]
 @gtscript.function
-def LDRADIUS4_ICE(
+def cloud_effective_radius_ice(
     PL: Float,
     TE: Float, 
     QC: Float, 
     NNL: Float,
     NNI: Float,
 )-> Float:
+    '''
+    Calculate the effective radius of ice clouds [m]
+    Implementation of LDRADIUS4 for Ice clouds
+
+    Parameters:
+    PL (Float): Pressure level.
+    TE (Float): Temperature.
+    QC (Float): Ice cloud mixing ratio.
+    NNL (Float): Number concentration of liquid cloud droplets. Not used in function body, but included in the Fortran code.
+    NNI (Float): Number concentration of ice cloud crystals. Not used in function body, but included in the Fortran code.
+
+    Returns:
+    Float: Effective radius of ice clouds.
+    '''
     #Calculate ice water content
     WC = 1.0e3 * RHO(PL, TE) * QC #air density [g/m3] * ice cloud mixing ratio [kg/kg]
     #Calculate radius in meters [m]
@@ -42,15 +67,28 @@ def LDRADIUS4_ICE(
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
 
-#Calculate liquid cloud effective radius [m]
 @gtscript.function
-def LDRADIUS4_LIQUID(
+def cloud_effective_radius_liquid(
     PL: Float,
     TE: Float, 
     QC: Float, 
     NNL: Float,
     NNI: Float,
 )-> Float:
+    '''
+    Calculate the effective radius of liquid clouds [m]
+    Implementation of LDRADIUS4 for liquid clouds
+
+    Parameters:
+    PL (Float): Pressure level.
+    TE (Float): Temperature.
+    QC (Float): Liquid cloud mixing ratio.
+    NNL (Float): Number concentration of liquid cloud droplets.
+    NNI (Float): Number concentration of ice cloud crystals. Not used in function body.
+
+    Returns:
+    Float: Effective radius of liquid clouds.
+    '''
     #Calculate liquid water content
     WC = 1.0e3 * RHO(PL,TE) * QC #air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     #Calculate cloud drop number concentration from the aerosol model + ....
@@ -58,10 +96,10 @@ def LDRADIUS4_LIQUID(
     #Calculate Radius in meters [m]
     if radconstants.LIQ_RADII_PARAM == 1:
         #Jason Version
-        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.bx * (WC / NNX)**radconstants.r13bbeta * radconstants.abeta * 6.92))
+        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.BX * (WC / NNX)**radconstants.R13BBETA * radconstants.ABETA * 6.92))
     else:
         #[liu&daum, 2000 and 2005. liu et al 2008]
-        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.Lbx * (WC / NNX)**radconstants.Lbe))
+        RADIUS = min(60.0e-6, max(2.5e-6, 1.0e-6 * radconstants.LBX * (WC / NNX)**radconstants.LBE))
     return RADIUS
 
 def _fix_up_clouds_stencil(
@@ -73,53 +111,66 @@ def _fix_up_clouds_stencil(
     QLA: FloatField, 
     QIA: FloatField,
     AF: FloatField, 
-):
+)->None:
+    '''
+    Fix cloud variables to ensure physical consistency.
+
+    Parameters:
+    QV (FloatField): Water vapor mixing ratio.
+    TE (FloatField): Temperature.
+    QLC (FloatField): Liquid cloud mixing ratio.
+    QIC (FloatField): Ice cloud mixing ratio.
+    CF (FloatField): Cloud fraction.
+    QLA (FloatField): Anvil liquid cloud mixing ratio.
+    QIA (FloatField): Anvil ice cloud mixing ratio.
+    AF (FloatField): Anvil cloud fraction.
+    '''
     with computation(PARALLEL), interval(...):
         #Fix if Anvil cloud fraction too small
         if AF < 1.E-5:
             QV = QV + QLA + QIA
-            TE = TE - (radconstants.alhlbcp) * QLA - (radconstants.alhsbcp) * QIA
+            TE = TE - (radconstants.ALHLBCP) * QLA - (radconstants.ALHSBCP) * QIA
             AF = 0.0
             QLA = 0.0
             QIA = 0.0
         #Fix if LS cloud fraction too small
         if CF < 1.E-5:
             QV = QV + QLC + QIC
-            TE = TE - (radconstants.alhlbcp) * QLC - (radconstants.alhsbcp) * QIC
+            TE = TE - (radconstants.ALHLBCP) * QLC - (radconstants.ALHSBCP) * QIC
             CF = 0.0
             QLC = 0.0
             QIC = 0.0
         #LS LIQUID too small
         if QLC < 1.E-8:
             QV = QV + QLC
-            TE = TE - (radconstants.alhlbcp) * QLC
+            TE = TE - (radconstants.ALHLBCP) * QLC
             QLC = 0.0
         #LS ICE too small
         if QIC < 1.E-8:
             QV = QV + QIC
-            TE = TE - (radconstants.alhsbcp) * QIC
+            TE = TE - (radconstants.ALHSBCP) * QIC
             QIC = 0.0
         #Anvil LIQUID too small
         if QLA < 1.E-8:
             QV = QV + QLA
-            TE = TE - (radconstants.alhlbcp) * QLA
+            TE = TE - (radconstants.ALHLBCP) * QLA
             QLA = 0.0
         #Anvil ICE too small
         if QIA < 1.E-8:
             QV = QV + QIA
-            TE = TE - (radconstants.alhsbcp) * QIA
+            TE = TE - (radconstants.ALHSBCP) * QIA
             QIA = 0.0
         #Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
         if (QLA + QIA) < 1.E-8:
             QV = QV + QLA + QIA
-            TE = TE - (radconstants.alhlbcp) * QLA - (radconstants.alhsbcp) * QIA
+            TE = TE - (radconstants.ALHLBCP) * QLA - (radconstants.ALHSBCP) * QIA
             AF = 0.0
             QLA = 0.0
             QIA = 0.0
         #Fix ALL cloud quants if LS cloud LIQUID+ICE too small
         if (QLC + QIC) < 1.E-8:
             QV = QV + QLC + QIC
-            TE = TE - (radconstants.alhlbcp) * QLC - (radconstants.alhsbcp) * QIC
+            TE = TE - (radconstants.ALHLBCP) * QLC - (radconstants.ALHSBCP) * QIC
             CF = 0.0
             QLC = 0.0
             QIC = 0.0
@@ -154,7 +205,41 @@ def _radcouple_stencil(
         FAC_RI: Float,
         MIN_RI: Float,
         MAX_RI: Float,
-):
+)-> None:
+    '''
+    Couple radiation with cloud variables to ensure physical consistency.
+
+    Parameters:
+    TE (FloatField): Temperature.
+    PL (FloatField): Pressure level.
+    CF (FloatField): Cloud fraction.
+    AF (FloatField): Anvil cloud fraction.
+    QV (FloatField): Water vapor mixing ratio.
+    QClLS (FloatField): Liquid cloud mixing ratio (large-scale).
+    QCiLS (FloatField): Ice cloud mixing ratio (large-scale).
+    QClAN (FloatField): Liquid cloud mixing ratio (anvil).
+    QCiAN (FloatField): Ice cloud mixing ratio (anvil).
+    QRN_ALL (FloatField): Rain mixing ratio.
+    QSN_ALL (FloatField): Snow mixing ratio.
+    QGR_ALL (FloatField): Graupel mixing ratio.
+    NL (FloatField): Number concentration of liquid cloud droplets.
+    NI (FloatField): Number concentration of ice cloud crystals.
+    RAD_QV (FloatField): Radiation water vapor mixing ratio.
+    RAD_QL (FloatField): Radiation liquid cloud mixing ratio.
+    RAD_QI (FloatField): Radiation ice cloud mixing ratio.
+    RAD_QR (FloatField): Radiation rain mixing ratio.
+    RAD_QS (FloatField): Radiation snow mixing ratio.
+    RAD_QG (FloatField): Radiation graupel mixing ratio.
+    RAD_CF (FloatField): Radiation cloud fraction.
+    RAD_RL (FloatField): Radiation liquid effective radius.
+    RAD_RI (FloatField): Radiation ice effective radius.
+    FAC_RL (Float): Factor for liquid effective radius.
+    MIN_RL (Float): Minimum liquid effective radius.
+    MAX_RL (Float): Maximum liquid effective radius.
+    FAC_RI (Float): Factor for ice effective radius.
+    MIN_RI (Float): Minimum ice effective radius.
+    MAX_RI (Float): Maximum ice effective radius.
+    '''
     with computation(PARALLEL), interval(...):
         #water vapor
         RAD_QV = QV
@@ -183,9 +268,9 @@ def _radcouple_stencil(
         RAD_QG = min(RAD_QG, 0.01)
 
         #Liquid radii - Brams formulation with limits
-        RAD_RL = max(MIN_RL, min(LDRADIUS4_LIQUID(PL, TE, RAD_QL, NL, NI) * FAC_RL, MAX_RL))
+        RAD_RL = max(MIN_RL, min(cloud_effective_radius_liquid(PL, TE, RAD_QL, NL, NI) * FAC_RL, MAX_RL))
         #Ice radii - Brams formulation with limits
-        RAD_RI = max(MIN_RI, min(LDRADIUS4_ICE(PL, TE, RAD_QI, NL, NI) * FAC_RI, MAX_RI))
+        RAD_RI = max(MIN_RI, min(cloud_effective_radius_ice(PL, TE, RAD_QI, NL, NI) * FAC_RI, MAX_RI))
 
 class RadiationCoupling:
     def __init__(
@@ -193,7 +278,15 @@ class RadiationCoupling:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         do_qa: bool,
-    ):
+    )-> None:
+        '''
+        Initialize the RadiationCoupling class.
+
+        Parameters:
+        stencil_factory (StencilFactory): Factory to create stencils.
+        quantity_factory (QuantityFactory): Factory to create quantities.
+        do_qa (bool): Flag to indicate if QA should be performed.
+        '''
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=_fix_up_clouds_stencil, 
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -203,7 +296,10 @@ class RadiationCoupling:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self.do_qa = do_qa
-
+        #GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented. Implement QSAT0 and QSAT3 logic if diagnostics are needed, found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
+        if self.do_qa:
+            #RHX = Q/GEOS_QSAT( T, PLmb)
+            raise NotImplementedError("Module procedures QSAT0 and QSAT3 that are needed for GEOS_QSAT are not implemented")
     def __call__(
         self,
         Q: FloatField,
@@ -236,6 +332,40 @@ class RadiationCoupling:
         MIN_RI: Float,
         MAX_RI: Float,
     ):
+        '''
+        Perform the radiation coupling process.
+
+        Parameters:
+        Q (FloatField): Water vapor mixing ratio.
+        T (FloatField): Temperature.
+        QLLS (FloatField): Liquid cloud mixing ratio (large-scale).
+        QILS (FloatField): Ice cloud mixing ratio (large-scale).
+        CLLS (FloatField): Cloud fraction (large-scale).
+        QLCN (FloatField): Liquid cloud mixing ratio (anvil).
+        QICN (FloatField): Ice cloud mixing ratio (anvil).
+        CLCN (FloatField): Cloud fraction (anvil).
+        PLmb (FloatField): Pressure level in millibars.
+        QRAIN (FloatField): Rain mixing ratio.
+        QSNOW (FloatField): Snow mixing ratio.
+        QGRAUPEL (FloatField): Graupel mixing ratio.
+        NACTL (FloatField): Number concentration of liquid cloud droplets.
+        NACTI (FloatField): Number concentration of ice cloud crystals.
+        RAD_QV (FloatField): Radiation water vapor mixing ratio.
+        RAD_QL (FloatField): Radiation liquid cloud mixing ratio.
+        RAD_QI (FloatField): Radiation ice cloud mixing ratio.
+        RAD_QR (FloatField): Radiation rain mixing ratio.
+        RAD_QS (FloatField): Radiation snow mixing ratio.
+        RAD_QG (FloatField): Radiation graupel mixing ratio.
+        RAD_CF (FloatField): Radiation cloud fraction.
+        CLDREFFL (FloatField): Radiation liquid effective radius.
+        CLDREFFI (FloatField): Radiation ice effective radius.
+        FAC_RL (Float): Factor for liquid effective radius.
+        MIN_RL (Float): Minimum liquid effective radius.
+        MAX_RL (Float): Maximum liquid effective radius.
+        FAC_RI (Float): Factor for ice effective radius.
+        MIN_RI (Float): Minimum ice effective radius.
+        MAX_RI (Float): Maximum ice effective radius.
+        '''
         self._fix_up_clouds(QV = Q, 
                             TE = T, 
                             QLC = QLLS, 
@@ -275,13 +405,3 @@ class RadiationCoupling:
                         MIN_RI = MIN_RI, 
                         MAX_RI = MAX_RI,
                         )
-        '''
-        From GEOS_GFDL_1M_InterfaceMod.F90 Line 866 not implemented
-        Implement QSAT0 and QSAT3 logic if diagnostics are needed. 
-        QSAT0 and QSAT3 are found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90 
-        
-        Variables: RHX - FloatField
-        '''
-        if self.do_qa:
-            #RHX = Q/GEOS_QSAT( T, PLmb)
-            raise NotImplementedError("Module procedures QSAT0 and QSAT3 that are needed for GEOS_QSAT are not implemented")
