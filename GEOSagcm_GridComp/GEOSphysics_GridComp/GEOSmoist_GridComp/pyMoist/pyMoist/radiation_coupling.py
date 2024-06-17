@@ -6,7 +6,7 @@ from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10
 import pyMoist.radiation_coupling_constants as radconstants
 
 @gtscript.function
-def RHO(
+def air_density(
     PL: Float,
     TE: Float
     )-> Float:
@@ -20,8 +20,8 @@ def RHO(
     Returns:
     Float: Calculated air density.
     '''
-    RHO = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
-    return RHO
+    air_density = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
+    return air_density
 
 @gtscript.function
 def cloud_effective_radius_ice(
@@ -46,7 +46,7 @@ def cloud_effective_radius_ice(
     Float: Effective radius of ice clouds.
     '''
     #Calculate ice water content
-    WC = 1.0e3 * RHO(PL, TE) * QC #air density [g/m3] * ice cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL, TE) * QC #air density [g/m3] * ice cloud mixing ratio [kg/kg]
     #Calculate radius in meters [m]
     if radconstants.ICE_RADII_PARAM == 1:
         #Ice cloud effective radius -- [klaus wyser, 1998]
@@ -90,7 +90,7 @@ def cloud_effective_radius_liquid(
     Float: Effective radius of liquid clouds.
     '''
     #Calculate liquid water content
-    WC = 1.0e3 * RHO(PL,TE) * QC #air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    WC = 1.0e3 * air_density(PL,TE) * QC #air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     #Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
     #Calculate Radius in meters [m]
@@ -299,7 +299,7 @@ class RadiationCoupling:
         #GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented. Implement QSAT0 and QSAT3 logic if diagnostics are needed, found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
         if self.do_qa:
             #RHX = Q/GEOS_QSAT( T, PLmb)
-            raise NotImplementedError("Module procedures QSAT0 and QSAT3 that are needed for GEOS_QSAT are not implemented")
+            raise NotImplementedError("[Radiation Coupling] Diagnostic (do_qa) not implemented. (GEOS_QSAT missing)")
     def __call__(
         self,
         Q: FloatField,
