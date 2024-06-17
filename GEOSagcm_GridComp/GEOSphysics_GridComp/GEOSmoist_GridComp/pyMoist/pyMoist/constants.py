@@ -1,6 +1,4 @@
-from gt4py.cartesian import gtscript
-
-#All these constants are taken from GEOS/src/Shared/@MAPL/shared/Constants
+#-----------Constants are taken from GEOS/src/Shared/@MAPL/shared/Constants--------
 #Math constants
 MAPL_PI_R8 = 3.14159265358979323846e0 
 MAPL_PI = MAPL_PI_R8 
@@ -73,11 +71,11 @@ MAPL_RHO_SEAICE = 917.0  # sea ice density [kg/m^3]
 MAPL_RHO_SNOW = 330.0  # snow density [kg/m^3]
 MAPL_CELSIUS_TO_KELVIN = 273.15  # K
 
-# Define constants for 
+#Constants used for radiation coupling 
 alhlbcp = MAPL_ALHL / MAPL_CP
 alhsbcp = MAPL_ALHS / MAPL_CP
 
-#for LDRADIUS4
+#Constants used for LDRADIUS4_ICE and LDRADIUS4_LIQUID
 MAPL_RGAS = 287.0
 MAPL_TICE = 273.15
 LIQ_RADII_PARAM = 1
@@ -100,3 +98,41 @@ FAC_RL = 1.0
 MIN_RI = 5.0e-6
 MAX_RI = 100.0e-6
 FAC_RI = 1.0
+
+#Aer Activation Constants 
+#32 bit
+R_AIR = 3.47e-3 #m3 Pa kg-1K-1
+#64 bit
+zero_par = 1.e-6 #small non-zero value
+ai = 0.0000594
+bi = 3.33
+ci =  0.0264
+di = 0.0033
+betaai = -2.262e+3
+gamai = 5.113e+6
+deltaai = 2.809e+3
+densic = 917.0 #Ice crystal density in kgm-3
+#32 bit
+NN_MIN = 100.0e6
+NN_MAX = 1000.0e6
+
+#ACTFRAC_Mat constants - all 64 bit
+pi = 3.141592653589793e+00
+twopi = 2.0e+00 * pi
+sqrt2 = 1.414213562e+00
+threesqrt2by2 = 1.5e+00 * sqrt2
+avgnum = 6.0221367e+23
+rgasjmol = 8.31451e+00 
+wmolmass = 18.01528e-03
+amolmass = 28.966e-03
+asmolmss = 132.1406e-03
+denh2o   = 1.00e+03 
+denamsul = 1.77e+03 
+xnuamsul = 3.00e+00
+phiamsul = 1.000e+00
+gravity  = 9.81e+00 
+heatvap  = 40.66e+03/wmolmass
+cpair    = 1006.0e+00
+t0dij    = 273.15e+00
+p0dij    = 101325.0e+00
+dijh2o0  = 0.211e-04
