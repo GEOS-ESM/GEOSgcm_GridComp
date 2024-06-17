@@ -5,11 +5,21 @@ import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10, exp  # type: ignore
 import pyMoist.constants as aerconstants
 
-def _aer_activation_stencil(
-    
-):
+def _aer_activation_stencil():
     with computation(PARALLEL), interval(...):
-
+        pass
+def _get_act_frac_stencil():
+    with computation(PARALLEL), interval(...):
+        pass
+def _act_frac_mat_stencil():
+    with computation(PARALLEL), interval(...):
+        pass
+def _gser_stencil():
+    with computation(PARALLEL), interval(...):
+        pass
+def _gcf_matrix_stencil():
+    with computation(PARALLEL), interval(...):
+        pass
 class AerActivation:
     def __init__(
             self,
@@ -17,8 +27,8 @@ class AerActivation:
             quantity_factory: QuantityFactory,
             do_qa: bool,
     ):
-        self._hdasj = stencil_factory.from_dims_halo(
-                func=_hdasj,
+        self._get_act_frac = stencil_factory.from_dims_halo(
+                func=_get_act_frac_stencil,
                 compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
     def __call__(
@@ -52,7 +62,7 @@ class AerActivation:
         NN_OCEAN
 
     ):
-        self._hdasj(
+        self._get_act_frac_stencil(
 
         )
         

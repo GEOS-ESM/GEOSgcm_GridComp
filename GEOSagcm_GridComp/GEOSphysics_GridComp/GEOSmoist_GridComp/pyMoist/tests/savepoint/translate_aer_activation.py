@@ -33,9 +33,8 @@ class TranslateAerActivation(TranslateFortranData2Py):
 
     #Calculated Outputs
     def compute_from_storage(self, inputs):
-        #Original test data was missing these allocations. New test data will be generated that contain these allocations. 
         outputs = {
             #"RAD_QV": self._grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
         }
         self.compute_func(**inputs, **outputs)
-        #return {**outputs, "T": inputs["T"], "Q": inputs["Q"], "QLLS": inputs["QLLS"], "QILS": inputs["QILS"], "CLLS": inputs["CLLS"], "QLCN": inputs["QLCN"], "QICN": inputs["QICN"], "CLCN": inputs["CLCN"]}
+        #return {**outputs}
