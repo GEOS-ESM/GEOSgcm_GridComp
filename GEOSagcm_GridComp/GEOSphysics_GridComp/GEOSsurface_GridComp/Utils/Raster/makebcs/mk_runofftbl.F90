@@ -401,7 +401,7 @@ contains
     !nx_MAPL: number of lon of ocean domain, eg: 1440
     !ny_MAPL: number of lat of ocean domain, eg: 1080
 
-    character*100   :: nx_str,ny_str 
+    character*100   :: nx_str,ny_str,fileT 
     integer         :: px,plats,plate,plons,plone,plonss,pocns,pocne  
     integer         :: nstr1,nstr2
     integer         :: i,length
@@ -411,6 +411,7 @@ contains
     res_MAPL=""
     nx_MAPL=""
     ny_MAPL=""
+    fileT = "til/"//trim(file)//".til" 
     open(10,file=fileT, form="formatted", status="old")
     do i=1,5
       read(10,*)      
