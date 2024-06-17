@@ -40,7 +40,7 @@ setup(
     packages=find_namespace_packages(include=["pyMoist", "pyMoist.*"]),
     setup_requires=[],
     test_suite="tests",
-    url="https://github.com/NOAA-GFDL/pyFV3",
+    url="https://github.com/GEOS-ESM/GEOSgcm_GridComp",
     version="0.0.0",
     zip_safe=False,
 )

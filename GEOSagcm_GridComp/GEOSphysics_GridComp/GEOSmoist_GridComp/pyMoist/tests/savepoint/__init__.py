@@ -1,1 +1,1 @@
-from .translate_radiation_coupling import TranslateRadiationCoupling
+from .translate_radiation_coupling import TranslateRadCouple
