@@ -325,8 +325,8 @@ contains
     real*8,        allocatable, dimension(:)   :: lonsh,latsh
     real*8,        allocatable, dimension(:)   :: lons_adj,lats_adj
     integer,       allocatable, dimension(:)   :: lati_ocn,loni_ocn   
-    character*100                              :: file_ocn
-    character*100                              :: file_ocn_lnd
+    character*100                              :: Gridname_ocn
+    character*100                              :: Gridname_ocn_lnd
     character*100                              :: res_MAPL 
     integer,       allocatable, dimension(:,:) :: rst_ocn,rst_ocn_lnd
     integer                                    :: nt_ocn_lnd,nl_ocn_lnd,nt_ocn,nx_MAPL,ny_MAPL,nsh
