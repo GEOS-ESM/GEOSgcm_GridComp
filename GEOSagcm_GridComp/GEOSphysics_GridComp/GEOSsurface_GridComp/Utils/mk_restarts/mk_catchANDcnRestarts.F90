@@ -5,6 +5,7 @@ PROGRAM mk_catchANDcnRestarts
 
   use mpi
   use MAPL
+  use ESMF
   use CatchmentRstMod
   use CatchmentCNRstMod
 
@@ -22,6 +23,8 @@ PROGRAM mk_catchANDcnRestarts
   call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
   call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
+  call ESMF_Initialize(LogKindFlag=ESMF_LOGKIND_NONE)
+
   call process_cmd()
 
   if (index(model, 'catchcn') /=0 ) then
@@ -37,6 +40,8 @@ PROGRAM mk_catchANDcnRestarts
     call catch%re_scale(surflay, wemin_in, wemin_out, __RC__)
     call catch%write_nc4(out_file, __RC__)
   endif
+
+  call ESMF_Finalize(endflag=ESMF_END_KEEPMPI)
 
   call MPI_FINALIZE(mpierr)
  
@@ -107,7 +112,7 @@ PROGRAM mk_catchANDcnRestarts
           call getarg(nxt,arg)
        end do
        if (index(model, 'catchcn') /=0 ) then
-         if((INDEX(out_bcsdir, 'NL') == 0).AND.(INDEX(out_bcsdir, 'OutData') == 0)) then
+         if((INDEX(out_bcsdir, '/ICA/') /= 0) .or. (INDEX(out_bcsdir, '/GM4/') /= 0)) then
            print *,'Land BCs in : ',trim(out_bcsdir)
            print *,'do not support ',trim (model)
            stop

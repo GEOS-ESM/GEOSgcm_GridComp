@@ -3,6 +3,7 @@ esma_set_this ()
 set(srcs
   CatchmentRst.F90
   CatchmentCNRst.F90
+  getids.F90
 )
 
 set (exe_srcs
@@ -22,14 +23,14 @@ set (exe_srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran)
+  DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran GEOS_CatchCNShared)
 
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".F90" ".x" exe ${src})
   ecbuild_add_executable (
     TARGET ${exe}
     SOURCES ${src}
-    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared ${this})
+    LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared GEOS_CatchCNShared ${this})
 endforeach ()
 
 install(PROGRAMS mk_Restarts DESTINATION bin)

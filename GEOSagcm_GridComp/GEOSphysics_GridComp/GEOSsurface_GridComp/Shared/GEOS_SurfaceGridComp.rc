@@ -29,10 +29,9 @@
 #                                                                                  #
 #################################################################################### 
 
-
 # ---- Surface layer turbulence scheme
 #
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1/9.1/10.0)
 #    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
 #
 # GEOSagcm=>CHOOSEMOSFC: 1
@@ -52,12 +51,12 @@
 #    ------------------------
 #    Icarus  : Icarus/f522_fp and earlier (scientifically close to MERRA-2)
 #    V24_C05 : GEOSldas_m4-17_0
-#    NRv7.2  : SMAP L4_SM Version 4 and 5, f525_fp
+#    NRv7.2  : SMAP L4_SM Version 4, 5, 6, 7; f525_fp, f527_fp, f529_fp
 #
 #    CATCHMENT-CN model versions
 #    ---------------------------
-#    CN_CLM40  : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)   
-#    CN_CLM45 : Eunjee Lee's Catchment-CN.4.5 simulations 
+#    CN_CLM40 : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)   
+#
 # GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
 
@@ -67,8 +66,8 @@
 #    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
 #    2 : Heracles-4_3, Icarus (AGCM default)
 #    3 :               SMAP NRv5/NRv7.2
-#    4 : Icarus-NLv3 (f525_fp)
-#                      SMAP NRv8.1
+#    4 : Icarus-NLv3 (f525_fp, f527_fp, f529_fp)
+#                      SMAP NRv8.1, NRv9.1, NRv10.0
 #
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
@@ -114,6 +113,17 @@
 #
 # GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
 
+# ---- SNOW ALBEDO  
+#
+#    0  : Snow albedo parameterization based on look-up table (default)
+#    1  : Snow albedo derived from MODIS Collection MOD10A1.061 (Feb/2000 - Mar/2022)  
+#           - backfilled with global land average snow albedo where unavailable
+#           - must use compatible bcs version that includes MODIS-based snow albedo (e.g., v06, v08, v09, ...)
+#           - NOTE: bcs v06, v08, and v09 used approximate averaging of MODIS-based snow albedo to tile space;
+#                   bcs v11 and v12 employ more accurate, raster-based averaging.
+#
+# GEOSagcm=>SNOW_ALBEDO_INFO: 0
+# GEOSldas=>SNOW_ALBEDO_INFO: 0
 
 #--------------------------------------------------------#
 #    GOSWIM aerosol deposition on surface snow           #
@@ -223,8 +233,6 @@
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
-#      ! Important: PRESCRIBE_DVG is NOT functional for CN_CLM45 land model choice (LSM_CHOICE = 3);
-#      !            setting will be ignored
 #
 #    0 : NO,  run CN Model interactively (default)
 #    1 : YES, prescribe interannually varying LAI and SAI
@@ -234,3 +242,5 @@
 #
 # GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
+
+

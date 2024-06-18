@@ -8,9 +8,9 @@ module interpolate_data
 !
 !++jtb
 !replaced with  parameter statement
-  !!use shr_kind_mod,   only: r8 => shr_kind_r8
   !!use cam_abortutils, only: endrun
   !!use cam_logfile,    only: iulog
+
   implicit none
   private
 !
@@ -20,12 +20,9 @@ module interpolate_data
   public :: interp_type, lininterp, vertinterp, bilin, get_timeinterp_factors
   public :: lininterp_init, lininterp_finish
 
-!++jtb 
-integer,parameter :: r8 = selected_real_kind(12) ! 8 byte real
-
   type interp_type
-     real(r8), pointer :: wgts(:)
-     real(r8), pointer :: wgtn(:)
+     real, pointer :: wgts(:)
+     real, pointer :: wgtn(:)
      integer, pointer  :: jjm(:)
      integer, pointer  :: jjp(:)
   end type interp_type
@@ -47,8 +44,8 @@ integer, parameter :: iulog=6
 contains
   subroutine lininterp_full1d (arrin, yin, nin, arrout, yout, nout)
     integer, intent(in) :: nin, nout
-    real(r8), intent(in) :: arrin(nin), yin(nin), yout(nout)
-    real(r8), intent(out) :: arrout(nout)
+    real, intent(in) :: arrin(nin), yin(nin), yout(nout)
+    real, intent(out) :: arrout(nout)
     type (interp_type) :: interp_wgts
 
     call lininterp_init(yin, nin, yout, nout, extrap_method_bndry, interp_wgts)
@@ -77,23 +74,23 @@ contains
 
     integer, intent(in) :: nin
     integer, intent(in) :: nout
-    real(r8), intent(in) :: yin(:)           ! input mesh
-    real(r8), intent(in) :: yout(:)         ! output mesh
+    real, intent(in) :: yin(:)           ! input mesh
+    real, intent(in) :: yout(:)         ! output mesh
     integer, intent(in) :: extrap_method       ! if 0 set values outside output grid to 0
                                                ! if 1 set to boundary value
                                                ! if 2 set to cyclic boundaries
-    real(r8), intent(in), optional :: cyclicmin, cyclicmax
+    real, intent(in), optional :: cyclicmin, cyclicmax
 
     type (interp_type), intent(out) :: interp_wgts
-    real(r8) :: cmin, cmax
-    real(r8) :: extrap
-    real(r8) :: dyinwrap
-    real(r8) :: ratio
-    real(r8) :: avgdyin
+    real :: cmin, cmax
+    real :: extrap
+    real :: dyinwrap
+    real :: ratio
+    real :: avgdyin
     integer :: i, j, icount
     integer :: jj
-    real(r8), pointer :: wgts(:)
-    real(r8), pointer :: wgtn(:)
+    real, pointer :: wgts(:)
+    real, pointer :: wgtn(:)
     integer, pointer :: jjm(:)
     integer, pointer :: jjp(:)
     logical :: increasing
@@ -107,12 +104,12 @@ contains
     if(present(cyclicmin)) then
        cmin=cyclicmin
     else
-       cmin=0_r8
+       cmin=0
     end if
     if(present(cyclicmax)) then
        cmax=cyclicmax
     else
-       cmax=360_r8
+       cmax=360
     end if
     if(cmax<=cmin) then
        STOP ! call endrun('LININTERP: cyclic min value must be < max value')
@@ -145,7 +142,7 @@ contains
     jjm = 0
     jjp = 0
 
-    extrap = 0._r8
+    extrap = 0.
     select case (extrap_method)
     case (extrap_method_zero)
        !
@@ -157,29 +154,29 @@ contains
              if (yout(j).lt.yin(1)) then
                 jjm(j) = 1
                 jjp(j) = 1
-                wgts(j) = 0._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 0.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              else if (yout(j).gt.yin(nin)) then
                 jjm(j) = nin
                 jjp(j) = nin
-                wgts(j) = 0._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 0.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              end if
           else
              if (yout(j).gt.yin(1)) then
                 jjm(j) = 1
                 jjp(j) = 1
-                wgts(j) = 0._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 0.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              else if (yout(j).lt.yin(nin)) then
                 jjm(j) = nin
                 jjp(j) = nin
-                wgts(j) = 0._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 0.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              end if
           end if
        end do
@@ -193,29 +190,29 @@ contains
              if (yout(j).le.yin(1)) then
                 jjm(j) = 1
                 jjp(j) = 1
-                wgts(j) = 1._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 1.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              else if (yout(j).gt.yin(nin)) then
                 jjm(j) = nin
                 jjp(j) = nin
-                wgts(j) = 1._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 1.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              end if
           else
              if (yout(j).gt.yin(1)) then
                 jjm(j) = 1
                 jjp(j) = 1
-                wgts(j) = 1._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 1.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              else if (yout(j).le.yin(nin)) then
                 jjm(j) = nin
                 jjp(j) = nin
-                wgts(j) = 1._r8
-                wgtn(j) = 0._r8
-                extrap = extrap + 1._r8
+                wgts(j) = 1.
+                wgtn(j) = 0.
+                extrap = extrap + 1.
              end if
           end if
        end do
@@ -225,9 +222,9 @@ contains
        ! for circular boundaries
        !
        dyinwrap = yin(1) + (cmax-cmin) - yin(nin)
-       avgdyin = abs(yin(nin)-yin(1))/(nin-1._r8)
+       avgdyin = abs(yin(nin)-yin(1))/(nin-1.)
        ratio = dyinwrap/avgdyin
-       if (ratio < 0.9_r8 .or. ratio > 1.1_r8) then
+       if (ratio < 0.9 .or. ratio > 1.1) then
           write(iulog,*) 'Lininterp: Bad dyinwrap value =',dyinwrap,&
                ' avg=', avgdyin, yin(1),yin(nin)
           STOP ! call endrun('interpolate_data')
@@ -299,7 +296,7 @@ contains
     do j=1,nout
        if (jjm(j).eq.0 .or. jjp(j).eq.0) icount = icount + 1
        ratio=wgts(j)+wgtn(j)
-       if((ratio<0.9_r8.or.ratio>1.1_r8).and.extrap_method.ne.0) then
+       if((ratio<0.9.or.ratio>1.1).and.extrap_method.ne.0) then
           write(iulog,*) j, wgts(j),wgtn(j),jjm(j),jjp(j), increasing,extrap_method
           STOP ! call endrun('Bad weight computed in LININTERP_init')
        end if
@@ -329,9 +326,9 @@ contains
     integer, intent(in) :: n1                 ! number of input latitudes
     integer, intent(in) :: m1                ! number of output latitudes
 
-    real(r8), intent(in) :: arrin(n1)    ! input array of values to interpolate
+    real, intent(in) :: arrin(n1)    ! input array of values to interpolate
     type(interp_type), intent(in) :: interp_wgts
-    real(r8), intent(out) :: arrout(m1) ! interpolated array
+    real, intent(out) :: arrout(m1) ! interpolated array
 
     !
     ! Local workspace
@@ -340,8 +337,8 @@ contains
     integer, pointer :: jjm(:)
     integer, pointer :: jjp(:)
 
-    real(r8), pointer :: wgts(:)
-    real(r8), pointer :: wgtn(:)
+    real, pointer :: wgts(:)
+    real, pointer :: wgtn(:)
 
 
     jjm => interp_wgts%jjm
@@ -366,9 +363,9 @@ contains
     ! Arguments
     !
     integer, intent(in) :: n1, n2, m1, m2
-    real(r8), intent(in) :: arrin(n1,n2)    ! input array of values to interpolate
+    real, intent(in) :: arrin(n1,n2)    ! input array of values to interpolate
     type(interp_type), intent(in) :: wgt1, wgt2
-    real(r8), intent(out) :: arrout(m1,m2) ! interpolated array
+    real, intent(out) :: arrout(m1,m2) ! interpolated array
     !
     ! locals
     !
@@ -376,10 +373,10 @@ contains
     integer, pointer :: iim(:), jjm(:)
     integer, pointer :: iip(:), jjp(:)
 
-    real(r8), pointer :: wgts1(:), wgts2(:)
-    real(r8), pointer :: wgtn1(:), wgtn2(:)
+    real, pointer :: wgts1(:), wgts2(:)
+    real, pointer :: wgtn1(:), wgtn2(:)
 
-    real(r8) :: arrtmp(n1,m2)
+    real :: arrtmp(n1,m2)
 
 
     jjm => wgt2%jjm
@@ -412,9 +409,9 @@ contains
     ! Arguments
     !
     integer, intent(in) :: n1, n2, m1
-    real(r8), intent(in) :: arrin(n1,n2)    ! input array of values to interpolate
+    real, intent(in) :: arrin(n1,n2)    ! input array of values to interpolate
     type(interp_type), intent(in) :: wgt1, wgt2
-    real(r8), intent(out) :: arrout(m1) ! interpolated array
+    real, intent(out) :: arrout(m1) ! interpolated array
     character(len=*), intent(in), optional :: fldname(:)
     !
     ! locals
@@ -423,8 +420,8 @@ contains
     integer, pointer :: iim(:), jjm(:)
     integer, pointer :: iip(:), jjp(:)
 
-    real(r8), pointer :: wgts(:), wgte(:)
-    real(r8), pointer :: wgtn(:), wgtw(:)
+    real, pointer :: wgts(:), wgte(:)
+    real, pointer :: wgtn(:), wgtw(:)
 
     jjm => wgt2%jjm
     jjp => wgt2%jjp
@@ -450,9 +447,9 @@ contains
     ! Arguments
     !
     integer, intent(in) :: n1, n2, n3, m1, len1   ! m1 is to len1 as ncols is to pcols
-    real(r8), intent(in) :: arrin(n1,n2,n3)    ! input array of values to interpolate
+    real, intent(in) :: arrin(n1,n2,n3)    ! input array of values to interpolate
     type(interp_type), intent(in) :: wgt1, wgt2
-    real(r8), intent(out) :: arrout(len1, n3) ! interpolated array
+    real, intent(out) :: arrout(len1, n3) ! interpolated array
 
     !
     ! locals
@@ -461,8 +458,8 @@ contains
     integer, pointer :: iim(:), jjm(:)
     integer, pointer :: iip(:), jjp(:)
 
-    real(r8), pointer :: wgts(:), wgte(:)
-    real(r8), pointer :: wgtn(:), wgtw(:)
+    real, pointer :: wgts(:), wgte(:)
+    real, pointer :: wgtn(:), wgtw(:)
 
     jjm => wgt2%jjm
     jjp => wgt2%jjp
@@ -524,11 +521,11 @@ contains
     integer, intent(in) :: nlatin                 ! number of input latitudes
     integer, intent(in) :: nlatout                ! number of output latitudes
 
-    real(r8), intent(in) :: arrin(nlev,nlatin)    ! input array of values to interpolate
-    real(r8), intent(in) :: yin(nlatin)           ! input mesh
-    real(r8), intent(in) :: yout(nlatout)         ! output mesh
+    real, intent(in) :: arrin(nlev,nlatin)    ! input array of values to interpolate
+    real, intent(in) :: yin(nlatin)           ! input mesh
+    real, intent(in) :: yout(nlatout)         ! output mesh
 
-    real(r8), intent(out) :: arrout(nlev,nlatout) ! interpolated array
+    real, intent(out) :: arrout(nlev,nlatout) ! interpolated array
     !
     ! Local workspace
     !
@@ -537,15 +534,15 @@ contains
     integer k                  ! level index
     integer icount             ! number of values
 
-    real(r8) extrap            ! percent grid non-overlap
+    real extrap            ! percent grid non-overlap
     !
     ! Dynamic
     !
     integer :: jjm(nlatout)
     integer :: jjp(nlatout)
 
-    real(r8) :: wgts(nlatout)
-    real(r8) :: wgtn(nlatout)
+    real :: wgts(nlatout)
+    real :: wgtn(nlatout)
     !
     ! Check validity of input coordinate arrays: must be monotonically increasing,
     ! and have a total of at least 2 elements
@@ -574,21 +571,21 @@ contains
     ! For values which extend beyond N and S boundaries, set weights
     ! such that values will just be copied.
     !
-    extrap = 0._r8
+    extrap = 0.
 
     do j=1,nlatout
        if (yout(j).le.yin(1)) then
           jjm(j) = 1
           jjp(j) = 1
-          wgts(j) = 1._r8
-          wgtn(j) = 0._r8
-          extrap=extrap+1._r8
+          wgts(j) = 1.
+          wgtn(j) = 0.
+          extrap=extrap+1.
        else if (yout(j).gt.yin(nlatin)) then
           jjm(j) = nlatin
           jjp(j) = nlatin
-          wgts(j) = 1._r8
-          wgtn(j) = 0._r8
-          extrap=extrap+1._r8
+          wgts(j) = 1.
+          wgtn(j) = 0.
+          extrap=extrap+1.
        endif
     end do
 
@@ -652,7 +649,6 @@ contains
     !
     !-----------------------------------------------------------------------
     !++jtb
-    !!use shr_kind_mod,     only: r8 => shr_kind_r8
     !!use cam_abortutils,   only: endrun
     !-----------------------------------------------------------------------
     implicit none
@@ -660,7 +656,6 @@ contains
     !
     ! Input arguments
     !
-    integer,parameter :: r8 = selected_real_kind(12)      ! 8 byte real
     integer, intent(in) :: nlondin                        ! longitude dimension of input grid
     integer, intent(in) :: nlonin                         ! number of real longitudes (input)
     integer, intent(in) :: nlevdin                        ! vertical dimension of input grid
@@ -671,15 +666,15 @@ contains
     integer, intent(in) :: nlonout(nlatout)               ! number of output longitudes per lat
     integer, intent(in) :: nlevdout                       ! vertical dimension of output grid
 
-    real(r8), intent(in) :: arrin(nlondin,nlevdin,nlatin) ! input array of values to interpolate
-    real(r8), intent(in) :: xin(nlondin)                  ! input x mesh
-    real(r8), intent(in) :: yin(nlatin)                   ! input y mesh
-    real(r8), intent(in) :: xout(nlondout,nlatout)        ! output x mesh
-    real(r8), intent(in) :: yout(nlatout)                 ! output y mesh
+    real, intent(in) :: arrin(nlondin,nlevdin,nlatin) ! input array of values to interpolate
+    real, intent(in) :: xin(nlondin)                  ! input x mesh
+    real, intent(in) :: yin(nlatin)                   ! input y mesh
+    real, intent(in) :: xout(nlondout,nlatout)        ! output x mesh
+    real, intent(in) :: yout(nlatout)                 ! output y mesh
     !
     ! Output arguments
     !
-    real(r8), intent(out) :: arrout(nlondout,nlevdout,nlatout) ! interpolated array
+    real, intent(out) :: arrout(nlondout,nlevdout,nlatout) ! interpolated array
     !
     ! Local workspace
     !
@@ -688,11 +683,11 @@ contains
     integer :: k                     ! level index
     integer :: icount                ! number of bad values
 
-    real(r8) :: extrap               ! percent grid non-overlap
-    real(r8) :: dxinwrap             ! delta-x on input grid for 2-pi
-    real(r8) :: avgdxin              ! avg input delta-x
-    real(r8) :: ratio                ! compare dxinwrap to avgdxin
-    real(r8) :: sum                  ! sum of weights (used for testing)
+    real :: extrap               ! percent grid non-overlap
+    real :: dxinwrap             ! delta-x on input grid for 2-pi
+    real :: avgdxin              ! avg input delta-x
+    real :: ratio                ! compare dxinwrap to avgdxin
+    real :: sum                  ! sum of weights (used for testing)
     !
     ! Dynamic
     !
@@ -701,11 +696,11 @@ contains
     integer :: jjm(nlatout)          ! interpolation index to the south
     integer :: jjp(nlatout)          ! interpolation index to the north
 
-    real(r8) :: wgts(nlatout)        ! interpolation weight to the north
-    real(r8) :: wgtn(nlatout)        ! interpolation weight to the north
-    real(r8) :: wgte(nlondout)       ! interpolation weight to the north
-    real(r8) :: wgtw(nlondout)       ! interpolation weight to the north
-    real(r8) :: igrid(nlonin)        ! interpolation weight to the north
+    real :: wgts(nlatout)        ! interpolation weight to the north
+    real :: wgtn(nlatout)        ! interpolation weight to the north
+    real :: wgte(nlondout)       ! interpolation weight to the north
+    real :: wgtw(nlondout)       ! interpolation weight to the north
+    real :: igrid(nlonin)        ! interpolation weight to the north
     !
     ! Check validity of input coordinate arrays: must be monotonically increasing,
     ! and have a total of at least 2 elements
@@ -714,7 +709,7 @@ contains
        STOP ! call endrun ('BILIN: Must have at least 2 input points for interpolation')
     end if
 
-    if (xin(1) < 0._r8 .or. xin(nlonin) > 360._r8) then
+    if (xin(1) < 0. .or. xin(nlonin) > 360.) then
        STOP ! call endrun ('BILIN: Input x-grid must be between 0 and 360')
     end if
 
@@ -746,7 +741,7 @@ contains
     end if
 
     do j=1,nlatout
-       if (xout(1,j) < 0._r8 .or. xout(nlonout(j),j) > 360._r8) then
+       if (xout(1,j) < 0. .or. xout(nlonout(j),j) > 360.) then
           STOP ! call endrun ('BILIN: Output x-grid must be between 0 and 360')
        end if
 
@@ -770,16 +765,16 @@ contains
        if (yout(js) > yin(1)) exit
        jjm(js) = 1
        jjp(js) = 1
-       wgts(js) = 1._r8
-       wgtn(js) = 0._r8
+       wgts(js) = 1.
+       wgtn(js) = 0.
     end do
 
     do jn=nlatout,1,-1
        if (yout(jn) <= yin(nlatin)) exit
        jjm(jn) = nlatin
        jjp(jn) = nlatin
-       wgts(jn) = 1._r8
-       wgtn(jn) = 0._r8
+       wgts(jn) = 1.
+       wgtn(jn) = 0.
     end do
     !
     ! Loop though output indices finding input indices and weights
@@ -799,13 +794,13 @@ contains
 30     jjprev = jj
     end do
 
-    dxinwrap = xin(1) + 360._r8 - xin(nlonin)
+    dxinwrap = xin(1) + 360. - xin(nlonin)
     !
     ! Check for sane dxinwrap values.  Allow to differ no more than 10% from avg
     !
-    avgdxin = (xin(nlonin)-xin(1))/(nlonin-1._r8)
+    avgdxin = (xin(nlonin)-xin(1))/(nlonin-1.)
     ratio = dxinwrap/avgdxin
-    if (ratio < 0.9_r8 .or. ratio > 1.1_r8) then
+    if (ratio < 0.9 .or. ratio > 1.1) then
        write(iulog,*)'BILIN: Insane dxinwrap value =',dxinwrap,' avg=', avgdxin
        STOP ! call endrun
     end if
@@ -817,9 +812,9 @@ contains
     do j=1,nlatout
        if (jjm(j) == 0 .or. jjp(j) == 0) icount = icount + 1
        sum = wgts(j) + wgtn(j)
-       if (sum < 0.99999_r8 .or. sum > 1.00001_r8) icount = icount + 1
-       if (wgts(j) < 0._r8 .or. wgts(j) > 1._r8) icount = icount + 1
-       if (wgtn(j) < 0._r8 .or. wgtn(j) > 1._r8) icount = icount + 1
+       if (sum < 0.99999 .or. sum > 1.00001) icount = icount + 1
+       if (wgts(j) < 0. .or. wgts(j) > 1.) icount = icount + 1
+       if (wgtn(j) < 0. .or. wgtn(j) > 1.) icount = icount + 1
     end do
 
     if (icount > 0) then
@@ -845,14 +840,14 @@ contains
           iim(iw) = nlonin
           iip(iw) = 1
           wgtw(iw) = (xin(1)        - xout(iw,j))   /dxinwrap
-          wgte(iw) = (xout(iw,j)+360._r8 - xin(nlonin))/dxinwrap
+          wgte(iw) = (xout(iw,j)+360. - xin(nlonin))/dxinwrap
        end do
 
        do ie=nlonout(j),1,-1
           if (xout(ie,j) <= xin(nlonin)) exit
           iim(ie) = nlonin
           iip(ie) = 1
-          wgtw(ie) = (xin(1)+360._r8 - xout(ie,j))   /dxinwrap
+          wgtw(ie) = (xin(1)+360. - xout(ie,j))   /dxinwrap
           wgte(ie) = (xout(ie,j)    - xin(nlonin))/dxinwrap
        end do
        !
@@ -877,9 +872,9 @@ contains
        do i=1,nlonout(j)
           if (iim(i) == 0 .or. iip(i) == 0) icount = icount + 1
           sum = wgtw(i) + wgte(i)
-          if (sum < 0.99999_r8 .or. sum > 1.00001_r8) icount = icount + 1
-          if (wgtw(i) < 0._r8 .or. wgtw(i) > 1._r8) icount = icount + 1
-          if (wgte(i) < 0._r8 .or. wgte(i) > 1._r8) icount = icount + 1
+          if (sum < 0.99999 .or. sum > 1.00001) icount = icount + 1
+          if (wgtw(i) < 0. .or. wgtw(i) > 1.) icount = icount + 1
+          if (wgte(i) < 0. .or. wgte(i) > 1.) icount = icount + 1
        end do
 
        if (icount > 0) then
@@ -924,17 +919,17 @@ contains
     integer , intent(in)  :: ncol              ! column dimension
     integer , intent(in)  :: ncold             ! declared column dimension
     integer , intent(in)  :: nlev              ! vertical dimension
-    real(r8), intent(in)  :: pmid(ncold,nlev)  ! input level pressure levels
-    real(r8), intent(in)  :: pout              ! output pressure level
-    real(r8), intent(in)  :: arrin(ncold,nlev) ! input  array
-    real(r8), intent(out) :: arrout(ncold)     ! output array (interpolated)
+    real, intent(in)  :: pmid(ncold,nlev)  ! input level pressure levels
+    real, intent(in)  :: pout              ! output pressure level
+    real, intent(in)  :: arrin(ncold,nlev) ! input  array
+    real, intent(out) :: arrout(ncold)     ! output array (interpolated)
     !--------------------------------------------------------------------------
 
     !---------------------------Local variables-----------------------------
     integer i,k               ! indices
     integer kupper(ncold)     ! Level indices for interpolation
-    real(r8) dpu              ! upper level pressure difference
-    real(r8) dpl              ! lower level pressure difference
+    real dpu              ! upper level pressure difference
+    real dpl              ! lower level pressure difference
     logical found(ncold)      ! true if input levels found
     logical error             ! error flag
     !-----------------------------------------------------------------
@@ -1011,18 +1006,18 @@ contains
 
     integer, intent(in) :: np1                 ! index points to forward time slice matching cdayplus
 
-    real(r8), intent(in) :: cdayminus          ! calendar day of rearward time slice
-    real(r8), intent(in) :: cdayplus           ! calendar day of forward time slice
-    real(r8), intent(in) :: cday               ! calenar day to be interpolated to
-    real(r8), intent(out) :: fact1             ! time interpolation factor to apply to rearward time slice
-    real(r8), intent(out) :: fact2             ! time interpolation factor to apply to forward time slice
+    real, intent(in) :: cdayminus          ! calendar day of rearward time slice
+    real, intent(in) :: cdayplus           ! calendar day of forward time slice
+    real, intent(in) :: cday               ! calenar day to be interpolated to
+    real, intent(out) :: fact1             ! time interpolation factor to apply to rearward time slice
+    real, intent(out) :: fact2             ! time interpolation factor to apply to forward time slice
 
     character(len=*), intent(in) :: str        ! string to be added to print in case of error (normally the callers name)
     !
     ! Local workspace
     !
-    real(r8) :: deltat                         ! time difference (days) between cdayminus and cdayplus
-    real(r8), parameter :: daysperyear = 365._r8  ! number of days in a year
+    real :: deltat                         ! time difference (days) between cdayminus and cdayplus
+    real, parameter :: daysperyear = 365.  ! number of days in a year
     !
     ! Initial sanity checks
     !
@@ -1035,12 +1030,12 @@ contains
     end if
 
     if (cycflag) then
-       if ((cday < 1._r8) .or. (cday > (daysperyear+1._r8))) then
+       if ((cday < 1.) .or. (cday > (daysperyear+1.))) then
           write(iulog,*) 'GETFACTORS:', str, ' bad cday=',cday
           STOP ! call endrun ()
        end if
     else
-       if (cday < 1._r8) then
+       if (cday < 1.) then
           write(iulog,*) 'GETFACTORS:', str, ' bad cday=',cday
           STOP ! call endrun ()
        end if
@@ -1080,14 +1075,14 @@ contains
     !---------------------------------------------------------------------------
     implicit none
 
-    real(r8), intent(in) :: fact1, fact2           ! time interpolation factors
+    real, intent(in) :: fact1, fact2           ! time interpolation factors
 
     valid_timeinterp_factors = .true.
 
     ! The fact1 .ne. fact1 and fact2 .ne. fact2 comparisons are to detect NaNs.
-    if (abs(fact1+fact2-1._r8) > 1.e-6_r8 .or. &
-         fact1 > 1.000001_r8 .or. fact1 < -1.e-6_r8 .or. &
-         fact2 > 1.000001_r8 .or. fact2 < -1.e-6_r8 .or. &
+    if (abs(fact1+fact2-1.) > 1.e-6 .or. &
+         fact1 > 1.000001 .or. fact1 < -1.e-6 .or. &
+         fact2 > 1.000001 .or. fact2 < -1.e-6 .or. &
          fact1 .ne. fact1 .or. fact2 .ne. fact2) then
 
        valid_timeinterp_factors = .false.

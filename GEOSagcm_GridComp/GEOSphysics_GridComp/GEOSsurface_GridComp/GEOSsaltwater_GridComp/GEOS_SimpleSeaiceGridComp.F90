@@ -43,6 +43,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
   integer, parameter    :: ICE = 1  
   integer, parameter    :: NUM_SUBTILES = 1      
+  logical               :: seaIceT_extData
 
   type ssi_state
        integer:: CHOOSEMOSFC
@@ -104,28 +105,23 @@ module GEOS_SimpleSeaiceGridCompMod
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, _RC)
     Iam = trim(COMP_NAME) // 'SetServices'
+
 
 ! Get my MAPL_Generic state
 !--------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
-! Sea-Ice Thermodynamics computation: using CICE or not?
-!-------------------------------------------------------
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, _RC)
 
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, _RC)
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run1, RC=STATUS )
-    VERIFY_(STATUS)
+! Set the state variable specs
+! ----------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run2, RC=STATUS )
-    VERIFY_(STATUS)
-
-! Set the state variable specs.
-! -----------------------------
+    call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
 
 !BOS
 
@@ -137,144 +133,128 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBVR',                             &
         LONG_NAME          = 'surface_albedo_for_visible_beam',   &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBVF',                             &
         LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBNR',                             &
         LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME         = 'ALBNF',                             &
         LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
-        SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'EVAPOUT'                   ,&
         LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'EVAPOUT'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SUBLIM'                    ,&
         LONG_NAME          = 'sublimation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'SUBLIM'                    ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SHOUT'                     ,&
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SHOUT'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'SHICE'                     ,&
         LONG_NAME          = 'sea_ice_upward_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SHICE'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'surface_outgoing_longwave_flux',&
-        UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUP'                     ,&
+        LONG_NAME          = 'surface_emitted_longwave_flux',&
+        UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'LWNDICE'                   ,&
         LONG_NAME          = 'sea_ice_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'LWNDICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'LWNDSRF'                   ,&
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'LWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'SWNDICE'                   ,&
         LONG_NAME          = 'sea_ice_net_downward_shortwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SWNDICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'SWNDSRF'                   ,&
         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'HLATN'                     ,&
         LONG_NAME          = 'total_latent_energy_flux'  ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'HLATN'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'HLATICE'                   ,&
         LONG_NAME          = 'sea_ice_latent_energy_flux',&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'HLATICE'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TST',                               &
@@ -282,8 +262,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'QST',                               &
@@ -291,8 +270,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                           &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TH',                                &
@@ -300,8 +278,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'QH',                                &
@@ -309,8 +286,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                           &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'UH',                                &
@@ -318,8 +294,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'VH',                                &
@@ -327,8 +302,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'DELTS',                             &
@@ -336,8 +310,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'DELQS',                             &
@@ -345,8 +318,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                           &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'CHT',                               &
@@ -354,8 +326,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'CMT',                               &
@@ -363,8 +334,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'CQT',                               &
@@ -372,8 +342,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'CNT',                               &
@@ -381,8 +350,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'RIT',                               &
@@ -390,8 +358,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'RET',                               &
@@ -399,8 +366,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
@@ -408,8 +374,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACINEW',                             &
@@ -417,8 +382,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'GUST',                      &
@@ -426,8 +390,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly,           &
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'VENT',                      &
@@ -435,26 +398,23 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly,           &
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0'                        ,&
         LONG_NAME          = 'surface_roughness'         ,&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'Z0H'                       ,&
         LONG_NAME          = 'surface_roughness_for_heat',&
         UNITS              = 'm'                         ,&
-        SHORT_NAME         = 'Z0H'                       ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOT2M',                     &
@@ -462,8 +422,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                         &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOQ2M',                     &
@@ -471,8 +430,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                   &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU2M',                    &
@@ -480,8 +438,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV2M',                    &
@@ -489,8 +446,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOT10M',                     &
@@ -498,8 +454,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                         &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOQ10M',                     &
@@ -507,8 +462,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                   &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU10M',                    &
@@ -516,8 +470,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV10M',                    &
@@ -525,8 +478,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU50M',                    &
@@ -534,8 +486,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV50M',                    &
@@ -543,26 +494,23 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                     &
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
-                                               RC=STATUS  )
-     VERIFY_(STATUS)
+                                               _RC)
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUXI'                     ,&
         LONG_NAME          = 'eastward_stress_over_ice',  &
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUXI'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                    &
+        SHORT_NAME         = 'TAUYI'                     ,&
         LONG_NAME          = 'northward_stress_over_ice',  &
         UNITS              = 'N m-2'                     ,&
-        SHORT_NAME         = 'TAUYI'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENUVR',                             &
@@ -570,8 +518,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENUVF',                             &
@@ -579,8 +526,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENPAR',                             &
@@ -588,8 +534,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENPAF',                             &
@@ -597,8 +542,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddExportSpec(GC,                                  &
           SHORT_NAME         = 'TFREEZE',                        &
@@ -606,8 +550,7 @@ module GEOS_SimpleSeaiceGridCompMod
           UNITS              = 'K',                               &
           DIMS               = MAPL_DimsTileOnly,                 &
           VLOCATION          = MAPL_VLocationNone,                &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+          _RC)
 
      call MAPL_AddExportSpec(GC                    ,&
         SHORT_NAME         = 'PICE',                      &
@@ -615,17 +558,15 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'Pa'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddExportSpec(GC,                     &
+        SHORT_NAME         = 'FSURF'                     ,&
         LONG_NAME          = 'total_surface_heat_flux_over_the_whole_tile' ,&
         UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'FSURF'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                               _RC  ) 
 
      call MAPL_AddExportSpec(GC,                         &
         SHORT_NAME         = 'TSKINICE',                    &
@@ -633,7 +574,23 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K'                         ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                                      RC=STATUS  )
+                                                      _RC  )
+     if (seaIceT_extData) then
+       call MAPL_AddExportSpec(GC,                          &
+            SHORT_NAME         = 'SEAICETHICKNESS',         &
+            LONG_NAME          = 'ice_skin_layer_mass',     &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+                                                      _RC  )
+       call MAPL_AddExportSpec(GC,                          &
+            SHORT_NAME         = 'HSNO',                    &
+            LONG_NAME          = 'snow_skin_layer_mass',    &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+                                                      _RC  )
+     endif
 
 !  !INTERNAL STATE:
 
@@ -645,8 +602,7 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
         FRIENDLYTO         = 'SEAICE',                            &
         DEFAULT            = 0.5*MAPL_RHOWTR,                     &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'TSKINI',                            &
@@ -656,8 +612,7 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
         FRIENDLYTO         = 'SEAICE',                            &
         DEFAULT            = MAPL_TICE-1.8,                               &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'SSKINI',                            &
@@ -667,8 +622,7 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
         FRIENDLYTO         = 'SEAICE',                            &
         DEFAULT            = 30.0,                                &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'QS',                                &
@@ -678,8 +632,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.01,                                &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'CH',                                &
@@ -689,8 +642,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 1.0e-4,                              &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'CM',                                &
@@ -700,8 +652,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 1.0e-4,                              &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'CQ',                                &
@@ -711,8 +662,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 1.0e-4,                              &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'Z0',                                &
@@ -722,8 +672,7 @@ module GEOS_SimpleSeaiceGridCompMod
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'WW',                                &
@@ -733,237 +682,222 @@ module GEOS_SimpleSeaiceGridCompMod
         NUM_SUBTILES       = NUM_SUBTILES,                        &
         DIMS               = MAPL_DimsTileTile,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
 !  !IMPORT STATE:
 
+     if (seaIceT_extData) then
+       call MAPL_AddImportSpec(GC,                          &
+            SHORT_NAME         = 'SEAICETHICKNESS',         &
+            LONG_NAME          = 'ice_skin_layer_mass',     &
+            UNITS              = 'm'                       ,&
+            DIMS               = MAPL_DimsTileOnly         ,&
+            VLOCATION          = MAPL_VLocationNone        ,&
+            DEFAULT            = 0.7                       ,&
+                                                      _RC  )
+     endif
+
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC                             ,&
+        SHORT_NAME         = 'DRPAR'                             ,&
         LONG_NAME          = 'surface_downwelling_par_beam_flux' ,&
         UNITS              = 'W m-2'                             ,&
-        SHORT_NAME         = 'DRPAR'                             ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                       _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFPAR'                       ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                  _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DRNIR'                       ,&
          LONG_NAME          = 'surface_downwelling_nir_beam_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                  _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFNIR'                       ,&
          LONG_NAME          = 'surface_downwelling_nir_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                  _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DRUVR'                       ,&
          LONG_NAME          = 'surface_downwelling_uvr_beam_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DRUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                  _RC  ) 
 
     call MAPL_AddImportSpec(GC                         ,&
+         SHORT_NAME         = 'DFUVR'                       ,&
          LONG_NAME          = 'surface_downwelling_uvr_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
-         SHORT_NAME         = 'DFUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-    VERIFY_(STATUS)
+                                                  _RC  ) 
 
     call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'EVAP ',                             &
         LONG_NAME          = 'evaporation',                       &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'EVAP ',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'SH',                                &
         LONG_NAME          = 'upward_sensible_heat_flux',         &
         UNITS              = 'W m-2',                             &
-        SHORT_NAME         = 'SH',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TAUX',                              &
         LONG_NAME          = 'eastward_surface_stress',           &
         UNITS              = 'N m-2',                             &
-        SHORT_NAME         = 'TAUX',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TAUY',                              &
         LONG_NAME          = 'northward_surface_stress',          &
         UNITS              = 'N m-2',                             &
-        SHORT_NAME         = 'TAUY',                              &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DEVAP',                             &
         LONG_NAME          = 'derivative_of_evaporation',         &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'DEVAP',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DSH',                               &
         LONG_NAME          = 'derivative_of_upward_sensible_heat_flux', &
         UNITS              = 'W m-2',                             &
-        SHORT_NAME         = 'DSH',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'SNO',                               &
         LONG_NAME          = 'snowfall',                          &
         UNITS              = 'kg m-2 s-1',                        &
-        SHORT_NAME         = 'SNO',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
 ! Surface air quantities
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'TA',                                &
         LONG_NAME          = 'surface_air_temperature',           &
         UNITS              = 'K',                                 &
-        SHORT_NAME         = 'TA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'QA',                                &
         LONG_NAME          = 'surface_air_specific_humidity',     &
         UNITS              = 'kg kg-1',                           &
-        SHORT_NAME         = 'QA',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UU',                                &
         LONG_NAME          = 'surface_wind_speed',                &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'UU',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'UWINDLMTILE',                       &
         LONG_NAME          = 'levellm_uwind',                     &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'UWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'VWINDLMTILE',                       &
         LONG_NAME          = 'levellm_vwind',                     &
         UNITS              = 'm s-1',                             &
-        SHORT_NAME         = 'VWINDLMTILE',                       &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'DZ',                                &
         LONG_NAME          = 'surface_layer_height',              &
         UNITS              = 'm',                                 &
-        SHORT_NAME         = 'DZ',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PS',                                &
         LONG_NAME          = 'surface_pressure',                  &
         UNITS              = 'Pa',                                &
-        SHORT_NAME         = 'PS',                                &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
+        SHORT_NAME         = 'PCU'                               ,&
         LONG_NAME          = 'liquid_water_convective_precipitation',&
         UNITS              = 'kg m-2 s-1'                        ,&
-        SHORT_NAME         = 'PCU'                               ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                                       _RC  ) 
 
      call MAPL_AddImportSpec(GC                            ,&
+        SHORT_NAME         = 'PLS'                              ,&
         LONG_NAME          = 'liquid_water_large_scale_precipitation',&
         UNITS              = 'kg m-2 s-1'                       ,&
-        SHORT_NAME         = 'PLS'                              ,&
         DIMS               = MAPL_DimsTileOnly                  ,&
         VLOCATION          = MAPL_VLocationNone                 ,&
-                                                      RC=STATUS  ) 
-     VERIFY_(STATUS)
+                                                      _RC  ) 
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'THATM',                             &
@@ -971,8 +905,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'QHATM',                             &
@@ -980,8 +913,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg kg-1',                           &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UHATM',                             &
@@ -989,8 +921,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'VHATM',                             &
@@ -998,8 +929,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'm s-1',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'CTATM',                             &
@@ -1007,8 +937,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'CQATM',                             &
@@ -1016,8 +945,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'CMATM',                             &
@@ -1025,8 +953,7 @@ module GEOS_SimpleSeaiceGridCompMod
         UNITS              = 'kg m-2 s-1',                        &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'FRACICE',                           &
@@ -1035,8 +962,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UI',                                &
@@ -1045,8 +971,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'VI',                                &
@@ -1055,8 +980,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                       _RC)
 
 
     call MAPL_AddImportSpec (GC,                                   &
@@ -1065,8 +989,7 @@ module GEOS_SimpleSeaiceGridCompMod
          UNITS      = 'K s-1',                                     &
          RESTART    = MAPL_RestartSkip,                            &
          DIMS       = MAPL_DimsTileOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+         VLOCATION  = MAPL_VLocationNone,               _RC  )
 
     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UUA',                             &
@@ -1075,8 +998,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         RESTART            = MAPL_RestartSkip,                    &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'VVA',                             &
@@ -1085,8 +1007,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         RESTART            = MAPL_RestartSkip,                    &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'TAUXBOT',                           &
@@ -1095,8 +1016,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                       _RC  )
 
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'TAUYBOT',                           &
@@ -1105,8 +1025,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 0.0,                                 &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                       _RC  )
 
    call MAPL_AddImportSpec(GC,                                    &
         SHORT_NAME         = 'SSKINW',                            &
@@ -1116,8 +1035,7 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 30.0,                                &
 
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                       _RC  )
 
    call MAPL_AddImportSpec(GC,                                    &
         SHORT_NAME         = 'TSKINW',                            &
@@ -1127,8 +1045,7 @@ module GEOS_SimpleSeaiceGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 280.0,                               &
 
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
+                                                       _RC  )
 
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'SS_FOUND',                          &
@@ -1137,8 +1054,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 30.0,                                &
-        RC=STATUS  )
-   VERIFY_(STATUS)
+        _RC  )
 
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'TS_FOUND',                          &
@@ -1147,8 +1063,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
         DEFAULT            = 280.0,                               &
-        RC=STATUS  )
-    VERIFY_(STATUS)
+        _RC  )
 
     call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'TFREEZE',                        &
@@ -1157,8 +1072,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                 &
         VLOCATION          = MAPL_VLocationNone,                &
         DEFAULT            = MAPL_TICE-1.8,                     &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+        _RC)
 
     
 !-------------------Exports---------------------------------------------------------------
@@ -1170,8 +1084,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'kg m-2 s-1'                ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
+                                           _RC  ) 
 
   call MAPL_AddExportSpec(GC                    ,&
     SHORT_NAME         = 'FSALT',                     &
@@ -1179,8 +1092,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'kg m-2 s-1'                ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
+                                           _RC  ) 
 
   call MAPL_AddExportSpec(GC                    ,&
     SHORT_NAME         = 'FHOCN',                     &
@@ -1188,8 +1100,7 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'W m-2'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
+                                           _RC  ) 
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHTSKIN',                   &
@@ -1197,38 +1108,31 @@ module GEOS_SimpleSeaiceGridCompMod
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
+                                           _RC)
 
 !EOS
 
-    allocate(mystate,stat=status)
-    VERIFY_(status)
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    allocate(mystate,_STAT)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', _RC)
+    SCF = ESMF_ConfigCreate(_RC)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,_RC)
     call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
     wrap%ptr => mystate
-    call ESMF_UserCompSetInternalState(gc, 'ssi_private', wrap,status)
-    VERIFY_(status)
+    call ESMF_UserCompSetInternalState(gc, 'ssi_private', wrap,_RC)
 
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC,    name="RUN1"   ,               RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="RUN2"  ,                RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="RUN1"   ,               _RC)
+    call MAPL_TimerAdd(GC,    name="RUN2"  ,                _RC)
   
-    call MAPL_TimerAdd(GC,    name="-Albedo"     ,          RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="-Albedo"     ,          _RC)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_GenericSetServices    ( GC,  RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices    ( GC,  _RC)
  
 ! Set the Run entry point
 ! -----------------------
@@ -1385,15 +1289,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Run1"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
 ! Start Total timer
 !------------------
@@ -1406,131 +1308,80 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_Get(MAPL,                          &
          INTERNAL_ESMF_STATE = INTERNAL,         &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                       _RC)
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call ESMF_UserCompGetInternalState(gc,'ssi_private',wrap,status)
-    VERIFY_(status)
+    call ESMF_UserCompGetInternalState(gc,'ssi_private',wrap,_RC)
     mystate => wrap%ptr
     CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
-    call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, _RC)
 
 ! Get roughness parameters with and without CICE Thermodynamics
 ! -------------------------------------------------------------
-    call MAPL_GetResource ( MAPL, OCEANICEZ0,  Label="OCEANICEZ0:" , DEFAULT=1.0e-3, RC=STATUS) 
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, OCEANICEZ0,  Label="OCEANICEZ0:" , DEFAULT=1.0e-3, _RC) 
 
 ! Pointers to inputs
 !-------------------
 
-   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    _RC)
 
 ! Pointers to internals
 !----------------------
 
-   call MAPL_GetPointer(INTERNAL,TI   , 'TSKINI' , RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TI   , 'TSKINI' , _RC)
+   call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    _RC)
+   call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    _RC)
+   call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    _RC)
 
 ! Pointers to outputs
 !--------------------
 
-   call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,UH    , 'UH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,VH    , 'VH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QST   , 'QST'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TST   , 'TST'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,RET   , 'RET'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0O   , 'Z0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,UH    , 'UH'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,VH    , 'VH'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,QST   , 'QST'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,TST   , 'TST'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,RET   , 'RET'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,Z0O   , 'Z0'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    _RC)
+   call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    _RC)
 
    ! export to openwater
-   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    RC=STATUS)
-   VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRACINEW , 'FRACINEW'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TF    , 'TFREEZE' ,    _RC)
+   call MAPL_GetPointer(EXPORT,FRACI , 'FRACI'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,FRACINEW , 'FRACINEW'   ,    _RC)
 
    NT = size(TA)
    if(NT == 0) then
@@ -1539,84 +1390,45 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       RETURN_(ESMF_SUCCESS)
    end if
 
-   allocate(RE (NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CN (NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZT (NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(T2M (NT)  ,  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(Q2M (NT)  ,  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U2M (NT)  ,  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(V2M (NT)  ,  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(T10M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(Q10M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U10M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(V10M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(U50M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(V50M (NT)  , STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZQ (NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(UUU(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(RHO(NT) ,    STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(PSMB(NT) ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(PSL(NT) ,    STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VKH(NT) ,    STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(fakelai(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VKM(NT) ,    STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(USTAR(NT) ,  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(XX(NT)   ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(YY(NT)   ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CU(NT)   ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CT(NT)   ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(RIB(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(ZETA(NT) ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(WS(NT)   ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(IWATER(NT),  STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(LAI(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CHB(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CQB(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(CMB(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(UCN(NT)  ,   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(US (NT,NUM_SUBTILES),   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(VS (NT,NUM_SUBTILES),   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(TS (NT,NUM_SUBTILES),   STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(FR (NT,NUM_SUBTILES),   STAT=STATUS)
-   VERIFY_(STATUS)
+   allocate(RE (NT)  ,   _STAT)
+   allocate(CN (NT)  ,   _STAT)
+   allocate(ZT (NT)  ,   _STAT)
+   allocate(T2M (NT)  ,  _STAT)
+   allocate(Q2M (NT)  ,  _STAT)
+   allocate(U2M (NT)  ,  _STAT)
+   allocate(V2M (NT)  ,  _STAT)
+   allocate(T10M (NT)  , _STAT)
+   allocate(Q10M (NT)  , _STAT)
+   allocate(U10M (NT)  , _STAT)
+   allocate(V10M (NT)  , _STAT)
+   allocate(U50M (NT)  , _STAT)
+   allocate(V50M (NT)  , _STAT)
+   allocate(ZQ (NT)  ,   _STAT)
+   allocate(UUU(NT)  ,   _STAT)
+   allocate(RHO(NT) ,    _STAT)
+   allocate(PSMB(NT) ,   _STAT)
+   allocate(PSL(NT) ,    _STAT)
+   allocate(VKH(NT) ,    _STAT)
+   allocate(fakelai(NT) ,_STAT)
+   allocate(VKM(NT) ,    _STAT)
+   allocate(USTAR(NT) ,  _STAT)
+   allocate(XX(NT)   ,   _STAT)
+   allocate(YY(NT)   ,   _STAT)
+   allocate(CU(NT)   ,   _STAT)
+   allocate(CT(NT)   ,   _STAT)
+   allocate(RIB(NT)  ,   _STAT)
+   allocate(ZETA(NT) ,   _STAT)
+   allocate(WS(NT)   ,   _STAT)
+   allocate(IWATER(NT),  _STAT)
+   allocate(LAI(NT)  ,   _STAT)
+   allocate(CHB(NT)  ,   _STAT)
+   allocate(CQB(NT)  ,   _STAT)
+   allocate(CMB(NT)  ,   _STAT)
+   allocate(UCN(NT)  ,   _STAT)
+   allocate(US (NT,NUM_SUBTILES),   _STAT)
+   allocate(VS (NT,NUM_SUBTILES),   _STAT)
+   allocate(TS (NT,NUM_SUBTILES),   _STAT)
+   allocate(FR (NT,NUM_SUBTILES),   _STAT)
 
 
    TS(:,ICE  ) = TI
@@ -1838,15 +1650,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     Iam = "Run2"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, name=COMP_NAME, _RC)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, _RC)
 
 ! Start Total timer
 !------------------
@@ -1864,14 +1674,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ORBIT     = ORBIT,                      &
          INTERNAL_ESMF_STATE = INTERNAL,         &
          CF = CF,                                &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                       _RC)
 
 ! Update the skin variables each step
 !------------------------------------
 
-    call SEAICECORE(NT=size(LONS), RC=STATUS )
-    VERIFY_(STATUS)
+    call SEAICECORE(NT=size(LONS), _RC)
 
 !  All done
 !-----------
@@ -1914,6 +1722,7 @@ contains
    real, pointer, dimension(:  )  :: LWNDICE => null()
    real, pointer, dimension(:  )  :: FSURF   => null()
    real, pointer, dimension(:  )  :: TSKINICE=> null()
+   real, pointer, dimension(:  )  :: HSNO    => null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
    real, pointer, dimension(:  )  :: DELQS  => null()
@@ -1932,6 +1741,7 @@ contains
    real, pointer, dimension(:  )  :: FHOCN      => null()
    real, pointer, dimension(:  )  :: PICE       => null()
    real, pointer, dimension(:  )  :: GHTSKIN    => null()
+   real, pointer, dimension(: )   :: SEAICETHICKNESSe => null()
 
 ! pointers to internal
 
@@ -1978,6 +1788,7 @@ contains
    real, pointer, dimension(:)    :: CMATM => null()
    real, pointer, dimension(:)    :: UI => null()
    real, pointer, dimension(:)    :: VI => null()
+   real, pointer, dimension(: )   :: SEAICETHICKNESSi => null()
 
    real, pointer, dimension(:)    :: TAUXBOT   => null()                  ! CICE related
    real, pointer, dimension(:)    :: TAUYBOT   => null()
@@ -2049,132 +1860,142 @@ contains
 ! Pointers to inputs
 !-------------------
 
-   call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,LWDNSRF, 'LWDNSRF',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRPAR  , 'DRPAR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFPAR  , 'DFPAR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRNIR  , 'DRNIR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFNIR  , 'DFNIR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DRUVR  , 'DRUVR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DFUVR  , 'DFUVR'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SH     , 'SH'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUX   , 'TAUX'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUY   , 'TAUY'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,ALW    , 'ALW'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,BLW    , 'BLW'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,LWDNSRF, 'LWDNSRF',    _RC)
+   call MAPL_GetPointer(IMPORT,DRPAR  , 'DRPAR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DFPAR  , 'DFPAR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DRNIR  , 'DRNIR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DFNIR  , 'DFNIR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DRUVR  , 'DRUVR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DFUVR  , 'DFUVR'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,EVAP   , 'EVAP'   ,    _RC)
+   call MAPL_GetPointer(IMPORT,SH     , 'SH'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,TAUX   , 'TAUX'   ,    _RC)
+   call MAPL_GetPointer(IMPORT,TAUY   , 'TAUY'   ,    _RC)
+   call MAPL_GetPointer(IMPORT,DEV    , 'DEVAP'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,DSH    , 'DSH'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,SNO    , 'SNO'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,PLS    , 'PLS'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    _RC)
 
-   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FI     , 'FRACICE',    _RC)
 
-   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UHATM  , 'UHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VHATM  , 'VHATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,UUA    , 'UUA'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,VVA    , 'VVA'    ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,UI     , 'UI'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,VI     , 'VI'     ,    _RC)
+   call MAPL_GetPointer(IMPORT,THATM  , 'THATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,QHATM  , 'QHATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,UHATM  , 'UHATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,VHATM  , 'VHATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,UUA    , 'UUA'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,VVA    , 'VVA'    ,    _RC)
+   call MAPL_GetPointer(IMPORT,CTATM  , 'CTATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,CQATM  , 'CQATM'  ,    _RC)
+   call MAPL_GetPointer(IMPORT,CMATM  , 'CMATM'  ,    _RC)
 
-   call MAPL_GetPointer(IMPORT,TAUXBOT, 'TAUXBOT',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(IMPORT,TAUYBOT, 'TAUYBOT',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,TAUXBOT, 'TAUXBOT',    _RC)
+   call MAPL_GetPointer(IMPORT,TAUYBOT, 'TAUYBOT',    _RC)
+
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(IMPORT,SEAICETHICKNESSi, 'SEAICETHICKNESS',    _RC)
+   endif
 
 ! Pointers to internals
 !----------------------
 
-   call MAPL_GetPointer(INTERNAL,TI     ,'TSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,HI     ,'HSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,SI     ,'SSKINI',    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,QS     , 'QS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CH     , 'CH'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(INTERNAL,CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TI     ,'TSKINI',    _RC)
+   call MAPL_GetPointer(INTERNAL,HI     ,'HSKINI',    _RC)
+   call MAPL_GetPointer(INTERNAL,SI     ,'SSKINI',    _RC)
+   call MAPL_GetPointer(INTERNAL,QS     , 'QS'   ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CH     , 'CH'   ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CQ     , 'CQ'   ,    _RC)
+   call MAPL_GetPointer(INTERNAL,CM     , 'CM'   ,    _RC)
 
 
 ! Pointers to outputs
 !--------------------
 
-   call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBNF  , 'ALBNF', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,QST    , 'QST'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TST    , 'TST'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TAUXI  , 'TAUXI', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TAUYI  , 'TAUYI', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SUBLIM,  'SUBLIM'  ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SHICE  , 'SHICE'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLATN  , 'HLATN'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLATICE, 'HLATICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,LWNDICE, 'LWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,SWNDICE, 'SWNDICE' ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE',   RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,EMISS  , 'EMIS' , alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,ALBVF  , 'ALBVF', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,ALBVR  , 'ALBVR', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,ALBNF  , 'ALBNF', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,ALBNR  , 'ALBNR', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,QST    , 'QST'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,TST    , 'TST'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,DELTS  , 'DELTS'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,DELQS  , 'DELQS'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,TAUXI  , 'TAUXI', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,TAUYI  , 'TAUYI', alloc=.true., _RC)
+   call MAPL_GetPointer(EXPORT,EVAPOUT, 'EVAPOUT' ,    _RC)
+   call MAPL_GetPointer(EXPORT,SUBLIM,  'SUBLIM'  ,    _RC)
+   call MAPL_GetPointer(EXPORT,SHOUT  , 'SHOUT'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,SHICE  , 'SHICE'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,HLATN  , 'HLATN'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,HLATICE, 'HLATICE' ,    _RC)
+   call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    _RC)
+   call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    _RC)
+   call MAPL_GetPointer(EXPORT,LWNDICE, 'LWNDICE' ,    _RC)
+   call MAPL_GetPointer(EXPORT,SWNDICE, 'SWNDICE' ,    _RC)
+   call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    _RC)
+   call MAPL_GetPointer(EXPORT,TSKINICE, 'TSKINICE',   _RC)
 
-   call MAPL_GetPointer(EXPORT,DRUVRTHRU  , 'PENUVR'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DFUVRTHRU  , 'PENUVF'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DRPARTHRU  , 'PENPAR'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,DFPARTHRU  , 'PENPAF'     ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FRESH      , 'FRESH'      ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FSALT      , 'FSALT'      ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,FHOCN      , 'FHOCN'      ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PICE       , 'PICE'       ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,GHTSKIN    , 'GHTSKIN'    ,    RC=STATUS); VERIFY_(STATUS)
+   if (seaIceT_extData) then
+     call MAPL_GetPointer(EXPORT,HSNO ,            'HSNO'    ,        _RC)
+     call MAPL_GetPointer(EXPORT,SEAICETHICKNESSe, 'SEAICETHICKNESS', _RC)
+   endif
 
-   allocate(TS (NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(HH (NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(SS (NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
-   allocate(FR (NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,DRUVRTHRU  , 'PENUVR'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,DFUVRTHRU  , 'PENUVF'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,DRPARTHRU  , 'PENPAR'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,DFPARTHRU  , 'PENPAF'     ,    _RC)
+   call MAPL_GetPointer(EXPORT,FRESH      , 'FRESH'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,FSALT      , 'FSALT'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,FHOCN      , 'FHOCN'      ,    _RC)
+   call MAPL_GetPointer(EXPORT,PICE       , 'PICE'       ,    _RC)
+   call MAPL_GetPointer(EXPORT,GHTSKIN    , 'GHTSKIN'    ,    _RC)
+
+   allocate(TS (NT,NUM_SUBTILES),_STAT)
+   allocate(HH (NT,NUM_SUBTILES),_STAT)
+   allocate(SS (NT,NUM_SUBTILES),_STAT)
+   allocate(FR (NT,NUM_SUBTILES),_STAT)
 
 ! Get the time step
 ! -----------------
 
-    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_Get(MAPL, HEARTBEAT = DT, _RC)
+    call MAPL_GetResource ( MAPL, DT, Label="DT:", DEFAULT=DT, _RC)
 
 ! Get parameters
 ! --------------
 
-    call MAPL_GetResource ( MAPL, MAXICEDEPTH  , Label="MAX_SEAICE_DEPTH:", DEFAULT=2.0  , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, MINICEDEPTH  , Label="MIN_SEAICE_DEPTH:", DEFAULT=1.E-6, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, EMSICE,        Label="CICE_EMSICE:",      DEFAULT=0.99999, RC=STATUS)
-    VERIFY_(STATUS)
+    if (.not. seaIceT_extData) then
+      call MAPL_GetResource ( MAPL, MAXICEDEPTH  , Label="MAX_SEAICE_DEPTH:", DEFAULT=2.0  , _RC)
+      call MAPL_GetResource ( MAPL, MINICEDEPTH  , Label="MIN_SEAICE_DEPTH:", DEFAULT=1.E-6, _RC)
 
-    MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
-    MINICEDEPTH     = MINICEDEPTH  * water_RHO('fresh_water')
+      MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
+      MINICEDEPTH     = MINICEDEPTH  * water_RHO('fresh_water')
+    endif
+
+    call MAPL_GetResource ( MAPL, EMSICE,        Label="CICE_EMSICE:",      DEFAULT=0.99999, _RC)
+
 
 
 ! Copy friendly internals into tile-tile local variables
 !-------------------------------------------------------
 
-    HH(:,ICE  ) = HI
-    SS(:,ICE  ) = SI*HI
+    if (.not. seaIceT_extData) then
+      HH(:,ICE  ) = HI
+      SS(:,ICE  ) = SI*HI
+    else
+      HH(:,ICE  ) = SEAICETHICKNESSi*water_RHO('fresh_water')
+      SS(:,ICE  ) = SI*HH(:,ICE)
+    endif
+
     TS(:,ICE  ) = TI
-    FR(:,ICE  ) = 1.0
+    FR(:,ICE  ) = 1.0 ! SA: [Dec, 2022] Here is another problem with the tiled approach!
 
 ! Initialize PAR and UVR beam fluxes
 !-----------------------------------
@@ -2186,17 +2007,16 @@ contains
 
     debugzth = .false.
 
-    call ESMF_VMGetCurrent ( VM, RC=STATUS )
+    call ESMF_VMGetCurrent ( VM, _RC )
 
         ! --------------------------------------------------------------------------
         ! Get the current time. 
         ! --------------------------------------------------------------------------
 
-    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-      VERIFY_(STATUS)
+    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  _RC )
     if (MAPL_AM_I_Root(VM).and.debugzth) then
       print *,' start time of clock '
-      CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
+      CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", _RC )
     endif
 
         ! --------------------------------------------------------------------------
@@ -2206,19 +2026,15 @@ contains
 !! The next sequence is to make sure that the albedo here and in solar are in sync
 !!
 ! Need to know when Solar was called last, so first get the solar alarm
-        call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
-      VERIFY_(STATUS)
+        call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, _RC )
 ! Get the interval of the solar alarm - first get it in seconds
-        call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
-      VERIFY_(STATUS)
+        call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, _RC )
 ! Now make an ESMF interval from the increment in seconds
-        CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
-      VERIFY_(STATUS)
+        CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), _RC )
 ! Now print out the solar alarm interval
-        if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
+        if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", _RC )
 ! Now find out if it is ringing now: if so, set "BEFORE" to last time it rang before now
-         solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
-         VERIFY_(STATUS)
+         solalarmison = ESMF_AlarmIsRinging(SOLALARM,_RC)
          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
 !     if so, set "BEFORE" to last time it rang before now
         if(solalarmison) then
@@ -2226,20 +2042,19 @@ contains
          NOW = CURRENT_TIME
          BEFORE = NOW - TINT
 ! Now print out the last time solar alarm rang
-         if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
+         if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", _RC )
 !     If alarm is not ringing now, find out when it rang last
         else
          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
-         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
+         call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, _RC )
 ! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
          if(BEFORE > CURRENT_TIME) then
           BEFORE = BEFORE-TINT
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time lied '
-          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
+          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", _RC )
          else
           if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm not ringing, prev time okay '
-          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", RC=STATUS )
+          if (MAPL_AM_I_Root(VM).and.debugzth)CALL ESMF_TimePrint ( BEFORE, OPTIONS="string", _RC )
          endif
 ! Now print out the last time solar alarm rang
         endif
@@ -2249,8 +2064,7 @@ contains
             ORBIT, ZTH, SLR, &
             INTV = TINT,     &
             currTime=BEFORE+DELT,  &
-            RC=STATUS )
-        VERIFY_(STATUS)
+            _RC )
 
     ZTH = max(0.0,ZTH)
 
@@ -2291,7 +2105,7 @@ contains
 !          able to reproduce Heracles-4_0 results (zero diff). 
 ! ---------------------------------------------------------------------------------------------------
 
-! If using GEOS CICE Thermodynamics. If using LANL CICE, this is accomplished in Thermo1
+! If using GEOS CICE Thermodynamics.
 !---------------------------------------------------------------------------------------
 
        N   = ICE
@@ -2329,14 +2143,16 @@ contains
        endif
 
 ! Update SEA-ICE surface temperature and moisture
-!----------------------------------------
+!------------------------------------------------
 
        TS(:,N) = TS(:,N) + DTS
        DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
        QS(:,N) = QS(:,N) + DQS
 
-       HH(:,N) = HH(:,N) + DT*(SNO - EVP)
-       HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
+       if (.not. seaIceT_extData) then
+         HH(:,N) = HH(:,N) + DT*(SNO - EVP)
+         HH(:,N) = max(min(HH(:,N),  MAXICEDEPTH),  MINICEDEPTH)
+       endif
 
        if(associated(SUBLIM  ))SUBLIM  =           EVP    *FR(:,N)
        if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
@@ -2345,11 +2161,19 @@ contains
        if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
        if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
 
+       if (seaIceT_extData) then
+         if(associated(HSNO )) HSNO = (DT*(SNO - EVP))/water_RHO('fresh_water')
+         if(associated(SEAICETHICKNESSe )) SEAICETHICKNESSe = SEAICETHICKNESSi
+       endif
+
 ! Copy back to friendly internal variables
 !-----------------------------------------
 
-       HI = HH(:,ICE  )
-       SI = SS(:,ICE  )/HI
+       if (.not. seaIceT_extData) then
+         HI = HH(:,ICE  )
+         SI = SS(:,ICE  )/HI  ! SA: [Dec, 2022] anyway SI or SS(:,ICE) is not being used for anything!
+       endif
+
        TI = TS(:,ICE  )
 
 ! Stress over ice
@@ -2362,7 +2186,6 @@ contains
           TXI = MAPL_UNDEF
           TYI = MAPL_UNDEF
        end where
-
 
     if(associated(TAUXI)) TAUXI = TXI
     if(associated(TAUYI)) TAUYI = TYI
@@ -2421,8 +2244,7 @@ contains
             ORBIT, ZTH, SLR,                       &
             INTV = TINT,                           &
             currTime=CURRENT_TIME+DELT,            &
-            RC=STATUS )
-       VERIFY_(STATUS)
+            _RC )
 
        ZTH = max(0.0,ZTH)
           
@@ -2514,7 +2336,7 @@ contains
 
       nday = (/31.,31.,29.,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.,31./)
 
-      call ESMF_TimeGet  ( currTime, TimeString=string  ,rc=STATUS ) ; VERIFY_(STATUS)
+      call ESMF_TimeGet  ( currTime, TimeString=string  ,_RC ) 
       read(string( 1: 4),'(i4.4)') YEAR
       read(string( 6: 7),'(i2.2)') MONTH
       read(string( 9:10),'(i2.2)') DAY

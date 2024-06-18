@@ -117,8 +117,8 @@ interface size_dist_param_liq
 end interface
 
 interface size_dist_param_ice
-  module procedure size_dist_param_basic_vect
-  module procedure size_dist_param_basic_line
+  module procedure size_dist_param_ice_vect
+  module procedure size_dist_param_ice_line
 end interface
 
 interface size_dist_param_basic
@@ -256,6 +256,7 @@ real(r8) :: gamma_half_br_plus5
 real(r8) :: gamma_half_bs_plus5
 real(r8) :: gamma_2bs_plus2
 
+real(r8) :: mui_cnst 
 !=========================================================
 ! Utilities that are cheaper if the compiler knows that
 ! some argument is an integer.
@@ -286,7 +287,7 @@ contains
 ! Check the list at the top of this module for descriptions of all other
 ! arguments.
 subroutine micro_mg_utils_init( kind, rair, rh2o, cpair, tmelt_in, latvap, &
-     latice, dcs)
+     latice, dcs, constant_mui)
 
   integer,  intent(in)  :: kind
   real(r8), intent(in)  :: rair
@@ -296,7 +297,7 @@ subroutine micro_mg_utils_init( kind, rair, rh2o, cpair, tmelt_in, latvap, &
   real(r8), intent(in)  :: latvap
   real(r8), intent(in)  :: latice
   real(r8), intent(in)  :: dcs
-
+  real(r8), intent(in)  :: constant_mui
   character(128) :: errstring
 
   ! Name this array to workaround an XLF bug (otherwise could just use the
@@ -317,7 +318,7 @@ subroutine micro_mg_utils_init( kind, rair, rh2o, cpair, tmelt_in, latvap, &
   rv= rh2o                  ! water vapor gas constant
   cpp = cpair               ! specific heat of dry air
   tmelt = tmelt_in
-
+  mui_cnst  = constant_mui
   ra = rair     !dry air gas constant
 
   ! latent heats
@@ -587,8 +588,7 @@ elemental subroutine size_dist_param_ice_line(props, qic, nic, lam, n0)
   real(r8), intent(out) :: lam
   real(r8), intent(out), optional :: n0
   
-  
-  real(r8)  :: aux, miu_ice
+  real(r8)  :: aux, mui
 
 
   if (qic > qsmall) then
@@ -601,10 +601,10 @@ elemental subroutine size_dist_param_ice_line(props, qic, nic, lam, n0)
 
       ! lambda = (c n/q)^(1/d)  !estimate lami with mu= 0.0 
        lam = (props%shape_coef * nic/qic)**(1._r8/props%eff_dim)
-       miu_ice=mui_of_l(lam) 
-       aux =  (gamma(1._r8+miu_ice+ props%eff_dim)/gamma(1._r8+miu_ice))**(1._r8/props%eff_dim)  
+       mui=mui_of_l(lam) 
+       aux =  (gamma(1._r8+mui+ props%eff_dim)/gamma(1._r8+mui))**(1._r8/props%eff_dim)  
        lam = aux *lam ! correct lam for mu>0      
-        if (present(n0)) n0 = nic*(lam**(miu_ice +1.0))/gamma(1._r8+miu_ice)  
+        if (present(n0)) n0 = nic*(lam**(mui +1.0))/gamma(1._r8+mui)  
 
       ! check for slope
       ! adjust vars   
@@ -613,14 +613,17 @@ elemental subroutine size_dist_param_ice_line(props, qic, nic, lam, n0)
         lam = props%lambda_bounds(1)
         nic = lam**(props%eff_dim) * qic/props%shape_coef
         if (present(n0)) n0 = nic * lam
+        mui =  0.0
      else if (lam > props%lambda_bounds(2)*aux) then
         lam = props%lambda_bounds(2)
         nic = lam**(props%eff_dim) * qic/props%shape_coef
         if (present(n0)) n0 = nic * lam
+        mui = 0.0
      end if
 
   else
      lam = 0._r8
+     if (present(n0)) n0 = 0.0
   end if
 
   !  if (present(n0)) n0 = nic * lam
@@ -636,7 +639,7 @@ subroutine size_dist_param_ice_vect(props, qic, nic, lam, mgncol, n0)
   real(r8), dimension(mgncol), intent(out) :: lam
   real(r8), dimension(mgncol), intent(out), optional :: n0
   integer :: i
-  real(r8)  :: aux, miu_ice
+  real(r8)  :: aux, mui
    
   do i=1,mgncol
 
@@ -650,11 +653,11 @@ subroutine size_dist_param_ice_vect(props, qic, nic, lam, mgncol, n0)
 
       ! lambda = (c n/q)^(1/d)  !estimate lami with mu= 0.0 
        lam(i) = (props%shape_coef * nic(i)/qic(i))**(1._r8/props%eff_dim)
-       miu_ice=mui_of_l(lam(i)) 
-       aux =  (gamma(1._r8+miu_ice+ props%eff_dim)/gamma(1._r8+miu_ice))**(1._r8/props%eff_dim)  
+       mui=mui_of_l(lam(i)) 
+       aux =  (gamma(1._r8+mui+ props%eff_dim)/gamma(1._r8+mui))**(1._r8/props%eff_dim)  
        lam(i) = aux *lam(i) ! correct lam for mu>0      
-        if (present(n0)) n0 = nic*(lam**(miu_ice +1.0))/gamma(1._r8+miu_ice)  
-
+        if (present(n0)) n0(i) = nic(i)*(lam(i)**(mui +1.0))/gamma(1._r8+mui)  
+        
       ! check for slope
       ! adjust vars   
    
@@ -664,16 +667,19 @@ subroutine size_dist_param_ice_vect(props, qic, nic, lam, mgncol, n0)
            lam(i) = props%lambda_bounds(1)
            nic(i) = lam(i)**(props%eff_dim) * qic(i)/props%shape_coef
            if (present(n0)) n0(i) = nic (i)* lam(i)
+           mui = 0.0
+           
         else if (lam(i) > props%lambda_bounds(2)*aux) then
            lam(i) = props%lambda_bounds(2)
            nic(i) = lam(i)**(props%eff_dim) * qic(i)/props%shape_coef
            if (present(n0)) n0(i) = nic (i)* lam(i)
+           mui = 0.0
         end if
-
 
 
      else
         lam(i) = 0._r8
+         if (present(n0)) n0(i) = 0.0
      end if
 
   enddo
@@ -1173,7 +1179,9 @@ subroutine ice_autoconversion(t, qiic, lami, niic, dcs, prci, nprci, mgncol, ac_
      if (t(i) <= tmelt .and. qiic(i) >= qsmall) then
 
         d_rat = lami(i)*dcs
+       
         mu_ice=mui_of_l(lami(i))  
+        
         ! Rate of ice particle conversion (number).
       !  nprci(i) = n0i(i)/(lami(i)*ac_time)*exp(-d_rat)
 
@@ -1186,6 +1194,8 @@ subroutine ice_autoconversion(t, qiic, lami, niic, dcs, prci, nprci, mgncol, ac_
         ! m n (d^3 + 3 d^2 + 6 d + 6)
         !prci(i) = m_ip * nprci(i) * &
         !     (((d_rat + 3._r8)*d_rat + 6._r8)*d_rat + 6._r8)
+        
+       
 
      else
         prci(i) = 0._r8
@@ -1316,7 +1326,7 @@ subroutine contact_freezing (microp_uniform, t, p, rndst, nacon, &
          taux=t(i)-3.0
          taux=max(taux-273.15, -40.0)
          nsdust=max(exp(-0.517*taux + 8.934) -3.76e6, 0.0) !From Niemand 2012 (restricts nuc to T<-12 C)
-         nssoot=max(1.0e4*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
+         nssoot=max(7.463*exp(-0.0101*taux*taux -0.8525*taux +0.7667)-3.77e9, 0.0)  !(restricts nuc to T<-18 C) Murray (review_ 2012)
         
         
         frz_eff(1:mdust-1) =  nsdust 
@@ -1347,6 +1357,10 @@ subroutine contact_freezing (microp_uniform, t, p, rndst, nacon, &
 
         nnucct(i) =  dum1 * 2._r8 * contact_factor
 
+
+        mnucct(i)=0._r8
+        nnucct(i)=0._r8
+        
      else
 
         mnucct(i)=0._r8
@@ -1683,7 +1697,7 @@ end subroutine self_collection_rain
 ! and Ds >> Di for continuous collection
 
 subroutine accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
-     lams, n0s, prai, nprai, mgncol)
+     lams, n0s, prai, nprai, mgncol, accre_enhan)
 
   integer,                          intent(in) :: mgncol
   real(r8), dimension(mgncol), intent(in) :: t    ! Temperature
@@ -1697,6 +1711,7 @@ subroutine accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
 
   real(r8), dimension(mgncol), intent(in) :: qsic ! Snow MMR
 
+
   ! Snow size parameters
   real(r8), dimension(mgncol), intent(in) :: lams
   real(r8), dimension(mgncol), intent(in) :: n0s
@@ -1704,6 +1719,8 @@ subroutine accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
   ! Output tendencies
   real(r8), dimension(mgncol), intent(out) :: prai ! MMR
   real(r8), dimension(mgncol), intent(out) :: nprai ! Number
+
+  real(r8), dimension(mgncol), intent(in) :: accre_enhan
 
   ! Fraction of cloud ice particles accreted per second
   real(r8) :: accrete_rate
@@ -1716,8 +1733,8 @@ subroutine accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
         accrete_rate = pi/4._r8 * eii * asn(i) * rho(i) * n0s(i) * gamma_bs_plus3/ &
              lams(i)**(bs+3._r8)
 
-        prai(i) = accrete_rate * qiic(i)
-        nprai(i) = accrete_rate * niic(i)
+        prai(i) = accrete_rate * qiic(i)*accre_enhan(i)
+        nprai(i) = accrete_rate * niic(i)*accre_enhan(i)
 
      else
         prai(i) = 0._r8
@@ -2494,7 +2511,7 @@ end subroutine graupel_rime_splintering
 
 
 !cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
-         !Returns the value of the dispersion parameter according to Mulhbauer 2014.
+         !Returns the value of the dispersion parameter according to Heymsfield et al 2003.
          !Lambda is in m-1
          ! Written by Donifan Barahona donifan.barahona@nasa.gov
          !**********************************
@@ -2503,10 +2520,16 @@ pure   FUNCTION mui_of_l(lambda_)
             real(r8) :: mui_of_l
             REAL(r8), intent(in)  :: lambda_
             REAL(r8)              :: TC, mui, lx
-            lx = lambda_*0.01
+            
+            
+            if (mui_cnst .lt. 0.0) then
+                lx = lambda_*0.01
 
-            mui=(0.008_r8*(lx**0.87_r8))
-            mui_of_l=max(min(mui, 5.0_r8), 0.1_r8)
+                mui=(0.008_r8*(lx**0.87_r8))
+                mui_of_l=max(min(mui, 5.0_r8), 0.1_r8)
+            else
+                 mui_of_l  =  mui_cnst 
+            end if   
 
 
      END FUNCTION mui_of_l

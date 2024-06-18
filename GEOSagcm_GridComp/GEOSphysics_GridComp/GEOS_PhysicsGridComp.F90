@@ -28,8 +28,9 @@ module GEOS_PhysicsGridCompMod
 
   use GEOS_UtilsMod, only: GEOS_Qsat
   use Bundle_IncrementMod
+  use MBundle_IncrementMod
 
-! PGI Module that contains the initialization 
+! PGI Module that contains the initialization
 ! routines for the GPUs
 #ifdef _CUDA
   use cudafor
@@ -44,14 +45,14 @@ module GEOS_PhysicsGridCompMod
 
 !=============================================================================
 
-! !DESCRIPTION: This gridded component (GC) combines the Radiation (Short-Wave and Long-Wave), 
+! !DESCRIPTION: This gridded component (GC) combines the Radiation (Short-Wave and Long-Wave),
 !   Moist-Physics, Chem, Surface and Turbulence GCs into a new composite Physics GC.
 !   The Export Couplings of the Physics GC are the union of the Export
 !   Couplings of the individual child GCs, plus the combined tendencies needed by
 !   the dynamics. These last are the pressure-weighted tendencies of the atmospheric
 !   state variables U,V,T (due to external diabatic forcing), the tendency of the
 !   edge pressures, and a collection of "Friendly" tracers for advection. In the current
-!   version, the only friendly tracers are variables from Moist-Physics and Chem.  
+!   version, the only friendly tracers are variables from Moist-Physics and Chem.
 !
 !\begin{verbatim}
 !       DUDT .... Mass-Weighted U-Wind      Tendency (Pa m /s)
@@ -62,7 +63,7 @@ module GEOS_PhysicsGridCompMod
 !     If Non-Hydrostatic Dynamics
 !       DWDT .... Mass-Weighted W-Wind      Tendency (Pa m /s)
 !\end{verbatim}
- 
+
 !EOP
 
   integer ::        GWD
@@ -88,8 +89,8 @@ contains
     integer,             intent(  OUT) :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
-!   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
-!   state specs and couplings among its children.  In addition, it creates the   
+!   Initialize and Run.  It uses the MAPL\_Generic construct for defining
+!   state specs and couplings among its children.  In addition, it creates the
 !   children GCs (SURF, CHEM, RADIATION, MOIST, TURBULENCE) and runs their
 !   respective SetServices.
 
@@ -111,12 +112,13 @@ contains
     type (ESMF_Config)                      :: CF
 
     integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
+    integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF 
+    type(ESMF_Config)                       :: SCF
 
 !=============================================================================
 
@@ -141,7 +143,7 @@ contains
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
-! Note chemistry must be added before surface so that chemistry has 
+! Note chemistry must be added before surface so that chemistry has
 ! a change to put the fields in the AERO_DP bundle. Otherwise when
 ! surface reads the import restart AERO_DP will be empty and it will
 ! not be properly restarted
@@ -167,6 +169,11 @@ contains
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:",DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:",DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
@@ -175,14 +182,26 @@ contains
 
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,'CO2_GridComp.rc',rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-! AMM - get SYNCTQ flag from config to know whether to terminate some imports
+! Get SYNCTQ flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
 !BOS
+
+! !INTERNAL STATE
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'QW',                                        &
+         LONG_NAME  = 'mass_fraction_of_wet_air',                  &
+         UNITS      = 'kg kg-1',                                   &
+         RESTART    = MAPL_RestartSkip,                            &
+         FRIENDLYTO = 'TURBULENCE:MOIST',                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
 
 ! !IMPORT STATE:
 
@@ -219,33 +238,6 @@ contains
          UNITS      = 'm',                                         &
          DIMS       =  MAPL_DimsHorzOnly,                          &
          VLOCATION  =  MAPL_VLocationNone,                         &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PKE',                                       &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'TH',                                        &
-         LONG_NAME  = 'potential_temperature',                     &
-         UNITS      = 'K',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -354,28 +346,23 @@ contains
 !   Add export states for turbulence increments
 !-------------------------------------------------
     call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
-
     if (NQ > 0) then
       call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), rc=STATUS)
       VERIFY_(STATUS)
-
       allocate (NAMES(NQ), stat=STATUS)
       VERIFY_(STATUS)
-
       do i = 1, NQ
         call ESMF_ConfigNextLine(cf, rc=STATUS)
         VERIFY_(STATUS)
         call ESMF_ConfigGetAttribute(cf, NAMES(i), rc=STATUS)
         VERIFY_(STATUS)
       enddo
-
       do i = 1, NQ
         if (NAMES(i) == 'AOADAYS') then
           TendUnits = 'days s-1'
         else
           TendUnits = 'UNITS'
         end if
-
         call MAPL_AddExportSpec(GC,                                           &
           SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
           LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
@@ -389,7 +376,6 @@ contains
     end if !NQ > 0
 
 !-----------------------------------------------------------
-
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
          LONG_NAME  = 'pressure_weighted_tendency_of_air_temperature_due_to_physics', &
@@ -398,7 +384,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DTDTTOT',                                    &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_physics', &
@@ -407,7 +393,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DTDTRAD',                                      &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_radiation', &
@@ -416,7 +402,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'DUDT',                                      &
          LONG_NAME  = 'tendency_of_eastward_wind_due_to_physics',  &
@@ -468,15 +454,6 @@ contains
          UNITS      = 'kg m-2 s-1',                                &
          DIMS       =  MAPL_DimsHorzOnly,                          &
          VLOCATION  =  MAPL_VLocationNone,                         &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME = 'THIM',                                      &
-         LONG_NAME  = 'pressure_weighted_tendency_of_potential_temperature_due_to_moist_processes',&
-         UNITS      = 'Pa K s-1',                                  &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -588,6 +565,14 @@ contains
 
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'MTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MCHEMTRI',                                  &
          LONG_NAME  = 'moist_quantities',                          &
          UNITS      = 'UNITS s-1',                                 &
          DATATYPE   = MAPL_BundleItem,                             &
@@ -791,7 +776,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DQLDTSCL',                                     &
          LONG_NAME  = 'tendency_of_cloud_water_due_to_mass_scaling',  &
@@ -800,7 +785,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DQIDTSCL',                                     &
          LONG_NAME  = 'tendency_of_cloud_ice_due_to_mass_scaling',    &
@@ -809,7 +794,7 @@ contains
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DTDTUNPERT',                                   &
          LONG_NAME  = 'unperturbed_air_temperature_tendency',         &
@@ -941,11 +926,17 @@ contains
 ! The following are exported up for Atmos Ana purposes
 ! ----------------------------------------------------
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'PPBL',                                      &
+         CHILD_ID   = TURBL,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'Q',                                         &
          CHILD_ID = MOIST,                                         &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'QCTOT',                                     &
          CHILD_ID = MOIST,                                         &
@@ -957,7 +948,7 @@ contains
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'V10M',                                      &
          CHILD_ID = SURF,                                          &
@@ -969,25 +960,25 @@ contains
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'V10N',                                      &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'SNOMAS',                                    &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'WET1',                                      &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TSOIL1',                                    &
          CHILD_ID = SURF,                                          &
@@ -999,37 +990,37 @@ contains
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TS',                                        &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'FRLAND',                                    &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'FRLANDICE',                                 &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'FRLAKE',                                    &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'FROCEAN',                                   &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'FRACI',                                     &
          CHILD_ID = SURF,                                          &
@@ -1041,7 +1032,7 @@ contains
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-                                                                                                                             
+
 !EOS
 
 
@@ -1061,12 +1052,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'QV   ','QLLS ','QILS ','QLCN ',              &
-                         'QICN ','CLLS ','CLCN ','WTHV2'/),           &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
+    call MAPL_AddConnectivity ( GC,                   &
+         SHORT_NAME  = [character(len=6) ::           &
+                         'QV','QLTOT','QITOT','FCLD', &
+                         'WTHV2','WQT_DC'],           &
+         DST_ID      = TURBL,                         &
+         SRC_ID      = MOIST,                         &
+                                           RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1077,17 +1069,23 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Radiation Imports
 !-------------------
 
-     call MAPL_AddConnectivity ( GC,                                  &
-         SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
-                         'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT',                             &
-                         'RL   ','RR   ','RI   ','RS   ','FCLD ' /),  &
-         DST_ID      = RAD,                                           &
-         SRC_ID      = MOIST,                                         &
-                                                           RC=STATUS  )
+     call MAPL_AddConnectivity ( GC,                            &
+         SHORT_NAME  = [character(len=4) ::                     &
+                           'QV','QL','QI','QR','QS','QG',       &
+                         'FCLD','RL','RI','RR','RS','RG'],      &
+         DST_ID      = RAD,                                     &
+         SRC_ID      = MOIST,                                   &
+                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1172,6 +1170,15 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
+     IF (DO_OBIO /= 0) THEN 
+        call MAPL_AddConnectivity ( GC,                               &
+             SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
+             SRC_ID      = RAD,                                       &
+             DST_ID      = SURF,                                      &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+     ENDIF
+
      call MAPL_AddConnectivity ( GC,                               &
          SHORT_NAME  = (/'AERO_DP'/),                              &
          SRC_ID      = CHEM,                                       &
@@ -1179,39 +1186,45 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'FSWBAND  ', 'FSWBANDNA'/),               &
-         SRC_ID      = RAD,                                        &
-         DST_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
-
 ! Imports for GWD
 !----------------
-
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'Q      '/),                              &
-         DST_ID      = GWD,                                        &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                        RC=STATUS        )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQIDT_micro',                                    &
+         DST_NAME    = 'DQIDT',                                          &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddConnectivity ( GC,                                      &
+         SRC_NAME    = 'DQLDT_micro',                                    &
+         DST_NAME    = 'DQLDT',                                          &
+         DST_ID      = GWD,                                              &
+         SRC_ID      = MOIST,                                            &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Chemistry Imports
 ! -----------------
 
-     call MAPL_AddConnectivity ( GC,                              &
-        SHORT_NAME  = (/ 'Q       ', 'RH2     ', 'DQDT    ',      &
-                         'FCLD    ', 'CNV_MFC ', 'CNV_MFD ',      &
-                         'QL      ', 'PFL_CN  ', 'PFL_LSAN',      &
-                         'PFI_CN  ', 'PFI_LSAN', 'QCTOT   ',      &
-                         'CNV_QC  ', 'QLTOT   ', 'QLCN    ',      &
-                         'QICN    ', 'DQLDT   ', 'QITOT   ',      &
-                         'REV_CN  ', 'REV_LS  ', 'REV_AN  ',      &
-                         'LFR_GCC ', 'DQIDT   ', 'QI      ',      &
-                         'DQRC    ', 'CNV_CVW ', 'DQRL    ',      &
-                         'CNV_FRC ', 'RI      ',  'RL      ' /),  &
-        DST_ID      = CHEM,                                       &
-        SRC_ID      = MOIST,                                      &
+     call MAPL_AddConnectivity ( GC,                                      &
+        SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
+                         'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
+                         'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
+                         'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
+                         'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
+                         'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
+                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ',             &
+                         'BYNCY   ',  'CAPE    ', 'INHB    ' /),          &
+        DST_ID      = CHEM,                                               &
+        SRC_ID      = MOIST,                                              &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1255,7 +1268,7 @@ contains
              DST_ID      = CHEM,                                  &
              SRC_ID      = SURF,                                  &
              RC=STATUS )
-        VERIFY_(STATUS)       
+        VERIFY_(STATUS)
      endif
 
      call MAPL_AddConnectivity ( GC,                              &
@@ -1277,12 +1290,19 @@ contains
 ! Moist Imports
 !--------------
 
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'U','V','T'/),                            &
+         DST_ID      = MOIST,                                      &
+         SRC_ID      = GWD,                                        &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddConnectivity ( GC,                                          &
          SHORT_NAME  = (/'KH           ', 'KPBL         ', 'KPBL_SC      ',     &
-                         'TKE          ', 'TKESHOC      ', 'EDMF_FRC     ',     &
-                         'HL2          ', 'HL3          ', 'W2           ',     &
-                         'W3           ', 'HLQT         ', 'WQT          ',     &
-                         'WHL          ', 'QT2          ', 'QT3          '/),    &
+                         'TKE          ', 'TKESHOC      ', 'PDF_A        ',     &
+                         'SL2          ', 'SL3          ', 'W2           ',     &
+                         'W3           ', 'SLQT         ', 'WQT          ',     &
+                         'WSL          ', 'QT2          ', 'QT3          '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
@@ -1304,30 +1324,21 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'FRLAND','EVAP  ','SH    '/),             &
-         DST_ID      = TURBL,                                      &
-         SRC_ID      = SURF,                                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-!-srf-gf-scheme
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'USTAR', 'TSTAR', 'QSTAR', 'T2M  ',       &
-                         'Q2M  ', 'TA   ', 'QA   ', 'SH   ',       &
-                         'EVAP '                                   &
+         SHORT_NAME  = (/'T2M ', 'Q2M ', 'TA  ', 'QA  ', 'SH  ',   &
+                         'EVAP'                                    &
                        /),                                         &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
-!-srf-gf-scheme
 
 
     !-------------- DONIF Additional Moist Imports
-   
+
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'VSCSFC'/),                         & 
-         DST_ID      = MOIST,                                      & 
+         SHORT_NAME  = (/'VSCSFC'/),                         &
+         DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
@@ -1335,89 +1346,59 @@ contains
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'AERO'/),                           &
-!         SHORT_NAME  = (/'AERO_ACI  '/),                             &
-!         SHORT_NAME  = (/'AERO_ACI  ', 'AERO2G_ACI'/),                             &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    !Gravity wave drag parameters for subgrid scale V
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TAUGWX'/),                                 &
-         DST_ID      =  MOIST,                                     &
-         SRC_ID      =  GWD,                                      &
-                                                        RC=STATUS  )
-   VERIFY_(STATUS)
-   
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TAUGWY'/),                                 &
-         DST_ID      =  MOIST,                                     &
-         SRC_ID      =  GWD,                                      &
-                                                        RC=STATUS  )
-   VERIFY_(STATUS)
-     														
-    call MAPL_AddConnectivity ( GC,                                &
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROX'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  GWD,                                      &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
-  
-    call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUOROY'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  GWD,                                      &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
-  
-    
-    call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADLW'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  RAD,                                      &
                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-    
-      call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADSW'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  RAD,                                      &
                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'ALH'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )
-    call MAPL_AddConnectivity ( GC,                                &
+   VERIFY_(STATUS)
+
+   call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'TAUX', 'TAUY'/),                                 &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  SURF,                                      &
                                                         RC=STATUS  )
 
-    VERIFY_(STATUS)
-    
+   VERIFY_(STATUS)
 
-! New connections needed for NCEP GWD
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KPBL'/),                                 &
-         DST_ID      = GWD,                                        &
-         SRC_ID      = TURBL,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'DTDT_moist','CNV_FRC   ','DTDTCN    '/), & 
-         DST_ID      = GWD,                                        &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
 
 !EOP
 
-! Disable connectivities of Surface imports that are filled manually from 
+! Disable connectivities of Surface imports that are filled manually from
 !  turbulence bundles.
 !------------------------------------------------------------------------
 
@@ -1428,14 +1409,30 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate TA import - will fill it here with value after moist
-     if ( SYNCTQ.eq.1.) then
+! terminate imports to SURF for SYNCTQ
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/ 'TA ' /),        &
+          SHORT_NAME = [character(len=5) :: 'UA','VA','TA','QA','SPEED' ], &
           CHILD      = SURF,               &
           RC=STATUS  )
        VERIFY_(STATUS)
      endif
+
+     if (DO_WAVES/=0) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/ 'CHARNOCK'/), &
+          CHILD      = SURF,               &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
+
+     if (DO_WAVES/=0 .and. DO_SEA_SPRAY/=0) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/ 'SHFX_SPRAY', 'LHFX_SPRAY'/), &
+          CHILD      = TURBL,                           &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif 
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &
@@ -1443,10 +1440,10 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-!AMM terminate T and TH imports to turb - will fill it here with value after moist
-     if ( SYNCTQ.eq.1.) then
+! terminate imports to turb for SYNCTQ
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/'T ','TH' /),     & 
+          SHORT_NAME = (/'U ','V ','T ','TH' /),     &
           CHILD      = TURBL,              &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -1463,36 +1460,24 @@ contains
           RC=STATUS)
      VERIFY_(STATUS)
 
-!AMM terminate TH import to moist - will fill it here with value after gwd
-     if ( SYNCTQ.eq.1.) then
-       call MAPL_TerminateImport  ( GC,    &
-          SHORT_NAME = (/'T'/),            &
-          CHILD = MOIST,                   &
-          RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_TerminateImport  ( GC,    &
-          SHORT_NAME = (/'TH'/),           &
-          CHILD = MOIST,                   &
-          RC=STATUS)
-       VERIFY_(STATUS)
-     endif
-
-!AMM terminate T and TH import for chem - will fill it here with value after turb
+! terminate imports to chem for SYNCTQ
      if ( SYNCTQ.eq.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T ','TH'/),      &
           CHILD = CHEM,                    &
           RC=STATUS)
        VERIFY_(STATUS)
+     endif
 
-!AMM terminate T import for RAD - will fill it here with value after turb
+! terminate imports to RAD for SYNCTQ
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport  ( GC,    &
-          SHORT_NAME = (/'T'/),            &     
+          SHORT_NAME = (/'T'/),            &
           CHILD = RAD,                     &
           RC=STATUS)
        VERIFY_(STATUS)
      endif
-   
+
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
     VERIFY_(STATUS)
 
@@ -1510,7 +1495,7 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -1523,19 +1508,19 @@ contains
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
   integer, optional,   intent(  out) :: RC     ! Error code
 
 ! !DESCRIPTION: The Initialize method of the Physics Composite Gridded Component.
-!  It acts as a driver for the initializtion of the five children: Radiation, 
+!  It acts as a driver for the initializtion of the five children: Radiation,
 !  Turbulence, Moist, Chem, and Surface. It also sets up the frieldly connections
-!  between the children and their sibling Turbulence, as well as with their 
+!  between the children and their sibling Turbulence, as well as with their
 !  ``uncles'' Advection and Analysis.
 !
-!   For the turbulence tracer bundle, U and V come from 
+!   For the turbulence tracer bundle, U and V come from
 !   the import state, S is computed here from T and Z and kept
 !   in the export state, the rest are friendlies from MOIST and CHEM.
 !
@@ -1545,7 +1530,7 @@ contains
 !   call; all others have to be done manually.
 !
 !   Any of the children`s exports that are friendly to advection or analysis
-!   are put in the respective bundles by a single MAPL_Generic call. Remember 
+!   are put in the respective bundles by a single MAPL_Generic call. Remember
 !   that friendly exports are were automatically allocated by the children
 !   during the initialization sequence of the entire tree below Physics, which
 !   is the first thing done here.
@@ -1557,7 +1542,7 @@ contains
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)           :: IAm 
+  character(len=ESMF_MAXSTR)           :: IAm
   integer                              :: STATUS
   character(len=ESMF_MAXSTR)           :: COMP_NAME
 
@@ -1591,7 +1576,7 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1682,7 +1667,7 @@ contains
     VERIFY_(STATUS)
 
 
-!   Fill the turbulence tracer bundle: S, U, and V come from 
+!   Fill the turbulence tracer bundle: S, U, and V come from
 !   the import state, the rest are friendlies from MOIST and CHEM.
 !   For now, only S, U, V, and QV are non-default. Default tracers go last
 !   in the bundle. This will have to be done better later by using
@@ -1738,27 +1723,33 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+!    call ESMF_StateGet    (GEX(TURBL),  'QT3'   , FIELD,    RC=STATUS )
+!    VERIFY_(STATUS)
+!    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+!    VERIFY_(STATUS)
+!    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+!    VERIFY_(STATUS)
 
+! Add Friendlies from Physics
+    call MAPL_GridCompGetFriendlies(GC, "TURBULENCE", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
-
     call MAPL_GridCompGetFriendlies(GCS(MOIST) , "TURBULENCE", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
 ! Add Friendlies from Chem (These are default tracers--zero surface flux)
-
     call MAPL_GridCompGetFriendlies(GCS(CHEM), "TURBULENCE", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Turbulence Tracer Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the TURBULENCE Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Count tracers
 !--------------
@@ -1914,13 +1905,23 @@ contains
 
     call ESMF_StateGet(EXPORT, 'TRADV', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to DYNAMICS from all children of physics
+    call MAPL_GridCompGetFriendlies(GC,  "DYNAMICS", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies to DYNAMICS from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "DYNAMICS", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Advection Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the DYNAMICS Advection Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Initialize Water rescale tendency bundle
 !--------------------------------------------
@@ -1931,13 +1932,23 @@ contains
 
     call ESMF_StateGet(EXPORT, 'TRANA', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to MOIST from Physics
+    call MAPL_GridCompGetFriendlies(GC, "ANALYSIS", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies ta ANALYSIS from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "ANALYSIS", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Analysis Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the ANALYSIS Bundle" )
+    end do
+    deallocate ( NAMES )
 
 ! Fill export bundle of child quantities to go thru CONVECTIVE transport
 !  No need for tendencies at this point; scavenging may be controled by
@@ -1946,21 +1957,48 @@ contains
 
     call ESMF_StateGet       (GIM(MOIST), 'MTR', BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Add Friendlies to MOIST from Physics
+    call MAPL_GridCompGetFriendlies(GC, "MOIST", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+! Add Friendlies to MOIST from all children of physics
     call MAPL_GridCompGetFriendlies(GCS, "MOIST", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+! Print what is in the BUNDLE
+    call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NUM_TRACERS, RC=STATUS )
+    VERIFY_(STATUS)
+    allocate( NAMES(NUM_TRACERS),STAT=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
+    VERIFY_(STATUS)
+    do I=1,NUM_TRACERS
+       call WRITE_PARALLEL ( trim(NAMES(I))//": in the MOIST Convective transport Bundle" )
+    end do
+    deallocate ( NAMES )
 
-#ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Bundle" )
-    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
-#endif
+! Fill the moist increments bundles
+!----------------------------------
 
-! Fill the moist increments bundle
-!---------------------------------
+! The original 3D increments:
 
     call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
+  
+#ifdef PRINT_STATES
+    call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
+    VERIFY_(STATUS)                           
+
+    call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
+    if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
+#endif
+
+! The 2D vertically summed, mass weighted increments:
+
+    call Initialize_IncMBundle_init(GC, GIM(MOIST), EXPORT, __RC__)
 
 #ifdef PRINT_STATES
-    call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
+    call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
+    VERIFY_(STATUS)                           
+
+    call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
 #endif
 
@@ -1986,7 +2024,7 @@ contains
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -2000,19 +2038,18 @@ contains
 
 ! ErrLog Variables
 
-   character(len=ESMF_MAXSTR)          :: IAm 
+   character(len=ESMF_MAXSTR)          :: IAm
    integer                             :: STATUS
    character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 ! Local derived type aliases
 
    type (MAPL_MetaComp),      pointer  :: STATE
-   type (MAPL_MetaComp),      pointer  :: MAPL_MOIST
+   type (MAPL_MetaComp),      pointer  :: CMETA
    type (ESMF_GridComp),      pointer  :: GCS(:)
    type (ESMF_State),         pointer  :: GIM(:)
    type (ESMF_State),         pointer  :: GEX(:)
    type (ESMF_State)                   :: INTERNAL
-   type (ESMF_State)                   :: INTERNAL_MOIST
    type (ESMF_Grid)                    :: grid
    type( ESMF_VM )                     :: VMG
 
@@ -2020,22 +2057,21 @@ contains
    type (ESMF_FieldBundle)             :: BUNDLE
    character(len=ESMF_MAXSTR),pointer  :: GCNames(:)
    character(len=ESMF_MAXSTR)          :: DUMMY
-   integer                             :: I, L, K, N
-   integer                             :: IM, JM, LM, KM, NQ
+   integer                             :: I, J, L, K, N
+   integer                             :: IM, JM, LM, NQ
    integer                             :: ISPPT,ISKEB
    logical                             :: DO_SPPT,DO_SKEB
    logical                             :: NEED_TOT
    logical                             :: NEED_FRI
-   logical                             :: NEED_TTN
    logical                             :: NEED_STN
    logical                             :: DPEDT_PHYS
    real                                :: DT
    real                                :: SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
-  
-   real, pointer, dimension(:,:,:)     :: S, T, ZLE, TH, PLE, PLK, U, V, W
+
+   real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
-   real, pointer, dimension(:,:,:)     :: QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
+   real, pointer, dimension(:,:,:)     :: QW, QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
    real, pointer, dimension(:,:,:)     :: ptr3d
 
    real, pointer, dimension(:,:,:)     :: DUDT
@@ -2059,18 +2095,17 @@ contains
    real, pointer, dimension(:,:,:)     :: RNDPERT,RNDPTR
    real, pointer, dimension(:,:,:)     :: SKEBU_WT,SKEBV_WT
    real, pointer, dimension(:,:,:)     :: SKEBU,SKEBV
-   real, pointer, dimension(:,:,:)     :: DUDTSTOCH, DVDTSTOCH, DTDTSTOCH, DQVDTSTOCH 
+   real, pointer, dimension(:,:,:)     :: DUDTSTOCH, DVDTSTOCH, DTDTSTOCH, DQVDTSTOCH
    real, pointer, dimension(:,:,:)     :: DQVDTPERT
    real, pointer, dimension(:,:,:)     :: QVPERT, QVUNPERT
    real, pointer, dimension(:,:,:)     :: DTDTUNPERT, DUDTUNPERT, DVDTUNPERT, DQVDTUNPERT
    real, pointer, dimension(:,:,:)     :: TIR, TIM, TIMFRIC, TIT, TIF
-   real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM, THIM
+   real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM
    real, pointer, dimension(:,:,:)     :: UIT, VIT, SIT
    real, pointer, dimension(:,:,:)     :: UIG, VIG, TIG, TICU
    real, pointer, dimension(:,:,:)     :: FTU, FTV
    real, pointer, dimension(:,:,:)     :: INTDIS, TOPDIS
    real, pointer, dimension(:,:  )     :: SRFDIS
-   real, pointer, dimension(:,:  )     :: TAUX, TAUY, CM
 
    real, pointer, dimension(:,:  )     :: DQVDTPHYINT, DQLDTPHYINT, DQIDTPHYINT, DOXDTPHYINT
    real, pointer, dimension(:,:  )     :: DQVDTTRBINT, DQVDTMSTINT, DQVDTCHMINT
@@ -2078,41 +2113,37 @@ contains
    real, pointer, dimension(:,:  )     :: PERAD,PETRB,PEMST,PEFRI,PEGWD,PECUF
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
-   real, pointer, dimension(:,:  )     :: KETND
    real, pointer, dimension(:,:  )     :: AREA
 
    real*8, allocatable, dimension(:,:)   :: sumq
-   real,   allocatable, dimension(:,:)   :: psdry
    real*8, allocatable, dimension(:,:,:) :: ple_new
-   real*8                                :: psdry_old
-   real*8                                :: psdry_new
-   real*8                                :: psdry_dif
 
-   integer :: NWAT
    character(len=ESMF_MAXSTR), allocatable  :: NAMES(:)
 
 
 
-!AMM
-   real, pointer, dimension(:,:,:)     :: TGWD, DTDTGWD, TFORMOIST, THFORMOIST
-   real, pointer, dimension(:,:,:)     :: SAFTERMOIST, THAFMOIST
-   real, pointer, dimension(:,:,:)     :: THFORCHEM, TFORCHEM, TFORRAD
-   real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
-   real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
-   real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
-   real, allocatable, dimension(:,:,:) :: PK, HGT, DTAFTURB
+! SYNCTQ & UV pointers
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
+   real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
+   real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
+   real, pointer, dimension(:,:,:)     ::                      TFORRAD
+   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, QAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
+
+   real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
-   real, allocatable, dimension(:,:)   :: qs,pmean,DTSURFAFTURB
+   real, allocatable, dimension(:,:)   :: qs,pmean
+
+   logical :: isPresent, SCM_NO_RAD
+   real, allocatable, target :: zero(:,:,:)
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
    real(kind=MAPL_R8), allocatable, dimension(:,:) ::  dpe
    real(kind=MAPL_R8), allocatable, dimension(:,:,:) :: dq
-!-srf-gf-scheme
+
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
-   INTEGER, PARAMETER :: DXDT_BL=1
-!-srf-gf-scheme
- 
+
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
    real,   allocatable, dimension(:,:,:) ::     qdp_b4
@@ -2128,7 +2159,7 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2149,6 +2180,9 @@ contains
 
     call MAPL_TimerOn(STATE,"TOTAL")
     call MAPL_TimerOn(STATE,"RUN")
+
+    call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
@@ -2176,66 +2210,49 @@ contains
     VERIFY_(STATUS)
     DO_SKEB = (ISKEB/=0)
 
-       call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
+    call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
 
-       NWAT = 0
-       call ESMF_FieldBundleGet ( BUNDLE, fieldCount=NQ, RC=STATUS )
-       VERIFY_(STATUS)
-       if (NQ > 0) then
-         allocate( NAMES(NQ),STAT=STATUS )
-         VERIFY_(STATUS)
-         call ESMF_FieldBundleGet ( BUNDLE, itemorderflag=ESMF_ITEMORDER_ADDORDER, fieldNameList=NAMES, rc=STATUS )
-         VERIFY_(STATUS)
-         do N = 1,size(NAMES)
-            if( trim(NAMES(N)).eq.'Q'        ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QLCN'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QLLS'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QICN'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QILS'     ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QRAIN'    ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QSNOW'    ) NWAT=NWAT+1
-            if( trim(NAMES(N)).eq.'QGRAUPEL' ) NWAT=NWAT+1
-         enddo 
-         deallocate( NAMES )
-       endif
-      
+    allocate(zero(IM,JM,LM),stat=status)
+    VERIFY_(status)
+    zero = 0.0
 
-       if (NWAT >= 5) then
-       call ESMFL_BundleGetPointertoData( BUNDLE,'Q'   ,QV  , RC=STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'Q'   ,QV  , RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QLLS',QLLS, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QLCN',QLCN, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QILS',QILS, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMFL_BundleGetPointertoData( BUNDLE,'QICN',QICN, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QRAIN', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QRAIN', QRAIN, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QLLS',QLLS, RC=STATUS)
+    else
+       QRAIN => zero
+    end if
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QSNOW', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QSNOW', QSNOW, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QLCN',QLCN, RC=STATUS)
+    else
+       QSNOW => zero
+    end if
+    call ESMF_FieldBundleGet ( BUNDLE, fieldName='QGRAUPEL', isPresent=isPresent, RC=STATUS)
+    if (isPresent) then
+       call ESMFL_BundleGetPointerToData( BUNDLE, 'QGRAUPEL', QGRAUPEL, RC=STATUS )
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QILS',QILS, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMFL_BundleGetPointertoData( BUNDLE,'QICN',QICN, RC=STATUS)
-       VERIFY_(STATUS)
-       endif
-       if (NWAT == 8) then
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QRAIN',QRAIN, RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QSNOW',QSNOW, RC=STATUS)
-         VERIFY_(STATUS)
-         call ESMFL_BundleGetPointertoData( BUNDLE,'QGRAUPEL',QGRAUPEL, RC=STATUS)
-         VERIFY_(STATUS)
-       endif
-
-       call MAPL_GetObjectFromGC ( GCS(MOIST), MAPL_MOIST, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_Get ( MAPL_MOIST, INTERNAL_ESMF_STATE = INTERNAL_MOIST, RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL_MOIST, QW, 'QW', RC=STATUS)
-       VERIFY_(STATUS)
+    else
+       QGRAUPEL => zero
+    end if
 
 ! Initialize Passive Tracer QW
 ! ----------------------------
-       if (NWAT == 5) then
-       QW = QV+QLLS+QLCN+QILS+QICN
-       elseif (NWAT == 8) then
-         QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
-       endif
+    call MAPL_GetPointer(INTERNAL, QW, 'QW', RC=STATUS); VERIFY_(STATUS)
+    QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
 
 ! Get Global PHYSICS Parameters
 ! -----------------------------
@@ -2255,10 +2272,8 @@ contains
     call MAPL_GetPointer(IMPORT,  W,       'W'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  T,       'T'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  S,       'S'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,  TH,      'TH'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  ZLE,     'ZLE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  PLE,     'PLE'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,  PLK,     'PLK'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  AREA,    'AREA'   , RC=STATUS); VERIFY_(STATUS)
 
     allocate( TDPOLD(IM,JM,LM),stat=STATUS )
@@ -2276,55 +2291,35 @@ contains
 
    ! Create Old Dry Mass Variables
    ! -----------------------------
-     allocate(  psdry( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate(   sumq( IM,JM ),    STAT=STATUS ) ; VERIFY_(STATUS)
      allocate( ple_new(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
-
-#if debug
-     sumq = 0.0_8
-     do L=1,lm
-        sumq = sumq + ( qv(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L) )*( PLE(:,:,L)-PLE(:,:,L-1) )
-     enddo
-     psdry(:,:) = ple(:,:,LM) - sumq(:,:)
-     call MAPL_AreaMean( psdry_old, psdry, area, grid, rc=STATUS )
-     VERIFY_(STATUS)
-#endif
 
 ! Pointers to Exports
 !--------------------
 
-    call MAPL_GetPointer(EXPORT, DUDT,     'DUDT'    , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DVDT,     'DVDT'    , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DUDT,     'DUDT'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DVDT,     'DVDT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DWDT,     'DWDT'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDT,     'DTDT'    , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-    call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, DTDTTOT,  'DTDTTOT' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DTDTRAD,  'DTDTRAD' , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DPDTPHY,  'DPDTPHY' , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DPDT,     'DPEDT'   , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DPDT,     'DPEDT'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DMDT,     'DMDT'    , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-!   call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, TIT,      'TIT'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TIM,      'TIM'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TIMFRIC,  'TIMFRIC' , RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
-!   call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
+    call MAPL_GetPointer(EXPORT, TIF,      'TIF'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FTU,      'FTU'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FTV,      'FTV'     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, KEPHY,    'KEPHY',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEPHY,    'PEPHY',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PERAD,    'PERAD',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PETRB,    'PETRB',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEMST,    'PEMST',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEFRI,    'PEFRI',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PEGWD,    'PEGWD',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, PECUF,    'PECUF',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, KEPHY,    'KEPHY'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEPHY,    'PEPHY'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PERAD,    'PERAD'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PETRB,    'PETRB'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEMST,    'PEMST'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEFRI,    'PEFRI'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PEGWD,    'PEGWD'   , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PECUF,    'PECUF'   , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DQVDTMSTINT, 'DQVDTMSTINT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQLDTMSTINT, 'DQLDTMSTINT', RC=STATUS); VERIFY_(STATUS)
@@ -2368,13 +2363,13 @@ contains
     end if
 
     if(associated(DTDT) .or. associated(TIM) .or. associated(DTDTTOT)) then
-       call MAPL_GetPointer(GEX(MOIST) ,  THIM,   'DTHDT', alloc=.true., RC=STATUS)
+       call MAPL_GetPointer(GEX(MOIST) ,   TTN,   'DTDT', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
- 
+
     if(associated(DTDT) .or. associated(TIT) .or. associated(DTDTTOT)) then
        call MAPL_GetPointer(EXPORT     ,   SIT,     'SIT', alloc=.true., RC=STATUS)
-       VERIFY_(STATUS) 
+       VERIFY_(STATUS)
     end if
 
     if(associated(DTDT) .or. associated(DTDTRAD) .or. associated(DTDTTOT)) then
@@ -2420,7 +2415,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DQIDTSCL, 'DQIDTSCL', RC=STATUS)
        VERIFY_(STATUS)
-    if (DO_SPPT) then   
+    if (DO_SPPT) then
        call MAPL_GetPointer (EXPORT, RNDPTR,    'RNDPTR',    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DTDTUNPERT, 'DTDTUNPERT',   RC=STATUS)
@@ -2445,75 +2440,37 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DQVDTSTOCH, 'DQVDTSTOCH', RC=STATUS)
        VERIFY_(STATUS)
-    endif 
+    endif
     if (DO_SKEB) then
        call MAPL_GetPointer (EXPORT, SKEBU,    'SKEBU',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, SKEBV,    'SKEBV',    alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-    endif 
+    endif
 
     if(associated(DOXDTCHMINT)) then
        call MAPL_GetPointer ( GEX(CHEM),  DOXDTCHM,  'OX_TEND', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
 
-     call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
-     VERIFY_(STATUS)
-
 !----------------------
-
-    if ( SYNCTQ.eq.1. ) then
-
-!  AMM  1/24/14 - Code to sequentially update T after each child - get pointer to T in gwd export
-!                All control for this is here - children just have added exports to be used here
-
-! Sequence here is to get all the needed pointers to import and export states of children
-
-!  get pointer to gwd export of updated T
-     call MAPL_GetPointer ( GEX(GWD),  TGWD,  'T',  alloc = .true.,  RC=STATUS);VERIFY_(STATUS)
-!  get pointer to gwd export of GWD DTDT - do this to force allocate it if we need it here
-     call MAPL_GetPointer ( GEX(GWD),  DTDTGWD,  'DTDT',  alloc = .true.,  RC=STATUS);VERIFY_(STATUS)
-!  get pointer to moist import TH (moist has an import T, but its never used in there) [T is now passed to GF]
-     call MAPL_GetPointer ( GIM(MOIST), TFORMOIST,   'T',  RC=STATUS)
-     call MAPL_GetPointer ( GIM(MOIST), THFORMOIST,  'TH', RC=STATUS)
-!  get pointer to moist export of updated TH and S after moist (S does not include PHIS yet)
-     call MAPL_GetPointer ( GEX(MOIST), THAFMOIST,   'THMOIST', alloc = .true.,  RC=STATUS) 
-     call MAPL_GetPointer ( GEX(MOIST), SAFTERMOIST, 'SMOIST',  alloc = .true.,  RC=STATUS) 
-!  get pointer to TA in surf import bundle
-     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA', RC=STATUS)
-!  get pointer to turb import state bundle and then to S in the bundle - used in diffuse
-     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS )
-     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS)
-!  get pointer to turb state imports of T and TH - used in refresh
-     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS)
-!  get pointer to turb export of S after run 1
-     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', alloc = .true.,  RC=STATUS) 
-!  get pointer to turb export of S after run 2
-     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE',  alloc = .true.,  RC=STATUS) 
-!  get pointer to T in chem and rad import bundles
-     call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS)
-     call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS)
-     call MAPL_GetPointer ( GIM(RAD),  TFORRAD,    'T',  RC=STATUS)
-
-!  AMM - Will need PK to get from T to TH and back
-      allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
-     !PK = ((0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM  ) ))/100000.)**(MAPL_RGAS/MAPL_CP)
-      PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
-    endif
-
-!-srf-gf-scheme
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-!-srf-gf-scheme
 
     if ( DOPHYSICS.eq.1. ) then
 
-! Gravity Wave Drag 
-!  (must be first to use Q from dynamics, 
+     if ( SYNCTQ.ge.1. ) then
+      !  Will need PK to get from T to TH and back
+      allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
+      PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
+      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+         allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
+         do k = 1,LM+1
+           HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
+         enddo
+      endif
+     endif
+
+! Gravity Wave Drag
+!  (must be first to use Q from dynamics,
 !    as it was when it was in superdyn.)
 !----------------------------------------
 
@@ -2522,163 +2479,201 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Moist Processes
 !----------------
 
-    call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
-
-!
-!  AMM - compute TH using T after GWD and write on moist import state TH
-    if ( SYNCTQ.eq.1. ) then
-     TFORMOIST = TGWD
-     THFORMOIST = TGWD / PK
-    endif
+    call Initialize_IncBundle_run( GIM(MOIST), EXPORT, MTRIinc, __RC__)  ! 3D non-weighted
+    call Initialize_IncMBundle_run(GIM(MOIST), EXPORT, DM=DM,   __RC__)  ! 2D mass-weighted
 
     I=MOIST
 
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-    call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
+    call MAPL_GetObjectFromGC ( GCS(I), CMETA, _RC)
+
+    call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
+    call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
+
+    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+
+!  SYNCTQ - Stage 1 SYNC of T/Q and U/V
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! From Moist
+     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  TAFMOIST,  'TAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! Boundary Layer Tendencies for GF
+     DTDT_BL=TAFMOIST
+     DQDT_BL=QV
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     else
+       UFORSURF = UAFMOIST(:,:,LM)
+       VFORSURF = VAFMOIST(:,:,LM)
+       TFORSURF = TAFMOIST(:,:,LM)
+       QFORSURF = QAFMOIST(:,:,LM)
+     endif
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    ! For CHEM
+     if ( SYNCTQ.eq.1. ) then
+       call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
+        TFORCHEM =  TAFMOIST
+       THFORCHEM = THAFMOIST
+     endif
+    ! For TURBL
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
+      UFORTURB =  UAFMOIST
+      VFORTURB =  VAFMOIST
+      TFORTURB =  TAFMOIST
+     THFORTURB = THAFMOIST
+      SFORTURB =  SAFMOIST
+    endif
 
 ! Surface Stage 1
 !----------------
 
-!  AMM - Update TA for surf using TH after MOIST
-    if ( SYNCTQ.eq.1. ) then
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
-       do k = 1,LM+1
-         HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
-       enddo
-       call VertInterp(TFORSURF,THAFMOIST*PK,-HGT,-HGT_SURFACE, status)
-     else
-       TFORSURF = THAFMOIST(:,:,LM)*PK(:,:,LM)
-     endif
-    endif
-
-!-srf-gf-scheme
-    if(SYNCTQ.eq.1. .AND. DXDT_BL==1) then
-       DTDT_BL=THAFMOIST*PK
-       DQDT_BL=QV
-    endif
-!-srf-gf-scheme
-   
     I=SURF
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 1
 !--------------------------
 
-    if ( SYNCTQ.eq.1. ) then
-     THFORCHEM = THAFMOIST
-      TFORCHEM = THAFMOIST*PK
-    endif
-
     I=CHEM
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 1
 !-------------------
 
-!  AMM - compute S after MOIST ( use moist S export and add phi s) and stuff S into turb TR bundle
-!        write on turb imports of T and TH with values after moist
-
-    if ( SYNCTQ.eq.1. ) then
-     do k = 1,LM
-     SFORTURB(:,:,k) = SAFTERMOIST(:,:,k) + ZLE(:,:,LM) * MAPL_GRAV
-     enddo
-     TFORTURB = THAFMOIST*PK
-     THFORTURB = THAFMOIST
-    endif
-
     I=TURBL
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+!  SYNCTQ - Stage 2 SYNC of T/Q and U/V
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! From TURBL Run 1
+     call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(TURBL), QAFDIFFUSE, 'QAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+    ! For TURBL
+     call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
+     call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
+      UFORTURB = UAFDIFFUSE
+      VFORTURB = VAFDIFFUSE
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+      TFORTURB = TFORTURB + (SAFDIFFUSE-SFORTURB)/MAPL_CP
+     THFORTURB = TFORTURB/PK
+      SFORTURB = SAFDIFFUSE
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+     else
+       TFORSURF =   TFORTURB(:,:,LM)
+       UFORSURF = UAFDIFFUSE(:,:,LM)
+       VFORSURF = VAFDIFFUSE(:,:,LM)
+       QFORSURF = QAFDIFFUSE(:,:,LM)
+     endif
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    endif
 
 ! Surface Stage 2
 !----------------
 
-    if ( SYNCTQ.eq.1. ) then
-!AMM - update TA for surface using turb updated S - assume change in S is all change in T
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       allocate(DTSURFAFTURB(IM,JM),stat=STATUS);VERIFY_(STATUS)
-       call VertInterp(DTSURFAFTURB,(SAFDIFFUSE-SFORTURB)/MAPL_CP,-HGT,-HGT_SURFACE, status)
-       TFORSURF = TFORSURF + DTSURFAFTURB
-       deallocate(DTSURFAFTURB)
-     else
-       TFORSURF = TFORSURF + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
-     endif
-! set THFORCHEM and TFORRAD using turb run 1 updated S - assume change in S is all change in T
-     THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
-     TFORRAD = TFORTURB + (SAFDIFFUSE -SFORTURB) / MAPL_CP
-    endif
-
     I=SURF
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Turbulence Stage 2
 !-------------------
 
-    if ( SYNCTQ.eq.1. ) then
-!AMM  update turb S import using S from the result of turb 1
-     SFORTURB = SAFDIFFUSE
-    endif
-
     I=TURBL
 
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+    if ( SYNCTQ.ge.1. ) then
+     ! From TURBL Stage 2
+     call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
+     ! For RAD
+     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T', RC=STATUS); VERIFY_(STATUS)
+     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+      TFORRAD = TFORTURB + (SAFUPDATE-SAFDIFFUSE)/MAPL_CP
+     ! For CHEM use the same T as CHEM
+     if ( SYNCTQ.eq.1. ) then
+       call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
+        TFORCHEM = TFORRAD
+       THFORCHEM = TFORRAD/PK
+     endif
+    endif
+
+! Boundary Layer Tendencies for GF
+!--------------------------
+    if ( SYNCTQ.ge.1. ) then
+       DTDT_BL=(TFORRAD-DTDT_BL)/DT
+       DQDT_BL=(QV-DQDT_BL)/DT
+    endif
 
 ! Aerosol/Chemistry Stage 2
 !--------------------------
 
-    if ( SYNCTQ.eq.1. ) then
-!  AMM - Now Update T (for RAD) and T,TH (for CHEM) using S after turb run 2 assume change in S is all change in T
-     THFORCHEM = THFORCHEM + ( SAFUPDATE -SAFDIFFUSE ) / (PK * MAPL_CP)
-      TFORCHEM = THFORCHEM*PK
-     TFORRAD = TFORRAD + ( SAFUPDATE -SafDIFFUSE) / MAPL_CP
-    endif
+    I=CHEM
 
-!-srf-gf-scheme
-    if(SYNCTQ.eq.1. .AND. DXDT_BL==1) then
-       DTDT_BL=(TFORRAD-DTDT_BL)/DT
-       DQDT_BL=(QV-DQDT_BL)/DT
-    endif
-!-srf-gf-scheme
-
-    I=CHEM   
-
-    call MAPL_TimerOn (STATE,GCNames(I))
+    call MAPL_TimerOn(STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Radiation
@@ -2689,11 +2684,10 @@ contains
     call MAPL_TimerOn (STATE,GCNames(I))
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
-    !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-!AMM
-    if ( SYNCTQ.eq.1. ) then
+! Clean up SYNTQ things
+    if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
       if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
     endif
@@ -2702,7 +2696,7 @@ contains
 
 !-------------------------------
 !-stochastic-physics
-! Update SPPT and/or SKEB pattern and perts 
+! Update SPPT and/or SKEB pattern and perts
 
     if(DO_SPPT) then
        allocate(RNDPERT(IM,JM,LM),stat=STATUS)
@@ -2723,12 +2717,12 @@ contains
        call MAPL_GetPointer ( GIM(GWD),  PREF,  'PREF', RC=STATUS)
        VERIFY_(STATUS)
 
-       SKEBU_WT = 0. ; SKEBV_WT = 0. 
+       SKEBU_WT = 0. ; SKEBV_WT = 0.
        call skeb_pattern(CF,grid,SKEBU_WT,SKEBV_WT,PREF,IM,JM,LM,DT)
-       if(associated (SKEBU) .and. associated(SKEBV)) then 
+       if(associated (SKEBU) .and. associated(SKEBV)) then
           SKEBU = SKEBU_WT
           SKEBV = SKEBV_WT
-       endif 
+       endif
     endif
 !-stochastic-physics
 
@@ -2737,23 +2731,15 @@ contains
 ! and may be friendly to dynamics.
 !---------------------------------------------------------------
 
-!    NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
+!   NEED_TOT = associated(DTDTTOT) .or. associated(DTDT)
     NEED_TOT = .TRUE.
-    NEED_FRI = associated(    TIF) .or. NEED_TOT 
-    NEED_TTN = associated(    TIM) .or. NEED_TOT 
-    NEED_STN = associated(    TIT) .or. NEED_TOT 
+    NEED_FRI = associated(    TIF) .or. NEED_TOT
+    NEED_STN = associated(    TIT) .or. NEED_TOT
 
     if(NEED_FRI) then
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
        FRI         = INTDIS + TOPDIS
-    !  FRI(:,:,LM) = FRI(:,:,LM)  + SRFDIS ! Already included in Turbulence
-    end if
-
-    if(NEED_TTN) then
-       allocate(TTN(IM,JM,LM),stat=STATUS)
-       VERIFY_(STATUS)
-       TTN = THIM*( 0.5*(PLE(:,:,1:LM)+PLE(:,:,0:LM-1))/MAPL_P00 )**MAPL_KAPPA  ! Note: P**Kappa consistent with MOIST version
     end if
 
     if(NEED_STN) then
@@ -2761,12 +2747,13 @@ contains
        VERIFY_(STATUS)
        STN = SIT*(1./MAPL_CP)
     end if
-  
+
     if(associated(DUDT   )) DUDT    = UIM + UIT + UIG
     if(associated(DVDT   )) DVDT    = VIM + VIT + VIG
     if(associated(DWDT   )) DWDT    = WIM
+
 !-stochastic-physics
-    IF( DO_SPPT ) THEN 
+    IF( DO_SPPT ) THEN
        allocate(TMP(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
        if( associated(DUDT) .and. associated(DVDT) ) then
@@ -2776,23 +2763,23 @@ contains
           DO L=1,LM
               TMP(:,:,L) = DUDT(:,:,L)*RNDPERT(:,:,L)
              DUDT(:,:,L) = DUDT(:,:,L) +   TMP(:,:,L)
-          ENDDO 
+          ENDDO
           if( associated(DUDTSTOCH) ) DUDTSTOCH = TMP
           TMP = 0.
           DO L=1,LM
               TMP(:,:,L) = DVDT(:,:,L)*RNDPERT(:,:,L)
              DVDT(:,:,L) = DVDT(:,:,L) +   TMP(:,:,L)
-          ENDDO 
+          ENDDO
           if( associated(DVDTSTOCH) ) DVDTSTOCH = TMP
        endif
     ENDIF
 
-    IF ( DO_SKEB .and. associated(DUDT) .and. associated(DVDT) ) THEN 
+    IF ( DO_SKEB .and. associated(DUDT) .and. associated(DVDT) ) THEN
        DO L=1,LM
           DUDT(:,:,L)= DUDT(:,:,L) + SKEBU(:,:,L)
           DVDT(:,:,L)= DVDT(:,:,L) + SKEBV(:,:,L)
-       ENDDO        
-    ENDIF 
+       ENDDO
+    ENDIF
 !-stochastic-physics
 
     if(associated(KEPHY   )) KEPHY = 0.0
@@ -2823,23 +2810,32 @@ contains
             if( MAPL_am_I_root() ) print*, "GEOS_PhysicsGridComp: missing T-tend pointer, aborting ..."
             VERIFY_(STATUS)
        endif
-       TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
-           + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
-           + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
-           + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
-           + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
-           + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
 
-       IF(DO_SPPT) THEN 
+       if (SCM_NO_RAD) then
+          TOT = STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       else
+          TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
+              + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
+              + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
+              + FRI   &  ! Mass-Weighted Temperature Tendency due to Friction (Turbulence)
+              + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
+              + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
+       end if
+
+       IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))
           TFORQS = T + DT*TOT*DPI
           if( associated(DTDTUNPERT) ) DTDTUNPERT = TOT
           DO L=1,LM
-            TMP(:,:,L) = (TOT(:,:,L) - TIG(:,:,L) ) *RNDPERT(:,:,L) ! Remove contribution from GWD before rndpert 
+            TMP(:,:,L) = (TOT(:,:,L) - TIG(:,:,L) ) *RNDPERT(:,:,L) ! Remove contribution from GWD before rndpert
             TOT(:,:,L) =  TOT(:,:,L) + TMP(:,:,L)
-          ENDDO 
+          ENDDO
           if( associated(DTDTSTOCH) ) DTDTSTOCH = TMP * DPI
-       ENDIF 
+       ENDIF
 
        if(associated(PERAD   )) then
           do L=1,LM
@@ -2890,7 +2886,7 @@ contains
        if (DO_SPPT) then
           if(associated(DTDTUNPERT)) DTDTUNPERT = DTDTUNPERT * DPI
        end if
-       deallocate(TOT)  
+       deallocate(TOT)
     end if
 
 
@@ -2900,10 +2896,14 @@ contains
     if(associated(TIT    )) TIT     = STN * DPI
     if(associated(TIF    )) TIF     = FRI * DPI
 
+   !  Compute Total Water Mass Change due to Physics Sources and Sinks
+   !  ----------------------------------------------------------------
+    allocate( DQ(IM,JM,LM) )
+    DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW
+
     if( DPEDT_PHYS ) then
        allocate(sumdq(IM,JM))
        allocate(  dpe(IM,JM))
-       allocate(   dq(IM,JM,LM))
 
        call ESMF_StateGet (EXPORT, 'TRADV', BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
@@ -2925,26 +2925,16 @@ contains
        if( associated(DQLDTSCL) ) DQLDTSCL = (QLLS+QLCN)
        if( associated(DQIDTSCL) ) DQIDTSCL = (QILS+QICN)
 
-   !  Compute Total Water Mass Change due to Physics Sources and Sinks
-   !  ----------------------------------------------------------------
-       if (NWAT == 5) then
-          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
-       elseif (NWAT == 8) then
-          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
-       endif
-
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
-             ple_new = ple*1.0_8
-               sumdq = 0.0
-         DPDT(:,:,0) = 0.0
+       ple_new = ple*1.0_8
+       sumdq = 0.0
+       DPDT(:,:,0) = 0.0
        do l=1,lm
-                            sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
-             dpdt(:,:,L) = sumdq
+                    sumdq = sumdq + dq(:,:,L) * ( ple(:,:,L)-ple(:,:,L-1) ) / DT
+              dpdt(:,:,L) = sumdq
            ple_new(:,:,L) = ple_new(:,:,L) + dt*dpdt(:,:,L)
-           !   dpe(:,:)   = 1.0_8/( 1.0_8  + dq(:,:,L) )
                dpe(:,:)   = (ple(:,:,L)-ple(:,:,L-1)) / (ple_new(:,:,L)-ple_new(:,:,L-1))
-
              do N=1,NQ
                 call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
                 VERIFY_(STATUS)
@@ -2952,27 +2942,8 @@ contains
                     trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
                 PTR3D(:,:,L) = PTR3d(:,:,L) * dpe(:,:)
                 endif
-              end do
+             end do
        end do
-
-   ! Create New Dry Mass Variables
-   ! -----------------------------
-#if debug
-       sumq = 0.0_8
-       do L=1,lm
-          sumq = sumq + ( qv(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L) )*( PLE_NEW(:,:,L)-PLE_NEW(:,:,L-1) )
-       enddo
-       psdry(:,:) = ple_new(:,:,LM) - sumq(:,:)
-       call MAPL_AreaMean( psdry_new, psdry, area, grid, rc=STATUS )
-       VERIFY_(STATUS)
-
-       psdry_dif = psdry_new - psdry_old
-
-       if(MAPL_AM_I_ROOT() ) then
-          write(6,1001) psdry_old/100, psdry_new/100, psdry_new/psdry_old,psdry_dif/100
- 1001     format(1x,'PSDRY_OLD: ',g21.14,'  PSDRY_NEW: ',g21.14,'  RATIO: ',g25.18,'  DIF: ',g21.14)
-       endif
-#endif
 
        ! Compute water rescale increments
        !----------------------------------
@@ -2988,7 +2959,6 @@ contains
        deallocate( dpe     )
        deallocate( names   )
        deallocate( sumq    )
-       deallocate( psdry   )
        deallocate( ple_new )
 
     else
@@ -2997,6 +2967,8 @@ contains
        if( associated(DQLDTSCL) ) DQLDTSCL = 0.0
        if( associated(DQIDTSCL) ) DQIDTSCL = 0.0
     endif
+
+    deallocate( DQ )
 
     if(associated(DMDT)) DMDT(:,:) = DPDT(:,:,LM)*(1.0/MAPL_GRAV)
 
@@ -3031,7 +3003,7 @@ contains
 
 ! QV Tendencies
 ! -------------
-    IF(DO_SPPT) THEN 
+    IF(DO_SPPT) THEN
 
         if ( .not.associated(DQVDTMST) .or. .not.associated(DQVDTTRB) .or. .not.associated(DQVDTCHM) ) then
            status=99
@@ -3050,16 +3022,10 @@ contains
         ! ------------------------------------------------
           allocate( qdp_b4( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
           do L=1,lm
-          if (NWAT == 5) then
-              qdp_b4(:,:,L) = (   qv(:,:,L)                + &
-                                qlls(:,:,L) +  qlcn(:,:,L) + &
-                                qils(:,:,L) +  qicn(:,:,L) )*dp_mst(:,:,L)
-          elseif (NWAT == 8) then
               qdp_b4(:,:,L) = (   qv(:,:,L)                + &
                                 qlls(:,:,L) +  qlcn(:,:,L) + &
                                 qils(:,:,L) +  qicn(:,:,L) + &
                                qrain(:,:,L) + qsnow(:,:,L) + qgraupel(:,:,L) )*dp_mst(:,:,L)
-          endif
           enddo
 
         ! Compute Stochastic Perturbation
@@ -3082,22 +3048,16 @@ contains
                 QV(:,:,L) = TMP(:,:,L)
              endwhere
           ENDDO
-!         if( associated(DQVDTSTOCH) ) DQVDTSTOCH = (QV - DQVDTSTOCH)/DT 
+!         if( associated(DQVDTSTOCH) ) DQVDTSTOCH = (QV - DQVDTSTOCH)/DT
 
         ! Create Water Mass after Stochastic Perturbation
         ! -----------------------------------------------
           allocate( qdp_af( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
           do L=1,lm
-          if (NWAT == 5) then
-              qdp_af(:,:,L) = (   qv(:,:,L)                + &
-                                qlls(:,:,L) +  qlcn(:,:,L) + &
-                                qils(:,:,L) +  qicn(:,:,L) )*dp_mst(:,:,L)
-          elseif (NWAT == 8) then
               qdp_af(:,:,L) = (   qv(:,:,L)                + &
                                 qlls(:,:,L) +  qlcn(:,:,L) + &
                                 qils(:,:,L) +  qicn(:,:,L) + &
                                qrain(:,:,L) + qsnow(:,:,L) + qgraupel(:,:,L) )*dp_mst(:,:,L)
-          endif
           enddo
 
         ! Vertically Integrate Water Mass where they Differ
@@ -3147,15 +3107,6 @@ contains
         ! Scale Water Variables for Dry-Mass Conservation
         ! -----------------------------------------------
           do L=1,lm
-          if (NWAT == 5) then
-              where(  qdp_af(:,:,L).ne. qdp_b4(:,:,L) )
-                        qv  (:,:,L) =     qv  (:,:,L) * gamma
-                        qlls(:,:,L) =     qlls(:,:,L) * gamma
-                        qlcn(:,:,L) =     qlcn(:,:,L) * gamma
-                        qils(:,:,L) =     qils(:,:,L) * gamma
-                        qicn(:,:,L) =     qicn(:,:,L) * gamma
-              end where
-          elseif (NWAT == 8) then
               where(  qdp_af(:,:,L).ne. qdp_b4(:,:,L) )
                         qv  (:,:,L) =     qv  (:,:,L) * gamma
                         qlls(:,:,L) =     qlls(:,:,L) * gamma
@@ -3166,7 +3117,6 @@ contains
                        qsnow(:,:,L) =    qsnow(:,:,L) * gamma
                     qgraupel(:,:,L) = qgraupel(:,:,L) * gamma
               end where
-          endif
           enddo
 
           if( associated(QVPERT)    ) QVPERT = QV
@@ -3182,7 +3132,7 @@ contains
           deallocate( sum_qdp_af )
 
           deallocate(pmean,qs,TFORQS)
-    ENDIF 
+    ENDIF
 
     if(associated(DQVDTPHYINT)) then
        DQVDTPHYINT = 0.0
@@ -3264,29 +3214,30 @@ contains
        DOXDTCHMINT = DOXDTCHMINT * (MAPL_O3MW/MAPL_AIRMW)
     end if
 
-    if(associated(DM )) deallocate(DM )
-    if(associated(DPI)) deallocate(DPI)
-    if(associated(FRI)) deallocate(FRI)
-    if(associated(TTN)) deallocate(TTN)
-    if(associated(STN)) deallocate(STN)
-
-!-srf-gf-scheme
-    if(SYNCTQ.eq.0. .OR. DXDT_BL==2) then
+    if(SYNCTQ.eq.0.) then
       !- save 'boundary layer' tendencies of Q and T for the convection scheme
       DQDT_BL = DQVDTTRB
       DTDT_BL = 0.
       !- for SCM setup, TIT/TIF are not associated
       if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT    
+      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
     endif
-!-srf-gf-scheme
+
+    if(associated(DM )) deallocate(DM )
+    if(associated(DPI)) deallocate(DPI)
+    if(associated(FRI)) deallocate(FRI)
+    if(associated(STN)) deallocate(STN)
 
 !-stochastic-physics
     if(DO_SPPT) deallocate(TMP,RNDPERT)
     if(DO_SKEB) deallocate(SKEBU_WT,SKEBV_WT)
 !-stochastic-physics
 
+    deallocate( zero )
+
     call MAPL_TimerOff(STATE,"RUN")
+
+
     call MAPL_TimerOff(STATE,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)

@@ -5,6 +5,7 @@ set (alldirs
   GEOSdataatm_GridComp
   GEOSmkiau_GridComp
   GEOSogcm_GridComp
+  GEOSwgcm_GridComp
   )
 
 option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" ON)

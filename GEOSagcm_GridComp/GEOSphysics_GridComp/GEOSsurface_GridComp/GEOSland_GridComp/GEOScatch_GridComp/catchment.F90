@@ -81,13 +81,9 @@
       USE CATCH_CONSTANTS,   ONLY:                   &
            N_SNOW            => CATCH_N_SNOW,        &
            N_GT              => CATCH_N_GT,          &
-           RHOFS             => CATCH_SNWALB_RHOFS,  &
-           SNWALB_VISMAX     => CATCH_SNWALB_VISMAX, &
-           SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
-           SLOPE             => CATCH_SNWALB_SLOPE,  &
-           MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-           DZ1MAX            => CATCH_DZ1MAX,        &  
-           SCONST            => CATCH_SCONST,        &
+           CATCH_SNOW_RHOFS,                         &
+           CATCH_SNOW_MAXDEPTH,                      &
+           CATCH_SNOW_DZPARAM,                       &
            CSOIL_1           => CATCH_CSOIL_1,       &
            N_sm              => CATCH_N_ZONES,       &
            SATCAPFR          => CATCH_SATCAPFR,      &
@@ -107,11 +103,12 @@
            catch_calc_wtotl, dampen_tc_oscillations, &
            SRUNOFF 
       
-      USE SIBALB_COEFF,  ONLY: coeffsib
-
-      USE STIEGLITZSNOW, ONLY: &
-           snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d, N_constit
-
+      USE STIEGLITZSNOW, ONLY:                                                               &
+           StieglitzSnow_snowrt,                     & 
+           StieglitzSnow_calc_asnow,                 &
+           StieglitzSnow_calc_tpsnow,                &
+           N_constit
+      
       IMPLICIT NONE
 
       private
@@ -132,14 +129,14 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
+                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &  ! LONS, LATS are in [radians] !!!
+                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp !!!
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
                      ETURBS, DEDQAS, DEDTCS, HSTURBS,DHSDQAS, DHSDTCS,         &
                      TM, QM, ra1, ra2, ra4, raS, SUNANG, PARDIR, PARDIF,       &
-                     SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,  Z2,        &
+                     SWNETF,SWNETS,  HLWDWN, PSUR,  ZLAI,   GREEN,  Z2,        &  ! HLWDWN = *absorbed* longwave only (excl reflected)
                      SQSCAT, RSOIL1, RSOIL2,   RDC,                            &
                      QSAT1, DQS1, ALW1, BLW1,  QSAT2, DQS2, ALW2, BLW2,        &
                      QSAT4, DQS4, ALW4, BLW4,  QSATS, DQSS, ALWS, BLWS,        &
@@ -152,29 +149,30 @@
                      WESNN, HTSNNN, SNDZN,                                     &
                      EVAP, SHFLUX, RUNOFF,                                     &
                      EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &
-                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
+                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
                      GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
                      TP1, TP2, TP3, TP4, TP5, TP6,                             &
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
                      EVACC, SHACC,                                             &
                      SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
-                     TCSORIG, TPSN1IN, TPSN1OUT,FSW_CHANGE ,                   &
+                     TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
                      lonbeg,lonend,latbeg,latend,                              &
-                     TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC)
+                     TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
+                     RCONSTIT, RMELT, TOTDEPOS,  LHACC )                          ! OPTIONAL
 
       IMPLICIT NONE
 
 ! -----------------------------------------------------------
 !     INPUTS
 
-      INTEGER, INTENT(IN) :: NCH
+      INTEGER, INTENT(IN)                 :: NCH
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
-      REAL, INTENT(IN)     :: DTSTEP, FWETC, FWETL
-      LOGICAL,  INTENT(IN) :: UFW4RO
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
+      REAL,    INTENT(IN)                 :: DTSTEP, FWETC, FWETL
+      LOGICAL, INTENT(IN)                 :: UFW4RO
+
+      REAL,    INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,             &
                      TSNOW, TICE, TFRZR,  UM,                                  &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -189,13 +187,15 @@
                      CDCR1,CDCR2, psis, bee, poros, wpwet, cond, gnu,          &
                      ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,ARW3,ARW4,   &
                      tsa1,tsa2,tsb1,tsb2,atau,btau
-      REAL, INTENT(IN), DIMENSION(NCH) :: LONS, LATS
+      
+      REAL,    INTENT(IN), DIMENSION(NCH)                      :: LONS, LATS
 
-      REAL, INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
+      REAL,    INTENT(IN), DIMENSION(NCH, N_Constit), OPTIONAL :: TOTDEPOS
 
       LOGICAL, INTENT(IN) :: BUG
 
-      REAL, INTENT(IN) :: lonbeg,lonend,latbeg,latend
+      REAL,    INTENT(IN) :: lonbeg, lonend, latbeg, latend
+
 ! -----------------------------------------------------------
 !     PROGNOSTIC VARIABLES
 
@@ -228,6 +228,7 @@
       REAL, INTENT(OUT), DIMENSION(NCH) :: TCSORIG, TPSN1IN, TPSN1OUT, &
                      FSW_CHANGE
 
+      REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH)   :: FICESOUT
       
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC
 
@@ -262,7 +263,7 @@
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
 
-      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices, targetthick, &
+      REAL, DIMENSION(N_SNOW) :: TPSN, WESN, HTSNN, SNDZ, fices,               &
              wesnperc,wesndens,wesnrepar,excs,drho0,tksno, tmpvec_Nsnow
 
       REAL, DIMENSION(N_SNOW, N_Constit) :: RCONSTIT1
@@ -282,7 +283,7 @@
               dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
               QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
               EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
-              EVAPXS,SHFLUXXS,phi,rho_fs,WSS,sumdepth,                         &   
+              EVAPXS,SHFLUXXS,phi,rho_fs,sumdepth,                             &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
               mltwtr, wesnbot, dtss
 
@@ -296,6 +297,8 @@
       integer  n_out
       integer  n_outs(20)
 
+      ! ---------------------------------
+      
       numout =  0
 
 ! choose output point by lon and lat Input lons and lats are in radians
@@ -568,36 +571,36 @@
         RUNSRF(N)=0.
 
 
-!****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
-        IF(ITYP(N) .EQ. 9) THEN
-
-          ! This block of the code should no longer be used.
-          ! If it is, Randy wants to know about it.
-          ! reichle+koster, 12 Aug 2014
-          write (*,*) 'catchment() encountered ityp==9. STOPPING.'
-          stop 
-
-          if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
-              TSN1=tc1(n)-TF
-              TSN2=tc1(n)-TF
-              TSN3=tc1(n)-TF
-            else
-              TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
-              TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
-              TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
-            endif
-          WESNN(1,N)=.1
-          WESNN(2,N)=.2
-          WESNN(3,N)=.1
-          HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
-          HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
-          HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
-          SNDZN(1,N)=WESNN(1,N)/.9
-          SNDZN(2,N)=WESNN(2,N)/.9
-          SNDZN(3,N)=WESNN(3,N)/.9
-          POTFRC(N)=1.
-
-          ENDIF
+!! !****   RESET LAND ICE VARIABLES, MAINTAINING TEMPS. AT EACH LAYER
+!!         IF(ITYP(N) .EQ. 9) THEN
+!! 
+!!           ! This block of the code should no longer be used.
+!!           ! If it is, Randy wants to know about it.
+!!           ! reichle+koster, 12 Aug 2014
+!!           write (*,*) 'catchment() encountered ityp==9. STOPPING.'
+!!           stop 
+!! 
+!!           if(sum(htsnnn(:,n)+wesnn(:,n))==0.) then
+!!               TSN1=tc1(n)-TF
+!!               TSN2=tc1(n)-TF
+!!               TSN3=tc1(n)-TF
+!!             else
+!!               TSN1=(HTSNNN(1,N)+WESNN(1,N)*ALHM)/(SCONST*WESNN(1,N)+1.e-5)
+!!               TSN2=(HTSNNN(2,N)+WESNN(2,N)*ALHM)/(SCONST*WESNN(2,N)+1.e-5)
+!!               TSN3=(HTSNNN(3,N)+WESNN(3,N)*ALHM)/(SCONST*WESNN(3,N)+1.e-5)
+!!             endif
+!!           WESNN(1,N)=.1
+!!           WESNN(2,N)=.2
+!!           WESNN(3,N)=.1
+!!           HTSNNN(1,N)=-ALHM*WESNN(1,N)+TSN1*SCONST*WESNN(1,N)
+!!           HTSNNN(2,N)=-ALHM*WESNN(2,N)+TSN1*SCONST*WESNN(2,N)
+!!           HTSNNN(3,N)=-ALHM*WESNN(3,N)+TSN1*SCONST*WESNN(3,N)
+!!           SNDZN(1,N)=WESNN(1,N)/.9
+!!           SNDZN(2,N)=WESNN(2,N)/.9
+!!           SNDZN(3,N)=WESNN(3,N)/.9
+!!           POTFRC(N)=1.
+!! 
+!!           ENDIF
 
 !****   RESET LAKE VARIABLES
         IF(ITYP(N) .EQ. 10) THEN
@@ -832,7 +835,6 @@
 
       DO N=1,NCH
 
-        WSS    = UM(N)
         TS     = TM(N) 
         T1(1)  = TC1(N)-TF 
         T1(2)  = TC2(N)-TF 
@@ -891,7 +893,7 @@
 !     in process
 !     reichle, 29 May 03
 
-        call get_tf0d(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum)
+        call StieglitzSnow_calc_tpsnow(htsnn(1),wesn(1),tsnowsrf,dum,ldum,ldum,.true.)
         tcs_orig(n)=tsnowsrf+tf
         if(wesn(1)+wesn(2)+wesn(3) .eq. 0.) tcs_orig(n)=                       &
                   amin1( tf, tc1_orig(n)*ar1(n)+tc2_orig(n)*ar2(n)+            &
@@ -911,30 +913,29 @@
         tpsn1in(n) = tpsn1(n)    ! tpsn1 is "intent(out)", should NOT be used here, use catch_calc_tpsnow instead?  shouldn't this be the same as tcs_orig?  - reichle, 8/8/2014
 
         sumdepth=sum(sndz)
-        targetthick(1)=dz1max
+        
+        CALL StieglitzSnow_snowrt(                                             &
+                   LONS(N), LATS(N),                                           &  ! in    [radians]  !!!
+                   N_sm, N_snow, MAPL_Land,                                    &  ! in   
+                   CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
+                   t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
+                   eturbs(n), dedtc0, hsturb, dhsdtc0, hlwtc, dhlwtc,          &  ! in   
+                   raddn, zc1, totdep1,                                        &  ! in   
+                   wesn, htsnn, sndz, RCONSTIT1,                               &  ! inout
+                   hups, fices, tpsn, RMELT1,                                  &  ! out  
+                   areasc, areasc0, pre, fhgnd,                                &  ! out  
+                   EVSN, SHFLS, alhfsn, hcorr, ghfluxsno(n),                   &  ! out  
+                   sndzsc, wesnprec, sndzprec, sndz1perc,                      &  ! out     
+                   wesnperc, wesndens, wesnrepar, mltwtr,                      &  ! out     
+                   excs, drho0, wesnbot, tksno, dtss     )                        ! out     
 
-        do i=2,N_snow
-           targetthick(i)=1./(N_snow-1.)
-           enddo
+        FICESOUT(:,N)  = fices
 
-        CALL SNOWRT(                                                           &
-                   N_sm, N_snow,     MAPL_Land,                                &
-                   t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
-                   eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
-                   desdtc,hups,raddn,zc1, totdep1,  wss,                       &
-                   wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &
-                   areasc,areasc0,pre,fhgnd,                                   &
-                   EVSN,SHFLS,alhfsn,hcorr, ghfluxsno(n),                      &
-                   sndzsc, wesnprec, sndzprec,  sndz1perc,                     &   
-                   wesnperc, wesndens, wesnrepar, mltwtr,                      &
-                   excs, drho0, wesnbot, tksno, dtss,                          &
-                   maxsndepth,  rhofs, targetthick )
-
-        LH_SNOW(N)=areasc*EVSN*ALHS
-        SH_SNOW(N)=areasc*SHFLS
-        LWUP_SNOW(N)=areasc*HUPS
-        LWDOWN_SNOW(N)=areasc*HLWDWN(N)
-        NETSW_SNOW(N)=areasc*SWNETS(N)
+        LH_SNOW(N)     = areasc*EVSN*ALHS
+        SH_SNOW(N)     = areasc*SHFLS
+        LWUP_SNOW(N)   = areasc*HUPS
+        LWDOWN_SNOW(N) = areasc*HLWDWN(N)
+        NETSW_SNOW(N)  = areasc*SWNETS(N)
  
         TPSN1(N) = TPSN(1)+TF 
 
@@ -1489,19 +1490,19 @@
         SHACC(N)=SHFLUX(N)-SHACC(N)
 
 
-
-
-
 ! **** SPECIAL DIAGNOSTICS FOR AR5 DECADAL RUNS
 
-           CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
+        ! the following assumes that fices is unchanged, otherwise may need to update FICESOUT
+        ! - reichle,  4 Oct 2023
 
-           !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
-           !     (TPSN(3)+TF)*WESNN(3,N)
+        CALL STIEGLITZSNOW_CALC_TPSNOW(N_SNOW, HTSNNN(:,N), WESNN(:,N), TPSN, FICES)
 
-           tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
+        !AVET_SNOW(N)=(TPSN(1)+TF)*WESNN(1,N) + (TPSN(2)+TF)*WESNN(2,N) +       &
+        !     (TPSN(3)+TF)*WESNN(3,N)
 
-           AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
+        tmpvec_Nsnow = (tpsn(1:N_snow)+tf)*wesnn(1:N_snow,N)
+
+        AVET_SNOW(N) = sum(tmpvec_Nsnow(1:N_snow))
            
         WAT_10CM(N)=0.1*(RZEQ(N)+RZEXC(N))+SRFEXC(N)
 
@@ -1510,7 +1511,7 @@
         TOTICE_SOIL(N)=TOTWAT_SOIL(N)*FRICE(N)
 
 
-        ENDDO     
+        ENDDO  ! N=1,NCH (PROCESS DATA AS NECESSARY PRIOR TO RETURN)   
 
       if(numout.ne.0) then
        do i = 1,numout
@@ -2901,6 +2902,7 @@
 !****
 
  ! *******************************************************************
+
   subroutine catch_calc_tsurf( NTILES, tc1, tc2, tc4, wesnn, htsnn,    &
        ar1, ar2, ar4, tsurf )
         
@@ -2926,30 +2928,24 @@
     
     real,    dimension(       NTILES), intent(out)          :: tsurf
     
-
-
     ! ----------------------------
     !    
     ! local variables
     
-    integer :: n
+    integer                    :: n
     
-    real, dimension(NTILES) :: asnow
+    real,    dimension(NTILES) :: asnow
     
-    real, dimension(1)      :: tpsn1, real_dummy
+    real                       :: tpsn1, real_dummy
 
-
+    logical                    :: ice1, tzero
 
     ! ------------------------------------------------------------------
 
     ! Compute tsurf excluding snow
 
-
-    
     call catch_calc_tsurf_excl_snow( NTILES, tc1, tc2, tc4, ar1, ar2, ar4, tsurf )
 
-
-    
     ! Compute snow covered area
     
     call StieglitzSnow_calc_asnow( N_snow, NTILES, wesnn, asnow )
@@ -2959,14 +2955,13 @@
     do n=1,NTILES
        
        if (asnow(n)>0.) then
-
-
-          
+                    
           ! StieglitzSnow_calc_tpsnow() returns snow temperature in deg Celsius
           
-          call StieglitzSnow_calc_tpsnow( 1, htsnn(1,n), wesnn(1,n), tpsn1, real_dummy ) 
+          call StieglitzSnow_calc_tpsnow( htsnn(1,n), wesnn(1,n), tpsn1, real_dummy,  &
+               ice1, tzero, .false. ) 
           
-          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1(1) + TF)
+          tsurf(n) = (1. - asnow(n))*tsurf(n) + asnow(n)*(tpsn1 + TF)
           
        end if
        

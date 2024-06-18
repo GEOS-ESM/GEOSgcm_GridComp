@@ -74,7 +74,8 @@ module GEOS_SurfaceGridCompMod
 
   type( ESMF_VM ) :: VMG
 
-! !PUBLIC MEMBER FUNCTIONS:
+
+  ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
 
@@ -96,13 +97,17 @@ module GEOS_SurfaceGridCompMod
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
   integer :: DO_OBIO, ATM_CO2
+  integer :: DO_WAVES
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+  logical :: DO_FIRE_DANGER
+  logical :: DO_DATA_ATM4OCN
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  integer, parameter :: NB_OBIO = 33    !total number of bands for OradBio
   integer, parameter :: ATM_CO2_FOUR = 4
 !
 
@@ -111,9 +116,16 @@ module GEOS_SurfaceGridCompMod
   type T_Routing
      integer :: srcTileID, dstTileID,     &
                 srcIndex=-1, dstIndex=-1, &
-                srcPE=-1, dstPE=-1 
+                srcPE=-1, dstPE=-1, SeqIdx=-1 
      real    :: weight
   end type T_Routing
+
+  type T_RiverRouting
+     type(T_Routing), pointer :: LocalRoutings(:) => NULL()
+     integer, pointer :: karray(:)
+     integer, pointer :: kdx(:)
+     integer, pointer :: BlockSizes(:), displ(:)
+  end type T_RiverRouting
 
 ! Internal state and its wrapper
 ! ------------------------------
@@ -122,7 +134,7 @@ module GEOS_SurfaceGridCompMod
      private
      type (MAPL_LocStreamXFORM)  :: XFORM_IN (NUM_CHILDREN)
      type (MAPL_LocStreamXFORM)  :: XFORM_OUT(NUM_CHILDREN)
-     type (T_Routing), pointer   :: LocalRoutings(:) => NULL()                
+     type (T_RiverRouting), pointer   :: RoutingType => NULL()                
   end type T_SURFACE_STATE
 
   type SURF_WRAP
@@ -198,7 +210,7 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE
+    INTEGER                                 :: LSM_CHOICE, DO_CICE_THERMO
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF        ! info from Surface Config File 
 
@@ -220,6 +232,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+    ! Are we running DataAtm?
+    !------------------------
+    call MAPL_GetResource ( MAPL, DO_DATA_ATM4OCN, Label="USE_DATA_ATM4OCN:" , DEFAULT=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
+
 ! Create Surface Config
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
@@ -229,6 +246,7 @@ module GEOS_SurfaceGridCompMod
     ! -------------------------------------------------------
     call MAPL_GetResource    (MAPL, LSM_CHOICE,    label="LSM_CHOICE:",             DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource    (MAPL, DO_OBIO,       label="USE_OCEANOBIOGEOCHEM:",   DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource    (MAPL, DO_WAVES,      label="USE_WAVES:",              DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource    (SCF,  ATM_CO2,       label='ATM_CO2:',                DEFAULT=2,          __RC__ ) 
     call MAPL_GetResource    (SCF,  catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,          __RC__ )
@@ -237,19 +255,20 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2",   __RC__ )
     elseif (LSM_CHOICE.eq.2) then                                                                                             
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )           
-    elseif (LSM_CHOICE.eq.3) then                                                                                         
-       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
+!    elseif (LSM_CHOICE.eq.3) then                                                                                         
+!       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
     else
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
     call MAPL_GetResource    (SCF,  CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,          __RC__ )
+    call MAPL_GetResource    (SCF,  DO_FIRE_DANGER,label='FIRE_DANGER:',            DEFAULT=.false.,    __RC__ )
 
     call ESMF_ConfigDestroy(SCF, __RC__ )
     
     if ((catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
-       do_goswim=.true.
+       DO_GOSWIM=.true.
     else
-       do_goswim=.false.
+       DO_GOSWIM=.false.
     endif
     
 ! Set the Run entry point
@@ -587,7 +606,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -596,7 +615,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -605,7 +624,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -636,6 +655,30 @@ module GEOS_SurfaceGridCompMod
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'CHARNOCK',                          &
+            LONG_NAME          = 'charnock_coefficient',              &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0185,                              &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    end if
+
+    if (DO_DATA_ATM4OCN) then
+       call MAPL_AddImportSpec ( gc,                               &
+         SHORT_NAME = 'DISCHARGE',                                 &
+         LONG_NAME  = 'river_discharge_at_ocean_points',           &
+         UNITS      = 'kg m-2 s-1',                                &
+         RESTART    = MAPL_RestartSkip,                            &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+    end if
 
 !  !EXPORT STATE:
 
@@ -1542,7 +1585,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'max_water_content'         ,&
+    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1759,7 +1802,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWUPSNOW',                    &
-     LONG_NAME          = 'Net_longwave_snow',         &
+     LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1768,7 +1811,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWDNSNOW',                    &
-     LONG_NAME          = 'Net_longwave_snow',         &
+     LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1947,7 +1990,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_outgoing_longwave_flux',&
+    LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -2952,6 +2995,188 @@ module GEOS_SurfaceGridCompMod
 
   END IF
 
+
+  if (DO_WAVES /= 0) then
+    call MAPL_AddExportSpec(GC,                             &
+       LONG_NAME  = 'surface_pressure',                     &
+       UNITS      = 'Pa',                                   &
+       SHORT_NAME = 'PS',                                   &
+       DIMS       = MAPL_DimsHorzOnly,                      &
+       VLOCATION  = MAPL_VLocationNone,                     &
+       RC=STATUS  )
+    VERIFY_(STATUS)
+  end if
+
+  if (DO_FIRE_DANGER) then
+
+    ! hourly
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC',                      &
+         LONG_NAME  = 'fine fuel moisture code',   &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'GFMC',                      &
+         LONG_NAME  = 'grass fuel moisture code',  &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC',                       &
+         LONG_NAME  = 'duff moisture code',        &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC',                        &
+         LONG_NAME  = 'drought code',              &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI',                       &
+         LONG_NAME  = 'fire weather index',        &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI',                       &
+         LONG_NAME  = 'buildup index',             &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI',                       &
+         LONG_NAME  = 'initial spread index',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR',                       &
+         LONG_NAME  = 'daily severity rating',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    ! daily
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY',                &
+         LONG_NAME  = 'fine fuel moisture code (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY',                 &
+         LONG_NAME  = 'duff moisture code (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY',                  &
+         LONG_NAME  = 'drought code (daily)',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY',                 &
+         LONG_NAME  = 'fire weather index (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI_DAILY',                 &
+         LONG_NAME  = 'buildup index (daily)',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY',                 &
+         LONG_NAME  = 'initial spread index (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY',                 &
+         LONG_NAME  = 'daily severity rating (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FFMC_DAILY_',               &
+         LONG_NAME  = 'fine fuel moisture code (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DMC_DAILY_',                &
+         LONG_NAME  = 'duff moisture code (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DC_DAILY_',                 &
+         LONG_NAME  = 'drought code (daily)',      &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'FWI_DAILY_',                &
+         LONG_NAME  = 'fire weather index (daily)',&
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'BUI_DAILY_',                &
+         LONG_NAME  = 'buildup index (daily)',     &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'ISI_DAILY_',                &
+         LONG_NAME  = 'initial spread index (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__) 
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'DSR_DAILY_',                &
+         LONG_NAME  = 'daily severity rating (daily)', &
+         UNITS      = '1',                         &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+
+    ! flammability and ignition sources
+
+    call MAPL_AddExportSpec(GC,                    &
+         SHORT_NAME = 'VPD',                       &
+         LONG_NAME  = 'vapor pressure deficit',    &
+         UNITS      = 'Pa',                        &
+         DIMS       = MAPL_DimsHorzOnly,           &
+         VLOCATION  = MAPL_VLocationNone, __RC__)
+  end if
+
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -3126,8 +3351,19 @@ module GEOS_SurfaceGridCompMod
 ! the children; but our children do not talk to each other, only to us
 ! --------------------------------------------------------------------
 
-    call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
-    VERIFY_(STATUS)
+    ! Note; SURFSTATE is only connected between AGCM and OGCM if USE_CICE_Thermo is set
+    ! to 2. Otherwise it is not and indeed, SURFSTATE does not seem to exist. As such,
+    ! we use the old TerminateImport of all of ocean for less than 2
+
+    call MAPL_GetResource ( MAPL, DO_CICE_THERMO, Label="USE_CICE_Thermo:" , DEFAULT=0, _RC)
+    if (DO_CICE_THERMO == 2) then
+       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                      CHILD_IDS=[OCEAN],  RC=STATUS  )
+       VERIFY_(STATUS)
+    else
+       call MAPL_TerminateImport    ( GC, CHILD = OCEAN,   RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 #ifndef AQUA_PLANET
     call MAPL_TerminateImport    ( GC, CHILD = LAKE,    RC=STATUS  )
     VERIFY_(STATUS)
@@ -3191,26 +3427,26 @@ module GEOS_SurfaceGridCompMod
            VLOCATION          = MAPL_VLocationNone,                  &
            RC=STATUS  )
       VERIFY_(STATUS)
-       
-      call MAPL_AddImportSpec(GC,                              &
-           SHORT_NAME         = 'FSWBAND',                           &
-           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air', &
-           UNITS              = 'W m-2',                             &
-           DIMS               = MAPL_DimsHorzOnly,                   &
-           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-           VLOCATION          = MAPL_VLocationNone,                  &
-           RC=STATUS  )
-      VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                              &
-           SHORT_NAME         = 'FSWBANDNA',                         &
-           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
-           UNITS              = 'W m-2',                             &
-           DIMS               = MAPL_DimsHorzOnly,                   &
-           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-           VLOCATION          = MAPL_VLocationNone,                  &
-           RC=STATUS  )
-      VERIFY_(STATUS)
+       call MAPL_AddImportSpec(GC,                              &  
+            SHORT_NAME         = 'DROBIO',                            &
+            LONG_NAME          = 'surface_downwelling_shortwave_beam_flux_per_OBIO_band', &
+            UNITS              = 'W m-2',                             &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            UNGRIDDED_DIMS     = (/NB_OBIO/),                         &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                              &
+            SHORT_NAME         = 'DFOBIO',                            &
+            LONG_NAME          = 'surface_downwelling_shortwave_diffuse_flux_per_OBIO_band', &
+            UNITS              = 'W m-2',                             &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            UNGRIDDED_DIMS     = (/NB_OBIO/),                         &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
 
       RETURN_(ESMF_SUCCESS)
     end subroutine OBIO_setServices
@@ -3474,7 +3710,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     if (RoutingFile /= "") then
-       call InitializeRiverRouting(SURF_INTERNAL_STATE%LocalRoutings, &
+       call InitializeRiverRouting(SURF_INTERNAL_STATE%RoutingType, &
             RoutingFile, LocStream, rc=STATUS)
        VERIFY_(STATUS)
 
@@ -3517,9 +3753,9 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform( LOCSTREAM, PCMETILE, PCME, RC=STATUS)
           VERIFY_(STATUS)
 
-          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, PUMETILE, PUMEDISTILE, RC=STATUS)
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PUMETILE, PUMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
-          call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, PCMETILE, PCMEDISTILE, RC=STATUS)
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, PCMETILE, PCMEDISTILE, RC=STATUS)
           VERIFY_(STATUS)
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
@@ -3551,11 +3787,16 @@ module GEOS_SurfaceGridCompMod
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
-  subroutine InitializeRiverRouting(LocalRoutings, RoutingFile, Stream, rc)
-    type(T_Routing), pointer         :: LocalRoutings(:)
+  subroutine InitializeRiverRouting(RoutingType, RoutingFile, Stream, rc)
+    type(T_RiverRouting), pointer    :: RoutingType
     character(len=*),        intent(IN) :: RoutingFile
     type(MAPL_LocStream), intent(IN) :: Stream
     integer, optional,    intent(OUT):: rc
+
+    type(T_Routing), pointer         :: LocalRoutings(:) => NULL()
+    integer, pointer :: karray(:)
+    integer, pointer :: kdx(:)
+    integer, pointer :: BlockSizes(:), displ(:)
 
     type(ESMF_VM)            :: VM
     integer                  :: comm, nDEs, myPE, i, numRoutings
@@ -3565,9 +3806,11 @@ module GEOS_SurfaceGridCompMod
     integer, pointer         :: Active(:,:)
     integer, pointer         :: ActiveGlobal(:,:)
     integer                  :: numActive, numLocalRoutings
-    integer, allocatable     :: BlockSizes(:), displ(:)
     integer, pointer         :: Local_Id(:)
     integer                  :: unit
+    integer :: ksum, n, nsdx
+    integer :: ntotal, k
+    integer, allocatable :: kn(:), kseq(:), tmparray(:)
 #ifdef DEBUG
     character(len=ESMF_MAXSTR)  :: routefile
 #endif
@@ -3638,7 +3881,8 @@ module GEOS_SurfaceGridCompMod
 !  assigned an index of -1.
 
        Routing => tmpLocalRoutings(i)
-
+       Routing%seqIdx = i
+       
        call Tile2Index(Routing, Local_Id)
 
        if(Routing%srcIndex>0 .and. Routing%dstIndex>0) then
@@ -3749,6 +3993,71 @@ module GEOS_SurfaceGridCompMod
     close(unit)
 
 #endif
+    
+    !ALT NEW ROUTING to make communication more effective
+
+    nsdx=0
+    do i=1,numLocalRoutings
+       !notneeded if (mype == Routing(i)%dstPE) nddx = nddx+1
+       if (mype == LocalRoutings(i)%srcPE) nsdx = nsdx+1
+    end do
+    allocate(kdx(nsdx), blocksizes(nDEs), _STAT)
+    blocksizes=0
+    
+    ! exchange with everybody else
+    call MPI_AllGather(nsdx, 1, MP_Integer, &
+         blocksizes, 1, MP_Integer, comm, status)
+    _VERIFY(status)
+    
+    ! now everybody has blocksizes(nDEs)
+
+    ntotal = sum(blocksizes) ! should be same as # of paired sources and sinks (npairs)
+    _ASSERT(ntotal==numRoutings, 'Number source/sinks does not match')
+    allocate (karray(numRoutings), _STAT) !declare as target!!!
+    karray = 0
+    allocate (displ(0:nDEs), _STAT) !declare as target!!!
+    
+    ksum = 0
+    displ(0)=ksum
+    do n=1,nDEs
+       ksum = ksum + blocksizes(n)
+       displ(n)=ksum
+    end do
+    ! as another sanity check: ksum should be the same as npairs
+    _ASSERT(displ(nDEs)==ntotal, 'Displ source/sinks does not match')
+
+    allocate(kseq(nsdx), _STAT)
+    allocate(tmparray(numRoutings), _STAT)
+    ! local k index
+    k=0
+    do i=1,size(LocalRoutings)
+       if (mype==LocalRoutings(i)%srcPE) then
+          k=k+1
+          kseq(k) = LocalRoutings(i)%seqIdx
+          kdx(k) = i
+       end if
+    end do
+
+    call MPI_AllGatherV(kseq, nsdx, MP_Integer, &
+         tmparray, blocksizes, displ, MP_Integer, comm, status)
+    _VERIFY(STATUS)      
+
+    deallocate(kseq)
+    do n=1,nDEs
+       do k=1,blocksizes(n)
+          i=tmparray(displ(n-1)+k)
+          karray(i)=k
+       end do
+    end do
+    deallocate(tmparray)
+    
+    allocate(RoutingType, _STAT)
+    RoutingType%LocalRoutings => LocalRoutings
+    RoutingType%karray => karray
+    RoutingType%kdx => kdx
+    RoutingType%BlockSizes => BlockSizes
+    RoutingType%displ => displ
+    
     return
 
   contains
@@ -3857,6 +4166,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: PCU     => NULL()
     real, pointer, dimension(:,:) :: PHIS    => NULL()
 
+    real, pointer, dimension(:,:) :: CHARNOCK => NULL()
+
+
 ! Pointers to gridded internals
 
     real, pointer, dimension(:,:) :: CT   => NULL()
@@ -3917,6 +4229,8 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: UWINDLMTILE => NULL()
     real, pointer, dimension(:) :: VWINDLMTILE => NULL()
     real, pointer, dimension(:) :: PCUTILE     => NULL()
+
+    real, pointer, dimension(:) :: CHARNOCKTILE=> NULL()
 
 ! Pointers to tiled versions of internals
 
@@ -4034,6 +4348,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , PCU   , 'PCU'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , PHIS  , 'PHIS'  ,  RC=STATUS); VERIFY_(STATUS)
 
+    if (DO_WAVES /= 0) then
+      call MAPL_GetPointer(IMPORT  , CHARNOCK , 'CHARNOCK',  RC=STATUS); VERIFY_(STATUS)
+    end if
+
 ! Pointers to grid outputs
 !-------------------------
 
@@ -4057,14 +4375,14 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , MOQ2M , 'Q2M' ,  ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU2M , 'U2M' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV2M , 'V2M' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , MOT10M , 'T10M' ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , MOQ10M , 'Q10M' ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MOT10M , 'T10M' ,ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MOQ10M , 'Q10M' ,ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU10M , 'U10M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV10M , 'V10M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU50M , 'U50M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV50M , 'V50M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , UU10M   , 'UU10M'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , RH2M    , 'RH2M'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , RH2M    , 'RH2M'   ,  ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , T2MDEW , 'T2MDEW' ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , T2MWET , 'T2MWET' ,   RC=STATUS); VERIFY_(STATUS)
   else
@@ -4134,6 +4452,10 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     allocate(  PCUTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
+    if (DO_WAVES /= 0) then
+      allocate(CHARNOCKTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+    end if
 
 ! Imports at the tiles
 !---------------------
@@ -4151,6 +4473,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM,  UWINDLMTILE,  UWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  VWINDLMTILE,  VWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  PCUTILE,      PCU,     RC=STATUS); VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+      call MAPL_LocStreamTransform( LOCSTREAM,  CHARNOCKTILE,  CHARNOCK, RC=STATUS); VERIFY_(STATUS)
+    end if
 
 ! Allocate tile versions of internal
 !------------------------------------
@@ -4480,11 +4806,10 @@ module GEOS_SurfaceGridCompMod
     if(associated(   UWINDLMTILE)) deallocate(    UWINDLMTILE)
     if(associated(   VWINDLMTILE)) deallocate(    VWINDLMTILE)
 
+    if(associated(CHARNOCKTILE))   deallocate(CHARNOCKTILE)
+
 !  All done
 !-----------
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
 
     call MAPL_TimerOff(MAPL,"-RUN1" )
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -4539,6 +4864,11 @@ module GEOS_SurfaceGridCompMod
         VERIFY_(STATUS)
         call FILLIN_TILE(GIM(type), 'PCU', PCUTILE, XFORM, RC=STATUS)
         VERIFY_(STATUS)
+        if (DO_WAVES /= 0) then
+          call FILLIN_TILE(GIM(type), 'CHARNOCK', CHARNOCKTILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+        end if
+
 
 ! Allocate the child's needed exports
 !------------------------------------
@@ -4980,6 +5310,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FRLAND    => NULL()
     real, pointer, dimension(:,:) :: FRLANDICE => NULL()
     real, pointer, dimension(:,:) :: HLATN     => NULL()
+    real, pointer, dimension(:,:) :: PS_       => NULL()
+
+
    
     real, pointer, dimension(:,:) :: HLATWTR  => NULL()
     real, pointer, dimension(:,:) :: HLATICE  => NULL()
@@ -5151,6 +5484,34 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: BTRANT      => NULL()
     real, pointer, dimension(:,:) :: SIF         => NULL()
     real, pointer, dimension(:,:) :: CNFSEL      => NULL()
+
+! Fire danger
+    real, pointer, dimension(:,:) :: FFMC        => NULL()
+    real, pointer, dimension(:,:) :: GFMC        => NULL()
+    real, pointer, dimension(:,:) :: DMC         => NULL()
+    real, pointer, dimension(:,:) :: DC          => NULL()
+    real, pointer, dimension(:,:) :: ISI         => NULL()
+    real, pointer, dimension(:,:) :: BUI         => NULL()
+    real, pointer, dimension(:,:) :: FWI         => NULL()
+    real, pointer, dimension(:,:) :: DSR         => NULL()
+
+    real, pointer, dimension(:,:) :: FFMC_DAILY  => NULL()
+    real, pointer, dimension(:,:) :: DMC_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: DC_DAILY    => NULL()
+    real, pointer, dimension(:,:) :: ISI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: BUI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: FWI_DAILY   => NULL()
+    real, pointer, dimension(:,:) :: DSR_DAILY   => NULL()
+
+    real, pointer, dimension(:,:) :: FFMC_DAILY_ => NULL()
+    real, pointer, dimension(:,:) :: DMC_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: DC_DAILY_   => NULL()
+    real, pointer, dimension(:,:) :: ISI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: BUI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: FWI_DAILY_  => NULL()
+    real, pointer, dimension(:,:) :: DSR_DAILY_  => NULL()
+
+    real, pointer, dimension(:,:) :: VPD         => NULL()
 
 !   These are the tile versions of the imports
 
@@ -5415,6 +5776,35 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SLITILE      => NULL()
     real, pointer, dimension(:) :: ZTHTILE      => NULL()
 
+! Fire danger
+    real, pointer, dimension(:) :: FFMCTILE       => NULL()
+    real, pointer, dimension(:) :: GFMCTILE       => NULL()
+    real, pointer, dimension(:) :: DMCTILE        => NULL()
+    real, pointer, dimension(:) :: DCTILE         => NULL()
+    real, pointer, dimension(:) :: ISITILE        => NULL()
+    real, pointer, dimension(:) :: BUITILE        => NULL()
+    real, pointer, dimension(:) :: FWITILE        => NULL()
+    real, pointer, dimension(:) :: DSRTILE        => NULL()
+
+    real, pointer, dimension(:) :: FFMCDAILYTILE  => NULL()
+    real, pointer, dimension(:) :: DMCDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: DCDAILYTILE    => NULL()
+    real, pointer, dimension(:) :: ISIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: BUIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: FWIDAILYTILE   => NULL()
+    real, pointer, dimension(:) :: DSRDAILYTILE   => NULL()
+
+    real, pointer, dimension(:) :: FFMCDAILYTILE_ => NULL()
+    real, pointer, dimension(:) :: DMCDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: DCDAILYTILE_   => NULL()
+    real, pointer, dimension(:) :: ISIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: BUIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: FWIDAILYTILE_  => NULL()
+    real, pointer, dimension(:) :: DSRDAILYTILE_  => NULL()
+
+    real, pointer, dimension(:) :: VPDTILE        => NULL()
+
+
     real, pointer, dimension(:,:) :: TMP => NULL()
     real, pointer, dimension(:,:) :: TTM => NULL()
     real, pointer, dimension(:,:) :: QTM => NULL()
@@ -5436,14 +5826,15 @@ module GEOS_SurfaceGridCompMod
 ! following three active only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR (=4)
 !   IMPORTS
     real, pointer, dimension(:,:)   :: CO2SC     => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
+    real, pointer, dimension(:,:,:) :: DRBAND    => NULL()           
+    real, pointer, dimension(:,:,:) :: DFBAND    => NULL() 
 
 !   tiled versio of IMPORTS
     real, pointer, dimension(:)   :: CO2SCTILE     => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
+    real, pointer, dimension(:,:) :: DRBANDTILE    => NULL()
+    real, pointer, dimension(:,:) :: DFBANDTILE    => NULL()
 !
+    real, pointer, dimension(:,:) :: DISCHARGE_IM    => NULL()
 
 ! for reading "forced" precip
     real, pointer, dimension(:,:)           :: PTTe => NULL()
@@ -6111,9 +6502,9 @@ module GEOS_SurfaceGridCompMod
   endif
 
 
-    call MAPL_GetPointer(EXPORT  , HLATWTR   , 'HLATWTR'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , HLATWTR   , 'HLATWTR'   ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , HLATICE   , 'HLATICE'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  ,   SHWTR   , 'SHWTR'     ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  ,   SHWTR   , 'SHWTR'     ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   SHICE   , 'SHICE'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   TAUXW   , 'TAUXW'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   TAUXI   , 'TAUXI'     ,  RC=STATUS); VERIFY_(STATUS)
@@ -6125,7 +6516,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SWNDICE   , 'SWNDICE'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWOCN   , 'SNOWOCN'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RAINOCN   , 'RAINOCN'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , TSKINW    , 'TSKINW'    ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TSKINW    , 'TSKINW'    ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TSKINICE  , 'TSKINICE'  ,  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , HICE    , 'HICE'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -6156,8 +6547,8 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GetPointer(EXPORT  , EVAPOU  , 'EVAPOUT',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SUBLIM  , 'SUBLIM' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , SHOU    , 'SHOUT'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , HLWUP   , 'HLWUP'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SHOU    , 'SHOUT'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , HLWUP   , 'HLWUP'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , LWNDSRF , 'LWNDSRF',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SWNDSRF , 'SWNDSRF',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RUNOFF  , 'RUNOFF' ,  RC=STATUS); VERIFY_(STATUS)
@@ -6253,6 +6644,40 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNFSEL  , 'CNFSEL' ,  RC=STATUS); VERIFY_(STATUS)
     END IF
 
+    if (DO_WAVES /= 0) then
+       call MAPL_GetPointer(EXPORT  , PS_     , 'PS',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       PS_ = PS
+    end if    
+
+    if (DO_FIRE_DANGER) then
+       call MAPL_GetPointer(EXPORT  , FFMC        , 'FFMC'       ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , GFMC        , 'GFMC'       ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC         , 'DMC'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC          , 'DC'         ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI         , 'FWI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI         , 'BUI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI         , 'ISI'        ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR         , 'DSR'        ,  RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(EXPORT  , FFMC_DAILY  , 'FFMC_DAILY' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC_DAILY   , 'DMC_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC_DAILY    , 'DC_DAILY'   ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI_DAILY   , 'FWI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI_DAILY   , 'BUI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI_DAILY   , 'ISI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR_DAILY   , 'DSR_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
+ 
+       call MAPL_GetPointer(EXPORT  , FFMC_DAILY_ , 'FFMC_DAILY_',  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DMC_DAILY_  , 'DMC_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DC_DAILY_   , 'DC_DAILY_'  ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , FWI_DAILY_  , 'FWI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , BUI_DAILY_  , 'BUI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , ISI_DAILY_  , 'ISI_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT  , DSR_DAILY_  , 'DSR_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(EXPORT  , VPD         , 'VPD'        ,  RC=STATUS); VERIFY_(STATUS)
+    end if
+
 ! Force allocation for ice fraction for lwi mask
 
     call MAPL_GetPointer(EXPORT  , FRI     , 'FRACI'  ,  alloc=associated(LWI) , rC=STATUS)
@@ -6265,7 +6690,7 @@ module GEOS_SurfaceGridCompMod
 !-----------------------------------------------------------------------
 
     if (associated(DISCHARGE)) then
-       _ASSERT(associated(SURF_INTERNAL_STATE%LocalRoutings),'needs informative message')
+       _ASSERT(associated(SURF_INTERNAL_STATE%RoutingType),'needs informative message')
 !ALT       call MAPL_GetPointer(EXPORT, RUNOFF, 'RUNOFF', alloc=.true.,  RC=STATUS)
 !ALT       VERIFY_(STATUS)
     end if
@@ -6374,7 +6799,7 @@ module GEOS_SurfaceGridCompMod
 
     ZTHTILE = max(0.0,ZTHTILE)
 
-! We need atmsopheric version of the run1 outputs put back on tiles
+! We need atmospheric version of the run1 outputs put back on tiles
 !------------------------------------------------------------------
 
     allocate(   TSTILE(NT), STAT=STATUS)
@@ -6730,9 +7155,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDSRF ,LWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDSRF ,SWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
-!ALT    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
-!ALT    call MKTILE(DISCHARGE,DISCHARGETILE,NT,RC=STATUS); VERIFY_(STATUS)
-    if (associated(SURF_INTERNAL_STATE%LocalRoutings)) then ! routing file exists
+    if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATA_ATM4OCN) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
        allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -6828,6 +7251,36 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(CNFSEL  ,CNFSELTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     END IF
 
+    if (DO_FIRE_DANGER) then 
+       call MKTILE(FFMC,        FFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(GFMC,        GFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC,         DMCTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC,          DCTILE,            NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI,         FWITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI,         BUITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI,         ISITILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR,         DSRTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(FFMC_DAILY,  FFMCDAILYTILE,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC_DAILY,   DMCDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC_DAILY,    DCDAILYTILE,       NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI_DAILY,   FWIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI_DAILY,   BUIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI_DAILY,   ISIDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR_DAILY,   DSRDAILYTILE,      NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(FFMC_DAILY_, FFMCDAILYTILE_,    NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DMC_DAILY_,  DMCDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DC_DAILY_,   DCDAILYTILE_,      NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(FWI_DAILY_,  FWIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(BUI_DAILY_,  BUIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(ISI_DAILY_,  ISIDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+       call MKTILE(DSR_DAILY_,  DSRDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
+
+       call MKTILE(VPD,         VPDTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
+    end if   
+
+
     FRTILE = 0.0
 
 !  Cycle through all continental children (skip ocean),
@@ -6853,9 +7306,20 @@ module GEOS_SurfaceGridCompMod
 
        ! Create discharge at exit tiles by routing runoff
 
-       call RouteRunoff(SURF_INTERNAL_STATE%LocalRoutings, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
-       VERIFY_(STATUS)
-       
+       if (DO_DATA_ATM4OCN) then
+          call MAPL_GetPointer(IMPORT  , DISCHARGE_IM, 'DISCHARGE',  RC=STATUS); VERIFY_(STATUS)
+          call MAPL_LocStreamTransform( LOCSTREAM,  RUNOFFTILE, DISCHARGE_IM, RC=STATUS)
+          VERIFY_(STATUS)
+          ! it seems redundant to fill both DISCHARGETILE and RUNOFFTILE
+          ! but this is done in case we need to output RUNOFF
+          ! and not to change the existing code too much
+          DISCHARGETILE = RUNOFFTILE 
+    
+       else
+          call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
+          VERIFY_(STATUS)
+       end if
+
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
        !  that used "corrected" precips.
@@ -7736,6 +8200,103 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
 
+! Fire danger
+    if (associated(FFMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC, FFMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(GFMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, GFMC, GFMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC, DMCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC, DCTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI, ISITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI, BUITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI, FWITILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR, DSRTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
+    if (associated(FFMC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY, FFMCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY, DMCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY, DCDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY, ISIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY, BUIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY, FWIDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR_DAILY)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY, DSRDAILYTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
+    if (associated(FFMC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY_, FFMCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DMC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY_, DMCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DC_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY_, DCDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(ISI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY_, ISIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(BUI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY_, BUIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(FWI_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY_, FWIDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(DSR_DAILY_)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY_, DSRDAILYTILE_, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+    if (associated(VPD)) then
+       call MAPL_LocStreamTransform(LOCSTREAM, VPD, VPDTILE, RC=STATUS) 
+       VERIFY_(STATUS)
+    end if
+
+
 ! Fill exports computed on agcm grid
 !-----------------------------------
 
@@ -7759,6 +8320,19 @@ module GEOS_SurfaceGridCompMod
        if(associated( USTAR)) USTAR = FAC
        if(associated( TSTAR)) TSTAR = (SH/MAPL_CP + DSH  *DTS)/(RHOS*FAC)
        if(associated( QSTAR)) QSTAR = (EVAP       + DEVAP*DQS)/(RHOS*FAC)
+    end if
+
+    if (DO_DATA_ATM4OCN) then
+       ! dataAtm operates only on "saltwater" tiles. 
+       ! we need to handle grid boxes withot any ocean
+       ! and avoid division by 0
+       where (CN == MAPL_Undef)
+          CM = 0.01
+          CT = 0.01
+          CQ = 0.01
+          CN = 0.01
+          D0 = 0.0
+       end where
     end if
 
     FAC = sqrt(CN)/MAPL_KARMAN
@@ -7881,18 +8455,17 @@ module GEOS_SurfaceGridCompMod
 
 ! Fill imports/exports for OBIO
 !-------------------------------
-      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
-        call OBIO_fillExports(OCEAN, IMPORT,&
-                              LOCSTREAM, GIM,&
-                              surf_internal_state%xform_in(OCEAN), &
+      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
+        call OBIO_fillExports(OCEAN, IMPORT,&    
+                              LOCSTREAM, GIM,&   
+                              surf_internal_state%xform_in(OCEAN), & 
                               NT, NB_CHOU,&
-                              CO2SC,     FSWBAND,     FSWBANDNA,&
-                              CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
-                              RC)
+                              CO2SC, DRBAND, DFBAND, &
+                              CO2SCTILE, DRBANDTILE, DFBANDTILE, RC)
       else
         nullify(  CO2SCTILE   )
-        nullify(  FSWBANDTILE )
-        nullify(FSWBANDNATILE )
+        nullify(  DRBANDTILE  )
+        nullify(  DFBANDTILE  )
       endif
 
 ! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
@@ -8001,8 +8574,8 @@ module GEOS_SurfaceGridCompMod
     if(associated(  SSSVTILE   )) deallocate(  SSSVTILE   )
     if(associated(  SSWTTILE   )) deallocate(  SSWTTILE   )
     if(associated(  SSSDTILE   )) deallocate(  SSSDTILE   )
-    if(associated(  FSWBANDTILE)) deallocate(  FSWBANDTILE)
-    if(associated(FSWBANDNATILE)) deallocate(FSWBANDNATILE)
+    if(associated(  DRBANDTILE )) deallocate(  DRBANDTILE )
+    if(associated(  DFBANDTILE )) deallocate(  DFBANDTILE )
 
     if(associated(     DTSDTTILE)) deallocate(      DTSDTTILE)
 
@@ -8228,9 +8801,6 @@ module GEOS_SurfaceGridCompMod
 
     if(associated( UUATILE  )) deallocate( UUATILE   )
     if(associated( VVATILE  )) deallocate( VVATILE   )
-
-    call ESMF_VMBarrier(VMG, rc=status)
-    VERIFY_(STATUS)
 
     call MAPL_TimerOff(MAPL,"-RUN2" )
     call MAPL_TimerOff(MAPL,"TOTAL")
@@ -8689,6 +9259,59 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'FHOCN' ,ALLOC=associated(FHOCNTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
+
+      if (DO_FIRE_DANGER) then
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC', ALLOC=associated(FFMCTILE), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'GFMC', ALLOC=associated(GFMCTILE), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC',  ALLOC=associated(DMCTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC',   ALLOC=associated(DCTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI',  ALLOC=associated(ISITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI',  ALLOC=associated(BUITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI',  ALLOC=associated(FWITILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR',  ALLOC=associated(DSRTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC_DAILY',  ALLOC=associated(FFMCDAILYTILE),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC_DAILY',   ALLOC=associated(DMCDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC_DAILY',    ALLOC=associated(DCDAILYTILE),    notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI_DAILY',   ALLOC=associated(ISIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI_DAILY',   ALLOC=associated(BUIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI_DAILY',   ALLOC=associated(FWIDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY',   ALLOC=associated(DSRDAILYTILE),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'FFMC_DAILY_', ALLOC=associated(FFMCDAILYTILE_), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DMC_DAILY_',  ALLOC=associated(DMCDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DC_DAILY_',   ALLOC=associated(DCDAILYTILE_),   notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'ISI_DAILY_',  ALLOC=associated(ISIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BUI_DAILY_',  ALLOC=associated(BUIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'FWI_DAILY_',  ALLOC=associated(FWIDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'DSR_DAILY_',  ALLOC=associated(DSRDAILYTILE_),  notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+
+         call MAPL_GetPointer(GEX(type), dum, 'VPD',         ALLOC=associated(VPDTILE),        notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+      end if   
+
 
 ! All children can produce these                       
                                                                                        
@@ -9470,6 +10093,103 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
       end if
 
+! Fire danger
+      if (associated(FFMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC', FFMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(GFMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'GFMC', GFMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DMC', DMCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DC', DCTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISITILE)) then
+         call FILLOUT_TILE(GEX(type), 'ISI', ISITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUITILE)) then
+         call FILLOUT_TILE(GEX(type), 'BUI', BUITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWITILE)) then
+         call FILLOUT_TILE(GEX(type), 'FWI', FWITILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DSR', DSRTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+      if (associated(FFMCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC_DAILY', FFMCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DMC_DAILY', DMCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DC_DAILY', DCDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'ISI_DAILY', ISIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'BUI_DAILY', BUIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWIDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'FWI_DAILY', FWIDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRDAILYTILE)) then
+         call FILLOUT_TILE(GEX(type), 'DSR_DAILY', DSRDAILYTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+      if (associated(FFMCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'FFMC_DAILY_', FFMCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DMCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DMC_DAILY_', DMCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DCDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DC_DAILY_', DCDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(ISIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'ISI_DAILY_', ISIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(BUIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'BUI_DAILY_', BUIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(FWIDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'FWI_DAILY_', FWIDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+      if (associated(DSRDAILYTILE_)) then
+         call FILLOUT_TILE(GEX(type), 'DSR_DAILY_', DSRDAILYTILE_, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if   
+      if (associated(VPDTILE)) then
+         call FILLOUT_TILE(GEX(type), 'VPD', VPDTILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+
       call MAPL_TimerOff(MAPL,"--RUN2_"//trim(GCNames(type)))
       call MAPL_TimerOff(MAPL,           trim(GCNames(type)))
       
@@ -9691,8 +10411,8 @@ module GEOS_SurfaceGridCompMod
 
   end subroutine FILLOUT_UNGRIDDED
 
-    subroutine RouteRunoff(Routing, Runoff, Discharge, rc)
-      type(T_Routing),  intent(IN ) :: Routing(:)
+    subroutine RouteRunoff(RoutingType, Runoff, Discharge, rc)
+      type(T_RiverRouting),  intent(IN ) :: RoutingType
       real,             intent(IN ) :: Runoff(:)
       real,             intent(OUT) :: Discharge(:)
       integer, optional,intent(OUT) :: rc
@@ -9700,12 +10420,18 @@ module GEOS_SurfaceGridCompMod
       character(len=ESMF_MAXSTR)   :: IAm="RouteRunoff"
       integer                      :: STATUS
 
+      type(T_Routing), pointer :: Routing(:)
+      integer, pointer :: karray(:)
+      integer, pointer :: kdx(:)
+      integer, pointer :: BlockSizes(:), displ(:)
+
       type(ESMF_VM) :: VM
       integer       :: myPE, nDEs, comm
       integer       :: i
       real          :: TileDischarge
       integer       :: mpstatus(MP_STATUS_SIZE)
-
+      integer :: n, k
+      real, allocatable :: td(:), tarray(:)
 
       call ESMF_VMGetCurrent(VM,                                RC=STATUS)
       VERIFY_(STATUS)
@@ -9714,39 +10440,48 @@ module GEOS_SurfaceGridCompMod
       call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
       VERIFY_(STATUS)
 
+      Routing => RoutingType%LocalRoutings
+      karray => RoutingType%karray
+      kdx => RoutingType%kdx
+      BlockSizes => RoutingType%BlockSizes
+      displ => RoutingType%displ
+    
       Discharge   = 0.0
 
+      n=size(kdx)
+      allocate(td(n), _STAT)
+      allocate(tarray(displ(nDEs)), _STAT)
+      do k=1,n
+         i=kdx(k)
+
+         TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
+         TileDischarge = max(TileDischarge, 0.0)
+         td(k) = TileDischarge
+      end do
+      call MPI_AllGatherV(td, n, MP_Real, &
+           tarray, blocksizes, displ, MP_Real, comm, status)
+      _VERIFY(STATUS)      
+
       do i=1,size(Routing)
-         if(Routing(i)%SrcPE==myPE) then
-            TileDischarge = Runoff(Routing(i)%SrcIndex)*Routing(i)%weight
-            TileDischarge = max(TileDischarge, 0.0)
-            if(Routing(i)%DstPE==myPE) then
-               Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
-            else
-               call MPI_Send(TileDischarge,1,MP_REAL,Routing(i)%DstPE,123,comm,status)
-               VERIFY_(STATUS)
-            end if
-         else
-            if(Routing(i)%DstPE==myPE) then
-               call MPI_Recv(TileDischarge,1,MP_REAL, Routing(i)%SrcPE,123,comm,mpstatus,status)
-               VERIFY_(STATUS)
-               Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
-            else
-               _ASSERT(.false.,'needs informative message')
-            end if
+         if(Routing(i)%DstPE==myPE) then
+            n=Routing(i)%srcPe
+            k=karray(Routing(i)%seqIdx)
+            TileDischarge=tarray(displ(n)+k)
+            Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
          end if
       end do
-
+      deallocate(td, _STAT)
+      deallocate(tarray, _STAT)
+      
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
 
     subroutine OBIO_fillExports(type, IMPORT, &
                                 LOCSTREAM, GIM, &
                                 XFORM, &
-                                NT, NB_CHOU, &
-                                CO2SC,     FSWBAND,     FSWBANDNA,&
-                                CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
-                                RC)
+                                NT, NB_CHOU, &   
+                                CO2SC, DRBAND, DFBAND, &
+                                CO2SCTILE, DRBANDTILE, DFBANDTILE, RC)
 
       integer,           intent(   IN )     :: TYPE
       type(ESMF_State),  intent(inout)      :: IMPORT ! Import state
@@ -9759,8 +10494,8 @@ module GEOS_SurfaceGridCompMod
       integer, optional, intent(  OUT) ::  RC
 
       real, pointer ::  CO2SCTILE(:), CO2SC(:,:),&
-                        FSWBANDTILE(:,:), FSWBAND(:,:,:),&
-                        FSWBANDNATILE(:,:), FSWBANDNA(:,:,:)
+                        DRBANDTILE(:,:), DRBAND(:,:,:),&
+                        DFBANDTILE(:,:), DFBAND(:,:,:)
 
       character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_fillExports"
       integer                                   :: STATUS
@@ -9772,28 +10507,28 @@ module GEOS_SurfaceGridCompMod
 !      type (MAPL_LocStreamXFORM)              :: XFORM
 
       call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DRBAND    , 'DROBIO'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DFBAND    , 'DFOBIO'   , RC=STATUS); VERIFY_(STATUS)
 
       allocate(CO2SCTILE(NT), STAT=STATUS)
       VERIFY_(STATUS)
-      allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
+      allocate(DRBANDTILE(  NT,NB_OBIO), STAT=STATUS)
       VERIFY_(STATUS)
-      allocate(FSWBANDNATILE(NT,NB_CHOU), STAT=STATUS)
+      allocate(DFBANDTILE(  NT,NB_OBIO), STAT=STATUS)
       VERIFY_(STATUS)
 
       call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
-      do K = 1, NB_CHOU
-        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDTILE(  :,K), FSWBAND(  :,:,K), RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDNATILE(:,K), FSWBANDNA(:,:,K), RC=STATUS)
-        VERIFY_(STATUS)
+      do K = 1, NB_OBIO
+         call MAPL_LocStreamTransform(LOCSTREAM, DRBANDTILE(:,K), DRBAND(:,:,K), RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_LocStreamTransform(LOCSTREAM, DFBANDTILE(:,K), DFBAND(:,:,K), RC=STATUS)
+         VERIFY_(STATUS)
       end do
 
 !      XFORM = surf_internal_state%xform_in(type)
       call FILLIN_TILE(GIM(type), 'CO2SC',     CO2SCTILE,     XFORM, RC=STATUS); VERIFY_(STATUS)
-      call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
-      call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'DRBAND',    DRBANDTILE,    XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'DFBAND',    DFBANDTILE,    XFORM, RC=STATUS); VERIFY_(STATUS)
 
       RETURN_(ESMF_SUCCESS)
     end subroutine OBIO_fillExports

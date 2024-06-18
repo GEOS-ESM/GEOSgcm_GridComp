@@ -1,31 +1,25 @@
 #include "MAPL_Generic.h"
 
 module CatchmentCNRstMod
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, ONLY:      &
+       GetIds  
   use mpi
+  use ESMF
   use MAPL
   use CatchmentRstMod, only : CatchmentRst
+  use clm_varpar_shared , only : nzone => NUM_ZON_CN, nveg => NUM_VEG_CN, &
+                                 VAR_COL_40, VAR_PFT_40, VAR_COL_45, VAR_PFT_45, &
+                                 npft => numpft_CN
+  use nanMod         , only : nan
+  
   implicit none
 
-  real, parameter :: ECCENTRICITY  = 0.0167
-  real, parameter :: PERIHELION    = 102.0
-  real, parameter :: OBLIQUITY     = 23.45
-  integer, parameter :: EQUINOX    = 80
-
-  integer, parameter :: nveg    = 4
-  integer, parameter :: nzone = 3
-  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
-  integer, parameter :: npft    = 19
-  integer, parameter :: npft_clm45    = 19
-  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column 
-  real,    parameter :: nan = O'17760000000'
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
   integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
 
   type, extends(CatchmentRst) :: CatchmentCNRst
      logical :: isCLM45
+     logical :: isCLM40
      integer :: VAR_COL
      integer :: VAR_PFT
      real, allocatable ::    cnity(:,:)
@@ -48,26 +42,26 @@ module CatchmentCNRstMod
      real, allocatable ::    HDM     (:)
      real, allocatable ::    GDP     (:)
      real, allocatable ::    PEATF   (:) 
-     ! below is not necessary. It is not read. It is set to 0 during writing
-     !real, allocatable :: bflowm(:)
-     !real, allocatable :: totwatm(:)
-     !real, allocatable :: tairm(:)
-     !real, allocatable :: tpm(:)
-     !real, allocatable :: cnsum(:)
-     !real, allocatable :: sndzm(:)
-     !real, allocatable :: asnowm(:)
-     !real, allocatable :: ar1m(:)
-     !real, allocatable :: rainfm(:)
-     !real, allocatable :: rhm(:)
-     !real, allocatable :: runsrfm(:)
-     !real, allocatable :: snowfm(:)
-     !real, allocatable :: windm(:)
-     !real, allocatable :: tprec10d(:)
-     !real, allocatable :: tprec60d(:)
-     !real, allocatable :: t2m10d(:)
-     !real, allocatable :: sfmcm(:)
-     !real, allocatable :: psnsunm(:,:,:)
-     !real, allocatable :: psnsham(:,:,:)
+
+     real, allocatable :: bflowm(:)
+     real, allocatable :: totwatm(:)
+     real, allocatable :: tairm(:)
+     real, allocatable :: tpm(:)
+     real, allocatable :: cnsum(:)
+     real, allocatable :: sndzm(:)
+     real, allocatable :: asnowm(:)
+     real, allocatable :: ar1m(:)
+     real, allocatable :: rainfm(:)
+     real, allocatable :: rhm(:)
+     real, allocatable :: runsrfm(:)
+     real, allocatable :: snowfm(:)
+     real, allocatable :: windm(:)
+     real, allocatable :: tprec10d(:)
+     real, allocatable :: tprec60d(:)
+     real, allocatable :: t2m10d(:)
+     real, allocatable :: sfmcm(:)
+     real, allocatable :: psnsunm(:,:,:)
+     real, allocatable :: psnsham(:,:,:)
      
   contains
      procedure :: write_nc4
@@ -105,6 +99,7 @@ contains
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
  
      catch%isCLM45 = .false.
+     catch%isCLM40 = .false.
      call formatter%open(filename, pFIO_READ, __RC__)
      meta  = formatter%read(__RC__)
      ntiles = meta%get_dimension('tile', __RC__)
@@ -112,26 +107,22 @@ contains
      catch%meta  = meta
      catch%time = time
      if (index(cnclm, '40') /=0) then
-        catch%VAR_COL = VAR_COL_CLM40
-        catch%VAR_PFT = VAR_PFT_CLM40
+        catch%isCLM40 = .true.
+        catch%VAR_COL = VAR_COL_40
+        catch%VAR_PFT = VAR_PFT_40
      endif
      if (index(cnclm, '45') /=0) then
-        catch%VAR_COL = VAR_COL_CLM45
-        catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
+        catch%VAR_COL = VAR_COL_45
+        catch%VAR_PFT = VAR_PFT_45
      endif
 
      if (myid == 0) then
         call catch%allocate_cn(__RC__)
         call catch%read_shared_nc4(formatter, __RC__)
 
-        myVariable => meta%get_variable("ITY")
-        dname => myVariable%get_ith_dimension(2)
-        dim1 = meta%get_dimension(dname)
-        do j=1,dim1
-           call MAPL_VarRead(formatter,"ITY",catch%cnity(:,j),offset1=j, __RC__)
-           call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j, __RC__)
-        enddo
+        call MAPL_VarRead(formatter,"ITY",catch%cnity, __RC__)
+        call MAPL_VarRead(formatter,"FVG",catch%fvg, __RC__)
 
         call MAPL_VarRead(formatter,"TG",catch%tg, __RC__)
         call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID, __RC__)
@@ -142,19 +133,31 @@ contains
         call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR, __RC__)
         call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF, __RC__)
 
-        myVariable => meta%get_variable("CNCOL")
-        dname => myVariable%get_ith_dimension(2)
-        dim1 = meta%get_dimension(dname)
-        if( catch%isCLM45) then
+        if( catch%isCLM40 ) then
+           call MAPL_VarRead(formatter,"SFMCM",   catch%sfmcm , __RC__)
+        endif
+
+        if( catch%isCLM45 ) then
            call MAPL_VarRead(formatter,"ABM",     catch%ABM, __RC__)
            call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP, __RC__)
            call MAPL_VarRead(formatter,"HDM",     catch%HDM     , __RC__)
            call MAPL_VarRead(formatter,"GDP",     catch%GDP     , __RC__)
            call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   , __RC__)
+
+
+           call MAPL_VarRead(formatter,"RHM",       catch%rhm        , __RC__)
+           call MAPL_VarRead(formatter,"WINDM",     catch%windm      , __RC__)
+           call MAPL_VarRead(formatter,"RAINFM",    catch%rainfm     , __RC__)
+           call MAPL_VarRead(formatter,"SNOWFM",    catch%snowfm     , __RC__)
+           call MAPL_VarRead(formatter,"RUNSRFM",   catch%runsrfm    , __RC__)
+           call MAPL_VarRead(formatter,"AR1M",      catch%ar1m       , __RC__)
+           call MAPL_VarRead(formatter,"T2M10D",    catch%T2M10D     , __RC__)
+           call MAPL_VarRead(formatter,"TPREC10D",  catch%TPREC10D   , __RC__)
+           call MAPL_VarRead(formatter,"TPREC60D",  catch%TPREC60D   , __RC__)
+           call MAPL_VarRead(formatter,"SFMM",      catch%sfmm       , __RC__)
         endif
-        do j=1,dim1
-           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j, __RC__)
-        enddo
+        call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL, __RC__)
+
         ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
         ! (to be merged into the "develop" branch in late 2020):
         ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
@@ -162,12 +165,20 @@ contains
         ! resulting in bad values in the "regridded" (re-tiled) restart file. 
         ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
         ! - reichle, 23 Nov 2020
-        myVariable => meta%get_variable("CNPFT")
-        dname => myVariable%get_ith_dimension(2)
-        dim1 = meta%get_dimension(dname)
-        do j=1,dim1
-           call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j, __RC__)
-        enddo
+        call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT, __RC__)
+
+        ! more reading
+        call MAPL_VarRead(formatter,  "BFLOWM",  catch%bflowm ,_RC) 
+        call MAPL_VarRead(formatter,  "TOTWATM", catch%totwatm,_RC) 
+        call MAPL_VarRead(formatter,  "TAIRM",   catch%tairm  ,_RC) 
+        call MAPL_VarRead(formatter,  "TPM",     catch%tpm    ,_RC) 
+        call MAPL_VarRead(formatter,  "CNSUM",   catch%cnsum  ,_RC) 
+        call MAPL_VarRead(formatter,  "SNDZM",   catch%sndzm  ,_RC) 
+        call MAPL_VarRead(formatter,  "ASNOWM",  catch%asnowm ,_RC) 
+        call MAPL_VarRead(formatter,  "PSNSUNM", catch%psnsunm,_RC) 
+        call MAPL_VarRead(formatter,  "PSNSHAM", catch%psnsham,_RC) 
+        call MAPL_VarRead(formatter,  "RZMM",    catch%rzmm   ,_RC)
+        call MAPL_VarRead(formatter,  "TGWM",    catch%tgwm   ,_RC)
      endif
 
      call formatter%close()
@@ -185,17 +196,19 @@ contains
     character(len=256) :: Iam = "CatchmentCNRst_empty"
 
      catch%isCLM45 = .false.
+     catch%isCLM40 = .false.
      catch%ntiles = meta%get_dimension('tile', __RC__)
      catch%time = time
      catch%meta = meta
      if (index(cnclm, '40') /=0) then
-        catch%VAR_COL = VAR_COL_CLM40
-        catch%VAR_PFT = VAR_PFT_CLM40
+        catch%isCLM40 = .true.
+        catch%VAR_COL = VAR_COL_40
+        catch%VAR_PFT = VAR_PFT_40
      endif
      if (index(cnclm, '45') /=0) then
-        catch%VAR_COL = VAR_COL_CLM45
-        catch%VAR_PFT = VAR_PFT_CLM45
         catch%isCLM45 = .true.
+        catch%VAR_COL = VAR_COL_45
+        catch%VAR_PFT = VAR_PFT_45
      endif
 
      call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
@@ -223,14 +236,9 @@ contains
 
      call this%write_shared_nc4(formatter, __RC__)
 
-     myVariable => meta%get_variable("ITY")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarWrite(formatter,"ITY",this%cnity(:,j),offset1=j)
-        call MAPL_VarWrite(formatter,"FVG",this%fvg(:,j),offset1=j)
-        call MAPL_VarWrite(formatter,"TG",this%tg(:,j),offset1=j)
-     enddo
+     call MAPL_VarWrite(formatter,"ITY",this%cnity)
+     call MAPL_VarWrite(formatter,"FVG",this%fvg)
+     call MAPL_VarWrite(formatter,"TG",this%tg)
 
      call MAPL_VarWrite(formatter,"TILE_ID",this%TILE_ID)
      call MAPL_VarWrite(formatter,"NDEP",this%NDEP)
@@ -239,73 +247,44 @@ contains
      call MAPL_VarWrite(formatter,"BGALBVF",this%BGALBVF)
      call MAPL_VarWrite(formatter,"BGALBNR",this%BGALBNR)
      call MAPL_VarWrite(formatter,"BGALBNF",this%BGALBNF)
-     myVariable => meta%get_variable("CNCOL")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
+     call MAPL_VarWrite(formatter,"CNCOL",this%CNCOL)
+     call MAPL_VarWrite(formatter,"CNPFT",this%CNPFT)
 
-     do j=1,dim1
-        call MAPL_VarWrite(formatter,"CNCOL",this%CNCOL(:,j),offset1=j)
-     enddo
-     myVariable => meta%get_variable("CNPFT")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarWrite(formatter,"CNPFT",this%CNPFT(:,j),offset1=j)
-     enddo
-
-     dim1 = meta%get_dimension('tile')
-
-     allocate (var(dim1),source = 0.)
-
-     call MAPL_VarWrite(formatter,"BFLOWM", var)
-     call MAPL_VarWrite(formatter,"TOTWATM",var)
-     call MAPL_VarWrite(formatter,"TAIRM",  var)
-     call MAPL_VarWrite(formatter,"TPM",    var)
-     call MAPL_VarWrite(formatter,"CNSUM",  var)
-     call MAPL_VarWrite(formatter,"SNDZM",  var)
-     call MAPL_VarWrite(formatter,"ASNOWM", var)
-
-     myVariable => meta%get_variable("TGWM")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     do j=1,dim1
-        call MAPL_VarWrite(formatter,"TGWM",var,offset1=j)
-        call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
-     end do
+     call MAPL_VarWrite(formatter,"BFLOWM", this%bflowm )
+     call MAPL_VarWrite(formatter,"TOTWATM",this%totwatm)
+     call MAPL_VarWrite(formatter,"TAIRM",  this%tairm  )
+     call MAPL_VarWrite(formatter,"TPM",    this%tpm    )
+     call MAPL_VarWrite(formatter,"CNSUM",  this%cnsum  )
+     call MAPL_VarWrite(formatter,"SNDZM",  this%sndzm  )
+     call MAPL_VarWrite(formatter,"ASNOWM", this%asnowm )
+     call MAPL_VarWrite(formatter,"TGWM",   this%tgwm)
+     call MAPL_VarWrite(formatter,"RZMM",   this%rzmm)
 
      if (this%isCLM45) then
-        do j=1,dim1
-           call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
-        enddo
+        call MAPL_VarWrite(formatter,"SFMM",  this%sfmm)
 
         call MAPL_VarWrite(formatter,"ABM",     this%ABM, rc =rc     )
         call MAPL_VarWrite(formatter,"FIELDCAP",this%FIELDCAP)
         call MAPL_VarWrite(formatter,"HDM",     this%HDM     )
         call MAPL_VarWrite(formatter,"GDP",     this%GDP     )
         call MAPL_VarWrite(formatter,"PEATF",   this%PEATF   )
-        call MAPL_VarWrite(formatter,"RHM",     var)
-        call MAPL_VarWrite(formatter,"WINDM",   var)
-        call MAPL_VarWrite(formatter,"RAINFM",  var)
-        call MAPL_VarWrite(formatter,"SNOWFM",  var)
-        call MAPL_VarWrite(formatter,"RUNSRFM", var)
-        call MAPL_VarWrite(formatter,"AR1M",    var)
-        call MAPL_VarWrite(formatter,"T2M10D",  var)
-        call MAPL_VarWrite(formatter,"TPREC10D",var)
-        call MAPL_VarWrite(formatter,"TPREC60D",var)
-     else
-        call MAPL_VarWrite(formatter,"SFMCM",  var)
+
+        call MAPL_VarWrite(formatter,"RHM",     this%rhm      )
+        call MAPL_VarWrite(formatter,"WINDM",   this%windm    )
+        call MAPL_VarWrite(formatter,"RAINFM",  this%rainfm   )
+        call MAPL_VarWrite(formatter,"SNOWFM",  this%snowfm   )
+        call MAPL_VarWrite(formatter,"RUNSRFM", this%runsrfm  )
+        call MAPL_VarWrite(formatter,"AR1M",    this%ar1m     )
+        call MAPL_VarWrite(formatter,"T2M10D",  this%t2m10d   )
+        call MAPL_VarWrite(formatter,"TPREC10D",this%tprec10d )
+        call MAPL_VarWrite(formatter,"TPREC60D",this%tprec60d )
      endif
-     myVariable => meta%get_variable("PSNSUNM")
-     dname => myVariable%get_ith_dimension(2)
-     dim1 = meta%get_dimension(dname)
-     dname => myVariable%get_ith_dimension(3)
-     dim2 = meta%get_dimension(dname)
-     do i=1,dim2
-        do j=1,dim1
-           call MAPL_VarWrite(formatter,"PSNSUNM",var,offset1=j,offset2=i)
-           call MAPL_VarWrite(formatter,"PSNSHAM",var,offset1=j,offset2=i)
-        end do
-     end do
+
+     if (this%isCLM40)   call MAPL_VarWrite(formatter,"SFMCM",  this%sfmcm)
+
+     call MAPL_VarWrite(formatter,"PSNSUNM", this%PSNSUNM )
+     call MAPL_VarWrite(formatter,"PSNSHAM", this%PSNSHAM )
+
      call formatter%close()
      
      _RETURN(_SUCCESS)
@@ -327,8 +306,6 @@ contains
      allocate(this%cnity(ntiles,nveg))
      allocate(this%fvg(ntiles,nveg))
      allocate(this%tg(ntiles,nveg))
-     allocate(this%tgwm(ntiles,nzone))
-     allocate(this%rzmm(ntiles,nzone))
      allocate(this%TILE_ID(ntiles))
      allocate(this%ndep(ntiles))
      allocate(this%t2(ntiles))
@@ -343,6 +320,36 @@ contains
      allocate(this%HDM(ntiles))
      allocate(this%GDP(ntiles))
      allocate(this%PEATF(ntiles))
+
+     allocate(this%bflowm  (ntiles))
+     allocate(this%totwatm (ntiles))
+     allocate(this%tairm   (ntiles))
+     allocate(this%tpm     (ntiles))
+     allocate(this%cnsum   (ntiles))
+     allocate(this%sndzm   (ntiles))
+     allocate(this%asnowm  (ntiles))
+     allocate(this%psnsunm(ntiles,nveg,nzone))
+     allocate(this%psnsham(ntiles,nveg,nzone))
+     allocate(this%rzmm   (ntiles,nzone))
+     allocate(this%tgwm   (ntiles,nzone))
+
+
+     if (this%isCLM40) then
+        allocate(this%sfmcm   (ntiles))
+     endif
+     if (this%isCLM45) then
+        allocate(this%ar1m    (ntiles))
+        allocate(this%rainfm  (ntiles))
+        allocate(this%rhm     (ntiles))
+        allocate(this%runsrfm (ntiles))
+        allocate(this%snowfm  (ntiles))
+        allocate(this%windm   (ntiles))
+        allocate(this%tprec10d(ntiles))
+        allocate(this%tprec60d(ntiles))
+        allocate(this%t2m10d  (ntiles))
+        allocate(this%sfmm    (ntiles,nzone))
+     endif
+
      _RETURN(_SUCCESS)
    end subroutine allocate_cn
 
@@ -354,7 +361,7 @@ contains
     real, allocatable :: CLMC_pf1(:), CLMC_pf2(:), CLMC_sf1(:), CLMC_sf2(:)
     real, allocatable :: CLMC_pt1(:), CLMC_pt2(:), CLMC_st1(:), CLMC_st2(:)    
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
-    real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:)
+    real, allocatable :: T2(:), hdm(:), fc(:), gdp(:), peatf(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: STATUS, ntiles, unit27, unit28, unit29, unit30
     integer       :: idum, i,j,n, ib, nv
@@ -378,7 +385,7 @@ contains
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
     allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
-    allocate (peatf(ntiles), abm(ntiles), var1(ntiles))
+    allocate (peatf(ntiles), abm(ntiles))
 
     inquire(file = trim(OutBcsDir)//'/clsm/catchcn_params.nc4', exist=file_exists)
     inquire(file = trim(OutBcsDir)//'/clsm/CLM_veg_typs_fracs', exist=NewLand )
@@ -545,13 +552,22 @@ contains
      integer, allocatable, dimension (:,:) :: Id_glb_cn, id_loc_cn
      integer, allocatable, dimension (:)   :: tid_offl, id_loc
      real, allocatable, dimension (:)      :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
-         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, var_dum2, var_dum3
-     integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE
-     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp
-     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:)
+         CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
+     integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE, &
+                               AGCM_MI, AGCM_S,  dofyr
+     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl, tg_tmp, dummy_tmp
+     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:), var_out(:), var_psn(:,:,:), &
+                          var_out_zone(:,:)
      integer :: status, in_ntiles, out_ntiles, numprocs
      logical :: root_proc
      integer :: mpierr, n, i, k, tag, req, st, ed, myid, L, iv, nv,nz, var_col, var_pft
+     real, allocatable, dimension(:) :: lat_tmp
+     type(MAPL_SunOrbit)         :: ORBIT
+     type(ESMF_Time)             :: CURRENT_TIME
+     type(ESMF_TimeInterval)     :: timeStep
+     type(ESMF_Clock)            :: CLOCK  
+     type(ESMF_Config)           :: CF
+
      character(*), parameter :: Iam = "CatchmentCN::Re_tile"
 
 
@@ -596,6 +612,8 @@ contains
      allocate (tid_offl(in_ntiles))
      allocate (id_loc_cn (nt_local (myid + 1),nveg))
 
+     allocate (lat_tmp(in_ntiles))
+
      do n = 1, in_ntiles
         tid_offl(n) = n
      enddo
@@ -608,10 +626,43 @@ contains
         AGCM_YY = AGCM_DATE / 10000
         AGCM_MM = (AGCM_DATE - AGCM_YY*10000) / 100
         AGCM_DD = (AGCM_DATE - AGCM_YY*10000 - AGCM_MM*100)
+        AGCM_MI = 0
+        AGCM_S = 0
 
-        call compute_dayx (                                     &
-                out_NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-                this%LATG, DAYX)
+
+        !1) Set current date & time
+        ! -----------------------
+
+        call ESMF_CalendarSetDefault ( ESMF_CALKIND_GREGORIAN, rc=status )
+
+        call ESMF_TimeSet  ( CURRENT_TIME, YY = AGCM_YY,       &
+                                            MM = AGCM_MM,       &
+                                            DD = AGCM_DD,       &
+                                            H  = AGCM_HR,       &
+                                            M  = AGCM_MI,       &
+                                            S  = AGCM_S ,       &
+                                            rc=status )
+         VERIFY_(STATUS)
+
+        !2) create a clock
+        ! time interval value is not critical here, just for a clock
+
+        call ESMF_TimeIntervalSet(TimeStep,  S=450, RC=status)
+        clock = ESMF_ClockCreate(TimeStep, startTime = CURRENT_TIME, RC=status)
+        VERIFY_(STATUS)
+        call ESMF_ClockSet ( clock, CurrTime=CURRENT_TIME, rc=status )
+
+        !3) create an orbit
+        CF = ESMF_ConfigCreate(RC=STATUS)
+        VERIFY_(status)
+
+        ORBIT = MAPL_SunOrbitCreateFromConfig(CF, CLOCK, .false., RC=status)
+        VERIFY_(status) 
+
+        !4) current daylight duration
+        lat_tmp = this%latg*MAPL_PI/180.
+        call MAPL_SunGetDaylightDuration(ORBIT, lat_tmp, dayx, currTime=CURRENT_TIME,RC=STATUS)
+        VERIFY_(STATUS)
 
         ! save the old vaues dimension (in_ntiles, nv)
         ityp_offl = this%cnity
@@ -699,6 +750,7 @@ contains
     allocate (id_loc (out_ntiles))
     deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
     deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
+    deallocate (lat_tmp)
 
     do nv = 1, nveg
        call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -725,7 +777,9 @@ contains
 
         allocate (var_off_col (1: in_ntiles, 1 : nzone,1 : var_col))
         allocate (var_off_pft (1: in_ntiles, 1 : nzone,1 : nveg, 1 : var_pft))
-        allocate (var_dum2    (1:in_ntiles))
+        allocate (var_out     (out_ntiles))
+        allocate (var_psn     (out_ntiles, nveg, nzone))
+        allocate (var_out_zone(out_ntiles, nzone))
 
         this%tile_id = [(i*1.0, i=1, out_ntiles)]
 
@@ -734,6 +788,74 @@ contains
           tg_tmp(:,i) = this%tg(this%id_glb(:),i)
         enddo        
         this%tg = tg_tmp
+        deallocate(tg_tmp)
+
+        var_out = this%bflowm (this%id_glb(:))
+        this%bflowm = var_out
+        var_out = this%totwatm(this%id_glb(:))
+        this%totwatm= var_out
+        var_out = this%tairm  (this%id_glb(:))
+        this%tairm  = var_out
+        var_out = this%tpm    (this%id_glb(:))
+        this%tpm    = var_out
+        var_out = this%cnsum  (this%id_glb(:))
+        this%cnsum  = var_out
+        var_out = this%sndzm  (this%id_glb(:))
+        this%sndzm  = var_out
+        var_out = this%asnowm (this%id_glb(:))
+        this%asnowm = var_out
+        do nz = 1, nzone
+           do nv = 1, nveg
+               var_psn(:,nv,nz) = this%psnsunm(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%psnsunm= var_psn
+
+        do nz = 1, nzone
+           do nv = 1, nveg
+               var_psn(:,nv,nz) = this%psnsham(this%id_glb(:), nv,nz)
+           enddo
+        enddo
+        this%psnsham = var_psn
+
+        do nz = 1, nzone
+           var_out_zone(:,nz) = this%rzmm(this%id_glb(:), nz)
+        enddo
+        this%rzmm = var_out_zone
+
+        do nz = 1, nzone
+           var_out_zone(:,nz) = this%tgwm(this%id_glb(:), nz)
+        enddo
+        this%tgwm = var_out_zone
+
+        if (this%isCLM40) then
+           var_out = this%sfmcm (this%id_glb(:))
+           this%sfmcm = var_out
+        endif
+        if (this%isCLM45) then
+           var_out = this%ar1m    (this%id_glb(:))
+           this%ar1m    = var_out
+           var_out = this%rainfm  (this%id_glb(:))
+           this%rainfm  = var_out
+           var_out = this%rhm     (this%id_glb(:))
+           this%rhm     = var_out
+           var_out = this%runsrfm (this%id_glb(:))
+           this%runsrfm = var_out
+           var_out = this%snowfm  (this%id_glb(:))
+           this%snowfm  = var_out
+           var_out = this%windm   (this%id_glb(:))
+           this%windm   = var_out
+           var_out = this%tprec10d(this%id_glb(:))
+           this%tprec10d= var_out
+           var_out = this%tprec60d(this%id_glb(:))
+           this%tprec60d= var_out
+           var_out = this%t2m10d  (this%id_glb(:))
+           this%t2m10d  = var_out
+           do nz = 1, nzone
+              var_out_zone(:,nz) = this%sfmm(this%id_glb(:), nz)
+           enddo
+           this%sfmm = var_out_zone
+        endif
 
         i = 1
         do nv = 1,VAR_COL
@@ -1206,157 +1328,6 @@ contains
 
     end subroutine regrid_carbon
 
-    subroutine compute_dayx (                               &
-       NTILES, AGCM_YY, AGCM_MM, AGCM_DD, AGCM_HR,        &
-       LATT, DAYX)
-
-      implicit none
-
-      integer, intent (in) :: NTILES,AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR
-      real, dimension (NTILES), intent (in)  :: LATT
-      real, dimension (NTILES), intent (out) :: DAYX
-      integer, parameter :: DT = 900
-      integer, parameter :: ncycle = 1461 ! number of days in a 4-year leap cycle (365*4 + 1)   
-      real, dimension(ncycle) :: zc, zs
-      integer :: dofyr, sec,YEARS_PER_CYCLE, DAYS_PER_CYCLE, year, iday, idayp1, nn, n
-      real    :: fac, YEARLEN, zsin, zcos, declin
-
-      dofyr = AGCM_DD
-      if(AGCM_MM >  1) dofyr = dofyr + 31
-      if(AGCM_MM >  2) then
-         dofyr = dofyr + 28
-         if(mod(AGCM_YY,4) == 0) dofyr = dofyr + 1
-      endif
-      if(AGCM_MM >  3) dofyr = dofyr + 31
-      if(AGCM_MM >  4) dofyr = dofyr + 30
-      if(AGCM_MM >  5) dofyr = dofyr + 31
-      if(AGCM_MM >  6) dofyr = dofyr + 30
-      if(AGCM_MM >  7) dofyr = dofyr + 31
-      if(AGCM_MM >  8) dofyr = dofyr + 31
-      if(AGCM_MM >  9) dofyr = dofyr + 30
-      if(AGCM_MM > 10) dofyr = dofyr + 31
-      if(AGCM_MM > 11) dofyr = dofyr + 30
-
-      sec = AGCM_HR * 3600 - DT ! subtract DT to get time of previous physics step
-      fac = real(sec) / 86400.
-
-
-      call orbit_create(zs,zc,ncycle) ! GEOS5 leap cycle routine
-
-      YEARLEN = 365.25
-
-      !  Compute length of leap cycle
-      !------------------------------
-
-      if(YEARLEN-int(YEARLEN) > 0.) then
-         YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-      else
-         YEARS_PER_CYCLE = 1
-      endif
-
-      DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-
-      ! declination & daylength
-      ! -----------------------
-
-      YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)
-
-      IDAY = YEAR*int(YEARLEN)+dofyr
-      IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
-
-      ZSin = ZS(IDAYP1)*FAC + ZS(IDAY)*(1.-FAC) !   sine of solar declination
-      ZCos = ZC(IDAYP1)*FAC + ZC(IDAY)*(1.-FAC) ! cosine of solar declination
-
-      nn = 0
-      do n = 1,days_per_cycle
-         nn = nn + 1
-         if(nn > 365) nn = nn - 365
-         !     print *, 'cycle:',n,nn,asin(ZS(n))
-      end do
-      declin = asin(ZSin)
-
-      ! compute daylength on input tile space (accounts for any change in physics time step)  
-      !  do n = 1,ntiles_cn
-      !     fac = -(sin((latc(n)/zoom)*(MAPL_PI/180.))*zsin)/(cos((latc(n)/zoom)*(MAPL_PI/180.))*zcos)
-      !     fac = min(1.,max(-1.,fac))
-      !     dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-      !  end do
-
-      ! compute daylength on output tile space (accounts for lat shift due to split & change in time step)
-
-      do n = 1,ntiles
-         fac = -(sin(latt(n)*(MAPL_PI/180.))*zsin)/(cos(latt(n)*(MAPL_PI/180.))*zcos)
-         fac = min(1.,max(-1.,fac))
-         dayx(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-      end do
-
-      ! print *,'DAYX : ', minval(dayx),maxval(dayx), minval(latt), maxval(latt), zsin, zcos, dofyr, iday, idayp1, declin
-
-    end subroutine compute_dayx
-
-  ! *****************************************************************************
-
-    subroutine orbit_create(zs,zc,ncycle)
-      implicit none
-
-      integer, intent(in) :: ncycle
-      real, intent(out), dimension(ncycle) :: zs, zc
-
-      integer :: YEARS_PER_CYCLE, DAYS_PER_CYCLE
-      integer :: K, KP !, KM
-      real*8  :: T1, T2, T3, T4, FUN, Y, SOB, OMG, PRH, TT
-      real*8  :: YEARLEN
-
-       !  STATEMENT FUNCTION
-
-      FUN(Y) = OMG*(1.0-ECCENTRICITY*cos(Y-PRH))**2
-
-      YEARLEN = 365.25
-
-       !  Factors involving the orbital parameters
-       !------------------------------------------
-
-      OMG  = (2.0*MAPL_PI/YEARLEN) / (sqrt(1.-ECCENTRICITY**2)**3)
-      PRH  = PERIHELION*(MAPL_PI/180.)
-      SOB  = sin(OBLIQUITY*(MAPL_PI/180.))
-
-       !  Compute length of leap cycle
-       !------------------------------
-
-      if(YEARLEN-int(YEARLEN) > 0.) then
-          YEARS_PER_CYCLE = nint(1./(YEARLEN-int(YEARLEN)))
-      else
-          YEARS_PER_CYCLE = 1
-      endif
-
-
-      DAYS_PER_CYCLE=nint(YEARLEN*YEARS_PER_CYCLE)
-
-      if(days_per_cycle /= ncycle) stop 'bad cycle'
-
-       !   ZS:   Sine of declination
-       !   ZC:   Cosine of declination
-
-       !  Begin integration at vernal equinox
-
-      KP           = EQUINOX
-      TT           = 0.0
-      ZS(KP) = sin(TT)*SOB
-      ZC(KP) = sqrt(1.0-ZS(KP)**2)
-
-       !  Integrate orbit for entire leap cycle using Runge-Kutta
-
-      do K=2,DAYS_PER_CYCLE
-          T1 = FUN(TT       )
-          T2 = FUN(TT+T1*0.5)
-          T3 = FUN(TT+T2*0.5)
-          T4 = FUN(TT+T3    )
-          KP  = mod(KP,DAYS_PER_CYCLE) + 1
-          TT  = TT + (T1 + 2.0*(T2 + T3) + T4) / 6.0
-          ZS(KP) = sin(TT)*SOB
-          ZC(KP) = sqrt(1.0-ZS(KP)**2)
-      end do
-    end subroutine orbit_create
 
   end subroutine re_tile
 

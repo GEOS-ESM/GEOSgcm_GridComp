@@ -59,6 +59,8 @@ module micro_mg3_0
 ! precipitation, and probably should be adjusted to cover snow as well.
 !
 !---------------------------------------------------------------------------------
+! Version 3.O based on micro_mg2_0.F90 and WRF3.8.1 module_mp_morr_two_moment.F
+!---------------------------------------------------------------------------------
 ! Based on micro_mg (restructuring of former cldwat2m_micro)
 ! Author: Andrew Gettelman, Hugh Morrison.
 ! Contributions from: Xiaohong Liu and Steve Ghan
@@ -116,7 +118,7 @@ module micro_mg3_0
 use MAPL_ConstantsMod 
 use MAPL_Mod, r8 => MAPL_R8
 
-use cldmacro, only: update_cld
+use GEOSmoist_Process_Library, only: update_cld
 
 use wv_sat_methods, only: &
      qsat_water => wv_sat_qsat_water, &
@@ -209,6 +211,9 @@ real(r8), parameter :: mi0l_min = 4._r8/3._r8*pi*rhow*(4.e-6_r8)**3
    real(r8), parameter :: latvap      = MAPL_ALHL
    real(r8), parameter :: latice      = MAPL_ALHF
    real(r8), parameter :: rhmini_in       = 0.90_r8       ! Minimum rh for ice cloud fraction > 0.
+   real(r8), parameter :: epsilon     = MAPL_EPSILON
+  
+   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   
 
 
@@ -262,7 +267,7 @@ logical  :: do_sb_physics ! do SB 2001 autoconversion or accretion physics
 contains
 !===============================================================================
 subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_eff_factor_in, &
-                         nccons_in, nicons_in, ncnst_in, ninst_in, ngcons_in, ngnst_in)
+                         nccons_in, nicons_in, ncnst_in, ninst_in, ngcons_in, ngnst_in, muicst_in)
 
 !subroutine micro_mg_init( &
 !     kind, gravit, rair, rh2o, cpair,    &
@@ -318,9 +323,9 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   real(r8), intent(in)  :: ncnst_in
   real(r8), intent(in)  :: ninst_in
   logical, intent(in)   :: ngcons_in
-  real(r8), intent(in)  :: ngnst_in
+  real(r8), intent(in)  :: ngnst_in, muicst_in
 
-  character(128) :: errstring    ! Output status (non-blank for error return)
+  character(128)  :: errstring    ! Output status (non-blank for error return)
 
   !-----------------------------------------------------------------------
 
@@ -331,10 +336,10 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   errstring = ' '
   
   call wv_sat_methods_init(kind, tmelt_in, 273.15_r8, 373.15_r8, &
-     35._r8, 35._r8, errstring)
+     35._r8, epsilon, errstring)
      
   call micro_mg_utils_init(kind, rair, rh2o, cpair, tmelt_in, latvap, latice, &
-       micro_mg_dcs)
+       micro_mg_dcs, muicst_in)
  
  
          
@@ -348,7 +353,7 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   cpp = cpair               ! specific heat of dry air
   tmelt = tmelt_in
   rhmini = rhmini_in
-  micro_mg_precip_frac_method = 'in_cloud'
+  micro_mg_precip_frac_method = 'max_overlap' !'max_overlap' !'in_cloud'
   micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
   allow_sed_supersat          = .true.
   do_sb_physics               = .false.
@@ -409,15 +414,15 @@ end subroutine micro_mg_init
 
 
 subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_tmp,  &
-                             CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, & 
-                             ncol,             LM,          dt_moist,       & 
-                             ter8,                          qvr8,                              &
+                             ncol,             LM,               dt_moist,       & 
+                             cnvfrc, srftype, &
+                             ter8,                            qvr8,                              &
                              qcr8,                          qir8,                          &
                              ncr8,                          nir8,                          &
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8,                  &
+                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,                  &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -426,8 +431,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
+                             qrtendr8,                       qstendr8,                       &
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
                              effcr8,               effc_fnr8,            effir8,               &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
@@ -467,27 +473,28 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrout2r8,                       qsout2r8,                       &
                              nrout2r8,                       nsout2r8,                       &
                              drout2r8,                       dsout2r8,                       &
-                             qgout2r8,     ngout2r8,          dgout2r8, freqgr8, &
-                             freqsr8,                        freqrr8,     &
+                             qgout2r8,     ngout2r8,         dgout2r8,       freqgr8,      &
+                             freqsr8,                        freqrr8,                        &
                              nficer8,                        qcratr8,                        &
 !                             errstring, & ! Below arguments are "optional" (pass null pointers to omit).
-                             tnd_qsnow,          tnd_nsnow,          re_ice,    &
+!                             tnd_qsnow,          tnd_nsnow,          re_ice,    &
                              prer_evap, &
                              frzimm,             frzcnt,              frzdep,  & ! contact is not passed since it depends on the droplet size dist
                              nsootr8, rnsootr8,  & ! soot for contact IN
                              npccnor8, npsacwsor8,npraor8,nsubcor8, nprc1or8, &  ! Number tendencies for liquid
                              npraior8, nnucctor8, nnucccor8, nnuccdor8, nsubior8, nprcior8, nsacwior8,  &  ! Number tendencies for ice
-                             ts_auticex, ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning paramaters
+                             ts_auticex,  ui_scalex, dcritx, disp_liux, nbincontactdustx, urscalex) ! tuning paramaters
 
 
 ! definitions
 
 
-   REAL, intent(in)     :: DT_MICRO,  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND  
+   REAL, intent(in)     :: DT_MICRO
    real(r8), intent(in) :: DT_MOIST
    REAL, dimension(1,1:LM) :: SCICE_tmp, FQA_tmp, ALPH_tmp
    INTEGER, intent(in) :: LM, shape, ncol
-   
+  
+   real                         :: cnvfrc, srftype
    real(r8), dimension(1,1:LM)  ::                                                     &  
                              ter8,                          qvr8,                              &
                              qcr8,                          qir8,                          &
@@ -495,7 +502,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                          ngrr8,                         &
-                             relvarr8,                      accre_enhanr8,                  &
+                             relvarr8,                      accre_enhanr8,  accre_enhan_icer8,                &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -546,7 +553,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              freqsr8,                        freqrr8,        &
                              nficer8,                        qcratr8,                        &
 !                             errstring, & ! Below arguments are "optional" (pass null pointers to omit).
-                             tnd_qsnow,          tnd_nsnow,          re_ice,    &
+                            ! tnd_qsnow,          tnd_nsnow,          re_ice,    &
                              prer_evap, &
                              frzimm,             frzcnt,              frzdep,  & ! contact is not passed since it depends on the droplet size dist
                              nsootr8, rnsootr8,  & ! soot for contact IN
@@ -618,13 +625,13 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
       RHC_tmp = 0.8   
       NCNUC_tmp = 0.0
       
-      where (naair8 .gt. 1e3)             
-       icecldfr8 =max( 0.05, icecldfr8)                              
-      end where 
+    !  where (naair8 .gt. 1e3)             
+    !   icecldfr8 =max( 0.05, icecldfr8)                              
+    !  end where 
       
       
-      npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST 
-      naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_MOIST ! only for cirrus
+      ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST 
+      ! naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_MOIST ! only for cirrus
        
     
      call accum_mg_tend(0) !initialize accum values
@@ -632,7 +639,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
      num_steps_micro = MAX(INT(DT_MOIST/DT_MICRO),1)
      DT_R8 = DT_MOIST / num_steps_micro
      
-     !!!!!!!!!!!!!!Iteration
+     !!!!!!!!!!!!!!Iteration 
   
   
       DO N_MICRO = 1, num_steps_micro      
@@ -650,17 +657,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                   ncr8   = NCPL_tmp  
                   nir8   = NCPI_tmp                      
                   
-                 ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_R8 !make sure these are considered tendencies below
-                 ! naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_R8 
-       
-                  DO K  =  1, LM
-                   if (TEMP_tmp(1,K) .lt. 100.0) then 
-                              print *, '====in1============'
-                              print *,  K, TEMP_tmp(1,K), N_MICRO
-                             end if 
-                             
-                  end do
-       
+        
                         call micro_mg_tend ( &
                              ncol,             LM,               dt_r8,       & 
                              ter8,                            qvr8,                              &
@@ -669,7 +666,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8,                  &
+                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,      &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -678,9 +675,10 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              tlatr8,                         qvlatr8,                        &
                              qctendr8,                       qitendr8,                       &
                              nctendr8,                       nitendr8,                       &
-                             qrtendr8,                       qstendr8,   qgrtendr8,                     &
-                             nrtendr8,                       nstendr8,   ngrtendr8,                   &
-                             effcr8,               effc_fnr8,            effir8,               &
+                             qrtendr8,                       qstendr8,   			 	     &		
+                             nrtendr8,                       nstendr8,                       &
+                             qgrtendr8,                      ngrtendr8,                      &
+                             effcr8,               effc_fnr8,            effir8,             &
                              sadicer8,                       sadsnowr8,                      &
                              prectr8,                        precir8,                        &
                              nevaprr8,                       evapsnowr8,                     &
@@ -690,7 +688,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              pgamradr8,                      lamcradr8,                      &
                              qsoutr8,                        dsoutr8,                        &
                              qgoutr8,     ngoutr8,           dgoutr8,                        &
-                             lflxr8,               iflxr8,   gflxr8,                           &
+                             lflxr8,               iflxr8,   &
+                             gflxr8,                           &
                              rflxr8,               sflxr8,    qroutr8,          &
                              reff_rainr8,                    reff_snowr8, reff_graur8,        &
                              qcsevapr8,            qisevapr8,            qvresr8,              &
@@ -723,7 +722,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              freqsr8,                        freqrr8,                        &
                              nficer8,                        qcratr8,                        &
 !                             errstring, & ! Below arguments are "optional" (pass null pointers to omit).
-                             tnd_qsnow,          tnd_nsnow,          re_ice,    &
+                            ! tnd_qsnow,          tnd_nsnow,          re_ice,    &
                              prer_evap, &
                              frzimm,             frzcnt,              frzdep,  & ! contact is not passed since it depends on the droplet size dist
                              nsootr8, rnsootr8,  & ! soot for contact IN
@@ -749,67 +748,9 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                           NCPL_tmp(1, 1:LM)= MAX(NCPL_tmp(1, 1:LM)  + REAL(nctendr8(1,1:LM)) * DT_R8, 0.0) 
                           NCPI_tmp(1, 1:LM)= MAX(NCPI_tmp(1, 1:LM)  + REAL(nitendr8(1,1:LM)) * DT_R8, 0.0)  
                
-           
-                          DO K  =  1, LM
-                            if (TEMP_tmp(1,K) .lt. 100.0) then 
-                              print *, '====in2============'
-                              print *,  K, TEMP_tmp(1,K), tlatr8(1,K), N_MICRO
-                             end if 
-                             
-                          end do
-!
-
-
-           
-                           CLCN_tmp =     CF_tmp*FQA_tmp
-                           CLLS_tmp =     CF_tmp*(1.0-FQA_tmp)
-                           QLCN_tmp =  QLTOT_tmp*FQA_tmp
-                           QLLS_tmp =  QLTOT_tmp*(1.0-FQA_tmp)
-                           QICN_tmp =  QITOT_tmp*FQA_tmp
-                           QILS_tmp =  QITOT_tmp*(1.0-FQA_tmp)         
-     if (.false.) then 
-                           ! Update diagnostic cloud fraction (maybe condense more water)
-                           DO K = 1, LM 
-                           
-                                call update_cld( &
-        		                 REAL(DT_MOIST)                , &
-        		                 ALPH_tmp(1, K)        , &
-        		                 shape , &
-        		                 PL_tmp (1, K)          , &
-        		                 Q1_tmp ( 1, K)            , &
-        		                 QLLS_tmp(1,K)           , &
-        		                 QLCN_tmp(1,K)           , &
-        		                 QILS_tmp( 1,K)           , &
-        		                 QICN_tmp( 1,K)           , &
-        		                 TEMP_tmp(1,K)           , &
-        		                 CLLS_tmp(1, K)           , &
-        		                 CLCN_tmp(1,K)           , &
-			                     SCICE_tmp(1,K)         , &
-			                     NCPI_tmp(1,K)           , &
-			                     NCPL_tmp (1,K)           , &
-                                 NCNUC_tmp(1,K), &     
-			                     RHC_tmp(1,K), &
-                                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND        )                   
-                             
-
-                             CF_tmp  =  CLLS_tmp + CLCN_tmp
-                             QITOT_tmp =  QILS_tmp  + QICN_tmp
-                             QLTOT_tmp =  QLLS_tmp +  QLCN_tmp
-                             cldfr8  =  CF_tmp 
-!                  where ((QLTOT_tmp + QITOT_tmp) .gt.  0.0) 
-!                       liqcldfr8  = CF_tmp* QLTOT_tmp/(QLTOT_tmp + QITOT_tmp) 
-!                       icecldfr8  = CF_tmp* QITOT_tmp/(QLTOT_tmp + QITOT_tmp) 
-!                   elsewhere                        
-                       liqcldfr8 = cldfr8  
-                       icecldfr8  = cldfr8  
- !                 end where 
-                  
-                   
-                          end do 
-        end if 
-        
-                             !Accumulate tendencies              
-                             call accum_mg_tend(1)
+   
+                     !Accumulate tendencies              
+                     call accum_mg_tend(1)
              
        end do ! MG2 iteration 
                
@@ -964,13 +905,22 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        nstendr8_accum = nstendr8_accum + nstendr8
        ngrtendr8_accum =  ngrtendr8_accum  +  ngrtendr8
         
-       effcr8_accum = effcr8_accum  + effcr8
-       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
-       effir8_accum = effir8_accum + effir8
-       sadicer8_accum = sadicer8_accum + sadicer8
-       sadsnowr8_accum = sadsnowr8_accum + sadsnowr8
        prectr8_accum = prectr8_accum  + prectr8
        precir8_accum = precir8_accum  + precir8
+
+ 
+!       effcr8_accum = effcr8_accum  + effcr8
+!       effc_fnr8_accum = effc_fnr8_accum +effc_fnr8
+!       effir8_accum = effir8_accum + effir8
+       
+       !use the final size instad of the average
+       effcr8_accum = effcr8
+       effc_fnr8_accum = effc_fnr8
+       effir8_accum = effir8
+       
+       
+       sadicer8_accum = sadicer8_accum + sadicer8
+       sadsnowr8_accum = sadsnowr8_accum + sadsnowr8
        nevaprr8_accum = nevaprr8_accum + nevaprr8
        evapsnowr8_accum = evapsnowr8_accum + evapsnowr8
        prainr8_accum = prainr8_accum + prainr8
@@ -988,10 +938,14 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        gflxr8_accum = gflxr8_accum + gflxr8
        
        
+       !reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
+       !reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
+       !reff_graur8_accum =   reff_graur8_accum +  reff_graur8
        
-       reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
-       reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
-       reff_graur8_accum =   reff_graur8_accum +  reff_graur8_accum
+        !use the final size instad of the average
+       reff_rainr8_accum = reff_rainr8
+       reff_snowr8_accum = reff_snowr8
+       reff_graur8_accum = reff_graur8
        
        qcsevapr8_accum = qcsevapr8_accum  + qcsevapr8
        qisevapr8_accum = qisevapr8_accum  + qisevapr8
@@ -1085,18 +1039,30 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        nctendr8 = nctendr8_accum/num_steps_micro 
        nitendr8 =  nitendr8_accum/num_steps_micro
        qrtendr8 = qrtendr8_accum/num_steps_micro 
-       qstendr8 = qstendr8_accum/num_steps_micro 
+       qstendr8 = qstendr8_accum/num_steps_micro
+       qgrtendr8 = qgrtendr8_accum/num_steps_micro
        nrtendr8 = nrtendr8_accum/num_steps_micro 
        nstendr8 = nstendr8_accum/num_steps_micro 
        ngrtendr8 = ngrtendr8_accum/num_steps_micro
-              
-       effcr8 = effcr8_accum/num_steps_micro 
-       effc_fnr8 = effc_fnr8_accum/num_steps_micro 
-       effir8 = effir8_accum/num_steps_micro
-       sadicer8 = sadicer8_accum/num_steps_micro 
-       sadsnowr8 = sadsnowr8_accum/num_steps_micro 
+       
        prectr8 = prectr8_accum/num_steps_micro  
-       precir8 = precir8_accum/num_steps_micro  
+       precir8 = precir8_accum/num_steps_micro
+       
+       
+              
+       !effcr8 = effcr8_accum/num_steps_micro 
+       !effc_fnr8 = effc_fnr8_accum/num_steps_micro 
+       !effir8 = effir8_accum/num_steps_micro
+       
+       !use the final size
+       
+       effcr8 = effcr8_accum
+       effc_fnr8 = effc_fnr8_accum 
+       effir8 = effir8_accum
+       
+       
+       sadicer8 = sadicer8_accum/num_steps_micro 
+       sadsnowr8 = sadsnowr8_accum/num_steps_micro  
        nevaprr8 = nevaprr8_accum/num_steps_micro 
        evapsnowr8 = evapsnowr8_accum/num_steps_micro 
        prainr8 = prainr8_accum/num_steps_micro 
@@ -1111,14 +1077,16 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        iflxr8 = iflxr8_accum/num_steps_micro 
        rflxr8 = rflxr8_accum/num_steps_micro
        sflxr8 = sflxr8_accum/num_steps_micro
-       gflxr8 = rflxr8_accum/num_steps_micro
+       gflxr8 = gflxr8_accum/num_steps_micro
 
        
        
 
+       !use the final size
+       reff_rainr8 = reff_rainr8_accum
+       reff_snowr8 =  reff_snowr8_accum
+       reff_graur8 = reff_graur8_accum
        
-       reff_rainr8 = reff_rainr8_accum/num_steps_micro
-       reff_snowr8 =  reff_snowr8_accum/num_steps_micro 
        qcsevapr8 = qcsevapr8_accum/num_steps_micro 
        qisevapr8 = qisevapr8_accum/num_steps_micro 
        qvresr8 = qvresr8_accum/num_steps_micro  
@@ -1225,7 +1193,7 @@ subroutine micro_mg_tend ( &
      qrn,                          qsn,                          &
      nrn,                          nsn,                          &
      qgr,                          ngr,                          &
-     relvar,                       accre_enhan,                  &
+     relvar,                       accre_enhan, accre_enhan_ice,                 &
      p,                            pdel,                         &
      cldn,    liqcldf,        icecldf,       qsatfac,            &
      qcsinksum_rate1ord,                                         &
@@ -1281,7 +1249,7 @@ subroutine micro_mg_tend ( &
      freqs,                        freqr,                        &
      nfice,                        qcrat,                        &
       !errstring,  & ! Below arguments are "optional" (pass null pointers to omit).
-     tnd_qsnow,          tnd_nsnow,          re_ice,             &
+  !   tnd_qsnow,          tnd_nsnow,          re_ice,             &
      prer_evap, &
      frzimm,             frzcnt,             frzdep,  & 
       nsoot, rnsoot,  & ! soot for contact IN
@@ -1358,6 +1326,7 @@ subroutine micro_mg_tend ( &
 
   real(r8), intent(in) :: relvar(mgncol,nlev)      ! cloud water relative variance (-)
   real(r8), intent(in) :: accre_enhan(mgncol,nlev) ! optional accretion
+   real(r8), intent(in) :: accre_enhan_ice(mgncol,nlev) ! optional accretion
                                              ! enhancement factor (-)
 
   real(r8), intent(in) :: p(mgncol,nlev)        ! air pressure (pa)
@@ -1370,19 +1339,18 @@ subroutine micro_mg_tend ( &
 
   ! used for scavenging
   ! Inputs for aerosol activation
-  real(r8), intent(in) :: naai(mgncol,nlev)     ! ice nucleation number (from microp_aero_ts) (1/kg*s) !DONIF
-  real(r8), intent(in) :: npccn(mgncol,nlev)   ! ccn activated number tendency (from microp_aero_ts) (1/kg*s)
+  real(r8), intent(in) :: naai(mgncol,nlev)     ! grid averaged ice nucleation number tendency  (1/kg s) DONIF
+  real(r8), intent(in) :: npccn(mgncol,nlev)   ! grid averaged ccn activated number tendency  (1/kg s)
 
   ! Note that for these variables, the dust bin is assumed to be the last index.
   ! (For example, in CAM, the last dimension is always size 4.)
-!  real(r8), intent(in) :: rndst(:,:,:)  ! radius of each dust bin, for contact freezing (from microp_aero_ts) (m)
-!  real(r8), intent(in) :: nacon(:,:,:) ! number in each dust bin, for contact freezing  (from microp_aero_ts) (1/m^3)
-
+  !real(r8), intent(in) :: rndst(:,:,:)  ! radius of each dust bin, for contact freezing (from microp_aero_ts) (m)
+  !real(r8), intent(in) :: nacon(:,:,:) ! number in each dust bin, for contact freezing  (from microp_aero_ts) (1/m^3)
+  
   integer :: nbincontactdust !DONIF
   real(r8),  dimension(:) :: rndst(mgncol,nlev, 10)   ! 
-  real(r8),  dimension(:) :: nacon(mgncol,nlev, 10)   ! 
-
-
+  real(r8),  dimension(:) :: nacon(mgncol,nlev, 10)   !
+  
   ! output arguments
 
   real(r8), intent(out) :: qcsinksum_rate1ord(mgncol,nlev) ! 1st order rate for
@@ -1511,34 +1479,21 @@ subroutine micro_mg_tend ( &
 
   real(r8), intent(out) :: prer_evap(mgncol,nlev)
 
-  character(128) :: errstring  ! output status (non-blank for error return)
+  character(128)   :: errstring  ! output status (non-blank for error return)
 
   ! Tendencies calculated by external schemes that can replace MG's native
   ! process tendencies.
 
   ! Used with CARMA cirrus microphysics
   ! (or similar external microphysics model)
-  !real(r8), pointer :: tnd_qsnow(:,:) ! snow mass tendency (kg/kg/s)
-  !real(r8), pointer :: tnd_nsnow(:,:) ! snow number tendency (#/kg/s)
-  !real(r8), pointer :: re_ice(:,:)    ! ice effective radius (m)
+ ! real(r8), pointer :: tnd_qsnow(:,:) ! snow mass tendency (kg/kg/s)
+ ! real(r8), pointer :: tnd_nsnow(:,:) ! snow number tendency (#/kg/s)
+ ! real(r8), pointer :: re_ice(:,:)    ! ice effective radius (m)
 
   ! From external ice nucleation.
- ! real(r8), intent(in), pointer :: frzimm(:,:) ! Number tendency due to immersion freezing (1/cm3)
-  !real(r8), intent(in), pointer :: frzcnt(:,:) ! Number tendency due to contact freezing (1/cm3)
-  !real(r8), intent(in), pointer :: frzdep(:,:) ! Number tendency due to deposition nucleation (1/cm3)
-
-
-  real(r8)   :: tnd_qsnow(:,:) ! snow mass tendency (kg/kg/s)
-  real(r8)   :: tnd_nsnow(:,:) ! snow number tendency (#/kg/s)
-  real(r8)   :: re_ice(:,:)    ! ice effective radius (m)
-
-  ! From external ice nucleation.
-  real(r8), intent(in) :: frzimm(:,:) ! Number tendency due to immersion freezing (1/kg*s) in-cloud
-  real(r8), intent(in) :: frzcnt(:,:) ! Number tendency due to contact freezing (1/kg*s)in-cloud
-  real(r8), intent(in) :: frzdep(:,:) ! Number tendency due to deposition nucleation (1/Kg*s) !DONIF
-  
-  
-    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  real(r8), intent(in) :: frzimm(:,:) ! Number tendency due to immersion freezing (1/cm3)
+  real(r8), intent(in) :: frzcnt(:,:) ! Number tendency due to contact freezing (1/cm3)
+  real(r8), intent(in) :: frzdep(:,:) ! Number tendency due to deposition nucleation (1/cm3)
 
 !!!DONIFF
       real(r8), intent(out) :: nnuccto(mgncol,nlev) ! number mixing ratio tend due to contact frezzing
@@ -1564,8 +1519,6 @@ subroutine micro_mg_tend ( &
 !ccccccccccccccccccccccccccccc
 
   
-  
-
   ! local workspace
   ! all units mks unless otherwise stated
 
@@ -1849,17 +1802,17 @@ subroutine micro_mg_tend ( &
   ! assign variable deltat to deltatin
   deltat = deltatin
 
-  ! Copies of input concentrations that may be changed internally.
-  qc = qcn
-  nc = ncn
-  qi = qin
-  ni = nin
-  qr = qrn
-  nr = nrn
-  qs = qsn
-  ns = nsn
-  qg = qgr
-  ng = ngr
+  ! Copies of input concentrations that may be changed internally. 
+  qc = max(qcn, 0.0)! DONIF ban small negative values
+  nc = max(ncn, 0.0)
+  qi = max(qin, 0.0)
+  ni = max(nin, 0.0)
+  qr = max(qrn, 0.0)
+  nr = max(nrn, 0.0)
+  qs = max(qsn, 0.0)
+  ns = max(nsn, 0.0)
+  qg = max(qgr, 0.0)
+  ng = max(ngr, 0.0)
 
   ! cldn: used to set cldm, unused for subcolumns
   ! liqcldf: used to set lcldm, unused for subcolumns
@@ -2055,7 +2008,6 @@ subroutine micro_mg_tend ( &
   cmeout = 0._r8
 
   precip_frac = mincld
-
   lamc=0._r8
   lamg=0._r8
   bgtmp=0._r8
@@ -2172,10 +2124,9 @@ subroutine micro_mg_tend ( &
 
   ! output activated liquid and ice (convert from #/kg -> #/m3)
   !--------------------------------------------------
-  where (qc >= qsmall)
+  where (qc >= qsmall)               
      nc = max(nc + npccn*deltat, 0._r8)
-    ! ncal = nc*rho/lcldm ! sghan minimum in #/cm3
-     ncal = nc/lcldm ! sghan minimum in #/cm3
+     ncal = nc*rho/lcldm ! sghan minimum in #/cm3
   elsewhere
      ncal = 0._r8
   end where
@@ -2206,14 +2157,17 @@ subroutine micro_mg_tend ( &
         !note: this is gridbox averaged
         !nnuccd = (naai-ni/icldm)/mtime*icldm
         !nnuccd = max(nnuccd,0._r8)
-        nnuccd = naai ! only pass tendencies since we are substeeping 
+         nnuccd = naai ! only pass tendencies 
         !nimax = naai*icldm
-        nimax = naai*mtime/icldm
+        
+        !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
+        ni = max(ni + naai*deltat, 0._r8)
+        nimax = naai*deltat/icldm ! DONIF
 
         !Calc mass of new particles using new crystal mass...
         !also this will be multiplied by mtime as nnuccd is...
 
-        mnuccd = nnuccd * mi0
+        mnuccd = nnuccd * mi0 
 
      elsewhere
         nnuccd = 0._r8
@@ -2490,14 +2444,16 @@ subroutine micro_mg_tend ( &
        ! call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), n0i(:,k), &
        !      dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice)
        
+       
         call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), niic(:,k), &
               dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice) !donif
        
+                  
      else
         ! Add in the particles that we have already converted to snow, and
         ! don't do any further autoconversion of ice.
-        prci(:,k)  = tnd_qsnow(:,k) / cldm(:,k)
-        nprci(:,k) = tnd_nsnow(:,k) / cldm(:,k)
+       ! prci(:,k)  = tnd_qsnow(:,k) / cldm(:,k)
+       ! nprci(:,k) = tnd_nsnow(:,k) / cldm(:,k)
      end if
 
      ! note, currently we don't have this
@@ -2592,12 +2548,12 @@ subroutine micro_mg_tend ( &
 
      !  graupel/hail size distributions and properties
 
-     if (do_graupel) then
-        call size_dist_param_basic(mg_graupel_props, qgic(:,k), ngic(:,k), &
-          lamg(:,k), mgncol, n0=n0g(:,k))
-     end if
      if (do_hail) then
         call size_dist_param_basic(mg_hail_props, qgic(:,k), ngic(:,k), &
+          lamg(:,k), mgncol, n0=n0g(:,k))
+     end if
+     if (do_graupel) then
+        call size_dist_param_basic(mg_graupel_props, qgic(:,k), ngic(:,k), &
           lamg(:,k), mgncol, n0=n0g(:,k))
      end if
         
@@ -2633,13 +2589,8 @@ subroutine micro_mg_tend ( &
            end where
 
            mdust = size(rndst,3)
-              
-! donif     
-               nacon(:,k,nbincontactdust + 1)  = nsoot(:,k)  !Add soot. 
-               rndst(:,k,nbincontactdust + 1)  = rnsoot(:,k) 
-
            call contact_freezing(microp_uniform, t(:,k), p(:,k), rndst(:,k,:), &
-                nacon(:,k,:), pgam(:,k), lamc(:,k), qcic(:,k), ncic(:,k), &
+                nacon(:,k,:), pgam(:,k), lamc(:,k), qcic(1:mgncol,k), ncic(:,k), &
                 relvar(:,k), mnucct(:,k), nnucct(:,k), mgncol, mdust)
 
            mnudep(:,k)=0._r8
@@ -2726,7 +2677,7 @@ subroutine micro_mg_tend ( &
 
      if (do_cldice) then
         call accrete_cloud_ice_snow(t(:,k), rho(:,k), asn(:,k), qiic(:,k), niic(:,k), &
-             qsic(:,k), lams(:,k), n0s(:,k), prai(:,k), nprai(:,k), mgncol)
+             qsic(:,k), lams(:,k), n0s(:,k), prai(:,k), nprai(:,k), mgncol, accre_enhan_ice(:, k))
      else
         prai(:,k) = 0._r8
         nprai(:,k) = 0._r8
@@ -3128,7 +3079,7 @@ subroutine micro_mg_tend ( &
            dum= ((-pracg(i,k)-pgracs(i,k)-prdg(i,k)-psacr(i,k)-mnuccr(i,k))*precip_frac(i,k) &
                 + (-psacwg(i,k)-pgsacw(i,k))*lcldm(i,k))*deltat
            
-           if (dum.gt.qg(i,k)) then
+           if ((dum.gt.qg(i,k)) .and. (abs(prdg(i, k)) .gt. 0.0)) then !DONIF
                    
               ! note: prdg is always negative (like prds), so it needs to be subtracted in ratio
               ratio = (qg(i,k)/deltat + (pracg(i,k)+pgracs(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
@@ -3246,6 +3197,7 @@ subroutine micro_mg_tend ( &
         if (do_hail.or.do_graupel) then
            qgtend(i,k) = qgtend(i,k) + (pracg(i,k)+pgracs(i,k)+prdg(i,k)+psacr(i,k)+mnuccr(i,k))*precip_frac(i,k) &
                 + (psacwg(i,k)+pgsacw(i,k))*lcldm(i,k)
+                 
 
            qstend(i,k) = qstend(i,k)+ &
                 (prai(i,k)+prci(i,k))*icldm(i,k)+(psacws(i,k)+bergs(i,k))*lcldm(i,k)+(prds(i,k)+ &
@@ -3383,10 +3335,13 @@ subroutine micro_mg_tend ( &
         ! maximum (existing N + source terms*dt), which is possible if mtime < deltat
         ! note that currently mtime = deltat
         !================================================================
+        
+        !Don't do this, we taake care of it somewhere else.
+        !Donifan 2023 
 
-        if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
-           nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
-        end if
+       ! if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
+       !    nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
+       ! end if
 
      end do
 
@@ -3458,7 +3413,9 @@ subroutine micro_mg_tend ( &
   dum_2D = qg
   qg = qgr
   qgtend = qgtend + (dum_2D-qg)/deltat
-
+  
+  
+  
   dum_2D = ng
   ng = ngr
   ngtend = ngtend + (dum_2D-ng)/deltat
@@ -3644,12 +3601,13 @@ subroutine micro_mg_tend ( &
         end if
 
         ! fallspeed for graupel
-        if (do_graupel) then
-           call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
-             lamg(i,k))
-        end if
+
         if (do_hail) then
            call size_dist_param_basic(mg_hail_props, dumg(i,k), dumng(i,k), &
+             lamg(i,k))
+        end if
+        if (do_graupel) then
+           call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
              lamg(i,k))
         end if
             
@@ -4400,9 +4358,9 @@ subroutine micro_mg_tend ( &
         do i=1,mgncol
            ! NOTE: If CARMA is doing the ice microphysics, then the ice effective
            ! radius has already been determined from the size distribution.
-           effi(i,k) = re_ice(i,k) * 1.e6_r8      ! m -> um
-           deffi(i,k)=effi(i,k) * 2._r8
-           sadice(i,k) = 4._r8*pi*(effi(i,k)**2)*ni(i,k)*rho(i,k)*1e-2_r8
+   !        effi(i,k) = re_ice(i,k) * 1.e6_r8      ! m -> um
+   !        deffi(i,k)=effi(i,k) * 2._r8
+   !        sadice(i,k) = 4._r8*pi*(effi(i,k)**2)*ni(i,k)*rho(i,k)*1e-2_r8
         enddo
      enddo
   end if
@@ -4516,12 +4474,12 @@ subroutine micro_mg_tend ( &
 
            dum = dumng(i,k)
 
-           if (do_graupel) then
-              call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
-                lamg(i,k))
-           end if
            if (do_hail) then
               call size_dist_param_basic(mg_hail_props, dumg(i,k), dumng(i,k), &
+                lamg(i,k))
+           end if
+           if (do_graupel) then
+              call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
                 lamg(i,k))
            end if
               

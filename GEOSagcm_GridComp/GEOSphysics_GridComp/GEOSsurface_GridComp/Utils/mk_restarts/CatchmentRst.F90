@@ -1,8 +1,11 @@
 #include "MAPL_Generic.h"
 
 module CatchmentRstMod
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, ONLY:      &
+       GetIds,                          &                              
+       ReadTileFile_RealLatLon
   use MAPL
+  use MAPL_Base,         ONLY: MAPL_UNDEF
   use mpi
   use LSM_ROUTINES,      ONLY:          &
        catch_calc_soil_moist,           &
@@ -13,6 +16,7 @@ module CatchmentRstMod
        N_GT              => CATCH_N_GT, &
        DZGT              => CATCH_DZGT, &
        PEATCLSM_POROS_THRESHOLD
+
 
   implicit none
 #ifndef __GFORTRAN__
@@ -76,6 +80,7 @@ module CatchmentRstMod
      real, allocatable ::     sndzn1(:)
      real, allocatable ::     sndzn2(:)
      real, allocatable ::     sndzn3(:)
+     real, allocatable ::    snowalb(:)
      real, allocatable ::         ch(:,:)
      real, allocatable ::         cm(:,:)
      real, allocatable ::         cq(:,:)
@@ -143,7 +148,6 @@ contains
        if (myid ==0) then
           call catch%allocate_catch()
           call catch%read_shared_nc4(formatter, __RC__)
-          call MAPL_VarRead(formatter,"OLD_ITY",catch%ity, __RC__)
        endif
        call formatter%close()
      else
@@ -194,36 +198,36 @@ contains
       integer, optional, intent(out) :: rc
       integer :: unit
       open(newunit=unit, file=filename, form='unformatted', action='read')
-      read(unit) this%      bf1
-      read(unit) this%      bf2
-      read(unit) this%      bf3
+      read(unit)                  ! skip     bf1
+      read(unit)                  ! skip     bf2
+      read(unit)                  ! skip     bf3
       read(unit) this%   vgwmax
       read(unit) this%    cdcr1
       read(unit) this%    cdcr2
-      read(unit) this%     psis
-      read(unit) this%      bee
+      read(unit)                  ! skip    psis
+      read(unit)                  ! skip     bee
       read(unit) this%    poros
-      read(unit) this%    wpwet
-      read(unit) this%     cond
-      read(unit) this%      gnu
-      read(unit) this%     ars1
-      read(unit) this%     ars2
-      read(unit) this%     ars3
-      read(unit) this%     ara1
-      read(unit) this%     ara2
-      read(unit) this%     ara3
-      read(unit) this%     ara4
-      read(unit) this%     arw1
-      read(unit) this%     arw2
-      read(unit) this%     arw3
-      read(unit) this%     arw4
-      read(unit) this%     tsa1
-      read(unit) this%     tsa2
-      read(unit) this%     tsb1
-      read(unit) this%     tsb2
-      read(unit) this%     atau
-      read(unit) this%     btau
-      read(unit) this%      ity
+      read(unit)                  ! skip   wpwet
+      read(unit)                  ! skip    cond
+      read(unit)                  ! skip     gnu
+      read(unit)                  ! skip    ars1
+      read(unit)                  ! skip    ars2
+      read(unit)                  ! skip    ars3
+      read(unit)                  ! skip    ara1
+      read(unit)                  ! skip    ara2
+      read(unit)                  ! skip    ara3
+      read(unit)                  ! skip    ara4
+      read(unit)                  ! skip    arw1
+      read(unit)                  ! skip    arw2
+      read(unit)                  ! skip    arw3
+      read(unit)                  ! skip    arw4
+      read(unit)                  ! skip    tsa1
+      read(unit)                  ! skip    tsa2
+      read(unit)                  ! skip    tsb1
+      read(unit)                  ! skip    tsb2
+      read(unit)                  ! skip    atau
+      read(unit)                  ! skip    btau
+      read(unit)                  ! skip     ity
       read(unit) this%       tc
       read(unit) this%       qc
       read(unit) this%    capac
@@ -261,40 +265,15 @@ contains
      integer, optional, intent(out):: rc
      integer :: status
      
-     call MAPL_VarRead(formatter,"BF1",this%bf1, __RC__)
-     call MAPL_VarRead(formatter,"BF2",this%bf2, __RC__)
-     call MAPL_VarRead(formatter,"BF3",this%bf3, __RC__)
+     ! these four (time-invariant) variables are used for rescaling of prognostic variables
      call MAPL_VarRead(formatter,"VGWMAX",this%vgwmax, __RC__)
      call MAPL_VarRead(formatter,"CDCR1",this%cdcr1, __RC__)
      call MAPL_VarRead(formatter,"CDCR2",this%cdcr2, __RC__)
-     call MAPL_VarRead(formatter,"PSIS",this%psis, __RC__)
-     call MAPL_VarRead(formatter,"BEE",this%bee, __RC__)
      call MAPL_VarRead(formatter,"POROS",this%poros, __RC__)
-     call MAPL_VarRead(formatter,"WPWET",this%wpwet, __RC__)
-     call MAPL_VarRead(formatter,"COND",this%cond, __RC__)
-     call MAPL_VarRead(formatter,"GNU",this%gnu, __RC__)
-     call MAPL_VarRead(formatter,"ARS1",this%ars1, __RC__)
-     call MAPL_VarRead(formatter,"ARS2",this%ars2, __RC__)
-     call MAPL_VarRead(formatter,"ARS3",this%ars3, __RC__)
-     call MAPL_VarRead(formatter,"ARA1",this%ara1, __RC__)
-     call MAPL_VarRead(formatter,"ARA2",this%ara2, __RC__)
-     call MAPL_VarRead(formatter,"ARA3",this%ara3, __RC__)
-     call MAPL_VarRead(formatter,"ARA4",this%ara4, __RC__)
-     call MAPL_VarRead(formatter,"ARW1",this%arw1, __RC__)
-     call MAPL_VarRead(formatter,"ARW2",this%arw2, __RC__)
-     call MAPL_VarRead(formatter,"ARW3",this%arw3, __RC__)
-     call MAPL_VarRead(formatter,"ARW4",this%arw4, __RC__)
-     call MAPL_VarRead(formatter,"TSA1",this%tsa1, __RC__)
-     call MAPL_VarRead(formatter,"TSA2",this%tsa2, __RC__)
-     call MAPL_VarRead(formatter,"TSB1",this%tsb1, __RC__)
-     call MAPL_VarRead(formatter,"TSB2",this%tsb2, __RC__)
-     call MAPL_VarRead(formatter,"ATAU",this%atau, __RC__)
-     call MAPL_VarRead(formatter,"BTAU",this%btau, __RC__)
+
+     ! Catchment model prognostic variables (and some diagnostics needed in Catch restart for GCM) 
      call MAPL_VarRead(formatter,"TC",this%tc, __RC__)
      call MAPL_VarRead(formatter,"QC",this%qc, __RC__)
-!
-!     call MAPL_VarRead(formatter,"OLD_ITY",this%ity, __RC__)
-!
      call MAPL_VarRead(formatter,"CAPAC",this%capac, __RC__)
      call MAPL_VarRead(formatter,"CATDEF",this%catdef, __RC__)
      call MAPL_VarRead(formatter,"RZEXC",this%rzexc, __RC__)
@@ -333,7 +312,7 @@ contains
        call MAPL_VarRead(formatter,"WW",this%ww, __RC__)
      endif
      _RETURN(_SUCCESS)
-   end subroutine
+   end subroutine read_shared_nc4
 
    subroutine write_nc4 (this, filename, rc)
      class(CatchmentRst), intent(inout):: this
@@ -427,6 +406,9 @@ contains
      if (this%meta%has_variable('WW')) then
        call MAPL_VarWrite(formatter,"WW",this%ww)
      endif
+     if (this%meta%has_variable('SNOWALB')) then
+       call MAPL_VarWrite(formatter,"SNOWALB",this%snowalb)
+     endif
 
      _RETURN(_SUCCESS)
 
@@ -437,36 +419,11 @@ contains
      integer, optional, intent(out):: rc
      integer :: ntiles
      ntiles = this%ntiles
-     allocate( this%        bf1(ntiles) )
-     allocate( this%        bf2(ntiles) )
-     allocate( this%        bf3(ntiles) )
      allocate( this%     vgwmax(ntiles) )
      allocate( this%      cdcr1(ntiles) )
      allocate( this%      cdcr2(ntiles) )
-     allocate( this%       psis(ntiles) )
-     allocate( this%        bee(ntiles) )
      allocate( this%      poros(ntiles) )
-     allocate( this%      wpwet(ntiles) )
-     allocate( this%       cond(ntiles) )
-     allocate( this%        gnu(ntiles) )
-     allocate( this%       ars1(ntiles) )
-     allocate( this%       ars2(ntiles) )
-     allocate( this%       ars3(ntiles) )
-     allocate( this%       ara1(ntiles) )
-     allocate( this%       ara2(ntiles) )
-     allocate( this%       ara3(ntiles) )
-     allocate( this%       ara4(ntiles) )
-     allocate( this%       arw1(ntiles) )
-     allocate( this%       arw2(ntiles) )
-     allocate( this%       arw3(ntiles) )
-     allocate( this%       arw4(ntiles) )
-     allocate( this%       tsa1(ntiles) )
-     allocate( this%       tsa2(ntiles) )
-     allocate( this%       tsb1(ntiles) )
-     allocate( this%       tsb2(ntiles) )
-     allocate( this%       atau(ntiles) )
-     allocate( this%       btau(ntiles) )
-     allocate( this%        ity(ntiles) )
+
      allocate( this%         tc(ntiles,4) )
      allocate( this%         qc(ntiles,4) )
      allocate( this%      capac(ntiles) )
@@ -481,7 +438,7 @@ contains
      allocate( this%    ghtcnt6(ntiles) )
      
      if (this%meta%has_variable('TSURF')) then
-       allocate( this%      tsurf(ntiles) )
+       allocate( this%    tsurf(ntiles) )
      endif
 
      allocate( this%     wesnn1(ntiles) )
@@ -509,10 +466,11 @@ contains
      if (this%meta%has_variable('WW')) then
        allocate( this%         ww(ntiles,4) )
      endif
+
      _RETURN(_SUCCESS)
    end subroutine allocate_catch
 
-   ! This subroutine reads BCs from BCSDIR and hydrological varable
+   ! This subroutine reads BCs from BCSDIR and hydrological variable (??)
    subroutine add_bcs_to_rst(this, surflay, DataDir, rc)
       class(CatchmentRst), intent(inout) :: this
       real, intent(in) :: surflay
@@ -529,8 +487,10 @@ contains
       logical       :: file_exists
 
       type(NetCDF4_Fileformatter) :: CatchFmt
+      type(Variable)              :: var
+      type(FileMetadata)          :: meta_
 
-      character*256        :: Iam = "add_bcs"
+      character*256               :: Iam = "add_bcs_to_rst"
 
       ntiles = this%ntiles
 
@@ -539,38 +499,36 @@ contains
       inquire(file = trim(DataDir)//'/clsm/catch_params.nc4', exist=file_exists)
       inquire(file = trim(DataDir)//"/clsm/CLM_veg_typs_fracs",exist=NewLand )
 
-      if (size(this%ara1) /= this%ntiles ) then
-        ! it is just re-allocate
-        this%ity   = DP2BR
-        this%ARA1  = DP2BR      
-        this%ARA2  = DP2BR      
-        this%ARA3  = DP2BR      
-        this%ARA4  = DP2BR      
-        this%ARS1  = DP2BR      
-        this%ARS2  = DP2BR      
-        this%ARS3  = DP2BR      
-        this%ARW1  = DP2BR      
-        this%ARW2  = DP2BR      
-        this%ARW3  = DP2BR      
-        this%ARW4  = DP2BR      
-        this%ATAU  = DP2BR      
-        this%BTAU  = DP2BR      
-        this%PSIS  = DP2BR      
-        this%BEE   = DP2BR      
-        this%BF1   = DP2BR      
-        this%BF2   = DP2BR      
-        this%BF3   = DP2BR      
-        this%TSA1  = DP2BR      
-        this%TSA2  = DP2BR      
-        this%TSB1  = DP2BR      
-        this%TSB2  = DP2BR      
-        this%COND  = DP2BR      
-        this%WPWET = DP2BR      
-        this%POROS = DP2BR
-        this%VGWMAX = DP2BR
-        this%cdcr1 = DP2BR
-        this%cdcr2 = DP2BR
-      endif
+      this%ity   = DP2BR
+      this%ARA1  = DP2BR      
+      this%ARA2  = DP2BR      
+      this%ARA3  = DP2BR      
+      this%ARA4  = DP2BR      
+      this%ARS1  = DP2BR      
+      this%ARS2  = DP2BR      
+      this%ARS3  = DP2BR      
+      this%ARW1  = DP2BR      
+      this%ARW2  = DP2BR      
+      this%ARW3  = DP2BR      
+      this%ARW4  = DP2BR      
+      this%ATAU  = DP2BR      
+      this%BTAU  = DP2BR      
+      this%PSIS  = DP2BR      
+      this%BEE   = DP2BR      
+      this%BF1   = DP2BR      
+      this%BF2   = DP2BR      
+      this%BF3   = DP2BR      
+      this%TSA1  = DP2BR      
+      this%TSA2  = DP2BR      
+      this%TSB1  = DP2BR      
+      this%TSB2  = DP2BR      
+      this%GNU   = DP2BR      
+      this%COND  = DP2BR      
+      this%WPWET = DP2BR      
+      this%POROS = DP2BR
+      this%VGWMAX = DP2BR
+      this%cdcr1 = DP2BR
+      this%cdcr2 = DP2BR
 
       if(file_exists) then
         call CatchFmt%Open(trim(DataDir)//'/clsm/catch_params.nc4', pFIO_READ, __RC__)
@@ -611,6 +569,21 @@ contains
         call MAPL_VarRead ( CatchFmt ,'WPWET', this%WPWET, __RC__)
         call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR, __RC__)
         call MAPL_VarRead ( CatchFmt ,'POROS', this%POROS, __RC__)
+
+        meta_ = CatchFmt%read(__RC__)
+
+        if (meta_%has_variable('SNOWALB')) then
+           if ( .not. allocated(this%snowalb)) allocate(this%snowalb(ntiles))
+           call MAPL_VarRead ( CatchFmt ,'SNOWALB', this%snowalb, __RC__)
+           if ( .not. this%meta%has_variable('SNOWALB')) then
+              var = Variable(type=pFIO_REAL32, dimensions='tile')
+              call var%add_attribute('long_name', 'snow_albedo')
+              call var%add_attribute('units', '1')
+              call this%meta%add_variable('SNOWALB', var)
+           endif
+        elseif (this%meta%has_variable('SNOWALB')) then
+           call this%meta%remove_variable('SNOWALB')
+        endif
         call CatchFmt%close()
       else
         open(unit=21, file=trim(DataDir)//'/clsm/mosaic_veg_typs_fracs',form='formatted')
@@ -650,6 +623,9 @@ contains
         CLOSE (24, STATUS = 'KEEP')
         CLOSE (25, STATUS = 'KEEP')
         CLOSE (26, STATUS = 'KEEP')
+
+        if (this%meta%has_variable('SNOWALB'))  call this%meta%remove_variable('SNOWALB')
+
       endif
 
       do n=1,ntiles
@@ -683,64 +659,64 @@ contains
      character(:), allocatable :: s
      type(Variable) :: var
  
-     fields(1,:)  = [character(len=64)::"ARA1"     ,  "shape_param_1"                            ,     "m+2 kg-1"]
-     fields(2,:)  = [character(len=64)::"ARA2"     ,  "shape_param_2"                            ,     "1"]
-     fields(3,:)  = [character(len=64)::"ARA3"     ,  "shape_param_3"                            ,     "m+2 kg-1"]
-     fields(4,:)  = [character(len=64)::"ARA4"     ,  "shape_param_4"                            ,     "1"]
-     fields(5,:)  = [character(len=64)::"ARS1"     ,  "wetness_param_1"                          ,     "m+2 kg-1"]
-     fields(6,:)  = [character(len=64)::"ARS2"     ,  "wetness_param_2"                          ,     "m+2 kg-1"]
-     fields(7,:)  = [character(len=64)::"ARS3"     ,  "wetness_param_3"                          ,     "m+4 kg-2"]
-     fields(8,:)  = [character(len=64)::"ARW1"     ,  "min_theta_param_1"                        ,     "m+2 kg-1"]
-     fields(9,:)  = [character(len=64)::"ARW2"     ,  "min_theta_param_2"                        ,     "m+2 kg-1"]
-     fields(10,:) = [character(len=64)::"ARW3"     ,  "min_theta_param_3"                        ,     "m+4 kg-2"]
-     fields(11,:) = [character(len=64)::"ARW4"     ,  "min_theta_param_4"                        ,     "1"]
-     fields(12,:) = [character(len=64)::"ATAU"     ,  "water_transfer_param_5"                   ,     "1"]
-     fields(13,:) = [character(len=64)::"BEE"      ,  "clapp_hornberger_b"                       ,     "1"]
-     fields(14,:) = [character(len=64)::"BF1"      ,  "topo_baseflow_param_1"                    ,     "kg m-4"]
-     fields(15,:) = [character(len=64)::"BF2"      ,  "topo_baseflow_param_2"                    ,     "m"]
-     fields(16,:) = [character(len=64)::"BF3"      ,  "topo_baseflow_param_3"                    ,     "log(m)"]
-     fields(17,:) = [character(len=64)::"BTAU"     ,  "water_transfer_param_6"                   ,     "1"]
-     fields(18,:) = [character(len=64)::"CAPAC"    ,  "interception_reservoir_capac"             ,     "kg m-2"]
-     fields(19,:) = [character(len=64)::"CATDEF"   ,  "catchment_deficit"                        ,     "kg m-2"]
-     fields(20,:) = [character(len=64)::"CDCR1"    ,  "moisture_threshold"                       ,     "kg m-2"]
-     fields(21,:) = [character(len=64)::"CDCR2"    ,  "max_water_content"                        ,     "kg m-2"]
-     fields(22,:) = [character(len=64)::"COND"     ,  "sfc_sat_hydraulic_conduct"                ,     "m s-1"]
-     fields(23,:) = [character(len=64)::"GHTCNT1"  ,  "soil_heat_content_layer_1"                ,     "J m-2"]
-     fields(24,:) = [character(len=64)::"GHTCNT2"  ,  "soil_heat_content_layer_2"                ,     "J_m-2"]
-     fields(25,:) = [character(len=64)::"GHTCNT3"  ,  "soil_heat_content_layer_3"                ,     "J m-2"]
-     fields(26,:) = [character(len=64)::"GHTCNT4"  ,  "soil_heat_content_layer_4"                ,     "J m-2"]
-     fields(27,:) = [character(len=64)::"GHTCNT5"  ,  "soil_heat_content_layer_5"                ,     "J m-2"]
-     fields(28,:) = [character(len=64)::"GHTCNT6"  ,  "soil_heat_content_layer_6"                ,     "J m-2"]
-     fields(29,:) = [character(len=64)::"GNU"      ,  "vertical_transmissivity"                  ,     "m-1"]
-     fields(30,:) = [character(len=64)::"HTSNNN1"  ,  "heat_content_snow_layer_1"                ,     "J m-2"]
-     fields(31,:) = [character(len=64)::"HTSNNN2"  ,  "heat_content_snow_layer_2"                ,     "J m-2"]
-     fields(32,:) = [character(len=64)::"HTSNNN3"  ,  "heat_content_snow_layer_3"                ,     "J m-2"]
-     fields(33,:) = [character(len=64)::"OLD_ITY"  ,  "Placeholder. Used to be vegetation_type." ,     "1"]
-     fields(34,:) = [character(len=64)::"POROS"    ,  "soil_porosity"                            ,     "1"]
-     fields(35,:) = [character(len=64)::"PSIS"     ,  "saturated_matric_potential"               ,     "m"]
-     fields(36,:) = [character(len=64)::"RZEXC"    ,  "root_zone_excess"                         ,     "kg m-2"]
-     fields(37,:) = [character(len=64)::"SNDZN1"   ,  "snow_depth_layer_1"                       ,     "m"]
-     fields(38,:) = [character(len=64)::"SNDZN2"   ,  "snow_depth_layer_2"                       ,     "m"]
-     fields(39,:) = [character(len=64)::"SNDZN3"   ,  "snow_depth_layer_3"                       ,     "m"]
-     fields(40,:) = [character(len=64)::"SRFEXC"   ,  "surface_excess"                           ,     "kg m-2"]
-     fields(41,:) = [character(len=64)::"TILE_ID"  ,  "catchment_tile_id"                        ,     "1"]
-     fields(42,:) = [character(len=64)::"TSA1"     ,  "water_transfer_param_1"                   ,     "1"]
-     fields(43,:) = [character(len=64)::"TSA2"     ,  "water_transfer_param_2"                   ,     "1"]
-     fields(44,:) = [character(len=64)::"TSB1"     ,  "water_transfer_param_3"                   ,     "1"]
-     fields(45,:) = [character(len=64)::"TSB2"     ,  "water_transfer_param_4"                   ,     "1"]
-     fields(46,:) = [character(len=64)::"TSURF"    ,  "mean_catchment_temp_incl_snw"             ,     "K"]
-     fields(47,:) = [character(len=64)::"VGWMAX"   ,  "max_rootzone_water_content"               ,     "kg m-2"]
-     fields(48,:) = [character(len=64)::"WESNN1"   ,  "snow_mass_layer_1"                        ,     "kg m-2"]
-     fields(49,:) = [character(len=64)::"WESNN2"   ,  "snow_mass_layer_2"                        ,     "kg m-2"]
-     fields(50,:) = [character(len=64)::"WESNN3"   ,  "snow_mass_layer_3"                        ,     "kg m-2"]
-     fields(51,:) = [character(len=64)::"WPWET"    ,  "wetness_at_wilting_point"                 ,     "1"]
-     fields(52,:) = [character(len=64)::"CH"       ,  "surface_heat_exchange_coefficient"        ,     "kg m-2 s-1"]
-     fields(53,:) = [character(len=64)::"CM"       ,  "surface_momentum_exchange_coefficient"    ,     "kg m-2 s-1"]
-     fields(54,:) = [character(len=64)::"CQ"       ,  "surface_moisture_exchange_coffiecient"    ,     "kg m-2 s-1"]
-     fields(55,:) = [character(len=64)::"FR"       ,  "subtile_fractions"                        ,     "1"]
-     fields(56,:) = [character(len=64)::"QC"       ,  "canopy_specific_humidity"                 ,     "kg kg-1"]
-     fields(57,:) = [character(len=64)::"TC"       ,  "canopy_temperature"                       ,     "K"]
-     fields(58,:) = [character(len=64)::"WW"       ,  "vertical_velocity_scale_squared"          ,     "m+2 s-2"]
+     fields(1,:)  = [character(len=64)::"ARA1"     ,  "shape_param_1"                             ,     "m+2 kg-1"]
+     fields(2,:)  = [character(len=64)::"ARA2"     ,  "shape_param_2"                             ,     "1"]
+     fields(3,:)  = [character(len=64)::"ARA3"     ,  "shape_param_3"                             ,     "m+2 kg-1"]
+     fields(4,:)  = [character(len=64)::"ARA4"     ,  "shape_param_4"                             ,     "1"]
+     fields(5,:)  = [character(len=64)::"ARS1"     ,  "wetness_param_1"                           ,     "m+2 kg-1"]
+     fields(6,:)  = [character(len=64)::"ARS2"     ,  "wetness_param_2"                           ,     "m+2 kg-1"]
+     fields(7,:)  = [character(len=64)::"ARS3"     ,  "wetness_param_3"                           ,     "m+4 kg-2"]
+     fields(8,:)  = [character(len=64)::"ARW1"     ,  "min_theta_param_1"                         ,     "m+2 kg-1"]
+     fields(9,:)  = [character(len=64)::"ARW2"     ,  "min_theta_param_2"                         ,     "m+2 kg-1"]
+     fields(10,:) = [character(len=64)::"ARW3"     ,  "min_theta_param_3"                         ,     "m+4 kg-2"]
+     fields(11,:) = [character(len=64)::"ARW4"     ,  "min_theta_param_4"                         ,     "1"]
+     fields(12,:) = [character(len=64)::"ATAU"     ,  "water_transfer_param_5"                    ,     "1"]
+     fields(13,:) = [character(len=64)::"BEE"      ,  "clapp_hornberger_b"                        ,     "1"]
+     fields(14,:) = [character(len=64)::"BF1"      ,  "topo_baseflow_param_1"                     ,     "kg m-4"]
+     fields(15,:) = [character(len=64)::"BF2"      ,  "topo_baseflow_param_2"                     ,     "m"]
+     fields(16,:) = [character(len=64)::"BF3"      ,  "topo_baseflow_param_3"                     ,     "log(m)"]
+     fields(17,:) = [character(len=64)::"BTAU"     ,  "water_transfer_param_6"                    ,     "1"]
+     fields(18,:) = [character(len=64)::"CAPAC"    ,  "interception_reservoir_capac"              ,     "kg m-2"]
+     fields(19,:) = [character(len=64)::"CATDEF"   ,  "catchment_deficit"                         ,     "kg m-2"]
+     fields(20,:) = [character(len=64)::"CDCR1"    ,  "moisture_threshold"                        ,     "kg m-2"]
+     fields(21,:) = [character(len=64)::"CDCR2"    ,  "max_soil_water_content_above_wilting_point",     "kg m-2"]
+     fields(22,:) = [character(len=64)::"COND"     ,  "sfc_sat_hydraulic_conduct"                 ,     "m s-1"]
+     fields(23,:) = [character(len=64)::"GHTCNT1"  ,  "soil_heat_content_layer_1"                 ,     "J m-2"]
+     fields(24,:) = [character(len=64)::"GHTCNT2"  ,  "soil_heat_content_layer_2"                 ,     "J_m-2"]
+     fields(25,:) = [character(len=64)::"GHTCNT3"  ,  "soil_heat_content_layer_3"                 ,     "J m-2"]
+     fields(26,:) = [character(len=64)::"GHTCNT4"  ,  "soil_heat_content_layer_4"                 ,     "J m-2"]
+     fields(27,:) = [character(len=64)::"GHTCNT5"  ,  "soil_heat_content_layer_5"                 ,     "J m-2"]
+     fields(28,:) = [character(len=64)::"GHTCNT6"  ,  "soil_heat_content_layer_6"                 ,     "J m-2"]
+     fields(29,:) = [character(len=64)::"GNU"      ,  "vertical_transmissivity"                   ,     "m-1"]
+     fields(30,:) = [character(len=64)::"HTSNNN1"  ,  "heat_content_snow_layer_1"                 ,     "J m-2"]
+     fields(31,:) = [character(len=64)::"HTSNNN2"  ,  "heat_content_snow_layer_2"                 ,     "J m-2"]
+     fields(32,:) = [character(len=64)::"HTSNNN3"  ,  "heat_content_snow_layer_3"                 ,     "J m-2"]
+     fields(33,:) = [character(len=64)::"OLD_ITY"  ,  "Placeholder. Used to be vegetation_type."  ,     "1"]
+     fields(34,:) = [character(len=64)::"POROS"    ,  "soil_porosity"                             ,     "1"]
+     fields(35,:) = [character(len=64)::"PSIS"     ,  "saturated_matric_potential"                ,     "m"]
+     fields(36,:) = [character(len=64)::"RZEXC"    ,  "root_zone_excess"                          ,     "kg m-2"]
+     fields(37,:) = [character(len=64)::"SNDZN1"   ,  "snow_depth_layer_1"                        ,     "m"]
+     fields(38,:) = [character(len=64)::"SNDZN2"   ,  "snow_depth_layer_2"                        ,     "m"]
+     fields(39,:) = [character(len=64)::"SNDZN3"   ,  "snow_depth_layer_3"                        ,     "m"]
+     fields(40,:) = [character(len=64)::"SRFEXC"   ,  "surface_excess"                            ,     "kg m-2"]
+     fields(41,:) = [character(len=64)::"TILE_ID"  ,  "catchment_tile_id"                         ,     "1"]
+     fields(42,:) = [character(len=64)::"TSA1"     ,  "water_transfer_param_1"                    ,     "1"]
+     fields(43,:) = [character(len=64)::"TSA2"     ,  "water_transfer_param_2"                    ,     "1"]
+     fields(44,:) = [character(len=64)::"TSB1"     ,  "water_transfer_param_3"                    ,     "1"]
+     fields(45,:) = [character(len=64)::"TSB2"     ,  "water_transfer_param_4"                    ,     "1"]
+     fields(46,:) = [character(len=64)::"TSURF"    ,  "mean_catchment_temp_incl_snw"              ,     "K"]
+     fields(47,:) = [character(len=64)::"VGWMAX"   ,  "max_rootzone_water_content"                ,     "kg m-2"]
+     fields(48,:) = [character(len=64)::"WESNN1"   ,  "snow_mass_layer_1"                         ,     "kg m-2"]
+     fields(49,:) = [character(len=64)::"WESNN2"   ,  "snow_mass_layer_2"                         ,     "kg m-2"]
+     fields(50,:) = [character(len=64)::"WESNN3"   ,  "snow_mass_layer_3"                         ,     "kg m-2"]
+     fields(51,:) = [character(len=64)::"WPWET"    ,  "wetness_at_wilting_point"                  ,     "1"]
+     fields(52,:) = [character(len=64)::"CH"       ,  "surface_heat_exchange_coefficient"         ,     "kg m-2 s-1"]
+     fields(53,:) = [character(len=64)::"CM"       ,  "surface_momentum_exchange_coefficient"     ,     "kg m-2 s-1"]
+     fields(54,:) = [character(len=64)::"CQ"       ,  "surface_moisture_exchange_coffiecient"     ,     "kg m-2 s-1"]
+     fields(55,:) = [character(len=64)::"FR"       ,  "subtile_fractions"                         ,     "1"]
+     fields(56,:) = [character(len=64)::"QC"       ,  "canopy_specific_humidity"                  ,     "kg kg-1"]
+     fields(57,:) = [character(len=64)::"TC"       ,  "canopy_temperature"                        ,     "K"]
+     fields(58,:) = [character(len=64)::"WW"       ,  "vertical_velocity_scale_squared"           ,     "m+2 s-2"]
 
      call meta%add_dimension('tile', ntiles)
      call meta%add_dimension('subtile', 4)
@@ -907,91 +883,14 @@ contains
        var_out    = this%poros(id_glb(:))
        this%poros = var_out
 
-       var_out   = this%cond(id_glb(:))
-       this%cond = var_out
-
-       var_out   = this%psis(id_glb(:))
-       this%psis = var_out
-
-       var_out  = this%bee(id_glb(:))
-       this%bee = var_out
-
-       var_out    = this%wpwet(id_glb(:))
-       this%wpwet = var_out
-
-       var_out   = this%gnu(id_glb(:))
-       this%gnu  = var_out
-
        var_out      = this%vgwmax(id_glb(:))
        this%vgwmax  = var_out
-
-       var_out   = this%bf1(id_glb(:))
-       this%bf1  = var_out
-
-       var_out   = this%bf2(id_glb(:))
-       this%bf2  = var_out
-
-       var_out   = this%bf3(id_glb(:))
-       this%bf3  = var_out
 
        var_out     = this%cdcr1(id_glb(:))
        this%cdcr1  = var_out
 
        var_out     = this%cdcr2(id_glb(:))
        this%cdcr2  = var_out
-
-       var_out     = this%ars1(id_glb(:))
-       this%ars1   = var_out
-
-       var_out     = this%ars2(id_glb(:))
-       this%ars2   = var_out
-
-       var_out     = this%ars3(id_glb(:))
-       this%ars3   = var_out
-
-       var_out     = this%ara1(id_glb(:))
-       this%ara1   = var_out
-
-       var_out     = this%ara2(id_glb(:))
-       this%ara2   = var_out
-
-       var_out     = this%ara3(id_glb(:))
-       this%ara3   = var_out
-
-       var_out     = this%ara4(id_glb(:))
-       this%ara4   = var_out
-
-       var_out     = this%arw1(id_glb(:))
-       this%arw1   = var_out
-
-       var_out     = this%arw2(id_glb(:))
-       this%arw2   = var_out
-
-       var_out     = this%arw3(id_glb(:))
-       this%arw3   = var_out
-
-       var_out     = this%arw4(id_glb(:))
-       this%arw4   = var_out
-
-       var_out     = this%tsa1(id_glb(:))
-       this%tsa1   = var_out
-
-       var_out     = this%tsa2(id_glb(:))
-       this%tsa2   = var_out
-
-       var_out     = this%tsb1(id_glb(:))
-       this%tsb1   = var_out
-
-       var_out     = this%tsb2(id_glb(:))
-       this%tsb2   = var_out
-
-       var_out     = this%atau(id_glb(:))
-       this%atau   = var_out
-
-       var_out     = this%btau(id_glb(:))
-       this%btau   = var_out
-
-       this%ity = [(k*1., k=1, out_ntiles)]
 
        tmp2d = this%tc
        deallocate(this%tc)
@@ -1252,7 +1151,7 @@ contains
 
      endif
 
- ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
+  ! PEATCLSM - ensure low CATDEF on peat tiles where "old" restart is not also peat
   ! -------------------------------------------------------------------------------
 
      where ( (this%old_poros < PEATCLSM_POROS_THRESHOLD) .and. (this%poros >= PEATCLSM_POROS_THRESHOLD) )
@@ -1265,12 +1164,13 @@ contains
 
    subroutine set_scale_var(this )
      class(CatchmentRst), intent(inout) :: this
-     this%old_catdef = this%catdef
      this%old_poros  = this%poros
      this%old_cdcr1  = this%cdcr1
      this%old_cdcr2  = this%cdcr2
-     this%old_rzexc  = this%rzexc
      this%old_vgwmax = this%vgwmax
+
+     this%old_catdef = this%catdef
+     this%old_rzexc  = this%rzexc
      this%old_sndzn3 = this%sndzn3
      this%old_ghtcnt1 = this%ghtcnt1
      this%old_ghtcnt2 = this%ghtcnt2

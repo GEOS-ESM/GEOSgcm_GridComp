@@ -7,490 +7,495 @@
 ! as well.
 
 ! retrieve real4 internal
-      call MAPL_BalanceWork(BUFINT, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, __RC__)
+      call MAPL_BalanceWork(BUFINT, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, _RC)
       L1 = 1
-      call MAPL_GetPointer(INTERNAL,PTR2,'TSKINI', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'TSKINI', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR2,'QS', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'QS', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR2,'CH', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'CH', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR2,'CQ', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'CQ', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR2,'CM', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'CM', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR2,'TAUAGE', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2,'TAUAGE', _RC) 
       call CICEReorder(BUFINT(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2,2)
-      call MAPL_GetPointer(INTERNAL,PTR1,'SLMASK', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR1,'SLMASK', _RC) 
       call CICEReorder(BUFINT(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
 
 ! retrieve real8 internal
-      call MAPL_BalanceWork(BUFINT8, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, __RC__)
+      call MAPL_BalanceWork(BUFINT8, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, _RC)
       L1 = 1
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'FR', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'FR', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLICE', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLICE', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLSNO', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLSNO', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLPOND', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'VOLPOND', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'APONDN', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'APONDN', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR2R8,'HPONDN', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR2R8,'HPONDN', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR2R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2R8,2),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR2R8,2)
-      call MAPL_GetPointer(INTERNAL,PTR3R8,'ERGICE', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR3R8,'ERGICE', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR3R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR3R8,2)*size(PTR3R8,3),UNPACKIT)
       L1 = L1 + NUMMAX*size(PTR3R8,2)*size(PTR3R8,3)
-      call MAPL_GetPointer(INTERNAL,PTR3R8,'ERGSNO', __RC__) 
+      call MAPL_GetPointer(INTERNAL,PTR3R8,'ERGSNO', _RC) 
       call CICEReorder8(BUFINT8(L1),PTR3R8,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR3R8,2)*size(PTR3R8,3),UNPACKIT)
 
 ! retrieve export
-      call MAPL_BalanceWork(BUFEXP, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, __RC__)
+      call MAPL_BalanceWork(BUFEXP, NUMMAX, Direction=MAPL_Retrieve, Handle=CICECOREBalanceHandle, _RC)
       L1 = 1
-      call MAPL_GetPointer(EXPORT,PTR1,'EMIS', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'EMIS', _RC)
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
-      call MAPL_GetPointer(EXPORT,PTR1,'ALBVF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'ALBVF', _RC)
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
-      call MAPL_GetPointer(EXPORT,PTR1,'ALBVR', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'ALBVR', _RC)
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
-      call MAPL_GetPointer(EXPORT,PTR1,'ALBNF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'ALBNF', _RC)
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
-      call MAPL_GetPointer(EXPORT,PTR1,'ALBNR', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'ALBNR', _RC)
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
-      call MAPL_GetPointer(EXPORT,PTR1,'QST', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'QST', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'TST', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TST', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'DELTS', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'DELTS', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'DELQS', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'DELQS', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'TAUXI', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TAUXI', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'TAUYI', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TAUYI', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'PENUVR', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'PENUVR', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'PENUVF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'PENUVF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'PENPAR', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'PENPAR', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'PENPAF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'PENPAF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'EVAPOUT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'EVAPOUT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SUBLIM', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SUBLIM', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SHOUT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SHOUT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SHICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SHICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HLATN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HLATN', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HLATICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HLATICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FSURF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FSURF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FSURFICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FSURFICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HLWUP', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HLWUP', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HLWUPICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HLWUPICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'LWNDSRF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'LWNDSRF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SWNDSRF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SWNDSRF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'LWNDICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'LWNDICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SWNDICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SWNDICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FRACINEW', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FRACINEW', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'LWDNSRF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'LWDNSRF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SWDNSRF', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SWDNSRF', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FRAZIL', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FRAZIL', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'CONGEL', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'CONGEL', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SNOICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SNOICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FRESH', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FRESH', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FSALT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FSALT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FHOCN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FHOCN', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'PICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'PICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FSWTHRU', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FSWTHRU', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FSWABS', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FSWABS', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'MELTL', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'MELTL', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'MELTT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'MELTT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'MELTB', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'MELTB', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'MELTS', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'MELTS', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HSNO', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HSNO', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'HICEUNT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'HICEUNT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SNOONICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SNOONICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'TSKINICE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'TSKINICE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'IAGE', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'IAGE', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'DAIDTT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'DAIDTT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'DVIDTT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'DVIDTT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FBOT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FBOT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'USTARI', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'USTARI', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FCONDTOP', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FCONDTOP', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FCONDBOT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FCONDBOT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'NEWICEERG', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'NEWICEERG', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SUBLIMFLX', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SUBLIMFLX', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'SIALB', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'SIALB', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'GHTSKIN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'GHTSKIN', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'FRZMLT', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'FRZMLT', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'evap_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'evap_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'pr_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'pr_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'prsn_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'prsn_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'grFrazil_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'grFrazil_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'grCongel_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'grCongel_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'grLateral_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'grLateral_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'snoToIce_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'snoToIce_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'snomelt_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'snomelt_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'tmelt_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'tmelt_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'bmelt_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'bmelt_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'sfdsi_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'sfdsi_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'hfsifrazil_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'hfsifrazil_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'ialb_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'ialb_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'rsdssi_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'rsdssi_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'rsussi_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'rsussi_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR1,'fsitherm_CMIP5', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR1,'fsitherm_CMIP5', _RC)
       if ( associated(PTR1) ) then
          call CICEReorder(BUFEXP(L1),PTR1,TILE_WITH_ICE,NUMMAX,HorzDims,1,UNPACKIT)
          L1 = L1 + NUMMAX
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'FCONDBOTN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'FCONDBOTN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'FCONDTOPN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'FCONDTOPN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'TINZ', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'DELTAVOL1', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'SHICEN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'TINZ', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'HLWUPN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'SHICEN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'LWNDSRFN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'HLWUPN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'FSURFN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'LWNDSRFN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'TSURFN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'FSURFN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'FSWSFCN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'TSURFN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'ALBIN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'FSWSFCN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
          L1 = L1 + NUMMAX*size(PTR2,2)
       end if
-      call MAPL_GetPointer(EXPORT,PTR2,'ALBSN', __RC__)
+      call MAPL_GetPointer(EXPORT,PTR2,'ALBIN', _RC)
+      if ( associated(PTR2) ) then
+         call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
+         L1 = L1 + NUMMAX*size(PTR2,2)
+      end if
+      call MAPL_GetPointer(EXPORT,PTR2,'ALBSN', _RC)
       if ( associated(PTR2) ) then
          call CICEReorder(BUFEXP(L1),PTR2,TILE_WITH_ICE,NUMMAX,HorzDims,size(PTR2,2),UNPACKIT)
       end if
