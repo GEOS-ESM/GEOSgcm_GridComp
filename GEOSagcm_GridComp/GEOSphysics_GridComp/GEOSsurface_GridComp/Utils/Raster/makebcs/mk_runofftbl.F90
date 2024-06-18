@@ -434,8 +434,8 @@ contains
     Gridname_ocn=""
     Gridname_ocn_lnd=""
     res_MAPL=""
-    nx_MAPL=""
-    ny_MAPL=""
+    nx_MAPL=-9999
+    ny_MAPL=-9999
     fileT = "til/"//trim(Gridname)//".til" 
     open(10,file=fileT, form="formatted", status="old")
     do i=1,5
