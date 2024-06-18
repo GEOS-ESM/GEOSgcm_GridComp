@@ -1,19 +1,21 @@
-program Runoff
+program mk_runofftbl
 
 ! !INTERFACE:
 !
 ! !ARGUMENTS:
 !
 !  Usage = "mk_runofftbl.x Gridname"       
+!
 !     Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
 !               eg, CF0180x6C_M6TP0072x0036-Pfafstetter 
 !
-! This program is used to generate the runoff table *.trn and *.TRN files that are used in the Catchment Land model
-! for directing runoff to its sink in ocean. The input are bcs geometry files associated with the Gridname and a 
-! binary file Outlet_latlon.43200x21600 that saves the outlets locations in land (this file can be created by running 
-! GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/Raster/preproc/routing/run_routing_raster.py).
-! The program first moves the outlet locations in land to their nearest ocean pixels by calling outlets_to_ocean, 
-! and then generates runoff table files.
+! This program generates the runoff table *.trn and *.TRN files that are used in the Catchment model for
+! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
+! and (ii) a binary file ("Outlet_latlon.43200x21600") that provides the land raster grid cells where the 
+! outlets are located.  The latter file is created by [..]/Raster/preproc/routing/run_routing_raster.py.
+! The program first moves the outlet locations from the land raster grid cells to the nearest ocean pixels 
+! by calling outlets_to_ocean() and then generates the runoff table files.
+! The program currently works only for the MOM5 and MOM6 tripolar ocean grids.
 !  
 ! Yujin Zeng - June 17, 2024 
 ! Email: yujin.zeng@nasa.gov
@@ -276,14 +278,18 @@ program Runoff
   ! Write output files
   ! -------------------
   
-  print *, "Writing output file..."
+  print *, "Writing output files..."
   
+  ! ASCII file (*.trn)
+
   open(10,file=fileO, form="formatted", status="unknown")
   write(10,*) NumTrans
   do k=1,NumTrans
      write(10,"(2I10,f16.8)") SrcTile(k),DstTile(k),SrcFraction(k)
   end do
   close(10)
+
+  ! binary file (*.TRN)
   
   call write_route_file( fileB, NumTrans, SrcTile, DstTile, SrcFraction)
   
@@ -323,8 +329,9 @@ contains
   end subroutine write_route_file
   
   ! ------------------------------------------------------------------------
-  ! The subroutine moves outlets of each land&Greenland gridcell (with endpoint to ocean only) 
-  ! to the nearest ocean gridcell defiend by "Gridname" and ocean mask if the origional outlets are not in the ocean.
+  ! The subroutine moves outlets of each land & Greenland gridcell (with endpoint to ocean only) 
+  ! to the nearest ocean gridcell defiend by "Gridname" and ocean mask if the original outlets are not in the ocean.
+
   subroutine outlets_to_ocean(Gridname,lons,lats,nx,ny)
     
     integer,           intent(in)      :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution
@@ -405,9 +412,9 @@ contains
     
   end subroutine outlets_to_ocean
 
-!-------------------------------------------------------------------------
-! This subroutine gets the name of 'Gridname_ocn' and 'file_ocn_lnd' from the input name 'Gridname'.
-! It also gets resolution of the ocean domain.
+  !-------------------------------------------------------------------------
+  ! This subroutine gets the name of 'Gridname_ocn' and 'Gridname_ocn_lnd' from the input name 'Gridname'.
+  ! It also gets the resolution of the ocean domain.
   subroutine get_domain_name(Gridname,Gridname_ocn,Gridname_ocn_lnd,res_MAPL,nx_MAPL,ny_MAPL)
 
     character(len=*),  intent(in)      :: Gridname !input domain name, eg: CF0180x6C_M6TP0072x0036-Pfafstetter
@@ -454,8 +461,9 @@ contains
 
   end subroutine get_domain_name
 
-!-------------------------------------------------------------------------
-! This subroutine reads rst and til files
+  !-------------------------------------------------------------------------
+  ! This subroutine reads rst and til files
+
   subroutine read_rst_til_files(nx,ny,Gridname_ocn,Gridname_ocn_lnd,rst_ocn,rst_ocn_lnd,t2loni,t2lati,nt_ocn_lnd,nl_ocn_lnd,nt_ocn,lon30s,lat30s)
 
     integer,           intent(in)              :: nx,ny !number of lon and lat, eg: 43200 and 21600 in 30s resolution  
@@ -531,8 +539,9 @@ contains
 
   end subroutine read_rst_til_files
 
-!-------------------------------------------------------------------------
- ! This subroutine counts the number of outlet points from input outlets lon/lat idx map.
+  !-------------------------------------------------------------------------
+  ! This subroutine counts the number of outlet points from input outlets lon/lat idx map.
+
   subroutine outlets_num(rst_ocn_lnd,nl,nt,lons,lats,nx,ny,ns)
 
     integer, intent(in)                  :: nx,ny,nl,nt
@@ -582,8 +591,9 @@ contains
   end subroutine outlets_num
 
   !------------------------------------------------------------------------
-  ! This subroutine retrives the outlets locations from the outlets map (nx,ny) to a list (ns)
-  ! It also stores the outlets idx on the 30s map
+  ! This subroutine retrieves the outlet locations from the outlets map (nx,ny) to a list (ns).
+  ! It also stores the outlets idx on the 30s map.
+
   subroutine retrieve_outlets(lons,lats,lon30s,lat30s,lonp,latp,lon_lnd,lat_lnd,ns_map,nx,ny,ns)
     
     integer, intent(in)                 :: nx,ny,ns
@@ -630,6 +640,7 @@ contains
 
   !------------------------------------------------------------------------
   ! convert the ocean mask in MAPL_Tripolar.nc to 1d list for each ocean tile defined by ocn rst, eg: M6TP0072x0036.rst
+
   subroutine mask_MAPL_1d(msk_tile,t2loni,t2lati,nt,res_MAPL,nlon,nlat)
     
     integer,           intent(in)     :: nt,nlon,nlat
@@ -656,6 +667,7 @@ contains
 
   !------------------------------------------------------------------------
   ! read ocean mask from "MAPL_Tripolar.nc"
+  
   subroutine read_oceanModel_mapl(res_MAPL,wetMask,nx,ny)
     
 
@@ -721,6 +733,7 @@ contains
   
   !------------------------------------------------------------------------
   ! convert 1d list of ocn mask to a 30s map
+  
   subroutine mask_MAPL_2d(ocean,mask1d,msk2d,nt,nlon,nlat)
     
     integer, intent(in)               :: nt,nlon,nlat
@@ -745,6 +758,7 @@ contains
 
   !------------------------------------------------------------------------
   ! further mask the ocn mask from MAPL_Tripolar.nc based on the land-ocean rst eg: M6TP0072x0036-Pfafstetter.rst
+  
   subroutine mask_MAPL_bcs(rst_ocn_lnd,mask_mapl,mask,nlon,nlat,nl,nt)
     
     integer,intent(in)  :: nlon,nlat,nl,nt
@@ -766,7 +780,8 @@ contains
   end subroutine mask_MAPL_bcs
 
   !------------------------------------------------------------------------
-  !find the ocean boundary cells (that are next to non-ocean cell) on the 30s map based on the ocn mask from mask_MAPL_bcs
+  ! find the ocean boundary cells (that are next to non-ocean cell) on the 30s map based on the ocn mask from mask_MAPL_bcs
+  
   subroutine ocean_boundary(mask,boundary,nlon,nlat)
 
     integer, intent(in)  :: nlon,nlat
@@ -804,7 +819,8 @@ contains
   end subroutine ocean_boundary
 
   !------------------------------------------------------------------------
-  ! counting the number of ocean boundary cells
+  ! count the number of ocean boundary cells
+  
   subroutine ocean_boundary_num(boundary,nlon,nlat,nsh)
     
     integer, intent(in)  :: nlon,nlat
@@ -829,6 +845,7 @@ contains
 
   !------------------------------------------------------------------------
   ! list the lat and lon of ocean boundary cells
+
   subroutine ocean_boundary_points(boundary,lon30s,lat30s,lonsh,latsh,nlon,nlat,nsh)
 
     integer,intent(in) :: nlon,nlat,nsh
@@ -854,6 +871,7 @@ contains
 
   !------------------------------------------------------------------------
   ! move the outlet locations to the nearest ocean boundary cell 
+
   subroutine move_to_ocean(lonsi,latsi,lons,lats,mask,lonsh,latsh,lons_adj,lats_adj,ns,nlon,nlat,nsh)
 
     integer, intent(in)  :: ns,nlon,nlat,nsh
@@ -902,6 +920,7 @@ contains
 
   !------------------------------------------------------------------------
   !convert the lon and lat values of the outlets to lon and lat idx on the 30s map
+
   subroutine sinkxy_ocean(lons,lats,lon30s,lat30s,loni,lati,ns,nlon,nlat)
     
     integer, intent(in)                :: ns,nlon,nlat
@@ -934,6 +953,7 @@ contains
 
   !------------------------------------------------------------------------
   ! put the list of lon and lat idx of the outlets back to the 30s map lons(nx,ny),lats(nx,ny)
+
   subroutine update_outlets(loni_ocn,lati_ocn,ns_map,lons,lats,nx,ny,ns)
 
     integer,intent(in)    :: nx,ny,ns
@@ -968,6 +988,6 @@ contains
 
   !------------------------------------------------------------------------
 
-end program Runoff
+end program mk_runofftbl
 
 ! ============================ EOF =====================================================
