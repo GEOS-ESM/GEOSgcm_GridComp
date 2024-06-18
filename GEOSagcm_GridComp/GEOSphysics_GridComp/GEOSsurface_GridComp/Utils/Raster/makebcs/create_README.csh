@@ -620,7 +620,7 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 file name: soil_param.dat
 	 do n = 1, ${NTILES}
 _EOI_
-if( $mysoil == HWSD ) then
+if( $mysoil == HWSD || $mysoil == HWSD_b ) then
 cat << _EOS1_ > clsm/soil
 		read ([UNIT],'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')       &
                      tile_index, pfaf_code, soil_class_top, soil_class_com, BEE,                     &
