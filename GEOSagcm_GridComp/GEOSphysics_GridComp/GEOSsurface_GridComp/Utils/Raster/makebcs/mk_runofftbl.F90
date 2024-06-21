@@ -4,10 +4,11 @@ program mk_runofftbl
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mk_runofftbl.x Gridname"       
+!  Usage = "mk_runofftbl.x -g Gridname -v LBCSV"       
 !
-!     Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
+!     -g: Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
 !               eg, CF0180x6C_M6TP0072x0036-Pfafstetter 
+!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v10, v11, v12, ...)
 !
 ! This program generates the runoff table *.trn and *.TRN files that are used in the Catchment model for
 ! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
@@ -45,18 +46,19 @@ program mk_runofftbl
 
   integer                :: nxt, command_argument_count
   character*(128)        :: arg
-  character*(128)        :: Usage = "mk_runofftbl.x CF0180x6C_M6TP0072x0036-Pfafstetter"
-  character*(128)        :: mapl_tp_file
+  character*(128)        :: Usage = "mk_runofftbl.x -g CF0180x6C_M6TP0072x0036-Pfafstetter -v v12"
+  character*5            :: LBCSV = 'UNDEF'
+  character*5            :: OUTLETV = 'UNDEF'  
+  character*1            :: opt
   
   ! ------------------------------------------------------------------
   
   call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
-  fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/Outlet_latlon.'
   
   ! Read inputs -----------------------------------------------------
 
   I = command_argument_count()
-  if (I /= 1) then
+  if (I /= 4) then
      print *, " "
      print *, "Wrong number of input arguments, got: ", I
      print *, "Example usage with defaults: "
@@ -65,12 +67,45 @@ program mk_runofftbl
      print *, " "
      call exit(1)
   end if
-  
+
   nxt = 1
-  call get_command_argument(nxt, Gridname)
-  print *, " "
-  print*, "Working with input BCs string: ", Gridname
-  print *, " "
+  call get_command_argument(nxt,arg)
+  do while(arg(1:1)=='-')
+     opt=arg(2:2)
+     if(len(trim(arg))==2) then
+       nxt = nxt + 1
+       call get_command_argument(nxt,arg)
+     else
+        arg = arg(3:)
+     end if
+     select case (opt)
+     case ('g')
+        Gridname = trim(arg)
+     case ('v')
+        LBCSV = trim(arg)
+     case default
+        print *, "Wrong flag -", opt
+        print *, "Example usage with defaults: "
+        print *, trim(Usage)
+        call exit(1)
+     end select
+     nxt = nxt + 1
+     call get_command_argument(nxt,arg)
+  end do
+
+  if(trim(LBCSV)=="v11")then
+    OUTLETV="v1"
+  else if(trim(LBCSV)=="v12")then
+    OUTLETV="v2"
+  else
+    OUTLETV="others"
+  endif
+
+  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
+    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+  else
+    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/v1/Outlet_latlon.'
+  endif
 
   ! ------------------------------------------------------------------
   
@@ -112,7 +147,10 @@ program mk_runofftbl
   print *, "Determining river outlets to ocean:"
   print *, "- Output file: ", fileB
   print *, " "
-  call outlets_to_ocean(Gridname,lons,lats,nx,ny)
+
+  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
+    call outlets_to_ocean(Gridname,lons,lats,nx,ny)
+  endif
   
   open(10,file=fileT, form="formatted", status="old")
   
