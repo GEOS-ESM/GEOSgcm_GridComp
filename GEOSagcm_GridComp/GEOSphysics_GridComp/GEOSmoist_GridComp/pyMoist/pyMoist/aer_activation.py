@@ -26,34 +26,34 @@ def get_act_frac_stencil(
 
 def _act_frac_mat_stencil(
     nmodes: Int,
-    xnap: 
-    rg:
-    sigmag:
-    bibar:
+    xnap: Int,
+    rg: Float,
+    sigmag: Float,
+    bibar: Float,
     tkelvin: Float,
-    ptot:
+    ptot: Float,
     wupdraft: FloatField, 
-    nact: FloatField
+    nact: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         rdrp = 0.105e-06 
-        for n in range(ni.shape[0]):
-            dv = constants.DIJH2O0 * (constants.P0DIJ / ptot) * (tkelvin / constants.T0DIJ) ** 1.94
-            surten = 76.10e-3 - 0.155e-3 * (tkelvin - 273.15)
-            wpe = exp(77.34491296 - 7235.424651 / tkelvin - 8.2 * log(tkelvin) + tkelvin * 5.7113e-3)
-            dumw = sqrt(constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tkelvin)
-            dvprime = dv / ((constants.DELTAV / (constants.DELTAV + constants.DELTAV)) + (dv * dumw / (constants.DELTAV * constants.ALPHAC)))
-            xka = (5.69 + 0.017 * (tkelvin - 273.15)) * 418.4e-5
-            duma = sqrt(constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tkelvin)
-            xkaprime = xka / ((constants.DELTAV / (constants.DELTAV + constants.DELTAT)) + (xka * duma / (constants.DELTAV * constants.ALPHAT * constants.DENH2O * constants.CPAIR)))
-            g = 1.0 / ((constants.DENH2O * constants.RGASJMOL * tkelvin) / (wpe * dvprime * constants.WMOLMASS) + 
-                       ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tkelvin)) * 
-                       ((constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tkelvin) - 1.0))
-            a = (2.0 * surten * constants.WMOLMASS) / (constants.DENH2O * constants.RGASJMOL * tkelvin)
-            alpha = (constants.GRAVITY / (constants.RGASJMOL * tkelvin)) * ((constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tkelvin) - constants.AMOLMASS)
-            gamma = (constants.RGASJMOL * tkelvin) / (wpe * constants.WMOLMASS) + (constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP) / (constants.CPAIR * ptot * constants.AMOLMASS * tkelvin)
-            dum = sqrt(alpha * wupdraft / g)
-            zeta = 2.0 * a * dum / 3.0
+        dv = constants.DIJH2O0 * (constants.P0DIJ / ptot) * (tkelvin / constants.T0DIJ) ** 1.94e+00 #[m^2/s] (p&k,2nd ed., p.503)
+        surten = 76.10e-3 - 0.155e-3 * (tkelvin - 273.15e+00) #[j/m^2]
+        wpe = exp(77.34491296 - 7235.424651 / tkelvin - 8.2 * log(tkelvin) + tkelvin * 5.7113e-3) #[pa]
+        dumw = sqrt(constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tkelvin) #[s/m]
+        dvprime = dv / ((constants.DELTAV / (constants.DELTAV + constants.DELTAV)) + (dv * dumw / (constants.DELTAV * constants.ALPHAC)))
+        xka = (5.69 + 0.017 * (tkelvin - 273.15)) * 418.4e-5
+        duma = sqrt(constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tkelvin)
+        xkaprime = xka / ((constants.DELTAV / (constants.DELTAV + constants.DELTAT)) + (xka * duma / (constants.DELTAV * constants.ALPHAT * constants.DENH2O * constants.CPAIR)))
+        g = 1.0 / ((constants.DENH2O * constants.RGASJMOL * tkelvin) / (wpe * dvprime * constants.WMOLMASS) + 
+                    ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tkelvin)) * 
+                    ((constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tkelvin) - 1.0))
+        a = (2.0 * surten * constants.WMOLMASS) / (constants.DENH2O * constants.RGASJMOL * tkelvin)
+        alpha = (constants.GRAVITY / (constants.RGASJMOL * tkelvin)) * ((constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tkelvin) - constants.AMOLMASS)
+        gamma = (constants.RGASJMOL * tkelvin) / (wpe * constants.WMOLMASS) + (constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP) / (constants.CPAIR * ptot * constants.AMOLMASS * tkelvin)
+        dum = sqrt(alpha * wupdraft / g)
+        zeta = 2.0 * a * dum / 3.0
+
             #These variables must be computed for each mode
             xlogsigm = log(sig0[n])
             sm[n] = (2.0 / sqrt(bibar[n])) * (a / (3.0 * rg[n])) ** 1.5
@@ -121,10 +121,11 @@ def _gcf_matrix_stencil(
                 break
         gammcf[...] = exp(-x + a * log(x) - gln) * h
 
-def aer_activation_stencil(
-        IM: int, 
-        JM: int, 
-        LM: int,
+#do not inlcude aero_aci and AeroProps in the inputs into the stencil
+def aer_activation_stencil( 
+        IM: Int, 
+        JM: Int, 
+        LM: Int,
         q: FloatField, 
         t: FloatField, 
         plo: FloatField, 
@@ -141,17 +142,70 @@ def aer_activation_stencil(
         tke: FloatField, 
         vvel: FloatField, 
         FRLAND: FloatField,
-        USE_AERO_BUFFER,
-        AeroProps,
-        areo_aci,
-        NACTL,
-        NACTI,
-        NWFA,
+        USE_AERO_BUFFER: bool, #get rid of. set to True
+        AeroProps: FloatField, #get rid of
+        aero_aci: Int, #get rid of
+        NACTL: FloatField, 
+        NACTI: FloatField,
+        NWFA: FloatField, 
         NN_LAND: Float, 
-        NN_OCEAN: Float):
+        NN_OCEAN: Float
+):
 
     with computation(PARALLEL), interval(...):
+        USE_AERO_BUFFER = True
         AeroProps_num = 0.0
+        n_modes = 8
+        kpbli = max(min(round(kpbl), LM-1), 1).astype(Int) #line 96 of fortran
+
+        for j in range(JM):
+            for i in range(IM):
+                k = kpbli[i, j]
+                tk = t[i, j, k]
+                press = plo[i, j, k]
+                air_den = press * 28.8e-3 / 8.31 / tk
+
+        for k in range(LM-1, -1, -1):
+            NACTL[:, :, k] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+            NACTI[:, :, k] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+            for j in range(JM):
+                for i in range(IM):
+                    tk = t[i, j, k]
+                    press = plo[i, j, k]
+                    air_den = press * 28.8e-3 / 8.31 / tk
+                    qi = (qicn[i, j, k] + qils[i, j, k]) * 1.e+3
+                    ql = (qlcn[i, j, k] + qlls[i, j, k]) * 1.e+3
+                    wupdraft = vvel[i, j, k] + sqrt(tke[i, j, k])
+
+                    #Liquid Clouds
+                    if tk >= constants.MAPL_TICE - 40.0 and plo[i, j, k] > 10000.0 and 0.1 < wupdraft < 100.0:
+                        ni[:] = max(AeroProps[i, j, k, :, 0] * air_den, constants.ZERO_PAR)
+                        rg[:] = max(AeroProps[i, j, k, :, 1] * 0.5 * 1.e6, constants.ZERO_PAR)
+                        sig0[:] = AeroProps[i, j, k, :, 2]
+                        bibar[:] = max(AeroProps[i, j, k, :, 4], constants.ZERO_PAR)
+                        self._get_act_frac(ni, rg, sig0, tk, press, wupdraft, bibar, nact)
+                        numbinit = 0.0
+                        NACTL[i, j, k] = 0.0
+                        for n in range(n_modes):
+                            numbinit += AeroProps[i, j, k, n, 0] * air_den
+                            NACTL[i, j, k] += nact[n]
+                        NACTL[i, j, k] = min(NACTL[i, j, k], 0.99 * numbinit)
+                    
+                    #Ice Clouds
+                    if tk <= constants.MAPL_TICE and (qi > np.finfo(float).eps or ql > np.finfo(float).eps):
+                        numbinit = 0.0
+                        for n in range(n_modes):
+                            if AeroProps[i, j, k, n, 1] >= 0.5e-6:
+                                numbinit += AeroProps[i, j, k, n, 0]
+                        numbinit *= air_den
+                        NACTI[i, j, k] = ai * ((constants.MAPL_TICE - tk) ** bi) * (numbinit ** (ci * (constants.MAPL_TICE - tk) + di))
+
+                    NACTL[i, j, k] = clip(NACTL[i, j, k], constants.NN_MIN, constants.NN_MAX)
+                    NACTI[i, j, k] = clip(NACTI[i, j, k], constants.NN_MIN, constants.NN_MAX)
+
+        else:
+            NACTL[:, :, :] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+            NACTI[:, :, :] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
 
 class AerActivation:
     def __init__(
@@ -211,56 +265,7 @@ class AerActivation:
         NN_OCEAN
 
     ):
-        kpbli = max(min(round(kpbl), LM-1), 1).astype(Int) #line 96 of fortran
-
-        for j in range(JM):
-            for i in range(IM):
-                k = kpbli[i, j]
-                tk = t[i, j, k]
-                press = plo[i, j, k]
-                air_den = press * 28.8e-3 / 8.31 / tk
-
-        for k in range(LM-1, -1, -1):
-            NACTL[:, :, k] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
-            NACTI[:, :, k] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
-            for j in range(JM):
-                for i in range(IM):
-                    tk = t[i, j, k]
-                    press = plo[i, j, k]
-                    air_den = press * 28.8e-3 / 8.31 / tk
-                    qi = (qicn[i, j, k] + qils[i, j, k]) * 1.e+3
-                    ql = (qlcn[i, j, k] + qlls[i, j, k]) * 1.e+3
-                    wupdraft = vvel[i, j, k] + sqrt(tke[i, j, k])
-
-                    #Liquid Clouds
-                    if tk >= constants.MAPL_TICE - 40.0 and plo[i, j, k] > 10000.0 and 0.1 < wupdraft < 100.0:
-                        ni[:] = max(AeroProps[i, j, k, :, 0] * air_den, constants.ZERO_PAR)
-                        rg[:] = max(AeroProps[i, j, k, :, 1] * 0.5 * 1.e6, constants.ZERO_PAR)
-                        sig0[:] = AeroProps[i, j, k, :, 2]
-                        bibar[:] = max(AeroProps[i, j, k, :, 4], constants.ZERO_PAR)
-                        self._get_act_frac(ni, rg, sig0, tk, press, wupdraft, bibar, nact)
-                        numbinit = 0.0
-                        NACTL[i, j, k] = 0.0
-                        for n in range(n_modes):
-                            numbinit += AeroProps[i, j, k, n, 0] * air_den
-                            NACTL[i, j, k] += nact[n]
-                        NACTL[i, j, k] = min(NACTL[i, j, k], 0.99 * numbinit)
-                    
-                    #Ice Clouds
-                    if tk <= constants.MAPL_TICE and (qi > np.finfo(float).eps or ql > np.finfo(float).eps):
-                        numbinit = 0.0
-                        for n in range(n_modes):
-                            if AeroProps[i, j, k, n, 1] >= 0.5e-6:
-                                numbinit += AeroProps[i, j, k, n, 0]
-                        numbinit *= air_den
-                        NACTI[i, j, k] = ai * ((constants.MAPL_TICE - tk) ** bi) * (numbinit ** (ci * (constants.MAPL_TICE - tk) + di))
-
-                    NACTL[i, j, k] = clip(NACTL[i, j, k], constants.NN_MIN, constants.NN_MAX)
-                    NACTI[i, j, k] = clip(NACTI[i, j, k], constants.NN_MIN, constants.NN_MAX)
-
-        else:
-            NACTL[:, :, :] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
-            NACTI[:, :, :] = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+        #n_modes for loop between 1-8 
 
     '''
     self._get_act_frac_stencil(
