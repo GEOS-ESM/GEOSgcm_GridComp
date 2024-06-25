@@ -44,3 +44,4 @@ DELTAT = 2.160e-07
 ALPHAC = 1.000e+00
 ALPHAT = 0.960e+00
 
+n_modes = 14

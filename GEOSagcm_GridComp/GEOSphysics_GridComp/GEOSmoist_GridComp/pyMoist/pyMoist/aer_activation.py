@@ -9,6 +9,15 @@ import pyMoist.aer_activation_constants as constants
 def Erf(
     x:Float
 ):
+    """
+    Compute the error function for a given value x.
+    
+    Parameters:
+    x (Float): Input value for which the error function is to be computed.
+    
+    Returns:
+    float: The error function value for the input x.
+    """
     erf = 0.0
     if x < 0.0e+00:
         erf =- GammP(0.5, x**2)
@@ -18,6 +27,15 @@ def Erf(
 
 @gtscript.function
 def GammLn(xx):
+    """
+    Compute the natural logarithm of the gamma function for a given value xx.
+    
+    Parameters:
+    xx (float): Input value for which the natural logarithm of the gamma function is to be computed.
+    
+    Returns:
+    float: The natural logarithm of the gamma function value for the input xx.
+    """
     cof = [
         76.18009172947146, 
         -86.50532032941677, 
@@ -46,6 +64,16 @@ def GammP(
     a: Float,
     x: Float 
 )-> Float:
+    """
+    Compute the incomplete gamma function for given values a and x.
+    
+    Parameters:
+    a (Float): Parameter a for the incomplete gamma function.
+    x (Float): Parameter x for the incomplete gamma function.
+    
+    Returns:
+    float: The incomplete gamma function value for the input parameters a and x.
+    """
     #Not sure what these variables are
     gamser = 0.0
     gammcf = 0.0
@@ -69,14 +97,31 @@ def _get_act_frac_stencil(
     ptot: Float, 
     wupdraft: Float, 
     nact: FloatField, 
-    bibar: FloatField
+    bibar: FloatField,
 ):
+    """
+    Compute the activation fraction stencil for aerosol properties.
+    
+    Parameters:
+    nmodes (Int): Number of modes.
+    xnap (FloatField): Number concentration for each mode.
+    rg (FloatField): Geometric mean dry radius for each mode.
+    sigmag (FloatField): Geometric standard deviation for each mode.
+    tkelvin (Float): Absolute temperature in Kelvin.
+    ptot (Float): Total ambient pressure in Pa.
+    wupdraft (Float): Updraft velocity in m/s.
+    nact (FloatField): Activation number concentration for each mode.
+    bibar (FloatField): Intermediate computation field.
+    
+    Returns:
+    None
+    """
     with computation(PARALLEL), interval(...):
         # Call to _act_frac_mat_stencil
         _act_frac_mat_stencil(nmodes, xnap, rg, sigmag, bibar, tkelvin, ptot, wupdraft, nact)
 
 def _act_frac_mat_stencil(
-    nmodes: Int,
+    n_modes: Int,
     xnap: Int,
     rg: Float,
     sigmag: Float,
@@ -86,17 +131,34 @@ def _act_frac_mat_stencil(
     wupdraft: FloatField, 
     nact: FloatField,
 ):
+    
+    """
+    Perform matrix computations for the activation fraction stencil.
+    
+    Parameters:
+    n_modes (Int): Number of modes.
+    xnap (Int): Number concentration for each mode.
+    rg (Float): Geometric mean dry radius for each mode.
+    sigmag (Float): Geometric standard deviation for each mode.
+    bibar (Float): Intermediate computation field.
+    tkelvin (Float): Absolute temperature in Kelvin.
+    ptot (Float): Total ambient pressure in Pa.
+    wupdraft (Float): Updraft velocity in m/s.
+    nact (FloatField): Activation number concentration for each mode.
+    
+    Returns:
+    None
+    """
     with computation(PARALLEL), interval(...):
         '''
         rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
         values close to those given in a-z et al. 1998 figure 5. 
         '''
         rdrp = 0.105e-06 #[m] tuned to approximate the results in figures 1-5 in a-z et al. 1998.
-        n_modes = 8 #This might change
-        sm = [n_modes]
-        eta = [n_modes]
-        ac = [n_modes]
-        fracactn = [n_modes]
+        sm = [constants.n_modes]
+        eta = [constants.n_modes]
+        ac = [constants.n_modes]
+        fracactn = [constants.n_modes]
         #These variables are common to all modes and need only be computed once. 
         dv = constants.DIJH2O0 * (constants.P0DIJ / ptot) * (tkelvin / constants.T0DIJ) ** 1.94e+00 #[m^2/s] (p&k,2nd ed., p.503)
         surten = 76.10e-3 - 0.155e-3 * (tkelvin - 273.15e+00) #[j/m^2]
@@ -119,7 +181,7 @@ def _act_frac_mat_stencil(
         n = 0
         xlogsigm = log(sigmag[n])
         smax = 0.0
-        while n < n_modes:
+        while n < constants.n_modes:
             sm[n] = (2.0 / sqrt(bibar[n])) * (a / (3.0 * rg[n])) ** 1.5
             eta[n] = dum ** 3 / (constants.TWOPI * constants.DENH2O * gamma * xnap[n])
             f1 = 0.5 * exp(2.50 * xlogsigm[n] ** 2)
@@ -129,7 +191,7 @@ def _act_frac_mat_stencil(
         
         smax = 1.0e+00 / sqrt(smax)  
         n=0
-        while n < n_modes:
+        while n < constants.n_modes:
             #lines 534
             ac[n] = rg[n] * (sm[n] / smax) ** 0.66666666666666667
             u = log(ac[n] / rg[n]) / (constants.SQRT2 * xlogsigm[n])
@@ -141,11 +203,23 @@ def _gser_stencil(
     gamser: FloatField, 
     a: Float, 
     x: Float, 
-    gln: FloatField
+    gln: FloatField,
 ):
-    eps = 3.0e-9
-    itmax = 10000
+    """
+    Compute the series representation of the incomplete gamma function.
+    
+    Parameters:
+    gamser (Float): Output value of the series representation of the incomplete gamma function.
+    a (Float): Parameter a for the incomplete gamma function.
+    x (Float): Parameter x for the incomplete gamma function.
+    gln (Float): Natural logarithm of the gamma function.
+    
+    Returns:
+    None
+    """
     with computation(PARALLEL), interval(...):
+        eps = 3.0e-9
+        itmax = 10000
         if x <= 0:
             if x < 0:
                 raise ValueError("x < 0 in gser")
@@ -162,13 +236,24 @@ def _gser_stencil(
                     raise ValueError("aero_actv: function _gser_stencil: a too large, itmax too small")
             gamser[...] = sum_ * exp(-x + a * log(x) - gln)
 
-
 def _gcf_matrix_stencil(
     gammcf: FloatField, 
     a: Float, 
     x: Float, 
-    gln: FloatField
+    gln: FloatField,
 ):
+    """
+    Compute the continued fraction representation of the incomplete gamma function.
+    
+    Parameters:
+    gammcf (Float): Output value of the continued fraction representation of the incomplete gamma function.
+    a (Float): Parameter a for the incomplete gamma function.
+    x (Float): Parameter x for the incomplete gamma function.
+    gln (Float): Natural logarithm of the gamma function.
+    
+    Returns:
+    None
+    """
     with computation(PARALLEL), interval(...):
         itmax = 10000
         eps = 3.0e-7
@@ -196,9 +281,7 @@ def _gcf_matrix_stencil(
         else:
             raise ValueError("AERO_ACTV: Function GCF: A too large, Itmax too small.")
         gammcf[...] = exp(-x + a * log(x) - gln) * h
-        return gammcf
-
-
+        
 #def aer_activation_lquid_clouds():
 
 #def aer_activation_ice_clourds():
@@ -231,14 +314,78 @@ def aer_activation_stencil(
         NACTI: FloatField,
         NWFA: FloatField, 
         NN_LAND: Float, 
-        NN_OCEAN: Float
+        NN_OCEAN: Float,
 ):
+    """
+    Perform aerosol activation computations based on input atmospheric and aerosol properties.
+    
+    Parameters:
+    IM (int): Size of the first dimension.
+    JM (int): Size of the second dimension.
+    LM (int): Size of the third dimension.
+    q (Floatfield): Specific humidity field.
+    t (Floatfield): Temperature field.
+    plo (Floatfield): Low-level pressure field.
+    ple (Floatfield): Low-level pressure field at the end of the time step.
+    zlo (Floatfield): Low-level height field.
+    zle (Floatfield): Low-level height field at the end of the time step.
+    qlcn (Floatfield): Cloud liquid water mixing ratio field.
+    qicn ((Floatfield): Cloud ice mixing ratio field.
+    qlls (Floatfield): Large-scale cloud liquid water mixing ratio field.
+    qils (Floatfield): Large-scale cloud ice mixing ratio field.
+    sh (Floatfield): Specific humidity field.
+    evap (Floatfield): Evaporation rate field.
+    kpbl (Floatfield): Planetary boundary layer height field.
+    tke (Floatfield): Turbulent kinetic energy field.
+    vvel (Floatfield): Vertical velocity field.
+    FRLAND (Floatfield): Fraction of land field.
+    USE_AERO_BUFFER (bool): Flag to use aerosol buffer.
+    AeroProps (Floatfield): Aerosol properties field.
+    aero_aci (Int): Aerosol-cloud interaction field.
+    NACTL (Floatfield): Activated cloud droplet number concentration field.
+    NACTI (Floatfield): Activated ice crystal number concentration field.
+    NWFA (Floatfield): Newly formed aerosol number concentration field.
+    NN_LAND (Float): Number concentration over land field.
+    NN_OCEAN (Float): Number concentration over ocean field.
+    
+    Returns:
+    None
+    """
 
     with computation(PARALLEL), interval(...):
+
+        #n_modes for loop between 1-8 
+        n = 1
+        while n <= 8:
+            if n == 1:
+                num = aci_num
+            elif n == 2:
+                dpg = aci_dgn
+            elif n == 3:
+                sig = aci_sigma
+            elif n == 4:
+                kap = aci_hygroscopicity
+            elif n == 5:
+                den = aci_density
+            elif n == 6:
+                fdust = aci_f_dust 
+            elif n == 7:
+                fsoot = aci_f_soot
+            elif n == 8:
+                forg = aci_f_organic
+            n += 1
+        aci_num
+        aci_dgn
+        aci_sigma
+        aci_hygroscopicity
+        aci_density
+        aci_f_dust
+        aci_f_soot
+        aci_f_organic
+        
         USE_AERO_BUFFER = True
         USE_AEROSOL_NN = True
         AeroProps_num = 0.0
-        n_modes = 8
         kpbli = max(min(round(kpbl), LM-1), 1).astype(Int) #line 96 of fortran
 
         k = kpbli
@@ -268,19 +415,19 @@ def aer_activation_stencil(
                         self._get_act_frac(ni, rg, sig0, tk, press, wupdraft, bibar, nact)
                         numbinit = 0.0
                         NACTL[i, j, k] = 0.0
-                        for n in range(n_modes):
+                        for n in range(constants.n_modes):
                             numbinit += AeroProps[i, j, k, n, 0] * air_den
                             NACTL[i, j, k] += nact[n]
                         NACTL[i, j, k] = min(NACTL[i, j, k], 0.99 * numbinit)
                     
                     #Ice Clouds
-                    if tk <= constants.MAPL_TICE and (qi > np.finfo(float).eps or ql > np.finfo(float).eps):
+                    if tk <= constants.MAPL_TICE and (qi > finfo(float).eps or ql > finfo(float).eps):
                         numbinit = 0.0
-                        for n in range(n_modes):
+                        for n in range(constants.n_modes):
                             if AeroProps[i, j, k, n, 1] >= 0.5e-6:
                                 numbinit += AeroProps[i, j, k, n, 0]
                         numbinit *= air_den
-                        NACTI = ai * ((constants.MAPL_TICE - tk) ** bi) * (numbinit ** (ci * (constants.MAPL_TICE - tk) + di))
+                        NACTI = constants.AI * ((constants.MAPL_TICE - tk) ** constants.BI) * (numbinit ** (constants.CI * (constants.MAPL_TICE - tk) + constants.DI))
 
                     NACTL = clip(NACTL[i, j, k], constants.NN_MIN, constants.NN_MAX)
                     NACTI = clip(NACTI[i, j, k], constants.NN_MIN, constants.NN_MAX)
@@ -316,80 +463,104 @@ class AerActivation:
         
 #need to make literals for all the esmf and mapl calls
 #GEOS_moistGridComp for aero props line  5400ish
+
+#I got rid of aero_aci call
     def __call__(
         self,
-        IM,
-        JM,
-        LM,
-        q,
-        t,
-        plo,
-        ple,
-        zlo,
-        zle,
-        qlcn,
-        qicn,
-        qlls,
-        qils,
-        sh,
-        evap,
-        kpbl,
-        tke,
-        vvel,
-        FRLAND,
+        IM: Int,
+        JM: Int,
+        LM: Int,
+        q: FloatField,
+        t: FloatField,
+        plo: FloatField,
+        ple: FloatField,
+        zlo: FloatField,
+        zle: FloatField,
+        qlcn: FloatField,
+        qicn: FloatField,
+        qlls: FloatField,
+        qils: FloatField,
+        sh: Float,
+        evap: Float,
+        kpbl: Float,
+        tke: FloatField,
+        vvel: FloatField,
+        FRLAND: Float,
         USE_AERO_BUFFER: bool,
         AeroProps: FloatField, 
-        aero_aci,
-        NACTL,
-        NACTI,
-        NWFA,
-        NN_LAND,
-        NN_OCEAN
-
+        NACTL: FloatField,
+        NACTI: FloatField,
+        NWFA: FloatField,
+        NN_LAND: Int,
+        NN_OCEAN: Int
     ):
-        aci_num
-        aci_dgn
-        aci_sigma
-        aci_hygroscopicity
-        aci_density
-        aci_f_dust
-        aci_f_soot
-        aci_f_organic
+        """
+        Perform aerosol activation calculations.
 
-        #n_modes for loop between 1-8 
-        n_modes = 1
-        while n_modes < 8:
-            if n_modes == 1:
-                num = aci_num
-            elif n_modes == 2:
-                dpg = aci_dgn
-            elif n_modes == 3:
-                sig = aci_sigma
-            elif n_modes == 4:
-                kap = aci_hygroscopicity
-            elif n_modes == 5:
-                den = aci_density
-            elif n_modes == 6:
-                fdust = aci_f_dust 
-            elif n_modes == 7:
-                fsoot = aci_f_soot
-            elif n_modes == 8:
-                forg = aci_f_organic
-            n_modes += 1
+        Parameters:
+        IM (Int): Size of the first dimension.
+        JM (Int): Size of the second dimension.
+        LM (Int): Size of the third dimension.
+        q (FloatField): Specific humidity field.
+        t (FloatField): Temperature field.
+        plo (FloatField): Low-level pressure field.
+        ple (FloatField): Low-level pressure field at the end of the time step.
+        zlo (FloatField): Low-level height field.
+        zle (FloatField): Low-level height field at the end of the time step.
+        qlcn (FloatField): Cloud liquid water mixing ratio field.
+        qicn (FloatField): Cloud ice mixing ratio field.
+        qlls (FloatField): Large-scale cloud liquid water mixing ratio field.
+        qils (FloatField): Large-scale cloud ice mixing ratio field.
+        sh (Float): Specific humidity value.
+        evap (Float): Evaporation rate value.
+        kpbl (Float): Planetary boundary layer height value.
+        tke (FloatField): Turbulent kinetic energy field.
+        vvel (FloatField): Vertical velocity field.
+        FRLAND (Float): Fraction of land value.
+        USE_AERO_BUFFER (bool): Flag to use aerosol buffer.
+        AeroProps (FloatField): Aerosol properties field.
+        NACTL (FloatField): Activated cloud droplet number concentration field.
+        NACTI (FloatField): Activated ice crystal number concentration field.
+        NWFA (FloatField): Newly formed aerosol number concentration field.
+        NN_LAND (Int): Number concentration over land field.
+        NN_OCEAN (Int): Number concentration over ocean field.
 
-''''
-    self._get_act_frac_stencil(
+        Returns:
+        None
+        """
+        self._get_act_frac(
+                            nmodes, 
+                            xnap,
+                            rg, 
+                            sigmag, 
+                            tkelvin, 
+                            ptot, 
+                            wupdraft, 
+                            nact, 
+                            bibar
+                            )
+        self._act_frac_mat(
+                            nmodes,
+                            xnap,
+                            rg,
+                            sigmag,
+                            bibar,
+                            tkelvin,
+                            ptot,
+                            wupdraft, 
+                            nact,
+                            )
+        self._gser(
+                    gamser, 
+                    a, 
+                    x, 
+                    gln,
+                    )
+        self._gcf_matrix(
+                        gamser, 
+                        a, 
+                        x, 
+                        gln,
+                        )
 
-    )
-    self._act_frac_mat_stencil(
-
-    )
-    self._gser_stencil(
-
-    )
-    self._gcf_matrix_stencil(
-
-    )
-'''
-
- #start port at line 213
+    #start port at line 213
