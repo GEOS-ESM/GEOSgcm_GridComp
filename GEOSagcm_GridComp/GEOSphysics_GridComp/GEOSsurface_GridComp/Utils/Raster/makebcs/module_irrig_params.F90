@@ -1267,53 +1267,53 @@ contains
       character*3           :: DDD
       integer*2, allocatable, dimension (:,:) :: Lai_clim
       real,      allocatable, dimension (:,:) :: clim_min, clim_max, clim_lai
-      real, allocatable, dimension (:)        :: LAI_MIN, LAI_MAX
+      real, allocatable, dimension (:)        :: LAI_MIN, LAI_MAX, lai
+      real,allocatable :: dum,yr,mn,dy,nt
       logical                                 :: write_lai = .false.
-
-
-      if (write_lai) then
+    
+    ! if (write_lai) then
          
          ! Process LAI first
          ! -----------------
       
-         status = NF_CREATE ('land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4' , NF_NETCDF4, NCIDW) ; VERIFY_(STATUS)
-         status = NF_DEF_DIM(NCIDW, 'lon'        , NX_LAI, xid)    ; VERIFY_(STATUS)
-         status = NF_DEF_DIM(NCIDW, 'lat'        , NY_LAI, yid)    ; VERIFY_(STATUS)
-         status = NF_DEF_VAR(NCIDW, 'LAIMIN'   , NF_FLOAT, 2 ,(/xid,yid/), vid) ; VERIFY_(STATUS)
-         status = NF_DEF_VAR(NCIDW, 'LAIMAX'   , NF_FLOAT, 2 ,(/xid,yid/), vid) ; VERIFY_(STATUS)
-         status = NF_ENDDEF(NCIDW)
+    !     status = NF_CREATE ('land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4' , NF_NETCDF4, NCIDW) ; VERIFY_(STATUS)
+    !     status = NF_DEF_DIM(NCIDW, 'lon'        , NX_LAI, xid)    ; VERIFY_(STATUS)
+    !     status = NF_DEF_DIM(NCIDW, 'lat'        , NY_LAI, yid)    ; VERIFY_(STATUS)
+    !     status = NF_DEF_VAR(NCIDW, 'LAIMIN'   , NF_FLOAT, 2 ,(/xid,yid/), vid) ; VERIFY_(STATUS)
+    !     status = NF_DEF_VAR(NCIDW, 'LAIMAX'   , NF_FLOAT, 2 ,(/xid,yid/), vid) ; VERIFY_(STATUS)
+    !     status = NF_ENDDEF(NCIDW)
          
-         allocate (Lai_clim  (1:NX_LAI, 1: NY_LAI))
-         allocate (clim_min  (1:NX_LAI, 1: NY_LAI))
-         allocate (clim_max  (1:NX_LAI, 1: NY_LAI))
-         allocate (clim_lai  (1:NX_LAI, 1: NY_LAI))
-         clim_max = -9999.
-         clim_min =  9999.
+    !     allocate (Lai_clim  (1:NX_LAI, 1: NY_LAI))
+    !     allocate (clim_min  (1:NX_LAI, 1: NY_LAI))
+    !     allocate (clim_max  (1:NX_LAI, 1: NY_LAI))
+    !     allocate (clim_lai  (1:NX_LAI, 1: NY_LAI))
+    !     clim_max = -9999.
+    !     clim_min =  9999.
          
-         DO DOY = 1, 361, 8
-            write (DDD, '(i3.3)') DOY
-            print *,trim(LAI_file)//DDD//'.nc4'
-            status = NF_OPEN(trim(LAI_file)//DDD//'.nc4',NF_NOWRITE, ncid); VERIFY_(STATUS)
-            STATUS = NF_GET_VARA_INT2 (NCID,VarID(NCID,'Lai_500m'),(/1,1/),(/NX_LAI,NY_LAI/),Lai_clim) ; VERIFY_(STATUS)
+    !     DO DOY = 1, 361, 8
+    !        write (DDD, '(i3.3)') DOY
+    !        print *,trim(LAI_file)//DDD//'.nc4'
+    !        status = NF_OPEN(trim(LAI_file)//DDD//'.nc4',NF_NOWRITE, ncid); VERIFY_(STATUS)
+    !        STATUS = NF_GET_VARA_INT2 (NCID,VarID(NCID,'Lai_500m'),(/1,1/),(/NX_LAI,NY_LAI/),Lai_clim) ; VERIFY_(STATUS)
             
-            clim_lai = -9999.
-            where ((Lai_clim >=0).and.(Lai_clim <= 100))
-               clim_lai = lai_clim * 0.1
-            end where
-            where ((clim_lai >= 0.) .and. (clim_lai > clim_max))
-               clim_max = clim_lai
-            end where
-            where ((clim_lai >= 0.) .and. (clim_lai < clim_min))
-               clim_min = clim_lai
-            end where
-            STATUS = NF_CLOSE (NCID)
-         END DO
+    !        clim_lai = -9999.
+    !        where ((Lai_clim >=0).and.(Lai_clim <= 100))
+    !           clim_lai = lai_clim * 0.1
+    !        end where
+    !        where ((clim_lai >= 0.) .and. (clim_lai > clim_max))
+    !           clim_max = clim_lai
+    !        end where
+    !        where ((clim_lai >= 0.) .and. (clim_lai < clim_min))
+    !           clim_min = clim_lai
+    !        end where
+    !        STATUS = NF_CLOSE (NCID)
+    !     END DO
          
-         STATUS = NF_PUT_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMIN'),(/1,1/),(/NX_LAI,NY_LAI/),clim_min) ; VERIFY_(STATUS)
-         STATUS = NF_PUT_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMAX'),(/1,1/),(/NX_LAI,NY_LAI/),clim_max) ; VERIFY_(STATUS)
-         STATUS = NF_CLOSE (NCIDW)
-         deallocate (lai_clim, clim_lai, clim_min, clim_max)
-      endif
+     !    STATUS = NF_PUT_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMIN'),(/1,1/),(/NX_LAI,NY_LAI/),clim_min) ; VERIFY_(STATUS)
+     !    STATUS = NF_PUT_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMAX'),(/1,1/),(/NX_LAI,NY_LAI/),clim_max) ; VERIFY_(STATUS)
+     !    STATUS = NF_CLOSE (NCIDW)
+     !   deallocate (lai_clim, clim_lai, clim_min, clim_max)
+     ! endif
       
       allocate( var_in(NX_gripc,NY_gripc)) 
       var_in = UNDEF
@@ -1347,16 +1347,17 @@ contains
       max_cnt = 0.
       allocate (LAI_MIN (NTILES))
       allocate (LAI_MAX (NTILES))
+      allocate (lai (NTILES))
       LAI_MIN = -9999.
       LAI_MAX = -9999.
-
+!!!! Qui lo devo leggere .........  Ma se lo creo da lai.dat, Avra' dimensioni come le NTILES
       ! Read Min/Max LAI
-      allocate (clim_min  (1:NX_LAI, 1: NY_LAI))
-      allocate (clim_max  (1:NX_LAI, 1: NY_LAI))
-      status = NF_OPEN('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4', NF_NOWRITE, NCIDW); VERIFY_(STATUS)
-      STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMIN'),(/1,1/),(/NX_LAI,NY_LAI/),clim_min)  ; VERIFY_(STATUS)
-      STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMAX'),(/1,1/),(/NX_LAI,NY_LAI/),clim_max)  ; VERIFY_(STATUS)
-      STATUS = NF_CLOSE (NCIDW)
+ !!!!     allocate (clim_min  (1:NX_LAI, 1: NY_LAI))
+ !!!!     allocate (clim_max  (1:NX_LAI, 1: NY_LAI))
+ !     status = NF_OPEN('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/irrigation/lai_clim_min_max/v1/MCD15A2H.006_LAI_climMinMax.nc4', NF_NOWRITE, NCIDW); VERIFY_(STATUS)
+  !    STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMIN'),(/1,1/),(/NX_LAI,NY_LAI/),clim_min)  ; VERIFY_(STATUS)
+  !    STATUS = NF_GET_VARA_REAL (NCIDW,VarID(NCIDW,'LAIMAX'),(/1,1/),(/NX_LAI,NY_LAI/),clim_max)  ; VERIFY_(STATUS)
+  !    STATUS = NF_CLOSE (NCIDW)
       
       do j = 1,NY_gripc
          do i =  1,NX_gripc
@@ -1367,19 +1368,19 @@ contains
                if (var_in(i,j) == 3) PGRIPC(iraster (i,j)) = PGRIPC(iraster (i,j)) + 1.
                if (var_in(i,j) == 4) NGRIPC(iraster (i,j)) = NGRIPC(iraster (i,j)) + 1.
 
-               if(var_in(i,j) == 2) then
-                  if(clim_min(i,j) < 10.) then
-                     if(LAI_MIN(iraster (i,j)) < 0.) LAI_MIN(iraster (i,j)) = 0.
-                     LAI_MIN (iraster (i,j)) = LAI_MIN (iraster (i,j)) + clim_min(i,j)
-                     min_cnt (iraster (i,j)) = min_cnt (iraster (i,j)) + 1.
-                  endif
+   !            if(var_in(i,j) == 2) then
+    !              if(clim_min(i,j) < 10.) then
+     !                if(LAI_MIN(iraster (i,j)) < 0.) LAI_MIN(iraster (i,j)) = 0.
+      !               LAI_MIN (iraster (i,j)) = LAI_MIN (iraster (i,j)) + clim_min(i,j)
+       !              min_cnt (iraster (i,j)) = min_cnt (iraster (i,j)) + 1.
+        !          endif
 
-                  if(clim_max(i,j) >= 0.) then
-                     if(LAI_MAX(iraster (i,j)) < 0.) LAI_MAX(iraster (i,j)) = 0.
-                     LAI_MAX (iraster (i,j)) = LAI_MAX (iraster (i,j)) + clim_max(i,j)
-                     max_cnt (iraster (i,j)) = max_cnt (iraster (i,j)) + 1.
-                  endif
-               endif
+   !               if(clim_max(i,j) >= 0.) then
+    !                 if(LAI_MAX(iraster (i,j)) < 0.) LAI_MAX(iraster (i,j)) = 0.
+     !                LAI_MAX (iraster (i,j)) = LAI_MAX (iraster (i,j)) + clim_max(i,j)
+      !               max_cnt (iraster (i,j)) = max_cnt (iraster (i,j)) + 1.
+       !           endif
+        !       endif
             endif
          end do
       end do
@@ -1389,24 +1390,44 @@ contains
       PGRIPC = PGRIPC / tot_cnt
       NGRIPC = NGRIPC / tot_cnt
 
-      where (max_cnt > 0.) LAI_MAX = LAI_MAX / max_cnt
-      where (min_cnt > 0.) LAI_MIN = LAI_MIN / min_cnt
+   !   where (max_cnt > 0.) LAI_MAX = LAI_MAX / max_cnt
+   !   where (min_cnt > 0.) LAI_MIN = LAI_MIN / min_cnt
 
       ! Fill LAI gaps 
       ! -------------
       !      print *, 'START LAI gap filling',COUNT(LAI_MAX >=0.), MAXVAL(LAI_MAX),count (IGRIPC > 0.)
-      DO I = 1, NTILES
-         IF((IGRIPC (I) > 0.) .AND. (LAI_MAX(I) < 0.)) THEN
-            j = getNeighbor (I,lai_in=LAI_MAX)
-            LAI_MIN (I) = LAI_MIN (j)
-            LAI_MAX (I) = LAI_MAX (j)
-         ENDIF
-      END DO
+   !   DO I = 1, NTILES
+   !      IF((IGRIPC (I) > 0.) .AND. (LAI_MAX(I) < 0.)) THEN
+   !         j = getNeighbor (I,lai_in=LAI_MAX)
+   !         LAI_MIN (I) = LAI_MIN (j)
+   !         LAI_MAX (I) = LAI_MAX (j)
+   !      ENDIF
+   !   END DO
+   allocate(dum)
+   allocate(yr)
+   allocate(mn)
+   allocate(dy)
+   allocate(nt)
+
+        open (43,file='clsm/lai.dat',      &
+        form='unformatted',status='unknown',convert='little_endian',action='read')
+        LAI_MAX=-9999.
+        LAI_MIN=9999.
+        do j = 1, 48
+                read(43) yr,mn,dy,dum,dum,dum,yr,mn,dy,dum,dum,dum,nt,dum
+	        read(43) lai
+                do i = 1, NTILES
+                      	if (lai(i)>LAI_MAX(i)) LAI_MAX(i)=lai(i)
+		        if (lai(i)<LAI_MIN(i)) LAI_MIN(i)=lai(i)
+                end do
+        end do
+        close (43)
+        where (LAI_MIN == 9999.) LAI_MIN=-9999.
 
       status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'LAIMAX'  ) ,(/1/),(/NTILES/),LAI_MAX ) ; VERIFY_(STATUS)
       status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'LAIMIN'  ) ,(/1/),(/NTILES/),LAI_MIN  ) ; VERIFY_(STATUS)
       
-      deallocate (var_in, iraster, clim_min, clim_max, min_cnt, max_cnt, tot_cnt, LAI_MIN, LAI_MAX)
+      deallocate (var_in, iraster, min_cnt, max_cnt, tot_cnt, LAI_MIN, LAI_MAX, lai, yr, mn, dy, dum, nt)
 
       print *,'DONE PROCESSING GRIPC and MCD15A2H LAI'
       
