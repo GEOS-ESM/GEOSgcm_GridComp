@@ -21,22 +21,17 @@ MODULE IRRIGATION_MODULE
   ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 0% water loss.
   !
   ! March 21, 2021 (Sarith Mahanama) - First Version
+  ! June 25, 2024 (Stefano Casirati) - Second Version
   !
   ! (1) EXPORTS - MODEL OUTPUTS TO THE LAND MODEL (IRRIGATION RATES):
   !    1) SPRINKLERRATE [kg m-2 s-1]
   !    2) DRIPRATE [kg m-2 s-1]
   !    3) FLOODRATE [kg m-2 s-1]    
   !
-  ! (2) COMPUTATIONAL TILES:
-  !    During land BCs generation, land tiles where irrigated crops or paddy is present were further subdivided to a
-  !    mosaic of upto 3 fractions: i) non-irrigated land, ii) irrigated crop, or iii) paddy.
-  !    The model treats each fraction as a separate computational tile and runs on each individual fraction with own parameters and prognostics.
-  !    All fractions inherited model and soil parameters from the main land tile that they belong to. A special treatment of setting BF3 to a high
-  !    value (25.) was applied to paddy/crop tiles to account for the uniquely flat nature of farmlands. Vegetation characteristics and vegetation dynamic
-  !    parameters for irrigated crop and paddy tiles were taken from the nearest grass or crops land tile. 
-  !    During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
-  !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
-  !    OR a irrigated-crops OR a paddy tile.
+  ! (2) IRRIGATED AND PADDY TILES:
+  ! During land BC's generation, the fraction of irrigated crops and paddy is set to zero if their sum is below an irrigation threshold.
+  ! Irrigated fractions can be irrigated with sprinkler, drip, and flood, while paddy fractions can only be irrigated using the flood irrigation method.
+  ! Vegetation characteristics and vegetation dynamic parameters for irrigated crops and paddy tiles were taken from the nearest grass or cropland tile.
   !
   ! (3) MODEL INPUTS:
   !     SMWP    : rootzone soil moisture content at wilting point [mm] 
@@ -61,8 +56,10 @@ MODULE IRRIGATION_MODULE
   !          iii)3: Flood irrigation on entire tile.
   !
   !     IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
-  !          IRRIGFRAC    : fraction of tile covered by irrigated crops (per Section 2, values will be 0. or 1.)
-  !          PADDYFRAC    : fraction of tile covered by paddy (per Section 2, values will be 0. or 1.)
+  !          IRRIGFRAC    : fraction of tile covered by irrigated crops (values between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation
+  !                         Threshold)
+  !          PADDYFRAC    : fraction of tile covered by paddy (values between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation
+  !                         Threshold)
   !          SPRINKLERFR  : fraction of tile equipped for sprinkler irrigation
   !          DRIPFR       : fraction of tile equipped for drip irrigation
   !          FLOODFR      : fraction of tile equipped for flood irrigation
@@ -102,12 +99,6 @@ MODULE IRRIGATION_MODULE
   !     The second dimensions of 2D arrays is for different crop fractions i.e. the second dimension is 2 for above
   !     IRRIG_TRIGGER: 0 to separately store irrigation rates in irrigated crop and paddy fractions.
   !     It would be 26 for IRRIG_TRIGGER: 1.
-  !     Note also that runnning the irrigation model on subtiling mode (specific irrigated crop and paddy tiles with their own land prognostics)
-  !     is preferred (Section 2) to running the irrigation model on fractions of typical land tiles. For the subtiling mode with own soil moisture
-  !     prognostics, IRRIGFRAC, PADDYFRAC and CROPIRRIGFRAC fractions have been adjusted to represent irrigation type of the subtile in question. i.e.  
-  !     IRRIFRAC has been set to 1. on irrigated-crop subtiles; PADDYFRAC and CROPIRRIGFRAC(N,3) are set to 1. on paddy subtiles; and  SUM of
-  !     CROPIRRIGFRAC(N,:) excluding the 3rd element is set to 1. on irrigated crop tiles.
-  !
   !     The crop calendar implemetation (IRRIG_TRIGGER: 1) computes SPRINKLERRATE, DRIPRATE, and FLOODRATE as weighted averages of irrigation rates from
   !     all active crops in SRATE, DRATE and FRATE arrays.
   

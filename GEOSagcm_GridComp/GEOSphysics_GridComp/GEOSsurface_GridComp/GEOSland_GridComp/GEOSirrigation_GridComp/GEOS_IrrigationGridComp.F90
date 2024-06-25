@@ -560,11 +560,10 @@ contains
     call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
     ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in which IRRIGFRAC and PADDYFRAC in BCs are fractions.
-    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (defult is 0.5) assuming the larger 
-    ! of the two fractions is the dominant surface type.
+    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.5).
 
     where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
-!To assign the entire cell to the largest fraction remove comments 568-574
+!To assign the entire cell to the largest fraction remove comments 568-574,
         ! where (PADDYFRAC >= IRRIGFRAC)
         !    PADDYFRAC = 1.
         !    IRRIGFRAC = 0.
@@ -597,8 +596,7 @@ contains
 
     ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
     ! irrigated tile fraction before exporting to land models.
-    ! Since revised IRRIGFRAC, and PADDYFRAC in subtiling mode are 0. or 1., below scaling
-    ! has no effect in that mode.
+ 
 
     SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
     DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
@@ -836,9 +834,7 @@ contains
 
     ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
     ! irrigated tile fraction before exporting to land models.
-    ! Since revised IRRIGFRAC, and PADDYFRAC in subtiling mode are 0. or 1., below scaling
-    ! has no effect in that mode. 
-
+ 
     SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
     DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
     FLOODRATE     = FLOODRATE    *(IRRIGFRAC + PADDYFRAC)
