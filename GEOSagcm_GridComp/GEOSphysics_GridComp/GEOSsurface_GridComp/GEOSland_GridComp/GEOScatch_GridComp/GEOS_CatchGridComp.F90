@@ -2321,7 +2321,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'Evaporation_land',          &
+    LONG_NAME          = 'Total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2563,7 +2563,16 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPLAND',                    &
-    LONG_NAME          = 'rate_of_spurious_land_energy_source',&
+    LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
+    UNITS              = 'W m-2',                     &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SPLH',                      &
+    LONG_NAME          = 'Spurious_latent_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2572,7 +2581,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPWATR',                    &
-    LONG_NAME          = 'rate_of_spurious_land_water_source',&
+    LONG_NAME          = 'Spurious_evapotranspiration_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2581,7 +2590,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPSNOW',                    &
-    LONG_NAME          = 'rate_of_spurious_snow_energy',&
+    LONG_NAME          = 'Spurious_snow_energy_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -3903,6 +3912,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: DWLAND
         real, dimension(:),   pointer :: DHLAND
         real, dimension(:),   pointer :: SPLAND
+        real, dimension(:),   pointer :: SPLH
         real, dimension(:),   pointer :: SPWATR
         real, dimension(:),   pointer :: SPSNOW
 
@@ -4445,6 +4455,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPLH,   'SPLH'   ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
@@ -5563,6 +5574,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QC(:,FWLT) = QA4_0
            EVACC = 0.0
            SHACC = 0.0
+           LHACC = 0.0
         endif
 
         QC(:,FSNW) =  GEOS_QSAT ( TC(:,FSNW), PS, PASCALS=.true., RAMP=0.0 )
@@ -5653,19 +5665,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
-!amm add correction term to latent heat diagnostics (HLATN is always allocated)
-!    this will impact the export LHLAND
-        HLATN = HLATN - LHACC
-! also add some portion of the correction term to evap from soil, int, veg and snow
+!         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
+! !amm add correction term to latent heat diagnostics (HLATN is always allocated)
+! !    this will impact the export LHLAND
+!         HLATN = HLATN - LHACC
+! ! also add some portion of the correction term to evap from soil, int, veg and snow
+
         SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
-        where(SUMEV>0.)
-        EVPICE = EVPICE - EVACC*EVPICE/SUMEV
-        EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
-        EVPINT = EVPINT - EVACC*EVPINT/SUMEV
-        EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
+        where(SUMEV/=0.)                          ! apportion residual based on (non-zero) evap/dewfall flux
+           EVPICE = EVPICE - EVACC*EVPICE/SUMEV
+           EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
+           EVPINT = EVPINT - EVACC*EVPINT/SUMEV
+           EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
+        elsewhere                                 ! apportion residual based on ASNOW (for simplicity, add snow-free portion to EVPSOI)
+           EVPICE = EVPICE - EVACC*ASNOW           
+           EVPSOI = EVPSOI - EVACC*(1.-ASNOW)
         endwhere
-        endif
+
+!        endif
 
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
@@ -5685,7 +5702,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
-        if(associated(LHLAND)) LHLAND = HLATN
+        if(associated(LHLAND)) LHLAND = HLATN-LHACC
         if(associated(SHLAND)) SHLAND = SHOUT-SHACC
         if(associated(SWLAND)) SWLAND = SWNDSRF
         if(associated(LWLAND)) LWLAND = LWNDSRF
@@ -5711,6 +5728,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(DWLAND)) DWLAND = WCHANGE
         if(associated(DHLAND)) DHLAND = ECHANGE
         if(associated(SPLAND)) SPLAND = SHACC
+        if(associated(SPLH  )) SPLH   = LHACC
         if(associated(SPWATR)) SPWATR = EVACC
         if(associated(SPSNOW)) SPSNOW = HSNACC
 
