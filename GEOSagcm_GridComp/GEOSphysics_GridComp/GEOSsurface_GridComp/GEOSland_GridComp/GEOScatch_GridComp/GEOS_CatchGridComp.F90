@@ -1364,7 +1364,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'surface_moisture_exchange_coffiecient',&
+    LONG_NAME          = 'surface_moisture_exchange_coefficient',&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'CQ'                        ,&
     DIMS               = MAPL_DimsTileTile           ,&
@@ -1396,11 +1396,11 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  ! for optional extra derivatives in louissurface
+  ! for optional extra (analytical) derivatives in louissurface
 
   call MAPL_AddInternalSpec(GC,                  &
     SHORT_NAME         = 'DCH',                        &
-    LONG_NAME          = 'ch difference, optional in louissurface', &
+    LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
     UNITS              = '1',                   &
     DIMS               = MAPL_DimsTileTile,           &
     NUM_SUBTILES       = NUM_SUBTILES                ,&
@@ -1411,7 +1411,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddInternalSpec(GC,                  &
     SHORT_NAME         = 'DCQ',                        &
-    LONG_NAME          = 'cq difference, optional in louissurface', &
+    LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
     UNITS              = '1',                   &
     DIMS               = MAPL_DimsTileTile,           &
     NUM_SUBTILES       = NUM_SUBTILES                ,&
@@ -1420,7 +1420,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  ! for optional extra derivatives in helfsurface
+  ! for optional extra (numerical) derivatives in helfsurface and louissurface
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
