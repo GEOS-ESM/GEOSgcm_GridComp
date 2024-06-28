@@ -13094,6 +13094,7 @@ do K= 1, LM
       !!if(associated(QSATI   ))   DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSATi, OVER_ICE=.TRUE. )
       !!if(associated(QSATl   ))   DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSATl, OVER_LIQUID=.TRUE. )
       if (associated(TI     ))   TI      = (TH1 - TH)*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))/DT_MOIST
+
       if (associated(UI     ))   UI      = (U1  - U )/DT_MOIST
       if (associated(VI     ))   VI      = (V1  - V )/DT_MOIST
       if(associated(DQLDT   ))   then 
@@ -13180,7 +13181,7 @@ do K= 1, LM
 
       if (associated(CNVRNZ     ))   CNVRNZ    =  SUM( DQRC  * MASS , 3 )
       if (associated(PDFLZ      ))   PDFLZ     =  SUM( DLPDF_X * MASS , 3 )
-      if (associated(CNVLZ      ))   CNVLZ     =  SUM( DCNVL_X * MASS , 3 )
+      if (associated(CNVLZ      ))   CNVLZ     =  SUM( (DCNVL_X + QLENT_SC + QLSUB_SC) * MASS , 3 )
 
       if (associated(PDFIZ      ))   PDFIZ     =  SUM( DIPDF_X * MASS , 3 )
       if (associated(CNVIZ      ))   CNVIZ     =  SUM( DCNVI_X * MASS , 3 )
