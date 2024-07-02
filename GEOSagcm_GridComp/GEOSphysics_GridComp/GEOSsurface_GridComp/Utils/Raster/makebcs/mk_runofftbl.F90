@@ -4,11 +4,10 @@ program mk_runofftbl
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mk_runofftbl.x -g Gridname -v LBCSV"       
+!  Usage = "mk_runofftbl.x -g Gridname"       
 !
 !     -g: Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
 !               eg, CF0180x6C_M6TP0072x0036-Pfafstetter 
-!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v10, v11, v12, ...)
 !
 ! This program generates the runoff table *.trn and *.TRN files that are used in the Catchment model for
 ! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
@@ -16,8 +15,8 @@ program mk_runofftbl
 ! outlets are located.  The latter file is either created by [..]/Raster/preproc/routing/run_routing_raster.py 
 ! or from Randy's (Randal.d.koster@nasa.gov) old file under {MAKE_BCS_INPUT_DIR}/land/route/v1.
 ! The program first moves the outlet locations from the land raster grid cells to the nearest ocean pixels 
-! by calling outlets_to_ocean() (only with bcs version v11, v12 or later) and then generates the runoff table files.
-! The program outlets_to_ocean() currently works only for the MOM5 and MOM6 tripolar ocean grids.
+! by calling outlets_to_ocean() and then generates the runoff table files.
+! The subroutine outlets_to_ocean() currently works only for the MOM5 and MOM6 tripolar ocean grids.
 !
 !Basically based on bcs version we would use have these 3 options:
 !=======================================================
@@ -25,7 +24,7 @@ program mk_runofftbl
 !---------------------------------------------------
 !v12            -->  (new)  v2  (produced with Yujin's pre-processing routines)
 !v11            -->  (old)  v1  (produced with Randy's old file) 
-!otherwise      -->  n/a  (produced with Randy's old file, but do not move outlet locations to ocean)
+!otherwise      -->  N/A  (do not run routing module of make_bcs)
 !=========================================================
 !  
 ! Yujin Zeng - June 17, 2024 
@@ -33,6 +32,7 @@ program mk_runofftbl
   
   use mapl_hashmod
   use mapl_sortmod
+  use rmTinyCatchParaMod, only :: OUTLETV
   use netcdf
   
   implicit none
@@ -57,13 +57,18 @@ program mk_runofftbl
   integer                :: nxt, command_argument_count
   character*(128)        :: arg
   character*(128)        :: Usage = "mk_runofftbl.x -g CF0180x6C_M6TP0072x0036-Pfafstetter -v v12"
-  character*5            :: LBCSV = 'UNDEF'
-  character*5            :: OUTLETV = 'UNDEF'  
   character*1            :: opt
   
   ! ------------------------------------------------------------------
   
   call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
+
+  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
+    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+  else
+    print *, "Routing files will not be produced with the selected land BCs version"
+    stop
+  endif  
   
   ! Read inputs -----------------------------------------------------
 
@@ -91,8 +96,6 @@ program mk_runofftbl
      select case (opt)
      case ('g')
         Gridname = trim(arg)
-     case ('v')
-        LBCSV = trim(arg)
      case default
         print *, "Wrong flag -", opt
         print *, "Example usage with defaults: "
@@ -103,19 +106,8 @@ program mk_runofftbl
      call get_command_argument(nxt,arg)
   end do
 
-  if(trim(LBCSV)=="v11")then
-    OUTLETV="v1"
-  else if(trim(LBCSV)=="v12")then
-    OUTLETV="v2"
-  else
-    OUTLETV="others"
-  endif
-
-  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
-    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
-  else
-    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/v1/Outlet_latlon.'
-  endif
+  print *, " "
+  print*, "Working with input BCs grid: ", trim(Gridname)
 
   ! ------------------------------------------------------------------
   
@@ -158,9 +150,7 @@ program mk_runofftbl
   print *, "- Output file: ", fileB
   print *, " "
 
-  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
-    call outlets_to_ocean(Gridname,lons,lats,nx,ny)
-  endif
+  call outlets_to_ocean(Gridname,lons,lats,nx,ny)
   
   open(10,file=fileT, form="formatted", status="old")
   

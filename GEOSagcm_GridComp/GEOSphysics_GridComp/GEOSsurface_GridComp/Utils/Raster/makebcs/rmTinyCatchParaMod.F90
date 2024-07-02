@@ -52,6 +52,7 @@ module rmTinyCatchParaMod
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
   character*10, public, save :: SNOWALB     = 'UNDEF'
+  character*5,  public, save :: OUTLETV     = 'UNDEF'  
   REAL,         public, save :: GNU         = MAPL_UNDEF
 
   character*512              :: MAKE_BCS_INPUT_DIR
@@ -103,6 +104,7 @@ contains
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS1'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -112,6 +114,7 @@ contains
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -121,6 +124,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -130,6 +134,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'      
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .true.
@@ -139,6 +144,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -148,6 +154,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -157,6 +164,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -166,6 +174,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -175,6 +184,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -184,6 +194,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -193,6 +204,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "v1"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -202,6 +214,7 @@ contains
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"       
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
