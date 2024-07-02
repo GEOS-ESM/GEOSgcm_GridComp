@@ -4084,7 +4084,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA)
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
             
-            xscale =  min(max(SQRT(AREA(I, J))/1000., 1.0), 200.)
+            xscale =  min(max(SQRT(AREA(I, J))/1.0e10, 1.0), 200.)
             xscale =  xscale**(-0.6666)
 
             IF (PLmb(I, J, LM) .le. 500.0) then                                        

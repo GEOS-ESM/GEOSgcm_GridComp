@@ -73,7 +73,7 @@ module GEOS_MGB2_2M_InterfaceMod
            FDROP_DUST, FDROP_SOOT, WSUB_OPTION, &
            DUST_INFAC, ORG_INFAC, BC_INFAC, SS_INFAC, RRTMG_IRRAD, RRTMG_SORAD,&
            MTIME,MINCDNC, Immersion_param, ACC_ENH, ACC_ENH_ICE, DT_MICRO, URSCALE, &
-           CNV_GSC, CNV_BSC, MUI_CST
+           CNV_GSC, CNV_BSC, MUI_CST, USE_AREA
 
 
   public :: MGB2_2M_Setup, MGB2_2M_Initialize, MGB2_2M_Run
@@ -94,7 +94,7 @@ subroutine MGB2_2M_Setup (GC, CF, RC)
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
     
-    call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=1, __RC__)
+    call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=3, __RC__)
     call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', __RC__) ! Note: Default set in GEOS_GcmGridComp.F90
 
 
@@ -367,8 +367,8 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, LIU_MU,         'LIU_MU:',         DEFAULT= 2.0,    __RC__) !Liu autoconversion parameter
     call MAPL_GetResource(MAPL, NPRE_FRAC,      'NPRE_FRAC:',      DEFAULT= -1.0,   __RC__) !Fraction of preexisting ice affecting ice nucleationn            
     call MAPL_GetResource(MAPL, USE_AV_V,       'USE_AV_V:',       DEFAULT= .TRUE.,    __RC__) !Set to > 0 to use an average velocity for activation
-    call MAPL_GetResource(MAPL, AUT_SCALE,      'AUT_SCALE:',      DEFAULT= 0.5,    __RC__) !scale factor for critical size for drizzle
-    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 360.,    __RC__) !Ice autoconversion time scale
+    call MAPL_GetResource(MAPL, AUT_SCALE,      'AUT_SCALE:',      DEFAULT= 1.0,    __RC__) !scale factor for critical size for drizzle
+    call MAPL_GetResource(MAPL, TS_AUTO_ICE,    'TS_AUTO_ICE:',    DEFAULT= 1800.,    __RC__) !Ice autoconversion time scale
     call MAPL_GetResource(MAPL, CCN_PARAM,      'CCNPARAM:',       DEFAULT= 2.0,    __RC__) !CCN activation param
     call MAPL_GetResource(MAPL, IN_PARAM,       'INPARAM:',        DEFAULT= 6.0,    __RC__) !IN param
     call MAPL_GetResource(MAPL, Immersion_param,'ImmersionPARAM:', DEFAULT= 6.0,    __RC__) !Immersion param
@@ -380,6 +380,9 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, MTIME,          'MTIME:',          DEFAULT= -1.0,   __RC__) !Mixing time scale for aerosol within the cloud. Default is time step
     call MAPL_GetResource(MAPL, LCCIRRUS,       'LCCIRRUS:',       DEFAULT= 500.0,  __RC__) !Characteristic Length (m) of high freq gravity waves    
      call MAPL_GetResource(MAPL, QCVAR_CST,     'QCVAR_CST:',    DEFAULT= -1.,  __RC__) !Characteristic Length (m) of high freq gravity waves 
+     
+     call MAPL_GetResource(MAPL, USE_AREA,     'USE_AREA:',    DEFAULT= 1.,  __RC__) !set to zero for SCM 
+      
     !============
 
     call MAPL_GetResource(MAPL, DUST_INFAC,     'DUST_INFAC:',     DEFAULT= 1.0,    __RC__) !scalings for the INP concentrations
@@ -390,12 +393,12 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     call MAPL_GetResource(MAPL, URSCALE,       'URSCALE:',        DEFAULT= 1.0,    __RC__)  !Scaling factor for sed vel of rain    
     call MAPL_GetResource(MAPL, RRTMG_IRRAD ,  'USE_RRTMG_IRRAD:',DEFAULT=1.0,     __RC__)
     call MAPL_GetResource(MAPL, RRTMG_SORAD ,  'USE_RRTMG_SORAD:',DEFAULT=1.0,     __RC__)      
-    call MAPL_GetResource(MAPL, CNV_GSC,   'CNV_GSC:', DEFAULT= 5.0e-5 ,RC=STATUS) !linear scaling for NCPL of conv detrainment 
-    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 0.3, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
-    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=200.0e-6, __RC__ ) !ice/snow separation diameter   
+    call MAPL_GetResource(MAPL, CNV_GSC,   'CNV_GSC:', DEFAULT= 1.0e-4 ,RC=STATUS) !linear scaling for NCPL of conv detrainment 
+    call MAPL_GetResource(MAPL, CNV_BSC,   'CNV_BSC:', DEFAULT= 0.1, RC=STATUS) !scaling for N=B*Nad for conv detrainment     
+    call MAPL_GetResource(MAPL, DCS,      'DCS:'    , DEFAULT=250.0e-6, __RC__ ) !ice/snow separation diameter   
     Dcsr8 = DCS
     
-    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 0.1 ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
+    call MAPL_GetResource(MAPL, WBFFACTOR,   'WBFFACTOR:', DEFAULT= 1. ,__RC__) !scaling for the Bergeron-Findeinsen process rate    
     
     micro_mg_berg_eff_factor_in = WBFFACTOR
     call MAPL_GetResource(MAPL, NC_CST ,  'NC_CST:' , DEFAULT=  0.0 ,__RC__) !constant nd (set if greather than zero)      
@@ -1110,9 +1113,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         WSUB  =  SIGW_RC + 0.8*WSUB !diagnostic	
 
         where (T .gt. 238.0)
-        SC_ICE  =  1.0
+         SC_ICE  =  1.0
         end where 
-        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.8)
+        SC_ICE  =  MIN(MAX(SC_ICE, 1.0), 1.4)
 
 
              call MAPL_TimerOff(MAPL,"---ACTIV", __RC__)
@@ -1135,9 +1138,9 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
         
       !====== Add convective detrainment of number concentration 
         
-      call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE',  RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, CNV_FICE,   'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NICE,  'CNV_NICE', ALLOC=.TRUE.,  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_NDROP, 'CNV_NDROP', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CNV_FICE,   'CNV_FICE', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       ! CNV_MFD includes Deep+Shallow mass flux
 
@@ -1146,8 +1149,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
       DNDCNV =  0.
       DNICNV =  0.
       
-      if (associated(CNV_MFD) .AND. associated(CNV_FICE)) then 
-
+      CNV_FICE = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      
+      if (associated(CNV_MFD)) then 
+         
           DO I=  1, IM
               DO J =  1, JM 
                kbmin =  max(min(NINT(KPBL_SC(I,J)), LM-1), NINT(0.8*LM))
@@ -1163,6 +1168,10 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
 
           DNDCNV =  CNV_NDROP*CNV_MFD*iMASS
           DNICNV =  CNV_NICE*CNV_MFD*iMASS
+          
+          !print *, 'DNDCNV', DNDCNV
+          !#print *, 'DNICNV', DNICNV
+         !#rint *, 'CNV_MFD', CNV_MFD
 
           !update Number concentrations   
           NCPL = NCPL + DNDCNV*DT_MOIST
@@ -1279,7 +1288,11 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                               MINRHCRIT, TURNRHCRIT, EIS(I, J), 0) !0 uses old slingo formulation 
      		
             !include area scaling and limit RHcrit to > 70%
-            ALPHA = min( 0.30, ALPHA*SQRT(SQRT(max(AREA(I,J), 0.0)/1.e10)) )
+            
+            IF (USE_AREA > 0.) then 
+         	   ALPHA = min( 0.30, ALPHA*SQRT(SQRT(max(AREA(I,J), 0.0)/1.e10)) )
+            end if 
+            
             RHCRIT(I, J, L) =  1.0 - ALPHA
             
            
@@ -1350,6 +1363,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     
       call MAPL_TimerOff(MAPL,"----hystpdf")
       
+      IF (.FALSE.) then 
          do I=1,IM
           do J=1,JM
            do L=1,LM
@@ -1393,7 +1407,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
          end do ! JM loop
        end do ! LM loop
 
-
+     end if 
 
   	 call fix_up_clouds_2M( &
          Q, &
@@ -1588,7 +1602,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
  
     IF (QCVAR_CST .gt. 0.) then 
     	QCVAR =  QCVAR_CST
-    else    
+    else 
+        IF (USE_AREA < 1) AREA =  1.e10              
 	    call estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA)
     end if    
       
@@ -1608,8 +1623,8 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
                ncr8(1,1:LM)        = MAX(  NCPL(I,J,1:LM), 0.0) 
                nir8(1,1:LM)        = MAX(  NCPI(I,J,1:LM), 0.0) 
                
-               liqcldfr8  =  cldfr8*(qir8/(qir8 + qcr8 + 1.e-12)) 
-               icecldfr8  = max(cldfr8- liqcldfr8, 0.)                   
+               liqcldfr8  =  cldfr8!*(qcr8/(qir8 + qcr8 + 1.e-12)) 
+               icecldfr8  = cldfr8! max(cldfr8- liqcldfr8, 0.)                   
   
 
                ! Nucleation  tendencies 

@@ -5537,7 +5537,7 @@ contains
            end where
          endif
 
-         if (.FALSE.) then
+         if (adjustl(CLDMICR_OPTION)=="MGB2_2M") then
           QST3  = GEOS_QsatLQU (T, PLmb*100.0, DQ=DQST3) !clean up only with respect to liquid water
          else
           DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
