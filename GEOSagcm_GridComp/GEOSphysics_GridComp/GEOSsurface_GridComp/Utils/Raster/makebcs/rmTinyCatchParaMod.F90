@@ -92,7 +92,13 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
-    
+    !
+    ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
+    !   N/A       : No information (do not create routing "TRN" files).
+    !   v1        : Outlet locations file produced manually by Randy Koster.
+    !   v2        : Outlet locations file produced by run_routing_raster.py using routing information encoded 
+    !               in SRTM-based Pfafstetter catchments and Greenland outlets info provided by Lauren Andrews.
+
     implicit none
     
     character(*), intent (in) :: LBCSV     ! land BCs version 

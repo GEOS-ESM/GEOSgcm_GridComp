@@ -14,18 +14,12 @@ program mk_runofftbl
 ! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
 ! and (ii) a binary file ("Outlet_latlon.43200x21600") that provides the land raster grid cells where the 
 ! outlets are located.  The latter file is either created by [..]/Raster/preproc/routing/run_routing_raster.py 
-! or from Randy's (Randal.d.koster@nasa.gov) old file under {MAKE_BCS_INPUT_DIR}/land/route/v1.
+! or from Randy's (Randal.d.koster@nasa.gov) old file under {MAKE_BCS_INPUT_DIR}/land/route/v1.  The version
+! of the outlet file used by mk_runofftbl.x is determined via the LBCSV argument.
 ! The program first moves the outlet locations from the land raster grid cells to the nearest ocean pixels 
 ! by calling outlets_to_ocean() and then generates the runoff table files.
 ! The subroutine outlets_to_ocean() currently works only for the MOM5 and MOM6 tripolar ocean grids.
 !
-!Basically based on bcs version we would use have these 3 options:
-!=======================================================
-!bcs version    -->  Outlet lat/lon file version
-!---------------------------------------------------
-!v12            -->  (new)  v2  (produced with Yujin's pre-processing routines)
-!v11            -->  (old)  v1  (produced with Randy's old file) 
-!otherwise      -->  N/A  (do not run routing module of make_bcs)
 !=========================================================
 !  
 ! Yujin Zeng - June 17, 2024 
@@ -104,11 +98,11 @@ program mk_runofftbl
      call get_command_argument(nxt,arg)
   end do
 
-  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
-    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+  if (trim(OUTLETV)=="v1" .or. trim(OUTLETV)=="v2") then
+     fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
   else
-    print *, "Routing files will not be produced with the selected land BCs version"
-    stop
+     print *, "Routing files will not be produced with the selected land BCs version (too old)"
+     stop
   endif
 
   ! ------------------------------------------------------------------
@@ -730,9 +724,9 @@ contains
     
     ! read "mask" from netcdf file into "wetMask"
     
-    call check_ret(nf90_inq_varid(ncid,"mask",varid),subname)
-    call check_ret(nf90_get_var(ncid,varid,wetMask),subname)
-    call check_ret(nf90_close(ncid),subname)    
+    call check_ret( nf90_inq_varid(ncid,"mask",varid),  subname)
+    call check_ret( nf90_get_var(  ncid,varid,wetMask), subname)
+    call check_ret( nf90_close(    ncid),               subname)    
     
   end subroutine read_oceanModel_mapl
 
