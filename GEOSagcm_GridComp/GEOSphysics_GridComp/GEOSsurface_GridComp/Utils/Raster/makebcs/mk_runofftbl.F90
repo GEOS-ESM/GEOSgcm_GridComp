@@ -4,10 +4,11 @@ program mk_runofftbl
 !
 ! !ARGUMENTS:
 !
-!  Usage = "mk_runofftbl.x -g Gridname"       
+!  Usage = "mk_runofftbl.x -g Gridname -v LBCSV"       
 !
 !     -g: Gridname: a string that describes the grids associated with the atmosphere and ocean model configuration
 !               eg, CF0180x6C_M6TP0072x0036-Pfafstetter 
+!     -v: LBCSV : Land bcs version (F25, GM4, ICA, NL3, NL4, NL5, v06, v07, v08, v09, v10, v11, v12, ...)
 !
 ! This program generates the runoff table *.trn and *.TRN files that are used in the Catchment model for
 ! directing runoff to its ocean sink.  The inputs are (i) bcs geometry files associated with the Gridname 
@@ -32,7 +33,7 @@ program mk_runofftbl
   
   use mapl_hashmod
   use mapl_sortmod
-  use rmTinyCatchParaMod, only :: OUTLETV
+  use rmTinyCatchParaMod, only : init_bcs_config, OUTLETV
   use netcdf
   
   implicit none
@@ -57,18 +58,12 @@ program mk_runofftbl
   integer                :: nxt, command_argument_count
   character*(128)        :: arg
   character*(128)        :: Usage = "mk_runofftbl.x -g CF0180x6C_M6TP0072x0036-Pfafstetter -v v12"
+  character*5            :: LBCSV = 'UNDEF'
   character*1            :: opt
   
   ! ------------------------------------------------------------------
   
   call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
-
-  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
-    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
-  else
-    print *, "Routing files will not be produced with the selected land BCs version"
-    stop
-  endif  
   
   ! Read inputs -----------------------------------------------------
 
@@ -96,6 +91,9 @@ program mk_runofftbl
      select case (opt)
      case ('g')
         Gridname = trim(arg)
+     case ('v')
+        LBCSV = trim(arg)
+        call init_bcs_config (trim(LBCSV))       ! get bcs details from version string        
      case default
         print *, "Wrong flag -", opt
         print *, "Example usage with defaults: "
@@ -106,8 +104,12 @@ program mk_runofftbl
      call get_command_argument(nxt,arg)
   end do
 
-  print *, " "
-  print*, "Working with input BCs grid: ", trim(Gridname)
+  if(trim(OUTLETV)=="v1".or.trim(OUTLETV)=="v2")then
+    fileLL=trim(MAKE_BCS_INPUT_DIR)//'/land/route/'//trim(OUTLETV)//'/Outlet_latlon.'
+  else
+    print *, "Routing files will not be produced with the selected land BCs version"
+    stop
+  endif
 
   ! ------------------------------------------------------------------
   

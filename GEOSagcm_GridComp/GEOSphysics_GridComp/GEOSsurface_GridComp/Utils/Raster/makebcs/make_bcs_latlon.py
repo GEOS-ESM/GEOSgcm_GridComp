@@ -41,11 +41,9 @@ if( {TRIPOL_OCEAN} == True ) then
     /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t {NT} {DATENAME}{IMO}x{POLENAME}{JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t {NT} DC{IM}xPC{JM} {DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
+    bin/mk_runofftbl.x -g DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter -v {lbcsv}
     setenv OMP_NUM_THREADS 1
-    if ( {SKIPLAND} != True ) then
-       bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
-       bin/mk_runofftbl.x -g DC{IM}xPC{JM}_{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter
-    endif
+    if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     setenv OMP_NUM_THREADS {NCPUS}
     if ( {SKIPLAND} != True ) bin/mkCatchParam.x -x {NX} -y {NY} -g DE{IMO}xPE{JMO}_DE{IMO}xPE{JMO}-Pfafstetter -v {lbcsv}
     chmod 755 bin/create_README.csh
