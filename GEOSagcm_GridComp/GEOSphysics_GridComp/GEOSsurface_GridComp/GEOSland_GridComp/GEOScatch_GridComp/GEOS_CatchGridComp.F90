@@ -5673,13 +5673,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
         where(SUMEV/=0.)                          ! apportion residual based on (non-zero) evap/dewfall flux
-           EVPICE = EVPICE - EVACC*EVPICE/SUMEV
-           EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
-           EVPINT = EVPINT - EVACC*EVPINT/SUMEV
-           EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
+           EVPICE = EVPICE - EVACC*MAPL_ALHS*EVPICE/SUMEV 
+           EVPSOI = EVPSOI - EVACC*MAPL_ALHL*EVPSOI/SUMEV
+           EVPINT = EVPINT - EVACC*MAPL_ALHL*EVPINT/SUMEV
+           EVPVEG = EVPVEG - EVACC*MAPL_ALHL*EVPVEG/SUMEV
         elsewhere                                 ! apportion residual based on ASNOW (for simplicity, add snow-free portion to EVPSOI)
-           EVPICE = EVPICE - EVACC*ASNOW           
-           EVPSOI = EVPSOI - EVACC*(1.-ASNOW)
+           EVPICE = EVPICE - EVACC*MAPL_ALHS*ASNOW
+           EVPSOI = EVPSOI - EVACC*MAPL_ALHL*(1.-ASNOW)
         endwhere
 
 !        endif
