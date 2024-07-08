@@ -1,24 +1,5 @@
 #define ACC_PREFIX !$acc
 MODULE Aer_Actv_Single_Moment
-
-#ifdef SERIALIZE
-USE m_serialize, ONLY: &
-  fs_add_savepoint_metainfo, &
-  fs_read_field, &
-  fs_write_field, &
-  fs_create_savepoint
-USE utils_ppser, ONLY:  &
-  ppser_get_mode, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
-  ppser_intlength, &
-  ppser_reallength, &
-  ppser_realtype, &
-  ppser_zrperturb, &
-  ppser_get_mode
-#endif
-
 !
 #include "MAPL_Generic.h"
 
@@ -27,7 +8,7 @@ USE utils_ppser, ONLY:  &
       USE aer_cloud, only: AerProps
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
-      PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR
+      PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR, extract_tracer_data
       PRIVATE
 
        ! Real kind for activation.
@@ -55,6 +36,104 @@ USE utils_ppser, ONLY:  &
        integer, save :: timestep = 0
       CONTAINS          
 
+!>----------------------------------------------------------------------------------------------------------------------
+!>----------------------------------------------------------------------------------------------------------------------
+      SUBROUTINE extract_tracer_data(IM,JM,LM, n_modes, aero_aci, aci_num_, aci_dgn_, aci_sigma_, aci_density_, aci_hygroscopicity_, &
+                                    aci_f_dust_, aci_f_soot_, aci_f_organic_)
+
+            integer, intent(in) :: IM, JM, LM
+            integer, intent(out) :: n_modes
+
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_num_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_dgn_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_sigma_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_density_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_hygroscopicity_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_f_dust_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_f_soot_
+            real, dimension(IM, JM, LM, 14), intent(inout) :: aci_f_organic_
+
+            type(ESMF_State)            ,intent(inout) :: aero_aci
+
+            integer :: n, rc
+            character(len=ESMF_MAXSTR)                            :: aci_field_name
+            character(len=ESMF_MAXSTR), allocatable, dimension(:) :: aero_aci_modes
+
+            real, pointer, dimension(:,:,:) :: aci_num
+            real, pointer, dimension(:,:,:) :: aci_dgn
+            real, pointer, dimension(:,:,:) :: aci_sigma
+            real, pointer, dimension(:,:,:) :: aci_density
+            real, pointer, dimension(:,:,:) :: aci_hygroscopicity
+            real, pointer, dimension(:,:,:) :: aci_f_dust
+            real, pointer, dimension(:,:,:) :: aci_f_soot
+            real, pointer, dimension(:,:,:) :: aci_f_organic
+
+            integer                         :: ACI_STATUS
+            integer                         :: STATUS
+
+            if (USE_AEROSOL_NN) then
+
+                  call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
+
+                  if (n_modes > 0) then
+
+                        allocate(aero_aci_modes(n_modes))
+                        call ESMF_AttributeGet(aero_aci, name='aerosol_modes', itemcount=n_modes, valuelist=aero_aci_modes, __RC__)
+
+                        ACTIVATION_PROPERTIES: do n = 1, n_modes
+                              call ESMF_AttributeSet(aero_aci, name='aerosol_mode', value=trim(aero_aci_modes(n)), __RC__)
+
+                              ! execute the aerosol activation properties method 
+                              call ESMF_MethodExecute(aero_aci, label='aerosol_activation_properties', userRC=ACI_STATUS, RC=STATUS)
+                              !VERIFY_(ACI_STATUS)
+                              !VERIFY_(STATUS)
+
+                              ! copy out aerosol activation properties
+                              call ESMF_AttributeGet(aero_aci, name='aerosol_number_concentration', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_num, trim(aci_field_name), __RC__)
+
+                              aci_num_(:,:,:,n) = aci_num
+
+                              call ESMF_AttributeGet(aero_aci, name='aerosol_dry_size', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_dgn, trim(aci_field_name), __RC__)
+
+                              aci_dgn_(:,:,:,n) = aci_dgn
+
+                              call ESMF_AttributeGet(aero_aci, name='width_of_aerosol_mode', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_sigma, trim(aci_field_name), __RC__)
+
+                              aci_sigma_(:,:,:,n) = aci_sigma
+
+                              call ESMF_AttributeGet(aero_aci, name='aerosol_density', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_density, trim(aci_field_name), __RC__)
+
+                              aci_density_(:,:,:,n) = aci_density
+
+                              call ESMF_AttributeGet(aero_aci, name='aerosol_hygroscopicity', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_hygroscopicity, trim(aci_field_name), __RC__)
+
+                              aci_hygroscopicity_(:,:,:,n) = aci_hygroscopicity
+
+                              call ESMF_AttributeGet(aero_aci, name='fraction_of_dust_aerosol', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_f_dust, trim(aci_field_name), __RC__)
+
+                              aci_f_dust_(:,:,:,n) = aci_f_dust
+
+                              call ESMF_AttributeGet(aero_aci, name='fraction_of_soot_aerosol', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_f_soot, trim(aci_field_name), __RC__)
+
+                              aci_f_soot_(:,:,:,n) = aci_f_soot
+
+                              call ESMF_AttributeGet(aero_aci, name='fraction_of_organic_aerosol', value=aci_field_name, __RC__)
+                              call MAPL_GetPointer(aero_aci, aci_f_organic, trim(aci_field_name), __RC__)
+
+                              aci_f_organic_(:,:,:,n) = aci_f_organic
+
+                        enddo ACTIVATION_PROPERTIES
+                  endif
+            endif
+
+      end SUBROUTINE
 !>----------------------------------------------------------------------------------------------------------------------
 !>----------------------------------------------------------------------------------------------------------------------
 
@@ -130,9 +209,6 @@ USE utils_ppser, ONLY:  &
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
           timestep = timestep + 1
-
-!!$ser savepoint Aer_Actv_aero_aci-In timestep=timestep
-!!$ser data n_modes=n_modes
 
           if (n_modes > 0) then
 
@@ -212,6 +288,15 @@ USE utils_ppser, ONLY:  &
                     buffer(:,:,:,n,6) = aci_f_dust
                     buffer(:,:,:,n,7) = aci_f_soot
                     buffer(:,:,:,n,8) = aci_f_organic
+
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_num) = ', sum(aci_num), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_dgn) = ', sum(aci_dgn), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_sigma) = ', sum(aci_sigma), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_hygroscopicity) = ', sum(aci_hygroscopicity), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_density) = ', sum(aci_density), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_f_dust) = ', sum(aci_f_dust), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_f_soot) = ', sum(aci_f_soot), 'n = ', n
+                    !print*, 'In aer_actv: rank = ', rank, 'sum(aci_f_organic) = ', sum(aci_f_organic), 'n = ', n
                  else
                     AeroProps(:,:,:)%num(n)   = aci_num
                     AeroProps(:,:,:)%dpg(n)   = aci_dgn
@@ -246,83 +331,15 @@ USE utils_ppser, ONLY:  &
                  end do
 
 ! Since USE_AERO_BUFFER is True, we can use 'buffer' to get appropriate data
-#ifdef SERIALIZE
-! file: aer_actv_single_moment.F90 lineno: #229
-call fs_create_savepoint('Aer_Actv_Aeroprops-In', ppser_savepoint)
-call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
-! file: aer_actv_single_moment.F90 lineno: #230
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_num', buffer(:,:,:,:,1), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #231
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_dpg', buffer(:,:,:,:,2), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #232
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_sig', buffer(:,:,:,:,3), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #233
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_kap', buffer(:,:,:,:,4), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #234
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_den', buffer(:,:,:,:,5), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #235
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fdust', buffer(:,:,:,:,6), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #236
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_fsoot', buffer(:,:,:,:,7), ppser_zrperturb)
-END SELECT
-! file: aer_actv_single_moment.F90 lineno: #237
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8))
-  CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8))
-  CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AP_forg', buffer(:,:,:,:,8), ppser_zrperturb)
-END SELECT
-#endif
+!!$ser savepoint Aer_Actv_Aeroprops-In timestep=timestep
+!!$ser data AP_num=buffer(:,:,:,:,1)
+!!$ser data AP_dpg=buffer(:,:,:,:,2)
+!!$ser data AP_sig=buffer(:,:,:,:,3)
+!!$ser data AP_kap=buffer(:,:,:,:,4)
+!!$ser data AP_den=buffer(:,:,:,:,5)
+!!$ser data AP_fdust=buffer(:,:,:,:,6)
+!!$ser data AP_fsoot=buffer(:,:,:,:,7)
+!!$ser data AP_forg=buffer(:,:,:,:,8)
 
                  deallocate(buffer, __STAT__)
               end if

@@ -5227,9 +5227,14 @@ contains
     integer :: IM,JM,LM
     integer :: I, J, L
 
-    integer :: comm, rank, mpierr
+    integer :: comm, rank, mpierr, n_modes
     
     type(ESMF_VM) :: vm
+
+     real, allocatable, dimension(:,:,:,:) :: aero_num_, aero_dgn_, aero_sigma_, aero_density_
+    real, allocatable, dimension(:,:,:,:) :: aero_f_dust_, aero_f_soot_, aero_f_organic_
+    real, allocatable, dimension(:,:,:,:) :: aero_hygroscopicity_
+
     call ESMF_VMGetCurrent(vm,rc=status)
     call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
     call MPI_COMM_rank(comm,rank,mpierr)
@@ -5466,7 +5471,32 @@ contains
          endif
 
          timestep = timestep + 1
-     !     print*,'timestep = ', timestep, ' : rank = ', rank
+         print*,'timestep = ', timestep, ' : rank = ', rank
+
+     allocate(aero_num_(IM, JM, LM, 14))
+     allocate(aero_dgn_(IM, JM, LM, 14))
+     allocate(aero_sigma_(IM, JM, LM, 14))
+     allocate(aero_density_(IM, JM, LM, 14))
+     allocate(aero_hygroscopicity_(IM, JM, LM, 14))
+     allocate(aero_f_dust_(IM, JM, LM, 14))
+     allocate(aero_f_soot_(IM, JM, LM, 14))
+     allocate(aero_f_organic_(IM, JM, LM, 14))
+
+     call extract_tracer_data(IM,JM,LM, n_modes, AERO, aero_num_, aero_dgn_, aero_sigma_, aero_density_, aero_hygroscopicity_, &
+                                    aero_f_dust_, aero_f_soot_, aero_f_organic_)
+
+     !do i = 1,14
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_num) = ', sum(aero_num_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_dgn) = ', sum(aero_dgn_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_sigma) = ', sum(aero_sigma_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_hygroscopicity) = ', sum(aero_hygroscopicity_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_density) = ', sum(aero_density_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_dust) = ', sum(aero_f_dust_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_soot) = ', sum(aero_f_soot_(:,:,:,i)), 'n = ', i
+     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_organic) = ', sum(aero_f_organic_(:,:,:,i)), 'n = ', i
+     !enddo
+
+     print*,'n_modes = ', n_modes
 
 ! Note : AeroProps is allocated above, so serialization of AeroProps isn't necessary as an input since it does not 
 !        contain any preset data.
@@ -5476,7 +5506,10 @@ contains
 !$ser data IM=IM JM=JM LM=LM Q=Q T=T PLmb=PLmb PLE=PLE ZL0=ZL0 ZLE0=ZLE0 QLCN=QLCN QICN=QICN
 !$ser data QLLS=QLLS QILS=QILS SH=SH EVAP=EVAP KPBL=KPBL TKE=TKE TMP3D=TMP3D FRLAND=FRLAND 
 !$ser data USE_AERO_BUFFER=USE_AERO_BUFFER CCN_LND=CCN_LND CCN_OCN=CCN_OCN
-!$ser data NACTL=NACTL NACTI=NACTI NWFA=NWFA
+!$ser data NACTL=NACTL NACTI=NACTI NWFA=NWFA n_modes=n_modes
+!$ser data AERO_NUM=aero_num_ AERO_DGN=aero_dgn_ AERO_SIGMA=aero_sigma_ AERO_DENSITY=aero_density_
+!$ser data AERO_HYGROSCOPICITY=aero_hygroscopicity_ AERO_F_DUST=aero_f_dust_ AERO_F_SOOT=aero_f_soot_
+!$ser data AERO_F_ORGANIC=aero_f_organic_
 
          ! Pressures in Pa
          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
