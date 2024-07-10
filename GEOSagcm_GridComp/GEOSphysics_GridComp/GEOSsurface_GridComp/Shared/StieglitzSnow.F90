@@ -59,7 +59,7 @@ module StieglitzSnow
   
   real,          parameter :: StieglitzSnow_RHOMA  = 500.    ! kg/m^3  maximum snow density
   real,          parameter :: StieglitzSnow_MINSWE = 0.013   ! kg/m^2  min SWE to avoid immediate melt
-  real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  specific heat of ice at 0 deg C (??) [=MAPL_CAPICE??]
+  real,          parameter :: StieglitzSnow_CPW    = 2065.22 ! J/kg/K  spec heat of ice near 0 deg C  [cf. MAPL_CAPICE=2000. near -10 deg C]
 
   real, private, parameter :: SNWALB_VISMIN        = 0.5    
   real, private, parameter :: SNWALB_NIRMIN        = 0.3
@@ -187,7 +187,8 @@ module StieglitzSnow
   
 contains
   
-  subroutine StieglitzSnow_snowrt(N_zones, N_snow, tileType,                     &  ! in 
+  subroutine StieglitzSnow_snowrt(tile_lon, tile_lat,                            &  ! in      [radians]
+       N_zones, N_snow, tileType,                                                &  ! in 
        maxsndepth, rhofs, targetthick,                                           &  ! in 
        t1, area, tkgnd, precip, snowf, ts, dts, eturb, dedtc, hsturb, dhsdtc,    &  ! in 
        hlwtc, dhlwtc, raddn, zc1, totdepos,                                      &  ! in 
@@ -196,7 +197,7 @@ contains
        areasc, areasc0, pre, fhgnd, evap, shflux, lhflux, hcorr, ghfluxsno,      &  ! out
        sndzsc, wesnprec, sndzprec, sndz1perc,                                    &  ! out
        wesnperc, wesndens, wesnrepar, mltwtr,                                    &  ! out  
-       excs, drho0, wesnbot, tksno, dtss        )                                   ! out
+       excs, drho0, wesnbot, tksno, dtss          )                                 ! out
     
     !*********************************************************************
     ! AUTHORS:  M. Stieglitz, M. Suarez, R. Koster & S. Dery.
@@ -204,6 +205,8 @@ contains
     !*********
     ! INPUTS:
     !*********
+    !  tile_lon    : longitude of tile in [radians]
+    !  tile_lat    : latitude  of tile in [radians]
     !  N_zones     : number of zones in the horizontal dimension (eg, 3 for Catchment, 1 for LandIce)
     !  N_snow      : number of snow layers  
     !  N_constit   : Number of constituent tracers in snow
@@ -289,6 +292,8 @@ contains
     real, parameter :: snfr   = 0.01       !  holding capacity
     real, parameter :: small  = 1.e-6      !  small number 
 
+    real,                                  intent(in)    :: tile_lon, tile_lat
+
     integer,                               intent(in)    :: N_zones, N_snow, tileType
 
     real,    dimension(N_zones),           intent(in)    :: t1, area, tkgnd
@@ -356,8 +361,12 @@ contains
     integer :: i,izone,k
     logical :: logdum
     
-    snowd = sum(wesn)
-    snowin = snowd
+    integer :: rc_tmp
+
+    ! --------------------------------------------------------------
+
+    snowd     = sum(wesn)
+    snowin    = snowd
     ghfluxsno = 0.
     
     !rr   correction for "cold" snow
@@ -434,13 +443,14 @@ contains
              rconstit(1,k)=rconstit(1,k)+areasc0*totdepos(k)*dts
           enddo
 
-          ! call relayer without heat content adjustment
+          ! call relayer *without* heat content adjustment [incl. call to StieglitzSnow_calc_tpsnow()]
+          
+          call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick,      &
+               htsnn, wesn, sndz, rconstit,  tpsn, fices,                            &
+               conserve_ice10_tzero=.false., rc_calc_tpsn=rc_tmp                  )     ! optional args
+          
+          if (rc_tmp/=0) write (*,*) 'PosSnowHeat: values printed above detected at lon, lat = ', tile_lon*180./PIE, tile_lat*180./PIE
 
-          call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick, &
-               htsnn, wesn, sndz, rconstit )
-          
-          call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
-          
        endif   ! (snowf > 0.)
        
        return  ! if there was no snow at start of time step
@@ -465,9 +475,9 @@ contains
     dens0 = dens
     
     !**** Determine temperature & frozen fraction of snow layers
-    
-    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
-    
+
+    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, ignore_pos_tpsnow=.true.)
+
     mtwt  = sum(wesn*(1.-fices)) 
     
     !**** Calculate the ground-snow energy flux at 3 zones
@@ -491,8 +501,10 @@ contains
     htest=htsnn
     htest(N_snow)=htest(N_snow)+fhsn(N_snow+1)*dts*areasc
     
-    call StieglitzSnow_calc_tpsnow(N_snow, htest, wesn, ttest, ftest)
+    ! tpsnow may be positive in the following call; set optional flag accordingly
     
+    call StieglitzSnow_calc_tpsnow(N_snow, htest, wesn, ttest, ftest, ignore_pos_tpsnow=.true.)
+        
     scale=1.
     if((t1ave-tpsn(N_snow))*(t1ave-ttest(N_snow)) .lt. 0.) then
        scale=0.5*(tpsn(N_snow)-t1ave)/(tpsn(N_snow)-ttest(N_snow))
@@ -535,8 +547,8 @@ contains
     
     do i=1,N_snow
        
-       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), .true.)
-       
+       call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum, ice1(i),tzero(i), .true., ignore_pos_tpsnow=.true.)
+
        if(ice1(i)) then
           cl(i) = df(i)
           cd(i) = StieglitzSnow_CPW*wesn(i)/dts - df(i) - df(i+1)
@@ -584,25 +596,25 @@ contains
     
     do i=1,N_snow
        
-       !**** Quick check for "impossible" condition:
-       
-       if(.not.tzero(i) .and. .not.ice1(i)) then
+       if      (.not.tzero(i) .and. .not.ice1(i)) then
+          
+          !**** "Impossible" condition:
+          
           write(*,*) 'bad snow condition: fice,tpsn =',fices(i),tpsn(i)
           stop
-       endif
-       
-       !****  Condition 1: layer starts fully frozen (temp < 0.)
-       
-       if(.not.tzero(i)) then
+          
+       else if (.not.tzero(i)) then
+          
+          !****  Condition 1: layer starts fully frozen (temp < 0.)
+          
           tnew=tpsn(i)+dtc(i)
           fnew=1.
+       
+       else if (.not.ice1(i)) then
           
-       endif
-       
-       !****  Condition 2: layer starts with temp = 0, fices < 1.
-       !      Corrections for flxnet calculation: Koster, March 18, 2003.
-       
-       if(.not.ice1(i)) then
+          !****  Condition 2: layer starts with temp = 0, fices < 1.
+          !      Corrections for flxnet calculation: Koster, March 18, 2003.
+          
           tnew=0.
           if(i==1) flxnet= fhsn(i+1)+df(i+1)*(dtc(i)-dtc(i+1))              &
                -fhsn(i)-df(i)*dtc(i)
@@ -612,15 +624,16 @@ contains
           if(i==N_snow) flxnet=fhsn(i+1)+df(i+1)*dtc(i)                     &
                -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
           HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
+          
+          call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true., ignore_pos_tpsnow=.true.)
+          
           fnew=amax1(0.,  amin1(1.,  fnew))
           
-       endif
-       
-       !****  Condition 3: layer starts with temp = 0, fices = 1.
-       !      Corrections for flxnet calculation: Koster, March 18, 2003.
-       
-       if(ice1(i) .and. tzero(i)) then
+       else  ! (ice1(i) .and. tzero(i)) 
+          
+          !****  Condition 3: layer starts with temp = 0, fices = 1.
+          !      Corrections for flxnet calculation: Koster, March 18, 2003.
+          
           if(dtc(i) < 0.) then
              tnew=tpsn(i)+dtc(i)
              fnew=1.
@@ -636,9 +649,13 @@ contains
                   -fhsn(i)-df(i)*(dtc(i-1)-dtc(i))
              
              HTSPRIME=HTSNN(I)+AREASC*FLXNET*DTS
-             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true. )
+             
+             call StieglitzSnow_calc_tpsnow( HTSPRIME, wesn(i), tdum, fnew, logdum, logdum, .true., ignore_pos_tpsnow=.true.)
+             
              fnew=amax1(0.,  amin1(1.,  fnew))
+             
           endif
+
        endif
        
        !**** Now update heat fluxes & compute sublimation or deposition.
@@ -654,7 +671,7 @@ contains
           if(-dw > wesn(1) ) then
              dw = -wesn(1)
              evap = -dw/(dts*areasc)
-             hcorr=hcorr+(lhflux-evap*alhv)*areasc
+             !hcorr=hcorr+(lhflux-evap*alhv)*areasc  ! removed, was double-counting corr, see "Store excess heat in hcorr" below; koster+reichle, 31 May 2024
              lhflux=evap*alhv
           endif
           wesn(1)  = wesn(1) + dw
@@ -686,8 +703,8 @@ contains
     hcorr=hcorr-((enew-eold)/dts+areasc*(lhflux+shflux+hlwout-raddn)        &
          -areasc*(fhsn(N_snow+1)+df(N_snow+1)*dtc(N_snow))                  &
          )
-    
-    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
+
+    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, ignore_pos_tpsnow=.true.)
     
     mltwtr = max(0., sum(wesn*(1.-fices)) - mtwt)
     mltwtr = mltwtr / dts
@@ -714,7 +731,7 @@ contains
     
     snowd=sum(wesn)
     
-    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
+    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, ignore_pos_tpsnow=.true.)
     
     !**** Constituent deposition: Add to top snow layer, in area covered by snow.
     do k=1,N_constit
@@ -738,7 +755,9 @@ contains
           do k=1,N_constit
              rconstit(i,k)=rconstit(i,k)+flow_r(k)
           enddo
-          call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)  
+
+          call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, ignore_pos_tpsnow=.true.)
+
        endif
        
        pre  = max((1.-fices(i))*wesn(i), 0.)
@@ -855,9 +874,11 @@ contains
           !**** while conserving heat & mass (STEPH 06/21/03).
           
           if(dens(i) > StieglitzSnow_RHOMA) then
-
+             
+             !! if (tileType==MAPL_LANDICE) then               ! restrict SWE adjustment to LANDICE tiles
+                
              ! excs = SWE in excess of max density given fixed snow depth
-
+             
              excs(i) = (dens(i)-StieglitzSnow_RHOMA)*sndz(i)           ! solid + liquid
              wlossfrac=excs(i)/wesn(i)
              wesn(i) = wesn(i) - excs(i)                               ! remove EXCS from SWE
@@ -869,6 +890,9 @@ contains
              hnew = (StieglitzSnow_CPW*tpsn(i)-fices(i)*alhm)*wesn(i)  ! adjust heat content accordingly
              hcorr= hcorr+(htsnn(i)-hnew)/dts                          ! add excess heat content into residual accounting term
              htsnn(i)= hnew
+             
+             !! end if
+             
              dens(i) = StieglitzSnow_RHOMA
           endif
        enddo
@@ -876,10 +900,14 @@ contains
     endif
     
     wesndens = wesn - wesndens
-
+    
+    !! if (tileType==MAPL_LANDICE) then                        ! finish SWE adjustment for LANDICE tiles
+       
     pre  = pre + sum(excs*max(1.-fices,0.0))/dts
     excs = excs * fices / dts
     
+    !! end if
+
     snowd=sum(wesn)
     call StieglitzSnow_calc_asnow( snowd, areasc0 )
     areasc0 = max(small, areasc0 )
@@ -906,10 +934,13 @@ contains
     
     wesnrepar = wesn
         
-    ! call relayer with adjustment of heat content and hcorr accounting
-
-    call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick, &
-         htsnn, wesn, sndz, rconstit, tpsn, fices, dts, hcorr  )
+    ! call relayer *with* adjustment of heat content and hcorr accounting [incl. call to StieglitzSnow_calc_tpsnow()]
+    
+    call StieglitzSnow_relayer( N_snow, N_constit, tileType, targetthick,          &
+         htsnn, wesn, sndz, rconstit, tpsn, fices,                                 &
+         conserve_ice10_tzero=.true., dts=dts, hcorr=hcorr, rc_calc_tpsn=rc_tmp )      ! optional arguments
+             
+    if (rc_tmp/=0) write (*,*) 'PosSnowHeat: values printed above detected at lon, lat = ', tile_lon*180./PIE, tile_lat*180./PIE
     
     wesnrepar = wesn - wesnrepar
     
@@ -1032,19 +1063,27 @@ contains
   ! **********************************************************************
   
   subroutine StieglitzSnow_relayer(N_snow, N_constit, tileType, targetthick, &
-       htsnn, wesn, sndz, rconstit, tpsn, fices, dts, hcorr )
+       htsnn, wesn, sndz, rconstit, tpsn, fices,                             &
+       conserve_ice10_tzero, dts, hcorr, rc_calc_tpsn )                         ! optional arguments
     
     ! relayer for land and landice tiles
-
-    ! revised to included processing of target thickness parameters and 
-    !   optional snow heat content adjustment
+    !
+    ! reichle, 13 Oct 2023 - 14 Feb 2024
+    ! - renamed from relayer2()
+    ! - included calculations that were previously done outside relayer()
+    ! - some of the latter are optional, as follows:
     !   
-    ! optional arguments        action
-    ! -----------------------------------------------------------
-    ! none                      original relayer() (redistribution only)
-    ! tpsn, fices               + adjust heat content (originally done externally)
-    ! tpsn, fices, dts, hcorr   + account for heat content adjustment in correction term
-
+    ! optional arguments   | action
+    ! ----------------------------------------------------------------------------------------------------
+    ! none                 | original relayer() (redistribution only) 
+    !                      | + get target thickness parameters
+    !                      | + diagnose tpsn and fices
+    ! conserve_ice10_tzero | + for each layer, conserve edge cases of frozen fraction and temperature
+    ! dts, hcorr           | + update heat content residual w/ htsn change caused by conserve_ice10_tzero
+    !                      |     (for energy balance calcs)
+    ! rc_calc_tpsn         | + return code for detection of positive snow temperature 
+    ! ----------------------------------------------------------------------------------------------------
+    
     implicit none
     
     integer, intent(in)                                 :: N_snow, N_constit, tileType
@@ -1054,10 +1093,14 @@ contains
     real,    intent(inout), dimension(N_snow)           :: htsnn, wesn, sndz
     real,    intent(inout), dimension(N_snow,N_constit) :: rconstit
     
-    real,    intent(out),   dimension(N_snow), optional :: tpsn, fices
+    real,    intent(out),   dimension(N_snow)           :: tpsn, fices
 
+    logical, intent(in),                       optional :: conserve_ice10_tzero      
+    
     real,    intent(in),                       optional :: dts
     real,    intent(inout),                    optional :: hcorr
+
+    integer, intent(out),                      optional :: rc_calc_tpsn
 
     ! ----------------------------
     !
@@ -1072,15 +1115,16 @@ contains
     
     integer                                  :: i, k, ilow, ihigh
     
-    real                                     :: dz, hnew
-    real                                     :: totalthick, tdum, fdum
+    real                                     :: dz, totalthick, hnew, tdum, fdum
     real,    dimension(N_snow)               :: tol_old, bol_old, tol_new, bol_new
     real,    dimension(N_snow)               :: thickness
 
-    logical                                  :: adjust_htsnn, update_hcorr, kflag
-
-    logical, dimension(N_snow)               :: ice10, tzero0
+    logical                                  :: conserve_ice10_tzero_tmp, update_hcorr, kflag
     
+    logical, dimension(N_snow)               :: ice10, tzero0
+
+    integer                                  :: rc_tmp
+
     !**** thickness(1) : final thickness of topmost snow layer (m)
     !**** h            : array holding specific heat, water, and constituent contents
     !**** s            : array holding the total and final heat, water, and constit. contents
@@ -1092,55 +1136,46 @@ contains
     !****                  relayering
     !**** bol_old(i)   : depth (from surface) of the bottom of layer i, before       &
     !****                  relayering
-    !**** tol_old(i)   : depth (from surface) of the top of layer i, after           &
+    !**** tol_new(i)   : depth (from surface) of the top of layer i, after           &
     !****                  relayering
-    !**** bol_old(i)   : depth (from surface) of the bottom of layer i, after        &
+    !**** bol_new(i)   : depth (from surface) of the bottom of layer i, after        &
     !****                  relayering
-   
-    ! ---------------------------------------
+
+    ! -------------------------------------------------------------------------------------------
     !
-    ! process optional arguments (required to maintain 0-diff; reichle 13 Oct 2023)
+    ! process optional arguments
     
-    if     ( present(tpsn) .and. present(fices) ) then
+    conserve_ice10_tzero_tmp = .true.   ! default
+
+    if (present(conserve_ice10_tzero))  conserve_ice10_tzero_tmp = conserve_ice10_tzero    
+    
+    update_hcorr             = .false.  ! default
+    
+    if     (present(dts) .and. present(hcorr) .and. conserve_ice10_tzero_tmp) then
        
-       adjust_htsnn = .true.
+       update_hcorr = .true.
        
-    elseif ( present(tpsn) .or.  present(fices) ) then
+    elseif (present(dts) .or.  present(hcorr)) then
        
-       write(*,*) Iam, '(): bad optional arguments (tpsn, fices)'
+       write(*,*) Iam, '(): bad optional arguments (conserve_ice10_tzero, dts, hcorr)'
        stop
        
-    else
-       
-       adjust_htsnn = .false.
-       
     end if
     
-    if (adjust_htsnn) then
-       
-       if     ( present(dts) .and. present(hcorr) ) then
-          
-          update_hcorr = .true.
-          
-       elseif ( present(dts) .or.  present(hcorr) ) then
-          
-          write(*,*) Iam, '(): bad optional arguments (dts, hcorr)'
-          stop
-          
-       else
-          
-          update_hcorr = .false.
-          
-       end if
-       
-       ! determine frozen fraction and temperature before relayering
+    ! -----------------------------------------------------------
+    !
+    ! determine frozen fraction and temperature before relayering
+
+    if (conserve_ice10_tzero_tmp) then
        
        do i=1,N_snow
-          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i), .true. )
+          call StieglitzSnow_calc_tpsnow(htsnn(i),wesn(i),tdum,fdum,ice10(i),tzero0(i),.true.,ignore_pos_tpsnow=.true.)
        enddo
-
+  
     end if
     
+    ! -----------------------------------------------------------
+    !
     ! process "targetthick" snow depth parameters:
     !
     ! targetthick:     contents depend on tileType (Catch[CN] or Landice)
@@ -1159,7 +1194,7 @@ contains
        thickdist       = targetthick(2:N_snow)    
     end select
 
-    ! ----------------------------------------------------------------------------------------
+    ! --+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
     !
     ! start of original relayer()
 
@@ -1251,64 +1286,65 @@ contains
     
     ! end of original relayer()
     !
-    ! ----------------------------------------------------------------------------------------
+    ! --+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
     
-    if (adjust_htsnn) then
-       
-       call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices)
+    ! diagnose snow temperature and ice fraction (*_calc_tpsnow_vector always has use_threshold_fac=.false.)
+    
+    call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, rc=rc_tmp)
+
+    if (present(rc_calc_tpsn)) rc_calc_tpsn = rc_tmp
+
+    if (conserve_ice10_tzero) then
        
        !**** Check that (ice10,tzero) conditions are conserved through
        !**** relayering process (or at least that (fices,tpsn) conditions don't 
        !**** go through the (1,0) point); excess goes to hcorr.
-       
+
        ! for each layer, check snow conditions (partially/fully frozen, temp at/below zero) 
        !   before and after relayer; in select cases, adjust snow heat content and temp
        !
-       ! NOTE: logicals before relayer were computed with    "buffer" (use_threshold_fac=.true. )
-       !       reals    after  relayer were computed without "buffer" (use_threshold_fac=.false.)
-       
+       ! NOTE: logicals before relayer are computed with    "buffer" (use_threshold_fac=.true. )
+       !       reals    after  relayer are computed without "buffer" (use_threshold_fac=.false.)
+
        do i=1,N_snow                                                          
-          
+
           kflag = .false.                                                   ! default: do nothing
-          
+
           ! set klfag to .true. under certain conditions:
-          
+
           if(     ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: fully     frozen and at    0 deg
-               (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg (or above 0 deg?)
-          
+               (fices(i) .ne. 1. .or.  tpsn(i) .ne. 0.) ) kflag=.true.      !    and after  relayer: partially frozen or  below 0 deg 
+
           if(.not.ice10(i) .and.      tzero0(i) .and.                   &   ! if     before relayer: partially frozen and at    0 deg
                (fices(i) .eq. 1. .and. tpsn(i) .lt. 0.) ) kflag=.true.      !    and after  relayer: fully     frozen and below 0 deg
-          
+
           if(     ice10(i) .and. .not.tzero0(i) .and.                   &   ! if     before relayer: fully frozen     and below 0 deg
                (fices(i) .ne. 1. .and. tpsn(i) .eq. 0.) ) kflag=.true.      !    and after  relayer: partially frozen and at    0 deg
-          
+
           if (kflag) then                                                    
-             
+
              ! make fully frozen and at 0 deg
 
              hnew    = -alhm*wesn(i)
-             
+
              ! add "excess" heat content to hcorr
-             
+
              if (update_hcorr) hcorr = hcorr+(htsnn(i)-hnew)/dts          
 
              htsnn(i)= hnew
              tpsn(i) = 0.
              fices(i)= 1.
           endif
-       
+
        enddo
-    
-    end if  ! (adjust_htsnn)
-    
-    return
+
+    end if  ! (conserve_ice10_tzero)
     
   end subroutine StieglitzSnow_relayer
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero,  &
-       use_threshold_fac )
+  subroutine StieglitzSnow_calc_tpsnow_scalar( h, w, t, f, ice1, tzero, use_threshold_fac, ignore_pos_tpsnow, rc )
     
     ! diagnose snow temperature and frozen fraction from snow mass and snow heat content
     !
@@ -1333,23 +1369,48 @@ contains
     !rr   real, parameter :: lhs    = 2.8434e6  !  @ 0 C [J/kg]
     !      real, parameter :: lhf    = (lhs-lhv) !  @ 0 C [J/kg]
     
-    real,    intent(in )   :: w, h          ! snow mass (SWE), snow heat content 
-    real,    intent(out)   :: t, f          ! snow temperature, frozen ("ice") fraction
+    real,    intent(in )           :: w, h          ! snow mass (SWE), snow heat content 
+    real,    intent(out)           :: t, f          ! snow temperature, frozen ("ice") fraction
     
-    logical, intent(out)   :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
+    logical, intent(out)           :: ice1, tzero   ! frozen fraction==1?, snow temp at 0 deg C?
     
-    logical, intent(in)    :: use_threshold_fac
+    logical, intent(in)            :: use_threshold_fac
     
+    logical, intent(in),  optional :: ignore_pos_tpsnow
+
+    integer, intent(out), optional :: rc            ! return code for detecting positive snow heat content and temperature
+
     ! ------------------------------------------------------------
     
-    real,    parameter     :: tfac=1./StieglitzSnow_CPW
-    real,    parameter     :: ffac=1./alhm
+    real,             parameter :: tfac=1./StieglitzSnow_CPW
+    real,             parameter :: ffac=1./alhm
     
-    real                   :: hbw
+    real                        :: hbw
     
-    real                   :: threshold1, threshold2
+    real                        :: threshold1, threshold2
     
+    character(len=*), parameter :: Iam = 'StieglitzSnow_calc_tpsnow_scalar()'
+    
+    logical                     :: ignore_pos_tpsnow_tmp
+
     ! ------------------------------------------------------------------------------
+    
+    ! make sure snow heat content is not positive (would result in snow temperature above 0 deg C)
+    !
+    ! disable this check with optional input argument ignore_pos_tpsnow=.true. (needed for block of code
+    !   in StieglitzSnow_snowrt() that "[e]nsure[s] against excessive heat flux between ground and snow")
+
+    if (present(ignore_pos_tpsnow)) then
+       
+       ignore_pos_tpsnow_tmp = ignore_pos_tpsnow
+       
+    else
+       
+       ignore_pos_tpsnow_tmp = .false.
+       
+    end if
+
+    ! -------------------------------------------------------------------    
     
     if (use_threshold_fac) then
        
@@ -1357,14 +1418,14 @@ contains
        
        threshold1 = -1.00001*alhm     
        threshold2 = -0.99999*alhm
-
+       
     else
 
        ! replicates original get_tf_nd() / StieglitzSnow_calc_tpsnow[_vector]()
        
        threshold1 = -alhm                      
        threshold2 = -alhm                      
-              
+       
     end if
     
     ! -------------------------------------------------------------------    
@@ -1409,13 +1470,26 @@ contains
 
     endif
     
-    return
+    ! ------------------------------
+
+    if (present(rc)) rc = 0           ! default: assume snow heat content and temperature <= 0 (all good)
+    
+    if ( (.not. ignore_pos_tpsnow_tmp) .and. (h>0.) ) then
+       
+       write(*,*) 'WARNING: PosSnowHeat ', h, w, t, f, ice1, tzero
+
+       !write(*,*) Iam, ': ERROR.  Encountered positive snow heat content.  STOPPING.'
+       !stop
+       
+       if (present(rc)) rc = 1        ! encountered positive snow heat content and temperature
+
+    end if
     
   end subroutine StieglitzSnow_calc_tpsnow_scalar
   
   ! **********************************************************************
   
-  subroutine StieglitzSnow_calc_tpsnow_vector( N, h, w, t, f )
+  subroutine StieglitzSnow_calc_tpsnow_vector( N, h, w, t, f, ignore_pos_tpsnow, rc )
     
     ! renamed for clarity:   get_tf_nd() --> StieglitzSnow_calc_tpsnow()
     ! reichle, 12 Aug 2014
@@ -1442,20 +1516,52 @@ contains
     real,    dimension(N), intent(in)  :: h, w
     real,    dimension(N), intent(out) :: t, f
     
+    logical, optional,     intent(in)  :: ignore_pos_tpsnow
+
+    integer, optional,     intent(out) :: rc
+
     ! -----------------------------------
     
     integer            :: ii      
     
     logical            :: ice1, tzero   
     
-    logical, parameter :: use_threshold_fac = .false.
+    logical            :: ignore_pos_tpsnow_tmp
+
+    integer            :: rc_tmp
 
     ! ----------------------------------
+    
+    if (present(ignore_pos_tpsnow)) then
+       
+       ignore_pos_tpsnow_tmp = ignore_pos_tpsnow
+       
+    else
+       
+       ignore_pos_tpsnow_tmp = .false.
+       
+    end if
+
+    ! --------------------------------------
+
+    if (present(rc)) rc = 0
     
     do ii=1,N
        
        call StieglitzSnow_calc_tpsnow_scalar( h(ii), w(ii), t(ii), f(ii), ice1, tzero,  &
-            use_threshold_fac )
+            .false., ignore_pos_tpsnow=ignore_pos_tpsnow_tmp, rc=rc_tmp )
+    
+       if (rc_tmp/=0) then
+
+          if (present(rc))  then
+             
+             write (*,*) 'PosSnowHeat: values printed above detected in layer or tile ', ii
+             
+             rc = 1
+             
+          end if
+             
+       end if
        
     end do
 

@@ -2212,6 +2212,15 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
            endif
         endif
 
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QRAIN
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QSNOW
+
+        call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) PTR3D = QGRAUPEL
+
    call MAPL_TimerOff(MAPL,"--MGB2_2M",__RC__)
 
 end subroutine MGB2_2M_Run
