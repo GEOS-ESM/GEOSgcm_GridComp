@@ -5501,7 +5501,7 @@ contains
 ! Note : AeroProps is allocated above, so serialization of AeroProps isn't necessary as an input since it does not 
 !        contain any preset data.
 
-!$ser init directory='./aer_activation_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+!$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
 !$ser savepoint Aer_Actv-In timestep=timestep
 !$ser data IM=IM JM=JM LM=LM Q=Q T=T PLmb=PLmb PLE=PLE ZL0=ZL0 ZLE0=ZLE0 QLCN=QLCN QICN=QICN
 !$ser data QLLS=QLLS QILS=QILS SH=SH EVAP=EVAP KPBL=KPBL TKE=TKE TMP3D=TMP3D FRLAND=FRLAND 
