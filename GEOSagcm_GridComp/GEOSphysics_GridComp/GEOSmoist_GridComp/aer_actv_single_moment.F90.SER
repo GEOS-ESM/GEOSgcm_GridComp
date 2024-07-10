@@ -1,4 +1,3 @@
-#define ACC_PREFIX !$acc
 MODULE Aer_Actv_Single_Moment
 !
 #include "MAPL_Generic.h"

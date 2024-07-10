@@ -1,5 +1,7 @@
 esma_set_this()
 
+option(BUILD_SERIALBOX_SER "Build with Serialbox serialization statements" OFF)
+
 set (srcs
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
   GEOS_BACM_1M_InterfaceMod.F90 cloudnew.F90
@@ -25,6 +27,20 @@ else ()
     gfdl_cloud_microphys.F90)
 endif ()
 
+#if (BUILD_SERIALBOX_SER)
+#  list (APPEND srcs
+#    #sb/GEOS_GFDL_1M_InterfaceMod.F90
+#    sb/aer_actv_single_moment.F90
+#    sb/GEOS_MoistGridComp.F90
+#    )
+#else ()
+#  list (APPEND srcs
+#    # GEOS_GFDL_1M_InterfaceMod.F90
+#    aer_actv_single_moment.F90
+#    GEOS_MoistGridComp.F90
+#    )
+#endif()
+
 if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
    set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
 endif ()
@@ -44,6 +60,27 @@ esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base esmf)
 
+if(BUILD_SERIALBOX_SER)
+  message(STATUS "Building with Serialbox serialization statements")
+  message(STATUS "  Serialbox root ${SERIALBOX_ROOT}")
+  add_definitions(-DSERIALIZE)
+  target_include_directories(${this} PRIVATE ${SERIALBOX_ROOT}/include)
+  target_link_directories(${this} PRIVATE ${SERIALBOX_ROOT}/lib/)
+  find_library(SERIALBOX_FORTRAN_LIB
+      NAMES SerialboxFortran
+      HINTS ${SERIALBOX_ROOT}/lib/
+      REQUIRED
+  )
+  find_library(SERIALBOX_C_LIB
+      NAMES SerialboxC
+      HINTS ${SERIALBOX_ROOT}/lib/
+      REQUIRED
+  )
+  message(STATUS "  Serialbox Fortran library found: ${SERIALBOX_FORTRAN_LIB}")
+  message(STATUS "  Serialbox C library found: ${SERIALBOX_C_LIB}")
+  target_link_libraries(${this} PRIVATE ${SERIALBOX_FORTRAN_LIB} ${SERIALBOX_C_LIB})
+endif()
+
 get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
@@ -59,3 +96,6 @@ foreach ( file ${rc_files} )
    get_filename_component( dir ${file} DIRECTORY )
    install( FILES ${file} DESTINATION etc/${dir} )
 endforeach()
+
+
+
