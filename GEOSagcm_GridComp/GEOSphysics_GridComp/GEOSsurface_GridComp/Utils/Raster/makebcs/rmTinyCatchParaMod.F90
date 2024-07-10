@@ -52,6 +52,7 @@ module rmTinyCatchParaMod
   character*6,  public, save :: SOILBCS     = 'UNDEF'
   character*6,  public, save :: MODALB      = 'UNDEF'
   character*10, public, save :: SNOWALB     = 'UNDEF'
+  character*5,  public, save :: OUTLETV     = 'UNDEF'  
   REAL,         public, save :: GNU         = MAPL_UNDEF
 
   character*512              :: MAKE_BCS_INPUT_DIR
@@ -91,7 +92,13 @@ contains
     !   NGDC      : Soil parameters from Reynolds et al. 2000, doi:10.1029/2000WR900130 (MERRA-2, Fortuna, Ganymed, Icarus)
     !   HWSD      : Merged HWSDv1.21-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) parameters   
     !   HWSD_b    : As in HWSD but with surgical fix of Argentina peatland issue (38S,60W)
-    
+    !
+    ! OUTLETV: Definition of outlet locations.  DEFAULT : N/A
+    !   N/A       : No information (do not create routing "TRN" files).
+    !   v1        : Outlet locations file produced manually by Randy Koster.
+    !   v2        : Outlet locations file produced by run_routing_raster.py using routing information encoded 
+    !               in SRTM-based Pfafstetter catchments and Greenland outlets info provided by Lauren Andrews.
+
     implicit none
     
     character(*), intent (in) :: LBCSV     ! land BCs version 
@@ -103,6 +110,7 @@ contains
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS1'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -112,6 +120,7 @@ contains
        SOILBCS = 'NGDC'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -121,6 +130,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -130,6 +140,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'      
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .true.
@@ -139,6 +150,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -148,6 +160,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -157,6 +170,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'LUT'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -166,6 +180,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .false.
        jpl_height  = .false.
@@ -175,6 +190,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -184,6 +200,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "N/A"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
@@ -193,6 +210,7 @@ contains
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "v1"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
@@ -202,6 +220,7 @@ contains
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"       
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
