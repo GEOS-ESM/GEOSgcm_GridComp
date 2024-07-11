@@ -773,6 +773,7 @@
    integer:: pso_pft
    integer:: a0_pso_pft,a1_pso_pft,a2_pso_pft
    real   :: pso_val, offline_const, offline_int, g1_pso_val, g0_pso_val
+   real   :: a0_pso_val,a1_pso_val,a2_pso_val,bi_pso_val
    real   :: pso_intercept, pso_slope
    real,dimension(1) :: map_val_tile,can_val_tile
    real :: map_val_tile_real,can_val_tile_real
@@ -781,7 +782,7 @@
    integer :: EXP_ID
    integer :: STATUS
    integer :: this_tile
-   integer, dimension(1) :: this_map_idx
+   integer, dimension(1) :: this_map_idx,this_can_idx
    real, dimension(19) :: default_g1s
 
 !------------------------------------------------------------------------------
@@ -902,7 +903,7 @@
       end if
 
       ! C3 and C4 dependent parameters
-      g1_ef_choice = 0
+      g1_ef_choice = 1
       if (g1_ef_choice == 0) then
          if (c3flag(p)) then
             qe(p) = 0._r8
@@ -952,31 +953,59 @@
             theta_cj(p) = 0.80_r8
             bbbopt(p) = 40000._r8
          end if
-          
          this_particle = pso_vals%particle_num + 1
          this_tile = pso_vals%local_tile_nums(p)
          this_map_idx = findloc(pso_vals%all_tile_nums,VALUE=this_tile)
          map_val_tile = pso_vals%map_vals(this_map_idx)
          map_val_tile_real = map_val_tile(1)
-         this_can_idx = findloc(pso_vals%all_tile_num,VALUE=this_tile)
-         can_val_tile = pso_vals%can_vals(this_can_idx)
+         this_can_idx = findloc(pso_vals%all_tile_nums,VALUE=this_tile)
+         can_val_tile = pso_vals%canopy_vals(this_can_idx)
          can_val_tile_real = can_val_tile(1)
+
+         ! check to make sure updates are working correctly
+         !write(*,*) 'pso_vals%map_vals'
+         !write(*,*) pso_vals%map_vals
+         !write(*,*) 'pso_vals%canopy_vals'
+         !write(*,*) pso_vals%canopy_vals
+         !write(*,*) 'this_tile'
+         !write(*,*) this_tile
+         !write(*,*) 'map_val_tile_real'
+         !write(*,*) map_val_tile_real
+         !write(*,*) 'can_val_tile_real'
+         !write(*,*) can_val_tile_real
 
          !!!!! UNCOMMENT BELOW FOR PFT-BASED PSO OPTIMIZATION !!!!!!
          call pft_clm_to_pso(ityp(p, nv), pso_pft)
-         a0_pso_pft = pso_pft
-         a1_pso_pft = a0_pso_pft + 8
-         a2_pso_pft = a1_pso_pft + 8
-         a0_pso_val = pso_vals%param_vals(a0_pso_pft,this_particle)
-         a1_pso_val = pso_vals%param_vals(a1_pso_pft,this_particle)
-         a2_pso_val = pso_vals%param_vals(a2_pso_pft,this_particle)
+         bi_pso_val = pso_vals%param_vals(pso_pft,this_particle)
+         a0_pso_val = pso_vals%param_vals(7,this_particle)
+         a1_pso_val = pso_vals%param_vals(8,this_particle)
+         a2_pso_val = pso_vals%param_vals(9,this_particle)
+         !a0_pso_pft = pso_pft
+         !a1_pso_pft = a0_pso_pft + 8
+         !a2_pso_pft = a1_pso_pft + 8
+         !a0_pso_val = pso_vals%param_vals(a0_pso_pft,this_particle)
+         !a1_pso_val = pso_vals%param_vals(a1_pso_pft,this_particle)
+         !a2_pso_val = pso_vals%param_vals(a2_pso_pft,this_particle)
+         !write(*,*) 'ityp(p,nv)'
+         !write(*,*) ityp(p,nv)
+         !write(*,*) 'pso_pft'
+         !write(*,*) pso_pft
+         !write(*,*) 'bi_pso_val'
+         !write(*,*) bi_pso_val
+         !write(*,*) 'a0_pso_val'
+         !write(*,*) a0_pso_val
+         !write(*,*) 'a1_pso_val'
+         !write(*,*) a1_pso_val
+         !write(*,*) 'a2_pso_val'
+         !write(*,*) a2_pso_val
          !offline_const = 0.025
          !offline_int = -0.163747
          !mbbopt(p) = pso_val*(offline_int + map_val_tile_real*offline_const)
          ! for experiment to just set g1 equal to ai
-         mbbopt(p) = g1_pso_val
+         !mbbopt(p) = g1_pso_val
          ! for experiment where both g0 and g1 are optimized
          !mbbopt(p) = a0_pso_val + a1_pso_val*map_val_tile_real + a2_pso_val*can_val_tile_real
+         mbbopt(p) = bi_pso_val*(a0_pso_val + a1_pso_val*map_val_tile_real + a2_pso_val*can_val_tile_real)
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
          !!!!! UNCOMMENT BELOW FOR C1 C2 BASED PSO OPTIMIZATION !!!!!
@@ -984,7 +1013,8 @@
          !pso_slope = pso_vals%param_vals(2,this_particle)
          !mbbopt(p) = pso_intercept + pso_slope*map_val_tile_real
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+         !write(*,*) 'mbbopt(p)'
+         !write(*,*) mbbopt(p)
          if (mbbopt(p) < 0.5) then
             mbbopt(p) = 0.5
          endif

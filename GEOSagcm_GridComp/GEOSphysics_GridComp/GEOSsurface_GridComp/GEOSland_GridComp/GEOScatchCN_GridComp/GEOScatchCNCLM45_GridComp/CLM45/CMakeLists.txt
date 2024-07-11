@@ -3,6 +3,7 @@ string (REPLACE GEOScatchCN_GridComp_ "" is_openmp ${this})
 
 set (srcs
   update_model_para4cn.F90
+  pso_params.F90
   clmtype.F90
   clm_time_manager.F90
   shr_const_mod.F90
@@ -43,7 +44,6 @@ set (srcs
   TridiagonalMod.F90
   getco2.F90
   pft_clm_to_pso.F90
-  pso_params.f90
   read_env.F90
   )
 

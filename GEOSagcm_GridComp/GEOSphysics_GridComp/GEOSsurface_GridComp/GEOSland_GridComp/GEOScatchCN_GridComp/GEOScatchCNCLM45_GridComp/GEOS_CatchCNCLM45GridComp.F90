@@ -67,8 +67,8 @@ module GEOS_CatchCNCLM45GridCompMod
        gndtmp
 
   use update_model_para4cn, only : upd_curr_date_time
-  use pso_params, only: pso_vals
   use read_env
+  use pso_params, only: pso_vals
 
 implicit none
 private
@@ -6573,7 +6573,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       ! we need to use the PSO to do load our EF of Ksat and g1
       ! set your PSO choice
-      pso_choice = 0
+      pso_choice = 1
       ksat_ef_choice = 0
       ! if we are running the PSO
       if (pso_choice == 1) then
@@ -6602,33 +6602,33 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           if (tile_alloc_stat == .false.) then
               ! MANUALLY ASSIGN the number of parameters and particles
               ! this needs to match what is told the model during setup
-              num_params = 10
-              pso_vals%total_ens = 1
+              num_params = 9
+              pso_vals%total_ens = 30
               ! allocate and assign the tiles that are running on this cpu
               allocate(pso_vals%local_tile_nums(size(CAT_ID)))
               pso_vals%local_tile_nums = CAT_ID
               ! load the maps for precip, lai, sand, ksat_init
               ! start with precip
-              precip_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_precip.nc4'
+              precip_fname = '/shared/pso/step_2x_env_covariates/outputs/gldas_avg_precip_normalized.nc4'
               precip_fname = trim(precip_fname)
               ! and now do for lai
-              lai_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_lai.nc4'
+              lai_fname = '/shared/pso/step_2x_env_covariates/outputs/none.nc4'
               lai_fname = trim(lai_fname)
               ! read the sand fraction values
-              sand_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_sand.nc4'
+              sand_fname = '/shared/pso/step_2x_env_covariates/outputs/averaged_sand_normalized.nc4'
               sand_fname = trim(sand_fname)
               ! read the k0 values
-              k0_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_ksat.nc4'
+              k0_fname = '/shared/pso/step_2x_env_covariates/outputs/averaged_ksat_normalized.nc4'
               k0_fname = trim(k0_fname)
               ! read the canopy height values
-              canopy_fname = '/shared/pso/step_2_env_covariates/outputs/averaged_canopy_height.nc4'
+              canopy_fname = '/shared/pso/step_2x_env_covariates/outputs/canopy_height_normalized.nc4'
               canopy_fname = trim(canopy_fname)
               ! now call read_env for all of these
               call read_env_data(precip_fname,lai_fname,sand_fname,k0_fname,canopy_fname)
               ! allocate our parameter values and get their values
               allocate(pso_vals%param_vals(num_params,pso_vals%total_ens))
               ! read the current PSO vals
-              open(unit = 8, file='/lustre/catchment/exps/GEOSldas_CN45_pso_g1_et_strm_ai_2002/positions.csv',IOSTAT = reason)
+              open(unit = 8, file='/lustre/catchment/exps/GEOSldas_CN45_pso_g1_a0_a1_et_strm_camels_spin19921994_test19952014_mae/positions.csv',IOSTAT = reason)
               read(8, *,IOSTAT = reason) pso_vals%param_vals
               close(8)
           endif

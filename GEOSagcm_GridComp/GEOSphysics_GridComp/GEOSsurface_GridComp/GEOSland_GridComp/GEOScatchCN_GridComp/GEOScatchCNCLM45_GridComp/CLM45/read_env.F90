@@ -51,7 +51,7 @@ contains
          allocate(tile_nums(len1))
       endif
       ! get the precipitation values and assign it
-      call check(nf90_inq_varid(ncid,'precip',varid))
+      call check(nf90_inq_varid(ncid,'vals',varid))
       call check(nf90_get_var(ncid, varid, values))
       pso_vals%map_vals = values
       ! get the tile information and assign it
@@ -119,7 +119,7 @@ contains
         allocate(pso_vals%canopy_vals(len1))
       endif
       ! get the canopy values and assign it
-      call check(nf90_inq_varid(ncid,'canopy_height',varid))
+      call check(nf90_inq_varid(ncid,'vals',varid))
       call check(nf90_get_var(ncid, varid, values))
       pso_vals%canopy_vals = values
       ! close the lai data
