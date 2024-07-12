@@ -3092,9 +3092,9 @@ contains
              LTOP = LTOP-1
           end do
           LBOT = LM
-          !do while (Z(I,J,LBOT).lt.300.)  ! exclude levels below 300 m
-          !   LBOT = LBOT-1
-          !end do
+          do while (Z(I,J,LBOT).lt.300.)  ! exclude levels below 300 m
+             LBOT = LBOT-1
+          end do
           KMIN = LTOP-1+MINLOC(tmp3d(I,J,LTOP:LBOT),DIM=1,BACK=.TRUE.)   ! return last index, if multiple
           ZPBLRFRCT(I,J) = Z(I,J,KMIN)
 
