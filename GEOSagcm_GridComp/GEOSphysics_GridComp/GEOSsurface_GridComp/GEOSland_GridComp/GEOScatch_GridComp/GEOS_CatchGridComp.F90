@@ -3965,7 +3965,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
-        real,pointer,dimension(:) :: LHACC, SUMEV
+        real,pointer,dimension(:) :: LHACC, EINTESOIEVEGACC, ESNOACC, SUMEV
         real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
  
@@ -4536,6 +4536,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TPSN1IN1  (NTILES))
         allocate(TPSN1OUT1 (NTILES))
         allocate(LHACC     (NTILES))
+        allocate(EINTESOIEVEGACC(NTILES))
+        allocate(ESNOACC(        NTILES))        
         allocate(SUMEV     (NTILES))
         allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
@@ -5521,8 +5523,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, TSURF          ,&
              WESNN, HTSNNN, SNDZN                                 ,&
 
-             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&
-             EVPICE                                               ,&
+             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&  ! EVAPOUT:                        kg/m2/s
+             EVPICE                                               ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
              BFLOW                                                ,&
              RUNSURF                                              ,&
              SMELT                                                ,&
@@ -5539,14 +5541,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC(:,FSNW)                                           ,&
              ASNOW                                                ,&
              TP1, TP2, TP3, TP4, TP5, TP6,  SFMC, RZMC, PRMC      ,&
-             ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
+             ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC                 ,&      
+             EVACC                                                ,&  ! kg/m2/s 
+             EINTESOIEVEGACC, ESNOACC, SHACC                      ,&  ! W/m2
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
              TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS)
 
         end if
         
@@ -5566,15 +5570,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
+           
+           ! in offline mode, disregard GCM-specific TC/QC modifications and accounting terms
+           
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
            QC(:,FSAT) = QA1_0
            QC(:,FTRN) = QA2_0
            QC(:,FWLT) = QA4_0
-           EVACC = 0.0
-           SHACC = 0.0
-           LHACC = 0.0
+           
+           EVACC           = 0.0
+           EINTESOIEVEGACC = 0.0
+           ESNOACC         = 0.0
+           LHACC           = 0.0
+           SHACC           = 0.0
+
         endif
 
         QC(:,FSNW) =  GEOS_QSAT ( TC(:,FSNW), PS, PASCALS=.true., RAMP=0.0 )
@@ -5664,29 +5675,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TST     = TST   +           TC(:,N)          *FR(:,N)
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
-
-!         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
-! !amm add correction term to latent heat diagnostics (HLATN is always allocated)
-! !    this will impact the export LHLAND
-!         HLATN = HLATN - LHACC
-! ! also add some portion of the correction term to evap from soil, int, veg and snow
-
-!        SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
-
-        SUMEV = EVPICE/MAPL_ALHS + EVPSOI/MAPL_ALHL + EVPVEG/MAPL_ALHL + EVPINT/MAPL_ALHL
-
         
-        where(SUMEV/=0.)                          ! apportion residual based on (non-zero) evap/dewfall flux
-           EVPICE = EVPICE - EVACC*EVPICE/SUMEV 
-           EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
-           EVPINT = EVPINT - EVACC*EVPINT/SUMEV
-           EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
-        elsewhere                                 ! apportion residual based on ASNOW (for simplicity, add snow-free portion to EVPSOI)
-           EVPICE = EVPICE - EVACC*MAPL_ALHS*ASNOW
-           EVPSOI = EVPSOI - EVACC*MAPL_ALHL*(1.-ASNOW)
+        ! for snow-free latent heat flux, apportion accounting (ACC) residual based on evap/dewfall flux breakdown
+        
+        SUMEV = EVPSOI+EVPVEG+EVPINT                          ! excludes sublimation (EVPICE)
+        
+        where(SUMEV/=0.)                          
+           EVPSOI = EVPSOI - EINTESOIEVEGACC*EVPSOI/SUMEV
+           EVPINT = EVPINT - EINTESOIEVEGACC*EVPINT/SUMEV
+           EVPVEG = EVPVEG - EINTESOIEVEGACC*EVPVEG/SUMEV
+        elsewhere                         
+           EVPSOI = EVPSOI - EINTESOIEVEGACC                  ! add entire correction to EVPSOI
         endwhere
 
-!        endif
+        LHACC = (1.-ASNOW)*EINTESOIEVEGACC + *ASNOW*ESNOACC   ! total LH correction
 
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF

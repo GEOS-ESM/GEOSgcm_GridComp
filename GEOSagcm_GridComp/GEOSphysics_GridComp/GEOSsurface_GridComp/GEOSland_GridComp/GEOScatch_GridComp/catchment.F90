@@ -59,6 +59,7 @@
 ! Justin, 11 Dec 2018  - put in ASNOW fix affecting AGCM only
 ! Sarith, 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 ! Reichle, 14 Jan 2022 - removed redundant qa constraint; removed commented-out #ifdef LAND_UPD directives
+! reichle, 15 Jul 2024 - split LHACC into snow-free and snow-covered contribution
 
       MODULE CATCHMENT_MODEL
 
@@ -147,19 +148,20 @@
                      TC1, TC2, TC4, QA1, QA2, QA4, CAPAC,                      &
                      CATDEF, RZEXC, srfexc, GHTCNT, TSURF,                     &
                      WESNN, HTSNNN, SNDZN,                                     &
-                     EVAP, SHFLUX, RUNOFF,                                     &
-                     EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &
+                     EVAP, SHFLUX, RUNOFF,                                     &  ! EVAP:                   kg/m2/s
+                     EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &  ! EINT, ESOI, EVEG, ESNO: W/m2
                      HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
                      GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
                      TP1, TP2, TP3, TP4, TP5, TP6,                             &
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
-                     EVACC, SHACC,                                             &
+                     EVACC,                                                    &  ! kg/m2/s
+                     EINTESOIEVEGACC, ESNOACC, SHACC,                          &  ! W/m2
                      SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
                      TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC )                          ! OPTIONAL
+                     RCONSTIT, RMELT, TOTDEPOS )
 
       IMPLICIT NONE
 
@@ -218,7 +220,7 @@
                      HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
                      GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
                      sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
-                     HSNACC, EVACC, SHACC
+                     HSNACC, EVACC, EINTESOIEVEGACC, ESNOACC, SHACC
       REAL, INTENT(OUT), DIMENSION(NCH) :: GHFLUXSNO, GHTSKIN
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: SH_SNOW, AVET_SNOW,         &
@@ -230,8 +232,6 @@
 
       REAL, INTENT(OUT), DIMENSION(N_SNOW, NCH)   :: FICESOUT
       
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC
-
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: EACC_0 
@@ -282,7 +282,8 @@
               SCLAI, tsn1, tsn2, tsn3, hold, hnew, emaxrz, dedtc0,             &
               dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
               QA1X, QA2X, QA4X, TC1X, TC2X, TC4X, TCSX,                        &
-              EVAPX1,EVAPX2,EVAPX4,SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,         &
+              EVAPX1,EVAPX2,EVAPX4,EVAPX124,                                   &
+              SHFLUXX1,SHFLUXX2,SHFLUXX4,EVEGFRC,                              &
               EVAPXS,SHFLUXXS,phi,rho_fs,sumdepth,                             &   
               sndzsc, wesnprec, sndzprec,  sndz1perc,                          &   
               mltwtr, wesnbot, dtss
@@ -566,8 +567,6 @@
 !     in the heat content of deposited snow.
  
         HSNACC(N)=0.
-        EVACC(N)=0.
-        SHACC(N)=0.
         RUNSRF(N)=0.
 
 
@@ -1111,13 +1110,10 @@
         EINTX=EIRFRC(N)*EVAPFR(N)*DTSTEP
         IF(EINTX .GT. CAPAC(N)) THEN
           EDIF=(EINTX-CAPAC(N))/DTSTEP
-!          EVACC(N)=EVACC(N)-EDIF
           EVAPFR(N)=EVAPFR(N)-EDIF
           EVAP(N)=EVAP(N)-EDIF
           HLATN(N)=HLATN(N)-EDIF*ALHE
           SHFLUX(N)=SHFLUX(N)+EDIF*ALHE
-!          SHACC(N)=SHACC(N)+EDIF*ALHE
-!          HSNACC(N)=HSNACC(N)+EDIF*ALHE
           EIRFRC(N)=CAPAC(N)/((EVAPFR(N)+1.E-20)*DTSTEP)
           ENDIF
         ENDDO
@@ -1243,8 +1239,6 @@
            EVEG(N)=EVEG(N)-EDIF*EVEGFRC*DTSTEP
            ESOI(N)=ESOI(N)-EDIF*(1.-EVEGFRC)*DTSTEP
            SHFLUX(N)=SHFLUX(N)+EDIF*ALHE
-!           EVACC(N)=EVACC(n)-EDIF
-!           SHACC(N)=SHACC(N)+EDIF*ALHE
            endif
          enddo
 
@@ -1265,7 +1259,6 @@
         hold=csoil(n)*(ar1old(n)*tc1(n)+ar2old(n)*tc2(n)+ar4old(n)*tc4(n))
         hnew=csoil(n)*(ar1(n)*tc1(n)+ar2(n)*tc2(n)+ar4(n)*tc4(n))
         shflux(n)=shflux(n)-(hnew-hold)/dtstep
-!        SHACC(N)=SHACC(N)-(hnew-hold)/dtstep
         enddo
 
 !**** ---------------------------------------------------
@@ -1455,28 +1448,26 @@
 ! fluxes, since the land model has to update those areas (based on the fluxes)
 ! as a matter of course.
 
+        ! evap (mass) flux (kg/m2/s)
+
         EVAPX1=ETURB1(N)+DEDQA1(N)*(QA1(N)-QA1_ORIG(N))
         EVAPX2=ETURB2(N)+DEDQA2(N)*(QA2(N)-QA2_ORIG(N))
         EVAPX4=ETURB4(N)+DEDQA4(N)*(QA4(N)-QA4_ORIG(N))
         EVAPXS=ETURBS(N)+DEDQAS(N)*DQSS(N)*(TPSN1(N)-TCS_ORIG(N))
-        EVACC(N)=        (1.-ASNOW0(N))*                                       &
-                        ( AR1(N)*EVAPX1+                                       &
-                          AR2(N)*EVAPX2+                                       &
-                          AR4(N)*EVAPX4 )                                      &
-                      +  ASNOW0(N)*EVAPXS
-        EVACC(N)=EVAP(N)-EVACC(N)
 
+        EVAPX124 = AR1(N)*EVAPX1 + AR2(N)*EVAPX2 + AR4(N)*EVAPX4 
+        
+        EVACC(N)=EVAP(N)-(1.-ASNOW0(N))*EVAPX124-ASNOW0(N)*EVAPXS
 
-        ! added term for latent heat flux correction, reichle+qliu, 9 Oct 2008
+        ! latent heat (energy) flux (W/m2); separated by contributions from snow-free and snow-covered surfaces
+        
+        EINTESOIEVEGACC(N) = ALHE * ( EINT(N)+ESOI(N)+EVEG(N) - EVAPX124 )
 
-        if(present(lhacc)) then
-           LHACC(N)=  ALHE*(1.-ASNOW0(N))*                           &
-                ( AR1(N)*EVAPX1+                                     &
-                  AR2(N)*EVAPX2+                                     &
-                  AR4(N)*EVAPX4 )                                    &
-                + ALHS*ASNOW0(N)*EVAPXS
-           LHACC(N)=HLATN(N)-LHACC(N)
-           end if
+        ESNOACC(        N) = ALHS * ( ESNO(N)                 - EVAPXS   )
+        
+        ! note: LHACC = (1.-ASNOW0(N))*EINTESOIEVEGACC + *ASNOW0(N)*ESNOACC
+
+        ! sensible heat (energy) flux (W/m2)
 
         SHFLUXX1=HSTURB1(N)+DHSDTC1(N)*(TC1(N)-TC1_ORIG(N))
         SHFLUXX2=HSTURB2(N)+DHSDTC2(N)*(TC2(N)-TC2_ORIG(N))
