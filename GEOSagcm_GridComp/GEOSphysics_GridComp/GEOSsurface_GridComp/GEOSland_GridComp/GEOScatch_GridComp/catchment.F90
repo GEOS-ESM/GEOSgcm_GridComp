@@ -1461,9 +1461,9 @@
 
         ! latent heat (energy) flux (W/m2); separated by contributions from snow-free and snow-covered surfaces
         
-        EINTESOIEVEGACC(N) = ALHE * ( EINT(N)+ESOI(N)+EVEG(N) - EVAPX124 )
+        EINTESOIEVEGACC(N) = EINT(N)+ESOI(N)+EVEG(N) - ALHE*EVAPX124 
 
-        ESNOACC(        N) = ALHS * ( ESNO(N)                 - EVAPXS   )
+        ESNOACC(        N) = ESNO(N)                 - ALHS*EVAPXS   
         
         ! note: LHACC = (1.-ASNOW0(N))*EINTESOIEVEGACC + *ASNOW0(N)*ESNOACC
 
