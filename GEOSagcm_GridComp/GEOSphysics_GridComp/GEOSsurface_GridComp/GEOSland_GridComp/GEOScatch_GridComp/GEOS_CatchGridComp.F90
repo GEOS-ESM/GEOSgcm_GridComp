@@ -5688,6 +5688,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            EVPSOI = EVPSOI - EINTESOIEVEGACC                  ! add entire correction to EVPSOI
         endwhere
 
+        ! correction in snow-covered portion
+
+        EVPICE = EVPICE - ESNOACC
+
         LHACC = (1.-ASNOW)*EINTESOIEVEGACC + ASNOW*ESNOACC   ! total LH correction
 
         if(associated( LST  )) LST    = TST
