@@ -19,13 +19,13 @@ module GEOS_MoistGridCompMod
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
-  fs_write_field, &
-  fs_read_field, &
+  fs_create_savepoint, &
   fs_add_savepoint_metainfo, &
-  fs_create_savepoint
+  fs_write_field, &
+  fs_read_field
 USE utils_ppser, ONLY:  &
-  ppser_get_mode, &
   ppser_initialize, &
+  ppser_get_mode, &
   ppser_savepoint, &
   ppser_serializer, &
   ppser_serializer_ref, &
@@ -5536,15 +5536,11 @@ call ppser_initialize( &
            mpi_rank=rank, &
            unique_id=.true.)
 ! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5505
-call fs_create_savepoint('Aer_Actv-In', ppser_savepoint)
+call fs_create_savepoint('AerActivation-In', ppser_savepoint)
 call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
 ! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5506
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'IM', IM)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JM', JM)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'LM', LM)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'Q', Q)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'T', T)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'PLmb', PLmb)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'PLE', PLE)
@@ -5553,10 +5549,6 @@ SELECT CASE ( ppser_get_mode() )
     call fs_write_field(ppser_serializer, ppser_savepoint, 'QLCN', QLCN)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'QICN', QICN)
   CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'IM', IM)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'JM', JM)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'LM', LM)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'Q', Q)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'PLmb', PLmb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'PLE', PLE)
@@ -5565,10 +5557,6 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN)
   CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'IM', IM, ppser_zrperturb)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'JM', JM, ppser_zrperturb)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'LM', LM, ppser_zrperturb)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'Q', Q, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'PLmb', PLmb, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'PLE', PLE, ppser_zrperturb)
@@ -5610,15 +5598,12 @@ END SELECT
 ! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5508
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'USE_AERO_BUFFER', USE_AERO_BUFFER)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'CCN_LND', CCN_LND)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'CCN_OCN', CCN_OCN)
   CASE(1)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'USE_AERO_BUFFER', USE_AERO_BUFFER)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_LND', CCN_LND)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_OCN', CCN_OCN)
   CASE(2)
-    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'USE_AERO_BUFFER', USE_AERO_BUFFER, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_LND', CCN_LND, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_OCN', CCN_OCN, ppser_zrperturb)
 END SELECT
@@ -5682,6 +5667,15 @@ SELECT CASE ( ppser_get_mode() )
   CASE(2)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_F_ORGANIC', aero_f_organic_, ppser_zrperturb)
 END SELECT
+! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5513
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'USE_AEROSOL_NN', USE_AEROSOL_NN)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'USE_AEROSOL_NN', USE_AEROSOL_NN)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'USE_AEROSOL_NN', USE_AEROSOL_NN, ppser_zrperturb)
+END SELECT
 #endif
 
          ! Pressures in Pa
@@ -5690,10 +5684,10 @@ END SELECT
                              AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
 
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5519
-call fs_create_savepoint('Aer_Actv-Out', ppser_savepoint)
-call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
 ! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5520
+call fs_create_savepoint('AerActivation-Out', ppser_savepoint)
+call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
+! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5521
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'NACTL', NACTL)
