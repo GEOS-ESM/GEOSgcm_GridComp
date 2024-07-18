@@ -378,29 +378,28 @@ def aer_activation_stencil(
             bibar[1:n_modes] = max(AeroProps[i, j, k, :, 4], constants.ZERO_PAR)
             _get_act_frac_stencil(n_modes, ni[1:n_modes], rg[1:n_modes], sig0[1:n_modes], tk, press, wupdraft, nact[1:n_modes], bibar[1:n_modes])
             numbinit = 0.0
-            NACTL = 0.0
-            aer_activation_lquid_clouds(ni,rg,sig0,tk,press,wupdraft,bibar,nact,air_den)
+            NACTL = 0.0ma
         '''
         #Ice Clouds
-        if tk <= constants.MAPL_TICE and (qi > finfo(float).eps or ql > finfo(float).eps):
+        if tk <= constants.MAPL_TICE and (qi > np.finfo(float).eps or ql > np.finfo(float).eps):
             numbinit = 0.0
             n = 0
             while n <= constants.n_modes:
-                if dpg[0, 0, 0][n] >= 0.5e-6:
-                    numbinit += num[0,0,0][n]
+                if AERO_DGN[0, 0, 0][n] >= 0.5e-6:
+                    numbinit += AERO_NUM[0,0,0][n]
                     n+=1
             numbinit *= air_den
             NACTI = constants.AI * ((constants.MAPL_TICE - tk) ** constants.BI) * (numbinit ** (constants.CI * (constants.MAPL_TICE - tk) + constants.DI))
 
                 #apply limits for NACTL/NACTI
-        if NACTL < NN_MIN:
-            NACTL = NN_MIN
-        if NACTL > NN_MAX:
-            NACTL = NN_MAX
-        if NACTI < NN_MIN:
-            NACTI = NN_MIN
-        if NACTI > NN_MAX:
-            NACTI = NN_MAX
+        if NACTL < constants.NN_MIN:
+            NACTL = constants.NN_MIN
+        if NACTL > constants.NN_MAX:
+            NACTL = constants.NN_MAX
+        if NACTI < constants.NN_MIN:
+            NACTI = constants.NN_MIN
+        if NACTI > constants.NN_MAX:
+            NACTI = constants.NN_MAX
 
 class AerActivation:
     def __init__(
@@ -414,9 +413,11 @@ class AerActivation:
         if constants.n_modes == n_modes:
             raise NotImplementedError(f"Coding limitation: 14 modes are expected, getting {n_modes}")
         
-        if not USE_AEROSOL_NN:
+        
+        if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
         
+        '''
         self._get_act_frac = stencil_factory.from_dims_halo(
             func = _get_act_frac_stencil,
             compute_dims = [X_DIM, Y_DIM, Z_DIM],
@@ -433,12 +434,12 @@ class AerActivation:
             func = _gcf_matrix_stencil,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+        '''
 
 #GEOS_moistGridComp for aero props line  5400ish
 
     def __call__(
         self,
-        
         q: FloatField,
         t: FloatField,
         plo: FloatField,
@@ -492,7 +493,7 @@ class AerActivation:
 
         Returns:
         None
-        """
+        
         self._get_act_frac(
                             nmodes, 
                             xnap,
@@ -527,3 +528,4 @@ class AerActivation:
                         x, 
                         gln,
                         )
+        """
