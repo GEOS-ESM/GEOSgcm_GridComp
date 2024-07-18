@@ -59,7 +59,6 @@
 ! Justin, 11 Dec 2018  - put in ASNOW fix affecting AGCM only
 ! Sarith, 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 ! Reichle, 14 Jan 2022 - removed redundant qa constraint; removed commented-out #ifdef LAND_UPD directives
-! reichle, 15 Jul 2024 - split LHACC into snow-free and snow-covered contribution
 
       MODULE CATCHMENT_MODEL
 
@@ -155,7 +154,7 @@
                      TP1, TP2, TP3, TP4, TP5, TP6,                             &
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
                      EVACC,                                                    &  ! kg/m2/s
-                     EINTESOIEVEGACC, ESNOACC, SHACC,                          &  ! W/m2
+                     LHACC, SHACC,                                             &  ! W/m2
                      SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
                      TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
@@ -220,7 +219,7 @@
                      HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
                      GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
                      sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
-                     HSNACC, EVACC, EINTESOIEVEGACC, ESNOACC, SHACC
+                     HSNACC, EVACC, LHACC, SHACC
       REAL, INTENT(OUT), DIMENSION(NCH) :: GHFLUXSNO, GHTSKIN
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: SH_SNOW, AVET_SNOW,         &
@@ -1459,13 +1458,13 @@
         
         EVACC(N)=EVAP(N)-(1.-ASNOW0(N))*EVAPX124-ASNOW0(N)*EVAPXS
 
-        ! latent heat (energy) flux (W/m2); separated by contributions from snow-free and snow-covered surfaces
+        ! latent heat (energy) flux (W/m2)
+        !
+        ! Note: Strictly speaking, the atmosphere does not receive the latent heat flux,
+        !       only the evap mass flux and the sensible heat flux.  For completeness, 
+        !       however, we also calculate a corresponding "accounting" (or "error") term.
         
-        EINTESOIEVEGACC(N) = EINT(N)+ESOI(N)+EVEG(N) - ALHE*EVAPX124 
-
-        ESNOACC(        N) = ESNO(N)                 - ALHS*EVAPXS   
-        
-        ! note: LHACC = (1.-ASNOW0(N))*EINTESOIEVEGACC + *ASNOW0(N)*ESNOACC
+        LHACC(N) = HLATN(N) - (1.-ASNOW0(N))*ALHE*EVAPX124 - ASNOW0(N)*ALHS*EVAPXS 
 
         ! sensible heat (energy) flux (W/m2)
 

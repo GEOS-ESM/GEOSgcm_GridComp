@@ -2562,7 +2562,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPLAND',                    &
+    SHORT_NAME         = 'SPSH',                      &
     LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
@@ -2580,8 +2580,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPWATR',                    &
-    LONG_NAME          = 'Spurious_evapotranspiration_land',&
+    SHORT_NAME         = 'SPEV',                      &
+    LONG_NAME          = 'Spurious_evapotranspiration_flux_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -3911,9 +3911,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: TSLAND
         real, dimension(:),   pointer :: DWLAND
         real, dimension(:),   pointer :: DHLAND
-        real, dimension(:),   pointer :: SPLAND
+        real, dimension(:),   pointer :: SPSH
         real, dimension(:),   pointer :: SPLH
-        real, dimension(:),   pointer :: SPWATR
+        real, dimension(:),   pointer :: SPEV  
         real, dimension(:),   pointer :: SPSNOW
 
         real, dimension(:),   pointer :: WAT10CM
@@ -3961,11 +3961,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
         real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
-        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
+        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, LHACC, SHACC
         real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
-        real,pointer,dimension(:) :: LHACC, EINTESOIEVEGACC, ESNOACC, SUMEV
         real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
  
@@ -4454,9 +4453,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TSLAND, 'TSLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPSH,   'SPSH'   ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPLH,   'SPLH'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPEV,   'SPEV'   ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
@@ -4513,6 +4512,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(ECHANGE  (NTILES))
         allocate(HSNACC   (NTILES))
         allocate(EVACC    (NTILES))
+        allocate(LHACC    (NTILES))
         allocate(SHACC    (NTILES))
         allocate(VSUVR    (NTILES))
         allocate(VSUVF    (NTILES))
@@ -4535,10 +4535,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TCSORIG1  (NTILES))
         allocate(TPSN1IN1  (NTILES))
         allocate(TPSN1OUT1 (NTILES))
-        allocate(LHACC     (NTILES))
-        allocate(EINTESOIEVEGACC(NTILES))
-        allocate(ESNOACC(        NTILES))        
-        allocate(SUMEV     (NTILES))
         allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
         allocate(FSW_CHANGE(NTILES))
@@ -5543,7 +5539,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TP1, TP2, TP3, TP4, TP5, TP6,  SFMC, RZMC, PRMC      ,&
              ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC                 ,&      
              EVACC                                                ,&  ! kg/m2/s 
-             EINTESOIEVEGACC, ESNOACC, SHACC                      ,&  ! W/m2
+             LHACC, SHACC                                         ,&  ! W/m2
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
              TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
@@ -5571,7 +5567,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
            
-           ! in offline mode, disregard GCM-specific TC/QC modifications and accounting terms
+           ! in offline mode, disregard the GCM-specific TC/QC modifications and the 
+           ! accounting terms for turbulent fluxes (but not snow heat accounting term)
            
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
@@ -5580,11 +5577,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QC(:,FTRN) = QA2_0
            QC(:,FWLT) = QA4_0
            
-           EVACC           = 0.0
-           EINTESOIEVEGACC = 0.0
-           ESNOACC         = 0.0
-           LHACC           = 0.0
-           SHACC           = 0.0
+           EVACC      = 0.0
+           LHACC      = 0.0
+           SHACC      = 0.0
 
         endif
 
@@ -5676,24 +5671,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
         
-        ! for snow-free latent heat flux, apportion accounting (ACC) residual based on evap/dewfall flux breakdown
-        
-        SUMEV = EVPSOI+EVPVEG+EVPINT                          ! excludes sublimation (EVPICE)
-        
-        where(SUMEV/=0.)                          
-           EVPSOI = EVPSOI - EINTESOIEVEGACC*EVPSOI/SUMEV
-           EVPINT = EVPINT - EINTESOIEVEGACC*EVPINT/SUMEV
-           EVPVEG = EVPVEG - EINTESOIEVEGACC*EVPVEG/SUMEV
-        elsewhere                         
-           EVPSOI = EVPSOI - EINTESOIEVEGACC                  ! add entire correction to EVPSOI
-        endwhere
-
-        ! correction in snow-covered portion
-
-        EVPICE = EVPICE - ESNOACC
-
-        LHACC = (1.-ASNOW)*EINTESOIEVEGACC + ASNOW*ESNOACC   ! total LH correction
-
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
         if(associated( WET1 )) WET1   = max(min(SFMC / POROS,1.0),0.0)
@@ -5707,13 +5684,59 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
-        if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
-        if(associated(LHLAND)) LHLAND = HLATN-LHACC
-        if(associated(SHLAND)) SHLAND = SHOUT-SHACC
+       
+        ! -----------------------------------------------------------------------------------------
+        !
+        ! IMPORTANT: Surface turbulent fluxes in [*]LAND exports are returned as calculated by Catchment! 
+        !
+        ! For completeness, also return the "accounting" terms that represent the difference between
+        ! the flux calculated by Catchment and the flux calculated by the atmosphere (Turbulence GC).
+        !
+        !   EVAP__calculated_by_atmosphere = EVLAND - EVACC     kg/m2/s
+        !   EFLUX_calculated_by_atmosphere = LHLAND - LHACC     W/m2      
+        !   HFLUX_calculated_by_atmosphere = SHLAND - SHACC     W/m2
+        !
+        ! Note: LHACC added for completeness and consistency with the mass flux term (EVACC);
+        !       strictly speaking, the atmosphere only receives the evap mass flux and the sensible 
+        !       heat flux, but not the latent heat flux.
+        !
+        ! In previous model versions, the [*]ACC accouting terms were subtracted from the
+        ! Catchment-calculated fluxes, thus returning the turbulent fluxes as calculated by 
+        ! the atmosphere.
+        !
+        ! Note: In offline mode, the [*]ACC accounting terms are zeroed out above. 
+        !
+        ! - reichle, 17 July 2024
+         
+        if(associated(EVLAND)) EVLAND = EVAPOUT   ! EVLAND is what Catchment thinks it should be 
+        if(associated(LHLAND)) LHLAND = HLATN     ! LHLAND is what Catchment thinks it should be
+        if(associated(SHLAND)) SHLAND = SHOUT     ! SHLAND is what Catchment thinks it should be
+        
+        if(associated(SPEV  )) SPEV   = EVACC
+        if(associated(SPLH  )) SPLH   = LHACC
+        if(associated(SPSH  )) SPSH   = SHACC
+        
+        ! Compute latent heat flux that is consistent with the evap mass flux as calculated 
+        ! by the atmosphere (Turbulence GC).  In the "flx" HISTORY collection, EFLUX is 
+        ! the all-surface latent heat flux, with HLATN (as below) being the land contribution.
+
+        HLATN   = HLATN   - LHACC
+
+        ! In previous model versions, the evap mass flux EVAPOUT and the sensible heat flux SHOUT
+        ! were returned as calculated by Catchment.  These diagnostic are not written in MERRA-2.
+        ! In FP and GEOSIT, they are only included in ocean ("ocn") Collections.
+        ! For consistency with previous model versions, keep returning EVAPOUT and SHOUT as 
+        ! calculated by Catchment.
+        !
+        !EVAPOUT = EVAPOUT - EVACC
+        !SHOUT   = SHOUT   - SHACC        
+        
+        ! -----------------------------------------------------------------------------------------
+
         if(associated(SWLAND)) SWLAND = SWNDSRF
         if(associated(LWLAND)) LWLAND = LWNDSRF
         if(associated(GHLAND)) GHLAND = GHFLX
@@ -5737,9 +5760,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(TSLAND)) TSLAND = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
         if(associated(DWLAND)) DWLAND = WCHANGE
         if(associated(DHLAND)) DHLAND = ECHANGE
-        if(associated(SPLAND)) SPLAND = SHACC
-        if(associated(SPLH  )) SPLH   = LHACC
-        if(associated(SPWATR)) SPWATR = EVACC
         if(associated(SPSNOW)) SPSNOW = HSNACC
 
         if(associated(FRSAT )) FRSAT  = max( min( FR(:,FSAT),1.0 ), 0.0 )
@@ -5890,8 +5910,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(LWDNSNOW1)
         deallocate(NETSWSNOW)
         deallocate(TCSORIG1 )
-        deallocate(LHACC )
-        deallocate(SUMEV )
         deallocate(TPSN1IN1 )
         deallocate(TPSN1OUT1)
         deallocate(GHFLXTSKIN)
@@ -5899,6 +5917,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(ECHANGE  )
         deallocate(HSNACC   )
         deallocate(EVACC    )
+        deallocate(LHACC    )
         deallocate(SHACC    )
         !deallocate(VISDF    )
         !deallocate(NIRDF    )

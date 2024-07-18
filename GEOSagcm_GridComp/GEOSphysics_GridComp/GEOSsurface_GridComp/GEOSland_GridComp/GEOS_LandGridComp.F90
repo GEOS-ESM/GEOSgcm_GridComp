@@ -651,7 +651,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'SPLAND', &
+            SHORT_NAME = 'SPSH', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -661,7 +661,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'SPWATR', &
+            SHORT_NAME = 'SPEV', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -1119,6 +1119,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+! later, rename SPLAND to SPSH for CatchCN:
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
 ! will need later for CatchCN:
