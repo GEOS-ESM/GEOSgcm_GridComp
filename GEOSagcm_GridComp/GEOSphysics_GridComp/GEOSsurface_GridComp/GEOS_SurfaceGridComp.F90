@@ -9701,7 +9701,7 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
       end if
       if(associated(SPLANDTILE)) then
-         call FILLOUT_TILE(GEX(type), 'SPLAND',   SPLANDTILE  XFORM, RC=STATUS)
+         call FILLOUT_TILE(GEX(type), 'SPLAND',   SPLANDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if(associated(SPLHTILE  )) then
