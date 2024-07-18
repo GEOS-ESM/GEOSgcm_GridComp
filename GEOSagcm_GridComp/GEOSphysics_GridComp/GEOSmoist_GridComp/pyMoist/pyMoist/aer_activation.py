@@ -562,26 +562,26 @@ class AerActivation:
         self,
         aero_f_dust: FloatField_NModes,
         aero_f_organic: FloatField_NModes,
-        tmp3d
-        nactl
-        ple
+        tmp3d: FloatField,
+        nactl: FloatField,
+        ple: FloatField,
         aero_f_soot: FloatField_NModes,
-        t
-        aero_hygroscopicity
-        zle0
-        qils
-        aero_num
-        zl0
-        plmb
-        qils
-        aero_dgn
-        tke
-        nacti
-        nwfa
-        qlcn
-        aero_sigma
-        aero_density
-        qicn
+        t: FloatField,
+        aero_hygroscopicity: FloatField_NModes,
+        zle0: FloatField,
+        qlls: FloatField,
+        aero_num: FloatField_NModes,
+        zl0: FloatField,
+        plmb: FloatField,
+        qils: FloatField,
+        aero_dgn: FloatField_NModes,
+        tke: FloatField,
+        nacti: FloatField,
+        nwfa: FloatField,
+        qlcn: FloatField,
+        aero_sigma: FloatField_NModes,
+        aero_density: FloatField_NModes,
+        qicn: FloatField,
     ):
         self.ddim_test_stencil(aero_f_dust)
         self.ddim_test_stencil(aero_f_organic)
