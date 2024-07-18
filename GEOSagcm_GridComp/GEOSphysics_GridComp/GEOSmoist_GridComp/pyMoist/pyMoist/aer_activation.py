@@ -561,5 +561,47 @@ class AerActivation:
     def ddim_debug(
         self,
         aero_f_dust: FloatField_NModes,
+        aero_f_organic: FloatField_NModes,
+        tmp3d
+        nactl
+        ple
+        aero_f_soot: FloatField_NModes,
+        t
+        aero_hygroscopicity
+        zle0
+        qils
+        aero_num
+        zl0
+        plmb
+        qils
+        aero_dgn
+        tke
+        nacti
+        nwfa
+        qlcn
+        aero_sigma
+        aero_density
+        qicn
     ):
         self.ddim_test_stencil(aero_f_dust)
+        self.ddim_test_stencil(aero_f_organic)
+        self.ddim_test_stencil(tmp3d)
+        self.ddim_test_stencil(nactl)
+        self.ddim_test_stencil(ple)
+        self.ddim_test_stencil(aero_f_soot)
+        self.ddim_test_stencil(t)
+        self.ddim_test_stencil(aero_hygroscopicity)
+        self.ddim_test_stencil(zle0)
+        self.ddim_test_stencil(qlls)
+        self.ddim_test_stencil(aero_num)
+        self.ddim_test_stencil(zl0)
+        self.ddim_test_stencil(plmb)
+        self.ddim_test_stencil(qils)
+        self.ddim_test_stencil(aero_dgn)
+        self.ddim_test_stencil(tke)
+        self.ddim_test_stencil(nacti)
+        self.ddim_test_stencil(nwfa)
+        self.ddim_test_stencil(qlcn)
+        self.ddim_test_stencil(aero_sigma)
+        self.ddim_test_stencil(aero_density)
+        self.ddim_test_stencil(qicn)

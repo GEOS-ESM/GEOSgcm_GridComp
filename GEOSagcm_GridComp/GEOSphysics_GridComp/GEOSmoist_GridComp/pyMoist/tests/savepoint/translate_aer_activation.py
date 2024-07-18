@@ -77,11 +77,54 @@ class TranslateAerActivation(TranslateFortranData2Py):
 
         # Inputs
         aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
+        aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
+        tmp3d = inputs["TMP3D"].astype(Float) 
+        nactl = inputs["NACTL"].astype(Float)
+        ple = inputs["PLE"].astype(Float)
+        aero_f_soot = inputs["AERO_F_SOOT"].astype(Float)
+        t = inputs["T"].astype(Float)
+        aero_hygroscopicity = inputs["AERO_HYGROSCOPICITY"].astype(Float)
+        zle0 = inputs["ZLE0"].astype(Float)
+        qlls = inputs["QLLS"].astype(Float)
+        aero_num = inputs["AERO_F_NUM"].astype(Float)
+        zl0 = inputs["ZL0"].astype(Float)
+        plmb = inputs["PLmb"].astype(Float)
+        qils = inputs["QILS"].astype(Float)
+        aero_dgn = inputs["AERO_F_DGN"].astype(Float)
+        tke = inputs["TKE"].astype(Float)
+        nacti = inputs["NACTI"].astype(Float)
+        nwfa = inputs["NWFA"].astype(Float)
+        qlcn = inputs["QLCN"].astype(Float)
+        aero_sigma = inputs["AERO_F_SIGMA"].astype(Float)
+        aero_density = inputs["AERO_F_DENSITY"].astype(Float)
+        qicn = inputs["QICN"].astype(Float)
 
         aer_activation.ddim_debug(aero_f_dust)
+        aer_activation.ddim_debug(aero_f_organic)
+        aer_activation.ddim_debug(tmp3d)
+        aer_activation.ddim_debug(nactl)
+        aer_activation.ddim_debug(ple)
+        aer_activation.ddim_debug(aero_f_soot)
+        aer_activation.ddim_debug(t)
+        aer_activation.ddim_debug(aero_hygroscopicity)
+        aer_activation.ddim_debug(zle0)
+        aer_activation.ddim_debug(qlls)
+        aer_activation.ddim_debug(aero_num)
+        aer_activation.ddim_debug(zl0)
+        aer_activation.ddim_debug(plmb)
+        aer_activation.ddim_debug(qils)
+        aer_activation.ddim_debug(aero_dgn)
+        aer_activation.ddim_debug(tke)
+        aer_activation.ddim_debug(nacti)
+        aer_activation.ddim_debug(nwfa)
+        aer_activation.ddim_debug(qlcn)
+        aer_activation.ddim_debug(aero_sigma)
+        aer_activation.ddim_debug(aero_density)
+        aer_activation.ddim_debug(qicn)
 
         return {
             "NACTL": nactl,
             "NACTI": nacti,
             "NWFA": nwfa,
         }
+
