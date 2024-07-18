@@ -651,7 +651,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'SPSH', &
+            SHORT_NAME = 'SPLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -661,7 +661,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'SPEV', &
+            SHORT_NAME = 'SPWATR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -1119,13 +1119,12 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-! later, rename SPLAND to SPSH for CatchCN:
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPSHLAND
        VERIFY_(STATUS)
 ! will need later for CatchCN:
 !       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLH'   ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
 !       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )              ! a.k.a. SPEVLAND
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)

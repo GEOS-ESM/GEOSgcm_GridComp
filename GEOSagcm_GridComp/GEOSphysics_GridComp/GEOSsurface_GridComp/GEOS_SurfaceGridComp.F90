@@ -1954,7 +1954,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPSH',                      &
+    SHORT_NAME         = 'SPLAND',                    &              ! a.k.a. SPSHLAND
     LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
@@ -1972,7 +1972,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPEV',                      &
+    SHORT_NAME         = 'SPWATR',                    &              ! a.k.a. SPEVLAND
     LONG_NAME          = 'Spurious_evapotranspiration_flux_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
@@ -5433,9 +5433,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: TSLAND       => NULL()
     real, pointer, dimension(:,:) :: DWLAND       => NULL()
     real, pointer, dimension(:,:) :: DHLAND       => NULL()
-    real, pointer, dimension(:,:) :: SPSH         => NULL()
+    real, pointer, dimension(:,:) :: SPLAND       => NULL()
     real, pointer, dimension(:,:) :: SPLH         => NULL()
-    real, pointer, dimension(:,:) :: SPEV         => NULL()
+    real, pointer, dimension(:,:) :: SPWATR       => NULL()
     real, pointer, dimension(:,:) :: SPSNOW       => NULL()
     real, pointer, dimension(:,:) :: RCU          => NULL()
     real, pointer, dimension(:,:) :: RLS          => NULL()
@@ -5736,9 +5736,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: TSLANDTILE       => NULL()
     real, pointer, dimension(:) :: DWLANDTILE       => NULL()
     real, pointer, dimension(:) :: DHLANDTILE       => NULL()
-    real, pointer, dimension(:) :: SPSHTILE         => NULL()
+    real, pointer, dimension(:) :: SPLANDTILE       => NULL()
     real, pointer, dimension(:) :: SPLHTILE         => NULL()
-    real, pointer, dimension(:) :: SPEVTILE         => NULL()
+    real, pointer, dimension(:) :: SPWATRTILE       => NULL()
     real, pointer, dimension(:) :: SPSNOWTILE       => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU002TILE     => NULL()
@@ -6603,9 +6603,9 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , TSLAND  , 'TSLAND' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DWLAND  , 'DWLAND' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DHLAND  , 'DHLAND' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , SPSH    , 'SPSH'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SPLAND  , 'SPLAND' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SPLH    , 'SPLH'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , SPEV    , 'SPEV'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SPWATR  , 'SPWATR' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SPSNOW  , 'SPSNOW' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RDU001  , 'RDU001' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RDU002  , 'RDU002' ,  RC=STATUS); VERIFY_(STATUS)
@@ -7212,9 +7212,9 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(TSLAND  ,TSLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DWLAND  ,DWLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DHLAND  ,DHLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(SPSH    ,SPSHTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SPLAND  ,SPLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SPLH    ,SPLHTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(SPEV    ,SPEVTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SPWATR  ,SPWATRTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SPSNOW  ,SPSNOWTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RDU001  ,RDU001TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RDU002  ,RDU002TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8087,16 +8087,16 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,DHLAND,DHLANDTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
-    if(associated(SPSH)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPSH  ,SPSHTILE  , RC=STATUS) 
+    if(associated(SPLAND)) then
+       call MAPL_LocStreamTransform( LOCSTREAM,SPLAND,SPLANDTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
     if(associated(SPLH  )) then
        call MAPL_LocStreamTransform( LOCSTREAM,SPLH  ,SPLHTILE  , RC=STATUS) 
        VERIFY_(STATUS)
     endif
-    if(associated(SPEV)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPEV  ,SPEVTILE  , RC=STATUS) 
+    if(associated(SPWATR)) then
+       call MAPL_LocStreamTransform( LOCSTREAM,SPWATR,SPWATRTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
     if(associated(SPSNOW)) then
@@ -8748,9 +8748,9 @@ module GEOS_SurfaceGridCompMod
     if(associated(TSLANDTILE  )) deallocate(TSLANDTILE  )
     if(associated(DWLANDTILE  )) deallocate(DWLANDTILE  )
     if(associated(DHLANDTILE  )) deallocate(DHLANDTILE  )
-    if(associated(SPSHTILE    )) deallocate(SPSHTILE    )
+    if(associated(SPLANDTILE  )) deallocate(SPLANDTILE  )
     if(associated(SPLHTILE    )) deallocate(SPLHTILE    )
-    if(associated(SPEVTILE    )) deallocate(SPEVTILE    )
+    if(associated(SPWATRTILE  )) deallocate(SPWATRTILE  )
     if(associated(SPSNOWTILE  )) deallocate(SPSNOWTILE  )
     if(associated(RDU001TILE  )) deallocate(RDU001TILE  )
     if(associated(RDU002TILE  )) deallocate(RDU002TILE  )
@@ -9060,11 +9060,11 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'DHLAND'  , ALLOC=associated(DHLANDTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SPSH'    , ALLOC=associated(SPSHTILE    ), notFoundOK=.true., RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPLAND'  , ALLOC=associated(SPLANDTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SPLH'    , ALLOC=associated(SPLHTILE    ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SPEV'    , ALLOC=associated(SPEVTILE    ), notFoundOK=.true., RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPWATR'  , ALLOC=associated(SPWATRTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SPSNOW'  , ALLOC=associated(SPSNOWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -9700,16 +9700,16 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'DHLAND',   DHLANDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      if(associated(SPSHTILE)) then
-         call FILLOUT_TILE(GEX(type), 'SPSH'  ,   SPSHTILE,   XFORM, RC=STATUS)
+      if(associated(SPLANDTILE)) then
+         call FILLOUT_TILE(GEX(type), 'SPLAND',   SPLANDTILE  XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if(associated(SPLHTILE  )) then
          call FILLOUT_TILE(GEX(type), 'SPLH'  ,   SPLHTILE,   XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      if(associated(SPEVTILE)) then
-         call FILLOUT_TILE(GEX(type), 'SPEV'  ,   SPEVTILE,   XFORM, RC=STATUS)
+      if(associated(SPWATRTILE)) then
+         call FILLOUT_TILE(GEX(type), 'SPWATR',   SPWATRTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if(associated(SPSNOWTILE)) then

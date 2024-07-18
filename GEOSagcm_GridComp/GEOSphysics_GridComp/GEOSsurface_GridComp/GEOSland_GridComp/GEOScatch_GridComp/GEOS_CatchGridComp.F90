@@ -2562,7 +2562,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPSH',                      &
+    SHORT_NAME         = 'SPLAND',                    &              ! a.k.a. SPSHLAND
     LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
@@ -2580,7 +2580,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPEV',                      &
+    SHORT_NAME         = 'SPWATR',                    &              ! a.k.a. SPEVLAND
     LONG_NAME          = 'Spurious_evapotranspiration_flux_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
@@ -3911,9 +3911,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: TSLAND
         real, dimension(:),   pointer :: DWLAND
         real, dimension(:),   pointer :: DHLAND
-        real, dimension(:),   pointer :: SPSH
+        real, dimension(:),   pointer :: SPLAND
         real, dimension(:),   pointer :: SPLH
-        real, dimension(:),   pointer :: SPEV  
+        real, dimension(:),   pointer :: SPWATR  
         real, dimension(:),   pointer :: SPSNOW
 
         real, dimension(:),   pointer :: WAT10CM
@@ -4453,9 +4453,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TSLAND, 'TSLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPSH,   'SPSH'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPLH,   'SPLH'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPEV,   'SPEV'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
@@ -5716,9 +5716,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(LHLAND)) LHLAND = HLATN     ! LHLAND is what Catchment thinks it should be
         if(associated(SHLAND)) SHLAND = SHOUT     ! SHLAND is what Catchment thinks it should be
         
-        if(associated(SPEV  )) SPEV   = EVACC
+        if(associated(SPWATR)) SPWATR = EVACC
         if(associated(SPLH  )) SPLH   = LHACC
-        if(associated(SPSH  )) SPSH   = SHACC
+        if(associated(SPLAND)) SPLAND = SHACC
         
         ! Compute latent heat flux that is consistent with the evap mass flux as calculated 
         ! by the atmosphere (Turbulence GC).  In the "flx" HISTORY collection, EFLUX is 
