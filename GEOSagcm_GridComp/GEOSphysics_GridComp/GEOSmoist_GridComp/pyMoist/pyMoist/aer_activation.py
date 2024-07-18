@@ -1,11 +1,12 @@
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Int, Float 
+from ndsl.dsl.typing import FloatField, Int, Float
 from ndsl import Quantity, QuantityFactory, StencilFactory
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log, exp, sqrt
 import pyMoist.aer_activation_constants as constants
 
 import numpy as np
+
 # Global space
 FloatField_NModes = gtscript.Field[gtscript.IJK, (Float, (constants.n_modes))]
 
@@ -305,32 +306,34 @@ def _gcf_matrix_stencil(
         gammcf = exp(-x + a * log(x) - gln) * h
 
 '''
-def aer_activation_stencil( 
-        q: FloatField, 
-        t: FloatField, 
-        plo: FloatField, 
-        ple: FloatField, 
-        zlo: FloatField, 
-        zle: FloatField, 
-        qlcn: FloatField, 
-        qicn: FloatField, 
-        qlls: FloatField, 
-        qils: FloatField,
-        sh: FloatField, 
-        evap: FloatField, 
-        kpbl: FloatField, 
-        tke: FloatField, 
-        vvel: FloatField, 
-        FRLAND: FloatField,
-        NACTL: FloatField, 
-        NACTI: FloatField,
-        NWFA: FloatField, 
-        NN_LAND: Float, 
-        NN_OCEAN: Float,
+
+
+def aer_activation_stencil(
+    q: FloatField,
+    t: FloatField,
+    plo: FloatField,
+    ple: FloatField,
+    zlo: FloatField,
+    zle: FloatField,
+    qlcn: FloatField,
+    qicn: FloatField,
+    qlls: FloatField,
+    qils: FloatField,
+    sh: FloatField,
+    evap: FloatField,
+    kpbl: FloatField,
+    tke: FloatField,
+    vvel: FloatField,
+    FRLAND: FloatField,
+    NACTL: FloatField,
+    NACTI: FloatField,
+    NWFA: FloatField,
+    NN_LAND: Float,
+    NN_OCEAN: Float,
 ):
     """
     Perform aerosol activation computations based on input atmospheric and aerosol properties.
-    
+
     Parameters:
     q (Floatfield): Specific humidity field.
     t (Floatfield): Temperature field.
@@ -353,7 +356,7 @@ def aer_activation_stencil(
     NWFA (Floatfield): Newly formed aerosol number concentration field.
     NN_LAND (Float): Number concentration over land field.
     NN_OCEAN (Float): Number concentration over ocean field.
-    
+
     Returns:
     None
     """
@@ -361,16 +364,16 @@ def aer_activation_stencil(
         NACTL = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
         NACTI = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
 
-        #might need to change variable names
+        # might need to change variable names
         tk = t
         press = plo
         air_den = press * 28.8e-3 / 8.31 / tk
-        qi = (qicn + qils) * 1.e+3 
-        ql = (qlcn + qlls) * 1.e+3
+        qi = (qicn + qils) * 1.0e3
+        ql = (qlcn + qlls) * 1.0e3
         wupdraft = vvel + sqrt(tke)
-            
-        #Liquid Clouds
-        '''
+
+        # Liquid Clouds
+        """
         if tk >= constants.MAPL_TICE - 40.0 and plo > 10000.0 and 0.1 < wupdraft < 100.0:
             ni[1:n_modes] = max(AeroProps[i, j, k, :, 0] * air_den, constants.ZERO_PAR)
             rg[1:n_modes] = max(AeroProps[i, j, k, :, 1] * 0.5 * 1.e6, constants.ZERO_PAR)
@@ -379,19 +382,28 @@ def aer_activation_stencil(
             _get_act_frac_stencil(n_modes, ni[1:n_modes], rg[1:n_modes], sig0[1:n_modes], tk, press, wupdraft, nact[1:n_modes], bibar[1:n_modes])
             numbinit = 0.0
             NACTL = 0.0ma
-        '''
-        #Ice Clouds
-        if tk <= constants.MAPL_TICE and (qi > np.finfo(float).eps or ql > np.finfo(float).eps):
+        """
+        # Ice Clouds
+        if tk <= constants.MAPL_TICE and (
+            qi > np.finfo(float).eps or ql > np.finfo(float).eps
+        ):
             numbinit = 0.0
             n = 0
             while n <= constants.n_modes:
                 if AERO_DGN[0, 0, 0][n] >= 0.5e-6:
-                    numbinit += AERO_NUM[0,0,0][n]
-                    n+=1
+                    numbinit += AERO_NUM[0, 0, 0][n]
+                    n += 1
             numbinit *= air_den
-            NACTI = constants.AI * ((constants.MAPL_TICE - tk) ** constants.BI) * (numbinit ** (constants.CI * (constants.MAPL_TICE - tk) + constants.DI))
+            NACTI = (
+                constants.AI
+                * ((constants.MAPL_TICE - tk) ** constants.BI)
+                * (
+                    numbinit
+                    ** (constants.CI * (constants.MAPL_TICE - tk) + constants.DI)
+                )
+            )
 
-                #apply limits for NACTL/NACTI
+            # apply limits for NACTL/NACTI
         if NACTL < constants.NN_MIN:
             NACTL = constants.NN_MIN
         if NACTL > constants.NN_MAX:
@@ -401,23 +413,33 @@ def aer_activation_stencil(
         if NACTI > constants.NN_MAX:
             NACTI = constants.NN_MAX
 
+
+def ddim_test(this_is_4d: FloatField_NModes):
+    with computation(PARALLEL), interval(...):
+        lev = 0
+        while lev < 10:
+            this_is_4d[0, 0, 0][lev] = 42
+            lev += 1
+
+
 class AerActivation:
     def __init__(
-            self,
-            stencil_factory: StencilFactory,
-            quantity_factory: QuantityFactory,
-            n_modes: Int,
-            USE_AERSOL_NN: bool,
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+        n_modes: Int,
+        USE_AERSOL_NN: bool,
     ):
-        
-        if constants.n_modes == n_modes:
-            raise NotImplementedError(f"Coding limitation: 14 modes are expected, getting {n_modes}")
-        
-        
+
+        if constants.n_modes != n_modes:
+            raise NotImplementedError(
+                f"Coding limitation: 14 modes are expected, getting {n_modes}"
+            )
+
         if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
-        
-        '''
+
+        """
         self._get_act_frac = stencil_factory.from_dims_halo(
             func = _get_act_frac_stencil,
             compute_dims = [X_DIM, Y_DIM, Z_DIM],
@@ -434,9 +456,15 @@ class AerActivation:
             func = _gcf_matrix_stencil,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        '''
+        """
 
-#GEOS_moistGridComp for aero props line  5400ish
+        self.ddim_test_stencil = stencil_factory.from_origin_domain(
+            func=ddim_test,
+            origin=(0, 0, 0),
+            domain=stencil_factory.grid_indexing.domain,
+        )
+
+    # GEOS_moistGridComp for aero props line  5400ish
 
     def __call__(
         self,
@@ -460,7 +488,7 @@ class AerActivation:
         NACTI: FloatField,
         NWFA: FloatField,
         NN_LAND: Int,
-        NN_OCEAN: Int
+        NN_OCEAN: Int,
     ):
         """
         Perform aerosol activation calculations.
@@ -493,16 +521,16 @@ class AerActivation:
 
         Returns:
         None
-        
+
         self._get_act_frac(
-                            nmodes, 
+                            nmodes,
                             xnap,
-                            rg, 
-                            sigmag, 
-                            tkelvin, 
-                            ptot, 
-                            wupdraft, 
-                            nact, 
+                            rg,
+                            sigmag,
+                            tkelvin,
+                            ptot,
+                            wupdraft,
+                            nact,
                             bibar
                             )
         self._act_frac_mat(
@@ -513,19 +541,25 @@ class AerActivation:
                             bibar,
                             tkelvin,
                             ptot,
-                            wupdraft, 
+                            wupdraft,
                             nact,
                             )
         self._gser(
-                    gamser, 
-                    a, 
-                    x, 
+                    gamser,
+                    a,
+                    x,
                     gln,
                     )
         self._gcf_matrix(
-                        gamser, 
-                        a, 
-                        x, 
+                        gamser,
+                        a,
+                        x,
                         gln,
                         )
         """
+
+    def ddim_debug(
+        self,
+        aero_f_dust: FloatField_NModes,
+    ):
+        self.ddim_test_stencil(aero_f_dust)
