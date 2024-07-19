@@ -1,5 +1,5 @@
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Int, Float
+from ndsl.dsl.typing import FloatField, Int, Float, FloatFieldIJ
 from ndsl import Quantity, QuantityFactory, StencilFactory
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log, exp, sqrt
@@ -309,60 +309,23 @@ def _gcf_matrix_stencil(
 
 
 def aer_activation_stencil(
-    q: FloatField,
-    t: FloatField,
-    plo: FloatField,
-    ple: FloatField,
-    zlo: FloatField,
-    zle: FloatField,
-    qlcn: FloatField,
-    qicn: FloatField,
-    qlls: FloatField,
-    qils: FloatField,
-    sh: FloatField,
-    evap: FloatField,
-    kpbl: FloatField,
-    tke: FloatField,
-    vvel: FloatField,
-    FRLAND: FloatField,
-    NACTL: FloatField,
-    NACTI: FloatField,
-    NWFA: FloatField,
-    NN_LAND: Float,
-    NN_OCEAN: Float,
-):
-    """
-    Perform aerosol activation computations based on input atmospheric and aerosol properties.
+        aero_dgn: FloatField_NModes,
+        aero_num: FloatField_NModes,
+        nacti: FloatField,
+        t: FloatField,
+        plo: FloatField,
+        qicn: FloatField,
+        qils: FloatField,
+        qlcn: FloatField,
+        qlls: FloatField,
+        nn_land: Float,
+        frland: FloatFieldIJ,
+        nn_ocean: Float
 
-    Parameters:
-    q (Floatfield): Specific humidity field.
-    t (Floatfield): Temperature field.
-    plo (Floatfield): Low-level pressure field.
-    ple (Floatfield): Low-level pressure field at the end of the time step.
-    zlo (Floatfield): Low-level height field.
-    zle (Floatfield): Low-level height field at the end of the time step.
-    qlcn (Floatfield): Cloud liquid water mixing ratio field.
-    qicn ((Floatfield): Cloud ice mixing ratio field.
-    qlls (Floatfield): Large-scale cloud liquid water mixing ratio field.
-    qils (Floatfield): Large-scale cloud ice mixing ratio field.
-    sh (Floatfield): Specific humidity field.
-    evap (Floatfield): Evaporation rate field.
-    kpbl (Floatfield): Planetary boundary layer height field.
-    tke (Floatfield): Turbulent kinetic energy field.
-    vvel (Floatfield): Vertical velocity field.
-    FRLAND (Floatfield): Fraction of land field.
-    NACTL (Floatfield): Activated cloud droplet number concentration field.
-    NACTI (Floatfield): Activated ice crystal number concentration field.
-    NWFA (Floatfield): Newly formed aerosol number concentration field.
-    NN_LAND (Float): Number concentration over land field.
-    NN_OCEAN (Float): Number concentration over ocean field.
-
-    Returns:
-    None
-    """
+): 
     with computation(PARALLEL), interval(...):
-        NACTL = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
-        NACTI = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+        #NACTL = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+        nacti = nn_land * frland + nn_ocean * (1.0 - frland)
 
         # might need to change variable names
         tk = t
@@ -370,7 +333,7 @@ def aer_activation_stencil(
         air_den = press * 28.8e-3 / 8.31 / tk
         qi = (qicn + qils) * 1.0e3
         ql = (qlcn + qlls) * 1.0e3
-        wupdraft = vvel + sqrt(tke)
+        #wupdraft = vvel + sqrt(tke)
 
         # Liquid Clouds
         """
@@ -384,17 +347,15 @@ def aer_activation_stencil(
             NACTL = 0.0ma
         """
         # Ice Clouds
-        if tk <= constants.MAPL_TICE and (
-            qi > np.finfo(float).eps or ql > np.finfo(float).eps
-        ):
+        if (tk <= constants.MAPL_TICE) and (qi > 0 or ql > 0):
             numbinit = 0.0
             n = 0
             while n <= constants.n_modes:
-                if AERO_DGN[0, 0, 0][n] >= 0.5e-6:
-                    numbinit += AERO_NUM[0, 0, 0][n]
-                    n += 1
+                if aero_dgn[0,0,0][n] >= 0.5e-6:
+                    numbinit += aero_num[0,0,0][n]
+                n += 1
             numbinit *= air_den
-            NACTI = (
+            nacti = (
                 constants.AI
                 * ((constants.MAPL_TICE - tk) ** constants.BI)
                 * (
@@ -403,24 +364,15 @@ def aer_activation_stencil(
                 )
             )
 
-            # apply limits for NACTL/NACTI
-        if NACTL < constants.NN_MIN:
-            NACTL = constants.NN_MIN
-        if NACTL > constants.NN_MAX:
-            NACTL = constants.NN_MAX
-        if NACTI < constants.NN_MIN:
-            NACTI = constants.NN_MIN
-        if NACTI > constants.NN_MAX:
-            NACTI = constants.NN_MAX
-
-
-def ddim_test(this_is_4d: FloatField_NModes):
-    with computation(PARALLEL), interval(...):
-        lev = 0
-        while lev < 10:
-            this_is_4d[0, 0, 0][lev] = 42
-            lev += 1
-
+        # apply limits for NACTL/NACTI
+        #if NACTL < constants.NN_MIN:
+        #    NACTL = constants.NN_MIN
+        #if NACTL > constants.NN_MAX:
+        #    NACTL = constants.NN_MAX
+        if nacti < constants.NN_MIN:
+            nacti = constants.NN_MIN
+        if nacti > constants.NN_MAX:
+            nacti = constants.NN_MAX
 
 class AerActivation:
     def __init__(
@@ -458,8 +410,8 @@ class AerActivation:
         )
         """
 
-        self.ddim_test_stencil = stencil_factory.from_origin_domain(
-            func=ddim_test,
+        self.higher_dimensional_storages = stencil_factory.from_origin_domain(
+            func=aer_activation_stencil,
             origin=(0, 0, 0),
             domain=stencil_factory.grid_indexing.domain,
         )
@@ -468,27 +420,18 @@ class AerActivation:
 
     def __call__(
         self,
-        q: FloatField,
+        aero_dgn: FloatField_NModes,
+        aero_num: FloatField_NModes,
+        nacti: FloatField,
         t: FloatField,
         plo: FloatField,
-        ple: FloatField,
-        zlo: FloatField,
-        zle: FloatField,
-        qlcn: FloatField,
         qicn: FloatField,
-        qlls: FloatField,
         qils: FloatField,
-        sh: Float,
-        evap: Float,
-        kpbl: Float,
-        tke: FloatField,
-        vvel: FloatField,
-        FRLAND: Float,
-        NACTL: FloatField,
-        NACTI: FloatField,
-        NWFA: FloatField,
-        NN_LAND: Int,
-        NN_OCEAN: Int,
+        qlcn: FloatField,
+        qlls: FloatField,
+        nn_land: Float,
+        frland: FloatFieldIJ,
+        nn_ocean: Float
     ):
         """
         Perform aerosol activation calculations.
@@ -532,7 +475,7 @@ class AerActivation:
                             wupdraft,
                             nact,
                             bibar
-                            )
+        )
         self._act_frac_mat(
                             nmodes,
                             xnap,
@@ -543,65 +486,32 @@ class AerActivation:
                             ptot,
                             wupdraft,
                             nact,
-                            )
+        )
         self._gser(
                     gamser,
                     a,
                     x,
                     gln,
-                    )
+        )
         self._gcf_matrix(
                         gamser,
                         a,
                         x,
                         gln,
-                        )
+        )
         """
 
-    def ddim_debug(
-        self,
-        aero_f_dust: FloatField_NModes,
-        aero_f_organic: FloatField_NModes,
-        tmp3d: FloatField,
-        nactl: FloatField,
-        ple: FloatField,
-        aero_f_soot: FloatField_NModes,
-        t: FloatField,
-        aero_hygroscopicity: FloatField_NModes,
-        zle0: FloatField,
-        qlls: FloatField,
-        aero_num: FloatField_NModes,
-        zl0: FloatField,
-        plmb: FloatField,
-        qils: FloatField,
-        aero_dgn: FloatField_NModes,
-        tke: FloatField,
-        nacti: FloatField,
-        nwfa: FloatField,
-        qlcn: FloatField,
-        aero_sigma: FloatField_NModes,
-        aero_density: FloatField_NModes,
-        qicn: FloatField,
-    ):
-        self.ddim_test_stencil(aero_f_dust)
-        self.ddim_test_stencil(aero_f_organic)
-        self.ddim_test_stencil(tmp3d)
-        self.ddim_test_stencil(nactl)
-        self.ddim_test_stencil(ple)
-        self.ddim_test_stencil(aero_f_soot)
-        self.ddim_test_stencil(t)
-        self.ddim_test_stencil(aero_hygroscopicity)
-        self.ddim_test_stencil(zle0)
-        self.ddim_test_stencil(qlls)
-        self.ddim_test_stencil(aero_num)
-        self.ddim_test_stencil(zl0)
-        self.ddim_test_stencil(plmb)
-        self.ddim_test_stencil(qils)
-        self.ddim_test_stencil(aero_dgn)
-        self.ddim_test_stencil(tke)
-        self.ddim_test_stencil(nacti)
-        self.ddim_test_stencil(nwfa)
-        self.ddim_test_stencil(qlcn)
-        self.ddim_test_stencil(aero_sigma)
-        self.ddim_test_stencil(aero_density)
-        self.ddim_test_stencil(qicn)
+        self.higher_dimensional_storages(
+            aero_dgn,
+            aero_num,
+            nacti,
+            t,
+            plo,
+            qicn,
+            qils,
+            qlcn,
+            qlls,
+            nn_land,
+            frland,
+            nn_ocean
+        )        

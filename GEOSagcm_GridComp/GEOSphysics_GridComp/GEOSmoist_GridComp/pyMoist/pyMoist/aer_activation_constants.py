@@ -1,4 +1,8 @@
 '''Aer Activation Constants are taken from GEOS/src/Shared/@MAPL/shared/Constants'''
+
+from ndsl.dsl.typing import Float
+import numpy as np
+
 MAPL_TICE = 273.16  # K
 
 #32 bit
@@ -45,3 +49,5 @@ ALPHAC = 1.000e+00
 ALPHAT = 0.960e+00
  
 n_modes = 14
+
+FLOAT_EPSILON = np.finfo(Float).eps 

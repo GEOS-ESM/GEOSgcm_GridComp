@@ -42,6 +42,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             "AERO_SIGMA": {},
             "AERO_DENSITY": {},
             "QICN": {},
+            "FRLAND": {},
         }
 
         # Float/Int Inputs
@@ -50,7 +51,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
             "SH",
             "EVAP",
             "KPBL",
-            "FRLAND",
             "CCN_LND",
             "CCN_OCN",
         ]
@@ -76,6 +76,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         nwfa = inputs["NWFA"].astype(Float)
 
         # Inputs
+        #4d inputs and FloatFields
         aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
         aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
         tmp3d = inputs["TMP3D"].astype(Float) 
@@ -86,41 +87,43 @@ class TranslateAerActivation(TranslateFortranData2Py):
         aero_hygroscopicity = inputs["AERO_HYGROSCOPICITY"].astype(Float)
         zle0 = inputs["ZLE0"].astype(Float)
         qlls = inputs["QLLS"].astype(Float)
-        aero_num = inputs["AERO_F_NUM"].astype(Float)
+        aero_num = inputs["AERO_NUM"].astype(Float)
         zl0 = inputs["ZL0"].astype(Float)
         plmb = inputs["PLmb"].astype(Float)
         qils = inputs["QILS"].astype(Float)
-        aero_dgn = inputs["AERO_F_DGN"].astype(Float)
+        aero_dgn = inputs["AERO_DGN"].astype(Float)
         tke = inputs["TKE"].astype(Float)
         nacti = inputs["NACTI"].astype(Float)
         nwfa = inputs["NWFA"].astype(Float)
         qlcn = inputs["QLCN"].astype(Float)
-        aero_sigma = inputs["AERO_F_SIGMA"].astype(Float)
-        aero_density = inputs["AERO_F_DENSITY"].astype(Float)
+        aero_sigma = inputs["AERO_SIGMA"].astype(Float)
+        aero_density = inputs["AERO_DENSITY"].astype(Float)
         qicn = inputs["QICN"].astype(Float)
 
-        aer_activation.ddim_debug(aero_f_dust)
-        aer_activation.ddim_debug(aero_f_organic)
-        aer_activation.ddim_debug(tmp3d)
-        aer_activation.ddim_debug(nactl)
-        aer_activation.ddim_debug(ple)
-        aer_activation.ddim_debug(aero_f_soot)
-        aer_activation.ddim_debug(t)
-        aer_activation.ddim_debug(aero_hygroscopicity)
-        aer_activation.ddim_debug(zle0)
-        aer_activation.ddim_debug(qlls)
-        aer_activation.ddim_debug(aero_num)
-        aer_activation.ddim_debug(zl0)
-        aer_activation.ddim_debug(plmb)
-        aer_activation.ddim_debug(qils)
-        aer_activation.ddim_debug(aero_dgn)
-        aer_activation.ddim_debug(tke)
-        aer_activation.ddim_debug(nacti)
-        aer_activation.ddim_debug(nwfa)
-        aer_activation.ddim_debug(qlcn)
-        aer_activation.ddim_debug(aero_sigma)
-        aer_activation.ddim_debug(aero_density)
-        aer_activation.ddim_debug(qicn)
+        #float and int inputs
+        n_modes = inputs["n_modes"]
+        sh = inputs["SH"].astype(Float)
+        evap = inputs["EVAP"].astype(Float)
+        kpbl = inputs["KPBL"].astype(Float)
+        frland = inputs["FRLAND"].astype(Float)
+        ccn_lnd = Float(inputs["CCN_LND"])
+        ccn_ocn = Float(inputs["CCN_OCN"])
+
+        #__call__
+        aer_activation(
+            aero_dgn = aero_dgn,
+            aero_num = aero_num,
+            nacti = nacti,
+            t = t,
+            plo = plmb*100.0,
+            qicn = qicn,
+            qils = qils,
+            qlcn = qlcn,
+            qlls = qlls,
+            nn_land = Float(ccn_lnd*1.e6),
+            frland = frland,
+            nn_ocean = Float(ccn_ocn*1.e6)
+        )
 
         return {
             "NACTL": nactl,
