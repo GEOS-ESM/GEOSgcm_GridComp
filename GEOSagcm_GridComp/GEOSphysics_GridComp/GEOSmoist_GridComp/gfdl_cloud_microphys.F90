@@ -96,6 +96,11 @@ module gfdl2_cloud_microphys_mod
     real, parameter :: t_ice = 273.16 !< freezing temperature
     real, parameter :: table_ice = 273.16 !< freezing point for qs table
 
+    integer, parameter :: es_table_length = 2821
+    real   , parameter :: es_table_tmin = table_ice - 160.
+    real   , parameter :: delt = 0.1
+    real   , parameter :: rdelt = 1.0/delt
+
     ! real, parameter :: e00 = 610.71 ! gfdl: saturation vapor pressure at 0 deg c
     real, parameter :: e00 = 611.21 !< ifs: saturation vapor pressure at 0 deg c
 
@@ -258,8 +263,8 @@ module gfdl2_cloud_microphys_mod
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
 
     ! accretion efficiencies
-    real :: alin = 842.0 !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
-    real :: clin = 4.8   !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
+    real :: alin = 2115.0 !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
+    real :: clin = 152.93 !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
     real :: gcon = 40.74 * sqrt (sfcrho) ! [Graupel] (increase to ehance ql/qi -- > qg)
 
     ! fall velocity tuning constants:
@@ -993,7 +998,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     if (in_cloud) then
       qadum = max(qa,qcmin)
     else
-      qadum = 1.0
+      qadum = max(qa,onemsig)
     endif
     ql = ql/qadum
     qi = qi/qadum
@@ -1008,7 +1013,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr) then
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
@@ -1023,7 +1027,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                                                      max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
                 endif
             endif
-            endif
         enddo
         
     else
@@ -1034,7 +1037,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
 
         do k = ktop, kbot
-            if (qadum(k) >= onemsig) then
             if (tz (k) > t_wfr + dt_fr) then
                 dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
@@ -1059,7 +1061,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
                                                      max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
                 endif
-            endif
             endif
         enddo
     endif
@@ -1394,9 +1395,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
       if (in_cloud) then
         qadum = max(qak (k),qcmin)
       else    
-        qadum = 1.0
+        qadum = max(qak (k),onemsig)
       endif
-      if (qadum >= onemsig) then
 
         ! qi0_crt (ice to snow conversion) has strong resolution dependence
         !    account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -1453,8 +1453,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         ! Revert In-Cloud condensate
         qlk (k) = ql*qadum
         qik (k) = qi*qadum
-
-      endif
 
     enddo
 
@@ -3233,13 +3231,13 @@ subroutine setupm
         enddo
     enddo
 
-    ! decreasing clin will reduce accretion of snow from cloud water/ice
-    csacw = pie * rnzs * clin * gam325 / (4. * act (1) ** 0.8125)
-    csaci = c_psaci * csacw 
-
     ! decreasing alin will reduce accretion of rain from cloud ice/water
     craci = pie * rnzr * alin * gam380 / (4. * act (2) ** 0.95)
     cracw = c_cracw * craci
+
+    ! decreasing clin will reduce accretion of snow from cloud water/ice
+    csacw = pie * rnzs * clin * gam325 / (4. * act (1) ** 0.8125)
+    csaci = c_psaci * csacw
 
     ! decreasing gcon will reduce accretion of graupel from cloud ice/water
     cgacw = pie * rnzg * gcon * gam350 / (4. * act (6) ** 0.875)
@@ -3529,8 +3527,6 @@ subroutine qsmith_init
 
     implicit none
 
-    integer, parameter :: length = 2621
-
     integer :: i
 
     if (.not. tables_are_initialized) then
@@ -3546,30 +3542,30 @@ subroutine qsmith_init
 
         ! generate es table (dt = 0.1 deg. c)
 
-        allocate (table (length))
-        allocate (table2 (length))
-        allocate (table3 (length))
-        allocate (tablew (length))
-        allocate (des (length))
-        allocate (des2 (length))
-        allocate (des3 (length))
-        allocate (desw (length))
+        allocate (table (es_table_length))
+        allocate (table2 (es_table_length))
+        allocate (table3 (es_table_length))
+        allocate (tablew (es_table_length))
+        allocate (des (es_table_length))
+        allocate (des2 (es_table_length))
+        allocate (des3 (es_table_length))
+        allocate (desw (es_table_length))
 
-        call qs_table (length)
-        call qs_table2 (length)
-        call qs_table3 (length)
-        call qs_tablew (length)
+        call qs_table (es_table_length)
+        call qs_table2 (es_table_length)
+        call qs_table3 (es_table_length)
+        call qs_tablew (es_table_length)
 
-        do i = 1, length - 1
+        do i = 1, es_table_length - 1
             des (i) = max (0., table (i + 1) - table (i))
             des2 (i) = max (0., table2 (i + 1) - table2 (i))
             des3 (i) = max (0., table3 (i + 1) - table3 (i))
             desw (i) = max (0., tablew (i + 1) - tablew (i))
         enddo
-        des (length) = des (length - 1)
-        des2 (length) = des2 (length - 1)
-        des3 (length) = des3 (length - 1)
-        desw (length) = desw (length - 1)
+        des (es_table_length) = des (es_table_length - 1)
+        des2 (es_table_length) = des2 (es_table_length - 1)
+        des3 (es_table_length) = des3 (es_table_length - 1)
+        desw (es_table_length) = desw (es_table_length - 1)
 
         tables_are_initialized = .true.
 
@@ -3592,13 +3588,12 @@ real function wqs1 (ta, den)
 
     real, intent (in) :: ta, den
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min(2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min(es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
     wqs1 = es / (rvgas * ta * den)
@@ -3623,22 +3618,21 @@ real function wqs2 (ta, den, dqdt)
 
     real, intent (out) :: dqdt
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
 
     if (.not. tables_are_initialized) call qsmith_init
 
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
     wqs2 = es / (rvgas * ta * den)
     it = ap1 - 0.5
     ! finite diff, del_t = 0.1:
-    dqdt = 10. * (desw (it) + (ap1 - it) * (desw (it + 1) - desw (it))) / (rvgas * ta * den)
+    dqdt = rdelt * (desw (it) + (ap1 - it) * (desw (it + 1) - desw (it))) / (rvgas * ta * den)
 
 end function wqs2
 
@@ -3684,13 +3678,12 @@ real function iqs1 (ta, den)
 
     real, intent (in) :: ta, den
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
     iqs1 = es / (rvgas * ta * den)
@@ -3713,18 +3706,17 @@ real function iqs2 (ta, den, dqdt)
 
     real, intent (out) :: dqdt
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min(2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min(es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
     iqs2 = es / (rvgas * ta * den)
     it = ap1 - 0.5
-    dqdt = 10. * (des2 (it) + (ap1 - it) * (des2 (it + 1) - des2 (it))) / (rvgas * ta * den)
+    dqdt = rdelt * (des2 (it) + (ap1 - it) * (des2 (it + 1) - des2 (it))) / (rvgas * ta * den)
 
 end function iqs2
 
@@ -3741,14 +3733,13 @@ real function qs1d_moist (ta, qv, pa, dqdt)
 
     real, intent (out) :: dqdt
 
-    real :: es, ap1, tmin, eps10
+    real :: es, eps10
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    eps10 = 10. * eps
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    eps10 = rdelt * eps
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
     qs1d_moist = eps * es * (1. + zvir * qv) / pa
@@ -3771,14 +3762,13 @@ real function wqsat2_moist (ta, qv, pa, dqdt)
 
     real, intent (out) :: dqdt
 
-    real :: es, ap1, tmin, eps10
+    real :: es, eps10
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    eps10 = 10. * eps
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    eps10 = rdelt * eps
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
     wqsat2_moist = eps * es * (1. + zvir * qv) / pa
@@ -3799,13 +3789,12 @@ real function wqsat_moist (ta, qv, pa)
 
     real, intent (in) :: ta, pa, qv
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min(2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min(es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
     wqsat_moist = eps * es * (1. + zvir * qv) / pa
@@ -3823,13 +3812,12 @@ real function qs1d_m (ta, qv, pa)
 
     real, intent (in) :: ta, pa, qv
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
     qs1d_m = eps * es * (1. + zvir * qv) / pa
@@ -3847,13 +3835,12 @@ real function d_sat (ta, den)
 
     real, intent (in) :: ta, den
 
-    real :: es_w, es_i, ap1, tmin
+    real :: es_w, es_i
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es_w = tablew (it) + (ap1 - it) * desw (it)
     es_i = table2 (it) + (ap1 - it) * des2 (it)
@@ -3872,13 +3859,10 @@ real function esw_table (ta)
 
     real, intent (in) :: ta
 
-    real :: ap1, tmin
+    integer :: it, ap1
 
-    integer :: it
-
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     esw_table = tablew (it) + (ap1 - it) * desw (it)
 
@@ -3895,13 +3879,10 @@ real function es2_table (ta)
 
     real, intent (in) :: ta
 
-    real :: ap1, tmin
+    integer :: it, ap1
 
-    integer :: it
-
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (ta, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es2_table = table2 (it) + (ap1 - it) * des2 (it)
 
@@ -3922,15 +3903,11 @@ subroutine esw_table1d (ta, es, n)
 
     real, intent (out) :: es (n)
 
-    real :: ap1, tmin
-
-    integer :: i, it
-
-    tmin = table_ice - 160.
+    integer :: i, it, ap1
 
     do i = 1, n
-        ap1 = 10. * dim (ta (i), tmin) + 1.
-        ap1 = min (2621., ap1)
+        ap1 = rdelt * dim (ta (i), es_table_tmin) + 1.
+        ap1 = min (es_table_length, ap1)
         it = ap1
         es (i) = tablew (it) + (ap1 - it) * desw (it)
     enddo
@@ -3952,15 +3929,11 @@ subroutine es2_table1d (ta, es, n)
 
     real, intent (out) :: es (n)
 
-    real :: ap1, tmin
-
-    integer :: i, it
-
-    tmin = table_ice - 160.
+    integer :: i, it, ap1
 
     do i = 1, n
-        ap1 = 10. * dim (ta (i), tmin) + 1.
-        ap1 = min (2621., ap1)
+        ap1 = rdelt * dim (ta (i), es_table_tmin) + 1.
+        ap1 = min (es_table_length, ap1)
         it = ap1
         es (i) = table2 (it) + (ap1 - it) * des2 (it)
     enddo
@@ -3982,15 +3955,11 @@ subroutine es3_table1d (ta, es, n)
 
     real, intent (out) :: es (n)
 
-    real :: ap1, tmin
-
-    integer :: i, it
-
-    tmin = table_ice - 160.
+    integer :: i, it, ap1
 
     do i = 1, n
-        ap1 = 10. * dim (ta (i), tmin) + 1.
-        ap1 = min (2621., ap1)
+        ap1 = rdelt * dim (ta (i), es_table_tmin) + 1.
+        ap1 = min (es_table_length, ap1)
         it = ap1
         es (i) = table3 (it) + (ap1 - it) * des3 (it)
     enddo
@@ -4008,19 +3977,16 @@ subroutine qs_tablew (n)
 
     integer, intent (in) :: n
 
-    real :: delt = 0.1
-    real :: tmin, tem, fac0, fac1, fac2
+    real :: tem, fac0, fac1, fac2
 
     integer :: i
-
-    tmin = table_ice - 160.
 
     ! -----------------------------------------------------------------------
     ! compute es over water
     ! -----------------------------------------------------------------------
 
     do i = 1, n
-        tem = tmin + delt * real (i - 1)
+        tem = es_table_tmin + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * lv0
         fac2 = (dc_vap * log (tem / t_ice) + fac1) / rvgas
@@ -4040,15 +4006,12 @@ subroutine qs_table2 (n)
 
     integer, intent (in) :: n
 
-    real :: delt = 0.1
-    real :: tmin, tem0, tem1, fac0, fac1, fac2
+    real :: tem0, tem1, fac0, fac1, fac2
 
     integer :: i, i0, i1
 
-    tmin = table_ice - 160.
-
     do i = 1, n
-        tem0 = tmin + delt * real (i - 1)
+        tem0 = es_table_tmin + delt * real (i - 1)
         fac0 = (tem0 - t_ice) / (tem0 * t_ice)
         if (i <= 1600) then
             ! -----------------------------------------------------------------------
@@ -4090,8 +4053,7 @@ subroutine qs_table3 (n)
 
     integer, intent (in) :: n
 
-    real :: delt = 0.1
-    real :: esbasw, tbasw, esbasi, tmin, tem, aa, b, c, d, e
+    real :: esbasw, tbasw, esbasi, tem, aa, b, c, d, e
     real :: tem0, tem1
 
     integer :: i, i0, i1
@@ -4099,10 +4061,9 @@ subroutine qs_table3 (n)
     esbasw = 1013246.0
     tbasw = table_ice + 100.
     esbasi = 6107.1
-    tmin = table_ice - 160.
 
     do i = 1, n
-        tem = tmin + delt * real (i - 1)
+        tem = es_table_tmin + delt * real (i - 1)
         ! if (i <= 1600) then
         if (i <= 1580) then ! change to - 2 c
             ! -----------------------------------------------------------------------
@@ -4154,13 +4115,12 @@ real function qs_blend (t, p, q)
 
     real, intent (in) :: t, p, q
 
-    real :: es, ap1, tmin
+    real :: es
 
-    integer :: it
+    integer :: it, ap1
 
-    tmin = table_ice - 160.
-    ap1 = 10. * dim (t, tmin) + 1.
-    ap1 = min (2621., ap1)
+    ap1 = rdelt * dim (t, es_table_tmin) + 1.
+    ap1 = min (es_table_length, ap1)
     it = ap1
     es = table (it) + (ap1 - it) * des (it)
     qs_blend = eps * es * (1. + zvir * q) / p
@@ -4178,22 +4138,19 @@ subroutine qs_table (n)
 
     integer, intent (in) :: n
 
-    real :: delt = 0.1
-    real :: tmin, tem, esh40
+    real :: tem, esh40
     real :: wice, wh2o, fac0, fac1, fac2
     real :: esupc (400)
 
     integer :: i
     real :: tc
 
-    tmin = table_ice - 160.
-
     ! -----------------------------------------------------------------------
-    ! compute es over ice between - 160 deg c and 0 deg c.
+    ! compute es over ice between - 160 deg c and -40 deg c.
     ! -----------------------------------------------------------------------
 
-    do i = 1, 1600
-        tem = tmin + delt * real (i - 1)
+    do i = 1, 1200
+        tem = es_table_tmin + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * li2
         fac2 = (d2ice * log (tem / t_ice) + fac1) / rvgas
@@ -4204,7 +4161,7 @@ subroutine qs_table (n)
     ! compute es over water between - 40 deg c and 102 deg c.
     ! -----------------------------------------------------------------------
 
-    do i = 1, 1421
+    do i = 1, es_table_length-1200
         tem = 233.16 + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * lv0
@@ -4251,13 +4208,12 @@ subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
 
     real, intent (out), dimension (im, km), optional :: dqdt
 
-    real :: eps10, ap1, tmin
+    real :: eps10
 
     real, dimension (im, km) :: es
 
-    integer :: i, k, it
+    integer :: i, k, it, ap1
 
-    tmin = table_ice - 160.
     eps10 = 10. * eps
 
     if (.not. tables_are_initialized) then
@@ -4266,8 +4222,8 @@ subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
 
     do k = ks, km
         do i = 1, im
-            ap1 = 10. * dim (t (i, k), tmin) + 1.
-            ap1 = min (2621., ap1)
+            ap1 = rdelt * dim (t (i, k), es_table_tmin) + 1.
+            ap1 = min (es_table_length, ap1)
             it = ap1
             es (i, k) = table (it) + (ap1 - it) * des (it)
             qs (i, k) = eps * es (i, k) * (1. + zvir * q (i, k)) / p (i, k)
@@ -4277,8 +4233,8 @@ subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
     if (present (dqdt)) then
         do k = ks, km
             do i = 1, im
-                ap1 = 10. * dim (t (i, k), tmin) + 1.
-                ap1 = min (2621., ap1) - 0.5
+                ap1 = rdelt * dim (t (i, k), es_table_tmin) + 1.
+                ap1 = min (es_table_length, ap1) - 0.5
                 it = ap1
                 dqdt (i, k) = eps10 * (des (it) + (ap1 - it) * (des (it + 1) - des (it))) * (1. + zvir * q (i, k)) / p (i, k)
             enddo

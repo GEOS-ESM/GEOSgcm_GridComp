@@ -1142,6 +1142,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM     ) :: TAUXB_TMP_NCAR, TAUYB_TMP_NCAR
       real,              dimension(IM,JM     ) :: TAUXO_TMP_NCAR, TAUYO_TMP_NCAR
 
+      REAL, ALLOCATABLE, TARGET, DIMENSION(:,:,:) :: scratch_ridge
+
       integer                                  :: J, K, L, nrdg, ikpbl
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
@@ -1249,6 +1251,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     !call MAPL_TimerOn(MAPL,"-INTR")
 
+         if (self%NCAR_NRDG /= 0.0) then
+
          ! get pointers from INTERNAL:MXDIS
          call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
          call MAPL_GetPointer( INTERNAL, MXDIS, 'MXDIS', _RC )
@@ -1270,27 +1274,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            EFFRDG(:,:,nrdg) = self%NCAR_EFFGWORO*(HWDTH(:,:,nrdg)*CLNGT(:,:,nrdg))/GBXAR_TMP
          enddo
 
-!         if (FIRST_RUN) then
-!           FIRST_RUN = .false.
-!           call gw_newtonian_set(LM, PREF)
-!!#ifdef DEBUG_GWD
-!           if (self%NCAR_NRDG > 0) then
-!            IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-!            call Write_Profile(GBXAR_TMP,         AREA, ESMFGRID, 'GBXAR')
-!            do nrdg = 1, self%NCAR_NRDG
-!             IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
-!             call Write_Profile(MXDIS(:,:,nrdg),  AREA, ESMFGRID, 'MXDIS')
-!             call Write_Profile(ANGLL(:,:,nrdg),  AREA, ESMFGRID, 'ANGLL')
-!             call Write_Profile(ANIXY(:,:,nrdg),  AREA, ESMFGRID, 'ANIXY')
-!             call Write_Profile(CLNGT(:,:,nrdg),  AREA, ESMFGRID, 'CLNGT')
-!             call Write_Profile(HWDTH(:,:,nrdg),  AREA, ESMFGRID, 'HWDTH')
-!             call Write_Profile(KWVRDG(:,:,nrdg), AREA, ESMFGRID, 'KWVRDG')
-!             call Write_Profile(EFFRDG(:,:,nrdg), AREA, ESMFGRID, 'EFFRDG')
-!            enddo
-!          endif
-!!#endif
-!         endif
-
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
          if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
@@ -1303,6 +1286,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
          call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
          if(associated(TMP2D)) TMP2D = GBXAR_TMP
+       
+         else
+
+          allocate ( scratch_ridge(IM,JM,16) )
+          scratch_ridge = 0.0
+          MXDIS => scratch_ridge
+          HWDTH => scratch_ridge
+          CLNGT => scratch_ridge
+          ANGLL => scratch_ridge
+          ANIXY => scratch_ridge
+          KWVRDG => scratch_ridge
+          EFFRDG => scratch_ridge
+          GBXAR_TMP = 0.0
+
+         endif
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          DUDT_GWD_NCAR = 0.0
@@ -1473,6 +1471,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated( PREF_EXP )) PREF_EXP = PREF
     if(associated(  SGH_EXP ))  SGH_EXP = SGH
     if(associated(  PLE_EXP ))  PLE_EXP = PLE
+
+    if (allocated(scratch_ridge)) deallocate(scratch_ridge)
 
 ! All done
 !-----------
