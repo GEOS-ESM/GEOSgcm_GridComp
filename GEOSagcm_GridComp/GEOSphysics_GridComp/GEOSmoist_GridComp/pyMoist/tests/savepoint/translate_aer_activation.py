@@ -76,7 +76,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
         nwfa = inputs["NWFA"].astype(Float)
 
         # Inputs
-        #4d inputs and FloatFields
         aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
         aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
         tmp3d = inputs["TMP3D"].astype(Float) 
@@ -99,8 +98,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
         aero_sigma = inputs["AERO_SIGMA"].astype(Float)
         aero_density = inputs["AERO_DENSITY"].astype(Float)
         qicn = inputs["QICN"].astype(Float)
-
-        #float and int inputs
         n_modes = inputs["n_modes"]
         sh = inputs["SH"].astype(Float)
         evap = inputs["EVAP"].astype(Float)
@@ -130,4 +127,3 @@ class TranslateAerActivation(TranslateFortranData2Py):
             "NACTI": nacti,
             "NWFA": nwfa,
         }
-

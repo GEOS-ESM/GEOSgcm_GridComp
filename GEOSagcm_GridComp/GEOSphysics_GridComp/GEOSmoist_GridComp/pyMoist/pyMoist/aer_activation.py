@@ -347,7 +347,7 @@ def aer_activation_stencil(
             NACTL = 0.0ma
         """
         # Ice Clouds
-        if (tk <= constants.MAPL_TICE) and (qi > 0 or ql > 0):
+        if (tk <= constants.MAPL_TICE) and (qi > 0.0 or ql > 0.0):
             numbinit = 0.0
             n = 0
             while n <= constants.n_modes:
