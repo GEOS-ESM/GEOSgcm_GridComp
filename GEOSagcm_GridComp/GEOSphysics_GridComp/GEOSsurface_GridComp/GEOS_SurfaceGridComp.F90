@@ -2026,7 +2026,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'total_latent_energy_flux'  ,&
+    LONG_NAME          = 'total_latent_energy_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'LHFX'                      ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
