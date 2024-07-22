@@ -1571,7 +1571,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'interception_loss_energy_flux',&
+    LONG_NAME          = 'interception_loss_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPINT'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1580,7 +1580,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baresoil_evap_energy_flux' ,&
+    LONG_NAME          = 'baresoil_evaporation_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1589,7 +1589,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'transpiration_energy_flux' ,&
+    LONG_NAME          = 'transpiration_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPVEG'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1598,7 +1598,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1635,7 +1635,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowpack_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSNO'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1724,7 +1724,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'total_latent_energy_flux_consistent_with_evaporation_from_turbulence'  ,&
+    LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLATN'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2075,7 +2075,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'change_upward_sensible_energy_flux',&
+    LONG_NAME          = 'change_upward_sensible_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'DELSH'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -5736,27 +5736,27 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         ! Overview of surface turbulent flux variables in subroutine catchment(), the Catch, Land, and Surface Gridded Components, and the M21 "lnd" HISTORY collection
         !
-        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-        ! Description        | Units   | catchment() | CatchGC                     | LandGC  | SurfaceGC              | HISTORY  | Notes                                                        |
-        !                    |         | ArgName     | VarName | export            | export  | export  | averaged     | M21C     |                                                              |
-        !                    |         |             |         | (tile)            | (tile)  | (grid)  | over         | "lnd"    |                                                              |
-        !=======================================================================================================================================================================================|
-        ! evap mass flux     | kg/m2/s | EVAP        | EVAPOUT | EVLAND            | EVLAND  | EVLAND  | land         | EVLAND   |                                                              |
-        ! evap mass flux     | kg/m2/s | -           | -       | EVAPOUT           | EVAPOUT | EVAPOUT | all surfaces | n/a      |                                                              |
-        ! EV accounting term | kg/m2/s | EVACC       | EVACC   | SPWATR            | SPWATR  | SPWATR  | land         | SPEVLAND | EVLAND-SPEVLAND = EVAP_from_TurbGC [100% land]               |
-        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-        ! latent heat flux   | W/m2    | LHFLUX      | LHOUT   | LHLAND            | LHLAND  | LHLAND  | land         | LHLAND   |                                                              |
-        ! latent heat flux   | W/m2    | -           | -       | HLATN=LHOUT-LHACC | HLATN   | LHFX    | all surfaces | n/a      | consistent w/ EVAP_from_TurbGC [100% land]                   |
-        ! LH accounting term | W/m2    | LHACC       | LHACC   | SPLH              | SPLH    | SPLH    | land         | SPLHLAND | (LHLAND-SPLHLAND) consistent w/ EVAP_from_TurbGC [100% land] |
-        ! LH component       | W/m2    | EINT        | EVPINT  | EVPINT            | EVPINT  | EVPINT  | land         | EVPINTR  |                                                              |
-        ! LH component       | W/m2    | ESOI        | EVPSOI  | EVPSOI            | EVPSOI  | EVPSOI  | land         | EVPSOIL  |                                                              | 
-        ! LH component       | W/m2    | EVEG        | EVPVEG  | EVPVEG            | EVPVEG  | EVPVEG  | land         | EVPTRNS  |                                                              |
-        ! LH component       | W/m2    | ESNO        | EVPICE  | EVPICE            | EVPICE  | EVPICE  | land         | EVPSBLN  |                                                              |
-        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-        ! sensible heat flux | W/m2    | SHFLUX      | SHOUT   | SHLAND            | SHLAND  | SHLAND  | land         | SHLAND   |                                                              |
-        ! sensible heat flux | W/m2    | -           | -       | SHOUT             | SHOUT   | SHOUT   | all surfaces | n/a      |                                                              |
-        ! SH accounting term | W/m2    | SHACC       | SHACC   | SPLAND            | SPLAND  | SPLAND  | land         | SPSHLAND | SHLAND-SPSHLAND = SH_from_TurbGC [for 100% land]             |
-        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! Description        | Units   | catchment() | CatchGC                     | LandGC  | SurfaceGC              | HISTORY    | Notes                                                        |
+        !                    |         | ArgName     | VarName | export            | export  | export  | averaged     | M21C       |                                                              |
+        !                    |         |             |         | (tile)            | (tile)  | (grid)  | over         | "lnd"      |                                                              |
+        !=========================================================================================================================================================================================|
+        ! evap mass flux     | kg/m2/s | EVAP        | EVAPOUT | EVLAND            | EVLAND  | EVLAND  | land         | EVLAND     |                                                              |
+        ! evap mass flux     | kg/m2/s | -           | -       | EVAPOUT           | EVAPOUT | EVAPOUT | all surfaces | n/a        |                                                              |
+        ! EV accounting term | kg/m2/s | EVACC       | EVACC   | SPWATR            | SPWATR  | SPWATR  | land         | SPEVLAND   | EVLAND-SPEVLAND = EVAP_from_TurbGC [100% land]               |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! latent heat flux   | W/m2    | LHFLUX      | LHOUT   | LHLAND            | LHLAND  | LHLAND  | land         | LHLAND     |                                                              |
+        ! latent heat flux   | W/m2    | -           | -       | HLATN=LHOUT-LHACC | HLATN   | LHFX    | all surfaces | n/a        | consistent w/ EVAP_from_TurbGC [100% land]                   |
+        ! LH accounting term | W/m2    | LHACC       | LHACC   | SPLH              | SPLH    | SPLH    | land         | SPLHLAND   | (LHLAND-SPLHLAND) consistent w/ EVAP_from_TurbGC [100% land] |
+        ! LH component       | W/m2    | EINT        | EVPINT  | EVPINT            | EVPINT  | EVPINT  | land         | LHLANDINTR |                                                              |
+        ! LH component       | W/m2    | ESOI        | EVPSOI  | EVPSOI            | EVPSOI  | EVPSOI  | land         | LHLANDSOIL |                                                              | 
+        ! LH component       | W/m2    | EVEG        | EVPVEG  | EVPVEG            | EVPVEG  | EVPVEG  | land         | LHLANDTRNS |                                                              |
+        ! LH component       | W/m2    | ESNO        | EVPICE  | EVPICE            | EVPICE  | EVPICE  | land         | LHLANDSBLN |                                                              |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! sensible heat flux | W/m2    | SHFLUX      | SHOUT   | SHLAND            | SHLAND  | SHLAND  | land         | SHLAND     |                                                              |
+        ! sensible heat flux | W/m2    | -           | -       | SHOUT             | SHOUT   | SHOUT   | all surfaces | n/a        |                                                              |
+        ! SH accounting term | W/m2    | SHACC       | SHACC   | SPLAND            | SPLAND  | SPLAND  | land         | SPSHLAND   | SHLAND-SPSHLAND = SH_from_TurbGC [for 100% land]             |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
                                                                                                          
         
         if(associated(SWLAND)) SWLAND = SWNDSRF

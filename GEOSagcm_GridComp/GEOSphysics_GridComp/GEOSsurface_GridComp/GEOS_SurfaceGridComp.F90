@@ -1621,7 +1621,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'interception_loss_energy_flux',&
+    LONG_NAME          = 'interception_loss_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPINT'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1630,7 +1630,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baresoil_evap_energy_flux' ,&
+    LONG_NAME          = 'baresoil_evaporation_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1639,7 +1639,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'transpiration_energy_flux' ,&
+    LONG_NAME          = 'transpiration_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPVEG'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1648,7 +1648,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux_on_land',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1657,7 +1657,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowpack_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSNO'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -2026,7 +2026,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'total_latent_energy_flux_consistent_with_evaporation_from_turbulence'  ,&
+    LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'LHFX'                      ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
