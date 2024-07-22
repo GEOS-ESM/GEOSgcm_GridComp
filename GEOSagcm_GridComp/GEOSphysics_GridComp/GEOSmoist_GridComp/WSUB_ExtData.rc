@@ -10,7 +10,7 @@ PrimaryExports%%
 #  Name        | Units | Clim  | Method |     Time Template    | Factor | Factor |     File    | Template |
 # -------------|-------|-------|--------|----------------------|--------|--------|-------------|----------|
 
-WSUB_NATURE    'm2 s2'     Y         N               0                 0.0      1.0     w_var_masked      ExtData/g5gcm/moist/L72/Wvar_positive_05hrdeg_2006%m2.nc4
+WSUB_NATURE    'm2 s2'     Y         N               0                 0.0      1.0     w_var_masked      /dev/null
 %%
 
 DerivedExports%%

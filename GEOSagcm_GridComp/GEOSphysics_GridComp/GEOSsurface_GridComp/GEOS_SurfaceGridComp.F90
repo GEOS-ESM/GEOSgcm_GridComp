@@ -535,7 +535,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'DRPARN',                            &
-        LONG_NAME          = 'normalized_surface_downwelling_par_beam_flux', &
+        LONG_NAME          = 'normalized_surface_downwelling_PAR_beam_flux', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -544,7 +544,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'DFPARN',                            &
-        LONG_NAME          = 'normalized_surface_downwelling_par_diffuse_flux', &
+        LONG_NAME          = 'normalized_surface_downwelling_PAR_diffuse_flux', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1598,7 +1598,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baresoil_evap_energy_flux' ,&
+    LONG_NAME          = 'baresoil_evaporation_energy_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1680,7 +1680,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'total_evaporatranspiration_land',          &
+    LONG_NAME          = 'total_evaportranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -3156,7 +3156,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'TS',                                &
-        LONG_NAME          = 'surface_skin_temperature',          &
+        LONG_NAME          = 'surface_temperature',          &
         UNITS              = 'K',                                 &
         FriendlyTO         = trim(COMP_NAME),                     &
         DIMS               = MAPL_DimsHorzOnly,                   &

@@ -996,7 +996,7 @@ contains
     call MAPL_AddImportSpec ( gc,                                      &
          SHORT_NAME = 'DQVDTDYN',                                      &
          LONG_NAME  = 'tendency_of_specific_humidity_due_to_dynamics', &
-         UNITS      = 'kg/kg/s',                                     &
+         UNITS      = 'kg kg-1 s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                               &
          VLOCATION  = MAPL_VLocationCenter,                 RC=STATUS  )
      VERIFY_(STATUS)
@@ -1375,7 +1375,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'DQDT  ',                                     &
-         LONG_NAME = 'specific_humidity_tendency_due_to_moist',    &
+         LONG_NAME = 'tendency_of_specific_humidity_due_to_moist',    &
          UNITS     = 'kg kg-1 s-1',                                &
          DIMS      = MAPL_DimsHorzVert,                           &
          VLOCATION = MAPL_VLocationCenter,                        &
@@ -1384,7 +1384,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DUDT  ',                                      &
-         LONG_NAME = 'zonal_wind_tendency_due_to_moist',            &
+         LONG_NAME = 'tendency_of_eastward_wind_tendency_due_to_moist',            &
          UNITS     = 'm s-2',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1393,7 +1393,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &                  
          SHORT_NAME = 'DVDT  ',                                      &
-         LONG_NAME = 'meridional_wind_tendency_due_to_moist',       &
+         LONG_NAME = 'tendency_of_northward_wind_due_to_moist',       &
          UNITS     = 'm s-2',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1429,7 +1429,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQLDT ',                                      &
-         LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
+         LONG_NAME = 'total_liquid_water_tendency_due_to_moist',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -2813,7 +2813,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REVSU_CN',                                    & 
-         LONG_NAME ='evap_subl_of_convective_precipitation',       &
+         LONG_NAME ='evapo_sublimation_of_convective_precipitation',       &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -2821,7 +2821,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REVSU_LSAN',                                    & 
-         LONG_NAME ='evap_subl_of_non_convective_precipitation',       &
+         LONG_NAME ='evapo_sublimation_of_non_convective_precipitation',       &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
@@ -3895,63 +3895,63 @@ contains
     ! ------------------------------
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DDU2gDT ',                                         &
-         LONG_NAME ='dust_tendency_due_to_conv_scav',                 &
+         LONG_NAME ='Dust_Tendency_due_to_Convective_Scavenging',                 &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSS2gDT ',                                         &
-         LONG_NAME ='sea_salt_tendency_due_to_conv_scav',             &
+         LONG_NAME ='Sea_Salt_Tendency_due_to_Convective_Scavenging',             &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DOC2gDT ',                                         &
-         LONG_NAME ='organic_carbon_tendency_due_to_conv_scav',       &
+         LONG_NAME ='Organic_Carbon_Tendency_due_to_Convective_Scavenging',       &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DBC2gDT ',                                         &
-         LONG_NAME ='black_carbon_tendency_due_to_conv_scav',         &
+         LONG_NAME ='Black_Carbon_Tendency_due_to_Convective_Scavenging',         &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSU2gDT ',                                         &
-         LONG_NAME ='sulfate_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Sulfate_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNI2gDT',                                          &
-         LONG_NAME ='nitrate_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Nitrate_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNH4A2gDT',                                        &
-         LONG_NAME ='ammonium_aerosol_tendency_due_to_conv_scav',     &
+         LONG_NAME ='Ammonium_Aerosol_Tendency_due_to_Convective_Scavenging',     &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNH32gDT',                                         &
-         LONG_NAME ='ammonia_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Ammonia_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DBRC2gDT',                                          &
-         LONG_NAME ='brown_carbon_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Brown_Carbon_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          __RC__  )
@@ -3962,7 +3962,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DDUDT ',                                         & 
-         LONG_NAME ='dust_tendency_due_to_conv_scav',                 &
+         LONG_NAME ='Dust_Tendency_due_to_Convective_Scavenging',                 &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -3970,7 +3970,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSSDT ',                                         &
-         LONG_NAME ='sea_salt_tendency_due_to_conv_scav',             &
+         LONG_NAME ='Sea_Salt_Tendency_due_to_Convective_Scavenging',             &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -3978,7 +3978,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DOCDT ',                                         &
-         LONG_NAME ='organic_carbon_tendency_due_to_conv_scav',       &
+         LONG_NAME ='Organic_Carbon_Tendency_due_to_Convective_Scavenging',       &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -3986,7 +3986,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DBCDT ',                                         &
-         LONG_NAME ='black_carbon_tendency_due_to_conv_scav',         &
+         LONG_NAME ='Black_Carbon_Tendency_due_to_Convective_Scavenging',         &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -3994,7 +3994,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSUDT ',                                         &
-         LONG_NAME ='sulfate_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Sulfate_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4002,7 +4002,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNIDT',                                          &
-         LONG_NAME ='nitrate_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Nitrate_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4010,7 +4010,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNH4ADT',                                        &
-         LONG_NAME ='ammonium_aerosol_tendency_due_to_conv_scav',     &
+         LONG_NAME ='Ammonium_Aerosol_Tendency_due_to_Convective_Scavenging',     &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4018,7 +4018,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DNH3DT',                                         &
-         LONG_NAME ='ammonia_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Ammonia_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4026,7 +4026,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DBRCDT',                                          &
-         LONG_NAME ='brown_carbon_tendency_due_to_conv_scav',              &
+         LONG_NAME ='Brown_Carbon_Tendency_due_to_Convective_Scavenging',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4034,7 +4034,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DDUDTcarma ',                                    &
-         LONG_NAME ='carma_dust_tendency_due_to_conv_scav',           &
+         LONG_NAME ='Carma_Dust_Tendency_due_to_Convective_Scavenging',           &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4042,7 +4042,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSSDTcarma ',                                    &
-         LONG_NAME ='carma_seasalt_tendency_due_to_conv_scav',        &
+         LONG_NAME ='Carma_Seasalt_Tendency_due_to_Convective_Scavenging',        &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )

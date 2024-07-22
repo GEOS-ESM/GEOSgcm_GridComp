@@ -413,7 +413,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT_ANA',                                 &
-         LONG_NAME  = 'total_skin_temperature_tendency',           &
+         LONG_NAME  = 'total_skin_temperature_analysis_tendency',           &
          UNITS      = 'K s-1',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
