@@ -3961,7 +3961,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
         real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
-        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, LHACC, SHACC
+        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, LHOUT, EVACC, LHACC, SHACC
         real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
@@ -4511,6 +4511,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(WCHANGE  (NTILES))
         allocate(ECHANGE  (NTILES))
         allocate(HSNACC   (NTILES))
+        allocate(LHOUT    (NTILES))
         allocate(EVACC    (NTILES))
         allocate(LHACC    (NTILES))
         allocate(SHACC    (NTILES))
@@ -5526,7 +5527,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              SMELT                                                ,&
              HLWUP                                                ,&  ! *emitted* longwave only (excl reflected)
              SWNDSRF                                              ,&
-             HLATN                                                ,&
+             LHOUT                                                ,&  ! renamed from HLATN to avoid confusion w/ HLATN=LHFX in SurfaceGC
              QINFIL                                               ,&
              AR1                                                  ,&
              AR2                                                  ,&
@@ -5713,7 +5714,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! - reichle, 17 July 2024
          
         if(associated(EVLAND)) EVLAND = EVAPOUT   ! EVLAND is what Catchment thinks it should be 
-        if(associated(LHLAND)) LHLAND = HLATN     ! LHLAND is what Catchment thinks it should be
+        if(associated(LHLAND)) LHLAND = LHOUT     ! LHLAND is what Catchment thinks it should be
         if(associated(SHLAND)) SHLAND = SHOUT     ! SHLAND is what Catchment thinks it should be
         
         if(associated(SPWATR)) SPWATR = EVACC
@@ -5724,19 +5725,40 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! by the atmosphere (Turbulence GC).  In the "flx" HISTORY collection, EFLUX is 
         ! the all-surface latent heat flux, with HLATN (as below) being the land contribution.
 
-        HLATN   = HLATN   - LHACC
+        HLATN   = LHOUT   - LHACC
 
         ! In previous model versions, the evap mass flux EVAPOUT and the sensible heat flux SHOUT
         ! were returned as calculated by Catchment.  These diagnostic are not written in MERRA-2.
-        ! In FP and GEOSIT, they are only included in ocean ("ocn") Collections.
+        ! In FP and GEOSIT, they are only included in ocean ("ocn") Collections.  They appear to 
+        ! be used also in the "gmichem" and "S2S" collections. 
         ! For consistency with previous model versions, keep returning EVAPOUT and SHOUT as 
         ! calculated by Catchment.
-        !
-        !EVAPOUT = EVAPOUT - EVACC
-        !SHOUT   = SHOUT   - SHACC        
-        
-        ! -----------------------------------------------------------------------------------------
 
+        ! Overview of surface turbulent flux variables in subroutine catchment(), the Catch, Land, and Surface Gridded Components, and the M21 "lnd" HISTORY collection
+        !
+        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! Description        | Units   | catchment() | CatchGC                     | LandGC  | SurfaceGC              | HISTORY  | Notes                                                        |
+        !                    |         | ArgName     | VarName | export            | export  | export  | averaged     | M21C     |                                                              |
+        !                    |         |             |         | (tile)            | (tile)  | (grid)  | over         | "lnd"    |                                                              |
+        !=======================================================================================================================================================================================|
+        ! evap mass flux     | kg/m2/s | EVAP        | EVAPOUT | EVLAND            | EVLAND  | EVLAND  | land         | EVLAND   |                                                              |
+        ! evap mass flux     | kg/m2/s | -           | -       | EVAPOUT           | EVAPOUT | EVAPOUT | all surfaces | n/a      |                                                              |
+        ! EV accounting term | kg/m2/s | EVACC       | EVACC   | SPWATR            | SPWATR  | SPWATR  | land         | SPEVLAND | EVLAND-SPEVLAND = EVAP_from_TurbGC [100% land]               |
+        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! latent heat flux   | W/m2    | LHFLUX      | LHOUT   | LHLAND            | LHLAND  | LHLAND  | land         | LHLAND   |                                                              |
+        ! latent heat flux   | W/m2    | -           | -       | HLATN=LHOUT-LHACC | HLATN   | LHFX    | all surfaces | n/a      | consistent w/ EVAP_from_TurbGC [100% land]                   |
+        ! LH accounting term | W/m2    | LHACC       | LHACC   | SPLH              | SPLH    | SPLH    | land         | SPLHLAND | (LHLAND-SPLHLAND) consistent w/ EVAP_from_TurbGC [100% land] |
+        ! LH component       | W/m2    | EINT        | EVPINT  | EVPINT            | EVPINT  | EVPINT  | land         | EVPINTR  |                                                              |
+        ! LH component       | W/m2    | ESOI        | EVPSOI  | EVPSOI            | EVPSOI  | EVPSOI  | land         | EVPSOIL  |                                                              | 
+        ! LH component       | W/m2    | EVEG        | EVPVEG  | EVPVEG            | EVPVEG  | EVPVEG  | land         | EVPTRNS  |                                                              |
+        ! LH component       | W/m2    | ESNO        | EVPICE  | EVPICE            | EVPICE  | EVPICE  | land         | EVPSBLN  |                                                              |
+        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! sensible heat flux | W/m2    | SHFLUX      | SHOUT   | SHLAND            | SHLAND  | SHLAND  | land         | SHLAND   |                                                              |
+        ! sensible heat flux | W/m2    | -           | -       | SHOUT             | SHOUT   | SHOUT   | all surfaces | n/a      |                                                              |
+        ! SH accounting term | W/m2    | SHACC       | SHACC   | SPLAND            | SPLAND  | SPLAND  | land         | SPSHLAND | SHLAND-SPSHLAND = SH_from_TurbGC [for 100% land]             |
+        !---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+                                                                                                         
+        
         if(associated(SWLAND)) SWLAND = SWNDSRF
         if(associated(LWLAND)) LWLAND = LWNDSRF
         if(associated(GHLAND)) GHLAND = GHFLX
@@ -5916,6 +5938,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(WCHANGE  )
         deallocate(ECHANGE  )
         deallocate(HSNACC   )
+        deallocate(LHOUT    )
         deallocate(EVACC    )
         deallocate(LHACC    )
         deallocate(SHACC    )

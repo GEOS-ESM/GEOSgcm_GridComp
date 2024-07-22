@@ -149,7 +149,7 @@
                      WESNN, HTSNNN, SNDZN,                                     &
                      EVAP, SHFLUX, RUNOFF,                                     &  ! EVAP:                   kg/m2/s
                      EINT, ESOI, EVEG, ESNO,  BFLOW,RUNSRF,SMELT,              &  ! EINT, ESOI, EVEG, ESNO: W/m2
-                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &  ! HLWUP = *emitted* longwave only (excl reflected)
+                     HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                &  ! HLWUP = *emitted* longwave only (excl reflected)
                      GHFLUX, GHFLUXSNO, GHTSKIN, TPSN1, ASNOW0,                &
                      TP1, TP2, TP3, TP4, TP5, TP6,                             &
                      sfmc, rzmc, prmc, entot, wtot, WCHANGE, ECHANGE, HSNACC,  &
@@ -216,7 +216,7 @@
 
       REAL, INTENT(OUT), DIMENSION(NCH) ::      EVAP, SHFLUX, RUNOFF,          &
                      EINT, ESOI, EVEG, ESNO, BFLOW,RUNSRF,SMELT,               &
-                     HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
+                     HLWUP,SWLAND,LHFLUX,QINFIL,AR1, AR2, RZEQ,                &
                      GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
                      sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
                      HSNACC, EVACC, LHACC, SHACC
@@ -464,7 +464,7 @@
          write (*,*)  RUNSRF(n_out)    
          write (*,*)  SMELT(n_out)  
          write (*,*)  HLWUP(n_out)    
-         write (*,*)  HLATN(n_out)    
+         write (*,*)  LHFLUX(n_out)    
          write (*,*)  QINFIL(n_out)    
          write (*,*)  AR1(n_out)    
          write (*,*)  AR2(n_out)    
@@ -1023,7 +1023,7 @@
         ENDIF 
  
       DO N=1,NCH 
-        HLATN(N)=(1.-ASNOW(N))*                                                &
+        LHFLUX(N)=(1.-ASNOW(N))*                                               &
               (EVAP1(N)*AR1(N)+EVAP2(N)*AR2(N)+EVAP4(N)*AR4(N))*ALHE           &
               +ASNOW(N)*EVSNOW(N)*ALHS 
         EVAP(N)=(1.-ASNOW(N))*                                                 &
@@ -1111,7 +1111,7 @@
           EDIF=(EINTX-CAPAC(N))/DTSTEP
           EVAPFR(N)=EVAPFR(N)-EDIF
           EVAP(N)=EVAP(N)-EDIF
-          HLATN(N)=HLATN(N)-EDIF*ALHE
+          LHFLUX(N)=LHFLUX(N)-EDIF*ALHE
           SHFLUX(N)=SHFLUX(N)+EDIF*ALHE
           EIRFRC(N)=CAPAC(N)/((EVAPFR(N)+1.E-20)*DTSTEP)
           ENDIF
@@ -1233,7 +1233,7 @@
          if(werror(n) .gt. 0.) then
            edif=werror(n)/dtstep
            EVAP(N)=EVAP(N)-EDIF
-           HLATN(N)=HLATN(N)-EDIF*ALHE
+           LHFLUX(N)=LHFLUX(N)-EDIF*ALHE
            EVEGFRC=EVEG(N)/(EVEG(N)+ESOI(N)+1.E-20)
            EVEG(N)=EVEG(N)-EDIF*EVEGFRC*DTSTEP
            ESOI(N)=ESOI(N)-EDIF*(1.-EVEGFRC)*DTSTEP
@@ -1464,7 +1464,7 @@
         !       only the evap mass flux and the sensible heat flux.  For completeness, 
         !       however, we also calculate a corresponding "accounting" (or "error") term.
         
-        LHACC(N) = HLATN(N) - (1.-ASNOW0(N))*ALHE*EVAPX124 - ASNOW0(N)*ALHS*EVAPXS 
+        LHACC(N) = LHFLUX(N) - (1.-ASNOW0(N))*ALHE*EVAPX124 - ASNOW0(N)*ALHS*EVAPXS 
 
         ! sensible heat (energy) flux (W/m2)
 
@@ -1645,7 +1645,7 @@
          write (*,*)  RUNSRF(n_out)    
          write (*,*)  SMELT(n_out)  
          write (*,*)  HLWUP(n_out)    
-         write (*,*)  HLATN(n_out)    
+         write (*,*)  LHFLUX(n_out)    
          write (*,*)  QINFIL(n_out)    
          write (*,*)  AR1(n_out)    
          write (*,*)  AR2(n_out)    
