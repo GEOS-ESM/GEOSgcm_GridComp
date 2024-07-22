@@ -989,87 +989,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     call check_column (ktop, kbot, qr, no_fall)
    
     ! -----------------------------------------------------------------------
-    ! auto - conversion
-    ! assuming linear subgrid vertical distribution of cloud water
-    ! following lin et al. 1994, mwr
-    ! -----------------------------------------------------------------------
-
-    ! Use In-Cloud condensates
-    if (in_cloud) then
-      qadum = max(qa,qcmin)
-    else
-      qadum = max(qa,onemsig)
-    endif
-    ql = ql/qadum
-    qi = qi/qadum
-
-    fac_rc = min(1.0,eis/15.0)**2 ! Estimated inversion strength determine stable regime
-    fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
- 
-    if (irain_f /= 0) then
-        
-        ! -----------------------------------------------------------------------
-        ! no subgrid varaibility
-        ! -----------------------------------------------------------------------
-        
-        do k = ktop, kbot
-            if (tz (k) > t_wfr) then
-                qc = fac_rc * ccn (k) / den (k)
-                dq = ql (k) - qc
-                if (dq > 0.) then
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig))
-                    sink = min (dq, dt * c_praut_k * den (k) * exp (so3 * log (ql (k))))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
-                    ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink*qadum(k)
-                    ! new total condensate / old condensate
-                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)-sink),0.0  ) / &
-                                                     max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
-                endif
-            endif
-        enddo
-        
-    else
-
-        ! -----------------------------------------------------------------------
-        ! with subgrid variability
-        ! -----------------------------------------------------------------------
-        call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-
-        do k = ktop, kbot
-            if (tz (k) > t_wfr + dt_fr) then
-                dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
-                ! --------------------------------------------------------------------
-                ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
-                ! --------------------------------------------------------------------
-                qc = fac_rc * ccn (k) / den (k)
-                dq = 0.5 * (ql (k) + dl (k) - qc)
-                ! --------------------------------------------------------------------
-                ! dq = dl if qc == q_minus = ql - dl
-                ! dq = 0 if qc == q_plus = ql + dl
-                ! --------------------------------------------------------------------
-                if (dq > 0.) then ! q_plus > qc
-                    ! --------------------------------------------------------------------
-                    ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
-                    ! --------------------------------------------------------------------
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (1., dq / dl (k)) * dt * c_praut_k * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
-                    ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink*qadum(k)
-                    ! new total condensate / old condensate
-                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
-                                                     max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
-                endif
-            endif
-        enddo
-    endif
-
-    ! Revert In-Cloud condensate
-    ql = ql*qadum
-    qi = qi*qadum
-
-        ! -----------------------------------------------------------------------
         ! fall speed of rain
         ! -----------------------------------------------------------------------
         
@@ -1154,6 +1073,87 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
 
         call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
         evap1 = evap1 + revap
+
+    ! -----------------------------------------------------------------------
+    ! auto - conversion
+    ! assuming linear subgrid vertical distribution of cloud water
+    ! following lin et al. 1994, mwr
+    ! -----------------------------------------------------------------------
+    
+    ! Use In-Cloud condensates
+    if (in_cloud) then
+      qadum = max(qa,max(qcmin,onemsig))
+    else
+      qadum = 1.0
+    endif
+    ql = ql/qadum
+    qi = qi/qadum
+    
+    fac_rc = min(1.0,eis/15.0)**2 ! Estimated inversion strength determine stable regime
+    fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
+            
+    if (irain_f /= 0) then
+        
+        ! -----------------------------------------------------------------------
+        ! no subgrid varaibility
+        ! -----------------------------------------------------------------------
+        
+        do k = ktop, kbot
+            if (tz (k) > t_wfr) then
+                qc = fac_rc * ccn (k) / den (k)
+                dq = ql (k) - qc
+                if (dq > 0.) then
+                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
+                    sink = min (dq, dt * c_praut_k * den (k) * exp (so3 * log (ql (k))))
+                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    ql (k) = ql (k) - sink
+                    qr (k) = qr (k) + sink*qadum(k)
+                    ! new total condensate / old condensate
+                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)-sink),0.0  ) / &
+                                                     max(qadum(k)*(qi (k)+ql (k)     ),qcmin) ) )
+                endif
+            endif
+        enddo
+
+    else
+
+        ! -----------------------------------------------------------------------
+        ! with subgrid variability
+        ! -----------------------------------------------------------------------
+        call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
+
+        do k = ktop, kbot
+            if (tz (k) > t_wfr + dt_fr) then
+                dl (k) = min (max (qcmin, dl (k)), 0.5 * ql (k))
+                ! --------------------------------------------------------------------
+                ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
+                ! --------------------------------------------------------------------
+                qc = fac_rc * ccn (k) / den (k)
+                dq = 0.5 * (ql (k) + dl (k) - qc)
+                ! --------------------------------------------------------------------
+                ! dq = dl if qc == q_minus = ql - dl
+                ! dq = 0 if qc == q_plus = ql + dl
+                ! --------------------------------------------------------------------
+                if (dq > 0.) then ! q_plus > qc
+                    ! --------------------------------------------------------------------
+                    ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
+                    ! --------------------------------------------------------------------
+                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
+                    sink = min (1., dq / dl (k)) * dt * c_praut_k * den (k) * exp (so3 * log (ql (k)))
+                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    ql (k) = ql (k) - sink
+                    qr (k) = qr (k) + sink*qadum(k)
+                    ! new total condensate / old condensate
+                    qa (k) = max(0.0,min(1.,qa (k) * max(qadum(k)*(qi (k)+ql (k)     ),0.0  ) / &
+                                                     max(qadum(k)*(qi (k)+ql (k)+sink),qcmin) ) )
+                endif
+            endif
+        enddo
+    endif
+
+    ! Revert In-Cloud condensate
+    ql = ql*qadum
+    qi = qi*qadum
 
 end subroutine warm_rain
 
@@ -1250,6 +1250,11 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
             if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
                 sink = dt * denfac (k) * cracw * exp (0.95 * log (qr (k) * den (k)))
                 sink = sink / (1. + sink) * ql (k)
+
+                ! new total condensate / old condensate
+                qa (k) = max(0.0,min(1.,qa (k) * max(qi (k)+ql (k)-sink,0.0  ) / &
+                                                 max(qi (k)+ql (k)     ,qcmin) ) )
+
                 ql (k) = ql (k) - sink
                 qr (k) = qr (k) + sink
             endif
@@ -1393,9 +1398,9 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
       ! Use In-Cloud condensates
       if (in_cloud) then
-        qadum = max(qak (k),qcmin)
+        qadum = max(qak (k),max(qcmin,onemsig))
       else    
-        qadum = max(qak (k),onemsig)
+        qadum = 1.0
       endif
 
         ! qi0_crt (ice to snow conversion) has strong resolution dependence
@@ -1941,7 +1946,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             q_sol (k) = q_sol (k) + sink
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
-            if (do_qa) qa (k) = 1. ! air fully saturated; 100 % cloud cover
+            qa (k) = 1. ! air fully saturated; 100 % cloud cover
             cycle
         endif
 
@@ -1957,41 +1962,39 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         tcp3 (k) = lcpk (k) + icpk (k) * min (1., dim (tice, tz (k)) / (tice - t_wfr))
         
         ! -----------------------------------------------------------------------
-        ! instant evaporation / sublimation of all clouds if rh < rh_adj -- > cloud free
+        ! cloud water < -- > vapor adjustment: LS evaporation
         ! -----------------------------------------------------------------------
         qpz = qv (k) + ql (k) + qi (k)
         tin = tz (k) - (lhl (k) * (ql (k) + qi (k)) + lhi (k) * qi (k)) / (c_air + &
             qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
-        if (tin > t_sub + 6.) then
             rh = qpz / iqs1 (tin, den (k))
-            if (rh < rh_adj) then ! qpz / rh_adj < qs
-                tz (k) = tin
-                qv (k) = qpz
-                ql (k) = 0.
-                qi (k) = 0.
-                if (do_qa) qa (k) = 0.
-                cycle ! cloud free
-            endif
-        endif
-        
-        ! -----------------------------------------------------------------------
-        ! cloud water < -- > vapor adjustment: LS evaporation
-        ! -----------------------------------------------------------------------
-        if (do_evap) then
-        qsw = wqs2 (tz (k), den (k), dwsdt)
-        dq0 = qsw - qv (k)
-        if (dq0 > qvmin) then
-            factor = min (1., fac_l2v * (10. * dq0 / qsw))
-            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+        if (.not. do_evap) then
+           evap = 0.0
         else
-            evap = 0.0
+           if ( (tin > t_sub + 6.) .and. (rh < rh_adj) ) then
+              ! instant evap of all liquid
+              evap = ql(k)
+           else
+              ! partial evap of liquid
+              qsw = wqs2 (tz (k), den (k), dwsdt)
+              dq0 = qsw - qv (k)
+              if (dq0 > qvmin) then
+                  factor = min (1., fac_l2v * (10. * dq0 / qsw))
+                  evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+              else
+                  evap = 0.0
+              endif
+           endif
         endif
+
+        ! new total condensate / old condensate 
+        qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)-evap,0.0  ) / &
+                                       max(qi(k)+ql(k)     ,qcmin) ) )
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
         cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
         tz (k) = tz (k) - evap * lhl (k) / cvm (k)
-        endif
 
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
@@ -2079,6 +2082,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
                 sink = 0.
               endif
             endif
+           ! new total condensate / old condensate 
+           qa(k) = max(0.0,min(1.,qa(k) * max(qi(k)+ql(k)+sink,0.0  ) / &
+                                          max(qi(k)+ql(k)     ,qcmin) ) )
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
