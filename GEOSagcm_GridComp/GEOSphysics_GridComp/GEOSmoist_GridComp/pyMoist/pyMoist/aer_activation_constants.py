@@ -50,4 +50,4 @@ ALPHAT = 0.960e+00
  
 n_modes = 14
 
-FLOAT_EPSILON = np.finfo(Float).eps 
+FLOAT_TINY = np.finfo(Float).tiny

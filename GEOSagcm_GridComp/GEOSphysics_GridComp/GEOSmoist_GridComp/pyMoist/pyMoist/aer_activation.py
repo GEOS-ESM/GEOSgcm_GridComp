@@ -307,7 +307,6 @@ def _gcf_matrix_stencil(
 
 '''
 
-
 def aer_activation_stencil(
         aero_dgn: FloatField_NModes,
         aero_num: FloatField_NModes,
@@ -320,37 +319,60 @@ def aer_activation_stencil(
         qlls: FloatField,
         nn_land: Float,
         frland: FloatFieldIJ,
-        nn_ocean: Float
-
+        nn_ocean: Float,
+        aero_hygroscopicity: FloatField_NModes,
+        nwfa: FloatField,
+        nactl:FloatField,
+        vvel: FloatField,
+        tke: FloatField,
+        aero_sigma: FloatField_NModes
 ): 
     with computation(PARALLEL), interval(...):
-        #NACTL = NN_LAND * FRLAND + NN_OCEAN * (1.0 - FRLAND)
+        
+        nfaux = 0.0
+        n = 0
+        while n < constants.n_modes:
+            if aero_hygroscopicity[0,0,0][n] > 0.4: #aero_kap is aero_hygroscopicity
+                nfaux += aero_num[0,0,0][n]
+            n += 1
+        nwfa =  nfaux
+
+        nactl = nn_land * frland + nn_ocean * (1.0 - frland)
         nacti = nn_land * frland + nn_ocean * (1.0 - frland)
 
-        # might need to change variable names
+        #determing aerosol number concentration at cloud base
         tk = t
         press = plo
         air_den = press * 28.8e-3 / 8.31 / tk
         qi = (qicn + qils) * 1.0e3
         ql = (qlcn + qlls) * 1.0e3
-        #wupdraft = vvel + sqrt(tke)
+        wupdraft = vvel + sqrt(tke)
 
         # Liquid Clouds
-        """
-        if tk >= constants.MAPL_TICE - 40.0 and plo > 10000.0 and 0.1 < wupdraft < 100.0:
-            ni[1:n_modes] = max(AeroProps[i, j, k, :, 0] * air_den, constants.ZERO_PAR)
-            rg[1:n_modes] = max(AeroProps[i, j, k, :, 1] * 0.5 * 1.e6, constants.ZERO_PAR)
-            sig0[1:n_modes] = AeroProps[i, j, k, :, 2]
-            bibar[1:n_modes] = max(AeroProps[i, j, k, :, 4], constants.ZERO_PAR)
-            _get_act_frac_stencil(n_modes, ni[1:n_modes], rg[1:n_modes], sig0[1:n_modes], tk, press, wupdraft, nact[1:n_modes], bibar[1:n_modes])
+        if (tk >= constants.MAPL_TICE - 40.0) and (plo > 10000.0) and (0.1 < wupdraft) and (wupdraft < 100.0):
+            #nact: FloatField_NModes #temp variable
+            n = 0
+            while n < constants.n_modes:
+                ni = max(aero_num[0,0,0][n] * air_den, constants.ZERO_PAR)
+                rg = max(aero_dgn[0,0,0][n] * 0.5 * 1.e6, constants.ZERO_PAR)
+                sig0 = aero_sigma[0,0,0][n] 
+                bibar = max(aero_hygroscopicity[0,0,0][n], constants.ZERO_PAR)
+                n += 1
+            #_get_act_frac_stencil(constants.n_modes, ni, rg, sig0, tk, press, wupdraft, nact, bibar)
             numbinit = 0.0
-            NACTL = 0.0ma
-        """
+            nactl = 0.0
+            n = 0
+            while n < constants.n_modes:
+                numbinit += aero_num[0,0,0][n] * air_den
+                #nactl += nact[0,0,0][n]
+                n += 1
+            nactl = min(nactl, 0.99*numbinit)
+        
         # Ice Clouds
-        if (tk <= constants.MAPL_TICE) and (qi > 0.0 or ql > 0.0):
+        if (tk <= constants.MAPL_TICE) and (qi > constants.FLOAT_TINY or ql > constants.FLOAT_TINY):
             numbinit = 0.0
             n = 0
-            while n <= constants.n_modes:
+            while n < constants.n_modes:
                 if aero_dgn[0,0,0][n] >= 0.5e-6:
                     numbinit += aero_num[0,0,0][n]
                 n += 1
@@ -382,6 +404,8 @@ class AerActivation:
         n_modes: Int,
         USE_AERSOL_NN: bool,
     ):
+        #Dead lines in aer_actv_single_moment.F90:238-244 for literal kpbli 
+        #Variables never used: numbinit,WC,BB, RAUX
 
         if constants.n_modes != n_modes:
             raise NotImplementedError(
@@ -431,39 +455,16 @@ class AerActivation:
         qlls: FloatField,
         nn_land: Float,
         frland: FloatFieldIJ,
-        nn_ocean: Float
+        nn_ocean: Float,
+        aero_hygroscopicity: FloatField_NModes,
+        nwfa: FloatField,
+        nactl:FloatField,
+        vvel: FloatField,
+        tke: FloatField,
+        aero_sigma: FloatField_NModes
     ):
         """
         Perform aerosol activation calculations.
-
-        Parameters:
-        IM (Int): Size of the first dimension.
-        JM (Int): Size of the second dimension.
-        LM (Int): Size of the third dimension.
-        q (FloatField): Specific humidity field.
-        t (FloatField): Temperature field.
-        plo (FloatField): Low-level pressure field.
-        ple (FloatField): Low-level pressure field at the end of the time step.
-        zlo (FloatField): Low-level height field.
-        zle (FloatField): Low-level height field at the end of the time step.
-        qlcn (FloatField): Cloud liquid water mixing ratio field.
-        qicn (FloatField): Cloud ice mixing ratio field.
-        qlls (FloatField): Large-scale cloud liquid water mixing ratio field.
-        qils (FloatField): Large-scale cloud ice mixing ratio field.
-        sh (Float): Specific humidity value.
-        evap (Float): Evaporation rate value.
-        kpbl (Float): Planetary boundary layer height value.
-        tke (FloatField): Turbulent kinetic energy field.
-        vvel (FloatField): Vertical velocity field.
-        FRLAND (Float): Fraction of land value.
-        NACTL (FloatField): Activated cloud droplet number concentration field.
-        NACTI (FloatField): Activated ice crystal number concentration field.
-        NWFA (FloatField): Newly formed aerosol number concentration field.
-        NN_LAND (Int): Number concentration over land field.
-        NN_OCEAN (Int): Number concentration over ocean field.
-
-        Returns:
-        None
 
         self._get_act_frac(
                             nmodes,
@@ -513,5 +514,11 @@ class AerActivation:
             qlls,
             nn_land,
             frland,
-            nn_ocean
+            nn_ocean,
+            aero_hygroscopicity,
+            nwfa,
+            nactl,
+            vvel,
+            tke,
+            aero_sigma
         )        

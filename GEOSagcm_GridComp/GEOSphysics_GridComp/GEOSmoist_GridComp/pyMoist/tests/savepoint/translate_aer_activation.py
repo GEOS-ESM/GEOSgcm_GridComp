@@ -119,7 +119,13 @@ class TranslateAerActivation(TranslateFortranData2Py):
             qlls = qlls,
             nn_land = Float(ccn_lnd*1.e6),
             frland = frland,
-            nn_ocean = Float(ccn_ocn*1.e6)
+            nn_ocean = Float(ccn_ocn*1.e6),
+            aero_hygroscopicity = aero_hygroscopicity,
+            nwfa = nwfa,
+            nactl = nactl,
+            vvel = tmp3d,
+            tke = tke,
+            aero_sigma = aero_sigma
         )
 
         return {
