@@ -1680,7 +1680,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'total_evaportranspiration_land',          &
+    LONG_NAME          = 'total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
