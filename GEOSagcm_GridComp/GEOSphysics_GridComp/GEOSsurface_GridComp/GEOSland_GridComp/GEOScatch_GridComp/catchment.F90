@@ -160,7 +160,7 @@
                      TCSORIG, TPSN1IN, TPSN1OUT, FSW_CHANGE, FICESOUT,         &
                      lonbeg,lonend,latbeg,latend,                              &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &  ! OPTIONAL
-                     RCONSTIT, RMELT, TOTDEPOS )
+                     RCONSTIT, RMELT, TOTDEPOS )                                  ! OPTIONAL
 
       IMPLICIT NONE
 
