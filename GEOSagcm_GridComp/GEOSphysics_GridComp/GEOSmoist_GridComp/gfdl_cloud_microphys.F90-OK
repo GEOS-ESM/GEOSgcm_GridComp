@@ -280,15 +280,13 @@ module gfdl2_cloud_microphys_mod
 
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
     real :: vs_min = 1.   !< minimum fall speed or constant fall speed
-    real :: vg_min = 2.   !< minimum fall speed or constant fall speed
+    real :: vg_min = 9.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
-    real :: vh_min = 9.   !< minimum fall speed or constant fall speed
 
-    real :: vi_max =  1.0 !< max fall speed for ice
-    real :: vs_max =  3.0 !< max fall speed for snow
-    real :: vg_max =  6.0 !< max fall speed for graupel 
-    real :: vr_max =  9.0 !< max fall speed for rain
-    real :: vh_max = 19.0 !< max fall speed for hail 
+    real :: vi_max =  0.5 !< max fall speed for ice
+    real :: vs_max =  5.0 !< max fall speed for snow
+    real :: vr_max = 12.0 !< max fall speed for rain
+    real :: vg_max =  8.0 !< max fall speed for graupel
 
     ! cloud microphysics switchers
 
@@ -1084,9 +1082,9 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     
     ! Use In-Cloud condensates
     if (in_cloud) then
-      qadum = max(qa,max(qcmin,onemsig))
+      qadum = max(qa,qcmin)
     else
-      qadum = 1.0
+      qadum = max(qa,onemsig)
     endif
     ql = ql/qadum
     qi = qi/qadum
@@ -1105,8 +1103,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (dq, dt * c_praut_k * den (k) * exp (so3 * log (ql (k))))
+                    sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1140,8 +1137,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! --------------------------------------------------------------------
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (1., dq / dl (k)) * dt * c_praut_k * den (k) * exp (so3 * log (ql (k)))
+                    sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1192,7 +1188,7 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
         if (tz (k) > t_wfr .and. qr (k) > qpmin) then
 
            ! timescale efficiency on revap
-            fac_revp = 1. - exp (- dt / tau_revp) * qa (k) ! Increase revp when no clouds present (WMP)
+            fac_revp = 1. - exp (- dt / tau_revp)
             
             ! -----------------------------------------------------------------------
             ! define heat capacity and latent heat coefficient
@@ -1400,10 +1396,15 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
       ! Use In-Cloud condensates
       if (in_cloud) then
-        qadum = max(qak (k),max(qcmin,onemsig))
+        qadum = max(qak (k),qcmin)
       else    
-        qadum = 1.0
+        qadum = max(qak (k),onemsig)
       endif
+
+        ! qi0_crt (ice to snow conversion) has strong resolution dependence
+        !    account for this using onemsig to convert more ice to snow at coarser resolutions
+        critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
+                                       ice_fraction(tzk(k),cnv_fraction,srf_type)
 
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
@@ -1411,14 +1412,14 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         newice = max(0.0,qi + new_ice_condensate(tzk (k), ql, qi, cnv_fraction, srf_type))
         newliq = max(0.0,ql + qi - newice)
 
-        melt = max(0.0,newliq - ql) 
-        frez = max(0.0,newice - qi)
+        melt = fac_imlt * max(0.0,newliq - ql) 
+        frez = fac_frz  * max(0.0,newice - qi)
 
         if (melt > 0.0 .and. tzk (k) > tice .and. qi > qcmin) then
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
-            tmp = fac_imlt * min (melt, dim (ql_mlt, ql)) ! max ql amount
+            tmp = min (melt, dim (ql_mlt, ql)) ! max ql amount
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
@@ -1436,12 +1437,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            ! qi0_crt (ice to snow conversion) has strong resolution dependence
-            !    account for this using onemsig to convert more ice to snow at coarser resolutions
-            critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
-                                           ice_fraction(tzk(k),cnv_fraction,srf_type)
             qi_crt = critical_qi_factor / qadum / den (k)
-            tmp = fac_frz * min (frez, dim (qi_crt, qi))
+            tmp = min (frez, dim (qi_crt, qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
@@ -1930,7 +1927,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
     do k = ktop, kbot
         
       rh_adj =             1. - h_var(k) - rh_inc
-      rh_rain = max (0.35, 1. - h_var(k) - rh_inr)
+      rh_rain = max (0.35, rh_adj - rh_inr)
 
       subl1(k) = 0.0
 
@@ -1977,14 +1974,14 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
               evap = ql(k)
            else
               ! partial evap of liquid
-              qsw = wqs2 (tz (k), den (k), dwsdt)
-              dq0 = qsw - qv (k)
-              if (dq0 > qvmin) then
-                  factor = min (1., fac_l2v * (10. * dq0 / qsw))
-                  evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
-              else
-                  evap = 0.0
-              endif
+        qsw = wqs2 (tz (k), den (k), dwsdt)
+        dq0 = qsw - qv (k)
+        if (dq0 > qvmin) then
+            factor = min (1., fac_l2v * (10. * dq0 / qsw))
+            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+        else
+            evap = 0.0
+        endif
            endif
         endif
 
@@ -2170,6 +2167,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             tz (k) = tz (k) + pgsub * (lhl (k) + lhi (k)) / cvm (k)
         endif
 
+#ifdef USE_MIN_EVAP
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
@@ -2190,6 +2188,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) - sink * lhl (k) / cvm (k)
         endif
+#endif
 
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
@@ -2369,6 +2368,12 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
             tc = tz (k) - tice
         endif
     enddo
+
+    ! -----------------------------------------------------------------------
+    ! turn off melting when cloud microphysics time step is small
+    ! -----------------------------------------------------------------------
+
+    if (dtm < 300.) k0 = kbot
 
     ze (kbot + 1) = zs
     do k = kbot, ktop, - 1

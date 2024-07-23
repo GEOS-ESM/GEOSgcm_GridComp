@@ -280,15 +280,13 @@ module gfdl2_cloud_microphys_mod
 
     real :: vi_min = 0.01 !< minimum fall speed or constant fall speed
     real :: vs_min = 1.   !< minimum fall speed or constant fall speed
-    real :: vg_min = 2.   !< minimum fall speed or constant fall speed
+    real :: vg_min = 9.   !< minimum fall speed or constant fall speed
     real :: vr_min = 4.   !< minimum fall speed or constant fall speed
-    real :: vh_min = 9.   !< minimum fall speed or constant fall speed
 
     real :: vi_max =  1.0 !< max fall speed for ice
     real :: vs_max =  3.0 !< max fall speed for snow
-    real :: vg_max =  6.0 !< max fall speed for graupel 
     real :: vr_max =  9.0 !< max fall speed for rain
-    real :: vh_max = 19.0 !< max fall speed for hail 
+    real :: vg_max = 19.0 !< max fall speed for graupel
 
     ! cloud microphysics switchers
 
@@ -1405,20 +1403,25 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
         qadum = 1.0
       endif
 
+        ! qi0_crt (ice to snow conversion) has strong resolution dependence
+        !    account for this using onemsig to convert more ice to snow at coarser resolutions
+        critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
+                                       ice_fraction(tzk(k),cnv_fraction,srf_type)
+
         ql = qlk (k)/qadum
         qi = qik (k)/qadum
 
         newice = max(0.0,qi + new_ice_condensate(tzk (k), ql, qi, cnv_fraction, srf_type))
         newliq = max(0.0,ql + qi - newice)
 
-        melt = max(0.0,newliq - ql) 
-        frez = max(0.0,newice - qi)
+        melt = fac_imlt * max(0.0,newliq - ql) 
+        frez = fac_frz  * max(0.0,newice - qi)
 
         if (melt > 0.0 .and. tzk (k) > tice .and. qi > qcmin) then
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
-            tmp = fac_imlt * min (melt, dim (ql_mlt, ql)) ! max ql amount
+            tmp = min (melt, dim (ql_mlt, ql)) ! max ql amount
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
@@ -1436,12 +1439,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            ! qi0_crt (ice to snow conversion) has strong resolution dependence
-            !    account for this using onemsig to convert more ice to snow at coarser resolutions
-            critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
-                                           ice_fraction(tzk(k),cnv_fraction,srf_type)
             qi_crt = critical_qi_factor / qadum / den (k)
-            tmp = fac_frz * min (frez, dim (qi_crt, qi))
+            tmp = min (frez, dim (qi_crt, qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
@@ -2369,6 +2368,12 @@ subroutine terminal_fall (dtm, ktop, kbot, tz, qv, ql, qr, qg, qs, qi, dz, dp, &
             tc = tz (k) - tice
         endif
     enddo
+
+    ! -----------------------------------------------------------------------
+    ! turn off melting when cloud microphysics time step is small
+    ! -----------------------------------------------------------------------
+
+    if (dtm < 300.) k0 = kbot
 
     ze (kbot + 1) = zs
     do k = kbot, ktop, - 1
