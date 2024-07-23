@@ -266,7 +266,7 @@ contains
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'TTMGW',                                     &
-        LONG_NAME  = 'air_temperature_tendency_due_to_GWD',       &
+        LONG_NAME  = 'tendency_of_air_temperature_due_to_GWD',       &
         UNITS      = 'K s-1',                                  &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
