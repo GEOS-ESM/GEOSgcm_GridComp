@@ -247,7 +247,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'surface_outgoing_longwave_flux',&
+        LONG_NAME          = 'surface_emitted_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -255,7 +255,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                _RC  ) 
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'sea_ice_outgoing_longwave_flux',&
+        LONG_NAME          = 'sea_ice_emitted_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUPICE'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -623,7 +623,7 @@ module GEOS_CICE4ColumnPhysGridComp
         _RC  )
 
      call MAPL_AddExportSpec(GC                     ,&
-        LONG_NAME          = 'surface_downward_longwave_flux',&
+        LONG_NAME          = 'surface_absorbed_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'LWDNSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -735,7 +735,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -743,7 +743,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -751,7 +751,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1491,7 +1491,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'HLWUPN'                     ,&
-        LONG_NAME          = 'outgoing_longwave_flux_at_ice_snow_surface_over_ice_categories',&
+        LONG_NAME          = 'emitted_longwave_flux_at_ice_snow_surface_over_ice_categories',&
         UNITS              = 'W m-2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&

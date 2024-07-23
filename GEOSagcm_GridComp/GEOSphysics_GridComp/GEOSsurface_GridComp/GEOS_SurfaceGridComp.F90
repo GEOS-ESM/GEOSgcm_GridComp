@@ -589,7 +589,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -598,7 +598,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -607,7 +607,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1770,7 +1770,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWUPSNOW',                    &
-     LONG_NAME          = 'surface_upwelling_longwave_flux_snow',         &
+     LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1779,7 +1779,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWDNSNOW',                    &
-     LONG_NAME          = 'surface_downwelling_longwave_flux_snow',         &
+     LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1967,7 +1967,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_outgoing_longwave_flux',&
+    LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
