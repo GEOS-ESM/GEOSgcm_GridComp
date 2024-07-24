@@ -1,17 +1,11 @@
 from ndsl import Namelist, StencilFactory
+from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.aer_activation import AerActivation
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float
 
 
 class TranslateAerActivation(TranslateFortranData2Py):
-    def __init__(
-        self,
-        grid,
-        namelist: Namelist,
-        stencil_factory: StencilFactory,
-    ):
+    def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
@@ -78,7 +72,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         # Inputs
         aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
         aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
-        tmp3d = inputs["TMP3D"].astype(Float) 
+        tmp3d = inputs["TMP3D"].astype(Float)
         nactl = inputs["NACTL"].astype(Float)
         ple = inputs["PLE"].astype(Float)
         aero_f_soot = inputs["AERO_F_SOOT"].astype(Float)
@@ -106,26 +100,25 @@ class TranslateAerActivation(TranslateFortranData2Py):
         ccn_lnd = Float(inputs["CCN_LND"])
         ccn_ocn = Float(inputs["CCN_OCN"])
 
-        #__call__
         aer_activation(
-            aero_dgn = aero_dgn,
-            aero_num = aero_num,
-            nacti = nacti,
-            t = t,
-            plo = plmb*100.0,
-            qicn = qicn,
-            qils = qils,
-            qlcn = qlcn,
-            qlls = qlls,
-            nn_land = Float(ccn_lnd*1.e6),
-            frland = frland,
-            nn_ocean = Float(ccn_ocn*1.e6),
-            aero_hygroscopicity = aero_hygroscopicity,
-            nwfa = nwfa,
-            nactl = nactl,
-            vvel = tmp3d,
-            tke = tke,
-            aero_sigma = aero_sigma,
+            aero_dgn=aero_dgn,
+            aero_num=aero_num,
+            nacti=nacti,
+            t=t,
+            plo=plmb * 100.0,
+            qicn=qicn,
+            qils=qils,
+            qlcn=qlcn,
+            qlls=qlls,
+            nn_land=Float(ccn_lnd * 1.0e6),
+            frland=frland,
+            nn_ocean=Float(ccn_ocn * 1.0e6),
+            aero_hygroscopicity=aero_hygroscopicity,
+            nwfa=nwfa,
+            nactl=nactl,
+            vvel=tmp3d,
+            tke=tke,
+            aero_sigma=aero_sigma,
         )
 
         return {

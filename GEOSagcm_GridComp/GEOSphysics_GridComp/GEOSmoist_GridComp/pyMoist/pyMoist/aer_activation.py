@@ -1,69 +1,68 @@
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Int, Float, FloatFieldIJ
-from ndsl import Quantity, QuantityFactory, StencilFactory
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log, exp, sqrt
-import pyMoist.aer_activation_constants as constants
-import numpy as np
+from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
 
-# Global space
-FloatField_NModes = gtscript.Field[gtscript.IJK, (Float, (constants.n_modes))]
+import pyMoist.aer_activation_constants as constants
+from ndsl import QuantityFactory, StencilFactory
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pyMoist.types import FloatField_NModes
+
 
 @gtscript.function
-def GammLn(
-    xx: Float
-    )-> Float:
+def GammLn(xx: Float) -> Float:
     """
+    See numerical recipes, w. press et al., 2nd edition.
+
     Compute the natural logarithm of the gamma function for a given value xx.
-    
+
     Parameters:
-    xx (Float): Input value for which the natural logarithm of the gamma function is to be computed.
-    
+    xx (Float): Input value for which the natural logarithm of the
+                gamma function is to be computed.
+
     Returns:
     Float: The natural logarithm of the gamma function value for the input xx.
     """
     stp = 2.5066282746310005
-    
+
     x = xx
     y = x
     tmp = x + 5.5
     tmp = (x + 0.5) * log(tmp) - tmp
     ser = 1.000000000190015
-    
-    ser += 76.18009172947146 / (y+1)
-    ser += -86.50532032941677 / (y+1)
-    ser += 24.01409824083091 / (y+1)
-    ser += -1.231739572450155 / (y+1)
-    ser += 0.001208650973866179 / (y+1)
-    ser += -0.000005395239384953 / (y+1)
+
+    ser += 76.18009172947146 / (y + 1)
+    ser += -86.50532032941677 / (y + 1)
+    ser += 24.01409824083091 / (y + 1)
+    ser += -1.231739572450155 / (y + 1)
+    ser += 0.001208650973866179 / (y + 1)
+    ser += -0.000005395239384953 / (y + 1)
 
     gammln = tmp + log(stp * ser / x)
     return gammln
 
+
 @gtscript.function
-def _gser_stencil(
-    a: Float, 
-    x: Float, 
-    gln: Float,
-)-> Float:
+def _gser_stencil(a: Float, x: Float, gln: Float) -> Float:
     """
+    See numerical recipes, w. press et al., 2nd edition.
+
     Compute the series representation of the incomplete gamma function.
-    
+
     Parameters:
-    gamser (Float): Output value of the series representation of the incomplete gamma function.
     a (Float): Parameter a for the incomplete gamma function.
     x (Float): Parameter x for the incomplete gamma function.
     gln (Float): Natural logarithm of the gamma function.
-    
+
     Returns:
-    gamser (Float): Output value of the series representation of the incomplete gamma function.er 
+    Float: The series representation of the incomplete gamma function.
     """
-    eps = 3.0e-9
-    itmax = 10000
+    eps = 3.0e-9  # was eps=3.0d-07 in press et al.
+    itmax = 10000  # was itmax=100   in press et al.
     gln = GammLn(a)
     if x <= 0:
-        #if x < 0:
-            #raise ValueError("x < 0 in gser")
+        # Fortran messages here x < 0 in gser
+        # TODO; Allow print in GT4Py
+        # if x < 0:
+        # raise ValueError('aero_actv: subroutine gser: x < 0 in gser')
         gamser = 0.0
     else:
         ap = a
@@ -74,30 +73,28 @@ def _gser_stencil(
             ap += 1.0
             del_ *= x / ap
             sum_ += del_
-            if abs(del_) < abs(sum_) * eps: #this might be wrong, might need ()
+            if abs(del_) < abs(sum_) * eps:
                 gamser = sum_ * exp(-x + a * log(x) - gln)
                 n = itmax
             n += 1
         gamser = sum_ * exp(-x + a * log(x) - gln)
     return gamser
 
+
 @gtscript.function
-def _gcf_matrix_stencil( 
-    a: Float, 
-    x: Float, 
-    gln: Float,
-)->Float:
+def _gcf_matrix_stencil(a: Float, x: Float, gln: Float) -> Float:
     """
+    See numerical recipes, w. press et al., 2nd edition.
+
     Compute the continued fraction representation of the incomplete gamma function.
-    
+
     Parameters:
-    gammcf (Float): Output value of the continued fraction representation of the incomplete gamma function.
     a (Float): Parameter a for the incomplete gamma function.
     x (Float): Parameter x for the incomplete gamma function.
     gln (Float): Natural logarithm of the gamma function.
-    
+
     Returns:
-    None
+    Float: The continued fraction representation of the incomplete gamma function.
     """
     itmax = 10000
     eps = 3.0e-7
@@ -122,29 +119,28 @@ def _gcf_matrix_stencil(
         del_ = d * c
         h *= del_
         if abs(del_ - 1.0) < eps:
-            i = itmax+1 #breaks the loop
+            i = itmax + 1
         i += 1
     return exp(-x + a * log(x) - gln) * h
 
+
 @gtscript.function
-def GammP(
-    a: Float,
-    x: Float 
-)-> Float:
+def GammP(a: Float, x: Float) -> Float:
     """
+    See numerical recipes, w. press et al., 2nd edition.
+
     Compute the incomplete gamma function for given values a and x.
-    
+
     Parameters:
     a (Float): Parameter a for the incomplete gamma function.
     x (Float): Parameter x for the incomplete gamma function.
-    
+
     Returns:
     Float: The incomplete gamma function value for the input parameters a and x.
     """
-    #Not sure what these variables are
-    #Fortran messages here potential bad arguments
-    #TODO; Allow print in GT4Py
-    #if (x < 0.0) or (a <= 0.0):
+    # Fortran messages here potential bad arguments
+    # TODO; Allow print in GT4Py
+    # if (x < 0.0) or (a <= 0.0):
     #    raise ValueError("aero_actv: function gammp: bad arguments")
     gln = GammLn(a)
     if x < a + 1.0:
@@ -153,150 +149,277 @@ def GammP(
         gammp = 1.0 - _gcf_matrix_stencil(a, x, gln)
     return gammp
 
+
 @gtscript.function
-def Erf(
-    x: Float
-)->Float:
+def Erf(x: Float) -> Float:
     """
+    See numerical recipes, w. press et al., 2nd edition.
+
     Compute the error function for a given value x.
-    
+
     Parameters:
     x (Float): Input value for which the error function is to be computed.
-    
+
     Returns:
     Float: The error function value for the input x.
     """
     erf = 0.0
-    if x < 0.0e+00:
-        erf = -1.0*GammP(0.5, x**2)
+    if x < 0.0e00:
+        erf = -1.0 * GammP(0.5, x ** 2)
     else:
-        erf = GammP(0.5, x**2)
+        erf = GammP(0.5, x ** 2)
     return erf
 
+
 def aer_activation_stencil(
-        aero_dgn: FloatField_NModes,
-        aero_num: FloatField_NModes,
-        nacti: FloatField,
-        t: FloatField,
-        plo: FloatField,
-        qicn: FloatField,
-        qils: FloatField,
-        qlcn: FloatField,
-        qlls: FloatField,
-        nn_land: Float,
-        frland: FloatFieldIJ,
-        nn_ocean: Float,
-        aero_hygroscopicity: FloatField_NModes,
-        nwfa: FloatField,
-        nactl:FloatField,
-        vvel: FloatField,
-        tke: FloatField,
-        aero_sigma: FloatField_NModes,
-        nact: FloatField_NModes,
-        ni: FloatField_NModes,
-        rg: FloatField_NModes,
-        sig0: FloatField_NModes,
-        bibar: FloatField_NModes
-): 
+    aero_dgn: FloatField_NModes,
+    aero_num: FloatField_NModes,
+    nacti: FloatField,
+    t: FloatField,
+    plo: FloatField,
+    qicn: FloatField,
+    qils: FloatField,
+    qlcn: FloatField,
+    qlls: FloatField,
+    nn_land: Float,
+    frland: FloatFieldIJ,
+    nn_ocean: Float,
+    aero_hygroscopicity: FloatField_NModes,
+    nwfa: FloatField,
+    nactl: FloatField,
+    vvel: FloatField,
+    tke: FloatField,
+    aero_sigma: FloatField_NModes,
+    nact: FloatField_NModes,
+    ni: FloatField_NModes,
+    rg: FloatField_NModes,
+    sig0: FloatField_NModes,
+    bibar: FloatField_NModes,
+):
+    """
+    Compute the aerosol activation stencil.
+
+    Parameters:
+    aero_dgn (FloatField_NModes): Aerosol geometric mean diameter.
+    aero_num (FloatField_NModes): Aerosol number concentration.
+    nacti (FloatField): Activated aerosol number concentration.
+    t (FloatField): Temperature field.
+    plo (FloatField): Pressure field.
+    qicn (FloatField): Ice cloud number concentration.
+    qils (FloatField): Ice liquid water content.
+    qlcn (FloatField): Cloud number concentration.
+    qlls (FloatField): Liquid water content.
+    nn_land (Float): Land-based aerosol activation number.
+    frland (FloatFieldIJ): Fraction of land.
+    nn_ocean (Float): Ocean-based aerosol activation number.
+    aero_hygroscopicity (FloatField_NModes): Aerosol hygroscopicity parameter.
+    nwfa (FloatField): Number of activated aerosols.
+    nactl (FloatField): Number of activated aerosols in liquid clouds.
+    vvel (FloatField): Vertical velocity field.
+    tke (FloatField): Turbulent kinetic energy field.
+    aero_sigma (FloatField_NModes): Aerosol geometric standard deviation.
+    nact (FloatField_NModes): Activated aerosol number concentration field.
+    ni (FloatField_NModes): AeroProp ice crystal number concentration field.
+    rg (FloatField_NModes): AeroProp geometric mean radius of aerosols.
+    sig0 (FloatField_NModes): AeroProp aerosol geometric standard deviation field.
+    bibar (FloatField_NModes): AeroProp Hygroscopicity parameter field.
+
+    Returns:
+    None
+    """
     with computation(PARALLEL), interval(...):
-        
+
+        # Compute nwfa
+        # Fortran AeroProps aero_kap is aero_hygroscopicity
         nfaux = 0.0
         n = 0
         while n < constants.n_modes:
-            if aero_hygroscopicity[0,0,0][n] > 0.4: #aero_kap is aero_hygroscopicity
-                nfaux += aero_num[0,0,0][n]
+            if aero_hygroscopicity[0, 0, 0][n] > 0.4:
+                nfaux += aero_num[0, 0, 0][n]
             n += 1
-        nwfa =  nfaux
+        nwfa = nfaux
 
+        # Determine aerosol number concentration at cloud base
         nactl = nn_land * frland + nn_ocean * (1.0 - frland)
         nacti = nn_land * frland + nn_ocean * (1.0 - frland)
 
-        #determing aerosol number concentration at cloud base
-        tk = t
-        press = plo
-        air_den = press * 28.8e-3 / 8.31 / tk
-        qi = (qicn + qils) * 1.0e3
-        ql = (qlcn + qlls) * 1.0e3
+        tk = t  # [K]
+        press = plo  # [Pa]
+        air_den = press * 28.8e-3 / 8.31 / tk  # [kg/m3]
+        qi = (qicn + qils) * 1.0e3  # [g/kg]
+        ql = (qlcn + qlls) * 1.0e3  # [g/kg]
         wupdraft = vvel + sqrt(tke)
 
-        # Liquid Clouds
-        if (tk >= (constants.MAPL_TICE - 40.0)) and (plo > 10000.0) and (0.1 < wupdraft) and (wupdraft < 100.0):
+        # Liquid Clouds Calculation
+        if (
+            (tk >= (constants.MAPL_TICE - 40.0))
+            and (plo > 10000.0)
+            and (0.1 < wupdraft)
+            and (wupdraft < 100.0)
+        ):
             n = 0
             while n < constants.n_modes:
-                ni_temp = aero_num[0,0,0][n]* air_den
-                # rg_temp = aero_dgn[0,0,0][n] * 0.5 * 1.e6
-                # sig0_temp = aero_sigma[0,0,0][n]
-                # bibar_temp = aero_hygroscopicity[0,0,0][n]
-                ni = max(ni_temp, constants.ZERO_PAR)
-                # rg = max(rg_temp, constants.ZERO_PAR)
-                # sig0 = sig0_temp
-                # bibar = max(bibar_temp, constants.ZERO_PAR)
-                n += 1 
+                ni[0, 0, 0][n] = max(
+                    aero_num[0, 0, 0][n] * air_den, constants.ZERO_PAR
+                )  # unit: [m-3]
+                rg[0, 0, 0][n] = max(
+                    aero_dgn[0, 0, 0][n] * 0.5 * 1.0e6, constants.ZERO_PAR
+                )  # unit: [um]
+                sig0[0, 0, 0][n] = aero_sigma[0, 0, 0][n]  # unit: [um]
+                bibar[0, 0, 0][n] = max(
+                    aero_hygroscopicity[0, 0, 0][n], constants.ZERO_PAR
+                )
+                n += 1
 
-            #rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
-            #values close to those given in a-z et al. 1998 figure 5. 
-            
-            rdrp = 0.105e-06 #[m] tuned to approximate the results in figures 1-5 in a-z et al. 1998.
-            #These variables are common to all modes and need only be computed once. 
-            dv = constants.DIJH2O0 * (constants.P0DIJ / plo) * (tk / constants.T0DIJ) ** 1.94e+00 #[m^2/s] (p&k,2nd ed., p.503)
-            surten = 76.10e-3 - 0.155e-3 * (tk - 273.15e+00) #[j/m^2]
-            wpe = exp(77.34491296 - 7235.424651 / tk - 8.2 * log(tk) + tk * 5.7113e-3) #[pa]
-            dumw = sqrt(constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tk) #[s/m]
-            dvprime = dv / ((rdrp / (rdrp + constants.DELTAV)) + (dv * dumw / (rdrp * constants.ALPHAC)))
-            xka = (5.69 + 0.017 * (tk - 273.15)) * 418.4e-5
-            duma = sqrt(constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tk)
-            xkaprime = xka / ((rdrp / (rdrp + constants.DELTAT)) + (xka * duma / (rdrp * constants.ALPHAT * constants.DENH2O * constants.CPAIR)))
-            g = 1.0 / ((constants.DENH2O * constants.RGASJMOL * tk) / (wpe * dvprime * constants.WMOLMASS) + 
-                        ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tk)) * 
-                        ((constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tk) - 1.0))
-            a = (2.0 * surten * constants.WMOLMASS) / (constants.DENH2O * constants.RGASJMOL * tk)
-            alpha = (constants.GRAVITY / (constants.RGASJMOL * tk)) * ((constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tk) - constants.AMOLMASS)
-            gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP) / (constants.CPAIR * plo * constants.AMOLMASS * tk)
-            dum = sqrt(alpha * wupdraft / g)
-            zeta = 2.0 * a * dum / 3.0
+            """
+            12-12-06, DLW: Routine to calculate the activated fraction of the number
+            and mass concentrations, as well as the number and mass
+            concentrations activated for each of nmodes modes. The
+            minimum dry radius for activation for each mode is also returned.
 
-            #These variables must be computed for each mode
+            Each mode is assumed to potentially contains 5 chemical species:
+                (1) sulfate
+                (2) BC
+                (3) OC
+                (4) mineral dust
+                (5) sea salt
+
+            The aerosol activation parameterizations are described in
+
+                1. Abdul-Razzak et al.   1998, JGR, vol.103, p.6123-6131.
+                2. Abdul-Razzak and Ghan 2000, JGR, vol.105, p.6837-6844.
+
+            and values for many of the required parameters were taken from
+
+                3. Ghan et al. 2001, JGR vol 106, p.5295-5316.
+
+            With the density of sea salt set to the value used in ref. 3 (1900 kg/m^3),
+            this routine yields values for the hygroscopicity parameters Bi in
+            agreement with ref. 3.
+
+            This routine is for the multiple-aerosol type parameterization.
+            """
+            # rdrp is the radius value used in eqs.(17) & (18) and was adjusted to
+            # yield eta and zeta values close to those given in
+            # a-z et al. 1998 figure 5.
+
+            # tuned to approximate the results in figures 1-5 in a-z et al. 1998.
+            rdrp = 0.105e-06  # [m]
+
+            # These variables are common to all modes and need only be computed once.
+            dv = (
+                constants.DIJH2O0
+                * (constants.P0DIJ / plo)
+                * (tk / constants.T0DIJ) ** 1.94e00
+            )  # [m^2/s] (p&k,2nd ed., p.503)
+            surten = 76.10e-3 - 0.155e-3 * (tk - 273.15e00)  # [j/m^2]
+            wpe = exp(
+                77.34491296 - 7235.424651 / tk - 8.2 * log(tk) + tk * 5.7113e-3
+            )  # [pa]
+            dumw = sqrt(
+                constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tk
+            )  # [s/m]
+            dvprime = dv / (
+                (rdrp / (rdrp + constants.DELTAV))
+                + (dv * dumw / (rdrp * constants.ALPHAC))
+            )  # [m^2/s] - eq. (17)
+            xka = (
+                5.69 + 0.017 * (tk - 273.15)
+            ) * 418.4e-5  # [j/m/s/k] (0.0238 j/m/s/k at 273.15 k)
+            duma = sqrt(
+                constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tk
+            )  # [s/m]
+            xkaprime = xka / (
+                (rdrp / (rdrp + constants.DELTAT))
+                + (
+                    xka
+                    * duma
+                    / (rdrp * constants.ALPHAT * constants.DENH2O * constants.CPAIR)
+                )
+            )  # [j/m/s/k]
+            g = 1.0 / (
+                (constants.DENH2O * constants.RGASJMOL * tk)
+                / (wpe * dvprime * constants.WMOLMASS)
+                + ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tk))
+                * (
+                    (constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tk)
+                    - 1.0
+                )
+            )  # [m^2/s]
+            a = (2.0 * surten * constants.WMOLMASS) / (
+                constants.DENH2O * constants.RGASJMOL * tk
+            )  # [m]
+            alpha = (constants.GRAVITY / (constants.RGASJMOL * tk)) * (
+                (constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tk)
+                - constants.AMOLMASS
+            )  # [1/m]
+            gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (
+                constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP
+            ) / (
+                constants.CPAIR * plo * constants.AMOLMASS * tk
+            )  # [m^3/kg]
+            dum = sqrt(alpha * wupdraft / g)  # [1/m]
+            zeta = 2.0 * a * dum / 3.0  # [1]
+
+            # These variables must be computed for each mode
             n = 0
             while n < constants.n_modes:
-                xlogsigm = log(sig0[0,0,0][n])
-                smax = 0.0 #double precision
-                sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
-                eta = dum ** 3 / (constants.TWOPI * constants.DENH2O * gamma * ni[0,0,0][n])
-                f1 = 0.5 * exp(2.50 * xlogsigm ** 2)
-                f2 = 1.0 + 0.25 * xlogsigm
-                smax = smax + (f1*(zeta/eta)**1.5+ f2*(sm**2/(eta+3.0*zeta))**0.75)/sm**2
-                n +=1
-            
-            smax = 1.0e+00 / sqrt(smax)  
+                xlogsigm = log(sig0[0, 0, 0][n])  # [1]
+                smax = 0.0  # [1]
+                sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
+                    a / (3.0 * rg[0, 0, 0][n])
+                ) ** 1.5  # [1]
+                eta = dum ** 3 / (
+                    constants.TWOPI * constants.DENH2O * gamma * ni[0, 0, 0][n]
+                )  # [1]
+                f1 = 0.5 * exp(2.50 * xlogsigm ** 2)  # [1]
+                f2 = 1.0 + 0.25 * xlogsigm  # [1]
+                smax = (
+                    smax
+                    + (
+                        f1 * (zeta / eta) ** 1.5
+                        + f2 * (sm ** 2 / (eta + 3.0 * zeta)) ** 0.75
+                    )
+                    / sm ** 2
+                )  # [1] - eq. (6)
+                n += 1
+
+            smax = 1.0e00 / sqrt(smax)  # [1]
             n = 0
             u = 0.0
             while n < constants.n_modes:
-                sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
-                xlogsigm = log(sig0[0,0,0][n])
-                ac = rg[0,0,0][n] * (sm / smax) ** 0.66666666666666667
-                u = log(ac / rg[0,0,0][n]) / (constants.SQRT2 * xlogsigm)
-                fracactn = 0.5 * (1.0 - Erf(u))
-                nact[0,0,0][n] = fracactn * ni[0,0,0][n]
-                n+=1
+                sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
+                    a / (3.0 * rg[0, 0, 0][n])
+                ) ** 1.5  # [1]
+                xlogsigm = log(sig0[0, 0, 0][n])  # [1]
+                ac = rg[0, 0, 0][n] * (sm / smax) ** 0.66666666666666667  # [um]
+                u = log(ac / rg[0, 0, 0][n]) / (constants.SQRT2 * xlogsigm)  # [1]
+                fracactn = 0.5 * (1.0 - Erf(u))  # [1]
+                nact[0, 0, 0][n] = fracactn * ni[0, 0, 0][n]  # [#/m^3]
+                n += 1
 
             numbinit = 0.0
             nactl = 0.0
             n = 0
             while n < constants.n_modes:
-                numbinit += aero_num[0,0,0][n] * air_den
-                nactl += nact[0,0,0][n]
+                numbinit += aero_num[0, 0, 0][n] * air_den
+                nactl += nact[0, 0, 0][n]
                 n += 1
-            nactl = min(nactl, 0.99*numbinit)
-            
-        # Ice Clouds
-        if (tk <= constants.MAPL_TICE) and (qi > constants.FLOAT_TINY or ql > constants.FLOAT_TINY):
+            nactl = min(nactl, 0.99 * numbinit)
+
+        # Ice Clouds Calculation
+        if (tk <= constants.MAPL_TICE) and (
+            qi > constants.FLOAT_TINY or ql > constants.FLOAT_TINY
+        ):
             numbinit = 0.0
             n = 0
             while n < constants.n_modes:
-                if aero_dgn[0,0,0][n] >= 0.5e-6:
-                    numbinit += aero_num[0,0,0][n]
+                # diameters > 0.5 microns
+                if aero_dgn[0, 0, 0][n] >= 0.5e-6:
+                    numbinit += aero_num[0, 0, 0][n]
                 n += 1
-            numbinit *= air_den
+            numbinit *= air_den  # [#/m3]
+            # Number of activated IN following deMott (2010) [#/m3]
             nacti = (
                 constants.AI
                 * ((constants.MAPL_TICE - tk) ** constants.BI)
@@ -316,7 +439,18 @@ def aer_activation_stencil(
         if nacti > constants.NN_MAX:
             nacti = constants.NN_MAX
 
+
 class AerActivation:
+    """
+    Class for aerosol activation computation.
+
+    Attributes:
+    stencil_factory (StencilFactory): Factory for creating stencil computations.
+    quantity_factory (QuantityFactory): Factory for creating quantities.
+    n_modes (Int): Number of aerosol modes.
+    USE_AERSOL_NN (bool): Flag indicating whether to use neural network for aerosol.
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -324,39 +458,65 @@ class AerActivation:
         n_modes: Int,
         USE_AERSOL_NN: bool,
     ):
-        #Dead lines in aer_actv_single_moment.F90:238-244 for literal kpbli 
-        #Variables never used: numbinit, WC, BB, RAUX
+        """
+        Initialize the AerActivation class.
 
+        Parameters:
+        stencil_factory (StencilFactory): Factory for creating stencil computations.
+        quantity_factory (QuantityFactory): Factory for creating quantities.
+        n_modes (Int): Number of aerosol modes.
+        USE_AERSOL_NN (bool): Flag indicating whether to use neural network for aerosol.
+
+        Raises:
+        NotImplementedError: If the number of modes is not equal to the expected number.
+        NotImplementedError: If the neural network for aerosol is not implemented.
+        """
         self._nact = quantity_factory._numpy.zeros(
-            (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+            (
+                stencil_factory.grid_indexing.domain[0],
+                stencil_factory.grid_indexing.domain[1],
+                stencil_factory.grid_indexing.domain[2],
+                constants.n_modes,
+            ),
+            dtype=Float,
         )
         self._ni = quantity_factory._numpy.zeros(
-            (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+            (
+                stencil_factory.grid_indexing.domain[0],
+                stencil_factory.grid_indexing.domain[1],
+                stencil_factory.grid_indexing.domain[2],
+                constants.n_modes,
+            ),
+            dtype=Float,
         )
         self._rg = quantity_factory._numpy.zeros(
-            (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+            (
+                stencil_factory.grid_indexing.domain[0],
+                stencil_factory.grid_indexing.domain[1],
+                stencil_factory.grid_indexing.domain[2],
+                constants.n_modes,
+            ),
+            dtype=Float,
         )
         self._sig0 = quantity_factory._numpy.zeros(
-            (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+            (
+                stencil_factory.grid_indexing.domain[0],
+                stencil_factory.grid_indexing.domain[1],
+                stencil_factory.grid_indexing.domain[2],
+                constants.n_modes,
+            ),
+            dtype=Float,
         )
         self._bibar = quantity_factory._numpy.zeros(
-            (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+            (
+                stencil_factory.grid_indexing.domain[0],
+                stencil_factory.grid_indexing.domain[1],
+                stencil_factory.grid_indexing.domain[2],
+                constants.n_modes,
+            ),
+            dtype=Float,
         )
-        #self._ni_temp = quantity_factory._numpy.zeros(
-        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
-        #)
-        #self._rg_temp = quantity_factory._numpy.zeros(
-        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
-        #)
-        #self._sig0_temp = quantity_factory._numpy.zeros(
-        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
-        #)
-        #self._aero_hygroscopicity_temp = quantity_factory._numpy.zeros(
-        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
-        #)
 
-
-        
         if constants.n_modes != n_modes:
             raise NotImplementedError(
                 f"Coding limitation: 14 modes are expected, getting {n_modes}"
@@ -364,7 +524,7 @@ class AerActivation:
 
         if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
-        
+
         self.higher_dimensional_storages = stencil_factory.from_origin_domain(
             func=aer_activation_stencil,
             origin=(0, 0, 0),
@@ -387,11 +547,37 @@ class AerActivation:
         nn_ocean: Float,
         aero_hygroscopicity: FloatField_NModes,
         nwfa: FloatField,
-        nactl:FloatField,
+        nactl: FloatField,
         vvel: FloatField,
         tke: FloatField,
         aero_sigma: FloatField_NModes,
     ):
+        """
+        Compute aerosol activation by calling the stencil function.
+
+        Parameters:
+        aero_dgn (FloatField_NModes): AeroProps aerosol geometric mean diameter.
+        aero_num (FloatField_NModes): AeroProps aerosol number concentration.
+        nacti (FloatField): Activated aerosol number concentration.
+        t (FloatField): Temperature field.
+        plo (FloatField): Pressure field.
+        qicn (FloatField): Ice cloud number concentration.
+        qils (FloatField): Ice liquid water content.
+        qlcn (FloatField): Cloud number concentration.
+        qlls (FloatField): Liquid water content.
+        nn_land (Float): Land-based aerosol activation number.
+        frland (FloatFieldIJ): Fraction of land.
+        nn_ocean (Float): Ocean-based aerosol activation number.
+        aero_hygroscopicity (FloatField_NModes): Aerosol hygroscopicity parameter.
+        nwfa (FloatField): Number of activated aerosols.
+        nactl (FloatField): Number of activated aerosols in liquid clouds.
+        vvel (FloatField): Vertical velocity field.
+        tke (FloatField): Turbulent kinetic energy field.
+        aero_sigma (FloatField_NModes): AeroProps aerosol geometric standard deviation.
+
+        Returns:
+        None
+        """
         self.higher_dimensional_storages(
             aero_dgn,
             aero_num,
@@ -416,10 +602,4 @@ class AerActivation:
             self._rg,
             self._sig0,
             self._bibar,
-            
-        )        
-
-        # self._ni_temp,
-        # self._rg_temp,
-        # self._sig0_temp,
-        # self._aero_hygroscopicity_temp
+        )
