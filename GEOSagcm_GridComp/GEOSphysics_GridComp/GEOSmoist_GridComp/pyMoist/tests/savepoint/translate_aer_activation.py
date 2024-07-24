@@ -125,7 +125,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             nactl = nactl,
             vvel = tmp3d,
             tke = tke,
-            aero_sigma = aero_sigma
+            aero_sigma = aero_sigma,
         )
 
         return {
