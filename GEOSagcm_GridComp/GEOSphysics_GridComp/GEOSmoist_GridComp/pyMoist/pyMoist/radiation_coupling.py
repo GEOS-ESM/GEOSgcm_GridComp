@@ -231,29 +231,29 @@ def _radcouple_stencil(
     Couple radiation with cloud variables to ensure physical consistency.
 
     Parameters:
-    TE (FloatField): Temperature.
-    PL (FloatField): Pressure level.
-    CF (FloatField): Cloud fraction.
-    AF (FloatField): Anvil cloud fraction.
-    QV (FloatField): Water vapor mixing ratio.
-    QClLS (FloatField): Liquid cloud mixing ratio (large-scale).
-    QCiLS (FloatField): Ice cloud mixing ratio (large-scale).
-    QClAN (FloatField): Liquid cloud mixing ratio (anvil).
-    QCiAN (FloatField): Ice cloud mixing ratio (anvil).
-    QRN_ALL (FloatField): Rain mixing ratio.
-    QSN_ALL (FloatField): Snow mixing ratio.
-    QGR_ALL (FloatField): Graupel mixing ratio.
-    NL (FloatField): Number concentration of liquid cloud droplets.
-    NI (FloatField): Number concentration of ice cloud crystals.
-    RAD_QV (FloatField): Radiation water vapor mixing ratio.
-    RAD_QL (FloatField): Radiation liquid cloud mixing ratio.
-    RAD_QI (FloatField): Radiation ice cloud mixing ratio.
-    RAD_QR (FloatField): Radiation rain mixing ratio.
-    RAD_QS (FloatField): Radiation snow mixing ratio.
-    RAD_QG (FloatField): Radiation graupel mixing ratio.
-    RAD_CF (FloatField): Radiation cloud fraction.
-    RAD_RL (FloatField): Radiation liquid effective radius.
-    RAD_RI (FloatField): Radiation ice effective radius.
+    TE (3D in): Temperature.
+    PL (3D in): Pressure level.
+    CF (3D in): Cloud fraction.
+    AF (3D in): Anvil cloud fraction.
+    QV (3D in): Water vapor mixing ratio.
+    QClLS (3D in): Liquid cloud mixing ratio (large-scale).
+    QCiLS (3D in): Ice cloud mixing ratio (large-scale).
+    QClAN (3D in): Liquid cloud mixing ratio (anvil).
+    QCiAN (3D in): Ice cloud mixing ratio (anvil).
+    QRN_ALL (3D in): Rain mixing ratio.
+    QSN_ALL (3D in): Snow mixing ratio.
+    QGR_ALL (3D in): Graupel mixing ratio.
+    NL (3D in): Number concentration of liquid cloud droplets.
+    NI (3D in): Number concentration of ice cloud crystals.
+    RAD_QV (3D inout): Radiation water vapor mixing ratio.
+    RAD_QL (3D inout): Radiation liquid cloud mixing ratio.
+    RAD_QI (3D inout): Radiation ice cloud mixing ratio.
+    RAD_QR (3D inout): Radiation rain mixing ratio.
+    RAD_QS (3D inout): Radiation snow mixing ratio.
+    RAD_QG (3D inout): Radiation graupel mixing ratio.
+    RAD_CF (3D inout): Radiation cloud fraction.
+    RAD_RL (3D out): Radiation liquid effective radius.
+    RAD_RI (3D out): Radiation ice effective radius.
     FAC_RL (Float): Factor for liquid effective radius.
     MIN_RL (Float): Minimum liquid effective radius.
     MAX_RL (Float): Maximum liquid effective radius.
