@@ -220,71 +220,74 @@ def aer_activation_stencil(
         wupdraft = vvel + sqrt(tke)
 
         # Liquid Clouds
-        if (tk >= constants.MAPL_TICE - 40.0) and (plo > 10000.0) and (0.1 < wupdraft) and (wupdraft < 100.0):
+        if (tk >= (constants.MAPL_TICE - 40.0)) and (plo > 10000.0) and (0.1 < wupdraft) and (wupdraft < 100.0):
             n = 0
             while n < constants.n_modes:
-                ni = max(aero_num[0,0,0][n] * air_den, constants.ZERO_PAR)
-                rg = max(aero_dgn[0,0,0][n] * 0.5 * 1.e6, constants.ZERO_PAR)
-                sig0 = aero_sigma[0,0,0][n] 
-                bibar = max(aero_hygroscopicity[0,0,0][n], constants.ZERO_PAR)
+                ni_temp = aero_num[0,0,0][n]* air_den
+                # rg_temp = aero_dgn[0,0,0][n] * 0.5 * 1.e6
+                # sig0_temp = aero_sigma[0,0,0][n]
+                # bibar_temp = aero_hygroscopicity[0,0,0][n]
+                ni = max(ni_temp, constants.ZERO_PAR)
+                # rg = max(rg_temp, constants.ZERO_PAR)
+                # sig0 = sig0_temp
+                # bibar = max(bibar_temp, constants.ZERO_PAR)
+                n += 1 
+
+            #rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
+            #values close to those given in a-z et al. 1998 figure 5. 
+            
+            rdrp = 0.105e-06 #[m] tuned to approximate the results in figures 1-5 in a-z et al. 1998.
+            #These variables are common to all modes and need only be computed once. 
+            dv = constants.DIJH2O0 * (constants.P0DIJ / plo) * (tk / constants.T0DIJ) ** 1.94e+00 #[m^2/s] (p&k,2nd ed., p.503)
+            surten = 76.10e-3 - 0.155e-3 * (tk - 273.15e+00) #[j/m^2]
+            wpe = exp(77.34491296 - 7235.424651 / tk - 8.2 * log(tk) + tk * 5.7113e-3) #[pa]
+            dumw = sqrt(constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tk) #[s/m]
+            dvprime = dv / ((rdrp / (rdrp + constants.DELTAV)) + (dv * dumw / (rdrp * constants.ALPHAC)))
+            xka = (5.69 + 0.017 * (tk - 273.15)) * 418.4e-5
+            duma = sqrt(constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tk)
+            xkaprime = xka / ((rdrp / (rdrp + constants.DELTAT)) + (xka * duma / (rdrp * constants.ALPHAT * constants.DENH2O * constants.CPAIR)))
+            g = 1.0 / ((constants.DENH2O * constants.RGASJMOL * tk) / (wpe * dvprime * constants.WMOLMASS) + 
+                        ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tk)) * 
+                        ((constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tk) - 1.0))
+            a = (2.0 * surten * constants.WMOLMASS) / (constants.DENH2O * constants.RGASJMOL * tk)
+            alpha = (constants.GRAVITY / (constants.RGASJMOL * tk)) * ((constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tk) - constants.AMOLMASS)
+            gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP) / (constants.CPAIR * plo * constants.AMOLMASS * tk)
+            dum = sqrt(alpha * wupdraft / g)
+            zeta = 2.0 * a * dum / 3.0
+
+            #These variables must be computed for each mode
+            n = 0
+            while n < constants.n_modes:
+                xlogsigm = log(sig0[0,0,0][n])
+                smax = 0.0 #double precision
+                sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
+                eta = dum ** 3 / (constants.TWOPI * constants.DENH2O * gamma * ni[0,0,0][n])
+                f1 = 0.5 * exp(2.50 * xlogsigm ** 2)
+                f2 = 1.0 + 0.25 * xlogsigm
+                smax = smax + (f1*(zeta/eta)**1.5+ f2*(sm**2/(eta+3.0*zeta))**0.75)/sm**2
+                n +=1
+            
+            smax = 1.0e+00 / sqrt(smax)  
+            n = 0
+            u = 0.0
+            while n < constants.n_modes:
+                sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
+                xlogsigm = log(sig0[0,0,0][n])
+                ac = rg[0,0,0][n] * (sm / smax) ** 0.66666666666666667
+                u = log(ac / rg[0,0,0][n]) / (constants.SQRT2 * xlogsigm)
+                fracactn = 0.5 * (1.0 - Erf(u))
+                nact[0,0,0][n] = fracactn * ni[0,0,0][n]
+                n+=1
+
+            numbinit = 0.0
+            nactl = 0.0
+            n = 0
+            while n < constants.n_modes:
+                numbinit += aero_num[0,0,0][n] * air_den
+                nactl += nact[0,0,0][n]
                 n += 1
-            #this is direct call forgoing GetActFrac in the Fortran    
-
-        #rdrp is the radius value used in eqs.(17) & (18) and was adjusted to yield eta and zeta 
-        #values close to those given in a-z et al. 1998 figure 5. 
-        
-        rdrp = 0.105e-06 #[m] tuned to approximate the results in figures 1-5 in a-z et al. 1998.
-        #These variables are common to all modes and need only be computed once. 
-        dv = constants.DIJH2O0 * (constants.P0DIJ / plo) * (tk / constants.T0DIJ) ** 1.94e+00 #[m^2/s] (p&k,2nd ed., p.503)
-        surten = 76.10e-3 - 0.155e-3 * (tk - 273.15e+00) #[j/m^2]
-        wpe = exp(77.34491296 - 7235.424651 / tk - 8.2 * log(tk) + tk * 5.7113e-3) #[pa]
-        dumw = sqrt(constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tk) #[s/m]
-        dvprime = dv / ((rdrp / (rdrp + constants.DELTAV)) + (dv * dumw / (rdrp * constants.ALPHAC)))
-        xka = (5.69 + 0.017 * (tk - 273.15)) * 418.4e-5
-        duma = sqrt(constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tk)
-        xkaprime = xka / ((rdrp / (rdrp + constants.DELTAT)) + (xka * duma / (rdrp * constants.ALPHAT * constants.DENH2O * constants.CPAIR)))
-        g = 1.0 / ((constants.DENH2O * constants.RGASJMOL * tk) / (wpe * dvprime * constants.WMOLMASS) + 
-                    ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tk)) * 
-                    ((constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tk) - 1.0))
-        a = (2.0 * surten * constants.WMOLMASS) / (constants.DENH2O * constants.RGASJMOL * tk)
-        alpha = (constants.GRAVITY / (constants.RGASJMOL * tk)) * ((constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tk) - constants.AMOLMASS)
-        gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP) / (constants.CPAIR * plo * constants.AMOLMASS * tk)
-        dum = sqrt(alpha * wupdraft / g)
-        zeta = 2.0 * a * dum / 3.0
-
-        #These variables must be computed for each mode
-        n = 0
-        while n < constants.n_modes:
-            xlogsigm = log(sig0[0,0,0][n])
-            smax = 0.0 #double precision
-            sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
-            eta = dum ** 3 / (constants.TWOPI * constants.DENH2O * gamma * ni[0,0,0][n])
-            f1 = 0.5 * exp(2.50 * xlogsigm ** 2)
-            f2 = 1.0 + 0.25 * xlogsigm
-            smax = smax + (f1*(zeta/eta)**1.5+ f2*(sm**2/(eta+3.0*zeta))**0.75)/sm**2
-            n +=1
-        
-        smax = 1.0e+00 / sqrt(smax)  
-        n = 0
-        u = 0.0
-        while n < constants.n_modes:
-            sm = (2.0 / sqrt(bibar[0,0,0][n])) * (a / (3.0 * rg[0,0,0][n])) ** 1.5
-            xlogsigm = log(sig0[0,0,0][n])
-            ac = rg[0,0,0][n] * (sm / smax) ** 0.66666666666666667
-            u = log(ac / rg[0,0,0][n]) / (constants.SQRT2 * xlogsigm)
-            fracactn = 0.5 * (1.0 - Erf(u))
-            nact[0,0,0][n] = fracactn * ni[0,0,0][n]
-            n+=1
-
-        numbinit = 0.0
-        nactl = 0.0
-        n = 0
-        while n < constants.n_modes:
-            numbinit += aero_num[0,0,0][n] * air_den
-            nactl += nact[0,0,0][n]
-            n += 1
-        nactl = min(nactl, 0.99*numbinit)
-        
+            nactl = min(nactl, 0.99*numbinit)
+            
         # Ice Clouds
         if (tk <= constants.MAPL_TICE) and (qi > constants.FLOAT_TINY or ql > constants.FLOAT_TINY):
             numbinit = 0.0
@@ -339,6 +342,20 @@ class AerActivation:
         self._bibar = quantity_factory._numpy.zeros(
             (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
         )
+        #self._ni_temp = quantity_factory._numpy.zeros(
+        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+        #)
+        #self._rg_temp = quantity_factory._numpy.zeros(
+        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+        #)
+        #self._sig0_temp = quantity_factory._numpy.zeros(
+        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+        #)
+        #self._aero_hygroscopicity_temp = quantity_factory._numpy.zeros(
+        #    (stencil_factory.grid_indexing.domain[0], stencil_factory.grid_indexing.domain[1], stencil_factory.grid_indexing.domain[2], constants.n_modes), dtype=Float
+        #)
+
+
         
         if constants.n_modes != n_modes:
             raise NotImplementedError(
@@ -398,5 +415,11 @@ class AerActivation:
             self._ni,
             self._rg,
             self._sig0,
-            self._bibar
+            self._bibar,
+            
         )        
+
+        # self._ni_temp,
+        # self._rg_temp,
+        # self._sig0_temp,
+        # self._aero_hygroscopicity_temp
