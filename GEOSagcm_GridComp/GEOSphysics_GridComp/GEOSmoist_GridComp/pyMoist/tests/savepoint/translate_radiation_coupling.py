@@ -1,7 +1,7 @@
 from ndsl import Namelist, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateRadCouple(TranslateFortranData2Py):

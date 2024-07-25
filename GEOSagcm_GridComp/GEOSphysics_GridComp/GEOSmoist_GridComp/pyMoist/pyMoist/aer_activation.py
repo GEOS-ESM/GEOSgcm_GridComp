@@ -1,10 +1,11 @@
-import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
+
 import pyMoist.aer_activation_constants as constants
-from ndsl import QuantityFactory, StencilFactory
+from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pyMoist.numerical_recipes import Erf
 from pyMoist.types import FloatField_NModes
-from pyMoist.numerical_recipes import *
+
 
 def aer_activation_stencil(
     aero_dgn: FloatField_NModes,
@@ -35,29 +36,29 @@ def aer_activation_stencil(
     Compute the aerosol activation stencil.
 
     Parameters:
-    aero_dgn (FloatField_NModes): Aerosol geometric mean diameter.
-    aero_num (FloatField_NModes): Aerosol number concentration.
-    nacti (FloatField): Activated aerosol number concentration.
-    t (FloatField): Temperature field.
-    plo (FloatField): Pressure field.
-    qicn (FloatField): Ice cloud number concentration.
-    qils (FloatField): Ice liquid water content.
-    qlcn (FloatField): Cloud number concentration.
-    qlls (FloatField): Liquid water content.
-    nn_land (Float): Land-based aerosol activation number.
-    frland (FloatFieldIJ): Fraction of land.
-    nn_ocean (Float): Ocean-based aerosol activation number.
-    aero_hygroscopicity (FloatField_NModes): Aerosol hygroscopicity parameter.
-    nwfa (FloatField): Number of activated aerosols.
-    nactl (FloatField): Number of activated aerosols in liquid clouds.
-    vvel (FloatField): Vertical velocity field.
-    tke (FloatField): Turbulent kinetic energy field.
-    aero_sigma (FloatField_NModes): Aerosol geometric standard deviation.
-    nact (FloatField_NModes): Activated aerosol number concentration field.
-    ni (FloatField_NModes): AeroProp ice crystal number concentration field.
-    rg (FloatField_NModes): AeroProp geometric mean radius of aerosols.
-    sig0 (FloatField_NModes): AeroProp aerosol geometric standard deviation field.
-    bibar (FloatField_NModes): AeroProp Hygroscopicity parameter field.
+    aero_dgn (4D in): AeroProps aerosol geometric mean diameter.
+    aero_num (4D in): AeroProps aerosol number concentration.
+    nacti (3D out): Activated aerosol number concentration.
+    t (3D in): Temperature field.
+    plo (3D in): Pressure field.
+    qicn (3D in): Ice cloud number concentration.
+    qils (3D in): Ice liquid water content.
+    qlcn (3D in): Cloud number concentration.
+    qlls (3D in): Liquid water content.
+    nn_land (1D in): Land-based aerosol activation number.
+    frland (2D in): Fraction of land.
+    nn_ocean (1D in): Ocean-based aerosol activation number.
+    aero_hygroscopicity (4D in): Aerosol hygroscopicity parameter.
+    nwfa (3D out): Number of activated aerosols.
+    nactl (3D out): Number of activated aerosols in liquid clouds.
+    vvel (3D in): Vertical velocity field.
+    tke (3D in): Turbulent kinetic energy field.
+    aero_sigma (4D in): AeroProps aerosol geometric standard deviation.
+    nact (4D temporary in): Activated aerosol number concentration field.
+    ni (4D temporary in): AeroProp ice crystal number concentration field.
+    rg (4D temporary in): AeroProp geometric mean radius of aerosols.
+    sig0 (4D temporary in): AeroProp aerosol geometric standard deviation field.
+    bibar (4D temporary in): AeroProp Hygroscopicity parameter field.
 
     Returns:
     None
@@ -292,7 +293,7 @@ class AerActivation:
         quantity_factory: QuantityFactory,
         n_modes: Int,
         USE_AERSOL_NN: bool,
-    ):
+    ) -> None:
         """
         Initialize the AerActivation class.
 
@@ -360,6 +361,8 @@ class AerActivation:
         if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
 
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+
         self.higher_dimensional_storages = stencil_factory.from_origin_domain(
             func=aer_activation_stencil,
             origin=(0, 0, 0),
@@ -386,29 +389,29 @@ class AerActivation:
         vvel: FloatField,
         tke: FloatField,
         aero_sigma: FloatField_NModes,
-    ):
+    ) -> None:
         """
         Compute aerosol activation by calling the stencil function.
 
         Parameters:
-        aero_dgn (FloatField_NModes): AeroProps aerosol geometric mean diameter.
-        aero_num (FloatField_NModes): AeroProps aerosol number concentration.
-        nacti (FloatField): Activated aerosol number concentration.
-        t (FloatField): Temperature field.
-        plo (FloatField): Pressure field.
-        qicn (FloatField): Ice cloud number concentration.
-        qils (FloatField): Ice liquid water content.
-        qlcn (FloatField): Cloud number concentration.
-        qlls (FloatField): Liquid water content.
-        nn_land (Float): Land-based aerosol activation number.
-        frland (FloatFieldIJ): Fraction of land.
-        nn_ocean (Float): Ocean-based aerosol activation number.
-        aero_hygroscopicity (FloatField_NModes): Aerosol hygroscopicity parameter.
-        nwfa (FloatField): Number of activated aerosols.
-        nactl (FloatField): Number of activated aerosols in liquid clouds.
-        vvel (FloatField): Vertical velocity field.
-        tke (FloatField): Turbulent kinetic energy field.
-        aero_sigma (FloatField_NModes): AeroProps aerosol geometric standard deviation.
+        aero_dgn (4D in): AeroProps aerosol geometric mean diameter.
+        aero_num (4D in): AeroProps aerosol number concentration.
+        nacti (3D out): Activated aerosol number concentration.
+        t (3D in): Temperature field.
+        plo (3D in): Pressure field.
+        qicn (3D in): Ice cloud number concentration.
+        qils (3D in): Ice liquid water content.
+        qlcn (3D in): Cloud number concentration.
+        qlls (3D in): Liquid water content.
+        nn_land (1D in): Land-based aerosol activation number.
+        frland (2D in): Fraction of land.
+        nn_ocean (1D in): Ocean-based aerosol activation number.
+        aero_hygroscopicity (4D in): Aerosol hygroscopicity parameter.
+        nwfa (3D out): Number of activated aerosols.
+        nactl (3D out): Number of activated aerosols in liquid clouds.
+        vvel (3D in): Vertical velocity field.
+        tke (3D in): Turbulent kinetic energy field.
+        aero_sigma (4D in): AeroProps aerosol geometric standard deviation.
 
         Returns:
         None

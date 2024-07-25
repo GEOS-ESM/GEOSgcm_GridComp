@@ -1,6 +1,8 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import exp, log
+
 from ndsl.dsl.typing import Float
+
 
 @gtscript.function
 def GammLn(xx: Float) -> Float:
@@ -10,7 +12,7 @@ def GammLn(xx: Float) -> Float:
     Compute the natural logarithm of the gamma function for a given value xx.
 
     Parameters:
-    xx (Float): Input value for which the natural logarithm of the
+    xx (Float in): Input value for which the natural logarithm of the
                 gamma function is to be computed.
 
     Returns:
@@ -43,9 +45,9 @@ def gser(a: Float, x: Float, gln: Float) -> Float:
     Compute the series representation of the incomplete gamma function.
 
     Parameters:
-    a (Float): Parameter a for the incomplete gamma function.
-    x (Float): Parameter x for the incomplete gamma function.
-    gln (Float): Natural logarithm of the gamma function.
+    a (Float in): Parameter a for the incomplete gamma function.
+    x (Float in): Parameter x for the incomplete gamma function.
+    gln (Float in): Natural logarithm of the gamma function.
 
     Returns:
     Float: The series representation of the incomplete gamma function.
@@ -84,9 +86,9 @@ def gcf_matrix(a: Float, x: Float, gln: Float) -> Float:
     Compute the continued fraction representation of the incomplete gamma function.
 
     Parameters:
-    a (Float): Parameter a for the incomplete gamma function.
-    x (Float): Parameter x for the incomplete gamma function.
-    gln (Float): Natural logarithm of the gamma function.
+    a (Float in): Parameter a for the incomplete gamma function.
+    x (Float in): Parameter x for the incomplete gamma function.
+    gln (Float in): Natural logarithm of the gamma function.
 
     Returns:
     Float: The continued fraction representation of the incomplete gamma function.
@@ -127,8 +129,8 @@ def GammP(a: Float, x: Float) -> Float:
     Compute the incomplete gamma function for given values a and x.
 
     Parameters:
-    a (Float): Parameter a for the incomplete gamma function.
-    x (Float): Parameter x for the incomplete gamma function.
+    a (Float in): Parameter a for the incomplete gamma function.
+    x (Float in): Parameter x for the incomplete gamma function.
 
     Returns:
     Float: The incomplete gamma function value for the input parameters a and x.
@@ -153,7 +155,7 @@ def Erf(x: Float) -> Float:
     Compute the error function for a given value x.
 
     Parameters:
-    x (Float): Input value for which the error function is to be computed.
+    x (Float in): Input value for which the error function is to be computed.
 
     Returns:
     Float: The error function value for the input x.
