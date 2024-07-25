@@ -1375,7 +1375,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'DQDT  ',                                     &
-         LONG_NAME = 'tendency_of_specific_humidity_due_to_moist',    &
+         LONG_NAME = 'tendency_of_specific_humidity_due_to_moist_processes',    &
          UNITS     = 'kg kg-1 s-1',                                &
          DIMS      = MAPL_DimsHorzVert,                           &
          VLOCATION = MAPL_VLocationCenter,                        &
@@ -1384,7 +1384,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DUDT  ',                                      &
-         LONG_NAME = 'tendency_of_eastward_wind_tendency_due_to_moist',            &
+         LONG_NAME = 'tendency_of_eastward_wind_due_to_moist_processes',            &
          UNITS     = 'm s-2',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1393,7 +1393,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &                  
          SHORT_NAME = 'DVDT  ',                                      &
-         LONG_NAME = 'tendency_of_northward_wind_due_to_moist',       &
+         LONG_NAME = 'tendency_of_northward_wind_due_to_moist_processes',       &
          UNITS     = 'm s-2',                                       &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1429,7 +1429,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DQLDT ',                                      &
-         LONG_NAME = 'total_liquid_water_tendency_due_to_moist',       &
+         LONG_NAME = 'tendency_of_liquid_water_due_to_moist_processes',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
@@ -1438,7 +1438,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME= 'DQIDT ',                                      &
-         LONG_NAME = 'total_ice_water_tendency_due_to_moist',       &
+         LONG_NAME = 'tendency_of_ice_water_due_to_moist_processes',       &
          UNITS     = 'kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
