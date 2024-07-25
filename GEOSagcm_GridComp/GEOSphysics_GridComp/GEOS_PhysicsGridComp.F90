@@ -788,8 +788,8 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DQVDTSCL',                                     &
-         LONG_NAME  = 'tendency_of_water_vapor_due_to_mass_scaling',  &
-         UNITS      = 'kg m-2 s-1',                                   &
+         LONG_NAME  = 'specific_humidity_tendency_adjustment_due_to_mass_scaling',  &
+         UNITS      = 'kg kg-1 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
