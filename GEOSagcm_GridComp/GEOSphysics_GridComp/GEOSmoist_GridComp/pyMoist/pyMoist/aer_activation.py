@@ -363,7 +363,7 @@ class AerActivation:
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
-        self.higher_dimensional_storages = stencil_factory.from_origin_domain(
+        self.aer_activation = stencil_factory.from_origin_domain(
             func=aer_activation_stencil,
             origin=(0, 0, 0),
             domain=stencil_factory.grid_indexing.domain,
@@ -416,7 +416,7 @@ class AerActivation:
         Returns:
         None
         """
-        self.higher_dimensional_storages(
+        self.aer_activation(
             aero_dgn,
             aero_num,
             nacti,
