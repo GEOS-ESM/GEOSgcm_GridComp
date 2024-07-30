@@ -18,7 +18,6 @@ class TranslateRadCouple(TranslateFortranData2Py):
             do_qa=False,  # Change to do_qa=namelist.do_qa, if QSAT module procedures QSAT0 and QSAT3 are implemented
         )
         self._grid = grid
-        self.max_error = 1e-9
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
