@@ -5,6 +5,7 @@ set (alldirs
    GEOSlake_GridComp
    GEOSland_GridComp
    GEOSsaltwater_GridComp
+   GEOShetprecip_GridComp
    )
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
