@@ -715,6 +715,18 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPEMW', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPMC',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT3', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT4', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT5', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT6', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZPR',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZRZ',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZSF',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZTS',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
 
 !   From catment grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
