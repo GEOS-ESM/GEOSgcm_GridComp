@@ -962,6 +962,60 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_GWD',                                                       &
+         LONG_NAME  = 'time_spent_in_gwd_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_MST',                                                       &
+         LONG_NAME  = 'time_spent_in_moist_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_TRB',                                                       &
+         LONG_NAME  = 'time_spent_in_turbulence_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_SFC',                                                       &
+         LONG_NAME  = 'time_spent_in_surface_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_CHM',                                                       &
+         LONG_NAME  = 'time_spent_in_chemistry_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                                            &
+         SHORT_NAME = 'TIME_IN_RAD',                                                       &
+         LONG_NAME  = 'time_spent_in_radiation_physics',                 &
+         UNITS      = 's',                                                        &
+         DIMS       = MAPL_DimsHorzOnly,                                                   &
+         VLOCATION  = MAPL_VLocationNone,                                                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Ozone (ppmv) and Odd Oxygen (mol/mol)
 !   Note: GMI currently provides just O3 as Odd Oxygen
 ! ----------------------------------------------------------
@@ -2201,6 +2255,9 @@ contains
 
    real, pointer, dimension(:,:,:)     :: DTDT_BL, DQDT_BL
 
+   real, pointer, dimension(:,:)       :: PTR2D
+   real(kind=8) :: t1, t2
+
    real*8, allocatable, dimension(:,:)   :: sum_qdp_b4
    real*8, allocatable, dimension(:,:)   :: sum_qdp_af
    real,   allocatable, dimension(:,:,:) ::     qdp_b4
@@ -2544,9 +2601,12 @@ contains
 !----------------------------------------
 
     I=GWD
-
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_GWD', RC=STATUS); VERIFY_(STATUS) 
+     if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2559,7 +2619,11 @@ contains
     I=MOIST
 
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_MST', RC=STATUS); VERIFY_(STATUS) 
+     if (associated(PTR2D)) PTR2D = t2-t1                                                  
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2629,7 +2693,11 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_SFC', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1                                                  
     call MAPL_TimerOff(STATE,GCNames(I))
 
 ! Aerosol/Chemistry Stage 1
@@ -2638,7 +2706,11 @@ contains
     I=CHEM
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_CHM', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1                                                  
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2648,7 +2720,11 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=1, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_TRB', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1                                                  
     call MAPL_TimerOff(STATE,GCNames(I))
 
 !  SYNCTQ - Stage 2 SYNC of T/Q and U/V
@@ -2698,7 +2774,11 @@ contains
     I=SURF
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_SFC', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1                                                  
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2708,7 +2788,11 @@ contains
     I=TURBL
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_TRB', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1                                          
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2741,7 +2825,11 @@ contains
     I=CHEM
 
     call MAPL_TimerOn(STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, PHASE=2, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_CHM', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = PTR2D + t2-t1                                          
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2751,7 +2839,11 @@ contains
     I=RAD
 
     call MAPL_TimerOn (STATE,GCNames(I))
+     t1 = MPI_Wtime(status); VERIFY_(STATUS)
      call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, userRC=STATUS ); VERIFY_(STATUS)
+     t2 = MPI_Wtime(status); VERIFY_(STATUS)
+     call MAPL_GetPointer (EXPORT, PTR2D, 'TIME_IN_RAD', RC=STATUS); VERIFY_(STATUS)
+     if (associated(PTR2D)) PTR2D = t2-t1                                          
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
