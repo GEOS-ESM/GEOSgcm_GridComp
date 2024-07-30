@@ -1714,11 +1714,6 @@ contains
    type (ESMF_Time), save              :: REPLAY_TIME0
    logical,save                        :: first=.true.
 
-! For DYN:PHY ratio estimates
-   integer       :: START_TIME, END_TIME, DYN_TIME, PHY_TIME
-   integer       :: COUNT_MAX, COUNT_RATE
-   real(kind=8)  :: CRI
-
 !ALT: for memory leak testing
    logical :: isPresent
    real, allocatable, target :: zero(:,:,:)
@@ -2558,19 +2553,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
     call Pack_Chem_Groups( GEX(PHYS) )  ! Prepare to transport chemical families
 
-! ! Call system clock to estmiate Dyn:Phy ratio
-!   call SYSTEM_CLOCK(COUNT_MAX=COUNT_MAX)
-
-!   call SYSTEM_CLOCK(START_TIME)
     call MAPL_TimerOn (STATE,"SUPERDYNAMICS"  )
     call ESMF_GridCompRun(GCS(SDYN), importState=GIM(SDYN), exportState=GEX(SDYN), clock=CLOCK, PHASE=1, userRC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerOFF (STATE,"SUPERDYNAMICS"  )
-!   call SYSTEM_CLOCK(END_TIME)
-!   DYN_TIME = END_TIME-START_TIME
-!   if(DYN_TIME<0) then
-!      DYN_TIME = DYN_TIME + COUNT_MAX
-!   endif
 
 ! Compute Tracer Advection increments
 !-------------------------------------
@@ -2578,19 +2564,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
     call Unpack_Chem_Groups( GEX(PHYS), PLE, AREA )  ! Finish transporting chemical families
 
-!   call SYSTEM_CLOCK(START_TIME)
     call MAPL_TimerOn (STATE,"PHYSICS"  )
     call ESMF_GridCompRun(GCS(PHYS), importState=GIM(PHYS), exportState=GEX(PHYS), clock=CLOCK, PHASE=1, userRC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,"PHYSICS"  )
-!   call SYSTEM_CLOCK(END_TIME)
-!   PHY_TIME = END_TIME-START_TIME
-!   if(PHY_TIME<0) then
-!      PHY_TIME = PHY_TIME + COUNT_MAX
-!   endif
-
-!   if( MAPL_am_I_root() ) write(6,1000) REAL(DYN_TIME,kind=8)/REAL(PHY_TIME,kind=8)
-!   1000 format(1x,'DYN:PHY Ratio: ',f7.2)
 
 ! Load Physics Tendencies into Imports for RUN2 of Dynamics (ADD_INCS)
 !---------------------------------------------------------------------
