@@ -4407,8 +4407,6 @@ subroutine interpolate_z (is, ie, js, je, km, zl, hgt, a3, a2)
 
     integer :: i, j, k
 
-    !$omp parallel do default (none) shared (is, ie, js, je, km, hgt, zl, a2, a3) private (zm)
-
     do j = js, je
         do i = is, ie
             do k = 1, km

@@ -313,7 +313,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     type (ESMF_State   )            :: INTERNAL
     type (ESMF_TimeInterval)        :: TINT
     real(ESMF_KIND_R8)              :: DT_R8
-    real                            :: GF_DT
+    real                            :: GF_DT, MOIST_DT
     type(ESMF_Alarm)                :: alarm
     logical                         :: alarm_is_ringing
 
@@ -372,6 +372,37 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         CF       = CF,                &
+         LONS     = LONS,              &
+         LATS     = LATS,              &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RUNALARM = ALARM,             &
+         RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    MOIST_DT = DT_R8
+
+    ! Internals
+    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    ! Imports
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    ! Initialize tendencies
+    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
 
@@ -388,20 +419,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ! Get my internal MAPL_Generic state
     !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
-
     call MAPL_TimerOn (MAPL,"--GF")
 
     ! Get parameters from generic state.
     !-----------------------------------
-
-    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
-         CF       = CF,                &
-         LONS     = LONS,              &
-         LATS     = LATS,              &
-         INTERNAL_ESMF_STATE=INTERNAL, &
-         RC=STATUS )
-    VERIFY_(STATUS)
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -537,15 +558,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    ! Initialize tendencies
-    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
     if (STOCHASTIC_CNV) then
        ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
@@ -625,14 +637,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,REVSU, PRFIL)
     ENDIF
 
-    ! add tendencies to the moist import state
-      U  = U  +  DUDT_DC*GF_DT
-      V  = V  +  DVDT_DC*GF_DT
-      Q  = Q  + DQVDT_DC*GF_DT
-      T  = T  +  DTDT_DC*GF_DT
-      TH = T/PK
     ! update DeepCu QL/QI/CF tendencies
-      fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      fQi = ice_fraction( T+DTDT_DC*GF_DT, CNV_FRC, SRF_TYPE )
       TMP3D    = CNV_DQCDT/MASS
       DQLDT_DC = (1.0-fQi)*TMP3D
       DQIDT_DC =      fQi *TMP3D
@@ -646,55 +652,25 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
            PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
       enddo
-    ! add QI/QL/CL tendencies
-      QLCN =         QLCN + DQLDT_DC*GF_DT
-      QICN =         QICN + DQIDT_DC*GF_DT
-      CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
     ! Export
       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
       if (associated(PTR3D)) PTR3D = fQi
-    ! fix 'convective' cloud fraction
-      if (FIX_CNV_CLOUD) then
-      ! fix convective cloud
-      TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
-      TMP3D = QST3
-      WHERE (CLCN < 1.0)
-         TMP3D = ( Q - QST3 * CLCN )/(1.-CLCN)
-      END WHERE
-      minrhx = 0.001
-      WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
-         CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
-      END WHERE
-      ! If still cant make suitable env RH then destroy anvil
-      WHERE ( CLCN < 0.0 )
-         CLCN = 0.
-         DQLDT_DC = DQLDT_DC - (QLCN       )/GF_DT
-         DQIDT_DC = DQIDT_DC - (       QICN)/GF_DT
-         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/GF_DT
-          Q       =  Q       + (QLCN + QICN)
-         TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
-         DTDT_DC  = DTDT_DC  - TMP3D/GF_DT
-          T       =  T       - TMP3D
-          TH      =  T/PK
-         QLCN = 0.
-         QICN = 0.
-      END WHERE
-      endif
-
-      !--------------------------------------------------------------
-      !  For Now add DeepCu contribution to total/detraining mass flux exports
-      !--------------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = PTR3D + UMF_DC
-       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = PTR3D + MFD_DC
-
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
+
+    ! add tendencies to the moist import state
+    U  = U  +  DUDT_DC*MOIST_DT
+    V  = V  +  DVDT_DC*MOIST_DT
+    Q  = Q  + DQVDT_DC*MOIST_DT
+    T  = T  +  DTDT_DC*MOIST_DT
+    ! add QI/QL/CL tendencies
+    QLCN =         QLCN + DQLDT_DC*MOIST_DT
+    QICN =         QICN + DQIDT_DC*MOIST_DT
+    CLCN = MAX(MIN(CLCN + DQADT_DC*MOIST_DT, 1.0), 0.0)
 
 end subroutine GF_Run
 

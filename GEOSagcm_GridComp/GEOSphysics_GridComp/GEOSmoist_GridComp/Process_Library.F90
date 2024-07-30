@@ -3569,8 +3569,6 @@ subroutine update_cld( &
  real:: s0, a6
  integer:: i,j,k
 
-!$OMP parallel do default(none) shared(qmin,is,ie,js,je,km,zout,qin,qout,wz) &
-!$OMP             private(s0,a6,q2,dz,qe)
  do j=js,je
 
    do i=is,ie

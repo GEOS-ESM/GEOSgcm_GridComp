@@ -50,8 +50,6 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 
-  real, parameter :: infinite = huge(1.d0)
-
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -5258,7 +5256,8 @@ contains
     real, pointer, dimension(:,:  ) :: CAPE, INHB, MLCAPE, SBCAPE, MLCIN, MUCAPE, MUCIN, SBCIN, LFC, LNB
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
-    real, pointer, dimension(:,:,:  ) :: NWFA
+    real, pointer, dimension(:,:,:) :: NWFA
+    real, pointer, dimension(:,:,:) :: PTRDC, PTRSC
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
     real, pointer, dimension(:    ) :: PTR1D
@@ -5464,12 +5463,6 @@ contains
        call BUOYANCY2( IM, JM, LM, T, Q, QST3, DQST3, DZET, ZL0, PLmb, PLEmb(:,:,LM), SBCAPE, MLCAPE, MUCAPE, SBCIN, MLCIN, MUCIN, BYNCY, LFC, LNB )
        call BUOYANCY( T, Q, QST3, DQST3, DZET, ZL0, BYNCY, CAPE, INHB)
 
-       ! reset total mass fluxes to be accumuated over deep and shalow convection
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = 0.0
-       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       PTR3D = 0.0
-
        ! initialize diagnosed convective fraction
        CNV_FRC = 0.0
        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
@@ -5542,6 +5535,23 @@ contains
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        endif
+
+       ! Mass fluxes
+       ! accumuated over deep and shalow convection
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTRDC,   'UMF_DC' ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTRSC,   'UMF_SC' ,               RC=STATUS); VERIFY_(STATUS)
+                              PTR3D = 0.0
+       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
+       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+
+       call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTRDC,   'MFD_DC' ,               RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PTRSC,   'MFD_SC' ,               RC=STATUS); VERIFY_(STATUS)
+                              PTR3D = 0.0
+       if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
+       if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
