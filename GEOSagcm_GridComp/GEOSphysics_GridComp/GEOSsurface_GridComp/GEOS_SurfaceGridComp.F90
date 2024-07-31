@@ -1585,15 +1585,6 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
-    UNITS              = 'kg m-2'                    ,&
-    SHORT_NAME         = 'CDCR2'                     ,&
-    DIMS               = MAPL_DimsHorzOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'river_discharge_at_ocean_points',&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'DISCHARGE'                 ,&
@@ -5615,7 +5606,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:)   :: DZRZ  => NULL()
     real, pointer, dimension(:,:)   :: DZSF  => NULL()
     real, pointer, dimension(:,:)   :: DZTS  => NULL()
-    real, pointer, dimension(:,:)   :: CDCR2  => NULL()
     real, pointer, dimension(:,:)   :: POROS  => NULL()
     real, pointer, dimension(:,:)   :: WPEMW  => NULL()
     real, pointer, dimension(:,:)   :: WPMC  => NULL()
@@ -5920,7 +5910,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: DZRZTILE   => NULL()
     real, pointer, dimension(:) :: DZSFTILE   => NULL()
     real, pointer, dimension(:) :: DZTSTILE   => NULL()
-    real, pointer, dimension(:) :: CDCR2TILE   => NULL()
     real, pointer, dimension(:) :: POROSTILE   => NULL()
     real, pointer, dimension(:) :: WPEMWTILE   => NULL()
     real, pointer, dimension(:) :: WPMCTILE   => NULL()
@@ -6802,7 +6791,6 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , DZRZ,   'DZRZ',   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DZSF,   'DZSF',   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DZTS,   'DZTS',   RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , CDCR2,  'CDCR2',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , POROS,  'POROS',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WPEMW,  'WPEMW',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WPMC,   'WPMC',   RC=STATUS); VERIFY_(STATUS)
@@ -7425,7 +7413,6 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(DZRZ       ,DZRZTILE       ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DZSF       ,DZSFTILE       ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DZTS       ,DZTSTILE       ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(CDCR2      ,CDCR2TILE      ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(POROS      ,POROSTILE      ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(WPEMW      ,WPEMWTILE      ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(WPMC       ,WPMCTILE       ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8331,7 +8318,6 @@ module GEOS_SurfaceGridCompMod
     if(associated(DZRZ  ))call MAPL_LocStreamTransform(LOCSTREAM,DZRZ  ,DZRZTILE , RC=STATUS); VERIFY_(STATUS)
     if(associated(DZSF  ))call MAPL_LocStreamTransform(LOCSTREAM,DZSF  ,DZSFTILE , RC=STATUS); VERIFY_(STATUS)
     if(associated(DZTS  ))call MAPL_LocStreamTransform(LOCSTREAM,DZTS  ,DZTSTILE , RC=STATUS); VERIFY_(STATUS)
-    if(associated(CDCR2 ))call MAPL_LocStreamTransform(LOCSTREAM,CDCR2 ,CDCR2TILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(POROS ))call MAPL_LocStreamTransform(LOCSTREAM,POROS ,POROSTILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(WPEMW ))call MAPL_LocStreamTransform(LOCSTREAM,WPEMW ,WPEMWTILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(WPMC  ))call MAPL_LocStreamTransform(LOCSTREAM,WPMC  ,WPMCTILE , RC=STATUS); VERIFY_(STATUS)
@@ -8991,7 +8977,6 @@ module GEOS_SurfaceGridCompMod
     if(associated(DZRZTILE  )) deallocate(DZRZTILE  )
     if(associated(DZSFTILE  )) deallocate(DZSFTILE  )
     if(associated(DZTSTILE  )) deallocate(DZTSTILE  )
-    if(associated(CDCR2TILE )) deallocate(CDCR2TILE )
     if(associated(POROSTILE )) deallocate(POROSTILE )
     if(associated(WPEMWTILE )) deallocate(WPEMWTILE )
     if(associated(WPMCTILE  )) deallocate(WPMCTILE  )
@@ -10001,7 +9986,6 @@ module GEOS_SurfaceGridCompMod
       if(associated(DZRZTILE)) call FILLOUT_TILE(GEX(type), 'DZRZ' , DZRZTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(DZSFTILE)) call FILLOUT_TILE(GEX(type), 'DZSF' , DZSFTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(DZTSTILE)) call FILLOUT_TILE(GEX(type), 'DZTS' , DZTSTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
-      if(associated(CDCR2TILE)) call FILLOUT_TILE(GEX(type), 'CDCR2' , CDCR2TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(POROSTILE)) call FILLOUT_TILE(GEX(type), 'POROS' , POROSTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(WPEMWTILE)) call FILLOUT_TILE(GEX(type), 'WPEMW' , WPEMWTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(WPMCTILE)) call FILLOUT_TILE(GEX(type), 'WPMC' , WPMCTILE , XFORM, RC=STATUS);VERIFY_(STATUS)
