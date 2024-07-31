@@ -4032,6 +4032,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
         real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
+        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
         real, pointer, dimension(:)   :: DZGT1,DZGT2,DZGT3,DZGT4,DZGT5,DZGT6 
         real, pointer, dimension(:)   :: DZSF,DZRZ,DZPR,DZTS 
         real, pointer, dimension(:)   :: WPWMW 
