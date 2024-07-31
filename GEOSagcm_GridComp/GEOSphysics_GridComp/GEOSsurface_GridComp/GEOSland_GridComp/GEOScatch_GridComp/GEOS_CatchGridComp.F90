@@ -4582,6 +4582,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,DZPR, 'DZPR' ,  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DZRZ, 'DZRZ' ,  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DZSF, 'DZSF' ,  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZTS, 'DZTS' ,  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,WPEMW,'WPEMW',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,WPMC ,'WPMC' ,  RC=STATUS); VERIFY_(STATUS)
 
@@ -5871,6 +5872,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(DZPR)) DZPR = CDCR2/(1-WPWET)/POROS/1000. 
         if(associated(DZRZ)) DZRZ = VGWMAX/POROS/1000. 
         if(associated(DZSF)) DZSF = DZSFMM/1000. 
+        if(associated(DZTS)) DZTS = DZTSURF 
 
         if(associated(WPEMW)) WPEMW = WPWET*POROS*DZPR*MAPL_RHOWTR 
         if(associated(WPMC))  WPMC  = WPWET*POROS 
