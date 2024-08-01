@@ -2883,7 +2883,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'wetness_at_wilting_point'  ,&
+       LONG_NAME          = 'soil_wilting_point_in_degree_of_saturation_units'  ,&
        UNITS              = '1'                         ,&
        SHORT_NAME         = 'WPWET'                     ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
@@ -2892,7 +2892,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'soil_wilting_point_in_equivalent_mass_of_profile_water'  ,&
+       LONG_NAME          = 'soil_wilting_point_in_equivalent_mass_of_total_profile_water'  ,&
        UNITS              = 'kg m-2'                         ,&
        SHORT_NAME         = 'WPEMW'                     ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
@@ -2910,7 +2910,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
-       LONG_NAME          = 'max_soil_water_content_above_wilting_point'  ,&
+       LONG_NAME          = 'maximum_soil_water_content_above_wilting_point'  ,&
        UNITS              = 'kg m-2'                    ,&
        SHORT_NAME         = 'CDCR2'                     ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
