@@ -2234,7 +2234,8 @@ contains
 
 
 ! SYNCTQ & UV pointers
-   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:,:)     ::   UFORMST,  VFORMST, TFORMST
+   real, pointer, dimension(:,:,:)     ::  UAFMOIST, VAFMOIST, TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
@@ -2609,6 +2610,31 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+!  SYNCTQ - SYNC of T/Q and U/V
+!--------------------------------------
+    call MAPL_GetPointer ( GIM(MOIST), UFORMST,   'U', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer ( GIM(MOIST), VFORMST,   'V', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer ( GIM(MOIST), TFORMST,   'T', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer ( GEX(GWD  ), UIG,    'DUDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer ( GEX(GWD  ), VIG,    'DVDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer ( GEX(GWD  ), TIG,    'DTDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    UFORMST = UFORMST + UIG*DT
+    VFORMST = VFORMST + VIG*DT
+    TFORMST = TFORMST + TIG*DT
+   ! Range check after GWD
+    DO L=1,LM
+      DO J=1,JM
+        DO I=1,IM
+           if (ABS(UFORMST(I,J,L)) > 280.) write (*,*) "UFORMST: ",UFORMST(I,J,L), " Level:",L
+           if (ABS(VFORMST(I,J,L)) > 280.) write (*,*) "VFORMST: ",VFORMST(I,J,L), " Level:",L
+           if ( (130. > TFORMST(I,J,L)) .OR. (TFORMST(I,J,L) > 333.) ) then
+                                           write (*,*) "TFORMST: ",TFORMST(I,J,L), " Level:",L
+           endif
+        END DO
+      END DO
+    END DO
+
 
 ! Moist Processes
 !----------------
