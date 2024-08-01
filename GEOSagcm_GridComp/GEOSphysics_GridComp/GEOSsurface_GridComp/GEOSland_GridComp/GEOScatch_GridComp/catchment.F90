@@ -130,7 +130,7 @@
 
       SUBROUTINE CATCHMENT (                                                   &
                      NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &  ! LONS, LATS are in [radians] !!!
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp !!!
+                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &  ! cat_id is set to no-data in GEOS_CatchGridcomp; DZSF in [mm] !!!
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
