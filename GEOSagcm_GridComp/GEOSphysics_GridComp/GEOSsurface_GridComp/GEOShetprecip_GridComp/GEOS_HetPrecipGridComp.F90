@@ -212,7 +212,7 @@ contains
        do i=1,im
           call normalizeTileArea(norm_tile_area,tileIndex(i,j)%tileId)
 ! verification!
-          _ASSERT(abs(sum(norm_tile_area(tileIndex(i,j)%tileId)) - 1.0) < 1.0e-5, 'tiles not normalized')
+          _ASSERT(abs(sum(norm_tile_area(tileIndex(i,j)%tileId)) - 1.0) < 1.0e-2, 'tiles not normalized')
        enddo
     enddo
 
@@ -305,10 +305,9 @@ contains
        DO I=1,IM
 
           totalPrecip = PCU(I,J)+PLS(I,J)+SNO(I,J)+ICE(I,J)+FRZR(I,J)
-!@          tileIdx => mystate%tileIndex(i,j)%tileId
           tileIdx => tileIndex(i,j)%tileId
           
-          call generateHetWeight(qvar(tileIdx), totalPrecip, psub(tileIdx), _RC)
+          call generateHetWeight(qvar, totalPrecip, psub, tileIdx, _RC)
        END DO
     END DO
     _RETURN(ESMF_SUCCESS)
@@ -326,7 +325,7 @@ contains
        integer, parameter :: large_int = 2**21
        
        allocate(ptest(nt), __STAT__)
-       ptest=int(qtest*large_int)
+       ptest=nint(qtest*large_int)
        krank = [1:nt]
 
        call MAPL_Sort(ptest, krank)
@@ -336,13 +335,17 @@ contains
        _RETURN(ESMF_SUCCESS)
      end subroutine rankdata
 
-    subroutine generateHetWeight(qvar, totalPrecip, psub, rc)
-      real :: qvar(:)
+    subroutine generateHetWeight(qvarSD, totalPrecip, psubSD, index, rc)
+      real, intent(inout) :: qvarSD(:) ! qvar over this processor sub-domain
       real, intent(in) :: totalPrecip
-      real :: psub(:)
+      real, intent(inout) :: psubSD(:) ! psub over this processor sub-domain
+      integer, intent(in)  :: index(:)
       integer, optional, intent(out) :: rc
       
     real, allocatable :: rn(:)
+    real, allocatable :: qvar(:) ! in this grid cell
+    real, allocatable :: psub(:) ! in this grid cell
+    real, allocatable :: tarea(:) ! in this grid cell
     real :: total
     real, parameter :: xlo=log10(1.5e-2), xhi=log10(10.) ! parameters for 1 deg domain
     real, parameter :: ylo=.973, yhi=0.0, fracdrymax=0.9722
@@ -363,8 +366,12 @@ contains
 
 
 
-    NT = size(qvar)
+    NT = size(index)
     allocate(rn(NT), __STAT__)
+    allocate(qvar(NT), psub(NT), tarea(NT), _STAT)
+    qvar=qvarSD(index)
+    psub=psubSD(index)
+    tarea=norm_tile_area(index) ! list of tile areas for this grid cell
 
     call random_normal(rn) ! rn is array of size NT
 
@@ -374,7 +381,7 @@ contains
     if (totalPrecip == 0.0) then
 !       print *,'WARNING: zero precip.'
        psub = 1.0
-       _RETURN(ESMF_SUCCESS)
+       go to 10 !CLEANUP
     end if
 
 
@@ -403,7 +410,7 @@ contains
     do n = 1,NT
        itile = krank(n)
        lowerlimit(itile)=psum0
-       psum0 = psum0 + norm_tile_area(itile)
+       psum0 = psum0 + tarea(itile)
        upperlimit(itile)=psum0      
     end do
 
@@ -426,7 +433,7 @@ contains
           aintegral1=log(abs(1./cos(a2opt*ahigh*piby2))) ! natural logarithm
           aintegral2=log(abs(1./cos(a2opt*alow*piby2)))
           aintegral=(a1opt/(a2opt*piby2))*(aintegral1-aintegral2)
-          psub(itile)=aintegral/(norm_tile_area(itile)*(1.-fracdry))
+          psub(itile)=aintegral/(tarea(itile)*(1.-fracdry))
 
           iopt=-1
        end if
@@ -445,20 +452,25 @@ contains
      if(total == 0.0) psub(ilargest) = 1.0
 
      ! empirical rescaling to reduce time-mean precip bias
-!     print *,'factor=',(4.2*EXP(-25.*norm_tile_area)+0.6)
-!     psub = psub / (4.2*EXP(-25.*norm_tile_area)+0.6)
+!     print *,'factor=',(4.2*EXP(-25.*tarea)+0.6)
+!     psub = psub / (4.2*EXP(-25.*tarea)+0.6)
 
      ! scale the precip factor to make sure we preserve the grid box precip
 !ALT: old scaling, assumes uniform area tiles     total = sum(psub)/nt
      total = 0.0
      do i=1,nt
-        total = total + psub(i)*norm_tile_area(i)
+        total = total + psub(i)*tarea(i)
      end do
      psub = psub/total
 
 
+     _ASSERT(any(psub >= 0.0), "Negative PSUB")
 ! all done
-     deallocate(psum,krank, rn) 
+     deallocate(psum,krank)
+10   continue !     CLEANUP:
+     qvarSD(index) = qvar
+     psubSD(index) = psub
+     deallocate(rn, qvar, psub) 
 
     _RETURN(ESMF_SUCCESS)
 

@@ -1960,8 +1960,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'PRTILE',                    &
     LONG_NAME          = 'precipitation_on_tiles',    &
     UNITS              = 'kg m-2 s-1',                &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -1969,8 +1969,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'RITILE',                    &
     LONG_NAME          = 'Richardson_number_on_tiles',&
     UNITS              = '1',                         &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -1978,8 +1978,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'WGTTILE',                   &
     LONG_NAME          = 'precipitation_weight_on_tiles',    &
     UNITS              = '1',                         &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -1987,8 +1987,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSURFTILE',                    &
     LONG_NAME          = 'surface_temperature_on_tiles',  &
     UNITS              = 'K',                         &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -1996,8 +1996,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'SHLANDTILE',                &
     LONG_NAME          = 'sensible_heat_flux_on_tiles', &
     UNITS              = 'W m-2',                     &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -2005,8 +2005,8 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'LHLANDTILE',                &
     LONG_NAME          = 'latent_heat_flux_on_tiles', &
     UNITS              = 'W m-2',                     &
-    DIMS               = MAPL_DimsHorzVert,           &
-    VLOCATION          = MAPL_VLocationCenter,        &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
@@ -5810,11 +5810,11 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: SPLANDTILE       => NULL()
     real, pointer, dimension(:) :: SPWATRTILE       => NULL()
     real, pointer, dimension(:) :: SPSNOWTILE       => NULL()
-    real, pointer, dimension(:,:,:) :: PRTILE       => NULL()
-    real, pointer, dimension(:,:,:) :: WGTTILE      => NULL()
-    real, pointer, dimension(:,:,:) :: TPSURFTILEX  => NULL()
-    real, pointer, dimension(:,:,:) :: SHLANDTILEX  => NULL()
-    real, pointer, dimension(:,:,:) :: LHLANDTILEX  => NULL()
+    real, pointer, dimension(:) :: PRTILE       => NULL()
+    real, pointer, dimension(:) :: WGTTILE      => NULL()
+    real, pointer, dimension(:) :: TPSURFTILEX  => NULL()
+    real, pointer, dimension(:) :: SHLANDTILEX  => NULL()
+    real, pointer, dimension(:) :: LHLANDTILEX  => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU002TILE     => NULL()
     real, pointer, dimension(:,:) :: RDU003TILE     => NULL()
@@ -7060,10 +7060,10 @@ module GEOS_SurfaceGridCompMod
        snofltile = snofltile * het_precip_fac
        icefltile = icefltile * het_precip_fac
        frzrfltile = frzrfltile * het_precip_fac
-       if (associated(wgttile).and.IM.eq.1) wgttile(1,1,1:NT) = het_precip_fac
+       if (associated(wgttile)) wgttile = het_precip_fac
     end if
 
-    if (associated(prtile).and.IM.eq.1) prtile(1,1,1:NT) = pcutile+plstile+snofltile+icefltile+frzrfltile
+    if (associated(prtile)) prtile = pcutile+plstile+snofltile+icefltile+frzrfltile
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
