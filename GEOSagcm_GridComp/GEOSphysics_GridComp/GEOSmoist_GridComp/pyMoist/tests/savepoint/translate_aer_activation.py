@@ -1,4 +1,5 @@
-from ndsl import Namelist, StencilFactory
+from ndsl import Namelist, Quantity, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.aer_activation import AerActivation
@@ -11,6 +12,10 @@ class TranslateAerActivation(TranslateFortranData2Py):
         self.quantity_factory = grid.quantity_factory
         self._grid = grid
         self.max_error = 1e-9
+
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
+            self.quantity_factory
+        )
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -56,6 +61,30 @@ class TranslateAerActivation(TranslateFortranData2Py):
             "NWFA": self.grid.compute_dict(),
         }
 
+    def make_ijk_field(self, data) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM],
+            "n/a",
+        )
+        qty.view[:, :, :] = data[:, :, :]
+        return qty
+
+    def make_ij_field(self, data) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM],
+            "n/a",
+        )
+        qty.view[:, :] = data[:, :]
+        return qty
+
+    def make_nmodes_ijk_field(self, data) -> Quantity:
+        qty = self.nmodes_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            "n/a",
+        )
+        qty.view[:, :, :, :] = data[:, :, :, :]
+        return qty
+
     def compute(self, inputs):
         aer_activation = AerActivation(
             self.stencil_factory,
@@ -65,47 +94,53 @@ class TranslateAerActivation(TranslateFortranData2Py):
         )
 
         # Outputs
-        nactl = inputs["NACTL"].astype(Float)
-        nacti = inputs["NACTI"].astype(Float)
-        nwfa = inputs["NWFA"].astype(Float)
+        nactl = self.make_ijk_field(inputs["NACTL"])
+        nacti = self.make_ijk_field(inputs["NACTI"])
+        nwfa = self.make_ijk_field(inputs["NWFA"])
 
         # Inputs
-        aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
-        aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
-        tmp3d = inputs["TMP3D"].astype(Float)
-        nactl = inputs["NACTL"].astype(Float)
-        ple = inputs["PLE"].astype(Float)
-        aero_f_soot = inputs["AERO_F_SOOT"].astype(Float)
-        t = inputs["T"].astype(Float)
-        aero_hygroscopicity = inputs["AERO_HYGROSCOPICITY"].astype(Float)
-        zle0 = inputs["ZLE0"].astype(Float)
-        qlls = inputs["QLLS"].astype(Float)
-        aero_num = inputs["AERO_NUM"].astype(Float)
-        zl0 = inputs["ZL0"].astype(Float)
-        plmb = inputs["PLmb"].astype(Float)
-        qils = inputs["QILS"].astype(Float)
-        aero_dgn = inputs["AERO_DGN"].astype(Float)
-        tke = inputs["TKE"].astype(Float)
-        nacti = inputs["NACTI"].astype(Float)
-        nwfa = inputs["NWFA"].astype(Float)
-        qlcn = inputs["QLCN"].astype(Float)
-        aero_sigma = inputs["AERO_SIGMA"].astype(Float)
-        aero_density = inputs["AERO_DENSITY"].astype(Float)
-        qicn = inputs["QICN"].astype(Float)
+        aero_hygroscopicity = self.make_nmodes_ijk_field(inputs["AERO_HYGROSCOPICITY"])
+        aero_sigma = self.make_nmodes_ijk_field(inputs["AERO_SIGMA"])
+        aero_dgn = self.make_nmodes_ijk_field(inputs["AERO_DGN"])
+        aero_num = self.make_nmodes_ijk_field(inputs["AERO_NUM"])
+
+        frland = self.make_ij_field(inputs["FRLAND"])
+
+        tmp3d = self.make_ijk_field(inputs["TMP3D"])
+        t = self.make_ijk_field(inputs["T"])
+        qlls = self.make_ijk_field(inputs["QLLS"])
+        plmb = self.make_ijk_field(inputs["PLmb"])
+        qils = self.make_ijk_field(inputs["QILS"])
+        # TKE is a 73 level Field, but level 0 is never indexed
+        tke = self.make_ijk_field(inputs["TKE"][:, :, 1:])
+        nacti = self.make_ijk_field(inputs["NACTI"])
+        qlcn = self.make_ijk_field(inputs["QLCN"])
+        qicn = self.make_ijk_field(inputs["QICN"])
+
         n_modes = inputs["n_modes"]
-        sh = inputs["SH"].astype(Float)
-        evap = inputs["EVAP"].astype(Float)
-        kpbl = inputs["KPBL"].astype(Float)
-        frland = inputs["FRLAND"].astype(Float)
         ccn_lnd = Float(inputs["CCN_LND"])
         ccn_ocn = Float(inputs["CCN_OCN"])
+
+        # Unused - but present in the original Fortran
+        # aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
+        # aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
+        # aero_f_soot = inputs["AERO_F_SOOT"].astype(Float)
+        # aero_density = inputs["AERO_DENSITY"].astype(Float)
+        # ple = inputs["PLE"].astype(Float)
+        # zle0 = inputs["ZLE0"].astype(Float)
+        # zl0 = inputs["ZL0"].astype(Float)
+        # sh = inputs["SH"].astype(Float)
+        # evap = inputs["EVAP"].astype(Float)
+        # kpbl = inputs["KPBL"].astype(Float)
+
+        plmb.view[:, :, :] = plmb.view[:, :, :] * 100.0
 
         aer_activation(
             aero_dgn=aero_dgn,
             aero_num=aero_num,
             nacti=nacti,
             t=t,
-            plo=plmb * 100.0,
+            plo=plmb,
             qicn=qicn,
             qils=qils,
             qlcn=qlcn,
@@ -122,7 +157,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         )
 
         return {
-            "NACTL": nactl,
-            "NACTI": nacti,
-            "NWFA": nwfa,
+            "NACTL": nactl.view[:, :, :],
+            "NACTI": nacti.view[:, :, :],
+            "NWFA": nwfa.view[:, :, :],
         }
