@@ -848,7 +848,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_porosity'             ,&
-    UNITS              = '1'                         ,&
+    UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'POROS'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
