@@ -1,7 +1,10 @@
+import copy
+
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
 
 import pyMoist.aer_activation_constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.numerical_recipes import Erf
 from pyMoist.types import FloatField_NModes
@@ -307,51 +310,7 @@ class AerActivation:
         NotImplementedError: If the number of modes is not equal to the expected number.
         NotImplementedError: If the neural network for aerosol is not implemented.
         """
-        self._nact = quantity_factory._numpy.zeros(
-            (
-                stencil_factory.grid_indexing.domain[0],
-                stencil_factory.grid_indexing.domain[1],
-                stencil_factory.grid_indexing.domain[2],
-                constants.n_modes,
-            ),
-            dtype=Float,
-        )
-        self._ni = quantity_factory._numpy.zeros(
-            (
-                stencil_factory.grid_indexing.domain[0],
-                stencil_factory.grid_indexing.domain[1],
-                stencil_factory.grid_indexing.domain[2],
-                constants.n_modes,
-            ),
-            dtype=Float,
-        )
-        self._rg = quantity_factory._numpy.zeros(
-            (
-                stencil_factory.grid_indexing.domain[0],
-                stencil_factory.grid_indexing.domain[1],
-                stencil_factory.grid_indexing.domain[2],
-                constants.n_modes,
-            ),
-            dtype=Float,
-        )
-        self._sig0 = quantity_factory._numpy.zeros(
-            (
-                stencil_factory.grid_indexing.domain[0],
-                stencil_factory.grid_indexing.domain[1],
-                stencil_factory.grid_indexing.domain[2],
-                constants.n_modes,
-            ),
-            dtype=Float,
-        )
-        self._bibar = quantity_factory._numpy.zeros(
-            (
-                stencil_factory.grid_indexing.domain[0],
-                stencil_factory.grid_indexing.domain[1],
-                stencil_factory.grid_indexing.domain[2],
-                constants.n_modes,
-            ),
-            dtype=Float,
-        )
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         if constants.n_modes != n_modes:
             raise NotImplementedError(
@@ -361,13 +320,51 @@ class AerActivation:
         if not USE_AERSOL_NN:
             raise NotImplementedError("Non NN Aerosol not implemented")
 
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
-
-        self.aer_activation = stencil_factory.from_origin_domain(
-            func=aer_activation_stencil,
-            origin=(0, 0, 0),
-            domain=stencil_factory.grid_indexing.domain,
+        # Temporary buffers
+        nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
+            quantity_factory
         )
+        self._nact = nmodes_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            units="n/a",
+            dtype=Float,
+        )
+        self._ni = nmodes_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            units="n/a",
+            dtype=Float,
+        )
+        self._rg = nmodes_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            units="n/a",
+            dtype=Float,
+        )
+        self._sig0 = nmodes_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            units="n/a",
+            dtype=Float,
+        )
+        self._bibar = nmodes_quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            units="n/a",
+            dtype=Float,
+        )
+
+        # Stencil
+        self.aer_activation = stencil_factory.from_dims_halo(
+            func=aer_activation_stencil,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    @staticmethod
+    def make_nmodes_quantity_factory(ijk_quantity_factory: QuantityFactory):
+        nmodes_quantity_factory = copy.deepcopy(ijk_quantity_factory)
+        nmodes_quantity_factory.set_extra_dim_lengths(
+            **{
+                "n_modes": constants.n_modes,
+            }
+        )
+        return nmodes_quantity_factory
 
     def __call__(
         self,
