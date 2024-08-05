@@ -66,7 +66,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             [X_DIM, Y_DIM, Z_DIM],
             "n/a",
         )
-        qty.view[:, :, :] = data[:, :, :]
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
 
     def make_ij_field(self, data) -> Quantity:
@@ -74,7 +74,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             [X_DIM, Y_DIM],
             "n/a",
         )
-        qty.view[:, :] = data[:, :]
+        qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
 
     def make_nmodes_ijk_field(self, data) -> Quantity:
@@ -82,7 +82,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             [X_DIM, Y_DIM, Z_DIM, "n_modes"],
             "n/a",
         )
-        qty.view[:, :, :, :] = data[:, :, :, :]
+        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
 
     def compute(self, inputs):
