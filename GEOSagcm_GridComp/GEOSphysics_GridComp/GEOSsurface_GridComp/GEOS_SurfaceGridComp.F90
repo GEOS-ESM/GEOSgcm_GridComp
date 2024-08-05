@@ -2888,7 +2888,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'soil_porosity'             ,&
-       UNITS              = '1'                         ,&
+       UNITS              = 'm3 m-3'                    ,&
        SHORT_NAME         = 'POROS'                     ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
