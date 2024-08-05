@@ -40,6 +40,8 @@ module GEOS_CatchGridCompMod
 
   USE CATCH_CONSTANTS, ONLY :                 &
        N_SNOW         => CATCH_N_SNOW,        &
+       DZGT           => CATCH_DZGT,          &
+       DZTSURF        => CATCH_DZTSURF,       &
        RHOFS          => CATCH_SNWALB_RHOFS,  &
        SNWALB_VISMAX  => CATCH_SNWALB_VISMAX, &
        SNWALB_NIRMAX  => CATCH_SNWALB_NIRMAX, &
@@ -108,7 +110,7 @@ real,   parameter :: EMSSNO        =    0.99999
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
 
-! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
+! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul2013
 
 ! pchakrab: save the logical variable OFFLINE
 ! Internal state and its wrapper
@@ -860,7 +862,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
+    LONG_NAME          = 'maximum_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -904,7 +906,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'wetness_at_wilting_point'  ,&
+    LONG_NAME          = 'soil_wilting_point_in_degree_of_saturation_units'  ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WPWET'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -2727,6 +2729,115 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC                  ,& 
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL1',&
+       UNITS              = 'm'                         ,&     
+       SHORT_NAME         = 'DZGT1'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL2',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT2'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL3',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT3'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL4',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT4'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL5',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT5'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL6',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT6'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_PRMC_and_GWETPROF',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZPR'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_RZMC_and_GWETROOT',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZRZ'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_SFMC_and_GWETTOP',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZSF'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSATLAND_TUNSTLAND_and_TWLTLAND',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZTS'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_equivalent_mass_of_total_profile_water',&
+       UNITS              = 'kg m-2'                    ,&
+       SHORT_NAME         = 'WPEMW'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_volumetric_units',&
+       UNITS              = 'm3 m-3'                    ,&
+       SHORT_NAME         = 'WPMC'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
@@ -3951,24 +4062,39 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ICESOI
         real, dimension(:),   pointer :: SHSNOW
         real, dimension(:),   pointer :: AVETSNOW
-        real, pointer, dimension(:)   :: RMELTDU001
-        real, pointer, dimension(:)   :: RMELTDU002
-        real, pointer, dimension(:)   :: RMELTDU003
-        real, pointer, dimension(:)   :: RMELTDU004
-        real, pointer, dimension(:)   :: RMELTDU005
-        real, pointer, dimension(:)   :: RMELTBC001
-        real, pointer, dimension(:)   :: RMELTBC002
-        real, pointer, dimension(:)   :: RMELTOC001
-        real, pointer, dimension(:)   :: RMELTOC002
-        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
-        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
+        real, dimension(:),   pointer :: RMELTDU001
+        real, dimension(:),   pointer :: RMELTDU002
+        real, dimension(:),   pointer :: RMELTDU003
+        real, dimension(:),   pointer :: RMELTDU004
+        real, dimension(:),   pointer :: RMELTDU005
+        real, dimension(:),   pointer :: RMELTBC001
+        real, dimension(:),   pointer :: RMELTBC002
+        real, dimension(:),   pointer :: RMELTOC001
+        real, dimension(:),   pointer :: RMELTOC002
+
+        real, dimension(:),   pointer :: PEATCLSM_WATERLEVEL
+        real, dimension(:),   pointer :: PEATCLSM_FSWCHANGE
+
+        real, dimension(:),   pointer :: DZGT1
+        real, dimension(:),   pointer :: DZGT2
+        real, dimension(:),   pointer :: DZGT3
+        real, dimension(:),   pointer :: DZGT4
+        real, dimension(:),   pointer :: DZGT5
+        real, dimension(:),   pointer :: DZGT6
+        real, dimension(:),   pointer :: DZPR
+        real, dimension(:),   pointer :: DZRZ
+        real, dimension(:),   pointer :: DZSF
+        real, dimension(:),   pointer :: DZTS 
+        real, dimension(:),   pointer :: WPEMW
+        real, dimension(:),   pointer :: WPMC
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
         ! --------------------------------------------------------------------------
 
         INTEGER,pointer,dimension(:) :: CAT_ID
-        real,pointer,dimension(:) :: dzsf
+
+        real,pointer,dimension(:) :: DZSF_in_mm
         real,pointer,dimension(:) :: swnetfree
         real,pointer,dimension(:) :: swnetsnow
         real,pointer,dimension(:) :: qa1
@@ -4500,6 +4626,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL',RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE, 'PEATCLSM_FSWCHANGE', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT1,  'DZGT1'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT2,  'DZGT2'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT3,  'DZGT3'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT4,  'DZGT4'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT5,  'DZGT5'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT6,  'DZGT6'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZPR,   'DZPR'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZRZ,   'DZRZ'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZSF,   'DZSF'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZTS,   'DZTS'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WPEMW,  'WPEMW'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WPMC ,  'WPMC'   ,             RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -4512,7 +4650,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(HTSNNN (3,NTILES))
         allocate(SNDZN  (3,NTILES))
         allocate(TILEZERO (NTILES))
-        allocate(DZSF     (NTILES))
+        allocate(DZSF_in_mm(NTILES))
         allocate(SWNETFREE(NTILES))
         allocate(SWNETSNOW(NTILES))
         allocate(VEG      (NTILES))  
@@ -4610,7 +4748,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! surface layer depth for soil moisture
         ! --------------------------------------------------------------------------
         
-        DZSF(    :) = SURFLAY
+        DZSF_in_mm(:) = SURFLAY       ! same as DZSF but in units of [mm]
 
         ! --------------------------------------------------------------------------
         ! build arrays from internal state
@@ -5121,7 +5259,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF_in_mm, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF1,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5411,7 +5549,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     SNDZN_INCR (3,:) = SNDZN3_INCR
 
                     call apply_catch_incr(NTILES,                                                        &
-                         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                            &
+                         DZSF_in_mm, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                      &
                          ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
                          CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
@@ -5445,7 +5583,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
+             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF_in_mm,&
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5764,6 +5902,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+
+        if(associated(DZGT1 )) DZGT1  = DZGT(1)                               ! [m]
+        if(associated(DZGT2 )) DZGT2  = DZGT(2)                               ! [m]
+        if(associated(DZGT3 )) DZGT3  = DZGT(3)                               ! [m]
+        if(associated(DZGT4 )) DZGT4  = DZGT(4)                               ! [m]
+        if(associated(DZGT5 )) DZGT5  = DZGT(5)                               ! [m]
+        if(associated(DZGT6 )) DZGT6  = DZGT(6)                               ! [m]
+                            
+        if(associated(DZPR  )) DZPR   = CDCR2/(1.-WPWET)/POROS/MAPL_RHOWTR    ! [m] 
+        if(associated(DZRZ  )) DZRZ   = VGWMAX/POROS/MAPL_RHOWTR              ! [m]
+        if(associated(DZSF  )) DZSF   = DZSF_in_mm/1000.                      ! [m]
+        if(associated(DZTS  )) DZTS   = DZTSURF                               ! [m]
+                            
+        if(associated(WPEMW )) WPEMW  = WPWET*POROS*DZPR*MAPL_RHOWTR          ! [kg/m2]
+        if(associated(WPMC  )) WPMC   = WPWET*POROS                           ! [m3/m3]
+
         if(associated(PEATCLSM_FSWCHANGE  )) then
            where (POROS >= PEATCLSM_POROS_THRESHOLD)
               PEATCLSM_FSWCHANGE = FSW_CHANGE
@@ -5858,7 +6012,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(HTSNNN   )
         deallocate(SNDZN    )
 	deallocate(TILEZERO )
-        deallocate(DZSF     )
+        deallocate(DZSF_in_mm)
 	deallocate(SWNETFREE)
 	deallocate(SWNETSNOW)
 	deallocate(VEG      )
@@ -6022,7 +6176,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   !! Miscellaneous
   integer :: ntiles
   real, allocatable :: dummy(:)
-  real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
+  real, allocatable :: DZSF_in_mm(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
 
   ! Begin...
@@ -6146,9 +6300,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  allocate(dzsf(ntiles), stat=status)
+  allocate(DZSF_in_mm(ntiles), stat=status)
   VERIFY_(status)
-  dzsf = SURFLAY
+  DZSF_in_mm = SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
@@ -6167,18 +6321,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   srfexccp = srfexc
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
-       ! intent(in)
-       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
+       ntiles, DZSF_in_mm, vgwmax, cdcr1, cdcr2,                                &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
        arw1, arw2, arw3, arw4,bf1, bf2,                                         &
-       ! intent(inout)
-       ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &
-       ! use this one can match process_cat
-       ! srfexc, rzexc, catdef,                                             &
-       ! intent(out)
        ar1, ar2, dummy                                                          &
        )
 
@@ -6198,14 +6346,14 @@ subroutine RUN0(gc, import, export, clock, rc)
    qc(:,FSNW) = MAPL_EQsat(tc(:,FSNW),PS,OverIce=.true.)
 
   ! Clean up
-  if (allocated(catdefcp)) deallocate(catdefcp)
-  if (allocated(srfexccp)) deallocate(srfexccp)
-  if (allocated(rzexccp)) deallocate(rzexccp)
-  if (allocated(dummy)) deallocate(dummy)
-  if (allocated(dzsf)) deallocate(dzsf)
-  if (allocated(ar1)) deallocate(ar1)
-  if (allocated(ar2)) deallocate(ar2)
-  if (allocated(wesnn)) deallocate(wesnn)
+  if (allocated(catdefcp))   deallocate(catdefcp)
+  if (allocated(srfexccp))   deallocate(srfexccp)
+  if (allocated(rzexccp))    deallocate(rzexccp)
+  if (allocated(dummy))      deallocate(dummy)
+  if (allocated(DZSF_in_mm)) deallocate(DZSF_in_mm)
+  if (allocated(ar1))        deallocate(ar1)
+  if (allocated(ar2))        deallocate(ar2)
+  if (allocated(wesnn))      deallocate(wesnn)
 
   ! All done
   RETURN_(ESMF_SUCCESS)
