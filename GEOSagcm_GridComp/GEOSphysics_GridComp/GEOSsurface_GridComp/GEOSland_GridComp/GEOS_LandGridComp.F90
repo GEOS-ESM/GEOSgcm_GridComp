@@ -720,7 +720,13 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
 
-    ! the following constants are needed by GEOSldas and/or for the "land constants" output collection
+    ! the following constants are needed by GEOSldas and for the "land constants" output collection
+
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+
+    ! the following constants are needed for the "land constants" output collection
 
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZGT2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
@@ -732,11 +738,8 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZRZ',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZSF',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DZTS',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)  
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPEMW', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPMC',  CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
 
 
 !   From catment grid internal to be perturbed by land_pert grid
@@ -1183,8 +1186,6 @@ contains
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
-
-    ! the following constants are needed by GEOSldas and/or for the "land constants" output collection
 
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
