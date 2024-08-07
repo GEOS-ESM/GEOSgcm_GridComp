@@ -980,12 +980,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
-         SHORT_NAME = 'WET1_FOR_CHEM',                             &
-         CHILD_ID = SURF,                                          &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TSOIL1',                                    &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
@@ -1270,7 +1264,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                              &
         SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
-        SRC_ID      = MOIST,                                      &
+        SRC_ID      = SURF,                                       &
         DST_NAME  = [ 'WET1' ],                                   &
         DST_ID      = CHEM,                                       &
                                                        RC=STATUS  )

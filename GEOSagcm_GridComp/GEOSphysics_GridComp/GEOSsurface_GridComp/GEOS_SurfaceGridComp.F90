@@ -1109,9 +1109,9 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'surface_soil_wetness_for_chem'              ,&
+        LONG_NAME          = 'surface_soil_wetness_for_chem'     ,&
         UNITS              = '1'                                 ,&
-        SHORT_NAME         = 'WET1_FOR_CHEM'                              ,&
+        SHORT_NAME         = 'WET1_FOR_CHEM'                     ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
                                                        RC=STATUS  )
@@ -5289,7 +5289,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNOMAS    => NULL()
     real, pointer, dimension(:,:) :: SNOWDP    => NULL()
     real, pointer, dimension(:,:) :: WET1      => NULL()
-    real, pointer, dimension(:,:) :: WET1_FOR_CHEM      => NULL()
+    real, pointer, dimension(:,:) :: WET1_FOR_CHEM => NULL()
     real, pointer, dimension(:,:) :: WET2      => NULL()
     real, pointer, dimension(:,:) :: WET3      => NULL()
     real, pointer, dimension(:,:) :: WCSF      => NULL()
@@ -6458,12 +6458,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SNOMAS  , 'SNOMAS' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWDP  , 'SNOWDP' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET1    , 'WET1'   ,  RC=STATUS); VERIFY_(STATUS)
-    ! NOTE: GOCART's dust code expects WET1_FOR_CHEM to be the same as WET1 but with
-    !       all MAPL_UNDEF calls replaced with 1.0. We currently want WET1 to have
+    ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+    !       (aka not land) to be replaced with 1.0. We want WET1 to have
     !       MAPL_UNDEF over non-land points, so we need a separate export to pass
-    !       to GOCART. We have to also add alloc=.true. because before it looks like
-    !       WET1 always being in History was allocating it
-    call MAPL_GetPointer(EXPORT  , WET1_FOR_CHEM    , 'WET1_FOR_CHEM'   , alloc=.true.,  RC=STATUS); VERIFY_(STATUS)
+    !       to GOCART.
+    call MAPL_GetPointer(EXPORT  , WET1_FOR_CHEM    , 'WET1_FOR_CHEM'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET2    , 'WET2'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET3    , 'WET3'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WCSF    , 'WCSF'   ,  RC=STATUS); VERIFY_(STATUS)
