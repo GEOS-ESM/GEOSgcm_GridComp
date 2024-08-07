@@ -1086,7 +1086,7 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'root_zone_soil_wetness'            ,&
+        LONG_NAME          = 'soil_wetness_rootzone'             ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'WET2'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
