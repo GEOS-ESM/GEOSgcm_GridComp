@@ -1170,7 +1170,7 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
-     IF (DO_OBIO /= 0) THEN 
+     IF (DO_OBIO /= 0) THEN
         call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
@@ -1245,7 +1245,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'LWI      ', 'FRLAND   ', 'FRLANDICE',   &
-                         'FROCEAN  ', 'FRLAKE   ', 'WET1     ',   &
+                         'FROCEAN  ', 'FRLAKE   ',                &
                          'GRN      ', 'USTAR    ', 'U10M     ',   &
                          'V10M     ', 'SH       ', 'Z0H      ',   &
                          'LAI      ', 'TSOIL1   ', 'FRACI    ',   &
@@ -1262,6 +1262,13 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
+        SRC_ID      = SURF,                                       &
+        DST_NAME  = [ 'WET1' ],                                   &
+        DST_ID      = CHEM,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
      if (DO_CO2CNNEE == 1) then
         call MAPL_AddConnectivity ( GC,                           &
              SHORT_NAME  = (/'CNNEE'/),                           &
@@ -1432,7 +1439,7 @@ contains
           CHILD      = TURBL,                           &
           RC=STATUS  )
        VERIFY_(STATUS)
-     endif 
+     endif
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &
@@ -1981,10 +1988,10 @@ contains
 ! The original 3D increments:
 
     call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
-  
+
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
@@ -1996,7 +2003,7 @@ contains
 
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
