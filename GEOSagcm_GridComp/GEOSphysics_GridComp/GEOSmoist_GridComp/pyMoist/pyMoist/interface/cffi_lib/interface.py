@@ -1,6 +1,7 @@
 import cffi
 from mpi4py import MPI
 
+
 TMPFILEBASE = "pyMoist_interface_py"
 
 ffi = cffi.FFI()
@@ -20,7 +21,7 @@ import traceback
 
 @ffi.def_extern()
 def pymoist_interface_py_init(flags) -> int:
-   
+
     try:
         pyMoist_init(flags)
     except Exception as err:

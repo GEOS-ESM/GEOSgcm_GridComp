@@ -208,18 +208,18 @@ def aer_activation_stencil(
                 sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
                 ) ** 1.5  # [1]
-                eta = dum**3 / (
+                eta = dum ** 3 / (
                     constants.TWOPI * constants.DENH2O * gamma * ni[0, 0, 0][n]
                 )  # [1]
-                f1 = 0.5 * exp(2.50 * xlogsigm**2)  # [1]
+                f1 = 0.5 * exp(2.50 * xlogsigm ** 2)  # [1]
                 f2 = 1.0 + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
                         f1 * (zeta / eta) ** 1.5
-                        + f2 * (sm**2 / (eta + 3.0 * zeta)) ** 0.75
+                        + f2 * (sm ** 2 / (eta + 3.0 * zeta)) ** 0.75
                     )
-                    / sm**2
+                    / sm ** 2
                 )  # [1] - eq. (6)
                 n += 1
 
