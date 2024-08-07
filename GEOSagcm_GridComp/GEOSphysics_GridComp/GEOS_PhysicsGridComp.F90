@@ -1262,6 +1262,10 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+     ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+     !       (aka not land) to be replaced with 1.0. We want WET1 to have
+     !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+     !       to GOCART which is WET1 with all non-land points set to 1.0.
      call MAPL_AddConnectivity ( GC,                              &
         SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
         SRC_ID      = SURF,                                       &
@@ -1269,6 +1273,7 @@ contains
         DST_ID      = CHEM,                                       &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+
      if (DO_CO2CNNEE == 1) then
         call MAPL_AddConnectivity ( GC,                           &
              SHORT_NAME  = (/'CNNEE'/),                           &
