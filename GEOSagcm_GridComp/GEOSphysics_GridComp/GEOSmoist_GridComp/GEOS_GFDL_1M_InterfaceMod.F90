@@ -14,9 +14,9 @@ module GEOS_GFDL_1M_InterfaceMod
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
+  fs_add_savepoint_metainfo, &
   fs_read_field, &
   fs_write_field, &
-  fs_add_savepoint_metainfo, &
   fs_create_savepoint
 USE utils_ppser, ONLY:  &
   ppser_get_mode, &
@@ -606,9 +606,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #587
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #587
 call fs_create_savepoint('Evap_subl_pdf-In', ppser_savepoint)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #588
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #588
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'EIS', EIS)
@@ -764,9 +764,9 @@ END SELECT
          end do ! JM loop
        end do ! LM loop
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #734
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #734
 call fs_create_savepoint('Evap_subl_pdf-Out', ppser_savepoint)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #735
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #735
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'SUBLC', SUBLC)
@@ -878,8 +878,94 @@ END SELECT
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+#ifdef SERIALIZE
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #838
+call fs_create_savepoint('RedistributeClouds-In', ppser_savepoint)
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #839
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_CF', RAD_CF)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QL', RAD_QL)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QI', RAD_QI)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'CLCN', CLCN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'CLLS', CLLS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QLCN', QLCN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QLLS', QLLS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QICN', QICN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QILS', QILS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QV', RAD_QV)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'T', T)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_CF', RAD_CF)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QL', RAD_QL)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QI', RAD_QI)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLLS', CLLS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLLS', QLLS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QILS', QILS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QV', RAD_QV)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_CF', RAD_CF, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QL', RAD_QL, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QI', RAD_QI, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLLS', CLLS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLLS', QLLS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QILS', QILS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QV', RAD_QV, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T, ppser_zrperturb)
+END SELECT
+#endif
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+#ifdef SERIALIZE
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #842
+call fs_create_savepoint('RedistributeClouds-Out', ppser_savepoint)
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #843
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_CF', RAD_CF)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QL', RAD_QL)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QI', RAD_QI)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'CLCN', CLCN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'CLLS', CLLS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QLCN', QLCN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QLLS', QLLS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QICN', QICN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'QILS', QILS)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QV', RAD_QV)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'T', T)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_CF', RAD_CF)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QL', RAD_QL)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QI', RAD_QI)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLLS', CLLS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLLS', QLLS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QILS', QILS)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QV', RAD_QV)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_CF', RAD_CF, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QL', RAD_QL, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QI', RAD_QI, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLLS', CLLS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLLS', QLLS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QILS', QILS, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QV', RAD_QV, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'T', T, ppser_zrperturb)
+END SELECT
+#endif
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
@@ -911,10 +997,10 @@ END SELECT
        timestep = timestep + 1
       !  print*, "TIMESTEP = ", timestep, ' rank = ', rank, ' do_qa = ', do_qa, "6 * rank + TIMESTEP = ", 6*rank+timestep
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #870
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #874
 call fs_create_savepoint('RadCouple-In', ppser_savepoint)
 call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #871
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #875
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'Q', Q)
@@ -944,7 +1030,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #872
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #876
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'PLmb', PLmb)
@@ -968,7 +1054,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTL', NACTL, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTI', NACTI, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #873
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #877
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'FAC_RL', FAC_RL)
@@ -992,7 +1078,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'MIN_RI', MIN_RI, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'MAX_RI', MAX_RI, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #874
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #878
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QV', RAD_QV)
@@ -1013,7 +1099,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QR', RAD_QR, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QS', RAD_QS, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #875
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #879
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QG', RAD_QG)
@@ -1050,10 +1136,10 @@ END SELECT
           enddo
          enddo
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #893
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #897
 call fs_create_savepoint('RadCouple-Out', ppser_savepoint)
 call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #894
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #898
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'Q', Q)
@@ -1083,7 +1169,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CLCN', CLCN, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #895
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #899
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QV', RAD_QV)
@@ -1104,7 +1190,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QR', RAD_QR, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'RAD_QS', RAD_QS, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #896
+! file: /home/kf041796/GEOS/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #900
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'RAD_QG', RAD_QG)

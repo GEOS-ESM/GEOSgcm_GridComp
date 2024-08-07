@@ -835,8 +835,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+         !$ser savepoint RedistributeClouds-In
+         !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
      ! Redistribute CN/LS CF/QL/QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, RAD_QV, T)
+         !$ser savepoint RedistributeClouds-Out
+         !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = MAX(PRCP_RAIN    / 86400.0, 0.0)
          PRCP_SNOW    = MAX(PRCP_SNOW    / 86400.0, 0.0)
