@@ -8462,14 +8462,6 @@ module GEOS_SurfaceGridCompMod
       endif
 
 
-! Fill WET1 over non-land points
-!-------------------------------
-
-      if( associated(WET1) ) then
-          where(WET1 == MAPL_UNDEF) WET1 = 1.0
-      endif
-
-
 ! Fill imports/exports for OBIO
 !-------------------------------
       if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
