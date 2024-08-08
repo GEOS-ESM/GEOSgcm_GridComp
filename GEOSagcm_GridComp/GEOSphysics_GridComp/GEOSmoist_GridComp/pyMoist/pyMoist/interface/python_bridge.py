@@ -1,13 +1,18 @@
 import os
+from typing import TYPE_CHECKING
+
+import numpy as np
 
 # from f_py_conversion import FortranPythonConversion
 # from cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from mpi4py import MPI
-from ndsl.optional_imports import cupy as cp
-import numpy as np
+
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from typing import TYPE_CHECKING
-from pyMoist.wrapper import GEOSPyMoistWrapper, MoistFlags
+from ndsl.dsl.typing import Float
+from ndsl.optional_imports import cupy as cp
+from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
+from pyMoist.interface.f_py_conversion import FortranPythonConversion
+from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace, MoistFlags
 
 
 if TYPE_CHECKING:
@@ -20,171 +25,147 @@ class PYMOIST_WRAPPER:
         flags: MoistFlags,
         backend: str = "dace:gpu",
     ) -> None:
-        print("Wrapper.init")
-        # self.rank = comm.Get_rank()
-        # self.backend = backend
-        # # For Fortran<->NumPy conversion
-        # if is_gpu_backend(self.backend):
-        #     numpy_module = cp
-        #     fortran_mem_space = MemorySpace.DEVICE
-        # else:
-        #     numpy_module = np
-        #     fortran_mem_space = MemorySpace.HOST
-        # self.f_py = FortranPythonConversion(
-        #     npx,
-        #     npy,
-        #     npz,
-        #     is_,
-        #     ie,
-        #     js,
-        #     je,
-        #     isd,
-        #     ied,
-        #     jsd,
-        #     jed,
-        #     tracer_count,
-        #     numpy_module,
-        # )
+        self.rank = MPI.COMM_WORLD.Get_rank()
+        self.backend = backend
+        self.flags = flags
+        # For Fortran<->NumPy conversion
+        if is_gpu_backend(self.backend):
+            numpy_module = cp
+            fortran_mem_space = MemorySpace.DEVICE
+        else:
+            numpy_module = np
+            fortran_mem_space = MemorySpace.HOST
+        self.f_py = FortranPythonConversion(
+            flags.npx,
+            flags.npy,
+            flags.npz,
+            numpy_module,
+        )
 
-        # # Input pressure levels
-        # ak = self.f_py._fortran_to_numpy(ak_cdata, [npz + 1])
-        # bk = self.f_py._fortran_to_numpy(bk_cdata, [npz + 1])
+        # Setup pyFV3's dynamical core
+        self.pymoist = GEOSPyMoistWrapper(flags, backend)
 
-        # # Setup pyFV3's dynamical core
-        # self.dycore = GeosDycoreWrapper(
-        #     fv_flags=fv_flags,
-        #     bdt=bdt,
-        #     comm=comm,
-        #     ak=ak,
-        #     bk=bk,
-        #     backend=self.backend,
-        #     tracer_count=tracer_count,
-        #     fortran_mem_space=fortran_mem_space,
-        # )
-
-        # self._timings = {}
+        self._timings = {}
 
     def finalize(self):
-        # import json
+        import json
 
-        # with open("pyfv3_timings.json", "w") as f:
-        #     json.dump(self._timings, f, indent=4)
-        print("Wrapper.finalize")
+        with open("pymoist_timings.json", "w") as f:
+            json.dump(self._timings, f, indent=4)
 
-    def __call__(
+    def aer_activation(
         self,
-        aero_dgn: "cffi.FFI.CData",
-        aero_num: "cffi.FFI.CData",
-        aero_hygroscopicity: "cffi.FFI.CData",
-        aero_sigma: "cffi.FFI.CData",
-        frland: "cffi.FFI.CData",
-        nn_ocean: np.float32,
-        nn_land: np.float32,
-        t: "cffi.FFI.CData",
-        plo: "cffi.FFI.CData",
-        qicn: "cffi.FFI.CData",
-        qils: "cffi.FFI.CData",
-        qlcn: "cffi.FFI.CData",
-        qlls: "cffi.FFI.CData",
-        vvel: "cffi.FFI.CData",
-        tke: "cffi.FFI.CData",
-        nacti: "cffi.FFI.CData",
-        nwfa: "cffi.FFI.CData",
-        nactl: "cffi.FFI.CData",
+        f_aero_dgn: "cffi.FFI.CData",
+        f_aero_num: "cffi.FFI.CData",
+        f_aero_hygroscopicity: "cffi.FFI.CData",
+        f_aero_sigma: "cffi.FFI.CData",
+        f_frland: "cffi.FFI.CData",
+        f_nn_ocean: np.float32,
+        f_nn_land: np.float32,
+        f_t: "cffi.FFI.CData",
+        f_plo: "cffi.FFI.CData",
+        f_qicn: "cffi.FFI.CData",
+        f_qils: "cffi.FFI.CData",
+        f_qlcn: "cffi.FFI.CData",
+        f_qlls: "cffi.FFI.CData",
+        f_vvel: "cffi.FFI.CData",
+        f_tke: "cffi.FFI.CData",
+        f_nacti: "cffi.FFI.CData",
+        f_nwfa: "cffi.FFI.CData",
+        f_nactl: "cffi.FFI.CData",
     ):
-        print("Wrapper.__call__")
-        # CUDAProfiler.start_cuda_profiler()
-        # with TimedCUDAProfiler("Fortran -> Python", self._timings):
-        #     # Convert Fortran arrays to NumPy
-        #     state_in = self.f_py.fortran_to_python(
-        #         # input
-        #         u,
-        #         v,
-        #         w,
-        #         delz,
-        #         pt,
-        #         delp,
-        #         q,
-        #         ps,
-        #         pe,
-        #         pk,
-        #         peln,
-        #         pkz,
-        #         phis,
-        #         q_con,
-        #         omga,
-        #         ua,
-        #         va,
-        #         uc,
-        #         vc,
-        #         mfx,
-        #         mfy,
-        #         cx,
-        #         cy,
-        #         diss_est,
-        #     )
+        CUDAProfiler.start_cuda_profiler()
+        with TimedCUDAProfiler("Fortran -> Python", self._timings):
+            aero_dgn = self.f_py.fortran_to_python(
+                f_aero_dgn,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                    self.flags.npz,
+                    self.flags.n_modes,
+                ],
+            )
+            aero_num = self.f_py.fortran_to_python(
+                f_aero_num,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                    self.flags.npz,
+                    self.flags.n_modes,
+                ],
+            )
+            aero_hygroscopicity = self.f_py.fortran_to_python(
+                f_aero_hygroscopicity,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                    self.flags.npz,
+                    self.flags.n_modes,
+                ],
+            )
+            aero_sigma = self.f_py.fortran_to_python(
+                f_aero_sigma,
+                [self.flags.npx, self.flags.npy, self.flags.npz, self.flags.n_modes],
+            )
 
-        # # Run pyFV3
-        # with TimedCUDAProfiler("Numerics", self._timings):
-        #     state_out, self._timings = self.dycore(
-        #         self._timings,
-        #         state_in["u"],
-        #         state_in["v"],
-        #         state_in["w"],
-        #         state_in["delz"],
-        #         state_in["pt"],
-        #         state_in["delp"],
-        #         state_in["q"],
-        #         state_in["ps"],
-        #         state_in["pe"],
-        #         state_in["pk"],
-        #         state_in["peln"],
-        #         state_in["pkz"],
-        #         state_in["phis"],
-        #         state_in["q_con"],
-        #         state_in["omga"],
-        #         state_in["ua"],
-        #         state_in["va"],
-        #         state_in["uc"],
-        #         state_in["vc"],
-        #         state_in["mfxd"],
-        #         state_in["mfyd"],
-        #         state_in["cxd"],
-        #         state_in["cyd"],
-        #         state_in["diss_estd"],
-        #     )
+            frland = self.f_py.fortran_to_python(
+                f_frland, [self.flags.npx, self.flags.npy]
+            )
 
-        # # Convert NumPy arrays back to Fortran
-        # with TimedCUDAProfiler("Python -> Fortran", self._timings):
-        #     self.f_py.python_to_fortran(
-        #         # input
-        #         state_out,
-        #         # output
-        #         u,
-        #         v,
-        #         w,
-        #         delz,
-        #         pt,
-        #         delp,
-        #         q,
-        #         ps,
-        #         pe,
-        #         pk,
-        #         peln,
-        #         pkz,
-        #         phis,
-        #         q_con,
-        #         omga,
-        #         ua,
-        #         va,
-        #         uc,
-        #         vc,
-        #         mfx,
-        #         mfy,
-        #         cx,
-        #         cy,
-        #         diss_est,
-        #     )
+            t = self.f_py.fortran_to_python(f_t)
+            plo = self.f_py.fortran_to_python(f_plo)
+            qicn = self.f_py.fortran_to_python(f_qicn)
+            qils = self.f_py.fortran_to_python(f_qils)
+            qlcn = self.f_py.fortran_to_python(f_qlcn)
+            qlls = self.f_py.fortran_to_python(f_qlls)
+            vvel = self.f_py.fortran_to_python(f_vvel)
+            tke = self.f_py.fortran_to_python(f_tke)
+            nacti = self.f_py.fortran_to_python(f_nacti)
+            nwfa = self.f_py.fortran_to_python(f_nwfa)
+            nactl = self.f_py.fortran_to_python(f_nactl)
+            self.f_py.device_sync()
+
+        # Run Aer Activation
+        with TimedCUDAProfiler("Aer Activation numerics", self._timings):
+            self.pymoist.aer_activation(
+                aero_dgn=aero_dgn,
+                aero_num=aero_num,
+                aero_hygroscopicity=aero_hygroscopicity,
+                aero_sigma=aero_sigma,
+                frland=frland,
+                nn_ocean=Float(f_nn_ocean),
+                nn_land=Float(f_nn_land),
+                t=t,
+                plo=plo,
+                qicn=qicn,
+                qils=qils,
+                qlcn=qlcn,
+                qlls=qlls,
+                vvel=vvel,
+                tke=tke,
+                nwfa=nwfa,
+                nacti=nacti,
+                nactl=nactl,
+            )
+
+        # Convert NumPy arrays back to Fortran
+        with TimedCUDAProfiler("Python -> Fortran", self._timings):
+            self.f_py.python_to_fortran(aero_dgn, f_aero_dgn)
+            self.f_py.python_to_fortran(aero_num, f_aero_num)
+            self.f_py.python_to_fortran(aero_hygroscopicity, f_aero_hygroscopicity)
+            self.f_py.python_to_fortran(aero_sigma, f_aero_sigma)
+            self.f_py.python_to_fortran(frland, f_frland)
+            self.f_py.python_to_fortran(t, f_t)
+            self.f_py.python_to_fortran(plo, f_plo)
+            self.f_py.python_to_fortran(qicn, f_qicn)
+            self.f_py.python_to_fortran(qils, f_qils)
+            self.f_py.python_to_fortran(qlcn, f_qlcn)
+            self.f_py.python_to_fortran(qlls, f_qlls)
+            self.f_py.python_to_fortran(vvel, f_vvel)
+            self.f_py.python_to_fortran(tke, f_tke)
+            self.f_py.python_to_fortran(nacti, f_nacti)
+            self.f_py.python_to_fortran(nwfa, f_nwfa)
+            self.f_py.python_to_fortran(nactl, f_nactl)
 
 
 # Below is the entry point to the interface
@@ -217,7 +198,7 @@ def pyMoist_run_AerActivation(
     global WRAPPER
     if not WRAPPER:
         raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
-    WRAPPER(
+    WRAPPER.aer_activation(
         aero_dgn,
         aero_num,
         aero_hygroscopicity,
