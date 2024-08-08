@@ -95,8 +95,85 @@ JaICEFRPWR  = Float(2.0)
 JiT_ICE_ALL = Float(t_ice-40.0)
 JiT_ICE_MAX = Float(t_ice)
 JiICEFRPWR  = Float(4.0)
+
 # Other miscellaneous parameters
 k_cond = Float(2.4E-2) # 1/(J*s*K)
 diffu =  Float(2.2E-5) # m^2/s
 taufrz  = Float(450)
 dqcmax  = Float(1E-4)
+K_COND = Float(2.4e-2) # J m**-1 s**-1 K**-1
+DIFFU = Float(2.2e-5) # m**2 s**-1
+dQCmax = Float(1.e-4)
+
+# cloud radius Constants based on DOI 10.1088/1748-9326/3/4/045021
+LIQ_RADII_PARAM = 2
+ICE_RADII_PARAM = 1
+RHO_W = Float(1000)
+RHO_I = Float(916.8) # Density of ice crystal in kg/m^3
+abeta = Float(0.07)
+r13bbeta = Float(1./3. - 0.14)
+bx = Float(100.* (3./(4.*PI))**(1./3.))
+Ldiss = Float(0.07) # tunable dispersion effect
+Lk = Float(0.75) # tunable shape effect (0.5:1)
+Lbe = Float(1./3. - 0.14)
+Lbx = Float(Ldiss*1.e3*(3./(4.*PI*Lk*RHO_W*1.e-3))**(1./3.))
+# cloud radius eqs are in cgs units
+
+# GEOS_Utilities Constatns
+TIMX = Float(-20.)
+
+ESFAC = Float(h2omw/airmw)
+MAX_MIXING_RATIO = Float(1.)
+ZEROC = Float(t_ice)
+
+TMINTBL = Float(150.0)
+TMAXTBL = Float(333.0)
+DEGSUBS = Float(100)
+ERFAC = Float(DEGSUBS/ESFAC)
+DELTA_T = Float(1.0 / DEGSUBS)
+TABLESIZE = Float((TMAXTBL-TMINTBL) * DEGSUBS + 1)
+TMIX = Float(-20.)
+
+UTBL = True
+TYPE = Float(1)
+
+FIRST = True
+
+TMINSTR = Float(-95.)
+TSTARR1 = Float(-75.)
+TSTARR2 = Float(-65.)
+TSTARR3 = Float(-50.)
+TSTARR4 = Float(-40.)
+TMAXSTR = Float(60.)
+
+B6 = Float(6.136820929E-11 * 100.0)
+B5 = Float(2.034080948E-8 * 100.0)
+B4 = Float(3.031240396E-6 * 100.0)
+B3 = Float(2.650648471E-4 * 100.0)
+B2 = Float(1.428945805E-2 * 100.0)
+B1 = Float(4.436518521E-1 * 100.0)
+B0 = Float(6.107799961E+0 * 100.0)
+BI6 = Float(1.838826904E-10 * 100.0)
+BI5 = Float(4.838803174E-8 * 100.0)
+BI4 = Float(5.824720280E-6 * 100.0)
+BI3 = Float(4.176223716E-4 * 100.0)
+BI2 = Float(1.886013408E-2 * 100.0)
+BI1 = Float(5.034698970E-1 * 100.0)
+BI0 = Float(6.109177956E+0 * 100.0)
+S16 = Float(0.516000335E-11 * 100.0)
+S15 = Float(0.276961083E-8 * 100.0)
+S14 = Float(0.623439266E-6 * 100.0)
+S13 = Float(0.754129933E-4 * 100.0)
+S12 = Float(0.517609116E-2 * 100.0)
+S11 = Float(0.191372282E+0 * 100.0)
+S10 = Float(0.298152339E+1 * 100.0)
+S26 = Float(0.314296723E-10 * 100.0)
+S25 = Float(0.132243858E-7 * 100.0)
+S24 = Float(0.236279781E-5 * 100.0)
+S23 = Float(0.230325039E-3 * 100.0)
+S22 = Float(0.129690326E-1 * 100.0)
+S21 = Float(0.401390832E+0 * 100.0)
+S20 = Float(0.535098336E+1 * 100.0)
+
+TMINLQU = Float(ZEROC - 40.0)
+TMINICE = Float(ZEROC + TMINSTR)

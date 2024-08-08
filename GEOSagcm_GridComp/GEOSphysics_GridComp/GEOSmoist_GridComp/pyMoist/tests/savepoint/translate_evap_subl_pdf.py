@@ -32,38 +32,39 @@ class Translateevap_subl_pdf(TranslateFortranData2Py):
             "T": {},
             "QLCN": {},
             "QICN": {},
-            "testminrhcrit": {},
-            "testPLEmb": {},
-            "testturnrhcrit": {},
-            "testrhcritpart1": {},
-            "testrhcritpart2": {},
-            "testrhcrit": {},
-            "testalpha": {},
-            "testtancalc": {},
+            "QLLS": {},
+            "QILS": {},
+            "Q": {},
+            "CLCN": {},
+            "NACTL": {},
+            "NACTI": {},
+            "QST": {},
+            "RADIUS": {},
+            "QCm": {},
         }
 
         #Float Inputs
-        self.in_vars["parameters"] = ["dw_land", "dw_ocean", "TURNRHCRIT_PARAM", "DT_MOIST"]
+        self.in_vars["parameters"] = ["dw_land", "dw_ocean", "TURNRHCRIT_PARAM", "DT_MOIST", "CCW_EVAP_EFF", "CCI_EVAP_EFF"]
 
         #FloatField Outputs
         self.out_vars = {
-            "testminrhcrit": self.grid.compute_dict(),
-            "testPLEmb": self.grid.compute_dict(),
-            "testturnrhcrit": self.grid.compute_dict(),
-            "testrhcritpart1": self.grid.compute_dict(),
-            "testrhcritpart2": self.grid.compute_dict(),
-            "testrhcrit": self.grid.compute_dict(),
-            "testalpha": self.grid.compute_dict(),
-            "testtancalc": self.grid.compute_dict(),
             "T": self.grid.compute_dict(),
             "QLCN": self.grid.compute_dict(),
             "QICN": self.grid.compute_dict(),
+            "QLLS": self.grid.compute_dict(),
+            "QILS": self.grid.compute_dict(),
+            "Q": self.grid.compute_dict(),
+            "CLCN": self.grid.compute_dict(),
+            "NACTL": self.grid.compute_dict(),
+            "NACTI": self.grid.compute_dict(),
+            "QST": self.grid.compute_dict(),
+            "RADIUS": self.grid.compute_dict(),
+            "QCm": self.grid.compute_dict(),
         }
 
     #Calculated Outputs
     def compute_from_storage(self, inputs):
         self.compute_func(**inputs)
-        return {"testminrhcrit": inputs["testminrhcrit"], "testPLEmb": inputs["testPLEmb"], "testturnrhcrit": inputs["testturnrhcrit"],
-                "testrhcritpart1": inputs["testrhcritpart1"], "testrhcritpart2": inputs["testrhcritpart2"],
-                "testrhcrit": inputs["testrhcrit"], "testalpha": inputs["testalpha"], "testtancalc": inputs["testtancalc"],
-                "T": inputs["T"], "QLCN": inputs["QLCN"], "QICN": inputs["QICN"]}
+        return {"T": inputs["T"], "QLCN": inputs["QLCN"], "QICN": inputs["QICN"], "QLLS": inputs["QLLS"],
+                "QILS": inputs["QILS"], "Q": inputs["Q"], "CLCN": inputs["CLCN"],
+                "NACTL": inputs["NACTL"], "NACTI": inputs["NACTI"], "QST": inputs["QST"], "RADIUS": inputs["RADIUS"], "QCm": inputs["QCm"]}
