@@ -121,7 +121,7 @@ endforeach ()
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES ESMF NetCDF::NetCDF_Fortran
+  DEPENDENCIES ESMF::ESMF NetCDF::NetCDF_Fortran
   TYPE SHARED
 )
 

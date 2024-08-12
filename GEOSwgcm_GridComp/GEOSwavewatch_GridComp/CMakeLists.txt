@@ -9,7 +9,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_WaveWatchGridComp.F90)
   esma_add_library (${this}
     SRCS GEOS_WaveWatchGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL esmf
+    DEPENDENCIES MAPL ESMF::ESMF
     )
 
 else ()
