@@ -409,9 +409,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop from bottom to top to get stress profiles.
-!$OMP parallel do default(none) shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
-!$OMP                        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
-!$OMP                          private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
+!$OMP parallel do default(none) &
+!$OMP shared(kbot_src,ktop,kvtt,band,ubi,c,effkwv,rhoi,ni, &
+!$OMP        near_zero,ro_adjust,ncol,alpha,piln,t,rog,src_level,tau) &
+!$OMP private(k,d,l,i,tausat,taudmp,ubmc,ubmc2,wrk,mi)
   do k = kbot_src, ktop, -1
      
      ! Determine the diffusivity for each column.
@@ -480,9 +481,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   !------------------------------------------------------------------------
 
   ! Loop over levels from top to bottom
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
-!$OMP                                  gwut,ubt,xv,yv,tend_level,near_zero) &
-!$OMP                          private(k,l,i,ubtl)
+!$OMP parallel do default(none) &
+!$OMP shared(kbot_tend,ktop,band,ncol,tau,delp,rdelp,c,ubm,dt,gravit,utgw,vtgw, &
+!$OMP        gwut,ubt,xv,yv,tend_level,near_zero) &
+!$OMP private(k,l,i,ubtl)
   do k = ktop, kbot_tend
 
      ! Accumulate the mean wind tendency over wavenumber.
@@ -543,8 +545,9 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
 
   ! Evaluate second temperature tendency term: Conversion of kinetic
   ! energy into thermal.
-!$OMP parallel do default(none) shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
-!$OMP                          private(k,l)
+!$OMP parallel do default(none) &
+!$OMP shared(kbot_tend,ktop,band,ttgw,ubm,c,gwut) &
+!$OMP private(k,l)
   do k = ktop, kbot_tend
      do l = -band%ngwv, band%ngwv
         ttgw(:,k) = ttgw(:,k) - (ubm(:,k) - c(:,l)) * gwut(:,k,l)
