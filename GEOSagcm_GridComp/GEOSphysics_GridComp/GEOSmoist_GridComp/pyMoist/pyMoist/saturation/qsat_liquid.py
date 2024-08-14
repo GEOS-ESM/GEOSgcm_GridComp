@@ -46,7 +46,6 @@ S22 = 0.129690326e-1 * 100.0
 S21 = 0.401390832e0 * 100.0
 S20 = 0.535098336e1 * 100.0
 
-CI = [9.550426, -5723.265, 3.53068, -0.00728332]
 DL = [-7.902980, 5.02808, -1.3816, 11.344, 8.1328, -3.49149]
 TS = 373.16
 LOGPS = 3.005714898  # log10(1013.246)
@@ -71,18 +70,18 @@ def _saturation_formulation(formulation: SaturationFormulation, t: Float):
     elif formulation == SaturationFormulation.CAM:
         TT = TS / t
         EX = 10.0 ** (
-            DL[1] * (TT - 1.0)
-            + DL[2] * np.log10(TT)
-            + DL[3] * (10.0 ** (DL[4] * (1.0 - (1.0 / TT))) - 1.0) / 10000000.0
-            + DL[5] * (10.0 ** (DL[6] * (TT - 1.0)) - 1.0) / 1000.0
+            DL[0] * (TT - 1.0)
+            + DL[1] * np.log10(TT)
+            + DL[2] * (10.0 ** (DL[3] * (1.0 - (1.0 / TT))) - 1.0) / 10000000.0
+            + DL[4] * (10.0 ** (DL[5] * (TT - 1.0)) - 1.0) / 1000.0
             + LOGPS
             + 2.0
         )
     elif formulation == SaturationFormulation.MurphyAndKoop:
         EX = np.exp(
-            (CL[0] + CL[1] / t + CL[2] * np.alog(t) + CL[3] * t)
+            (CL[0] + CL[1] / t + CL[2] * np.log(t) + CL[3] * t)
             + np.tanh(CL[4] * (t - CL[5]))
-            * (CL[6] + CL[7] / t + CL[8] * np.alog(t) + CL[9] * t)
+            * (CL[6] + CL[7] / t + CL[8] * np.log(t) + CL[9] * t)
         )
     return EX
 

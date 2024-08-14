@@ -22,6 +22,7 @@ TSTARR4 = Float(-40.0)
 TMAXSTR = Float(+60.0)
 
 DI = [57518.5606e08, 2.01889049, 3.56654, 20.947031]
+CI = [9.550426, -5723.265, 3.53068, -0.00728332]
 
 # 64-bit float in Fortran
 S16 = 0.516000335e-11 * 100.0
@@ -97,7 +98,7 @@ def _saturation_formulation(
         TT = MAPL_TICE / t
         EX = DI[0] * np.exp(-(DI[1] / TT + DI[2] * np.log(TT) + DI[3] * TT))
     elif formulation == SaturationFormulation.MurphyAndKoop:
-        pass
+        EX = np.exp(CI[0] + CI[1] / t + CI[2] * np.log(t) + CI[3] * t)
     return EX
 
 
