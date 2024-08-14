@@ -2613,28 +2613,29 @@ contains
 
 !  SYNCTQ - SYNC of T/Q and U/V
 !--------------------------------------
-    call MAPL_GetPointer ( GIM(MOIST), UFORMST,   'U', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer ( GIM(MOIST), VFORMST,   'V', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer ( GIM(MOIST), TFORMST,   'T', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer ( GEX(GWD  ), UIG,    'DUDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer ( GEX(GWD  ), VIG,    'DVDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer ( GEX(GWD  ), TIG,    'DTDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-    UFORMST = UFORMST + UIG*DT
-    VFORMST = VFORMST + VIG*DT
-    TFORMST = TFORMST + TIG*DT
-   ! Range check after GWD
-    DO L=1,LM
-      DO J=1,JM
-        DO I=1,IM
-           if (ABS(UFORMST(I,J,L)) > 280.) write (*,*) "UFORMST: ",UFORMST(I,J,L), " Level:",L
-           if (ABS(VFORMST(I,J,L)) > 280.) write (*,*) "VFORMST: ",VFORMST(I,J,L), " Level:",L
-           if ( (130. > TFORMST(I,J,L)) .OR. (TFORMST(I,J,L) > 333.) ) then
-                                           write (*,*) "TFORMST: ",TFORMST(I,J,L), " Level:",L
-           endif
-        END DO
-      END DO
-    END DO
-
+    if ( SYNCTQ.ge.1. ) then
+     call MAPL_GetPointer ( GIM(MOIST), UFORMST,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(MOIST), VFORMST,   'V', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(MOIST), TFORMST,   'T', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(GWD  ), UIG,    'DUDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(GWD  ), VIG,    'DVDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(GWD  ), TIG,    'DTDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+     UFORMST = UFORMST + UIG*DT
+     VFORMST = VFORMST + VIG*DT
+     TFORMST = TFORMST + TIG*DT
+ !  ! Range check after GWD
+ !   DO L=1,LM
+ !     DO J=1,JM
+ !       DO I=1,IM
+ !          if (ABS(UFORMST(I,J,L)) > 280.) write (*,*) "UFORMST: ",UFORMST(I,J,L), " Level:",L
+ !          if (ABS(VFORMST(I,J,L)) > 280.) write (*,*) "VFORMST: ",VFORMST(I,J,L), " Level:",L
+ !          if ( (130. > TFORMST(I,J,L)) .OR. (TFORMST(I,J,L) > 333.) ) then
+ !                                          write (*,*) "TFORMST: ",TFORMST(I,J,L), " Level:",L
+ !          endif
+ !       END DO
+ !     END DO
+ !   END DO
+    endif
 
 ! Moist Processes
 !----------------
@@ -2658,9 +2659,6 @@ contains
     call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
     call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
 
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
@@ -2671,9 +2669,6 @@ contains
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
-    ! Boundary Layer Tendencies for GF
-     DTDT_BL=TAFMOIST
-     DQDT_BL=QV
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
@@ -2836,13 +2831,6 @@ contains
         TFORCHEM = TFORRAD
        THFORCHEM = TFORRAD/PK
      endif
-    endif
-
-! Boundary Layer Tendencies for GF
-!--------------------------
-    if ( SYNCTQ.ge.1. ) then
-       DTDT_BL=(TFORRAD-DTDT_BL)/DT
-       DQDT_BL=(QV-DQDT_BL)/DT
     endif
 
 ! Aerosol/Chemistry Stage 2
@@ -3449,14 +3437,14 @@ contains
        DOXDTCHMINT = DOXDTCHMINT * (MAPL_O3MW/MAPL_AIRMW)
     end if
 
-    if(SYNCTQ.eq.0.) then
-      !- save 'boundary layer' tendencies of Q and T for the convection scheme
-      DQDT_BL = DQVDTTRB
-      DTDT_BL = 0.
-      !- for SCM setup, TIT/TIF are not associated
-      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
-    endif
+    !- save 'boundary layer' tendencies of Q and T for the convection scheme
+    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+    DQDT_BL = DQVDTTRB
+    DTDT_BL = 0.
+    !- for SCM setup, TIT/TIF are not associated
+    if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
+    if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
 
     if(associated(DM )) deallocate(DM )
     if(associated(DPI)) deallocate(DPI)
