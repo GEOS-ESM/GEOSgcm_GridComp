@@ -1,4 +1,4 @@
-#Script containing all constants used for pyMoist
+# File containing all constants used for pyMoist
 
 from ndsl.dsl.typing import Float
 

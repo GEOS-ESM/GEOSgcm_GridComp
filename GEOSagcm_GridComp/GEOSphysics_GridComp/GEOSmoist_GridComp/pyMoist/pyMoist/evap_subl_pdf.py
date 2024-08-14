@@ -6,7 +6,6 @@ from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldI
 from ndsl import StencilFactory, QuantityFactory, orchestrate
 import numpy as np
 import pyMoist.pyMoist_constants as constants
-import pyMoist.radiation_coupling_constants as radconstants
 
 @gtscript.function
 def air_density(PL: Float, TE: Float) -> Float:
