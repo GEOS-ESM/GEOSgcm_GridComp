@@ -37,7 +37,7 @@ class SaturationVaporPressureTable:
             if t > MAPL_TICE:
                 self._estimated_ble[i] = self._estimated_blw[i]
             else:
-                self._estimated_ble[i] = qsat_ice_scalar_exact(t, formulation)
+                self._estimated_ble[i], _ = qsat_ice_scalar_exact(t, formulation)
 
             t = t - MAPL_TICE
 
@@ -48,8 +48,8 @@ class SaturationVaporPressureTable:
             else:
                 self._estimated_blx[i] = self._estimated_ble[i]
 
-        self.estimated_frz, _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
-        self.estimated_lqu, _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
+        self._estimated_frz, _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
+        self._estimated_lqu, _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
 
     @property
     def blw(self):

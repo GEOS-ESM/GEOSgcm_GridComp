@@ -8,6 +8,7 @@ from pyMoist.saturation.constants import (
 from ndsl.dsl.typing import Float
 from pyMoist.saturation.formulation import SaturationFormulation
 import numpy as np
+from typing import Optional
 
 TMINSTR = Float(-95.0)
 TMINICE = MAPL_TICE + TMINSTR
@@ -81,7 +82,7 @@ def _saturation_formulation(
                 TT
                 * (TT * (TT * (TT * (TT * (TT * S26 + S25) + S24) + S23) + S22) + S21)
                 + S20
-            ) & +(1.0 - W) * (
+            ) + (1.0 - W) * (
                 TT
                 * (TT * (TT * (TT * (TT * (TT * BI6 + BI5) + BI4) + BI3) + BI2) + BI1)
                 + BI0
