@@ -9,6 +9,7 @@ from pyMoist.saturation.constants import (
     TMIX,
 )
 from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
+from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
 from pyMoist.saturation.formulation import SaturationFormulation
 
 
@@ -36,7 +37,7 @@ class SaturationVaporPressureTable:
             if t > MAPL_TICE:
                 self._estimated_ble[i] = self._estimated_blw[i]
             else:
-                self._estimated_ble[i] = QSATICE0(t, formulation)
+                self._estimated_ble[i] = qsat_ice_scalar_exact(t, formulation)
 
             t = t - MAPL_TICE
 
