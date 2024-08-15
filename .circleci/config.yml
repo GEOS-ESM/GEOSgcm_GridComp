@@ -18,7 +18,7 @@ workflows:
     jobs:
       # Build GEOSgcm
       - ci/build:
-          << *filter-dsl
+          <<: *filter-dsl
           name: build-GEOSgcm-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
@@ -33,7 +33,7 @@ workflows:
 
       # Run AMIP GCM (1 hour, no ExtData)
       - ci/run_gcm:
-          << *filter-dsl
+          <<: *filter-dsl
           name: run-GCM-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
@@ -48,7 +48,7 @@ workflows:
 
       # Run Coupled GCM (1 hour, no ExtData)
       - ci/run_gcm:
-          << *filter-dsl
+          <<: *filter-dsl
           name: run-coupled-GCM-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
