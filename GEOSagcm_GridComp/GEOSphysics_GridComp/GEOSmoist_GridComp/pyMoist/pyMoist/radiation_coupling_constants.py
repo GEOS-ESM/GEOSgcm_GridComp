@@ -1,4 +1,5 @@
-"""All constants used for Radiation Coupling Port. Global constants taken from GEOS/src/Shared/@MAPL/shared/Constants"""
+"""All constants used for Radiation Coupling Port.
+Global constants taken from GEOS/src/Shared/@MAPL/shared/Constants"""
 
 # Define whether or not to use CODATA 2018 constants
 CODATA_2018_CONSTANTS = True
@@ -49,7 +50,9 @@ LK = 0.75
 LBX = LDISS * 1.0e3 * (3.0 / (4.0 * MAPL_PI * LK * RHO_W * 1.0e-3)) ** (1.0 / 3.0)
 LBE = 1.0 / 3.0 - 0.14
 
-# Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274 - uses MAPL_GetResource to get variables. These do not change in the radiation coupling loop
+# Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274 -
+# uses MAPL_GetResource to get variables.
+# These do not change in the radiation coupling loop
 MIN_RL = 2.5e-6
 MAX_RL = 60.0e-6
 FAC_RL = 1.0

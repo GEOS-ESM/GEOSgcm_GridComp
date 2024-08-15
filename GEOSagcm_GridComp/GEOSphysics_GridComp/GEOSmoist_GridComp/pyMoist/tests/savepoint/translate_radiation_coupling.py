@@ -1,5 +1,4 @@
 from ndsl import Namelist, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.radiation_coupling import RadiationCoupling
 
@@ -15,7 +14,8 @@ class TranslateRadCouple(TranslateFortranData2Py):
         self.compute_func = RadiationCoupling(  # type: ignore
             self.stencil_factory,
             self.grid.quantity_factory,
-            do_qa=False,  # Change to do_qa=namelist.do_qa, if QSAT module procedures QSAT0 and QSAT3 are implemented
+            do_qa=False,  # Change to do_qa=namelist.do_qa,
+            # if QSAT module procedures QSAT0 and QSAT3 are implemented
         )
         self._grid = grid
         self.max_error = 1e-9
