@@ -2,7 +2,7 @@ filter-dsl: &filter-dsl
   filters:
     branches:
       ignore:
-        - /'^dsl.*'/
+        - /^dsl\/.*$/
 
 version: 2.1
 
