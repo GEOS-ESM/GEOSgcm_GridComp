@@ -1444,13 +1444,6 @@ contains
     !-------------- DONIF Additional Moist Imports
 
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'VSCSFC'/),                         &
-         DST_ID      = MOIST,                                      &
-         SRC_ID      = TURBL,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'AERO'/),                           &
@@ -1473,7 +1466,6 @@ contains
                                                         RC=STATUS  )
    VERIFY_(STATUS)
 
-
    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'RADLW'/),                                 &
          DST_ID      =  MOIST,                                     &
@@ -1494,15 +1486,6 @@ contains
          SRC_ID      =  TURBL,                                      &
                                                         RC=STATUS  )
    VERIFY_(STATUS)
-
-   call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TAUX', 'TAUY'/),                                 &
-         DST_ID      =  MOIST,                                     &
-         SRC_ID      =  SURF,                                      &
-                                                        RC=STATUS  )
-
-   VERIFY_(STATUS)
-
 
 !EOP
 
@@ -2611,32 +2594,6 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
-!  SYNCTQ - SYNC of T/Q and U/V
-!--------------------------------------
-    if ( SYNCTQ.ge.1. ) then
-     call MAPL_GetPointer ( GIM(MOIST), UFORMST,   'U', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(MOIST), VFORMST,   'V', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(MOIST), TFORMST,   'T', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(GWD  ), UIG,    'DUDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(GWD  ), VIG,    'DVDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(GWD  ), TIG,    'DTDT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
-     UFORMST = UFORMST + UIG*DT
-     VFORMST = VFORMST + VIG*DT
-     TFORMST = TFORMST + TIG*DT
- !  ! Range check after GWD
- !   DO L=1,LM
- !     DO J=1,JM
- !       DO I=1,IM
- !          if (ABS(UFORMST(I,J,L)) > 280.) write (*,*) "UFORMST: ",UFORMST(I,J,L), " Level:",L
- !          if (ABS(VFORMST(I,J,L)) > 280.) write (*,*) "VFORMST: ",VFORMST(I,J,L), " Level:",L
- !          if ( (130. > TFORMST(I,J,L)) .OR. (TFORMST(I,J,L) > 333.) ) then
- !                                          write (*,*) "TFORMST: ",TFORMST(I,J,L), " Level:",L
- !          endif
- !       END DO
- !     END DO
- !   END DO
-    endif
-
 ! Moist Processes
 !----------------
 
@@ -2674,6 +2631,7 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
        call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
        call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
@@ -2685,7 +2643,6 @@ contains
        TFORSURF = TAFMOIST(:,:,LM)
        QFORSURF = QAFMOIST(:,:,LM)
      endif
-     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
     ! For CHEM
      if ( SYNCTQ.eq.1. ) then
