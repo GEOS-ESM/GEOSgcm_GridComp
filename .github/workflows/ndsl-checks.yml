@@ -1,9 +1,8 @@
 name: NDSL checks
 
 on:
-  push:
-    branches:
-      - dsl/develop
+  pull_request:
+    branches: [ main ]
 
 jobs:
   lint:
@@ -12,7 +11,7 @@ jobs:
         - name: Checkout NDSL
           uses: actions/checkout@master
           with:
-            name: NOAA-GFDL/NDSL
+            repository: NOAA-GFDL/NDSL
             submodules: 'recursive'
             path: 'ndsl'
         - name: Checkout repository
