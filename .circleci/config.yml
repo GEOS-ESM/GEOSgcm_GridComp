@@ -21,7 +21,7 @@ workflows:
           filters:
             branches:
               ignore:
-                - '^dsl\/.*'
+                - '^dsl.*'
           name: build-GEOSgcm-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
@@ -39,7 +39,7 @@ workflows:
           filters:
             branches:
               ignore:
-                - '^dsl\/.*'
+                - '^dsl.*'
           name: run-GCM-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
@@ -57,7 +57,7 @@ workflows:
           filters:
             branches:
               ignore:
-                - '^dsl\/.*'
+                - '^dsl.*'
           name: run-coupled-GCM-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
