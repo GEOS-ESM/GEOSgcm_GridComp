@@ -4,7 +4,7 @@ from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
 import pyMoist.radiation_coupling_constants as radconstants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import Float, FloatField
 
 
 @gtscript.function
@@ -39,8 +39,10 @@ def cloud_effective_radius_ice(
     PL (Float): Pressure level.
     TE (Float): Temperature.
     QC (Float): Ice cloud mixing ratio.
-    NNL (Float): Number concentration of liquid cloud droplets. Not used in function body, but included in the Fortran code.
-    NNI (Float): Number concentration of ice cloud crystals. Not used in function body, but included in the Fortran code.
+    NNL (Float): Number concentration of liquid cloud droplets.
+                 Not used in function body, but included in the Fortran code.
+    NNI (Float): Number concentration of ice cloud crystals.
+                 Not used in function body, but included in the Fortran code.
 
     Returns:
     Float: Effective radius of ice clouds.
@@ -325,11 +327,14 @@ class RadiationCoupling:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self.do_qa = do_qa
-        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented. Implement QSAT0 and QSAT3 logic if diagnostics are needed, found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
+        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented.
+        # Implement QSAT0 and QSAT3 logic if diagnostics are needed,
+        # found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
         if self.do_qa:
             # RHX = Q/GEOS_QSAT( T, PLmb)
             raise NotImplementedError(
-                "[Radiation Coupling] Diagnostic (do_qa) not implemented. (GEOS_QSAT missing)"
+                "[Radiation Coupling] Diagnostic (do_qa) not implemented."
+                "(GEOS_QSAT missing)"
             )
 
     def __call__(

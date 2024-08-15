@@ -1,6 +1,4 @@
-import gt4py
-import numpy as np
-from gt4py.cartesian.gtscript import PARALLEL, computation, interval, stencil
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
 import pyMoist.radiation_coupling_constants as radconstants
 from ndsl import QuantityFactory, StencilFactory
