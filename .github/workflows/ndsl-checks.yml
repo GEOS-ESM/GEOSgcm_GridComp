@@ -2,7 +2,7 @@ name: NDSL checks
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ dsl/develop ]
   workflow_dispatch:
 
 jobs:
