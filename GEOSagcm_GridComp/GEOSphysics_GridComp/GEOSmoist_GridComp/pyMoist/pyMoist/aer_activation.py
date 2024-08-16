@@ -1,11 +1,11 @@
 import copy
 
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
-
-import pyMoist.aer_activation_constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+
+import pyMoist.aer_activation_constants as constants
 from pyMoist.numerical_recipes import Erf
 from pyMoist.types import FloatField_NModes
 

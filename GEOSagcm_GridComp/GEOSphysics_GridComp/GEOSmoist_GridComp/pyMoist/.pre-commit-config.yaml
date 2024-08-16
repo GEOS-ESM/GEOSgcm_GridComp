@@ -4,12 +4,6 @@ default_language_version:
 files: pyMoist
 
 repos:
--   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.4.2
-    hooks:
-    - id: isort
-      description: Group and sort Python imports
-      args: ["--profile", "black"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.4.1
@@ -65,6 +59,10 @@ repos:
   hooks:
     # Run the linter.
     - id: ruff
+      name: ruff linting
       args: [ --fix ]
+    - id: ruff
+      name: ruff isort
+      args: ["--select","I","--fix"]
     # Run the formatter.
     - id: ruff-format

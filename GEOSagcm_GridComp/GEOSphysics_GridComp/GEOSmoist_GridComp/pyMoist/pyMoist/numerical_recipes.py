@@ -1,6 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import exp, log
-
 from ndsl.dsl.typing import Float
 
 

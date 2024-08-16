@@ -1,10 +1,10 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
-
-import pyMoist.radiation_coupling_constants as radconstants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField
+
+import pyMoist.radiation_coupling_constants as radconstants
 
 
 @gtscript.function
