@@ -823,6 +823,15 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
             endif
          endif
 
+         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = RAD_QR*RAD_CF         
+    
+         call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = RAD_QS*RAD_CF             
+         
+         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+         if (associated(PTR3D)) PTR3D = RAD_QG*RAD_CF                    
+
     call MAPL_TimerOff (MAPL,"--BACM_1M")
 
 end subroutine BACM_1M_Run
