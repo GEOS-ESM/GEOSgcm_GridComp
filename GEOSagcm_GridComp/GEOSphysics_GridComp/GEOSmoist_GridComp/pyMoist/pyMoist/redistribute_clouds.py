@@ -19,7 +19,6 @@ def redist_clouds(
     QV: FloatField,
     TE: FloatField,
 ):
-
     with computation(PARALLEL), interval(...):
         # Constants from MAPL.h
         alhlbcp = radconstants.ALHLBCP
@@ -95,7 +94,6 @@ class RedistributeClouds:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
     ) -> None:
-
         self._redist_clouds = stencil_factory.from_dims_halo(
             func=redist_clouds,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

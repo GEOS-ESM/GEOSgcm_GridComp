@@ -61,14 +61,14 @@ def cloud_effective_radius_ice(
                 1.0e-3 * (radconstants.MAPL_TICE - TE) ** 1.5
             )
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - radconstants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC ** 0.2214)
-        BB = 0.79570 * (WC ** 0.2535)
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
