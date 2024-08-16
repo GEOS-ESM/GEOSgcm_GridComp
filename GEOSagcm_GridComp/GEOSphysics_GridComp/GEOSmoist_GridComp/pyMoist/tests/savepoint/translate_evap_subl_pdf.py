@@ -1,9 +1,5 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-
-from ndsl import Namelist, StencilFactory
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.evap_subl_pdf import evap_subl_pdf
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
