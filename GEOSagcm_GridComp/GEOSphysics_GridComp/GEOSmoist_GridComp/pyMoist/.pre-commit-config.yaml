@@ -72,7 +72,7 @@ repos:
         name: codespell
         description: Check for spelling errors
         entry: codespell
-        args:  ["--ignore-words-list", "aare"]
+        args:  ["--ignore-words","GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/ignored_codespell.txt"]
 
 -   repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
