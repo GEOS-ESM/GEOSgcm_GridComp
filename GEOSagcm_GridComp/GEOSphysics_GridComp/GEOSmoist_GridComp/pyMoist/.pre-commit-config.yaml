@@ -8,18 +8,21 @@ repos:
     rev: 20.8b1
     hooks:
     - id: black
+      description: Format Python code
       additional_dependencies: ["click==8.0.4"]
 
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.4.2
     hooks:
     - id: isort
+      description: Group and sort Python imports
       args: ["--profile", "black"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.4.1
     hooks:
     - id: mypy
+      description: Perform static type analysis of Python code
       name: mypy-pyMoist
       args: [
         --ignore-missing-imports,
@@ -35,6 +38,8 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
+    - id: check-ast
+    - id: check-case-conflict
     - id: check-toml
     - id: check-yaml
     - id: end-of-file-fixer
@@ -44,6 +49,7 @@ repos:
     rev: 3.9.2
     hooks:
     - id: flake8
+      description: Check Python code for correctness, consistency and adherence to best practices
       name: flake8
       language_version: python3
       args: [
@@ -63,3 +69,22 @@ repos:
         "--exclude=docs",
         "--ignore=W503,E302,E203,F841,F401",
         "--max-line-length=88",]
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.3.0
+  hooks:
+    -   id: codespell
+        name: codespell
+        description: Check for spelling errors
+        entry: codespell
+        args:  ["--ignore-words-list", "aare"]
+
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+    -   id: pydocstyle
+        name: pydocstyle
+        description: Check docstrings in Python code for compliance with conventions
+        entry: pydocstyle
+        types: [python]
+        args: ["--ignore=D101,D102,D103,D105,D107,D203,D213,D406,D407"]
