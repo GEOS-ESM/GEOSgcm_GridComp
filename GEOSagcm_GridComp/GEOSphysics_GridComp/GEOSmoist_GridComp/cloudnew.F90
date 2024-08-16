@@ -487,7 +487,7 @@ contains
          VFALLWAT_AN_dev,VFALLWAT_LS_dev,   &
          VFALLSN_AN_dev,VFALLSN_LS_dev,VFALLSN_CN_dev,VFALLSN_SC_dev, &
          VFALLRN_AN_dev,VFALLRN_LS_dev,VFALLRN_CN_dev,VFALLRN_SC_dev,  &
-         PDF_A_dev, PDFITERS_dev, & 
+         PDF_A_dev, PDFITERS_dev,s2_dev, & 
          DQVDTMAC_dev, DQLDTMAC_dev, DQIDTMAC_dev, DQADTMAC_dev, &
 #ifdef PDFDIAG
          PDF_SIGW1_dev, PDF_SIGW2_dev, PDF_W1_dev, PDF_W2_dev, & 
@@ -635,6 +635,7 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: VFALLRN_SC_dev ! VFALLRN_SC
       real, intent(inout), dimension(IRUN,  LM) :: PDF_A_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDFITERS_dev
+      real, intent(  out), dimension(IRUN,  LM) :: s2_dev
 #ifdef PDFDIAG
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW1_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDF_SIGW2_dev
@@ -1052,6 +1053,7 @@ contains
                   hl3_dev(I,K),        &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDFITERS_dev(I,K),   &
+                  S2_dev(I,K),         &
 #ifdef PDFDIAG
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -1101,6 +1103,7 @@ contains
                   hl3_dev(I,K),        &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDFITERS_dev(I,K),   &
+                  s2_dev(I,K),         &
 #ifdef PDFDIAG
                   PDF_SIGW1_dev(I,K),  &
                   PDF_SIGW2_dev(I,K),  &
@@ -1869,6 +1872,7 @@ contains
          MFHL3       , &
          PDF_A,      &  ! can remove these after development
          PDFITERS,   &
+         S2,         &
 #ifdef PDFDIAG
          PDF_SIGW1,  &
          PDF_SIGW2,  &
@@ -1900,7 +1904,7 @@ contains
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RHLQT,  PDF_RWHL, PDF_RWQT
 #endif
-      real, intent(out)   :: WTHV2, WQL, PDFITERS
+      real, intent(out)   :: WTHV2, WQL, PDFITERS, s2
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,HL
@@ -2011,6 +2015,7 @@ contains
                                  MFQT3,        &
                                  MFHL3,        &
                                  PDF_A,        &
+                                 S2,           &
 #ifdef PDFDIAG
                                  PDF_SIGW1,    &
                                  PDF_SIGW2,    &

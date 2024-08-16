@@ -442,7 +442,7 @@ contains
       do j=1,ny
         do i=1,nx
           ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
-          if (brunt_edge(i,j,k) <= bruntmin) then
+          if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))))
           else
             wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
@@ -806,10 +806,10 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) >= bruntmin) then
-              brunt2(i,j,k) = brunt(i,j,k)
-            else
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
+            else
+              brunt2(i,j,k) = brunt(i,j,K)
             endif
 
           end do
@@ -889,11 +889,10 @@ contains
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
-                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*(shocparams%LENFAC2)
+                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
                  ! Stability length scale
-                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-
+                 smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
 
                  !=== Combine component length scales ===
                  if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
@@ -1007,6 +1006,7 @@ contains
                              QT,       &  ! in
                              HL,       &  ! in
                              MFFRC,    &  ! in
+                             CNV_MFC,  &  ! in
                              MFQT3,    &  ! in
                              MFHL3,    &  ! in
                              MFW2,     &  ! in
@@ -1051,6 +1051,7 @@ contains
     real,    intent(in   ) :: QT   (IM,JM,LM)  ! total water
     real,    intent(in   ) :: HL   (IM,JM,LM)  ! liquid water static energy
     real,    intent(in   ) :: MFFRC(IM,JM,LM)  ! mass flux area fraction
+    real,    intent(in   ) :: CNV_MFC(IM,JM,0:LM) 
     real,    intent(in   ) :: MFQT3(IM,JM,LM)  !
     real,    intent(in   ) :: MFHL3(IM,JM,LM)  !
     real,    intent(in   ) :: MFW2 (IM,JM,LM)  !
@@ -1138,7 +1139,7 @@ contains
 
         ! Second moment of total water mixing ratio.  Eq 3 in BK13
         qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
-        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
+        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
         qt2_edge_nomf(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k))*qtgrad(:,:,k)  ! gradient production
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
@@ -1159,6 +1160,7 @@ contains
 
     ! Update PDF_A
     if (AFRC_TSCALE.gt.0.) then
+!      pdf_a = (pdf_a+mffrc+0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
       pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
     else
       pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
@@ -1192,7 +1194,7 @@ contains
         else
           onemmf = 1.0 - MFFRC(:,:,k)
 
-          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) + MFW2(:,:,k)
+          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) !+ MFW2(:,:,k)
 
 !          hl2(:,:,k) = onemmf*0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )  !+ MFHL2(:,:,k)
           hl2(:,:,k) = 0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )
@@ -1220,8 +1222,8 @@ contains
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 3-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
+        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
 
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
