@@ -36,29 +36,19 @@
 
 module gfdl2_cloud_microphys_mod
 
-      use mpp_mod, only: mpp_pe, mpp_root_pe
-    ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
-    ! mpp_clock_begin, mpp_clock_end, clock_routine, &
-    ! input_nml_file
-    ! use diag_manager_mod, only: register_diag_field, send_data
-    ! use time_manager_mod, only: time_type, get_time
-    ! use constants_mod, only: grav, rdgas, rvgas, cp_air, hlv, hlf, pi => pi_8
-    ! use fms_mod, only: write_version_number, open_namelist_file, &
-    ! check_nml_error, file_exist, close_file
+  ! use mpp_mod, only: mpp_pe, mpp_root_pe
 
-    use fms_mod,             only: write_version_number, open_namelist_file, &
-                                   check_nml_error, close_file, file_exist,  &
-                                   fms_init
+  ! use fms_mod, only: write_version_number, open_namelist_file, &
+  !                    check_nml_error, close_file, file_exist,  &
+  !                    fms_init
     use GEOSmoist_Process_Library, only: sigma, ice_fraction, LDRADIUS4, ICE_VFALL_PARAM
+    use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
 
     private
 
     public gfdl_cloud_microphys_driver, gfdl_cloud_microphys_init, gfdl_cloud_microphys_end
-    public wqs1, wqs2, qs_blend, wqsat_moist, wqsat2_moist
-    public qsmith_init, qsmith, es2_table1d, es3_table1d, esw_table1d
-    public setup_con, wet_bulb
     public cloud_diagnosis
 
     real :: missing_value = - 1.e10
@@ -75,20 +65,16 @@ module gfdl2_cloud_microphys_mod
     real, parameter :: hlv = 2.5e6 !< gfs: latent heat of evaporation
     real, parameter :: hlf = 3.3358e5 !< gfs: latent heat of fusion
     real, parameter :: pi = 3.1415926535897931 !< gfs: ratio of circle circumference to diameter
-    ! real, parameter :: cp_air = rdgas * 7. / 2. ! 1004.675, heat capacity of dry air at constant pressure
     real, parameter :: cp_vap = 4.0 * rvgas !< 1846.0, heat capacity of water vapore at constnat pressure
-    ! real, parameter :: cv_air = 717.56 ! satoh value
     real, parameter :: cv_air = cp_air - rdgas !< 717.55, heat capacity of dry air at constant volume
-    ! real, parameter :: cv_vap = 1410.0 ! emanuel value
     real, parameter :: cv_vap = 3.0 * rvgas !< 1384.5, heat capacity of water vapor at constant volume
 
-    ! the following two are from emanuel's book "atmospheric convection"
-    ! real, parameter :: c_ice = 2106.0 ! heat capacity of ice at 0 deg c: c = c_ice + 7.3 * (t - tice)
-    ! real, parameter :: c_liq = 4190.0 ! heat capacity of water at 0 deg c
-
+  ! the following two are from emanuel's book "atmospheric convection"
+  ! real, parameter :: c_ice = 2106.0 ! heat capacity of ice at 0 deg c: c = c_ice + 7.3 * (t - tice)
+  ! real, parameter :: c_liq = 4190.0 ! heat capacity of water at 0 deg c
     real, parameter :: c_ice = 1972.0 !< gfdl: heat capacity of ice at - 15 deg c
     real, parameter :: c_liq = 4185.5 !< gfdl: heat capacity of water at 15 deg c
-    ! real, parameter :: c_liq = 4218.0 ! ifs: heat capacity of liquid at 0 deg c
+  ! real, parameter :: c_liq = 4218.0 ! ifs: heat capacity of liquid at 0 deg c
 
     real, parameter :: eps = rdgas / rvgas ! 0.6219934995
     real, parameter :: zvir = rvgas / rdgas - 1. !< 0.6077338443
@@ -101,16 +87,16 @@ module gfdl2_cloud_microphys_mod
     real   , parameter :: delt = 0.1
     real   , parameter :: rdelt = 1.0/delt
 
-    ! real, parameter :: e00 = 610.71 ! gfdl: saturation vapor pressure at 0 deg c
+  ! real, parameter :: e00 = 610.71 ! gfdl: saturation vapor pressure at 0 deg c
     real, parameter :: e00 = 611.21 !< ifs: saturation vapor pressure at 0 deg c
 
     real, parameter :: dc_vap = cp_vap - c_liq !< - 2339.5, isobaric heating / cooling
     real, parameter :: dc_ice = c_liq - c_ice !< 2213.5, isobaric heating / colling
 
     real, parameter :: hlv0 = hlv !< gfs: evaporation latent heat coefficient at 0 deg c
-    ! real, parameter :: hlv0 = 2.501e6 ! emanuel appendix - 2
+  ! real, parameter :: hlv0 = 2.501e6 ! emanuel appendix - 2
     real, parameter :: hlf0 = hlf !< gfs: fussion latent heat coefficient at 0 deg c
-    ! real, parameter :: hlf0 = 3.337e5 ! emanuel
+  ! real, parameter :: hlf0 = 3.337e5 ! emanuel
 
     real, parameter :: lv0 = hlv0 - dc_vap * t_ice!< 3.13905782e6, evaporation latent heat coefficient at 0 deg k
     real, parameter :: li00 = hlf0 - dc_ice * t_ice!< - 2.7105966e5, fusion latent heat coefficient at 0 deg k
@@ -407,8 +393,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ie = iie - iis + 1
     je = jje - jjs + 1
     ke = kke - kks + 1
-
-    ! call mpp_clock_begin (gfdl_mp_clock)
 
     ! -----------------------------------------------------------------------
     ! define heat capacity of dry air and water vapor based on hydrostatical property
@@ -1967,8 +1951,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! -----------------------------------------------------------------------
         qpz = qv (k) + ql (k) + qi (k)
         tin = tz (k) - (lhl (k) * (ql (k) + qi (k)) + lhi (k) * qi (k)) / (c_air + &
-            qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
-            rh = qpz / iqs1 (tin, den (k))
+              qpz * c_vap + qr (k) * c_liq + (qs (k) + qg (k)) * c_ice)
+        rh = qpz / iqs1 (tin, den (k))
         if (.not. do_evap) then
            evap = 0.0
         else
@@ -3309,9 +3293,7 @@ subroutine gfdl_cloud_microphys_init (comm)
     ! logical :: flag
     ! real :: tmp, q1, q2
 
-    call fms_init(comm)
-
-    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
+    !call fms_init(comm)
 
 #ifdef INTERNAL_FILE_NML
     read (input_nml_file, nml = gfdl_cloud_microphysics_nml)
@@ -3321,87 +3303,34 @@ subroutine gfdl_cloud_microphys_init (comm)
         write (6, *) 'gfdl - mp :: namelist file: ', trim (fn_nml), ' does not exist'
         stop
     else
-        nlunit=open_namelist_file()
-        rewind (nlunit)
+        !nlunit=open_namelist_file()
+        !rewind (nlunit)
+        open(NEWUNIT=nlunit,file=trim(fn_nml), form='formatted',access='sequential',iostat=ios)
+        if(ios /= 0) stop 'open namelist file gfdl_cloud_microphys_init failed, bailing out...'
+        rewind (nlunit, iostat=ios)
+        if(ios /= 0) stop 'rewind namelist file gfdl_cloud_microphys_init failed, bailing out...'
      ! Read Main namelist
         read (nlunit,gfdl_cloud_microphysics_nml,iostat=ios)
-        ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
-        call close_file(nlunit)
+        if(ios /= 0) stop 'read namelist gfdl_cloud_microphys_init failed, bailing out...'
+        !ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
+        !call close_file(nlunit)
+        close(nlunit, iostat=ios)
+        if(ios /= 0) stop 'close namelist file gfdl_cloud_microphys_init failed, bailing out...'
     endif
 #endif
 
-    if (mpp_pe() .EQ. mpp_root_pe()) then
+    if (MAPL_AM_I_ROOT()) then
         write (*, *) " ================================================================== "
         write (*, *) "gfdl_cloud_microphys_mod"
         write (*, nml = gfdl_cloud_microphysics_nml)
         write (*, *) " ================================================================== "
     endif
 
-    ! write version number and namelist to log file
-   !if (me == root_proc) then
-   !    write (logunit, *) " ================================================================== "
-   !    write (logunit, *) "gfdl_cloud_microphys_mod"
-   !    write (logunit, nml = gfdl_cloud_microphysics_nml)
-   !endif
-
     if (do_setup) then
         call setup_con
         call setupm
         do_setup = .false.
     endif
-
-    ! if (root_proc) write (logunit, nml = gfdl_cloud_microphys_nml)
-    !
-    ! id_vtr = register_diag_field (mod_name, 'vt_r', axes (1:3), time, &
-    ! 'rain fall speed', 'm / s', missing_value = missing_value)
-    ! id_vts = register_diag_field (mod_name, 'vt_s', axes (1:3), time, &
-    ! 'snow fall speed', 'm / s', missing_value = missing_value)
-    ! id_vtg = register_diag_field (mod_name, 'vt_g', axes (1:3), time, &
-    ! 'graupel fall speed', 'm / s', missing_value = missing_value)
-    ! id_vti = register_diag_field (mod_name, 'vt_i', axes (1:3), time, &
-    ! 'ice fall speed', 'm / s', missing_value = missing_value)
-
-    ! id_droplets = register_diag_field (mod_name, 'droplets', axes (1:3), time, &
-    ! 'droplet number concentration', '# / m3', missing_value = missing_value)
-    ! id_rh = register_diag_field (mod_name, 'rh_lin', axes (1:2), time, &
-    ! 'relative humidity', 'n / a', missing_value = missing_value)
-
-    ! id_rain = register_diag_field (mod_name, 'rain_lin', axes (1:2), time, &
-    ! 'rain_lin', 'mm / day', missing_value = missing_value)
-    ! id_snow = register_diag_field (mod_name, 'snow_lin', axes (1:2), time, &
-    ! 'snow_lin', 'mm / day', missing_value = missing_value)
-    ! id_graupel = register_diag_field (mod_name, 'graupel_lin', axes (1:2), time, &
-    ! 'graupel_lin', 'mm / day', missing_value = missing_value)
-    ! id_ice = register_diag_field (mod_name, 'ice_lin', axes (1:2), time, &
-    ! 'ice_lin', 'mm / day', missing_value = missing_value)
-    ! id_prec = register_diag_field (mod_name, 'prec_lin', axes (1:2), time, &
-    ! 'prec_lin', 'mm / day', missing_value = missing_value)
-
-    ! if (root_proc) write (*, *) 'prec_lin diagnostics initialized.', id_prec
-
-    ! id_cond = register_diag_field (mod_name, 'cond_lin', axes (1:2), time, &
-    ! 'total condensate', 'kg / m ** 2', missing_value = missing_value)
-    ! id_var = register_diag_field (mod_name, 'var_lin', axes (1:2), time, &
-    ! 'subgrid variance', 'n / a', missing_value = missing_value)
-
-    ! call qsmith_init
-
-    ! testing the water vapor tables
-
-    ! if (mp_debug .and. root_proc) then
-    ! write (*, *) 'testing water vapor tables in gfdl_cloud_microphys'
-    ! tmp = tice - 90.
-    ! do k = 1, 25
-    ! q1 = wqsat_moist (tmp, 0., 1.e5)
-    ! q2 = qs1d_m (tmp, 0., 1.e5)
-    ! write (*, *) nint (tmp - tice), q1, q2, 'dq = ', q1 - q2
-    ! tmp = tmp + 5.
-    ! enddo
-    ! endif
-
-    ! if (root_proc) write (*, *) 'gfdl_cloud_micrphys diagnostics initialized.'
-
-    ! gfdl_mp_clock = mpp_clock_id ('gfdl_cloud_microphys', grain = clock_routine)
 
     module_is_initialized = .true.
 
@@ -3438,8 +3367,6 @@ end subroutine gfdl_cloud_microphys_end
 subroutine setup_con
 
     implicit none
-
-    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
 
     rgrav = 1. / grav
 
@@ -3531,15 +3458,6 @@ subroutine qsmith_init
     integer :: i
 
     if (.not. tables_are_initialized) then
-
-        ! root_proc = (mpp_pe () .eq. mpp_root_pe ())
-        ! if (root_proc) print *, ' gfdl mp: initializing qs tables'
-
-        ! debug code
-        ! print *, mpp_pe (), allocated (table), allocated (table2), &
-        ! allocated (table3), allocated (tablew), allocated (des), &
-        ! allocated (des2), allocated (des3), allocated (desw)
-        ! end debug code
 
         ! generate es table (dt = 0.1 deg. c)
 
@@ -4338,52 +4256,6 @@ subroutine neg_adj (ktop, kbot, pt, dp, qv, ql, qr, qi, qs, qg)
     endif
 
 end subroutine neg_adj
-
-! =======================================================================
-! compute global sum
-!>@brief quick local sum algorithm
-! =======================================================================
-
-!real function g_sum (p, ifirst, ilast, jfirst, jlast, area, mode)
-!
-! use mpp_mod, only: mpp_sum
-!
-! implicit none
-!
-! integer, intent (in) :: ifirst, ilast, jfirst, jlast
-! integer, intent (in) :: mode ! if == 1 divided by area
-!
-! real, intent (in), dimension (ifirst:ilast, jfirst:jlast) :: p, area
-!
-! integer :: i, j
-!
-! real :: gsum
-!
-! if (global_area < 0.) then
-! global_area = 0.
-! do j = jfirst, jlast
-! do i = ifirst, ilast
-! global_area = global_area + area (i, j)
-! enddo
-! enddo
-! call mpp_sum (global_area)
-! endif
-!
-! gsum = 0.
-! do j = jfirst, jlast
-! do i = ifirst, ilast
-! gsum = gsum + p (i, j) * area (i, j)
-! enddo
-! enddo
-! call mpp_sum (gsum)
-!
-! if (mode == 1) then
-! g_sum = gsum / global_area
-! else
-! g_sum = gsum
-! endif
-!
-!end function g_sum
 
 ! ==========================================================================
 !>@brief The subroutine 'interpolate_z' interpolates to a prescribed height.
