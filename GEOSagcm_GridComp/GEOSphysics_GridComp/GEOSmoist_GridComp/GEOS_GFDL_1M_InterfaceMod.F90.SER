@@ -835,6 +835,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QS = RAD_QS + DQSDTmic * DT_MOIST
          RAD_QG = RAD_QG + DQGDTmic * DT_MOIST
          RAD_CF = MIN(1.0,MAX(0.0,RAD_CF + DQADTmic * DT_MOIST))
+         ! Serialize data for RedistributeClouds
          !$ser savepoint RedistributeClouds-In
          !$ser data RAD_CF=RAD_CF RAD_QL=RAD_QL RAD_QI=RAD_QI CLCN=CLCN CLLS=CLLS QLCN=QLCN QLLS=QLLS QICN=QICN QILS=QILS RAD_QV=RAD_QV T=T
      ! Redistribute CN/LS CF/QL/QI
