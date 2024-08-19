@@ -3108,19 +3108,19 @@ contains
 #endif
              TKSNO = condice 
 
-             call SNOWRT(1,NUM_SNOW_LAYERS,MAPL_LANDICE,                          &  ! in    
-                      MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in    
-                      LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in    
-                      EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),            &  ! in    
-                      RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in    
-                      WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout    
-                      HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out    
-                      AREASC(k),FR(K,N),PERC(k),FHGND(k),                         &  ! out   
-                      EVAPO(k),SHFO(k),LHFO(k),HCORR(k),ghflxsno(k),              &  ! out   
-                      SNDZSC(k), WESNPREC(k), SNDZPREC(k),SNDZ1PERC(k),           &  ! out    
-                      WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out      
-                      EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out   
-                                                                                    
+          call SNOWRT( LONS(k), LATS(k),                                       &  ! in     [radians]  !!!
+                   1,NUM_SNOW_LAYERS,MAPL_LANDICE,                             &  ! in    
+                   MAXSNDZ, RHOFRESH, DZMAX,                                   &  ! in    
+                   LANDICELT(k),ZONEAREA,TKGND,PRECIP(k),SNO(k),TA(k),DT,      &  ! in    
+                   EVAPI(k),DEVAPDT(k),SHF(k),SHD(k),ULW(k),BLWN(k),           &  ! in    
+                   RADDN(k),ZC1,TOTDEPOS(k,:),                                 &  ! in    
+                   WESN(k,:),HTSN(k,:),SNDZ(k,:), RCONSTIT(k,:,:),             &  ! inout    
+                   HLWO(k), FROZFRAC(k,:),TPSN(k,:), RMELT(k,:),               &  ! out    
+                   AREASC(k),FR(K,N),PERC(k),FHGND(k),                         &  ! out   
+                   EVAPO(k),SHFO(k),LHFO(k),HCORR(k),ghflxsno(k),              &  ! out   
+                   SNDZSC(k), WESNPREC(k), SNDZPREC(k),SNDZ1PERC(k),           &  ! out    
+                   WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out      
+                   EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out   
 
              ! Snow impurities update
               if (N_CONST_LANDICE4SNWALB /= 0) then
