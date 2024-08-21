@@ -1077,6 +1077,15 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
+        LONG_NAME          = 'soil_wetness_surface_for_chem'     ,&
+        UNITS              = '1'                                 ,&
+        SHORT_NAME         = 'WET1_FOR_CHEM'                     ,&
+        DIMS               = MAPL_DimsHorzOnly                   ,&
+        VLOCATION          = MAPL_VLocationNone                  ,&
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                             ,&
         LONG_NAME          = 'soil_wetness_rootzone'             ,&
         UNITS              = '1'                                 ,&
         SHORT_NAME         = 'WET2'                              ,&
@@ -5260,6 +5269,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNOMAS    => NULL()
     real, pointer, dimension(:,:) :: SNOWDP    => NULL()
     real, pointer, dimension(:,:) :: WET1      => NULL()
+    real, pointer, dimension(:,:) :: WET1_FOR_CHEM => NULL()
     real, pointer, dimension(:,:) :: WET2      => NULL()
     real, pointer, dimension(:,:) :: WET3      => NULL()
     real, pointer, dimension(:,:) :: WCSF      => NULL()
@@ -6451,6 +6461,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SNOMAS  , 'SNOMAS' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWDP  , 'SNOWDP' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET1    , 'WET1'   ,  RC=STATUS); VERIFY_(STATUS)
+    ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+    !       (aka not land) to be replaced with 1.0. We want WET1 to have
+    !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+    !       to GOCART.
+    call MAPL_GetPointer(EXPORT  , WET1_FOR_CHEM    , 'WET1_FOR_CHEM'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET2    , 'WET2'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET3    , 'WET3'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WCSF    , 'WCSF'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -8486,11 +8501,17 @@ module GEOS_SurfaceGridCompMod
       endif
 
 
-! Fill WET1 over non-land points
-!-------------------------------
+! Fill WET1_FOR_CHEM over non-land points to 1.0
+!-----------------------------------------------
 
-      if( associated(WET1) ) then
-          where(WET1 == MAPL_UNDEF) WET1 = 1.0
+! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+!       (aka not land) to be replaced with 1.0. We want WET1 to have
+!       MAPL_UNDEF over non-land points, so we need a separate export to pass
+!       to GOCART.
+
+      if( associated(WET1_FOR_CHEM) ) then
+          WET1_FOR_CHEM = WET1
+          where(WET1_FOR_CHEM == MAPL_UNDEF) WET1_FOR_CHEM = 1.0
       endif
 
 
