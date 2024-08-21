@@ -1160,13 +1160,13 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddConnectivity ( GC,                   &
+    call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = [character(len=6) ::           &
                          'QV','QLTOT','QITOT','FCLD', &
                          'WTHV2','WQT_DC'],           &
-         DST_ID      = TURBL,                         &
-         SRC_ID      = MOIST,                         &
-                                           RC=STATUS  )
+         DST_ID      = TURBL,                                      &
+         SRC_ID      = MOIST,                                      &
+                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1279,12 +1279,12 @@ contains
      ENDIF
 
      IF (DO_OBIO /= 0) THEN 
-        call MAPL_AddConnectivity ( GC,                               &
+     call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
-             DST_ID      = SURF,                                      &
-             RC=STATUS  )
-        VERIFY_(STATUS)
+         DST_ID      = SURF,                                       &
+                                                        RC=STATUS  )
+     VERIFY_(STATUS)
      ENDIF
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1296,11 +1296,11 @@ contains
 
 ! Imports for GWD
 !----------------
-    call MAPL_AddConnectivity ( GC,                                      &
+    call MAPL_AddConnectivity ( GC,                                    &
          SHORT_NAME  = [character(len=7) :: 'Q', 'DTDT_DC', 'CNV_FRC' ], &
-         DST_ID      = GWD,                                              &
-         SRC_ID      = MOIST,                                            &
-                                                        RC=STATUS        )
+         DST_ID      = GWD,                                            &
+         SRC_ID      = MOIST,                                          &
+                                                        RC=STATUS      )
     VERIFY_(STATUS)
     call MAPL_AddConnectivity ( GC,                                      &
          SRC_NAME    = 'DQIDT_micro',                                    &
@@ -1545,6 +1545,7 @@ contains
           CHILD = MOIST,                   &
           RC=STATUS)
      VERIFY_(STATUS)
+
      call MAPL_TerminateImport    ( GC,    &
           SHORT_NAME = (/'DQDT_BL','DTDT_BL'/),          &
           CHILD = MOIST,                   &
@@ -2217,8 +2218,7 @@ contains
 
 
 ! SYNCTQ & UV pointers
-   real, pointer, dimension(:,:,:)     ::   UFORMST,  VFORMST, TFORMST
-   real, pointer, dimension(:,:,:)     ::  UAFMOIST, VAFMOIST, TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
+   real, pointer, dimension(:,:,:)     :: UAFMOIST, VAFMOIST,  TAFMOIST, QAFMOIST, THAFMOIST, SAFMOIST
    real, pointer, dimension(:,:)       ::  UFORSURF, VFORSURF, TFORSURF, QFORSURF, SPD4SURF
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
@@ -2619,6 +2619,8 @@ contains
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
+     call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     ! From Moist
      call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
@@ -2626,6 +2628,9 @@ contains
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  QAFMOIST,  'QAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! Boundary Layer Tendencies for GF
+     DTDT_BL=TAFMOIST
+     DQDT_BL=QV
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
@@ -2788,6 +2793,13 @@ contains
         TFORCHEM = TFORRAD
        THFORCHEM = TFORRAD/PK
      endif
+    endif
+
+! Boundary Layer Tendencies for GF
+!--------------------------
+    if ( SYNCTQ.ge.1. ) then
+       DTDT_BL=(TFORRAD-DTDT_BL)/DT
+       DQDT_BL=(QV-DQDT_BL)/DT
     endif
 
 ! Aerosol/Chemistry Stage 2
@@ -3394,14 +3406,16 @@ contains
        DOXDTCHMINT = DOXDTCHMINT * (MAPL_O3MW/MAPL_AIRMW)
     end if
 
-    !- save 'boundary layer' tendencies of Q and T for the convection scheme
-    call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
-    DQDT_BL = DQVDTTRB
-    DTDT_BL = 0.
-    !- for SCM setup, TIT/TIF are not associated
-    if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-    if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
+    if(SYNCTQ.eq.0.) then
+      call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
+      !- save 'boundary layer' tendencies of Q and T for the convection scheme
+      DQDT_BL = DQVDTTRB
+      DTDT_BL = 0.
+      !- for SCM setup, TIT/TIF are not associated
+      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
+      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
+    endif
 
     if(associated(DM )) deallocate(DM )
     if(associated(DPI)) deallocate(DPI)
