@@ -88,7 +88,8 @@ module GEOSmoist_Process_Library
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
   ! base grid length for sigma calculation
-  real :: SIGMA_DX = 1000.0
+  real :: SIGMA_DX  = 350.0
+  real :: SIGMA_EXP = 2.0
 
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
@@ -147,7 +148,7 @@ module GEOSmoist_Process_Library
   public :: make_IceNumber, make_DropletNumber, make_RainNumber
   public :: dissipative_ke_heating
   public :: pdffrac, pdfcondensate, partition_dblgss
-  public :: SIGMA_DX
+  public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
   public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM, ICE_VFALL_PARAM
   public :: update_cld, meltfrz_inst2M
@@ -342,13 +343,17 @@ module GEOSmoist_Process_Library
 
   end subroutine CNV_Tracers_Init
 
-  real function sigma (dx, BASE_DX)
+  real function sigma (dx, BASE_DX, BASE_EXP)
       real, intent(in) :: dx
-      real, optional , intent(in) :: BASE_DX
+      real, optional , intent(in) :: BASE_DX, BASE_EXP
+      real                :: tmp_exp
+                             tmp_exp = SIGMA_EXP
+      if (present(BASE_EXP)) tmp_exp = BASE_EXP
+     ! Arakawa 2011 based sigma function
       if (present(BASE_DX)) then
-        sigma = 1.0-0.9839*exp(-0.09835*(dx/ BASE_DX))
+        sigma = (1.0-0.9839*exp(-0.09835*(dx/ BASE_DX)))**tmp_exp
       else
-        sigma = 1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)) ! Arakawa 2011 sigma
+        sigma = (1.0-0.9839*exp(-0.09835*(dx/SIGMA_DX)))**tmp_exp
       endif
   end function sigma
 
