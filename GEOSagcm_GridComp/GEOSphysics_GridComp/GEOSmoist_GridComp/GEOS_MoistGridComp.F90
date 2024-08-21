@@ -157,7 +157,8 @@ contains
                adjustl(CONVPAR_OPTION)=="GF" .or. &
                adjustl(CONVPAR_OPTION)=="NONE"
     _ASSERT( LCONVPAR, 'Unsupported Deep Convection Option' )
-    call MAPL_GetResource( CF, SIGMA_DX, Label='SIGMA_DX:', default=SIGMA_DX, RC=STATUS)
+    call MAPL_GetResource( CF, SIGMA_DX , Label='SIGMA_DX:' , default=SIGMA_DX , RC=STATUS)
+    call MAPL_GetResource( CF, SIGMA_EXP, Label='SIGMA_EXP:', default=SIGMA_EXP, RC=STATUS)
 
 
     ! Inititialize shallow convective parameterizations (Options: UW or NONE)
