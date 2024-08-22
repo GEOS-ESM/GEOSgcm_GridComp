@@ -1,6 +1,8 @@
-"""All constants used for Radiation Coupling Port. Global constants taken from GEOS/src/Shared/@MAPL/shared/Constants"""
+"""All constants used for Radiation Coupling Port
+Global constants taken from GEOS/src/Shared/@MAPL/shared/Constants"""
 
 from ndsl.dsl.typing import Float
+
 
 # Define whether or not to use CODATA 2018 constants
 CODATA_2018_CONSTANTS = True
@@ -70,7 +72,9 @@ LBE = Float(1.0) / Float(3.0) - Float(0.14)
 # Fortran f32 exepcted value
 # LBE = 0.193333343
 
-# Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274 - uses MAPL_GetResource to get variables. These do not change in the radiation coupling loop
+# Taken from GEOS_GFDL_1M_InterfaceMod.F90:269-274
+# - uses MAPL_GetResource to get variables.
+# These do not change in the radiation coupling loop
 MIN_RL = Float(2.5e-6)
 MAX_RL = Float(60.0e-6)
 FAC_RL = Float(1.0)
