@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, Int, Float
 from ndsl import QuantityFactory, StencilFactory
+=======
+>>>>>>> NASA/dsl/develop
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log10
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
+
 import pyMoist.radiation_coupling_constants as radconstants
+from ndsl import QuantityFactory, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float, FloatField
+
 
 
 @gtscript.function
@@ -38,8 +46,10 @@ def cloud_effective_radius_ice(
     PL (Float): Pressure level.
     TE (Float): Temperature.
     QC (Float): Ice cloud mixing ratio.
-    NNL (Float): Number concentration of liquid cloud droplets. Not used in function body, but included in the Fortran code.
-    NNI (Float): Number concentration of ice cloud crystals. Not used in function body, but included in the Fortran code.
+    NNL (Float): Number concentration of liquid cloud droplets.
+                 Not used in function body, but included in the Fortran code.
+    NNI (Float): Number concentration of ice cloud crystals.
+                 Not used in function body, but included in the Fortran code.
 
     Returns:
     Float: Effective radius of ice clouds.
@@ -58,14 +68,14 @@ def cloud_effective_radius_ice(
                 1.0e-3 * (radconstants.MAPL_TICE - TE) ** 1.5
             )
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - radconstants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC**0.2214)
-        BB = 0.79570 * (WC**0.2535)
+        AA = 45.8966 * (WC ** 0.2214)
+        BB = 0.79570 * (WC ** 0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
@@ -324,11 +334,14 @@ class RadiationCoupling:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self.do_qa = do_qa
-        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented. Implement QSAT0 and QSAT3 logic if diagnostics are needed, found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
+        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented.
+        # Implement QSAT0 and QSAT3 logic if diagnostics are needed,
+        # found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
         if self.do_qa:
             # RHX = Q/GEOS_QSAT( T, PLmb)
             raise NotImplementedError(
-                "[Radiation Coupling] Diagnostic (do_qa) not implemented. (GEOS_QSAT missing)"
+                "[Radiation Coupling] Diagnostic (do_qa) not implemented."
+                "(GEOS_QSAT missing)"
             )
 
     def __call__(
