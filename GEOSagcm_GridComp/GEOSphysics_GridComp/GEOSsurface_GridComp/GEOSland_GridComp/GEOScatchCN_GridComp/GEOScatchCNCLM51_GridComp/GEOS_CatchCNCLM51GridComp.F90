@@ -3289,6 +3289,25 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_autotrophic_respiration' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNAR'                      ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_heterotrophic_respiration' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNHR'                      ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_net_ecosystem_exchange' ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'CNNEE'                     ,&
@@ -4880,6 +4899,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: CNNPP
         real, dimension(:),   pointer :: CNGPP
         real, dimension(:),   pointer :: CNSR
+        real, dimension(:),   pointer :: CNAR
+        real, dimension(:),   pointer :: CNHR
         real, dimension(:),   pointer :: CNNEE
         real, dimension(:),   pointer :: CNXSMR
         real, dimension(:),   pointer :: CNADD
@@ -5122,7 +5143,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: para
     real, allocatable, dimension(:) :: rcxdt, rcxdq
     real, allocatable, dimension(:) :: dayl, dayl_fac
-    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs
+    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, aresp, hresp, padd, frootc, vegc, xsmr,burn, closs
     real, allocatable, dimension(:) :: nfire, som_closs, fsnow
     real, allocatable, dimension(:) :: ndeploy, denit, sminn_leached, sminn, fire_nloss
     real, allocatable, dimension(:) :: leafn, leafc, gross_nmin, net_nmin, nfix_to_sminn, actual_immob
@@ -5592,6 +5613,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNNPP              , 'CNNPP'               ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNGPP              , 'CNGPP'               ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNSR               , 'CNSR'                ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,CNAR               , 'CNAR'                ,           RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,CNHR               , 'CNHR'                ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNNEE              , 'CNNEE'               ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNXSMR             , 'CNXSMR'              ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNADD              , 'CNADD'               ,           RC=STATUS); VERIFY_(STATUS)
@@ -6371,6 +6394,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(.not. allocated(npp )) allocate(     npp(ntiles) )
     if(.not. allocated(gpp )) allocate(     gpp(ntiles) )
     if(.not. allocated(sr  )) allocate(      sr(ntiles) )
+    if(.not. allocated(aresp)) allocate(  aresp(ntiles) )
+    if(.not. allocated(hresp)) allocate(  hresp(ntiles) )
     if(.not. allocated(nee )) allocate(     nee(ntiles) )
     if(.not. allocated(padd)) allocate(    padd(ntiles) )
     if(.not. allocated(frootc)) allocate(frootc(ntiles) )
@@ -7059,7 +7084,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, first_cn, &
                       psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, wpwet, &
-                      elai,esai,tlai,totcolc,npp,gpp,sr,nee,burn,closs,nfire,&
+                      elai,esai,tlai,totcolc,npp,gpp,sr,aresp,hresp,nee,burn,closs,nfire,&
                       som_closs,frootc,vegc,xsmr,ndeploy,denit,sminn_leached,sminn,&
                       fire_nloss,leafn,leafc,gross_nmin,net_nmin,&
                       nfix_to_sminn,actual_immob,fpg,fpi,sminn_to_plant,&
@@ -7210,6 +7235,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        if(associated(CNNPP )) cnnpp  = 1.e-3*npp   ! * cnsum
        if(associated(CNGPP )) cngpp  = 1.e-3*gpp   ! * cnsum
        if(associated(CNSR  )) cnsr   = 1.e-3*sr    ! * cnsum
+       if(associated(CNAR  )) cnar   = 1.e-3*aresp    ! * cnsum
+       if(associated(CNHR  )) cnhr   = 1.e-3*hresp    ! * cnsum
        if(associated(CNNEE )) cnnee  = 1.e-3*nee   ! * cnsum
        if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  ! * cnsum
        if(associated(CNADD )) cnadd  = 1.e-3*padd  ! * cnsum

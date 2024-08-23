@@ -66,7 +66,7 @@ contains
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
                       psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, wpwet,   &
-                      zlai,zsai,ztai,colc,nppg,gppg,srg,neeg,burn,closs,nfire,&
+                      zlai,zsai,ztai,colc,nppg,gppg,srg,arg,hrg,neeg,burn,closs,nfire,&
                       som_closs,root,vegc,xsmr,ndeployg,denitg,sminn_leachedg,sminng,&
                       col_fire_nlossg,leafng,leafcg,gross_nming,net_nming,&
                       nfix_to_sminng,actual_immobg,fpgg,fpig,sminn_to_plantg,&
@@ -134,6 +134,8 @@ contains
   real, dimension(nch),                 intent(out) :: gppg ! (gC/m2/s) gross primary production [PFT]
  
   real, dimension(nch),                 intent(out) :: srg  ! (gC/m2/s) total soil respiration (HR + root resp) [column]
+  real, dimension(nch),                 intent(out) :: arg  ! (gC/m2/s) autotrophic respiration  [column]
+  real, dimension(nch),                 intent(out) :: hrg  ! (gC/m2/s) heterotrophic respiration [column]
   real, dimension(nch),                 intent(out) :: neeg ! (gC/m2/s) net ecosystem exchange of carbon, includes fire, landuse, harvest, and hrv_xsmrpool flux, positive for source [column]
 
   real, dimension(nch),                 intent(out) :: fuelcg          ! fuel avalability for non-crop areas outside tropical closed broadleaf evergreen closed forests (gC/m2)
@@ -392,6 +394,8 @@ contains
      nppg(nc) = 0.
      gppg(nc) = 0.
      srg(nc) = 0. 
+     arg(nc) = 0.
+     hrg(nc) = 0.
      burn(nc) = 0.
      closs(nc) = 0.
      som_closs(nc) = 0.
@@ -432,6 +436,8 @@ contains
 
         colc(nc,nz) = bgc_vegetation_inst%cnveg_carbonstate_inst%totc_col(n)
         srg(nc) = srg(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%sr_col(n)*CN_zone_weight(nz)         
+        arg(nc) = arg(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%ar_col(n)*CN_zone_weight(nz)
+        hrg(nc) = hrg(nc) + soilbiogeochem_carbonflux_inst%hr_col(n)*CN_zone_weight(nz)
         burn(nc) = burn(nc) + bgc_vegetation_inst%cnveg_state_inst%farea_burned_col(n)*CN_zone_weight(nz)
         closs(nc) = closs(nc) + bgc_vegetation_inst%cnveg_carbonflux_inst%fire_closs_col(n)*CN_zone_weight(nz)
         som_closs(nc) = som_closs(nc) + soilbiogeochem_carbonflux_inst%somc_fire_col(n)*CN_zone_weight(nz)
