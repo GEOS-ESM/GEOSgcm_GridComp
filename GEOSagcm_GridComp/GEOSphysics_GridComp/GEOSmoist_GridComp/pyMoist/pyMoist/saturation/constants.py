@@ -3,7 +3,7 @@ from pyMoist.aer_activation_constants import MAPL_TICE
 import numpy as np
 
 # ToDo:  Exist in RadiationCoupling, merge
-MAPL_TICE = 273.16  # K
+MAPL_TICE = Float(273.16)  # K
 
 TMINTBL = Float(150.0)
 TMAXTBL = Float(333.0)

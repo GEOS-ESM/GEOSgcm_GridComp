@@ -130,7 +130,7 @@ def qsat_liquid_scalar_exact(
     elif DQ is not None:
         DX = DDQ * (1.0 / DELTA_T)
 
-    return EX, DX
+    return EX, TI, DX
 
 
 def qsat_liquid_scalar_table():

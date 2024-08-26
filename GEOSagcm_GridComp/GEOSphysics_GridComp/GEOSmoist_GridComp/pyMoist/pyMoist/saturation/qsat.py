@@ -1,9 +1,9 @@
 from ndsl import StencilFactory, QuantityFactory, orchestrate
-from ndsl.dsl.typing import Float, FloatField, Int, FloatFieldI, IntField
+from ndsl.dsl.typing import Float, FloatField, Int, IntField
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.boilerplate import get_factories_single_tile_numpy
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, floor
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL
 import gt4py.cartesian.gtscript as gtscript
+import copy
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.table import get_table
 from pyMoist.saturation.constants import (
@@ -13,84 +13,74 @@ from pyMoist.saturation.constants import (
     DEGSUBS,
     MAX_MIXING_RATIO,
     ESFAC,
+    TABLESIZE,
 )
+
+# FloatField with extra dimension initialized to handle table data
+# This is a temporary solution. This solution creates a KxTABLESIZE array
+# At some point a proper solution will be implemented, enabling a 1xTABLESIZE array
+# Allocation is currently fixed to TABLESIZE constant. Fortran has some examples of 
+# flexible table sixes (larger than TABLESIZE, with increased granulatiry).
+# Current implementation does not allow for flexible table sizes
+# so if needed this will have to be implemented in another way.
+FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
 
-def _QSat_table_part1(
-    TL: FloatField,
+def QSat_table(
+    BLE: FloatField_Extra_Dim,
+    BLW: FloatField_Extra_Dim,
+    BLX: FloatField_Extra_Dim,
+    T: FloatField,
     PL: FloatField,
-    TI: FloatField,
+    QSAT: FloatField,
+    RAMP: FloatField,
+    DQSAT: FloatField,
     IT: FloatField,
-    PASCALS: bool,
-    RAMP: Float,
+    PASCALS_trigger: bool,
+    RAMP_trigger: bool,
+    DQSAT_trigger: bool,
 ):
     with computation(PARALLEL), interval(...):
-        if RAMP != -999:
+        if RAMP_trigger:
             URAMP = -abs(RAMP)
         else:
             URAMP = TMIX
         
-        if PASCALS == True:
+        if PASCALS_trigger:
             PP = PL
         else:
             PP = PL*100.
 
         
-        if TL <= TMINTBL:
+        if T <= TMINTBL:
             TI = TMINTBL
-        elif TL >= TMAXTBL-.001:
+        elif T >= TMAXTBL-.001:
             TI = TMAXTBL-.001
         else:
-            TI = TL
+            TI = T
         
         TI = (TI - TMINTBL)*DEGSUBS+1
-        IT = floor(TI)
+        IT = int(TI)
+        IT_USE = int(TI)
 
-
-def _QSat_table_part2(
-    TL: FloatField,
-    PL: FloatField,
-    TI: FloatField,
-    IT: IntField,
-    ITP1: IntField,
-    BLE: FloatFieldI,
-    BLW: FloatFieldI,
-    BLX: FloatFieldI,
-    QSAT: FloatField,
-    PASCALS: bool,
-    RAMP: Float,
-):
-    with computation(PARALLEL), interval(...):
-        if RAMP != -999:
-            URAMP = -abs(RAMP)
-        else:
-            URAMP = TMIX
-        
-        if PASCALS == True:
-            PP = PL
-        else:
-            PP = PL*100.
-        
         if URAMP==TMIX:
-            DQ = BLX.A[ITP1] - BLX.A[IT]
-            QSAT = (TI-IT)*DQ + BLX.A[IT]
+            DQ = BLX[0][IT_USE] - BLX[0][IT_USE]
+            QSAT = (TI-IT_USE)*DQ + BLX[0][IT_USE]
         else:
-            DQ    = BLE.A[ITP1] - BLE.A[IT]
-            QSAT  = (TI-IT)*DQ + BLE.A[IT]
+            DQ    = BLE[0][IT_USE] - BLE[0][IT_USE]
+            QSAT  = (TI-IT_USE)*DQ + BLE[0][IT_USE]
 
-        # if DQSAT != -999:
-        #     DQSAT = DQ*DEGSUBS
+        if DQSAT_trigger == True:
+            DQSAT = DQ*DEGSUBS
 
         if PP <= QSAT:
             QSAT = MAX_MIXING_RATIO
-            # if DQSAT != -999:
-            #     DQSAT = 0.0
+            if DQSAT_trigger: DQSAT = 0.0
         else:
             DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
             QSAT = ESFAC*QSAT*DD
-            # if DQSAT != -999:
-            #     DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+            if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
 
 
 class QSat:
@@ -98,7 +88,7 @@ class QSat:
     In Fortran: GEOS_Utilities:QSat
 
     Uses various formulations of the saturation vapor pressure to compute the saturation specific
-    humidity for temperature TL and pressure PL.
+    humidity for temperature T and pressure PL.
 
     For temperatures <= TMIX (-20C)
     the calculation is done over ice; for temperatures >= ZEROC (0C) the calculation
@@ -125,50 +115,68 @@ class QSat:
         formulation: SaturationFormulation = SaturationFormulation.Staars,
         use_table_lookup: bool = True,
     ) -> None:
-        
-        orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._QSat_table_part1 = stencil_factory.from_dims_halo(
-            func=_QSat_table_part1,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        self._QSat_table_part2 = stencil_factory.from_dims_halo(
-            func=_QSat_table_part2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-        
-        self._TI = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._IT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._IT_plus1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        self._table = get_table(formulation)
+        self.table = get_table(formulation)
+
+        self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
+            quantity_factory
+        )
+
+        self._ble = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._blw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._blx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._ble.view[:] = self.table.ble
+        self._blw.view[:] = self.table.blw
+        self._blx.view[:] = self.table.blx
+
+        self.RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
+        self._IT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._TI = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+        self._QSat_table = stencil_factory.from_dims_halo(
+            func=QSat_table,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    
+    @staticmethod
+    def make_extra_dim_quantity_factory(ijk_quantity_factory: QuantityFactory):
+        extra_dim_quantity_factory = copy.deepcopy(ijk_quantity_factory)
+        extra_dim_quantity_factory.set_extra_dim_lengths(
+            **{
+                "table_axis": TABLESIZE,
+            }
+        )
+        return extra_dim_quantity_factory
 
     def __call__(
             self,
-            TL: FloatField,
+            T: FloatField,
             PL: FloatField,
             QSAT: FloatField,
+            IT: FloatField,
+            ESTBLE_TEST: FloatField_Extra_Dim,
+            ESTBLW_TEST: FloatField_Extra_Dim,
+            ESTBLX_TEST: FloatField_Extra_Dim,
+            TEMP_IN_QSAT: FloatField_Extra_Dim,
             use_table_lookup: bool = True,
-            PASCALS: bool = False,
-            RAMP: Float = -999,
-    ) -> Float:
-        
-        #Enable only for testing
-        use_table_lookup: bool = True
-        self._PASCALS = False
-        self._RAMP = -999
-        self._DQSAT = -999
+            PASCALS_trigger: bool = False,
+            RAMP_trigger: bool = False,
+            DQSAT_trigger: bool = False,
+    ):
+
+        ESTBLE_TEST.view[0] = self.table.ble
+        ESTBLW_TEST.view[0] = self.table.blw
+        ESTBLX_TEST.view[0] = self.table.blx
+        TEMP_IN_QSAT.view[0] = self.table._TI[:]
+        print(self.table._TI)
 
         if use_table_lookup:
-            self._QSat_table_part1(TL, PL, self._TI, self._IT, self._PASCALS, self._RAMP)
-            #
-            for i in range(0, self._IT.view[:].shape[0]):
-                for j in range(0, self._IT.view[:].shape[1]):
-                    for k in range(0, self._IT.view[:].shape[2]):
-                        self._IT[i,j,k] = int(self._IT[i,j,k])
-                        self._IT_plus1[i,j,k] = int(self._IT[i,j,k])
-                        print(self._IT[i,j,k])
-            self._QSat_table_part2(TL, PL, self._TI, self._IT, self._IT_plus1, self._table.ble, self._table.blw,
-                                   self._table.blx, QSAT, self._PASCALS, self._RAMP)
+            self._QSat_table(self._ble, self._blw, self._blx, T, PL, QSAT, self.RAMP, self.DQSAT,
+                             IT, PASCALS_trigger, RAMP_trigger, DQSAT_trigger)
 
         if not use_table_lookup:
             raise NotImplementedError(
