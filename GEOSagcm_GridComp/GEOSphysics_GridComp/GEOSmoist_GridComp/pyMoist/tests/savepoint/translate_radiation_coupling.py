@@ -19,6 +19,8 @@ class TranslateRadCouple(TranslateFortranData2Py):
         )
         self._grid = grid
 
+        self.max_error = 1e-10
+
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "Q": self.grid.compute_dict(),
