@@ -1,7 +1,7 @@
 #include "MAPL_Generic.h"
 
 module GEOS_GigatrajGridCompMod
-  use, intrinsic :: iso_c_binding, only : c_int, c_ptr, c_null_ptr, c_associated
+  use, intrinsic :: iso_c_binding, only : c_int, c_ptr, c_null_ptr, c_associated, c_null_char
   use, intrinsic :: iso_c_binding, only : c_loc
   use ESMF
   use MAPL
@@ -234,9 +234,6 @@ contains
     GigaTrajInternalPtr%npz = npz
     GigaTrajInternalPtr%Integrate_DT = Integrate_DT
 
-
-    
-
     call MAPL_GetResource(MPL, NX, "NX:", _RC)
     call MAPL_GetResource(MPL, grid_name, "AGCM_GRIDNAME:", _RC)
 
@@ -267,7 +264,6 @@ contains
  
     call MAPL_GridGet(grid_, localCellCountPerDim=counts, _RC)
     call MAPL_Grid_interior(grid_, i1,i2,j1,j2)
-
     imc = i2-i1 + 1
     jmc = j2-j1 + 1
     allocate(lats_2dcenter(imc+2, jmc+2))
@@ -350,7 +346,6 @@ contains
        J2 = J2s(rank+1)
        GigaTrajInternalPtr%CellToRank(I1:I2,J1:J2) = rank
     enddo
-
     ! WJiang notes: the vcoord should be consistent with the HISTORY.rc
     levs_ptr=>levs_center
     GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'log(PLE)', vscale = 100.0, vunit = 'hPa',_RC)
@@ -404,10 +399,12 @@ contains
    type(Netcdf4_fileformatter) :: formatter
    type(FileMetadata) :: meta
    character(len=ESMF_MAXSTR) :: parcels_file
-   character(len=:), allocatable :: fieldname
+   character(len=:), allocatable :: fieldname, tmp_name
    character(len=20) :: diffusions(4)
    character (len=ESMF_MAXSTR), allocatable  :: itemNameList(:)
+   character (len=ESMF_MAXSTR) :: LONG_NAME, UNITS
    character (len=ESMF_MAXSTR), allocatable  :: fieldnames(:)
+   character (len=ESMF_MAXSTR), allocatable  :: compnames(:)
    integer :: nitems
    logical :: file_exists
 
@@ -448,65 +445,34 @@ contains
         meta = formatter%read(_RC)
       endif
 
-      call getExtraFieldNames(other_fields,GigaTrajInternalPtr%ExtraFieldNames)
+      call getCompsAndFields(other_fields, compnames, fieldnames)
 
-      do i = 1, size(GigaTrajInternalPtr%ExtraFieldNames)
+      do i = 1, size(FieldNames)
+         call MAPL_ExportStateGet([import], trim(compnames(i)), leaf_export, _RC)
+         call ESMF_StateGet(leaf_export, trim(FieldNames(i)), tmp_field, _RC)
+         call MAPL_AllocateCoupling(tmp_field, _RC)
+         call ESMF_AttributeGet(tmp_field, NAME='LONG_NAME', VALUE=LONG_NAME, _RC)
+         call ESMF_AttributeGet(tmp_field, NAME='UNITS', VALUE=UNITS, _RC)
+    
+         tmp_name =trim(fieldnames(i))
+         
+         if ( index(compnames(i), 'CA.oc') /=0 .or. &
+              index(compnames(i), 'CA.bc') /=0 ) then
 
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bcphobic') /=0 .or. &
-             index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bcphilic') /=0) then
-           call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
-           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
-           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
-           if( .not. associated(ptr3d)) then
-              call MAPL_AllocateCoupling(tmp_field, _RC)
-           endif
-           call ESMF_StateAddReplace(import, [tmp_field], _RC)
-           call create_extra_var(fieldname)
-           cycle
+            if (index(tmp_name,'phobic') ==0 .or. &
+               index(tmp_name,'philic')  ==0 ) then
+
+               call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
+               do k = 1, size(ptr3d, 3)
+                 fieldname = trim(FieldNames(i))//'00'//i_to_string(k)
+                 call create_new_vars( trim(long_name), trim(fieldname), trim(units))
+               enddo
+               cycle
+            endif
          endif
 
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.ocphobic') /=0 .or. &
-             index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.ocphilic') /=0) then
-           call MAPL_ExportStateGet([import], 'CA.oc', leaf_export, _RC)
-           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
-           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
-           if( .not. associated(ptr3d)) then
-              call MAPL_AllocateCoupling(tmp_field, _RC)
-           endif
-           call ESMF_StateAddReplace(import, [tmp_field], _RC)
-           call create_extra_var(fieldname)
-           cycle
-         endif
-
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.bc') /=0) then
-           call MAPL_ExportStateGet([import], 'CA.bc', leaf_export, _RC)
-           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
-           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
-           if( .not. associated(ptr3d)) then
-              call MAPL_AllocateCoupling(tmp_field, _RC)
-           endif
-           call ESMF_StateAddReplace(import, [tmp_field], _RC)
-           do k = 1, size(ptr3d, 3)
-              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
-              call create_extra_var(fieldname)
-           enddo
-           cycle
-         endif
-
-         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'CA.oc') /=0) then
-           call MAPL_ExportStateGet([import], 'CA.oc', leaf_export, _RC)
-           call ESMF_StateGet(leaf_export, trim(GigaTrajInternalPtr%ExtraFieldNames(i)), tmp_field, _RC)
-           call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
-           if( .not. associated(ptr3d)) then
-              call MAPL_AllocateCoupling(tmp_field, _RC)
-           endif
-           call ESMF_StateAddReplace(import, [tmp_field], _RC)
-           do k = 1, size(ptr3d, 3)
-              fieldname = trim(GigaTrajInternalPtr%ExtraFieldNames(i))//'00'//i_to_string(k)
-              call create_extra_var(fieldname)
-           enddo
-           cycle
-         endif
+         call create_new_vars( trim(long_name), trim(fieldnames(i)), trim(units))
+         
 
 !         if (index(GigaTrajInternalPtr%ExtraFieldNames(i), 'TRI') /=0) then
 !           call ESMF_StateGet(import, 'PHYSICS_Exports/TURBULENCE_Exports/TRI', TRI, _RC)
@@ -543,7 +509,6 @@ contains
 !           deallocate(fieldnames)
 !           cycle
 !         endif
-        call create_extra_var(trim(GigaTrajInternalPtr%ExtraFieldNames(i)))
      enddo
      if (MAPL_AM_I_Root()) then
         call formatter%close()
@@ -554,35 +519,67 @@ contains
 
    RETURN_(ESMF_SUCCESS)
    contains
-     subroutine getExtraFieldNames(other_fields, Fieldnames)
-       character(*), intent(in) :: other_fields
-       character(len=ESMF_MAXSTR), allocatable, intent(out) :: Fieldnames(:)
-       integer :: num_field, i, k, endl, num_
-       num_field = 1
-       k = 1
-       do
-         i = index(other_fields(k:),';')
-         if (i == 0) exit
-         k = k+i
-         num_field = num_field+1
-       enddo
 
-       allocate(Fieldnames(num_field))
-       k    = 1
-       num_ = 1
-       do
-         i = index(other_fields(k:),';')
-         if (i == 0) then
-            endl = len(other_fields)
-         else
-            endl = (k-1)+i-1
-         endif
-         FieldNames(num_) = trim(adjustl(other_fields(k:endl)))
-         num_ = num_ + 1
-         k = endl + 2
-         if (num_ > num_field) exit
-       enddo
-     end subroutine getExtraFieldNames
+     subroutine getCompsAndFields(other_fields, CompNames, Fieldnames)
+        character(*), intent(in) :: other_fields
+        character(len=ESMF_MAXSTR), allocatable, intent(out) :: CompNames(:)
+        character(len=ESMF_MAXSTR), allocatable, intent(out) :: Fieldnames(:)
+        integer :: num_field, i,j, k, endl, num_
+        character(len=:), allocatable :: tmp
+        num_field = 1
+        k = 1
+        do
+          i = index(other_fields(k:),';')
+          if (i == 0) exit
+          if (trim(other_fields(i+1:)) =='') exit ! take care of the last unnecessay ";"
+          k = k+i
+          num_field = num_field+1
+        enddo
+
+        allocate(Fieldnames(num_field))
+        allocate(Compnames(num_field))
+
+        k    = 1
+        num_ = 1
+
+        do
+          i = index(other_fields(k:),';')
+          if (i == 0) then
+             endl = len(other_fields)
+          else
+             endl = (k-1)+i-1
+          endif
+          tmp = other_fields(k:endl)
+
+          j = index(tmp, '%%')
+          if (j == 0) print*, "Wrong format of the comp%%field"
+          Compnames(num_) = trim(adjustl(tmp(1:j-1)))
+          FieldNames(num_) = trim(adjustl(tmp(j+2:)))
+          num_ = num_ + 1
+          k = endl + 2
+          if (num_ > num_field) exit
+        enddo
+     end subroutine getCompsAndFields
+
+     subroutine create_new_vars(long_name, short_name, units)
+       character(*), intent(in) :: long_name
+       character(*), intent(in) :: short_name
+       character(*), intent(in) :: units
+       type(Variable) :: var
+       character(len=:), allocatable :: var_name
+       if( meta%has_variable(short_name)) return
+       var_name = short_name
+       if (MAPL_AM_I_Root()) then
+         var = variable(type=pFIO_REAL32, dimensions='id,time')
+         call var%add_attribute('long_name', long_name)
+         call var%add_attribute('units', units)
+         call var%add_attribute('positive', "up")
+         call var%add_attribute('_FillValue', -999.99)
+         call var%add_attribute('missing_value', -999.99)
+         call meta%add_variable(var_name, var)
+         call formatter%add_variable(meta, short_name)
+       endif
+     end subroutine create_new_vars
 
      ! if the field name is not in original file
      subroutine create_extra_var(fieldname)
@@ -659,6 +656,7 @@ contains
          call meta%add_variable(var_name, var)
          call formatter%add_variable(meta, var_name)
        endif
+
      end subroutine create_extra_var
  end subroutine GetInitVars
 
