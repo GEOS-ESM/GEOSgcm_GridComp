@@ -145,7 +145,7 @@ def qsat_ice_scalar_exact(
         if DQ is not None:
             DX = DDQ * (1.0 / DELTA_T)
 
-    return EX, DX
+    return EX, TI, DX
 
 
 def qsat_ice_scalar_table():
