@@ -25,44 +25,44 @@ class SaturationVaporPressureTable:
         self,
         formulation: SaturationFormulation,
     ) -> None:
-        self._estimated_blw = np.empty(TABLESIZE, dtype=Float)
-        self._estimated_ble = np.empty(TABLESIZE, dtype=Float)
-        self._estimated_blx = np.empty(TABLESIZE, dtype=Float)
+        self._estimated_esw = np.empty(TABLESIZE, dtype=Float)
+        self._estimated_ese = np.empty(TABLESIZE, dtype=Float)
+        self._estimated_esx = np.empty(TABLESIZE, dtype=Float)
         self._TI = np.empty(TABLESIZE, dtype=Float)
 
         for i in range(TABLESIZE):
             t = i * DELTA_T + TMINTBL
 
-            self._estimated_blw[i], self._TI[i], _ = qsat_liquid_scalar_exact(t, formulation)
+            self._estimated_esw[i], self._TI[i], _ = qsat_liquid_scalar_exact(t, formulation)
 
             if t > MAPL_TICE:
-                self._estimated_ble[i] = self._estimated_blw[i]
+                self._estimated_ese[i] = self._estimated_esw[i]
             else:
-                self._estimated_ble[i], self._TI[i], _ = qsat_ice_scalar_exact(t, formulation)
+                self._estimated_ese[i], self._TI[i], _ = qsat_ice_scalar_exact(t, formulation)
 
             t = t - MAPL_TICE
 
             if t >= TMIX and t < 0.0:
-                self._estimated_blx[i] = (t / TMIX) * (
-                    self._estimated_ble[i] - self._estimated_blw[i]
-                ) + self._estimated_blw[i]
+                self._estimated_esx[i] = (t / TMIX) * (
+                    self._estimated_ese[i] - self._estimated_esw[i]
+                ) + self._estimated_esw[i]
             else:
-                self._estimated_blx[i] = self._estimated_ble[i]
+                self._estimated_esx[i] = self._estimated_ese[i]
 
         self._estimated_frz, _ , _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
         self._estimated_lqu, _ , _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
 
     @property
-    def blw(self):
-        return self._estimated_blw
+    def ese(self):
+        return self._estimated_ese
 
     @property
-    def ble(self):
-        return self._estimated_ble
+    def esw(self):
+        return self._estimated_esw
 
     @property
-    def blx(self):
-        return self._estimated_blx
+    def esx(self):
+        return self._estimated_esx
 
     @property
     def frz(self):
