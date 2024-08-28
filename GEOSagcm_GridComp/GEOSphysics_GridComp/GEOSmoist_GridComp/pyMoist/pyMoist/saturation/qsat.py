@@ -26,9 +26,65 @@ from pyMoist.saturation.constants import (
 # so if needed this will have to be implemented in another way.
 FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 
+# Function version of QSat_table
+@gtscript.function
+def QSat_Float(
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
+    T: Float,
+    PL: Float,
+    RAMP: Float = -999.,
+    DQSAT: Float = -999.,
+    PASCALS_trigger: bool = False,
+    RAMP_trigger: bool = False,
+    DQSAT_trigger: bool = False,
+):
+    with computation(PARALLEL), interval(...):
+        if RAMP_trigger:
+            URAMP = -abs(RAMP)
+        else:
+            URAMP = TMIX
+        
+        if PASCALS_trigger:
+            PP = PL
+        else:
+            PP = PL*100.
+
+        
+        if T <= TMINTBL:
+            TI = TMINTBL
+        elif T >= TMAXTBL-.001:
+            TI = TMAXTBL-.001
+        else:
+            TI = T
+        
+        TI = (TI - TMINTBL)*DEGSUBS+1
+        IT = int(TI)
+
+        if URAMP==TMIX:
+            DQ = esx[0][IT] - esx[0][IT]
+            QSAT = (TI-IT)*DQ + esx[0][IT]
+        else:
+            DQ    = ese[0][IT] - ese[0][IT]
+            QSAT  = (TI-IT)*DQ + ese[0][IT]
+
+        if DQSAT_trigger == True:
+            DQSAT = DQ*DEGSUBS
+
+        if PP <= QSAT:
+            QSAT = MAX_MIXING_RATIO
+            if DQSAT_trigger: DQSAT = 0.0
+        else:
+            DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
+            QSAT = ESFAC*QSAT*DD
+            if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+
+        return QSAT, DQSAT
+
 
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
-def QSat_table(
+def QSat_FloatField(
     ese: FloatField_Extra_Dim,
     esw: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
@@ -135,8 +191,8 @@ class QSat:
         self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._QSat_table = stencil_factory.from_dims_halo(
-            func=QSat_table,
+        self._QSat_FloatField = stencil_factory.from_dims_halo(
+            func=QSat_FloatField,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -178,7 +234,7 @@ class QSat:
             DQSAT_trigger = True
 
         if use_table_lookup:
-            self._QSat_table(self._ese, self._esw, self._esx, T, PL, self.QSat, RAMP, DQSAT,
+            self._QSat_FloatField(self._ese, self._esw, self._esx, T, PL, self.QSat, RAMP, DQSAT,
                              PASCALS_trigger, RAMP_trigger, DQSAT_trigger)
 
         if not use_table_lookup:

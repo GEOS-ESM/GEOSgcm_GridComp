@@ -71,5 +71,5 @@ class TranslateQSat(TranslateFortranData2Py):
         )
 
         return {
-            "QSAT": code.QSAT.view[:],
+            "QSAT": code.QSat.view[:],
         }
