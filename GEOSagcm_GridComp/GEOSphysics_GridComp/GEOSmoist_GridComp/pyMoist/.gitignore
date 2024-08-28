@@ -9,4 +9,8 @@ test_data/
 .vscode
 test_data/
 sandbox/
+<<<<<<< HEAD
 *.mod
+=======
+*.mod
+>>>>>>> origin/dsl/QSat
