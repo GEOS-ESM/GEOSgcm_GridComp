@@ -1,10 +1,9 @@
 #!/bin/bash
 export PACE_FLOAT_PRECISION=32
-export FV3_DACEMODE=Python
-python -m pytest -v -s -x\
-    --pdb \
-    --data_path=../../test_data/geos_11.5.2/moist \
+python -m pytest -s --disable-warnings\
+    --data_path=/home/charleskrop/netcdfs \
     --backend=dace:cpu \
-    --which_modules=AerActivation \
+    --which_rank=0 \
+    --which_modules=QSat \
     --grid=default \
     ..
