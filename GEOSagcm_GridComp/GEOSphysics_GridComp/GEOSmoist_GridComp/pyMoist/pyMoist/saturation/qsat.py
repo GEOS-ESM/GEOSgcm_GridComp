@@ -4,6 +4,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL
 import gt4py.cartesian.gtscript as gtscript
 import copy
+from typing import Optional
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.table import get_table
 from pyMoist.saturation.constants import (
@@ -25,18 +26,17 @@ from pyMoist.saturation.constants import (
 # so if needed this will have to be implemented in another way.
 FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 
-# Stencils implement QSAT0 function from GEOS_Utilities.F90
 
+# Stencils implement QSAT0 function from GEOS_Utilities.F90
 def QSat_table(
-    BLE: FloatField_Extra_Dim,
-    BLW: FloatField_Extra_Dim,
-    BLX: FloatField_Extra_Dim,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
     T: FloatField,
     PL: FloatField,
     QSAT: FloatField,
     RAMP: FloatField,
     DQSAT: FloatField,
-    IT: FloatField,
     PASCALS_trigger: bool,
     RAMP_trigger: bool,
     DQSAT_trigger: bool,
@@ -62,14 +62,13 @@ def QSat_table(
         
         TI = (TI - TMINTBL)*DEGSUBS+1
         IT = int(TI)
-        IT_USE = int(TI)
 
         if URAMP==TMIX:
-            DQ = BLX[0][IT_USE] - BLX[0][IT_USE]
-            QSAT = (TI-IT_USE)*DQ + BLX[0][IT_USE]
+            DQ = esx[0][IT] - esx[0][IT]
+            QSAT = (TI-IT)*DQ + esx[0][IT]
         else:
-            DQ    = BLE[0][IT_USE] - BLE[0][IT_USE]
-            QSAT  = (TI-IT_USE)*DQ + BLE[0][IT_USE]
+            DQ    = ese[0][IT] - ese[0][IT]
+            QSAT  = (TI-IT)*DQ + ese[0][IT]
 
         if DQSAT_trigger == True:
             DQSAT = DQ*DEGSUBS
@@ -122,18 +121,18 @@ class QSat:
             quantity_factory
         )
 
-        self._ble = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._blw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._blx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._ble.view[:] = self.table.ble
-        self._blw.view[:] = self.table.blw
-        self._blx.view[:] = self.table.blx
+        self._ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self._ese.view[:] = self.table.ese
+        self._esw.view[:] = self.table.esw
+        self._esx.view[:] = self.table.esx
 
-        self.RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._PASCALS = False
 
-        self._IT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._TI = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._QSat_table = stencil_factory.from_dims_halo(
@@ -151,32 +150,36 @@ class QSat:
             }
         )
         return extra_dim_quantity_factory
-
+    
     def __call__(
             self,
             T: FloatField,
             PL: FloatField,
-            QSAT: FloatField,
-            IT: FloatField,
-            ESTBLE_TEST: FloatField_Extra_Dim,
-            ESTBLW_TEST: FloatField_Extra_Dim,
-            ESTBLX_TEST: FloatField_Extra_Dim,
-            TEMP_IN_QSAT: FloatField_Extra_Dim,
+            RAMP: Optional[FloatField] = None,
+            PASCALS: Optional[bool] = None,
+            DQSAT: Optional[FloatField] = None,
             use_table_lookup: bool = True,
-            PASCALS_trigger: bool = False,
-            RAMP_trigger: bool = False,
-            DQSAT_trigger: bool = False,
     ):
 
-        ESTBLE_TEST.view[0] = self.table.ble
-        ESTBLW_TEST.view[0] = self.table.blw
-        ESTBLX_TEST.view[0] = self.table.blx
-        TEMP_IN_QSAT.view[0] = self.table._TI[:]
-        print(self.table._TI)
+        if RAMP is None:
+            RAMP = self._RAMP
+            RAMP_trigger = False
+        else:
+            RAMP_trigger = True
+        if PASCALS is None:
+            PASCALS = self._PASCALS
+            PASCALS_trigger = False
+        else:
+            PASCALS_trigger = True
+        if DQSAT is None:
+            DQSAT = self._DQSAT
+            DQSAT_trigger = False
+        else:
+            DQSAT_trigger = True
 
         if use_table_lookup:
-            self._QSat_table(self._ble, self._blw, self._blx, T, PL, QSAT, self.RAMP, self.DQSAT,
-                             IT, PASCALS_trigger, RAMP_trigger, DQSAT_trigger)
+            self._QSat_table(self._ese, self._esw, self._esx, T, PL, self.QSat, RAMP, DQSAT,
+                             PASCALS_trigger, RAMP_trigger, DQSAT_trigger)
 
         if not use_table_lookup:
             raise NotImplementedError(

@@ -7,7 +7,7 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.numerical_recipes import Erf
-from pyMoist.types import FloatField_NModes
+from pyMoist.extratypes import FloatField_NModes
 
 
 def aer_activation_stencil(
