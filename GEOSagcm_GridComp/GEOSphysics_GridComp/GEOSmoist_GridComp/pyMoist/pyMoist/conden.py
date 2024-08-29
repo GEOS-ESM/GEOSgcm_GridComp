@@ -5,7 +5,7 @@ import pyMoist.pyMoist_constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, Float, IntField 
 from ndsl import StencilFactory, QuantityFactory 
-
+from pyMoist.saturation.qsat import QSat, QSat_Float
 
 @gtscript.function
 def exnerfn(
@@ -170,6 +170,18 @@ class Conden:
             rvls (3D out):
             id_check (3D out): Indicates if condensation process occurs [ N/A ].
         """
+        self.qsat = QSat(
+            self.stencil_factory,
+            self.quantity_factory,
+            formulation=formulation,
+            use_table_lookup=use_table_lookup,
+        )
+
+        # These are args for QSat_Float
+        self.qsat._ese
+        self.qsat._esw
+        self.qsat._esx
+
         self._condensation(
                 pifc0_test, 
                 thl0bot_test, 
