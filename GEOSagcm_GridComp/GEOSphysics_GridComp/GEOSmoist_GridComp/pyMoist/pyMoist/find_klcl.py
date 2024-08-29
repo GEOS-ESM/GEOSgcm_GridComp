@@ -4,8 +4,9 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, BACKWARD, log
 import gt4py.cartesian.gtscript as gtscript
 import copy
+from pyMoist.extratypes import FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.qsat import QSat
+from pyMoist.saturation.qsat import QSat, QSat_Float
 import pyMoist.pyMoist_constants as constants
 from pyMoist.saturation.constants import (
     TMIX,
@@ -16,7 +17,6 @@ from pyMoist.saturation.constants import (
     ESFAC,
     TABLESIZE,
 )
-
 
 def _get_last(in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField):
     with computation(FORWARD), interval(-1, None):
@@ -29,23 +29,33 @@ def _find_klcl(
     T: FloatField,
     P: FloatField,
     Q: FloatField,
-    T_top: FloatField,
-    P_top: FloatField,
-    Q_top: FloatField,
-    QSat: FloatField,
-    KLCL: FloatField,
+    T_top: FloatFieldIJ,
+    P_top: FloatFieldIJ,
+    Q_top: FloatFieldIJ,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
+    PLCL: FloatFieldIJ,
 ):
-    with computation(BACKWARD), interval(...):
-        RHSFC = 100.0 * Q_top / QSat
+    with computation(FORWARD), interval(-1, None):
+        T_top = T
+        P_top = P
+        Q_top = Q
+
+    with computation(FORWARD), interval(-1, None):
+        QSat_function, _ = QSat_Float(ese, esw, esx, T_top, P_top)
+        RHSFC = 100.0 * Q_top / QSat_function
         TLCL = (1 / ((1.0 / ( T_top - 55.0 )) - ( log (max(0.1, RHSFC) / 100.0)  / 2840.0 ))) + 55.0
         Rm = (1.0 - Q_top) * constants.rdry  + Q_top * constants.rvap
         Cpm = (1.0 - Q_top) * constants.cpdry + Q_top * constants.cpvap
         PLCL = P_top * ((TLCL/T_top)**(Cpm/Rm))
-        wait = True
-        while wait == True:
-            if P[0,0,0] > PLCL:
-                KLCL = K = 1 # NOT CURRENTLY POSSIBLE, NEED TO COME UP WITH WORKAROUND (is there one?)
-                wait == False
+
+
+        # wait = True
+        # while wait == True:
+        #     if P[0,0,0] > PLCL:
+        #         KLCL = K = 1 # NOT CURRENTLY POSSIBLE, NEED TO COME UP WITH WORKAROUND (is there one?)
+        #         wait == False
             # FOR STAND UP 8/28/24: What we talked about yesterday wasn't quite approproate here
             # I need to know when something fails by checking at each K level (doable)
             # But I also need to know the specific K level at which it fails, not just that it fails
@@ -70,11 +80,12 @@ class find_klcl:
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
-        self._temporary = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self._T_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._P_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._Q_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        # self._temporary = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self._T_top = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self._P_top = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self._Q_top = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         self.KLCL = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.PLCL = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         
         self.get_last = self.stencil_factory.from_dims_halo(
             func=_get_last,
@@ -93,9 +104,9 @@ class find_klcl:
         formulation: SaturationFormulation = SaturationFormulation.Staars,
         use_table_lookup: bool = True,
     ):
-        self.get_last(T, self._temporary, self._T_top)
-        self.get_last(P, self._temporary, self._P_top)
-        self.get_last(Q, self._temporary, self._Q_top)
+        # self.get_last(T, self._temporary, self._T_top)
+        # self.get_last(P, self._temporary, self._P_top)
+        # self.get_last(Q, self._temporary, self._Q_top)
         
         self.qsat = QSat(
             self.stencil_factory,
@@ -104,10 +115,17 @@ class find_klcl:
             use_table_lookup=use_table_lookup,
         )
 
-        self.qsat(self._T_top, self._P_top)
+        # self.qsat(self._T_top, self._P_top)
 
         self.find_klcl(T, P, Q, self._T_top, self._P_top, self._Q_top, 
-                       self.qsat.QSAT, self.KLCL)
+                       self.qsat._ese, self.qsat._esw, self.qsat._esx,
+                       self.PLCL)
+        
+        for i in range(0, P.view[:].shape[0]):
+            for j in range(0, P.view[:].shape[1]):
+                for k in reversed(range(0, P.view[:].shape[2])):
+                    if P.view[i,j,k] > self.PLCL.view[i,j]:
+                        self.KLCL.view[:][i,j] = k
         
 
 if __name__ == "__main__":
