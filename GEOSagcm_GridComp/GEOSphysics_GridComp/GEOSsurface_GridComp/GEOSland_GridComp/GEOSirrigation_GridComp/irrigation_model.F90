@@ -110,9 +110,9 @@ MODULE IRRIGATION_MODULE
      
      ! Below parameters can be set via RC file.
 
-     REAL :: irrig_thres      =  0.5 ! threshold of tile fraction to turn the irrigation model on. 
+     REAL :: irrig_thres      =  0.01 ! threshold of tile fraction to turn the irrigation model on. 
      REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
-     REAL :: efcor            = 30.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
+     REAL :: efcor            =  25.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
      REAL :: MIDS_LENGTH      =  0.6 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
      
      ! Sprinkler parameters
@@ -129,7 +129,7 @@ MODULE IRRIGATION_MODULE
      ! Flood parameters
      ! ----------------
      REAL :: flood_stime      =  6.0 ! flood irrigatrion start time [hours]
-     REAL :: flood_dur        =  1.0 ! flood irrigation duration [hours]
+     REAL :: flood_dur        =  8.0 ! flood irrigation duration [hours]
      REAL :: flood_thres      =  0.6 ! soil moisture threshhold to trigger flood irrigation
 
      
@@ -193,7 +193,7 @@ contains
   SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
             SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, RZDEF,          &
-            SPRINKLERRATE, DRIPRATE, FLOODRATE, SRATE, DRATE, FRATE)
+            SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE, SRATE, DRATE, FRATE)
 
     implicit none
     class (irrigation_model), intent(inout) :: this
@@ -201,7 +201,7 @@ contains
     real, dimension (:), intent (in)        :: local_hour
     real, dimension (:), intent (in)        :: IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
          DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX, RZDEF
-    real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE
     real, dimension (:,:),intent (inout)    :: SRATE, DRATE, FRATE
     INTEGER                                 :: NTILES, N, crop
     REAL                                    :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
@@ -303,7 +303,7 @@ contains
 
        ! turn off irrigation if LAI is smaller than the LAI trigger marking end of the season
        if(season_end) then
-          DO crop = 1, 2
+          DO crop = 1, 2                         ! With LAI trigger Crop 1 = Irrigated Fraction, Crop 2 = Paddy Fraction 
              SRATE (N,crop) = 0.
              DRATE (N,crop) = 0.
              FRATE (N,crop) = 0.
@@ -312,10 +312,10 @@ contains
        
     END DO TILE_LOOP
 
-    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models.
+    ! Update SPRINKLERRATE, DRIPRATE, FURROW, FLOODRATE EXPORTS to be sent to land models.
     ! FLOODRATE is weighted averaged over irrigated crops + paddy fractions.
         
-    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+    call this%update_irates (SPRINKLERRATE,DRIPRATE,FURROWRATE,FLOODRATE, &
          IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_lai_trigger
@@ -326,7 +326,7 @@ contains
        SPRINKLERFR, DRIPFR, FLOODFR,                        &
        CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
        SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
-       SPRINKLERRATE, DRIPRATE, FLOODRATE, SRATE, DRATE, FRATE)
+       SPRINKLERRATE, DRIPRATE,FURROWRATE, FLOODRATE, SRATE, DRATE, FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
@@ -337,7 +337,7 @@ contains
     real, dimension(:,:),  intent (in)   :: IRRIGTYPE     ! NUM_CROPS
     real, dimension(:,:,:),intent (in)   :: IRRIGPLANT    ! NUM_SEASONS, NUM_CROPS
     real, dimension(:,:,:),intent (in)   :: IRRIGHARVEST  ! NUM_SEASONS, NUM_CROPS
-    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE
     real, dimension (:,:),intent (inout) :: SRATE, DRATE, FRATE
     INTEGER                              :: NTILES, N, crop, sea, ITYPE, I
     REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC, void_frac
@@ -459,17 +459,17 @@ contains
        endif IF_IRR
     END DO TILE_LOOP
     
-    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models
+    ! Update SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE EXPORTS to be sent to land models
     ! They are weighted averaged over 26 crop fractions.
 
-    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, &
        CROPIRRIGFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_crop_calendar
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE update_irates_lai (this,SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+  SUBROUTINE update_irates_lai (this,SPRINKLERRATE,DRIPRATE,FURROWRATE,FLOODRATE, &
        IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
     
     implicit none
@@ -477,13 +477,14 @@ contains
     class(irrigation_model),intent(inout):: this
     real, dimension (:), intent (in)     :: IRRIGFRAC, PADDYFRAC
     real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
-    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE
     integer                              :: N, NT
 
     ! INITIALIZE EXPORTS
     SPRINKLERRATE = 0.
     DRIPRATE      = 0.
     FLOODRATE     = 0.
+    FURROWRATE    = 0.
 
     NT = size (IRRIGFRAC)
 
@@ -493,8 +494,8 @@ contains
        IF ((IRRIGFRAC(N) + PADDYFRAC(N))  > 0.) THEN
           SPRINKLERRATE (N) = SRATE (N,1)
           DRIPRATE (N)      = DRATE (N,1)
-          FLOODRATE (N)     = (IRRIGFRAC(N)* FRATE (N,1) + PADDYFRAC(N)*FRATE (N,2)) &
-               /(IRRIGFRAC(N) + PADDYFRAC(N)) 
+          FURROWRATE (N)    = FRATE (N,1)
+          FLOODRATE (N)     = FRATE (N,2) 
        ENDIF
     END DO
     
@@ -502,30 +503,35 @@ contains
 
   !...............................................................................
   
-  SUBROUTINE update_irates_ccalendar(this,SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+  SUBROUTINE update_irates_ccalendar(this,SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, &
        CROPIRRIGFRAC,SRATE,DRATE,FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
     real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
     real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
-    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE,FURROWRATE
     integer                              :: N, NT, crop
 
     ! INITIALIZE EXPORTS
     SPRINKLERRATE = 0.
     DRIPRATE      = 0.
     FLOODRATE     = 0.
+    FURROWRATE    = 0.
 
     !_ASSERT(size (SRATE,2)==NUM_CROPS,'Irrigation model crop calandar trigger NUM_CROPS mismatch')
-
-    NT =  size (SPRINKLERRATE)
+   NT =  size (SPRINKLERRATE)
     DO N = 1, NT
        if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
           DO crop = 1, NUM_CROPS
              SPRINKLERRATE(N) = SPRINKLERRATE(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
              DRIPRATE(N)      = DRIPRATE(N)      + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+          if (crop==3) then
+     ! If crop is rice (crop ==3) then use flood irrigation. Otherwise use furrow irrigation.
              FLOODRATE(N)     = FLOODRATE(N)     + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+          else 
+             FURROWRATE(N)    = FURROWRATE(N)    + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+          endif
           END DO
        endif
     END DO
@@ -565,9 +571,9 @@ contains
        IT = this%sprinkler_thres 
        if ((HC >= H1).AND.(HC < H2)) then
           ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-          ! Notice drip uses the same soil moisture threshold of sprinkler but with 0.% efficiency correction.
+          ! Notice drip uses the same soil moisture threshold of sprinkler but with 10.% efficiency correction.
           if((ma <= IT).AND.(H1 == HC)) &
-               DRATE = this%cwd(ROOTFRAC,SMCNT,SMREF,0.)/(H2 - H1)/3600.
+               DRATE = this%cwd(ROOTFRAC,SMCNT,SMREF,10.)/(H2 - H1)/3600.
        else
           DRATE = 0.
        endif
@@ -580,8 +586,11 @@ contains
        IT = this%flood_thres
        if ((HC >= H1).AND.(HC < H2)) then
           ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
+          ! Notice Flood / Furrow irrigation uses the same soil moisture threshold of sprinkler but with 
+          ! the efficiency correction increased by 15 (e.g., Field application efficiency Sprinkler 75%, Surface Irrigation 60%.
+          ! Source FAO)
           if((ma <= IT).AND.(H1 == HC)) &
-               FRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor)/(H2 - H1)/3600.
+               FRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor+15.)/(H2 - H1)/3600.
        else
           FRATE = 0.
        endif

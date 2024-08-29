@@ -792,6 +792,15 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'FURROWRATE'                             ,&
+         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
          SHORT_NAME = 'FLOODRATE'                             ,&
          LONG_NAME  = 'flood_irrigation_rate'                 ,&
          UNITS      = 'kg m-2 s-1'                            ,&
@@ -4485,6 +4494,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real, dimension(:),   pointer :: SPRINKLERRATE
         real, dimension(:),   pointer :: DRIPRATE
+        real, dimension(:),   pointer :: FURROWRATE
         real, dimension(:),   pointer :: FLOODRATE
 
         real, dimension(:,:), pointer :: DUDP
@@ -5198,6 +5208,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SPRINKLERRATE,'SPRINKLERRATE',RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRIPRATE, 'DRIPRATE' ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FURROWRATE, 'FURROWRATE' ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,FLOODRATE, 'FLOODRATE' ,RC=STATUS); VERIFY_(STATUS)
 
         ! -----------------------------------------------------
@@ -7244,7 +7255,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            RZEXC  = RZEXC + DRIPRATE*DT
         end where
         where (FLOODRATE > 0)
-           RZEXC  = RZEXC + FLOODRATE*DT
+           SRFEXC  = SRFEXC + FLOODRATE*DT
+        end where
+        where (FURROWRATE > 0)
+           RZEXC  = RZEXC + FURROWRATE*DT
         end where
      ENDIF
 
@@ -7671,7 +7685,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(IRRLAND)) then
-           if(catchcn_internal%RUN_IRRIG /= 0) IRRLAND = SPRINKLERRATE + FLOODRATE + DRIPRATE
+           if(catchcn_internal%RUN_IRRIG /= 0) IRRLAND = SPRINKLERRATE + FURROWRATE + FLOODRATE + DRIPRATE
         endif
         if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(DRPARLAND)) DRPARLAND = DRPAR

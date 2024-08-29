@@ -16,8 +16,9 @@ module GEOS_IrrigationGridCompMod
 !   dynamic vegetation values prescribed by external data/observations.\\
 !
 ! Exports from this routine are the instaneous values of the
-! irrigation rates from 3 different irrigation methods on tilespace :
-! 1) drip, 2) sprinkler and 3) flood. Because Land models (CATCH/CATCHCN) use
+! irrigation rates from 4 different irrigation methods on tilespace :
+! 1) drip, 2) sprinkler, 3) furrow, and 4) flood. 
+! Because Land models (CATCH/CATCHCN) use
 ! irrigation rates as a water input in water budget calculation, 
 ! All exports and imports are stored on the
 ! tile grid inherited from the parent routine.\\
@@ -28,7 +29,7 @@ module GEOS_IrrigationGridCompMod
 ! The gridded component stores the surrounding observations of 
 ! each parameter in the internal state.  All internals are static parameters.
 !
-! EXPORTS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\ 
+! EXPORTS:  SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE\\ 
 !  
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
 !            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
@@ -114,7 +115,7 @@ contains
                           RC=STATUS )
 
     VERIFY_(STATUS)
-
+  
     Iam = trim(COMP_NAME) // 'SetServices'
 
 ! -----------------------------------------------------------
@@ -380,6 +381,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)  	 
     
+     call MAPL_AddExportSpec(GC                                ,&
+         SHORT_NAME = 'FURROWRATE'                             ,&
+         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+  
     call MAPL_AddExportSpec(GC                                ,&
          SHORT_NAME = 'FLOODRATE'                             ,&
          LONG_NAME  = 'flood_irrigation_rate'                 ,&
@@ -510,6 +520,7 @@ contains
     
     real, dimension(:),     pointer :: SPRINKLERRATE
     real, dimension(:),     pointer :: DRIPRATE
+    real, dimension(:),     pointer :: FURROWRATE
     real, dimension(:),     pointer :: FLOODRATE
 
     type(irrigation_model),pointer :: IM
@@ -557,13 +568,14 @@ contains
     ! -------------------------------
     call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FURROWRATE,    'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
     ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in which IRRIGFRAC and PADDYFRAC in BCs are fractions.
-    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.5).
+    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.01).
 
     where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
-!To assign the entire cell to the largest fraction remove comments 568-574,
+ !to assign the entire cell to the largest fraction remove comments below,
         ! where (PADDYFRAC >= IRRIGFRAC)
         !    PADDYFRAC = 1.
         !    IRRIGFRAC = 0.
@@ -581,7 +593,7 @@ contains
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
                     
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, & 
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE & 
          IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
@@ -589,18 +601,19 @@ contains
        ! crop calendar based irrigation
        ! ==============================
 
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE &
        CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
 
-    ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
+    ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
     ! irrigated tile fraction before exporting to land models.
  
 
-    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
-    DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
-    FLOODRATE     = FLOODRATE    *(IRRIGFRAC + PADDYFRAC)
+    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
+    DRIPRATE      = DRIPRATE     *(IRRIGFRAC)
+    FURROWRATE    = FURROWRATE   *(IRRIGFRAC)
+    FLOODRATE     = FLOODRATE    *(PADDYFRAC)
 
     call MAPL_TimerOff(MAPL,"INITIALIZE")
     RETURN_(ESMF_SUCCESS)
@@ -654,6 +667,7 @@ contains
     
     real, dimension(:),     pointer :: SPRINKLERRATE
     real, dimension(:),     pointer :: DRIPRATE
+    real, dimension(:),     pointer :: FURROWRATE    
     real, dimension(:),     pointer :: FLOODRATE    
     
 ! IMPORT pointers
@@ -799,7 +813,7 @@ contains
        ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
        ! in irrigation_IMxJM_DL.dat file.
        
-       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/2.5)
+       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/ 3.)
 
        ! rootzone moisture deficit to reach complete soil saturation for paddy [mm]
 
@@ -815,7 +829,7 @@ contains
        call IM%run_model(IRRIG_METHOD, local_hour,                      &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
             SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, RZDEF,         &
-            SPRINKLERRATE, DRIPRATE, FLOODRATE,                         &
+            SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE,             &
             SRATE, DRATE, FRATE) 
        
     else
@@ -827,17 +841,18 @@ contains
             SPRINKLERFR, DRIPFR, FLOODFR,                     &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
             SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
-            SPRINKLERRATE, DRIPRATE, FLOODRATE,               &
+            SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE,   &
             SRATE, DRATE, FRATE) 
 
     endif
 
-    ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
+    ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
     ! irrigated tile fraction before exporting to land models.
  
-    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
-    DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
-    FLOODRATE     = FLOODRATE    *(IRRIGFRAC + PADDYFRAC)
+    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
+    DRIPRATE      = DRIPRATE     *(IRRIGFRAC)
+    FURROWRATE    = FURROWRATE   *(IRRIGFRAC)
+    FLOODRATE     = FLOODRATE    *(PADDYFRAC)
 
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
 

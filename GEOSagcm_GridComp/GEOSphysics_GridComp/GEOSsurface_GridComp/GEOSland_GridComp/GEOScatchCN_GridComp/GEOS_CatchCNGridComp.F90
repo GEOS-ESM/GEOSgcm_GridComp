@@ -688,7 +688,16 @@ subroutine SetServices ( GC, RC )
          VLOCATION  = MAPL_VLocationNone                      ,&
          RC=STATUS  )
     VERIFY_(STATUS)  	 
-    
+   
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'FURROWRATE'                             ,&
+         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC                              ,&
          SHORT_NAME = 'FLOODRATE'                             ,&
          LONG_NAME  = 'flood_irrigation_rate'                 ,&

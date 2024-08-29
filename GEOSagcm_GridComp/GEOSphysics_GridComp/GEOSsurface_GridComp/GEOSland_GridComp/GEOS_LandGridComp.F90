@@ -1347,6 +1347,7 @@ contains
     if (RUN_IRRIG == 1) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPRINKLERRATE', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FLOODRATE',     CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FURROWRATE',     CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRIPRATE',      CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
     end if
 
@@ -1465,7 +1466,7 @@ contains
 
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FLOODRATE    '/),&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FURROWRATE','FLOODRATE    '/),&
                   SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,&
                   RC = STATUS )
@@ -1516,7 +1517,7 @@ contains
 
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FLOODRATE    '/),&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FURROWRATE','FLOODRATE    '/),&
                   SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,&
                   RC=STATUS )
