@@ -82,7 +82,7 @@ module gfdl2_cloud_microphys_mod
     real, parameter :: t_ice = 273.16 !< freezing temperature
     real, parameter :: table_ice = 273.16 !< freezing point for qs table
 
-    integer, parameter :: es_table_length = 2821
+    integer, parameter :: es_table_length = 2621
     real   , parameter :: es_table_tmin = table_ice - 160.
     real   , parameter :: delt = 0.1
     real   , parameter :: rdelt = 1.0/delt
@@ -249,8 +249,8 @@ module gfdl2_cloud_microphys_mod
     real :: c_cracw = 1.00  !< accretion: cloud water to rain
 
     ! accretion efficiencies
-    real :: alin = 2115.0 !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
-    real :: clin = 152.93 !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
+    real :: alin = 842.0  !< "a" in lin 1983, [Rain] (increase to ehance ql/qi -- > qr)
+    real :: clin = 4.8    !< "c" in lin 1983, [Snow] (increase to ehance ql/qi -- > qs)
     real :: gcon = 40.74 * sqrt (sfcrho) ! [Graupel] (increase to ehance ql/qi -- > qg)
 
     ! fall velocity tuning constants:
@@ -949,7 +949,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, dimension (ktop:kbot + 1) :: ze, zt
 
     real :: sink, dq, qc
-    real :: c_praut_k, fac_rc, qden
+    real :: fac_rc, qden
     real :: zs = 0.
     real :: dt5
 
@@ -1089,8 +1089,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (dq, dt * c_praut_k * den (k) * exp (so3 * log (ql (k))))
+                    sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1124,8 +1123,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! --------------------------------------------------------------------
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (1., dq / dl (k)) * dt * c_praut_k * den (k) * exp (so3 * log (ql (k)))
+                    sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1414,7 +1412,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_liq (k) = q_liq (k) + melt*qadum
             q_sol (k) = q_sol (k) - melt*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
+            tzk (k) = tzk (k) - melt*qadum * lhi (k) / cvm (k)
         elseif (frez > 0.0 .and. tzk (k) <= tice .and. ql > qcmin) then
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
@@ -1437,7 +1435,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_liq (k) = q_liq (k) - frez*qadum
             q_sol (k) = q_sol (k) + frez*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            tzk (k) = tzk (k) + frez * lhi (k) / cvm (k)
+            tzk (k) = tzk (k) + frez*qadum * lhi (k) / cvm (k)
         endif
 
         ! Revert In-Cloud condensate
@@ -3080,7 +3078,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
 
                ! Resolution dependence (slow ice settling at coarser resolutions)
                 viLSC = viLSC * (onemsig + 0.75*(1.0-onemsig))
-                viCNV = viCNV * (onemsig + 0.50*(1.0-onemsig))
+                viCNV = viCNV * (onemsig + 0.75*(1.0-onemsig))
 
                ! Combine
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)

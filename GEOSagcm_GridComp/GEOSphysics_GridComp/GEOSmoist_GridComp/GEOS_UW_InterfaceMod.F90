@@ -328,8 +328,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       do J=1,JM
         do I=1,IM
            SIG   = sigma(SQRT(PTR2D(i,j)))
-           RKFRE(i,j) = SHLWPARAMS%RKFRE*SIG + 0.25*(1.0-SIG)
-           RKM2D(i,j) = SHLWPARAMS%RKM  *SIG + 4.00*(1.0-SIG) 
+           RKFRE(i,j) = SHLWPARAMS%RKFRE*(SIG + 0.50*(1.0-SIG))
+           RKM2D(i,j) = SHLWPARAMS%RKM  *(SIG + 0.50*(1.0-SIG))
         enddo
       enddo 
     endif
