@@ -40,47 +40,46 @@ def QSat_Float(
     RAMP_trigger: bool = False,
     DQSAT_trigger: bool = False,
 ):
-    with computation(PARALLEL), interval(...):
-        if RAMP_trigger:
-            URAMP = -abs(RAMP)
-        else:
-            URAMP = TMIX
-        
-        if PASCALS_trigger:
-            PP = PL
-        else:
-            PP = PL*100.
+    if RAMP_trigger:
+        URAMP = -abs(RAMP)
+    else:
+        URAMP = TMIX
+    
+    if PASCALS_trigger:
+        PP = PL
+    else:
+        PP = PL*100.
 
-        
-        if T <= TMINTBL:
-            TI = TMINTBL
-        elif T >= TMAXTBL-.001:
-            TI = TMAXTBL-.001
-        else:
-            TI = T
-        
-        TI = (TI - TMINTBL)*DEGSUBS+1
-        IT = int(TI)
+    
+    if T <= TMINTBL:
+        TI = TMINTBL
+    elif T >= TMAXTBL-.001:
+        TI = TMAXTBL-.001
+    else:
+        TI = T
+    
+    TI = (TI - TMINTBL)*DEGSUBS+1
+    IT = int(TI)
 
-        if URAMP==TMIX:
-            DQ = esx[0][IT] - esx[0][IT]
-            QSAT = (TI-IT)*DQ + esx[0][IT]
-        else:
-            DQ    = ese[0][IT] - ese[0][IT]
-            QSAT  = (TI-IT)*DQ + ese[0][IT]
+    if URAMP==TMIX:
+        DQ = esx[0][IT] - esx[0][IT]
+        QSAT = (TI-IT)*DQ + esx[0][IT]
+    else:
+        DQ    = ese[0][IT] - ese[0][IT]
+        QSAT  = (TI-IT)*DQ + ese[0][IT]
 
-        if DQSAT_trigger == True:
-            DQSAT = DQ*DEGSUBS
+    if DQSAT_trigger == True:
+        DQSAT = DQ*DEGSUBS
 
-        if PP <= QSAT:
-            QSAT = MAX_MIXING_RATIO
-            if DQSAT_trigger: DQSAT = 0.0
-        else:
-            DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
-            QSAT = ESFAC*QSAT*DD
-            if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+    if PP <= QSAT:
+        QSAT = MAX_MIXING_RATIO
+        if DQSAT_trigger: DQSAT = 0.0
+    else:
+        DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
+        QSAT = ESFAC*QSAT*DD
+        if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
 
-        return QSAT, DQSAT
+    return QSAT, DQSAT
 
 
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
