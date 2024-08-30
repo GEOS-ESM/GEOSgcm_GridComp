@@ -5,7 +5,9 @@ import pyMoist.pyMoist_constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, Float, IntField 
 from ndsl import StencilFactory, QuantityFactory 
-from pyMoist.saturation.qsat import QSat, QSat_Float
+from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
+from pyMoist.saturation.formulation import SaturationFormulation
+
 
 @gtscript.function
 def exnerfn(
@@ -13,28 +15,6 @@ def exnerfn(
 )-> Float:
     
     return (p / 100000.0) ** (radconstants.MAPL_RDRY / radconstants.MAPL_CPDRY)
-
-
-@gtscript.function
-def geos_qsat(
-    temps: Float,
-    ps: Float, 
-)-> Float:
-    
-    # This is just a placeholder until GEOS_QSAT is ported!!!
-    e_s0 = 6.11         # Reference vapor pressure (hPa)
-    a = 17.67           # Constant for temperature in the exponential function
-    b = 273.15          # Reference temperature (K)
-    c = 29.65           # Temperature constant in the denominator (K)
-    q_s0 = 0.62         # Ratio of molecular weights of water vapor and dry air (dimensionless)
-    
-    # Saturation vapor pressure calculation
-    e_s = e_s0 * temps
-    
-    # Saturation specific humidity calculation
-    q_s = q_s0 * e_s / (ps - e_s)
-    
-    return q_s
 
 
 @gtscript.function
@@ -82,7 +62,7 @@ def ice_fraction(
     return ice_frac
 
 
-def condensation(
+def conden(
     p: FloatField, 
     thl: FloatField, 
     qt: FloatField,
@@ -92,6 +72,9 @@ def condensation(
     qi: FloatField, 
     rvls: FloatField,
     id_check: IntField,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -103,7 +86,7 @@ def condensation(
         leff = (1.0 - nu) * radconstants.MAPL_ALHL + nu * radconstants.MAPL_ALHS # Effective latent heat
         temps = tc
         ps = p
-        qs = geos_qsat(temps, ps / 100.0) # Saturation specific humidity
+        qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0) # Saturation specific humidity
         rvls = qs
         
         if qs >= qt:      # no condensation
@@ -117,7 +100,7 @@ def condensation(
             iteration = 0
             while iteration < 10:
                 temps = temps + ((tc - temps) * radconstants.MAPL_CPDRY / leff + qt - rvls) / (radconstants.MAPL_CPDRY / leff + (constants.rdry / constants.rvap) * leff * rvls / (radconstants.MAPL_RDRY * temps * temps))
-                qs = geos_qsat(temps, ps / 100.0)
+                qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0)
                 rvls = qs
                 iteration+=1
             qc = max(qt - qs, 0.0)
@@ -131,20 +114,25 @@ def condensation(
                 id_check = 0
                 
 
-
 class Conden:
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-    ):
-      
-        self._condensation = stencil_factory.from_dims_halo(
-            func=condensation,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_table_lookup: bool = True,
+    ) -> None:
+        
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = quantity_factory
+       
+        self._conden = self.stencil_factory.from_dims_halo(
+            func=conden,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-    def __call__(self,
+    def __call__(
+        self,
         pifc0_test: FloatField, 
         thl0bot_test: FloatField, 
         qt0bot_test: FloatField,
@@ -154,22 +142,11 @@ class Conden:
         qij_test: FloatField, 
         qse_test: FloatField,
         id_check_test: IntField,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_table_lookup: bool = True,
     ):
-
-        """
-            Calculate condensation process.
-
-            Parameters:
-            p (3D in): Environmental pressure [ Pa ].
-            thl (3D in): 
-            qt (3D in):
-            th (3D out):
-            qv (3D out):
-            ql (3D out):
-            qi (3D out):
-            rvls (3D out):
-            id_check (3D out): Indicates if condensation process occurs [ N/A ].
-        """
+        
+        
         self.qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
@@ -177,12 +154,7 @@ class Conden:
             use_table_lookup=use_table_lookup,
         )
 
-        # These are args for QSat_Float
-        self.qsat._ese
-        self.qsat._esw
-        self.qsat._esx
-
-        self._condensation(
+        self._conden(
                 pifc0_test, 
                 thl0bot_test, 
                 qt0bot_test, 
@@ -191,4 +163,8 @@ class Conden:
                 qlj_test, 
                 qij_test, 
                 qse_test, 
-                id_check_test)
+                id_check_test, 
+                self.qsat._ese, 
+                self.qsat._esw, 
+                self.qsat._esx,
+        )
