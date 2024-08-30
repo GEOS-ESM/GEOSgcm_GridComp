@@ -593,7 +593,7 @@ contains
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
                     
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE & 
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, & 
          IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
@@ -601,7 +601,7 @@ contains
        ! crop calendar based irrigation
        ! ==============================
 
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE &
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, &
        CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
