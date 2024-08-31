@@ -1,7 +1,6 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
-!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -356,13 +355,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: DBZ3D
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
-#ifdef PDFDIAG
-    real, pointer, dimension(:,:,:) :: PDF_W1, PDF_W2, PDF_SIGW1, PDF_SIGW2,     &
-                                       PDF_QT1, PDF_QT2, PDF_SIGQT1, PDF_SIGQT2, &
-                                       PDF_TH1, PDF_TH2, PDF_SIGTH1, PDF_SIGTH2, &
-                                       PDF_RQTTH, PDF_RWTH, PDF_RWQT
-#endif
-
     ! Thompson Pointers for inputs
     real, dimension(:,:,:), allocatable, target  :: inputs
     real, dimension(:,:,:), pointer :: qv   => null()
@@ -689,24 +681,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     DQSDT_macro=QSNOW
     DQGDT_macro=QGRAUPEL
 
-#ifdef PDFDIAG
-   call MAPL_GetPointer(EXPORT,  PDF_W1,  'PDF_W1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_W2,  'PDF_W2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGW1,  'PDF_SIGW1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGW2,  'PDF_SIGW2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_QT1,  'PDF_QT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_QT2,  'PDF_QT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGQT1,  'PDF_SIGQT1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGQT2,  'PDF_SIGQT2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_TH1,  'PDF_TH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_TH2,  'PDF_TH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGTH1,  'PDF_SIGTH1' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_SIGTH2,  'PDF_SIGTH2' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RQTTH,  'PDF_RQTTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RWTH,  'PDF_RWTH' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,  PDF_RWQT,  'PDF_RWQT' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-#endif
-
       ! Include shallow precip condensates if present
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_PRC3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
@@ -779,23 +753,6 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       SL3(I,J,L)     , &
                       PDF_A(I,J,L)   , &
                       PDFITERS(I,J,L), &
-#ifdef PDFDIAG
-                      PDF_SIGW1(I,J,L),  &
-                      PDF_SIGW2(I,J,L),  &
-                      PDF_W1(I,J,L),     &
-                      PDF_W2(I,J,L),     &
-                      PDF_SIGTH1(I,J,L), &
-                      PDF_SIGTH2(I,J,L), &
-                      PDF_TH1(I,J,L),    &
-                      PDF_TH2(I,J,L),    &
-                      PDF_SIGQT1(I,J,L), &
-                      PDF_SIGQT2(I,J,L), &
-                      PDF_QT1(I,J,L),    &
-                      PDF_QT2(I,J,L),    &
-                      PDF_RQTTH(I,J,L),  &
-                      PDF_RWTH(I,J,L),   &
-                      PDF_RWQT(I,J,L),   &
-#endif
                       WTHV2(I,J,L)   , &
                       WQL(I,J,L)     , &
                       .false.        , & 
@@ -1139,7 +1096,7 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QSNOW
-
+    
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
