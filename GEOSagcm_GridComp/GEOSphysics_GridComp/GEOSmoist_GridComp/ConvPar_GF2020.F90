@@ -2301,7 +2301,13 @@ loop1:  do n=1,maxiens
           rho_hydr(i,:) = 0.0
           if(ierr(i) /= 0)cycle
           do k=kts,ktf
-             rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/(zo_cup(i,k+1)-zo_cup(i,k))/g
+             dz = zo_cup(i,k+1)-zo_cup(i,k)
+             if (dz == 0.0) then
+                print *,'WARNING: Better fix needed for rho_hydr'
+                rho_hydr(i,k) = rho(i,k)
+             else
+                rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/dz/g
+             end if
              !print*,"rhohidr=",k,rho_hydr(i,k),po_cup(i,k+1),zo_cup(i,k+1)
           enddo
       enddo
