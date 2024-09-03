@@ -146,7 +146,6 @@ class Conden:
         use_table_lookup: bool = True,
     ):
         
-        
         self.qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
