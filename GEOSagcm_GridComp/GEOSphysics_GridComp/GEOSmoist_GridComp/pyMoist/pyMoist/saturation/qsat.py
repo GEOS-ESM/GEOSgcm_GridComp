@@ -105,8 +105,8 @@ def QSat_FloatField(
     T: FloatField,
     PL: FloatField,
     QSAT: FloatField,
-    RAMP: FloatField,
     DQSAT: FloatField,
+    RAMP: FloatField,
     PASCALS_trigger: bool,
     RAMP_trigger: bool,
     DQSAT_trigger: bool,
@@ -140,16 +140,13 @@ def QSat_FloatField(
             DQ    = ese[0][IT] - ese[0][IT]
             QSAT  = (TI-IT)*DQ + ese[0][IT]
 
-        if DQSAT_trigger == True:
-            DQSAT = DQ*DEGSUBS
-
         if PP <= QSAT:
             QSAT = MAX_MIXING_RATIO
             if DQSAT_trigger: DQSAT = 0.0
         else:
             DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
             QSAT = ESFAC*QSAT*DD
-            if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+            if DQSAT_trigger: DQSAT = ESFAC*DQ*DEGSUBS*PP*(DD*DD)
 
 
 class QSat:
@@ -200,7 +197,6 @@ class QSat:
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._PASCALS = False
 
         self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
@@ -226,8 +222,8 @@ class QSat:
             T: FloatField,
             PL: FloatField,
             RAMP: Optional[FloatField] = None,
-            PASCALS: Optional[bool] = None,
-            DQSAT: Optional[FloatField] = None,
+            PASCALS: bool = False,
+            DQSAT: bool = False,
             use_table_lookup: bool = True,
     ):
 
@@ -236,20 +232,10 @@ class QSat:
             RAMP_trigger = False
         else:
             RAMP_trigger = True
-        if PASCALS is None:
-            PASCALS = self._PASCALS
-            PASCALS_trigger = False
-        else:
-            PASCALS_trigger = True
-        if DQSAT is None:
-            DQSAT = self._DQSAT
-            DQSAT_trigger = False
-        else:
-            DQSAT_trigger = True
 
         if use_table_lookup:
-            self._QSat_FloatField(self._ese, self._esw, self._esx, T, PL, self.QSat, RAMP, DQSAT,
-                             PASCALS_trigger, RAMP_trigger, DQSAT_trigger)
+            self._QSat_FloatField(self._ese, self._esw, self._esx, T, PL, self.QSat, self._DQSAT,
+                             RAMP, PASCALS, RAMP_trigger, DQSAT)
 
         if not use_table_lookup:
             raise NotImplementedError(
