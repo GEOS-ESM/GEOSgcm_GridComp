@@ -1402,7 +1402,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
-            tmp = fac_imlt * min (melt, dim (ql_mlt, ql)) ! max ql amount
+            tmp = fac_imlt * min (melt, dim (ql_mlt/qadum, ql)) ! max ql amount
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
@@ -1425,7 +1425,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
                                            ice_fraction(tzk(k),cnv_fraction,srf_type)
             qi_crt = critical_qi_factor / den (k)
-            tmp = fac_frz * min (frez, dim (qi_crt, qi))
+            tmp = fac_frz * min (frez, dim (qi_crt/qadum, qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
