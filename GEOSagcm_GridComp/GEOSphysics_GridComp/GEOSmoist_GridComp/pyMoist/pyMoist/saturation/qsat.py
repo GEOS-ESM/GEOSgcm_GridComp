@@ -35,7 +35,6 @@ def QSat_Float(
     T: Float,
     PL: Float,
     RAMP: Float = -999.,
-    DQSAT: Float = -999.,
     PASCALS_trigger: bool = False,
     RAMP_trigger: bool = False,
     DQSAT_trigger: bool = False,
@@ -60,6 +59,16 @@ def QSat_Float(
     
     TI = (TI - TMINTBL)*DEGSUBS+1
     IT = int(TI)
+    
+    if T <= TMINTBL:
+        TI = TMINTBL
+    elif T >= TMAXTBL-.001:
+        TI = TMAXTBL-.001
+    else:
+        TI = T
+    
+    TI = (TI - TMINTBL)*DEGSUBS+1
+    IT = int(TI)
 
     if URAMP==TMIX:
         DQ = esx[0][IT] - esx[0][IT]
@@ -67,18 +76,24 @@ def QSat_Float(
     else:
         DQ    = ese[0][IT] - ese[0][IT]
         QSAT  = (TI-IT)*DQ + ese[0][IT]
-
-    if DQSAT_trigger == True:
-        DQSAT = DQ*DEGSUBS
+    if URAMP==TMIX:
+        DQ = esx[0][IT] - esx[0][IT]
+        QSAT = (TI-IT)*DQ + esx[0][IT]
+    else:
+        DQ    = ese[0][IT] - ese[0][IT]
+        QSAT  = (TI-IT)*DQ + ese[0][IT]
 
     if PP <= QSAT:
         QSAT = MAX_MIXING_RATIO
         if DQSAT_trigger: DQSAT = 0.0
+        else: DQSAT = -999.
     else:
         DD = 1.0/(PP - (1.0-ESFAC)*QSAT)
         QSAT = ESFAC*QSAT*DD
-        if DQSAT_trigger: DQSAT = ESFAC*DQSAT*PP*(DD*DD)
+        if DQSAT_trigger: DQSAT = ESFAC*DQ*DEGSUBS*PP*(DD*DD)
+        else: DQSAT = -999.
 
+    return QSAT, DQSAT
     return QSAT, DQSAT
 
 
