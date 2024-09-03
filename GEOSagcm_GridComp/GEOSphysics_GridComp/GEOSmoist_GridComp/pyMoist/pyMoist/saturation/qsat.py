@@ -60,22 +60,6 @@ def QSat_Float(
     TI = (TI - TMINTBL)*DEGSUBS+1
     IT = int(TI)
     
-    if T <= TMINTBL:
-        TI = TMINTBL
-    elif T >= TMAXTBL-.001:
-        TI = TMAXTBL-.001
-    else:
-        TI = T
-    
-    TI = (TI - TMINTBL)*DEGSUBS+1
-    IT = int(TI)
-
-    if URAMP==TMIX:
-        DQ = esx[0][IT] - esx[0][IT]
-        QSAT = (TI-IT)*DQ + esx[0][IT]
-    else:
-        DQ    = ese[0][IT] - ese[0][IT]
-        QSAT  = (TI-IT)*DQ + ese[0][IT]
     if URAMP==TMIX:
         DQ = esx[0][IT] - esx[0][IT]
         QSAT = (TI-IT)*DQ + esx[0][IT]
@@ -93,7 +77,6 @@ def QSat_Float(
         if DQSAT_trigger: DQSAT = ESFAC*DQ*DEGSUBS*PP*(DD*DD)
         else: DQSAT = -999.
 
-    return QSAT, DQSAT
     return QSAT, DQSAT
 
 

@@ -177,3 +177,7 @@ S20 = Float(0.535098336E+1 * 100.0)
 
 TMINLQU = Float(ZEROC - 40.0)
 TMINICE = Float(ZEROC + TMINSTR)
+
+
+# aer activation constants
+R_AIR = Float(3.47e-3) # m3 Pa kg-1K-1 # also used in GFDL_1M, but defined in aer
