@@ -11,9 +11,12 @@ from pyMoist.saturation.constants import (
     TMIX,
     TMINTBL,
     TMAXTBL,
+    TMINLQU,
+    MAPL_TICE,
     DEGSUBS,
     MAX_MIXING_RATIO,
     ESFAC,
+    ERFAC,
     TABLESIZE,
 )
 
@@ -25,6 +28,79 @@ from pyMoist.saturation.constants import (
 # Current implementation does not allow for flexible table sizes
 # so if needed this will have to be implemented in another way.
 FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
+
+# The following two functions, QSat_Float_Liquid and QSat_Float_Ice are,
+# together, a non-equivalent replacement for QSat_Float.
+# QSat_Float interpolates a smooth transition between liquid water and ice
+# (based on the parameter TMIX), while the Liquic/Ice versions have a
+# hard transition at zero C.
+@gtscript.function
+def QSat_Float_Liquid(
+    esw: FloatField_Extra_Dim,
+    estlqu: Float,
+    TL: Float,
+    PL: Float = -999.,
+    DQ_trigger: bool = False,
+):
+    # qsatlqu.code with UTBL = True
+    if TL <= TMINLQU:
+        QS=estlqu
+        if DQ_trigger is True: DDQ = 0.
+    elif TL >= TMAXTBL:
+        QS=esw[0][TABLESIZE]
+        if DQ_trigger is True: DDQ = 0.
+    else:
+        TT = (TL - TMINTBL) * DEGSUBS + 1
+        IT = int(TT)
+        DDQ = esw(IT + 1) - esw(IT)
+        QS = ((TT - IT) * DDQ + esw(IT))
+
+    if PL is not -999.:
+        if PL > QS:
+            DD = (ESFAC / (PL - (1. - ESFAC) * QS))
+            QS = QS * DD
+            if DQ_trigger is True: DQ = DDQ * ERFAC * PL * DD * DD
+        else:
+            QS  = MAX_MIXING_RATIO
+            if DQ_trigger is True: DQ = 0.0
+    else:
+        if DQ_trigger is True: DQ = DDQ
+
+    return QS, DQ
+
+@gtscript.function
+def QSat_Float_Ice(
+    ese: FloatField_Extra_Dim,
+    estfrz: Float,
+    TL: Float,
+    PL: Float = -999.,
+    DQ_trigger: bool = False,
+):
+    # qsatice.code with UTBL = True
+    if TL <= TMINTBL:
+        QS=ese(0)
+        if DQ_trigger is True: DDQ = 0.0
+    elif TL >= MAPL_TICE:
+        QS=estfrz
+        if DQ_trigger is True: DDQ = 0.0
+    else:
+        TT = (TL - TMINTBL) * DEGSUBS + 1
+        IT = int(TT)
+        DDQ = ese(IT + 1) - ese(IT)
+        QS = ((TT - IT) * DDQ + ese(IT))
+
+    if PL is not -999.:
+        if PL > QS:
+            DD = (ESFAC / (PL - (1.0 - ESFAC) * QS))
+            QS = QS * DD
+            if DQ_trigger is True: DQ = DDQ * ERFAC * PL * DD * DD
+        else:
+            QS = MAX_MIXING_RATIO
+            if DQ_trigger is True: DQ = 0.0
+    else:
+        if DQ_trigger is True: DQ = DDQ
+
+    return QS, DQ
 
 # Function version of QSat_table
 @gtscript.function
@@ -171,12 +247,12 @@ class QSat:
             quantity_factory
         )
 
-        self._ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self._ese.view[:] = self.table.ese
-        self._esw.view[:] = self.table.esw
-        self._esx.view[:] = self.table.esx
+        self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
+        self.ese.view[:] = self.table.ese
+        self.esw.view[:] = self.table.esw
+        self.esx.view[:] = self.table.esx
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -217,7 +293,7 @@ class QSat:
             RAMP_trigger = True
 
         if use_table_lookup:
-            self._QSat_FloatField(self._ese, self._esw, self._esx, T, PL, self.QSat, self._DQSAT,
+            self._QSat_FloatField(self.ese, self.esw, self.esx, T, PL, self.QSat, self._DQSAT,
                              RAMP, PASCALS, RAMP_trigger, DQSAT)
 
         if not use_table_lookup:
