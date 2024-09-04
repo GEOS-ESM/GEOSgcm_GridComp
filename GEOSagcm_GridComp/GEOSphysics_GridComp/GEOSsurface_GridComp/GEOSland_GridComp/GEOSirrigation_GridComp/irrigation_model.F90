@@ -6,32 +6,38 @@ MODULE IRRIGATION_MODULE
   USE ESMF
   
   IMPLICIT NONE
-
-  ! This module computes irrigation rates by 3 different methods: sprinkler, flood and drip.
+  ! Irrigation Module
+  ! First Version: March 21, 2021 (Sarith Mahanama)
+  ! Second Version: June 25, 2024 (Stefano Casirati)
+  !
+  ! This module computes irrigation rates by 4 different methods: sprinkler, flood, furrow, and drip.
   ! Computed irrigation rates return to the land model as rates that water is added to
   ! the hydrological cycle by irrigation. Subsequently, land models add irrigation feedback: 
-  !      sprinkler irrigation rate to large scale precipitation;
-  !      drip irrigation volume to rootzone excess; and
-  !      flood irrigation volume to rootzone excess.
+  !     1) sprinkler irrigation rate to large scale precipitation (for irrigated tiles fractions);
+  !     2)  drip irrigation volume to rootzone excess (for irrigated tiles fractions); 
+  !     3)  furrow irrigation volume to rootzone excess (for irrigated tiles fractions);
+  !     4)  flood irrigation volume to surface excess (only for paddy tiles fractions).
+
   ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
   ! irrigation rates for the day and maintains the same rate through out the irrigation duration.
   ! 
-  ! Sprinkler and Flood Irrigation methods were adapted from LIS CLSMF2.5 irrigatrion module:
-  ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
-  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 0% water loss.
-  !
-  ! March 21, 2021 (Sarith Mahanama) - First Version
-  ! June 25, 2024 (Stefano Casirati) - Second Version
+  ! Sprinkler and Flood/Furrow Irrigation methods were adapted from LIS CLSMF2.5 irrigation module (Rodell et al., 2024 (Under Review) 
+  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 10% water loss. (Source FAO)
+  ! 
   !
   ! (1) EXPORTS - MODEL OUTPUTS TO THE LAND MODEL (IRRIGATION RATES):
   !    1) SPRINKLERRATE [kg m-2 s-1]
   !    2) DRIPRATE [kg m-2 s-1]
-  !    3) FLOODRATE [kg m-2 s-1]    
+  !    3) FURROWRATE [kg m-2 s-1]   
+  !    4) FLOODRATE [kg m-2 s-1]    
   !
   ! (2) IRRIGATED AND PADDY TILES:
-  ! During land BC's generation, the fraction of irrigated crops and paddy is set to zero if their sum is below an irrigation threshold.
-  ! Irrigated fractions can be irrigated with sprinkler, drip, and flood, while paddy fractions can only be irrigated using the flood irrigation method.
-  ! Vegetation characteristics and vegetation dynamic parameters for irrigated crops and paddy tiles were taken from the nearest grass or cropland tile.
+  ! During land BC's generation, the fraction of irrigated crops and paddy is set to zero 
+  ! if their sum is below an irrigation threshold (default 1%).
+  ! Irrigated fractions can be irrigated with sprinkler, drip, and furrow,
+  ! while paddy fractions can only be irrigated using the flood irrigation method.
+  ! Vegetation characteristics and vegetation dynamic parameters 
+  ! for irrigated crops and paddy tiles were taken from the nearest grass or cropland tile.
   !
   ! (3) MODEL INPUTS:
   !     SMWP    : rootzone soil moisture content at wilting point [mm] 
@@ -50,10 +56,10 @@ MODULE IRRIGATION_MODULE
   !
   !          This LAI-based trigger is also equipped with an additional control parameter, IRRIG_METHOD, which is good to choose the method of irrigation
   !          that woould run on corresponding fractions       
-  !          i)  0: (Default) All 3 methods (sprinkler/flood/drip) concurrently.
+  !          i)  0: (Default) All 4 methods (sprinkler/furrow/flood/drip) concurrently.
   !          ii) 1: Sprinkler irrigation on entire tile.
   !          iv) 2: Drip irrigation on entire tile.
-  !          iii)3: Flood irrigation on entire tile.
+  !          iii)3: Furrow/Flood irrigation on entire tile.
   !
   !     IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
   !          IRRIGFRAC    : fraction of tile covered by irrigated crops (values between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation
@@ -62,7 +68,7 @@ MODULE IRRIGATION_MODULE
   !                         Threshold)
   !          SPRINKLERFR  : fraction of tile equipped for sprinkler irrigation
   !          DRIPFR       : fraction of tile equipped for drip irrigation
-  !          FLOODFR      : fraction of tile equipped for flood irrigation
+  !          FLOODFR      : fraction of tile equipped for flood/furrow irrigation
   !          LAI          : time varying Leaf Area Index from the model
   !          LAIMIN       : Minimum LAI spatially averaged over the irrigated tile fraction 
   !          LAIMAX       : Maximum LAI spatially averaged over the irrigated tile fraction
@@ -86,7 +92,7 @@ MODULE IRRIGATION_MODULE
   !     IRRIG_TRIGGER: 1 SPECIFIC INPUTS:
   !          DOFYR        : day of year
   !          IRRIGTYPE    : Preferred Irrig method (NTILES, 26) -
-  !                         (0)CONCURRENT (default), (1)SPRINKLER ONLY (2)DRIP ONLY (3)FLOOD ONLY, and (-negative) AVOID this method 
+  !                         (0)CONCURRENT (default), (1)SPRINKLER ONLY (2)DRIP ONLY (3)FLOOD/FURROW ONLY, and (-negative) AVOID this method 
   !          CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been adjusted such that
   !                         CROPIRRIGFRAC is 1. on paddy tiles; the sum of available crop fractions is 1. on irrigated crop tiles;
   !                         and is zero on non-irrigated tiles.
@@ -99,7 +105,7 @@ MODULE IRRIGATION_MODULE
   !     The second dimensions of 2D arrays is for different crop fractions i.e. the second dimension is 2 for above
   !     IRRIG_TRIGGER: 0 to separately store irrigation rates in irrigated crop and paddy fractions.
   !     It would be 26 for IRRIG_TRIGGER: 1.
-  !     The crop calendar implemetation (IRRIG_TRIGGER: 1) computes SPRINKLERRATE, DRIPRATE, and FLOODRATE as weighted averages of irrigation rates from
+  !     The crop calendar implemetation (IRRIG_TRIGGER: 1) computes SPRINKLERRATE, DRIPRATE,FURROWRATE, and FLOODRATE as weighted averages of irrigation rates from
   !     all active crops in SRATE, DRATE and FRATE arrays.
   
   PRIVATE
@@ -236,7 +242,7 @@ contains
                 if(ma >= 0) then
                                 
                         SELECT CASE (IRRIG_METHOD)                
-                        CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + DRIP on corresponding fractions
+                        CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + FURROW + DRIP on corresponding fractions
 
                         call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
                                 SRATE = SRATE (N,1), &
@@ -312,7 +318,7 @@ contains
        
     END DO TILE_LOOP
 
-    ! Update SPRINKLERRATE, DRIPRATE, FURROW, FLOODRATE EXPORTS to be sent to land models.
+    ! Update SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE EXPORTS to be sent to land models.
     ! FLOODRATE is weighted averaged over irrigated crops + paddy fractions.
         
     call this%update_irates (SPRINKLERRATE,DRIPRATE,FURROWRATE,FLOODRATE, &
@@ -580,13 +586,13 @@ contains
     endif
 
     if(present (FRATE)) then
-       ! FLOOD IRRIGATION
+       ! FURROW IRRIGATION
        H1 = this%flood_stime
        H2 = this%flood_stime + this%flood_dur
        IT = this%flood_thres
        if ((HC >= H1).AND.(HC < H2)) then
           ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-          ! Notice Flood / Furrow irrigation uses the same soil moisture threshold of sprinkler but with 
+          ! Notice Furrow irrigation uses the same soil moisture threshold of sprinkler but with 
           ! the efficiency correction increased by 15 (e.g., Field application efficiency Sprinkler 75%, Surface Irrigation 60%.
           ! Source FAO)
           if((ma <= IT).AND.(H1 == HC)) &

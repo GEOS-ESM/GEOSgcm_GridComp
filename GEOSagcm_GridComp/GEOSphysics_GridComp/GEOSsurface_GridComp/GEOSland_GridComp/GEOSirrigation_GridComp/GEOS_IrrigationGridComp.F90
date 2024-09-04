@@ -744,6 +744,8 @@ contains
     call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FURROWRATE,    'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+  
     
     
     ! get pointers to IMPORT variables
