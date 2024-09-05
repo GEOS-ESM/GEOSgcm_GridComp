@@ -1,7 +1,6 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
-!#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -88,7 +87,7 @@ module GEOSmoist_Process_Library
   real, parameter :: alhsbcp = MAPL_ALHS/MAPL_CP
 
   ! base grid length for sigma calculation
-  real :: SIGMA_DX  = 350.0
+  real :: SIGMA_DX  = 500.0
   real :: SIGMA_EXP = 2.0
 
   ! control for order of plumes
@@ -153,7 +152,6 @@ module GEOSmoist_Process_Library
   public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM, ICE_VFALL_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-  public :: pdf_alpha
 
   public :: sigma
 
@@ -2296,51 +2294,6 @@ module GEOSmoist_Process_Library
       end if
 
    end subroutine hystpdf
-
-!==========Estimate RHcrit========================
-!==============================
- subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, EIS, RHC_OPTION)
-
-      real,    intent(in)  :: PP, P_LM !mbar
-      real,    intent(out) :: ALPHA
-      real,    intent(in)  :: FRLAND
-      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS
-      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
-      real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
-      real :: dw_ocean = 0.10 !< base value for ocean
-      real :: sloperhcrit =20.
-      real :: TURNRHCRIT_UPPER = 300.
-      real ::  aux1, aux2, maxalpha
-
-      IF (RHC_OPTION .lt. 1) then
-
-          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-          !Reformulated by Donifan Barahona
-
-          maxalpha=1.0-MINRHCRIT
-          aux1 = min(max((pp- TURNRHCRIT)/sloperhcrit, -20.0), 20.0)
-          aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
-
-          if (FRLAND > 0.05)  then
-             aux1=1.0
-          else
-             aux1 = 1.0/(1.0+exp(aux1)) !this function reproduces the old Sligo function.
-          end if
-
-          !aux2= 1.0/(1.0+exp(aux2)) !this function would reverse the profile P< TURNRHCRIT_UPPER
-           aux2=1.0
-           ALPHA  = min(maxalpha*aux1*aux2, 0.3)
-
-       ELSE
-           ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
-             if (EIS > 5.0) then ! Stable
-                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
-             else ! Unstable
-                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
-             endif
-       END IF
-
-   end subroutine pdf_alpha
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014

@@ -1168,8 +1168,6 @@ CONTAINS
 
     REAL,   DIMENSION (kts:kte,its:ite,jts:jte)  :: Tpert_h,Tpert_v
 
-    REAL,   DIMENSION (its:ite,jts:jte) ::  rtgt
-
     REAL,   DIMENSION (its:ite,kts:kte) ::                                      &
                                zo,temp_old,qv_old,PO,US,VS,WS,rhoi,phil         &
                               ,temp_new_dp,qv_new_dp,temp_new_sh,qv_new_sh,z2d  &
@@ -1233,9 +1231,6 @@ CONTAINS
      JCOL = J
 
      !-- initialization
-     DO I= its,itf
-        rtgt(i,j)=1.0
-     ENDDO
      DO i= its,itf
         ztexec   (i) = 0.0
         zqexec   (i) = 0.0
@@ -1311,7 +1306,7 @@ CONTAINS
          kr=k   !+1   !<<<< only kr=k
 !
          !- heigths, current pressure, temp and water vapor mix ratio
-         zo      (i,k)  = zt(kr,i,j)*rtgt(i,j)+topt(i,j)
+         zo      (i,k)  = zt(kr,i,j)+topt(i,j)
          po      (i,k)  = press(kr,i,j)*1.e-2 !mbar
          temp_old(i,k)  = temp(kr,i,j)
 
@@ -1580,6 +1575,10 @@ CONTAINS
                   ,prfil_gf_2d                      &
                   ,Tpert_2d                         &
                   )
+        !--- accumulate precip for each plume
+        DO i=its,itf
+           CONPRR(i,j)= CONPRR(i,j)+cprr4d(i,j,plume)
+        ENDDO
         ! Save ierr from this plume
         ! if (plume /= SHAL) then
         ! DO i=its,itf
@@ -1625,14 +1624,11 @@ loop1:  do n=1,maxiens
                 endif
                 fixout_qv(i)=max(0.,min(fixout_qv(i),1.))
           endif
-     ENDDO
-     !------------ feedback
-     !-- deep convection
-     DO i=its,itf
-      if(do_this_column(i,j) == 0) CYCLE
-       CONPRR(i,j)= (cprr4d(i,j,deep) + cprr4d(i,j,mid) + cprr4d(i,j,shal)) * fixout_qv(i)
+          !--- apply to convective precip
+          CONPRR(i,j)= CONPRR(i,j) * fixout_qv(i)
      ENDDO
 
+     !------------ feedback
      !-- deep + shallow + mid convection
      DO i = its,itf
       if(do_this_column(i,j) == 0) CYCLE
@@ -2201,11 +2197,11 @@ loop1:  do n=1,maxiens
              if (stochastic_sig(i) /= 1.0) then
                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
              endif
-             sig(i)= max(0.1,min(sig(i),1.))
-             if(sig(i).le.0.1)then
-               ierr(i)=1
-               ierrc(i)='scale_dep renders convection insignificant'
-             endif
+             sig(i)= max(0.001,min(sig(i),1.))
+            !if(sig(i).le.0.1)then
+            !  ierr(i)=1
+            !  ierrc(i)='scale_dep renders convection insignificant'
+            !endif
              if(ierr(i) /= 0) cycle
             enddo
          endif
@@ -2305,7 +2301,13 @@ loop1:  do n=1,maxiens
           rho_hydr(i,:) = 0.0
           if(ierr(i) /= 0)cycle
           do k=kts,ktf
-             rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/(zo_cup(i,k+1)-zo_cup(i,k))/g
+             dz = zo_cup(i,k+1)-zo_cup(i,k)
+             if (dz == 0.0) then
+                print *,'WARNING: Better fix needed for rho_hydr'
+                rho_hydr(i,k) = rho(i,k)
+             else
+                rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/dz/g
+             end if
              !print*,"rhohidr=",k,rho_hydr(i,k),po_cup(i,k+1),zo_cup(i,k+1)
           enddo
       enddo
@@ -3082,20 +3084,17 @@ loop0:       do k=kts,ktf
       IF(SGS_W_TIMESCALE == 0) THEN
          DO i=its,itf
             if(ierr(i) /= 0) cycle
-            !- time-scale cape removal from Bechtold et al. 2008
-            dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
+            !- time-scale cape removal
+            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep * (1.0 + (1.0-sig(i)))
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid  * (1.0 + (1.0-sig(i)))
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
-            dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)= tau_mid *(    sig(i)) + &
-                          tau_deep*(1.0-sig(i)) + &
-                          (dz / vvel1d(i))
-            tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
+            dz = max(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i)),1.e-16) ! cloud depth (H)
+            tau_ecmwf(i)=(dz / vvel1d(i)) * (1.0 + sig(i)) ! resolution dependent scale factor
+            tau_ecmwf(i)= max(dtime,tau_ecmwf(i)*real(SGS_W_TIMESCALE))
          ENDDO
       ENDIF
       DO i=its,itf
