@@ -666,6 +666,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
              RHCRIT = 1.0
+             Q(I,J,L) = max(Q(I,J,L), 0.0) ! ALT: fix negative, I am not sure if this is the best fix
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
                   DT_MOIST      , &
