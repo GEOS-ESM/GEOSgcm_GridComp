@@ -4,6 +4,6 @@ python -m pytest -s --disable-warnings \
     --data_path=/home/charleskrop/netcdfs \
     --backend=dace:cpu \
     --which_rank=0 \
-    --which_modules=find_klcl \
+    --which_modules=GFDL_1M \
     --grid=default \
     ..

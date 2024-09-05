@@ -6,7 +6,8 @@ from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldI
 from ndsl import StencilFactory, QuantityFactory, orchestrate
 import numpy as np
 import pyMoist.pyMoist_constants as constants
-from pyMoist.saturation.qsat import QSat_Float
+from pyMoist.extratypes import FloatField_Extra_Dim
+from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
 
 
 @gtscript.function
@@ -224,7 +225,7 @@ def pdfcondensate(
             condensate = 0.
         elif qstar > (qtmean-sigmaqt1):
             if sigmaqt1 > 0.:
-                condensate = (min(qtmean + sigmaqt1 - qstar,2.d0*sigmaqt1)**2)/ (4.d0*sigmaqt1)
+                condensate = (min(qtmean + sigmaqt1 - qstar,2. * sigmaqt1)**2) / (4. * sigmaqt1)
             else:
                 condensate = qtmean-qstar
         else:
@@ -259,57 +260,93 @@ def bergeron_partition(
     DTIME: Float,
     PL: Float,
     TE: Float,
-    QV: Float,
+    Q: Float,
     QILS: Float,
     QICN: Float,
     QLLS: Float,
     QLCN: Float,
-    CF: Float,
-    AF: Float,
-    NL: Float,
     NI: Float,
     DQALL: Float,
-    fQI: Float,
     CNV_FRC: Float,
     SRF_TYPE: Float,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    estfrz: Float,
+    estlqu: Float,
     needs_preexisting: bool = False,
 ):
-    DIFF = 0.0
-    DEP  = 0.0
-    QI   = QILS + QICN # neccesary because NI is for convective and large scale
-    QL   = QLLS + QLCN
-    QTOT = QI+QL
-    FQA  = 0.0
-    if QTOT > 0.0: FQA = (QICN + QILS) / QTOT
-    NIX  = (1.0 - FQA) * NI
+    fQI = 0
+    # DIFF = 0.0
+    # DEP  = 0.0
+    # QI   = QILS + QICN # neccesary because NI is for convective and large scale
+    # QL   = QLLS + QLCN
+    # QTOT = QI+QL
+    # FQA  = 0.0
+    # if QTOT > 0.0: FQA = (QICN + QILS) / QTOT
+    # NIX  = (1.0 - FQA) * NI
 
-    DQALL = DQALL / DTIME
-    CFALL = min(CF + AF, 1.0)
-    TC    = TE - constants.t_ice
-    fQI_0 = fQI
+    # DQALL = DQALL / DTIME
+    # TC    = TE - constants.t_ice
 
-    # Completelely glaciated cloud:
-    if TE >= constants.iT_ICE_MAX: # liquid cloud
-        FQI = 0.
-    elif TE <= constants.iT_ICE_ALL: # ice cloud
-        FQI = 1.
-    else: # mixed phase cloud
-        fQI = 0.
-        if QILS <= 0.:
-            if needs_preexisting is True:
-                raise NotImplementedError(
-                    "Not implemented in Fortran, see Process_Library.F90"
-                )
-            else:
-                fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
-            return
-    
-        QVINC =  QV
-        QSLIQ = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQSL )
-        QSICE = GEOS_QsatICE( TE, PL*100.0 , DQ=DQSI )
-        QVINC = MIN(QVINC, QSLIQ) !limit to below water saturation
+    # # Completelely glaciated cloud:
+    # if TE >= constants.iT_ICE_MAX: # liquid cloud
+    #     fQI = 0.
+    # elif TE <= constants.iT_ICE_ALL: # ice cloud
+    #     fQI = 1.
+    # else: # mixed phase cloud
+    #     fQI = 0.
+    #     if QILS <= 0.:
+    #         if needs_preexisting is False:
+    #             fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
+    #         # else:
+    #             # NOT IMPLEMENTED
+    #             # raise NotImplementedError(
+    #             #     "Not implemented in Fortran, see Process_Library.F90"
+    #             # )
+    #     else:
+    #         QVINC =  Q
+    #         QSLIQ, _ = QSat_Float_Liquid( esw, estlqu, TE, PL*100.0)
+    #         QSICE, DQSI = QSat_Float_Ice( ese, estfrz, TE, PL*100.0 , DQ_trigger=True)
+    #         QVINC = min(QVINC, QSLIQ) # limit to below water saturation
 
+    #         # Calculate deposition onto preexisting ice
 
+    #         DIFF=(0.211 * 1013.25 / (PL + 0.1)) * (((TE + 0.1) / constants.t_ice)**1.94) * 1e-4 # From Seinfeld and Pandis 2006
+    #         DENAIR = PL * 100.0 / constants.rdry / TE
+    #         DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC) # From PK 97
+    #         LHcorr = (1.0 + DQSI * constants.latent_heat_sublimation / constants.rdry / constants.kappa) # must be ice deposition
+
+    #         if NIX > 1. and QILS > 1.0e-10:
+    #             DC = max((QILS / (NIX * DENICE * constants.PI))**0.333, 20.0e-6) # Assumme monodisperse size dsitribution
+    #         else:
+    #             DC = 20.0e-6
+
+    #         TEFF = NIX * DENAIR * 2.0 * constants.PI * DIFF * DC / LHcorr # 1/Dep time scale
+
+    #         DEP=0.0
+    #         if TEFF > 0. and QILS > 1.0e-14:
+    #             AUX = max(min(DTIME * TEFF, 20.), 0.)
+    #             DEP = (QVINC - QSICE) * (1. - exp(-AUX)) / DTIME
+    #         DEP = max(DEP, -QILS / DTIME) # only existing ice can be sublimated
+
+    #         DQI = 0.0
+    #         DQL = 0.0
+    #         fQI = 0.0
+    #         # Partition DQALL accounting for Bergeron-Findensen process
+    #         if DQALL >= 0: # net condensation. Note: do not allow bergeron with QLCN
+    #             if (DEP > 0.):
+    #                 DQI = min(DEP, DQALL + QLLS / DTIME)
+    #                 DQL = DQALL - DQI
+    #             else:
+    #                 DQL = DQALL # could happen because the PDF allows condensation in subsaturated conditions
+    #                 DQI = 0.
+    #         if DQALL < 0.: # net evaporation. Water evaporates first regaardless of DEP
+    #             DQL = max(DQALL, -QLLS / DTIME)
+    #             DQI = max(DQALL - DQL, -QILS / DTIME)
+    #         if DQALL != 0.: 
+    #             fQI=max(min(DQI / DQALL, 1.), 0.)
+
+    return fQI
 
 def get_last(in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField):
     with computation(FORWARD), interval(-1, None):
@@ -378,7 +415,6 @@ def hystpdf(
     cnv_frc: FloatFieldIJ,
     srf_type: FloatFieldIJ,
     PL: FloatField,
-    ZL: FloatField,
     Q: FloatField,
     QLLS: FloatField,
     QLCN: FloatField,
@@ -389,20 +425,16 @@ def hystpdf(
     CLCN: FloatField,
     NL: FloatField,
     NI: FloatField,
-    WHL: FloatField,
-    WQT: FloatField,
-    HL2: FloatField,
-    QT2: FloatField,
-    HLQT: FloatField,
-    W3: FloatField,
-    W2: FloatField,
-    MFQT3: FloatField,
-    MFHL3: FloatField,
-    WTHV2: FloatField,
-    WQL: FloatField,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
+    estfrz: Float,
+    estlqu: Float,
     needs_preexisting: bool = False,
     USE_BERGERON: bool = True,
 ):
+    # Reference Fortran: Process_Library.F90: subroutine hystpdf
+    # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False
     with computation(PARALLEL), interval(...):
         scice = 1.0 # don't ask, I don't know
         if CLCN < 1.0:
@@ -417,7 +449,7 @@ def hystpdf(
         QCn = (QLLS + QILS) * tmpARR
         QCi = QILS * tmpARR
         TEn = TE
-        QSx, DQS = QSat_Float(TE, PL, DQSAT_trigger=True)
+        QSx, DQS = QSat_Float(ese, esw, esx, TE, PL, DQSAT_trigger=True)
         QVn = (Q - QSx * CLCN) * tmpARR
         
         QT = QCn + QVn # Total LS water after microphysics
@@ -428,12 +460,11 @@ def hystpdf(
             QCp = QCn
             CFp = CFn
             TEp = TEn
-            QSn, DQS = QSat_Float(TEn, PL, DQSAT_trigger=True)
+            QSn, DQS = QSat_Float(ese, esw, esx, TE, PL, DQSAT_trigger=True)
 
             # SC_ICE option not implemented, will go here if needed
             # Fortran:
             # if(present(SC_ICE)) then
-            #     PRINT *, SC_ICE
             #     scice = min(max(SC_ICE, 1.0), 1.7)
             #     qsnx= Qsn*scice !
             #     if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
@@ -448,27 +479,49 @@ def hystpdf(
             if PDFSHAPE < 5:
                 CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
                 QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
-            elif PDFSHAPE == 5:
-                raise NotImplementedError(
-                    "Function: partition_dblgss not implemented.\nReference Fortran: Process_LibraryF90"
-                )
-            
+            # elif PDFSHAPE == 5:
+                # NOT IMPLEMENTED
+                # raise NotImplementedError(
+                #     "Function: partition_dblgss not implemented.\nReference Fortran: Process_LibraryF90"
+                # )
+                # note for future: fQI modifications within this conditional are irrlevant. 
+                # bergeron_partition (Fortran version) takes fQI as an input, but overwrites it
+
             if USE_BERGERON is True:
-                DQCALL = QCn - QCp
+                DQALL = QCn - QCp
                 Nfac = 100. * PL * constants.R_AIR / TEn # density times conversion factor
                 NLv = NL/Nfac
                 NIv = NI/Nfac
-                bergeron_partition
+                fQi = bergeron_partition(
+                    DT_MOIST,
+                    PL,
+                    TE,
+                    Q,
+                    QILS,
+                    QICN,
+                    QLLS,
+                    QLCN,
+                    NI,
+                    DQALL,
+                    cnv_frc,
+                    srf_type,
+                    ese,
+                    esw,
+                    estfrz,
+                    estlqu,
+                    needs_preexisting,
+                )
             else:
                 fQi = ice_fraction(TEn, cnv_frc, srf_type)
 
             latent_heat_factor = (1.0 - fQi) * constants.latent_heat_vaporization / constants.cpdry + fQi*constants.latent_heat_fusion / constants.cpdry
             if PDFSHAPE == 1:
                 QCn = QCp + (QCn-QCp) / (1. - (CFn * (ALPHA - 1.) - (QCn / QSn)) * DQS * latent_heat_factor)
-            elif PDFSHAPE == 2:
-                raise NotImplementedError(
-                    "Fortran comments says code is incorrect and therefore not implemented. See Process_Library.F90"
-                )
+            # elif PDFSHAPE == 2:
+                # NOT IMPLEMENTED
+                # raise NotImplementedError(
+                #     "Fortran comments says code is incorrect and therefore not implemented. See Process_Library.F90"
+                # )
             elif PDFSHAPE == 5:
                 QCn = QCp + 0.5 * (QCn - QCp)
             
@@ -482,7 +535,7 @@ def hystpdf(
                 + fQi * constants.latent_heat_sublimation / constants.cpdry * ((QCn - QCp) * (1. - CLCN) + (QAo - QAx) * CLCN)
             
             PDFITERS = count
-            if abs(TEn - TEp) < 0.00001: break
+            if abs(TEn - TEp) < 0.00001: count = 21 # FIX THIS MAKE IT BETTER
         
         if CLCN < 1.0:
             CLLS = CFn * (1.-CLCN)
@@ -494,7 +547,7 @@ def hystpdf(
             CLLS = 0. #Remove any LS cloud
             QAo  = QLCN+QICN+QLLS+QILS # Add all LS condensate to anvil type
             QCn  = 0. # Remove same from new LS
-            QT   = QAo + QV # Update total water
+            QT   = QAo + Q # Update total water
             # Now set anvil condensate to any excess of total water
             # over QSx (saturation value at top)
             QAo = max(QT - QSx, 0.)
@@ -531,7 +584,7 @@ def hystpdf(
         QLCN = QLCN + dQLCN
         QILS = QILS + dQILS
         QLLS = QLLS + dQLLS
-        QV = QV - dQICN + dQILS + dQLCN + dQLLS
+        Q = Q - dQICN + dQILS + dQLCN + dQLLS
         TE = TE + constants.latent_heat_vaporization / constants.cpdry *(dQICN + dQILS + dQLCN + dQLLS) \
             + constants.latent_heat_fusion / constants.cpdry *(dQICN + dQILS)
 
@@ -543,7 +596,7 @@ def hystpdf(
         # speaking, PDF-wise, we should not do this.
 
         if QAo <= 0.:
-            QV = QV + QICN + QLCN
+            Q = Q + QICN + QLCN
             TE = TE - constants.latent_heat_sublimation / constants.cpdry *QICN - constants.latent_heat_vaporization / constants.cpdry *QLCN
             QICN = 0.
             QLCN = 0.

@@ -6,6 +6,8 @@ from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldI
 from ndsl import StencilFactory, QuantityFactory, orchestrate
 import numpy as np
 import pyMoist.pyMoist_constants as constants
+from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation.qsat import QSat
 from .GFDL_1M_Util import (
     get_last,
     hybrid_index_2dout,
@@ -21,44 +23,57 @@ class evap_subl_pdf:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_table_lookup: bool = True,
     ):
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = quantity_factory
+
+        # Initalize QSat tables for later calculations
+        self.qsat = QSat(
+            self.stencil_factory,
+            self.quantity_factory,
+            formulation=formulation,
+            use_table_lookup=use_table_lookup,
+        )
+
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._get_last = stencil_factory.from_dims_halo(
+        self._get_last = self.stencil_factory.from_dims_halo(
             func=get_last,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._hybrid_index_2dout = stencil_factory.from_dims_halo(
+        self._hybrid_index_2dout = self.stencil_factory.from_dims_halo(
             func=hybrid_index_2dout,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._initial_calc = stencil_factory.from_dims_halo(
+        self._initial_calc = self.stencil_factory.from_dims_halo(
             func=initial_calc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._hystpdf = stencil_factory.from_dims_halo(
+        self._hystpdf = self.stencil_factory.from_dims_halo(
             func=hystpdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._meltfrz = stencil_factory.from_dims_halo(
+        self._meltfrz = self.stencil_factory.from_dims_halo(
             func=meltfrz,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._evap = stencil_factory.from_dims_halo(
+        self._evap = self.stencil_factory.from_dims_halo(
             func=evap,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._subl = stencil_factory.from_dims_halo(
+        self._subl = self.stencil_factory.from_dims_halo(
             func=subl,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._tmp = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self._minrhcrit = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._PLEmb_top = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._PLmb_at_klcl = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self._halo = stencil_factory.grid_indexing.n_halo
-        self._k_mask = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._alpha = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._evapc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._tmp = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self._minrhcrit = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._PLEmb_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._PLmb_at_klcl = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self._halo = self.stencil_factory.grid_indexing.n_halo
+        self._k_mask = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self._evapc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         for i in range(0, self._k_mask.view[:].shape[0]):
             for j in range(0, self._k_mask.view[:].shape[1]):
                 for k in range(0, self._k_mask.view[:].shape[2]):
@@ -104,6 +119,7 @@ class evap_subl_pdf:
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
 
         RHCRIT = Float(1.0)
-        self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, RADIUS, QCm)
+        self.RADIUS = RADIUS
+        self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, self.RADIUS, QCm)
 
         #self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)

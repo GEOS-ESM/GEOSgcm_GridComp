@@ -1,4 +1,4 @@
 from .translate_evap_subl_pdf import Translateevap_subl_pdf
 from .translate_qsat import TranslateQSat
 from .translate_find_klcl import Translatefind_klcl
-from .translate_conden import TranslateConden
+from .translate_GFDL_1M import TranslateGFDL_1M

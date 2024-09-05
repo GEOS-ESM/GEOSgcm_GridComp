@@ -52,8 +52,8 @@ def QSat_Float_Liquid(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = int(TT)
-        DDQ = esw(IT + 1) - esw(IT)
-        QS = ((TT - IT) * DDQ + esw(IT))
+        DDQ = esw[IT + 1] - esw[IT]
+        QS = ((TT - IT) * DDQ + esw[IT])
 
     if PL is not -999.:
         if PL > QS:
@@ -78,7 +78,7 @@ def QSat_Float_Ice(
 ):
     # qsatice.code with UTBL = True
     if TL <= TMINTBL:
-        QS=ese(0)
+        QS=ese[0]
         if DQ_trigger is True: DDQ = 0.0
     elif TL >= MAPL_TICE:
         QS=estfrz
@@ -86,8 +86,8 @@ def QSat_Float_Ice(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = int(TT)
-        DDQ = ese(IT + 1) - ese(IT)
-        QS = ((TT - IT) * DDQ + ese(IT))
+        DDQ = ese[IT + 1] - ese[IT]
+        QS = ((TT - IT) * DDQ + ese[IT])
 
     if PL is not -999.:
         if PL > QS:

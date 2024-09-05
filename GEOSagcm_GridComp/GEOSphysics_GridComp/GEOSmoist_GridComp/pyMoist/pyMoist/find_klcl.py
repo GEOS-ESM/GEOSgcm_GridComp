@@ -118,7 +118,7 @@ class find_klcl:
         # self.qsat(self._T_top, self._P_top)
 
         self.find_klcl(T, P, Q, self._T_top, self._P_top, self._Q_top, 
-                       self.qsat._ese, self.qsat._esw, self.qsat._esx,
+                       self.qsat.ese, self.qsat.esw, self.qsat.esx,
                        self.PLCL)
         
         for i in range(0, P.view[:].shape[0]):
