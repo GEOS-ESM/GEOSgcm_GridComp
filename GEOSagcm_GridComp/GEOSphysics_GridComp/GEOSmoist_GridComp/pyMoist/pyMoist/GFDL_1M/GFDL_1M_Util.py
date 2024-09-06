@@ -273,78 +273,72 @@ def bergeron_partition(
     esw: FloatField_Extra_Dim,
     estfrz: Float,
     estlqu: Float,
-    needs_preexisting: bool = False,
 ):
     fQI = 0
-    # DIFF = 0.0
-    # DEP  = 0.0
-    # QI   = QILS + QICN # neccesary because NI is for convective and large scale
-    # QL   = QLLS + QLCN
-    # QTOT = QI+QL
-    # FQA  = 0.0
-    # if QTOT > 0.0: FQA = (QICN + QILS) / QTOT
-    # NIX  = (1.0 - FQA) * NI
+    DIFF = 0.0
+    DEP  = 0.0
+    QI   = QILS + QICN # neccesary because NI is for convective and large scale
+    QL   = QLLS + QLCN
+    QTOT = QI+QL
+    FQA  = 0.0
+    if QTOT > 0.0: FQA = (QICN + QILS) / QTOT
+    NIX  = (1.0 - FQA) * NI
 
-    # DQALL = DQALL / DTIME
-    # TC    = TE - constants.t_ice
+    DQALL = DQALL / DTIME
+    TC    = TE - constants.t_ice
 
-    # # Completelely glaciated cloud:
-    # if TE >= constants.iT_ICE_MAX: # liquid cloud
-    #     fQI = 0.
-    # elif TE <= constants.iT_ICE_ALL: # ice cloud
-    #     fQI = 1.
-    # else: # mixed phase cloud
-    #     fQI = 0.
-    #     if QILS <= 0.:
-    #         if needs_preexisting is False:
-    #             fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
-    #         # else:
-    #             # NOT IMPLEMENTED
-    #             # raise NotImplementedError(
-    #             #     "Not implemented in Fortran, see Process_Library.F90"
-    #             # )
-    #     else:
-    #         QVINC =  Q
-    #         QSLIQ, _ = QSat_Float_Liquid( esw, estlqu, TE, PL*100.0)
-    #         QSICE, DQSI = QSat_Float_Ice( ese, estfrz, TE, PL*100.0 , DQ_trigger=True)
-    #         QVINC = min(QVINC, QSLIQ) # limit to below water saturation
+    # Completelely glaciated cloud:
+    if TE >= constants.iT_ICE_MAX: # liquid cloud
+        fQI = 0.
+    elif TE <= constants.iT_ICE_ALL: # ice cloud
+        fQI = 1.
+    else: # mixed phase cloud
+        fQI = 0.
+        if QILS <= 0.:
+            fQI = ice_fraction(TE, CNV_FRC, SRF_TYPE)
+        else:
+            QVINC =  Q
+            QSLIQ, _ = QSat_Float_Liquid( esw, estlqu, TE, PL*100.0)
+            QSICE, DQSI = QSat_Float_Ice( ese, estfrz, TE, PL*100.0 , DQ_trigger=True)
+            # QSICE = 0; DQSI = 0
+            QVINC = min(QVINC, QSLIQ) # limit to below water saturation
 
-    #         # Calculate deposition onto preexisting ice
+            # Calculate deposition onto preexisting ice
 
-    #         DIFF=(0.211 * 1013.25 / (PL + 0.1)) * (((TE + 0.1) / constants.t_ice)**1.94) * 1e-4 # From Seinfeld and Pandis 2006
-    #         DENAIR = PL * 100.0 / constants.rdry / TE
-    #         DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC) # From PK 97
-    #         LHcorr = (1.0 + DQSI * constants.latent_heat_sublimation / constants.rdry / constants.kappa) # must be ice deposition
+            DIFF=(0.211 * 1013.25 / (PL + 0.1)) * (((TE + 0.1) / constants.t_ice)**1.94) * 1e-4 # From Seinfeld and Pandis 2006
+            DENAIR = PL * 100.0 / constants.rdry / TE
+            DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC) # From PK 97
+            LHcorr = (1.0 + DQSI * constants.latent_heat_sublimation / constants.rdry / constants.kappa) # must be ice deposition
 
-    #         if NIX > 1. and QILS > 1.0e-10:
-    #             DC = max((QILS / (NIX * DENICE * constants.PI))**0.333, 20.0e-6) # Assumme monodisperse size dsitribution
-    #         else:
-    #             DC = 20.0e-6
+            if NIX > 1. and QILS > 1.0e-10:
+                DC = max((QILS / (NIX * DENICE * constants.PI))**0.333, 20.0e-6) # Assumme monodisperse size dsitribution
+            else:
+                DC = 20.0e-6
 
-    #         TEFF = NIX * DENAIR * 2.0 * constants.PI * DIFF * DC / LHcorr # 1/Dep time scale
+            TEFF = NIX * DENAIR * 2.0 * constants.PI * DIFF * DC / LHcorr # 1/Dep time scale
 
-    #         DEP=0.0
-    #         if TEFF > 0. and QILS > 1.0e-14:
-    #             AUX = max(min(DTIME * TEFF, 20.), 0.)
-    #             DEP = (QVINC - QSICE) * (1. - exp(-AUX)) / DTIME
-    #         DEP = max(DEP, -QILS / DTIME) # only existing ice can be sublimated
+            DEP=0.0
+            if TEFF > 0. and QILS > 1.0e-14:
+                AUX = max(min(DTIME * TEFF, 20.), 0.)
+                DEP = (QVINC - QSICE) * (1. - exp(-AUX)) / DTIME
+            DEP = max(DEP, -QILS / DTIME) # only existing ice can be sublimated
 
-    #         DQI = 0.0
-    #         DQL = 0.0
-    #         fQI = 0.0
-    #         # Partition DQALL accounting for Bergeron-Findensen process
-    #         if DQALL >= 0: # net condensation. Note: do not allow bergeron with QLCN
-    #             if (DEP > 0.):
-    #                 DQI = min(DEP, DQALL + QLLS / DTIME)
-    #                 DQL = DQALL - DQI
-    #             else:
-    #                 DQL = DQALL # could happen because the PDF allows condensation in subsaturated conditions
-    #                 DQI = 0.
-    #         if DQALL < 0.: # net evaporation. Water evaporates first regaardless of DEP
-    #             DQL = max(DQALL, -QLLS / DTIME)
-    #             DQI = max(DQALL - DQL, -QILS / DTIME)
-    #         if DQALL != 0.: 
-    #             fQI=max(min(DQI / DQALL, 1.), 0.)
+            DQI = 0.0
+            DQL = 0.0
+            fQI = 0.0
+            # Partition DQALL accounting for Bergeron-Findensen process
+            if DQALL >= 0: # net condensation. Note: do not allow bergeron with QLCN
+                if (DEP > 0.):
+                    DQI = min(DEP, DQALL + QLLS / DTIME)
+                    DQL = DQALL - DQI
+                else:
+                    DQL = DQALL # could happen because the PDF allows condensation in subsaturated conditions
+                    DQI = 0.
+            if DQALL < 0.: # net evaporation. Water evaporates first regaardless of DEP
+                DQL = max(DQALL, -QLLS / DTIME)
+                DQI = max(DQALL - DQL, -QILS / DTIME)
+            if DQALL != 0.: 
+                fQI=max(min(DQI / DQALL, 1.), 0.)
 
     return fQI
 
@@ -430,7 +424,6 @@ def hystpdf(
     esx: FloatField_Extra_Dim,
     estfrz: Float,
     estlqu: Float,
-    needs_preexisting: bool = False,
     USE_BERGERON: bool = True,
 ):
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
@@ -487,7 +480,7 @@ def hystpdf(
                 # note for future: fQI modifications within this conditional are irrlevant. 
                 # bergeron_partition (Fortran version) takes fQI as an input, but overwrites it
 
-            if USE_BERGERON is True:
+            if USE_BERGERON:
                 DQALL = QCn - QCp
                 Nfac = 100. * PL * constants.R_AIR / TEn # density times conversion factor
                 NLv = NL/Nfac
@@ -509,7 +502,6 @@ def hystpdf(
                     esw,
                     estfrz,
                     estlqu,
-                    needs_preexisting,
                 )
             else:
                 fQi = ice_fraction(TEn, cnv_frc, srf_type)
@@ -535,17 +527,18 @@ def hystpdf(
                 + fQi * constants.latent_heat_sublimation / constants.cpdry * ((QCn - QCp) * (1. - CLCN) + (QAo - QAx) * CLCN)
             
             PDFITERS = count
-            if abs(TEn - TEp) < 0.00001: count = 21 # FIX THIS MAKE IT BETTER
+            if abs(TEn - TEp) < 0.00001:
+                count = 21 # break out of loop
         
-        if CLCN < 1.0:
-            CLLS = CFn * (1.-CLCN)
+        if CLCN < 1.:
+            CLLS = CFn * (1. - CLCN)
             QCn  = QCn * (1.-CLCN)
             QAo  = QAo * CLCN
         else:
             # Special case CLCN=1, i.e., box filled with anvil.
             # - Note: no guarantee QV_box > QS_box
             CLLS = 0. #Remove any LS cloud
-            QAo  = QLCN+QICN+QLLS+QILS # Add all LS condensate to anvil type
+            QAo  = QLCN + QICN + QLLS + QILS # Add all LS condensate to anvil type
             QCn  = 0. # Remove same from new LS
             QT   = QAo + Q # Update total water
             # Now set anvil condensate to any excess of total water
