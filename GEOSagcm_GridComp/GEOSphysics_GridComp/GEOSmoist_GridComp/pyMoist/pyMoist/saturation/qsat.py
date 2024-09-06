@@ -45,26 +45,27 @@ def QSat_Float_Liquid(
     # qsatlqu.code with UTBL = True
     if TL <= TMINLQU:
         QS=estlqu
-        if DQ_trigger is True: DDQ = 0.
+        if DQ_trigger: DDQ = 0.
     elif TL >= TMAXTBL:
-        QS=esw[0][TABLESIZE]
-        if DQ_trigger is True: DDQ = 0.
+        QS=esw[0][TABLESIZE-1]
+        if DQ_trigger: DDQ = 0.
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = int(TT)
-        DDQ = esw[IT + 1] - esw[IT]
-        QS = ((TT - IT) * DDQ + esw[IT])
+        IT_PLUS_1 = IT + 1 # dace backend does not allow for [IT + 1] indexing because of cast to int
+        DDQ = esw[0][IT_PLUS_1] - esw[0][IT]
+        QS = ((TT - IT) * DDQ + esw[0][IT])
 
-    if PL is not -999.:
+    if PL != -999.:
         if PL > QS:
             DD = (ESFAC / (PL - (1. - ESFAC) * QS))
             QS = QS * DD
-            if DQ_trigger is True: DQ = DDQ * ERFAC * PL * DD * DD
+            if DQ_trigger: DQ = DDQ * ERFAC * PL * DD * DD
         else:
             QS  = MAX_MIXING_RATIO
-            if DQ_trigger is True: DQ = 0.0
+            if DQ_trigger: DQ = 0.0
     else:
-        if DQ_trigger is True: DQ = DDQ
+        if DQ_trigger: DQ = DDQ
 
     return QS, DQ
 
@@ -78,27 +79,28 @@ def QSat_Float_Ice(
 ):
     # qsatice.code with UTBL = True
     if TL <= TMINTBL:
-        QS=ese[0]
-        if DQ_trigger is True: DDQ = 0.0
+        QS=ese[0][0]
+        if DQ_trigger: DDQ = 0.0
     elif TL >= MAPL_TICE:
         QS=estfrz
-        if DQ_trigger is True: DDQ = 0.0
+        if DQ_trigger: DDQ = 0.0
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = int(TT)
-        DDQ = ese[IT + 1] - ese[IT]
-        QS = ((TT - IT) * DDQ + ese[IT])
+        IT_PLUS_1 = IT + 1 # dace backend does not allow for [IT + 1] indexing because of cast to int
+        DDQ = ese[0][IT_PLUS_1] - ese[0][IT]
+        QS = ((TT - IT) * DDQ + ese[0][IT])
 
-    if PL is not -999.:
+    if PL != -999.:
         if PL > QS:
             DD = (ESFAC / (PL - (1.0 - ESFAC) * QS))
             QS = QS * DD
-            if DQ_trigger is True: DQ = DDQ * ERFAC * PL * DD * DD
+            if DQ_trigger: DQ = DDQ * ERFAC * PL * DD * DD
         else:
             QS = MAX_MIXING_RATIO
-            if DQ_trigger is True: DQ = 0.0
+            if DQ_trigger: DQ = 0.0
     else:
-        if DQ_trigger is True: DQ = DDQ
+        if DQ_trigger: DQ = DDQ
 
     return QS, DQ
 
@@ -115,7 +117,6 @@ def QSat_Float(
     RAMP_trigger: bool = False,
     DQSAT_trigger: bool = False,
 ):
-    
     if RAMP_trigger:
         URAMP = -abs(RAMP)
     else:
@@ -136,12 +137,13 @@ def QSat_Float(
     
     TI = (TI - TMINTBL)*DEGSUBS+1
     IT = int(TI)
-
+    IT_PLUS_1 = IT + 1 # dace backend does not allow for [IT + 1] indexing because of cast to int
+    
     if URAMP==TMIX:
-        DQ = esx[0][IT] - esx[0][IT]
+        DQ = esx[0][IT_PLUS_1] - esx[0][IT] # should be esx[0][IT + 1] - esx[0][IT]
         QSAT = (TI-IT)*DQ + esx[0][IT]
     else:
-        DQ    = ese[0][IT] - ese[0][IT]
+        DQ    = ese[0][IT_PLUS_1] - ese[0][IT] # should be ese[0][IT + 1] - ese[0][IT]
         QSAT  = (TI-IT)*DQ + ese[0][IT]
 
     if PP <= QSAT:
