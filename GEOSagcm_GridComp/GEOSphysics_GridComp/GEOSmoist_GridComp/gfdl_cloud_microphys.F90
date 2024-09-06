@@ -82,7 +82,7 @@ module gfdl2_cloud_microphys_mod
     real, parameter :: t_ice = 273.16 !< freezing temperature
     real, parameter :: table_ice = 273.16 !< freezing point for qs table
 
-    integer, parameter :: es_table_length = 2821
+    integer, parameter :: es_table_length = 2621
     real   , parameter :: es_table_tmin = table_ice - 160.
     real   , parameter :: delt = 0.1
     real   , parameter :: rdelt = 1.0/delt
@@ -200,13 +200,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_imlt =   600. !< cloud ice melting
     real :: tau_smlt =   600. !< snow melting
     real :: tau_i2s  =   600. !< cloud ice to snow auto - conversion
-    ! horizontal subgrid variability
-
-    real :: dw_land = 0.05 !< base value for subgrid deviation / variability over land
-    real :: dw_ocean = 0.10 !< base value for ocean
 
     ! prescribed ccn
-
     real :: ccn_o = 100. !< ccn over ocean (cm^ - 3)
     real :: ccn_l = 300. !< ccn over land (cm^ - 3)
 
@@ -230,7 +225,7 @@ module gfdl2_cloud_microphys_mod
     real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources) [WMP: never used]
 
     ! critical autoconverion parameters
-    real :: qi0_crt = 5.0e-4 !< cloud ice to snow autoconversion threshold
+    real :: qi0_crt = 2.5e-4 !< cloud ice to snow autoconversion threshold
                              !! qi0_crt is highly dependent on horizontal resolution
                              !! this sensitivity is handled with onemsig later in the code
     real :: qr0_crt = 1.0e-4 !< rain to snow or graupel / hail threshold  [WMP: never used]
@@ -293,7 +288,7 @@ module gfdl2_cloud_microphys_mod
     ! -----------------------------------------------------------------------
 
     namelist / gfdl_cloud_microphysics_nml /                                  &
-        mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, dw_land, dw_ocean, &
+        mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r,                    &
         vi_min, vr_min, vs_min, vg_min, ql_mlt, do_qa, fix_negative, vi_max,  &
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
@@ -308,7 +303,7 @@ module gfdl2_cloud_microphys_mod
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
 
     public                                                                    &
-        mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, dw_land, dw_ocean, &
+        mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r,                    &
         vi_min, vr_min, vs_min, vg_min, ql_mlt, do_qa, fix_negative, vi_max,  &
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
@@ -789,6 +784,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         endif
 
         ! -----------------------------------------------------------------------
+        ! fix all negative water species
+        ! -----------------------------------------------------------------------
+        
+        if (fix_negative) &
+            call neg_adj (ktop, kbot, tz, dp1, qvz, qlz, qrz, qiz, qsz, qgz)  
+
+        ! -----------------------------------------------------------------------
         ! update moist air mass (actually hydrostatic pressure)
         ! convert to dry mixing ratios
         ! -----------------------------------------------------------------------
@@ -949,7 +951,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     real, dimension (ktop:kbot + 1) :: ze, zt
 
     real :: sink, dq, qc
-    real :: c_praut_k, fac_rc, qden
+    real :: fac_rc, qden
     real :: zs = 0.
     real :: dt5
 
@@ -1089,8 +1091,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (dq, dt * c_praut_k * den (k) * exp (so3 * log (ql (k))))
+                    sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1124,8 +1125,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! --------------------------------------------------------------------
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
-                    c_praut_k = c_praut (k)*(onemsig + 0.5*(1.0-onemsig)) 
-                    sink = min (1., dq / dl (k)) * dt * c_praut_k * den (k) * exp (so3 * log (ql (k)))
+                    sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
@@ -1402,7 +1402,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! -----------------------------------------------------------------------
             ! pimlt: melting of cloud ice
             ! -----------------------------------------------------------------------
-            tmp = fac_imlt * min (melt, dim (ql_mlt, ql)) ! max ql amount
+            tmp = fac_imlt * min (melt, dim (ql_mlt/qadum, ql)) ! max ql amount
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-melt+tmp,0.0  ) / &
@@ -1414,7 +1414,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_liq (k) = q_liq (k) + melt*qadum
             q_sol (k) = q_sol (k) - melt*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
+            tzk (k) = tzk (k) - melt*qadum * lhi (k) / cvm (k)
         elseif (frez > 0.0 .and. tzk (k) <= tice .and. ql > qcmin) then
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
@@ -1424,8 +1424,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             !    account for this using onemsig to convert more ice to snow at coarser resolutions
             critical_qi_factor = qi0_crt * (onemsig + 0.02*(1.0-onemsig)) * &
                                            ice_fraction(tzk(k),cnv_fraction,srf_type)
-            qi_crt = critical_qi_factor / qadum / den (k)
-            tmp = fac_frz * min (frez, dim (qi_crt, qi))
+            qi_crt = critical_qi_factor / den (k)
+            tmp = fac_frz * min (frez, dim (qi_crt/qadum, qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
@@ -1437,7 +1437,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_liq (k) = q_liq (k) - frez*qadum
             q_sol (k) = q_sol (k) + frez*qadum
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            tzk (k) = tzk (k) + frez * lhi (k) / cvm (k)
+            tzk (k) = tzk (k) + frez*qadum * lhi (k) / cvm (k)
         endif
 
         ! Revert In-Cloud condensate
@@ -3078,7 +3078,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 viCNV  = MAX(10.0,anv_icefall*(1.119*tc + 14.21*log10(IWC*1.e3) + 68.85))
                endif
 
-               ! Resolution dependence (slow ice settling at coarser resolutions)
+               ! Slow ice settling at coarser resolution
                 viLSC = viLSC * (onemsig + 0.75*(1.0-onemsig))
                 viCNV = viCNV * (onemsig + 0.50*(1.0-onemsig))
 
