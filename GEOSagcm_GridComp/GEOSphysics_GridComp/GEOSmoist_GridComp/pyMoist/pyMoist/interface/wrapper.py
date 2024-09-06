@@ -37,20 +37,7 @@ from ndsl.dsl.typing import Float, floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
-
-
-@dataclass
-class MoistFlags:
-    npx: int
-    npy: int
-    npz: int
-    layout_x: int
-    layout_y: int
-    n_tiles: int
-    # Aer Activation
-    n_modes: int
-    # Magic number
-    mn_123456789: int
+from pyMoist.interface.flags import MoistFlags
 
 
 class MemorySpace(enum.Enum):
@@ -115,7 +102,6 @@ class GEOSPyMoistWrapper:
         backend="numpy",
         fortran_mem_space: MemorySpace = MemorySpace.HOST,
     ) -> None:
-
         # Look for an override to run on a single node
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
         comm = MPI.COMM_WORLD
@@ -207,9 +193,10 @@ class GEOSPyMoistWrapper:
         )
         ndsl_log.info(
             "pyMoist <> GEOS wrapper initialized: \n"
-            f"         bridge : {self._fortran_mem_space} > {self._pace_mem_space}\n"
+            f"         bridge : {self._fortran_mem_space}"
+            f" > {self._pace_mem_space}\n"
             f"        backend : {backend}\n"
-            f"          float : {floating_point_precision()}bit"
+            f"          float : {floating_point_precision()}bit\n"
             f"  orchestration : {self._is_orchestrated}\n"
             f"          sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
             f"(halo: {sizer.n_halo})\n"

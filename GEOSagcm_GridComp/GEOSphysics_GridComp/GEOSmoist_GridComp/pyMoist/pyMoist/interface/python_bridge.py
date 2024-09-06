@@ -12,7 +12,8 @@ from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
-from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace, MoistFlags
+from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace
+from pyMoist.interface.flags import MoistFlags, flags_fv_to_python
 
 
 if TYPE_CHECKING:
@@ -22,12 +23,13 @@ if TYPE_CHECKING:
 class PYMOIST_WRAPPER:
     def __init__(
         self,
-        flags: MoistFlags,
-        backend: str = "dace:gpu",
+        fv_flags: MoistFlags,
+        backend: str = "dace:cpu",
     ) -> None:
         self.rank = MPI.COMM_WORLD.Get_rank()
         self.backend = backend
-        self.flags = flags
+        self.flags = flags_fv_to_python(fv_flags)
+        print(f"Moist Flags:\n{self.flags}")
         # For Fortran<->NumPy conversion
         if is_gpu_backend(self.backend):
             numpy_module = cp
@@ -36,14 +38,14 @@ class PYMOIST_WRAPPER:
             numpy_module = np
             fortran_mem_space = MemorySpace.HOST
         self.f_py = FortranPythonConversion(
-            flags.npx,
-            flags.npy,
-            flags.npz,
+            self.flags.npx,
+            self.flags.npy,
+            self.flags.npz,
             numpy_module,
         )
 
         # Setup pyFV3's dynamical core
-        self.pymoist = GEOSPyMoistWrapper(flags, backend)
+        self.pymoist = GEOSPyMoistWrapper(self.flags, backend)
 
         self._timings = {}
 
@@ -225,14 +227,14 @@ def pyMoist_finalize():
         WRAPPER.finalize()
 
 
-def pyMoist_init(flags: MoistFlags):
+def pyMoist_init(fv_flags: "cffi.FFI.CData"):
     # Read in the backend
-    BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "gt:gpu")
+    BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
 
     global WRAPPER
     if WRAPPER is not None:
         raise RuntimeError("[PYMOIST WRAPPER] Double init")
     WRAPPER = PYMOIST_WRAPPER(
-        flags=flags,
+        fv_flags=fv_flags,
         backend=BACKEND,
     )

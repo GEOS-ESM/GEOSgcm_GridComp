@@ -5502,7 +5502,6 @@ contains
          if (USE_PYMOIST) then
            ! Current integration does not allow us to use MAPL_Get from inside pyMoist
            ! so we extract the required field here
-           write(*,*) ">> PyMoist run from Fortran"
            allocate(aero_num_(IM, JM, LM, n_modes))
            allocate(aero_dgn_(IM, JM, LM, n_modes))
            allocate(aero_sigma_(IM, JM, LM, n_modes))
