@@ -5242,6 +5242,7 @@ contains
     ! IEEE trapping see below
     logical                               :: halting_mode(5)
     real                                  :: start, finish
+    integer                               :: comm, rank, mpierr
 #endif
     
     !=============================================================================
@@ -5255,6 +5256,11 @@ contains
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, VM=VMG, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+#ifdef PYMOIST_INTEGRATION
+    call ESMF_VMGet(VMG, mpiCommunicator=comm)
+    call MPI_Comm_rank(comm, rank, mpierr)
+#endif
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -5329,6 +5335,7 @@ contains
      call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.false., RC=STATUS); VERIFY_(STATUS);
      call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
      if (USE_PYMOIST .and. init_pymoist) then
+          call cpu_time(start)
           init_pymoist = .false.
           call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.false., RC=STATUS); VERIFY_(STATUS)
           call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
@@ -5342,7 +5349,9 @@ contains
           call ieee_set_halting_mode(ieee_all, .false.)
           call pymoist_interface_f_init(moist_flags)
           call ieee_set_halting_mode(ieee_all, halting_mode)
-       endif
+          call cpu_time(finish)
+          if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'
+     endif
 #endif   
 
        ! Allocatables
@@ -5515,7 +5524,6 @@ contains
                 AERO, aero_num_, aero_dgn_, aero_sigma_, &
                 aero_density_, aero_hygroscopicity_, &
                 aero_f_dust_, aero_f_soot_, aero_f_organic_ )
-                                         
            call cpu_time(start)
            call pymoist_interface_f_run_AerActivation( &
                aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
@@ -5525,7 +5533,15 @@ contains
                TMP3D, TKE, &
                NACTI, NWFA, NACTL)
            call cpu_time(finish)
-           if (rank == 0) print *, '0: aer_activation: time taken = ', finish - start, 's'
+           deallocate(aero_num_)
+           deallocate(aero_dgn_)
+           deallocate(aero_sigma_)
+           deallocate(aero_density_)
+           deallocate(aero_hygroscopicity_)
+           deallocate(aero_f_dust_)
+           deallocate(aero_f_soot_)
+           deallocate(aero_f_organic_)
+           if (rank == 0) print *, rank, ': aer_activation: time taken = ', finish - start, 's'
          else
 #endif
            call cpu_time(start)
@@ -5534,7 +5550,7 @@ contains
                                    AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
 #ifdef PYMOIST_INTEGRATION
            call cpu_time(finish)
-           if (rank == 0) print *, '0: aer_activation: time taken = ', finish - start, 's'
+           if (rank == 0) print *, rank, '0: aer_activation: time taken = ', finish - start, 's'
          endif
 #endif
        else
