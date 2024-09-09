@@ -632,7 +632,6 @@ def evap(
     NACTI: FloatField,
     QST: FloatField,
     EVAPC: FloatField,
-    RADIUS: FloatField,
     QCm: FloatField,
 ):
     with computation(PARALLEL), interval(...):
@@ -654,12 +653,12 @@ def evap(
         else:
             EVAP = 0.0
         QC = QLCN + QICN
-        # if QC > 0.:
-        #     CLCN = CLCN * (QC - EVAP) / QC
-        # Q = Q + EVAP
-        # QLCN = QLCN - EVAP
-        # T = T - (constants.latent_heat_vaporization/constants.cpdry) * EVAP
-        # EVAPC = (Q - EVAPC) / DT_MOIST
+        if QC > 0.:
+            CLCN = CLCN * (QC - EVAP) / QC
+        Q = Q + EVAP
+        QLCN = QLCN - EVAP
+        T = T - (constants.latent_heat_vaporization/constants.cpdry) * EVAP
+        EVAPC = (Q - EVAPC) / DT_MOIST
 
 def subl(
     DT_MOIST: Float,

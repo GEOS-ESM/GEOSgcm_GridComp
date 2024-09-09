@@ -82,6 +82,7 @@ class evap_subl_pdf:
         EIS: FloatFieldIJ,
         dw_land: Float,
         dw_ocean: Float,
+        PDFSHAPE: Float,
         TURNRHCRIT_PARAM: Float,
         PLmb: FloatField,
         KLCL: FloatFieldIJ,
@@ -98,11 +99,11 @@ class evap_subl_pdf:
         CCW_EVAP_EFF: Float,
         CCI_EVAP_EFF: Float,
         Q: FloatField,
+        CLLS: FloatField,
         CLCN: FloatField,
         NACTL: FloatField,
         NACTI: FloatField,
         QST: FloatField,
-        RADIUS: FloatField,
         QCm: FloatField,
     ):
         # Theoretically, the following stencil and for loop should provide the same (correct) result. However, they both provide different incorrect results
@@ -112,14 +113,45 @@ class evap_subl_pdf:
         # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date 
         self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
         
-        self._initial_calc(EIS=EIS, dw_land=dw_land, dw_ocean=dw_ocean, TURNRHCRIT_PARAM=TURNRHCRIT_PARAM, minrhcrit=self._minrhcrit, 
-                           PLmb_at_klcl=self._PLmb_at_klcl, PLmb=PLmb, PLEmb_top=self._PLEmb_top, AREA=AREA, ALPHA=self._alpha)
+        self._initial_calc(EIS,
+                           dw_land,
+                           dw_ocean,
+                           TURNRHCRIT_PARAM,
+                           self._minrhcrit,
+                           self._PLmb_at_klcl,
+                           PLmb,
+                           self._PLEmb_top,
+                           AREA,
+                           self._alpha)
+
+        self._hystpdf(
+            DT_MOIST,
+            self._alpha,
+            PDFSHAPE,
+            CNV_FRC,
+            SRF_TYPE,
+            PLmb,
+            Q,
+            QLLS,
+            QLCN,
+            QILS,
+            QICN,
+            T,
+            CLLS,
+            CLCN,
+            NACTL,
+            NACTI,
+            self.qsat.ese,
+            self.qsat.esw,
+            self.qsat.esx,
+            Float(self.qsat.table.frz),
+            Float(self.qsat.table.lqu),
+        )
 
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
 
-        RHCRIT = Float(1.0)
-        self.RADIUS = RADIUS
-        self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, self.RADIUS, QCm)
+        # RHCRIT = Float(1.0)
+        # self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, QCm)
 
         #self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)

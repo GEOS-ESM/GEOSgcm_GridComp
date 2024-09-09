@@ -29,6 +29,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "QLLS": {},
             "QILS": {},
             "Q": {},
+            "CLLS": {},
             "CLCN": {},
             "NACTL": {},
             "NACTI": {},
@@ -43,11 +44,20 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
                                       "TURNRHCRIT_PARAM",
                                       "DT_MOIST",
                                       "CCW_EVAP_EFF",
-                                      "CCI_EVAP_EFF"]
+                                      "CCI_EVAP_EFF",
+                                      "PDFSHAPE",
+        ]
 
         # FloatField Outputs
         self.out_vars = {
-            "RADIUS": self.grid.compute_dict(),
+            "T": self.grid.compute_dict(),
+            "Q": self.grid.compute_dict(),
+            "QLLS": self.grid.compute_dict(),
+            "QILS": self.grid.compute_dict(),
+            "CLLS": self.grid.compute_dict(),
+            "QLCN": self.grid.compute_dict(),
+            "QICN": self.grid.compute_dict(),
+            "CLCN": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -67,11 +77,6 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         return qty
     
     def compute(self, inputs):
-        code = evap_subl_pdf(
-            self.stencil_factory,
-            self.quantity_factory,
-        )
-
         # FloatField Variables
         EIS = self.make_ij_field(inputs["EIS"])
         PLmb = self.make_ijk_field(inputs["PLmb"])
@@ -86,11 +91,11 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         QLLS = self.make_ijk_field(inputs["QLLS"])
         QILS = self.make_ijk_field(inputs["QILS"])
         Q = self.make_ijk_field(inputs["Q"])
+        CLLS = self.make_ijk_field(inputs["CLLS"])
         CLCN = self.make_ijk_field(inputs["CLCN"])
         NACTL = self.make_ijk_field(inputs["NACTL"])
         NACTI = self.make_ijk_field(inputs["NACTI"])
         QST = self.make_ijk_field(inputs["QST"])
-        RADIUS = self.make_ijk_field(inputs["RADIUS"])
         QCm = self.make_ijk_field(inputs["QCm"])
 
         # Float Variables
@@ -100,10 +105,17 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         DT_MOIST = Float(inputs["DT_MOIST"])
         CCW_EVAP_EFF = Float(inputs["CCW_EVAP_EFF"])
         CCI_EVAP_EFF = Float(inputs["CCI_EVAP_EFF"])
+        PDFSHAPE = Float(inputs["PDFSHAPE"])
+
+        code = evap_subl_pdf(
+            self.stencil_factory,
+            self.quantity_factory,
+        )
 
         code(EIS,
              dw_land,
              dw_ocean,
+             PDFSHAPE,
              TURNRHCRIT_PARAM,
              PLmb,
              KLCL,
@@ -120,14 +132,21 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
              CCW_EVAP_EFF,
              CCI_EVAP_EFF,
              Q,
+             CLLS,
              CLCN,
              NACTL,
              NACTI,
              QST,
-             RADIUS,
              QCm,
         )
 
         return {
-            "RADIUS": code.RADIUS.view[:],
+            "T": T.view[:],
+            "Q": Q.view[:],
+            "QLLS": QLLS.view[:],
+            "QILS": QILS.view[:],
+            "CLLS": CLLS.view[:],
+            "QLCN": QLCN.view[:],
+            "QICN": QICN.view[:],
+            "CLCN": CLCN.view[:],
         }
