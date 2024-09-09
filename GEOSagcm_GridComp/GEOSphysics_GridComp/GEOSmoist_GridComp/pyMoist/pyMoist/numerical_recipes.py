@@ -1,6 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import exp, log
-
 from ndsl.dsl.typing import Float
 
 
@@ -162,7 +161,7 @@ def Erf(x: Float) -> Float:
     """
     erf = 0.0
     if x < 0.0e00:
-        erf = -1.0 * GammP(0.5, x ** 2)
+        erf = -1.0 * GammP(0.5, x**2)
     else:
-        erf = GammP(0.5, x ** 2)
+        erf = GammP(0.5, x**2)
     return erf

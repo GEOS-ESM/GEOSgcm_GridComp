@@ -1,9 +1,9 @@
 from gt4py.cartesian.gtscript import PARALLEL, computation, interval
-
-import pyMoist.radiation_coupling_constants as radconstants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField
+
+import pyMoist.radiation_coupling_constants as radconstants
 
 
 def redist_clouds(
@@ -19,7 +19,6 @@ def redist_clouds(
     QV: FloatField,
     TE: FloatField,
 ):
-
     with computation(PARALLEL), interval(...):
         # Constants from MAPL.h
         alhlbcp = radconstants.ALHLBCP
@@ -95,7 +94,6 @@ class RedistributeClouds:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
     ) -> None:
-
         self._redist_clouds = stencil_factory.from_dims_halo(
             func=redist_clouds,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

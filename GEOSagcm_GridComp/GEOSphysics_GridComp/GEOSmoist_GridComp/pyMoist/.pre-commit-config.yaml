@@ -4,22 +4,12 @@ default_language_version:
 files: pyMoist
 
 repos:
--   repo: https://github.com/psf/black
-    rev: 20.8b1
-    hooks:
-    - id: black
-      additional_dependencies: ["click==8.0.4"]
-
--   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.4.2
-    hooks:
-    - id: isort
-      args: ["--profile", "black"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.4.1
     hooks:
     - id: mypy
+      description: Perform static type analysis of Python code
       name: mypy-pyMoist
       args: [
         --ignore-missing-imports,
@@ -35,31 +25,44 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
+    - id: check-added-large-files
+    - id: check-ast
+    - id: check-case-conflict
+    - id: check-merge-conflict
     - id: check-toml
     - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
 
--   repo: https://github.com/pycqa/flake8
-    rev: 3.9.2
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.3.0
+  hooks:
+    -   id: codespell
+        name: codespell
+        description: Check for spelling errors
+        entry: codespell
+        args:  ["--ignore-words","GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/ignored_codespell.txt"]
+
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
     hooks:
-    - id: flake8
-      name: flake8
-      language_version: python3
-      args: [
-        "--exclude=docs",
-        "--ignore=W503,E302,E203,F841",
-        "--max-line-length=88"
-      ]
-      exclude: |
-        (?x)^(
-        .*/__init__.py |
-        )$
-    - id: flake8
-      name: flake8 __init__.py files
-      files: "__init__.py"
-      # ignore unused import error in __init__.py files
-      args: [
-        "--exclude=docs",
-        "--ignore=W503,E302,E203,F841,F401",
-        "--max-line-length=88",]
+    -   id: pydocstyle
+        name: pydocstyle
+        description: Check docstrings in Python code for compliance with conventions
+        entry: pydocstyle
+        types: [python]
+        args: ["--ignore=D101,D102,D103,D105,D107,D203,D213,D406,D407"]
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.6.0
+  hooks:
+    # Run the linter.
+    - id: ruff
+      name: ruff linting
+      args: [ --fix ]
+    - id: ruff
+      name: ruff isort
+      args: ["--select","I","--fix"]
+    # Run the formatter.
+    - id: ruff-format

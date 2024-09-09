@@ -1,7 +1,5 @@
 import numpy as np
-
 from ndsl.dsl.typing import Float
-
 
 """
 All global constants used for aer_actv_single_moment.F90

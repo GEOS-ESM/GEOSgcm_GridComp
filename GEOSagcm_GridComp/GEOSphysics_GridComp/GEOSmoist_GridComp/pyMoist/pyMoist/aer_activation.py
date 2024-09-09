@@ -1,11 +1,11 @@
 import copy
 
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
-
-import pyMoist.aer_activation_constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+
+import pyMoist.aer_activation_constants as constants
 from pyMoist.numerical_recipes import Erf
 from pyMoist.types import FloatField_NModes
 
@@ -67,7 +67,6 @@ def aer_activation_stencil(
     None
     """
     with computation(PARALLEL), interval(...):
-
         # Compute nwfa
         # Fortran AeroProps aero_kap is aero_hygroscopicity
         nfaux = 0.0
@@ -194,9 +193,7 @@ def aer_activation_stencil(
             )  # [1/m]
             gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (
                 constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP
-            ) / (
-                constants.CPAIR * plo * constants.AMOLMASS * tk
-            )  # [m^3/kg]
+            ) / (constants.CPAIR * plo * constants.AMOLMASS * tk)  # [m^3/kg]
             dum = sqrt(alpha * wupdraft / g)  # [1/m]
             zeta = 2.0 * a * dum / 3.0  # [1]
 
@@ -208,18 +205,18 @@ def aer_activation_stencil(
                 sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
                 ) ** 1.5  # [1]
-                eta = dum ** 3 / (
+                eta = dum**3 / (
                     constants.TWOPI * constants.DENH2O * gamma * ni[0, 0, 0][n]
                 )  # [1]
-                f1 = 0.5 * exp(2.50 * xlogsigm ** 2)  # [1]
+                f1 = 0.5 * exp(2.50 * xlogsigm**2)  # [1]
                 f2 = 1.0 + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
                         f1 * (zeta / eta) ** 1.5
-                        + f2 * (sm ** 2 / (eta + 3.0 * zeta)) ** 0.75
+                        + f2 * (sm**2 / (eta + 3.0 * zeta)) ** 0.75
                     )
-                    / sm ** 2
+                    / sm**2
                 )  # [1] - eq. (6)
                 n += 1
 
