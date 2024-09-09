@@ -4065,7 +4065,7 @@ subroutine qs_table (n)
     real :: tc
 
     ! -----------------------------------------------------------------------
-    ! compute es over ice between - 160 deg c and -40 deg c.
+    ! compute es over ice between - 160 deg c and 0 deg c.
     ! -----------------------------------------------------------------------
 
     do i = 1, 1600
