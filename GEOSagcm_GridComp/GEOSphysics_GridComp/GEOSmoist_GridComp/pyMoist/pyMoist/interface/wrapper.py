@@ -121,9 +121,9 @@ class GEOSPyMoistWrapper:
             timer=self.perf_collector.timestep_timer,
         )
         sizer = SubtileGridSizer.from_tile_params(
-            nx_tile=flags.npx,
-            ny_tile=flags.npy,
-            nz=flags.npz,
+            nx_tile=self.flags.npx * self.flags.layout_x,
+            ny_tile=self.flags.npy * self.flags.layout_y,
+            nz=self.flags.npz,
             n_halo=0,
             extra_dim_lengths={},
             layout=layout,
@@ -147,7 +147,7 @@ class GEOSPyMoistWrapper:
         stencil_config.dace_config = DaceConfig(
             communicator=self.communicator,
             backend=stencil_config.backend,
-            tile_nx=self.flags.npx,
+            tile_nx=self.flags.npx * self.flags.layout_x,
             tile_nz=self.flags.npz,
         )
         self._is_orchestrated = stencil_config.dace_config.is_dace_orchestrated()
