@@ -5241,6 +5241,7 @@ contains
     logical                               :: init_pymoist = .true.
     ! IEEE trapping see below
     logical                               :: halting_mode(5)
+    real                                  :: start, finish
 #endif
     
     !=============================================================================
@@ -5329,7 +5330,6 @@ contains
      call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
      if (USE_PYMOIST .and. init_pymoist) then
           init_pymoist = .false.
-          write(*,*) ">> PyMoist init from Fortran"
           call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.false., RC=STATUS); VERIFY_(STATUS)
           call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
           call MAPL_GetResource( MAPL, NX, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
@@ -5516,6 +5516,7 @@ contains
                 aero_density_, aero_hygroscopicity_, &
                 aero_f_dust_, aero_f_soot_, aero_f_organic_ )
                                          
+           call cpu_time(start)
            call pymoist_interface_f_run_AerActivation( &
                aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
                FRLAND, CCN_OCN*1.e6, CCN_LND*1.e6, &
@@ -5523,12 +5524,17 @@ contains
                QLCN, QICN, QLLS, QILS, &
                TMP3D, TKE, &
                NACTI, NWFA, NACTL)
+           call cpu_time(finish)
+           if (rank == 0) print *, '0: aer_activation: time taken = ', finish - start, 's'
          else
 #endif
+           call cpu_time(start)
            call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                                    SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                                    AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
 #ifdef PYMOIST_INTEGRATION
+           call cpu_time(finish)
+           if (rank == 0) print *, '0: aer_activation: time taken = ', finish - start, 's'
          endif
 #endif
        else
