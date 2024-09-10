@@ -292,7 +292,7 @@ class QSat:
             RAMP_trigger = True
 
         if use_table_lookup:
-            self._QSat_FloatField(self.ese, self.esw, self.esx, T, PL, self.QSat, self._DQSAT,
+            self._QSat_FloatField(self.ese, self.esx, T, PL, self.QSat, self._DQSAT,
                              RAMP, PASCALS, RAMP_trigger, DQSAT)
 
         if not use_table_lookup:

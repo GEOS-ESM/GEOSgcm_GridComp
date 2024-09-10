@@ -29,6 +29,9 @@ class TranslateQSat(TranslateFortranData2Py):
         # FloatField Outputs
         self.out_vars = {
             "QSAT": self.grid.compute_dict(),
+            "ESTBLE_TEST": self.grid.compute_dict(),
+            "ESTBLW_TEST": self.grid.compute_dict(),
+            "ESTBLX_TEST": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -72,4 +75,7 @@ class TranslateQSat(TranslateFortranData2Py):
 
         return {
             "QSAT": code.QSat.view[:],
+            "ESTBLE_TEST": code.table.ese,
+            "ESTBLW_TEST": code.table.esw,
+            "ESTBLX_TEST": code.table.esx,
         }
