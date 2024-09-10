@@ -1,1 +1,1 @@
-from .translate_qsat import TranslateQSat
+from .translate_conden import TranslateConden
