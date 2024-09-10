@@ -3724,7 +3724,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2)
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
        deallocate(DeltaTC )
        deallocate(DeltaQC )
        deallocate(CHpert  )
@@ -5230,7 +5230,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         
-        if(CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
+        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
 
            ! Catchment in offline (land-only) mode
         
@@ -5281,7 +5281,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
               _ASSERT(.false., 'unknown MOSFC_EXTRA_DERIVS_LAND')
               
-           end if
+           end select
            
         else
 
