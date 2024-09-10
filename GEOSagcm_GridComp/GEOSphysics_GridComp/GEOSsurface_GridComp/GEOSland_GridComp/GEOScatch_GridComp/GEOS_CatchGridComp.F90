@@ -3252,15 +3252,24 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,delCQ_delQC  , 'delCQ_delQC'  ,    RC=STATUS)
-    VERIFY_(STATUS)   
-    call MAPL_GetPointer(INTERNAL,delCH_delTC  , 'delCH_delTC'  ,    RC=STATUS)
-    VERIFY_(STATUS)
+    
+    if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+       
+       call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
+       VERIFY_(STATUS)
+       
+    elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
 
+       call MAPL_GetPointer(INTERNAL,delCQ_delQC  , 'delCQ_delQC'  ,    RC=STATUS)
+       VERIFY_(STATUS)   
+       call MAPL_GetPointer(INTERNAL,delCH_delTC  , 'delCH_delTC'  ,    RC=STATUS)
+       VERIFY_(STATUS)
+
+    end if
+
+       
 ! Pointers to outputs
 !--------------------
 
@@ -4535,11 +4544,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,delCH_delTC  ,'delCH_delTC'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,delCQ_delQC  ,'delCQ_delQC'        ,RC=STATUS); VERIFY_(STATUS)
 
+        if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+           
+           call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
+           
+        elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+           
+           call MAPL_GetPointer(INTERNAL,delCH_delTC  ,'delCH_delTC'        ,RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL,delCQ_delQC  ,'delCQ_delQC'        ,RC=STATUS); VERIFY_(STATUS)
+           
+        end if
+        
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -6422,14 +6439,23 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, delCH_delTC, 'delCH_delTC', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, delCQ_delQC, 'delCQ_delQC', rc=status)
-  VERIFY_(status)
+
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+ 
+     call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', rc=status)
+     VERIFY_(status)
+     call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', rc=status)
+     VERIFY_(status)
+
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+     
+     call MAPL_GetPointer(INTERNAL, delCH_delTC, 'delCH_delTC', rc=status)
+     VERIFY_(status)
+     call MAPL_GetPointer(INTERNAL, delCQ_delQC, 'delCQ_delQC', rc=status)
+     VERIFY_(status)
+     
+  end if
+
   call MAPL_GetPointer(INTERNAL, tc, 'TC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, qc, 'QC', rc=status)
