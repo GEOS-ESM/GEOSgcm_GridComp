@@ -5,6 +5,8 @@ from ndsl.dsl.typing import Float
 #Generic Global Constants
 taufrz  =  450.0
 
+# Define number of tracers
+ncnst = 23
 
 # Following taken from MathConstants.F90
 PI = Float(3.14159265358979323846)

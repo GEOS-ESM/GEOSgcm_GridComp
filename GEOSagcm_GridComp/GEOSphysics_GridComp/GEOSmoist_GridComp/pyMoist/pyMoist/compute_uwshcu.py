@@ -2,9 +2,13 @@ import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL
 import pyMoist.pyMoist_constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Float, IntField, Int 
-from ndsl import StencilFactory, QuantityFactory 
+from ndsl.dsl.typing import FloatField, Float, Int 
+from ndsl import StencilFactory, QuantityFactory
+from pyMoist.types import FloatField_NTracers
+#from pyMoist.slope import Slope, calc_slope
 
+'''
+@gtscript.function
 def slope(field: FloatField, p0: FloatField, slope: FloatField):
     with computation(PARALLEL), interval(0, 1):
         value = (field[0, 0, 1] - field[0, 0, 0]) / (p0[0, 0, 1] - p0[0, 0, 0])
@@ -22,28 +26,30 @@ def slope(field: FloatField, p0: FloatField, slope: FloatField):
     with computation(PARALLEL), interval(-1, None):
         slope = slope[0, 0, -1]
 
+    return slope
+'''
+
 
 def compute_uwshcu(
-    dotransport: Int,           # Transport tracers [1 true]
-    exnifc0_in: FloatField,     # Exner function at interfaces 
-    pmid0_in: FloatField,       # Environmental pressure at midpoints [Pa] 
-    zmid0_in: FloatField,       # Environmental height at midpoints [m] 
-    exnmid0_in: FloatField,     # Exner function at midpoints
-    u0_in: FloatField,          # Environmental zonal wind [m/s] 
-    v0_in: FloatField,          # Environmental meridional wind [m/s] 
-    qv0_in: FloatField,         # Environmental specific humidity
-    ql0_in: FloatField,         # Environmental liquid water specific humidity 
-    qi0_in: FloatField,         # Environmental ice specific humidity
-    th0_in: FloatField,         # Environmental potential temperature [K]
-    tr0_inout: FloatField,      # Environmental tracers [ #, kg/kg ]
-    tr0: FloatField,
+    dotransport: Float,           
+    exnifc0_in: FloatField,     
+    pmid0_in: FloatField,       
+    zmid0_in: FloatField,       
+    exnmid0_in: FloatField,     
+    u0_in: FloatField,           
+    v0_in: FloatField,          
+    qv0_in: FloatField,         
+    ql0_in: FloatField,         
+    qi0_in: FloatField,         
+    th0_in: FloatField,         
+    tr0_inout: FloatField_NTracers,      
+    tr0: FloatField_NTracers,
     ssthl0: FloatField,
     ssqt0: FloatField,
     ssu0: FloatField,
     ssv0: FloatField,
-    sstr0: FloatField
+    sstr0: FloatField_NTracers,
 ):
-    
     '''
     University of Washington Shallow Convection Scheme          
                                                                 
@@ -63,12 +69,16 @@ def compute_uwshcu(
     For GEOS-specific questions, email nathan.arnold@nasa.gov                                                         
     '''
 
+    '''
+    Add description of variables
+    '''
+
     # Start Main Calculation
 
     with computation(PARALLEL), interval(...):
          #id_exit = False
 
-         zvir = Float(0.609) # r_H2O/r_air-1
+         zvir = 0.609 # r_H2O/r_air-1
          pmid0 = pmid0_in
          zmid0 = zmid0_in
          u0 = u0_in
@@ -77,13 +87,15 @@ def compute_uwshcu(
          ql0 = ql0_in
          qi0 = qi0_in
 
-         #if dotransport == 1:
-         #   tr0 = tr0_inout
+         if dotransport == 1.0:
+            n=0
+            # Loop over tracers
+            while n < constants.ncnst:
+                tr0[0,0,0][n] = tr0_inout[0,0,0][n]
+                n+=1
 
-         '''
-         Compute basic thermodynamic variables directly from  
-         input variables for each column     
-         '''                 
+         #Compute basic thermodynamic variables directly from  
+         #input variables for each column                      
          
          # Compute internal environmental variables
          exnmid0 = exnmid0_in
@@ -94,15 +106,87 @@ def compute_uwshcu(
          thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
          thvl0 = (1.0 + zvir*qt0) * thl0
 
-
          # Compute slopes of environmental variables in each layer
-         ssthl0 = slope(thl0, pmid0)
-         ssqt0 = slope(qt0 , pmid0)
-         ssu0 = slope(u0  , pmid0)
-         ssv0 = slope(v0  , pmid0)
+         #ssthl0 = slope(thl0, pmid0)
+         #ssqt0 = slope(qt0 , pmid0)
+         #ssu0 = slope(u0  , pmid0)
+         #ssv0 = slope(v0  , pmid0)
+         ssthl0 = thl0
+         ssqt0 = qt0
+         ssu0 = u0
+         ssv0 = v0
 
-         #if dotransport == 1:
-         #   sstr0 = slope(tr0, pmid0)
+         if dotransport == 1.0:
+             n=0
+             # Loop over tracers
+             while n < constants.ncnst:
+                #sstr0[0,0,0][n] = slope(tr0[0,0,0][n], pmid0)
+                sstr0[0,0,0][n] = tr0[0,0,0][n]
+                n+=1
+
+
+class ComputeUwshcu:
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
+    ) -> None:
+        
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = quantity_factory
+       
+        self._compute_uwshcu = self.stencil_factory.from_dims_halo(
+            func=compute_uwshcu,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
+    def __call__(
+        self,
+        dotransport: Int,          
+        exnifc0_in: FloatField,      
+        pmid0_in: FloatField,       
+        zmid0_in: FloatField,      
+        exnmid0_in: FloatField,     
+        u0_in: FloatField,          
+        v0_in: FloatField,          
+        qv0_in: FloatField,       
+        ql0_in: FloatField,         
+        qi0_in: FloatField,       
+        th0_in: FloatField,         
+        tr0_inout: FloatField_NTracers,      
+        tr0: FloatField_NTracers,
+        ssthl0: FloatField,
+        ssqt0: FloatField,
+        ssu0: FloatField,
+        ssv0: FloatField,
+        sstr0: FloatField_NTracers,
+    ):
+        
+        #self.slope = Slope(
+        #    self.stencil_factory,
+        #    self.quantity_factory,
+        #)
+
+        self._compute_uwshcu(
+            dotransport, 
+            exnifc0_in, 
+            pmid0_in, 
+            zmid0_in, 
+            u0_in, 
+            v0_in, 
+            qv0_in, 
+            ql0_in, 
+            qi0_in, 
+            th0_in, 
+            tr0_inout,
+            tr0=tr0_test,
+            ssthl0=ssthl0_test,
+            ssqt0=ssqt0_test,
+            ssu0=ssu0_test,
+            ssv0=ssv0_test,
+            sstr0=sstr0_test,
+        )
+
 
       
       
