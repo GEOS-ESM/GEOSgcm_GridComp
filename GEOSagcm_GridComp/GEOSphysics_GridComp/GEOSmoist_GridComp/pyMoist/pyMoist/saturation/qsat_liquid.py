@@ -5,16 +5,13 @@ from pyMoist.saturation.constants import (
     DELTA_T,
     MAPL_TICE,
     ESFAC,
+    ERFAC,
     MAX_MIXING_RATIO,
     TMAXTBL,
     DEGSUBS,
 )
 from pyMoist.saturation.formulation import SaturationFormulation
 import numpy as np
-
-
-ERFAC = DEGSUBS / ESFAC
-
 
 # Below are actual 64-bit float in Fortran
 B6 = 6.136820929e-11 * 100.0
@@ -131,8 +128,3 @@ def qsat_liquid_scalar_exact(
         DX = DDQ * (1.0 / DELTA_T)
 
     return EX, TI, DX
-
-
-def qsat_liquid_scalar_table():
-    """Reference Fortran: QSATLQU0 w/ UTBL=True"""
-    raise NotImplementedError("Nope.")

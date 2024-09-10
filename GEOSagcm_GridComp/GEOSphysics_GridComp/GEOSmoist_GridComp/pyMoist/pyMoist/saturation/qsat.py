@@ -108,7 +108,6 @@ def QSat_Float_Ice(
 @gtscript.function
 def QSat_Float(
     ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
     T: Float,
     PL: Float,
@@ -162,7 +161,6 @@ def QSat_Float(
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
 def QSat_FloatField(
     ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
     T: FloatField,
     PL: FloatField,
@@ -218,6 +216,11 @@ class QSat:
     Uses various formulations of the saturation vapor pressure to compute the saturation specific
     humidity for temperature T and pressure PL.
 
+    The function get_table called in __init__ creates tables using exact calculations (equivalent
+    to UTBL=False in Fortran). get_table can be called again for further exact computations.
+    QSat_FloatField computes QSat for an entire field using table lookups
+    (equivalent to UTBL=True in Fortran).
+
     For temperatures <= TMIX (-20C)
     the calculation is done over ice; for temperatures >= ZEROC (0C) the calculation
     is done over liquid water; and in between these values,
@@ -228,12 +231,6 @@ class QSat:
 
     If PASCALS is true, PL is
     assumed to be in Pa; if false or not present, it is assumed to be in mb.
-
-    Another compile time choice is whether to use the exact formulation
-    or a table look-up.
-    If UTBL is true, tabled values of the saturation vapor pressures
-    are used. These tables are automatically generated at a 0.1K resolution
-    for whatever vapor pressure formulation is being used.
     """
 
     def __init__(
@@ -241,7 +238,6 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        use_table_lookup: bool = True,
     ) -> None:
 
         self.table = get_table(formulation)

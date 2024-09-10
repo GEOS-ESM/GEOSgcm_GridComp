@@ -146,8 +146,3 @@ def qsat_ice_scalar_exact(
             DX = DDQ * (1.0 / DELTA_T)
 
     return EX, TI, DX
-
-
-def qsat_ice_scalar_table():
-    """Reference Fortran: QSATICE0 w/ UTBL=True"""
-    raise NotImplementedError("Nope.")
