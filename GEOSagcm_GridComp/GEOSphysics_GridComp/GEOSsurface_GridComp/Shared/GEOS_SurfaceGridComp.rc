@@ -29,28 +29,16 @@
 #                                                                                  #
 #################################################################################### 
 
-# ---- Surface layer turbulence scheme
-#
-#    CHOOSEMOSFC:               Monin-Obukhov (MO) parameterization of surface exchange coefficients
+# ---- Monin-Obukhov (MO) surface layer turbulence scheme
 #
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1/9.1/10.0)
 #    1 : Helfand                (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
 #
-#    MOSFC_EXTRA_DERIVS_LAND:   Over *land*, use derivatives of exchange coeffs w.r.t. temp. & humidity?
-#
-#    0 : none                   Default for Helfand
-#    1 : analytical derivs      Default for Louis;   *not* available for Helfand
-#    2 : numerical  derivs             
-#
-#    Runtimes: Helfand takes ~10 times longer than Louis.  In offline mode, Helfand consumes
-#              about as much CPU as Catchment.  Numerical derivatives triple the runtime of 
-#              the MOSFC scheme.
+#    Note: For offline simulations, optional use of extra MO derivatives is supported
+#          through rc parameter MOSFC_EXTRA_DERIVS_LAND (see catch_wrap_state.F90).
 #
 # GEOSagcm=>CHOOSEMOSFC: 1
 # GEOSldas=>CHOOSEMOSFC: 0
-#
-# GEOSagcm=>MOSFC_EXTRA_DERIVS_LAND: 0
-# GEOSldas=>MOSFC_EXTRA_DERIVS_LAND: 1
 
 # ---- Thickness of surface layer for soil moisture [mm]
 #

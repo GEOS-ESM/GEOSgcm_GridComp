@@ -56,9 +56,10 @@ contains
 
     ! obtain resource variables from "SURFRC" file; they are ultimately stored in CATCH_INTERNAL_STATE or CATCHCN_INTERNAL_STATE
     
-    class(T_CATCH_STATE), pointer, intent(inout) :: statePtr
-    type(ESMF_Config), intent(inout) :: SCF    
-    integer, optional, intent(out) :: rc
+    class(T_CATCH_STATE), pointer,  intent(inout) :: statePtr
+    type(ESMF_Config),              intent(inout) :: SCF    
+    integer,              optional, intent(  out) :: rc
+
     real :: FWETC_default, FWETL_default
     integer:: status, ii
     
@@ -69,36 +70,54 @@ contains
     call MAPL_GetResource(    SCF, statePtr%SURFLAY,                  label='SURFLAY:',                  DEFAULT=50.,           __RC__ )
     call MAPL_GetResource(    SCF, statePtr%USE_ASCATZ0,              label='USE_ASCATZ0:',              DEFAULT=0,             __RC__ )
     call MAPL_GetResource(    SCF, statePtr%CHOOSEMOSFC,              label='CHOOSEMOSFC:',              DEFAULT=1,             __RC__ )
-    
-    ! default of MOSFC_EXTRA_DERIVS_LAND depends on CHOOSEMOSFC:
-    
-    if     (statePtr%CHOOSEMOSFC==0) then
 
-       ! Louis
-       call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
-       ! make sure parameter values is allowed
-       ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==1 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
+    ! MOSFC_EXTRA_DERIVS_LAND: Resource parameter for *offline* (LDAS) mode.
+    !
+    !  Over *land*, use derivatives of exchange coeffs w.r.t. temp. & humidity.
+    !    
+    !    0 : none                   Default for Helfand
+    !    1 : analytical derivs      Default for Louis;   *not* available for Helfand
+    !    2 : numerical  derivs             
+    !
+    !  Runtimes: Helfand takes ~10 times longer than Louis.  In offline mode, Helfand consumes
+    !            about as much CPU as Catchment.  Numerical derivatives triple the runtime of 
+    !            the MOSFC scheme.
 
-    elseif (statePtr%CHOOSEMOSFC==1) then
+    if (statePtr%CATCHMENT_OFFLINE==0) then
 
-       ! Helfand
-       call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=0,             __RC__ )
-       ! make sure parameter values is allowed (no analytical derivs for Helfand)
-       ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0            .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
+       statePtr%MOSFC_EXTRA_DERIVS_LAND = 0        ! must be 0 for GCM
 
     else
 
-       _ASSERT(.FALSE.,'unknown CHOOSEMOSFC')
+       ! offline (LDAS) mode;  default for MOSFC_EXTRA_DERIVS_LAND depends on CHOOSEMOSFC (Louis or Helfand)
+       
+       if     (statePtr%CHOOSEMOSFC==0) then
+          
+          ! Louis
+          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
+          ! make sure parameter values is allowed
+          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==1 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
+          
+       elseif (statePtr%CHOOSEMOSFC==1) then
+          
+          ! Helfand
+          call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=0,             __RC__ )
+          ! make sure parameter value is allowed (analytical derivs not implemented for Helfand)
+          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0            .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
+          
+       else
+          
+          _ASSERT(.FALSE.,'unknown CHOOSEMOSFC')
+          
+       end if
 
     end if
-
+       
     ! ==================================================================================================================================
     !
     ! STILL NEED TO ASSERT THE FOLLOWING:
     !
     ! if LSM_CHOICE>1, must have MOSFC_EXTRA_DERIVS_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
-    !
-    ! if CATCH_OFFLINE==0, must have MOSFC_EXTRA_DERIVS_LAND==0 (extra derivatives not yet implemented for AGCM)  
     !
     ! =============================================================================================================================
     
