@@ -12,7 +12,9 @@ module catch_wrap_stateMod
   
   type T_CATCH_STATE
      type (ESMF_FieldBundle)  :: Bundle
+     !
      logical :: LDAS_CORRECTOR
+     !
      ! CATCH_OFFLINE:
      !    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
      !    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
@@ -21,10 +23,11 @@ module catch_wrap_stateMod
      ! see also GEOSldas repo: src/Applications/LDAS_App/GEOSldas_LDAS.rc
      integer :: CATCH_OFFLINE
      !
-     ! resource parameters from GEOS_SurfaceGridComp.rc
      integer :: CATCH_SPINUP
+     !
+     ! some (but not all) resource parameters from GEOS_SurfaceGridComp.rc:
      integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-     integer :: CHOOSEMOSFC, SNOW_ALBEDO_INFO
+     integer :: CHOOSEMOSFC, MOSFC_EXTRA_DERIVS_LAND, SNOW_ALBEDO_INFO
      real    :: SURFLAY  
      real    :: FWETC, FWETL
      logical :: USE_FWET_FOR_RUNOFF
@@ -36,6 +39,7 @@ module catch_wrap_stateMod
   end type CATCH_WRAP
   
   type, extends(T_CATCH_STATE) :: T_CATCHCN_STATE
+     ! resource parameters from GEOS_SurfaceGridComp.rc:     
      integer :: ATM_CO2, PRESCRIBE_DVG
      real    :: CO2
      integer :: CO2_YEAR_IN
@@ -50,21 +54,56 @@ contains
 
   subroutine surface_params_to_wrap_state(statePtr, scf, rc)
 
-    ! *********************************************** !
-    !  see GEOS_SurfaceGridComp.rc for documentation  !
-    ! *********************************************** !
+    ! obtain resource variables from "SURFRC" file; they are ultimately stored in CATCH_INTERNAL_STATE or CATCHCN_INTERNAL_STATE
     
     class(T_CATCH_STATE), pointer, intent(inout) :: statePtr
     type(ESMF_Config), intent(inout) :: SCF    
     integer, optional, intent(out) :: rc
     real :: FWETC_default, FWETL_default
-    integer:: status
+    integer:: status, ii
     
-    call MAPL_GetResource( SCF, statePtr%SURFLAY,             label='SURFLAY:',             DEFAULT=50.,           __RC__ )
-    call MAPL_GetResource( SCF, statePtr%USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE.,       __RC__ )
-    call MAPL_GetResource( SCF, statePtr%Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,             __RC__ )
+    ! ************************************************* !
+    !  For documentation, see GEOS_SurfaceGridComp.rc.  !
+    ! ************************************************* !
+    
+    call MAPL_GetResource(    SCF, statePtr%SURFLAY,                  label='SURFLAY:',                  DEFAULT=50.,           __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%USE_ASCATZ0,              label='USE_ASCATZ0:',              DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%CHOOSEMOSFC,              label='CHOOSEMOSFC:',              DEFAULT=1,             __RC__ )
+    
+    ! default of MOSFC_EXTRA_DERIVS_LAND depends on CHOOSEMOSFC:
+    
+    if     (statePtr%CHOOSEMOSFC==0) then
+
+       ! Louis
+       call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
+       ! make sure parameter values is allowed
+       ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==1 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
+
+    elseif (statePtr%CHOOSEMOSFC==1) then
+
+       ! Helfand
+       call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=0,             __RC__ )
+       ! make sure parameter values is allowed (no analytical derivs for Helfand)
+       ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0            .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
+
+    else
+
+       _ASSERT(.FALSE.,'unknown CHOOSEMOSFC')
+
+    end if
+
+    ! ==================================================================================================================================
+    !
+    ! STILL NEED TO ASSERT THE FOLLOWING:
+    !
+    ! if LSM_CHOICE>1, must have MOSFC_EXTRA_DERIVS_LAND<=1     (numerical derivatives not yet implemented for CatchCN)
+    !
+    ! if CATCH_OFFLINE==0, must have MOSFC_EXTRA_DERIVS_LAND==0 (extra derivatives not yet implemented for AGCM)  
+    !
+    ! =============================================================================================================================
+    
+    call MAPL_GetResource(    SCF, statePtr%USE_FWET_FOR_RUNOFF,      label='USE_FWET_FOR_RUNOFF:',      DEFAULT=.FALSE.,       __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%Z0_FORMULATION,           label='Z0_FORMULATION:',           DEFAULT=4,             __RC__ )
     
     if (.NOT. statePtr%USE_FWET_FOR_RUNOFF) then
        FWETC_default = 0.02
@@ -73,22 +112,23 @@ contains
        FWETC_default = 0.005   ! NOT ready for science!
        FWETL_default = 0.025   ! NOT ready for science!
     endif
-    call MAPL_GetResource( SCF, statePtr%FWETC,               label='FWETC:',               DEFAULT=FWETC_default, __RC__ )
-    call MAPL_GetResource( SCF, statePtr%FWETL,               label='FWETL:',               DEFAULT=FWETL_default, __RC__ )
-    call MAPL_GetResource( SCF, statePtr%SNOW_ALBEDO_INFO,    label='SNOW_ALBEDO_INFO:',    DEFAULT=0,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%AEROSOL_DEPOSITION,  label='AEROSOL_DEPOSITION:',  DEFAULT=0,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%RUN_IRRIG,           label='RUN_IRRIG:',           DEFAULT=0,             __RC__ )
-    call MAPL_GetResource( SCF, statePtr%IRRIG_METHOD,        label='IRRIG_METHOD:',        DEFAULT=0,             __RC__ )
+    
+    call MAPL_GetResource(    SCF, statePtr%FWETC,                    label='FWETC:',                    DEFAULT=FWETC_default, __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%FWETL,                    label='FWETL:',                    DEFAULT=FWETL_default, __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%SNOW_ALBEDO_INFO,         label='SNOW_ALBEDO_INFO:',         DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%N_CONST_LAND4SNWALB,      label='N_CONST_LAND4SNWALB:',      DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%AEROSOL_DEPOSITION,       label='AEROSOL_DEPOSITION:',       DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%RUN_IRRIG,                label='RUN_IRRIG:',                DEFAULT=0,             __RC__ )
+    call MAPL_GetResource(    SCF, statePtr%IRRIG_METHOD,             label='IRRIG_METHOD:',             DEFAULT=0,             __RC__ )
     
     select type (statePtr)
     type is (T_CATCHCN_STATE) ! CATCHCN
        
-       call MAPL_GetResource( SCF, statePtr%DTCN,             label='DTCN:',                DEFAULT=5400.,         __RC__ )
-       call MAPL_GetResource( SCF, statePtr%ATM_CO2,          label='ATM_CO2:',             DEFAULT=2,             __RC__ )
-       call MAPL_GetResource( SCF, statePtr%PRESCRIBE_DVG,    label='PRESCRIBE_DVG:',       DEFAULT=0,             __RC__ )
-       call MAPL_GetResource( SCF, statePtr%CO2,              label='CO2:',                 DEFAULT=350.e-6,       __RC__ )
-       call MAPL_GetResource( SCF, statePtr%CO2_YEAR_IN,      label='CO2_YEAR:',            DEFAULT=-9999,         __RC__ )
+       call MAPL_GetResource( SCF, statePtr%DTCN,                     label='DTCN:',                     DEFAULT=5400.,         __RC__ )
+       call MAPL_GetResource( SCF, statePtr%ATM_CO2,                  label='ATM_CO2:',                  DEFAULT=2,             __RC__ )
+       call MAPL_GetResource( SCF, statePtr%PRESCRIBE_DVG,            label='PRESCRIBE_DVG:',            DEFAULT=0,             __RC__ )
+       call MAPL_GetResource( SCF, statePtr%CO2,                      label='CO2:',                      DEFAULT=350.e-6,       __RC__ )
+       call MAPL_GetResource( SCF, statePtr%CO2_YEAR_IN,              label='CO2_YEAR:',                 DEFAULT=-9999,         __RC__ )
        
     end select
 

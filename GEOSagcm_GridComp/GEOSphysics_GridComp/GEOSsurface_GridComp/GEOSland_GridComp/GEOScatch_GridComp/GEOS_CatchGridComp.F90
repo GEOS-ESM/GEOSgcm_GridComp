@@ -1,6 +1,7 @@
 #include "MAPL_Generic.h"
 #define DEALLOC_(A) if(associated(A))then;A=0;if(MAPL_ShmInitialized)then; call MAPL_DeAllocNodeArray(A,rc=STATUS);else; deallocate(A,stat=STATUS);endif;_VERIFY(STATUS);NULLIFY(A);endif
 
+
 !=============================================================================
 module GEOS_CatchGridCompMod
 
@@ -1396,54 +1397,61 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
-  ! for optional extra (analytical) derivatives in louissurface
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+     
+     ! for *analytical* extra derivatives in louissurface
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCH_delTVA',              &
+          LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     
+     call MAPL_AddInternalSpec(GC,                          &
+          SHORT_NAME         = 'delCQ_delTVA',              &  
+          LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
+          UNITS              = '1',                         &
+          DIMS               = MAPL_DimsTileTile,           &
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone,          &
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
-  call MAPL_AddInternalSpec(GC,                  &
-    SHORT_NAME         = 'DCH',                        &
-    LONG_NAME          = 'partial_derivative_of_CH_wrt_virtual_Tair', & 
-    UNITS              = '1',                   &
-    DIMS               = MAPL_DimsTileTile,           &
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone,          &
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+     
+     ! for *numerical* extra derivatives in helfsurface and louissurface
+     
+     call MAPL_AddInternalSpec(GC                          ,&
+          LONG_NAME          = 'partial_derivative_of_CH_wrt_canopy_temperature', &
+          UNITS              = 'kg m-2 s-1'                ,&
+          SHORT_NAME         = 'delCH_delTC'               ,&
+          DIMS               = MAPL_DimsTileTile           ,&
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     
+     call MAPL_AddInternalSpec(GC                          ,&
+          LONG_NAME          = 'partial_derivative_of_CQ_wrt_canopy_specific_humidity', &
+          UNITS              = 'kg m-2 s-1'                ,&
+          SHORT_NAME         = 'delCQ_delQC'               ,&
+          DIMS               = MAPL_DimsTileTile           ,&
+          NUM_SUBTILES       = NUM_SUBTILES                ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          RESTART            = MAPL_RestartSkip            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
-  call MAPL_AddInternalSpec(GC,                  &
-    SHORT_NAME         = 'DCQ',                        &
-    LONG_NAME          = 'partial_derivative_of_CQ_wrt_virtual_Tair', &
-    UNITS              = '1',                   &
-    DIMS               = MAPL_DimsTileTile,           &
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone,          &
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  ! for optional extra (numerical) derivatives in helfsurface and louissurface
-
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'DTC'                       ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'qc difference, optional in helfsurface'  ,&
-    UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'DQC'                       ,&
-    DIMS               = MAPL_DimsTileTile           ,&
-    NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartSkip            ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
+  end if
+     
+     
   !---------- GOSWIM snow impurity related variables ----------
  
   if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then 
@@ -2743,10 +2751,6 @@ subroutine SetServices ( GC, RC )
     end if
     call MAPL_TimerAdd(GC,    name="-SURF"  ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-LOUIS"  ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="-HELFAND"  ,RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-CATCH" ,RC=STATUS)
@@ -2839,8 +2843,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"INITIALIZE")
 
-
-    ! retrieve interal state
+    ! retrieve internal state
 
     call ESMF_UserCompGetInternalState ( GC, 'CatchInternal',wrap,status )
     VERIFY_(STATUS)
@@ -2995,7 +2998,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Clock),   intent(inout) :: CLOCK  !The clock
     integer,optional,   intent(out  ) :: RC     !Error code:
 
-! !DESCRIPTION: Does the cds (exchange coefficients) computation and roughness length
+! !DESCRIPTION: Compute roughness length and exchange coefficients ("cds"), incl. derivatives
 !EOP
 ! ErrLog Variables
 
@@ -3042,23 +3045,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: FR
     real, dimension(:,:), pointer :: WW
 
-    ! for optional extra derivatives in louissurface
+    ! for analytical extra derivatives (louissurface)
 
-    real, dimension(:,:), pointer :: DCH
-    real, dimension(:,:), pointer :: DCQ
+    real, dimension(:,:), pointer :: delCH_delTVA
+    real, dimension(:,:), pointer :: delCQ_delTVA
 
-    ! for optional extra derivatives in helfsurface
+    ! for numerical  extra derivatives (louissurface, helfsurface)
 
-    real, dimension(:,:), pointer :: DTC
-    real, dimension(:,:), pointer :: DQC
-
-    real, dimension(:,:), allocatable :: TC_pert
-    real, dimension(:,:), allocatable :: QC_pert
-    
-    real, dimension(:),   allocatable :: pert_tc
-    real, dimension(:),   allocatable :: pert_qc
-    real, dimension(:,:),   allocatable :: louis_pert_tc
-    real, dimension(:,:),   allocatable :: louis_pert_qc
+    real, dimension(:,:), pointer :: delCH_delTC
+    real, dimension(:,:), pointer :: delCQ_delQC
 
 ! -----------------------------------------------------
 ! EXPORT Pointers
@@ -3142,15 +3137,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
 
-    ! for optional extra derivatives in helfsurface
+    ! ------------------------------------- 
+    !
+    ! for numerical extra derivatives (louissurface, helfsurface)
 
-    integer            :: incl_Helfand_extra_derivs, incl_Louis_extra_derivs
-    real, parameter    :: small_factor = 0.001       ! determines size of perturbation for computation of numerical derivatives
-    real, allocatable  :: small_TC(:)
-    real, allocatable  :: small_QC(:)
+    real, parameter    :: MOSFC_pert_fac = 0.001   ! size of multiplicative pert for numerical derivatives
 
-    real, allocatable  :: louis_small_TC(:,:)
-    real, allocatable  :: louis_small_QC(:,:)
+    ! Louis needs 2d arrays;  Helfand would work with 1d arrays but use 2d arrays to avoid "if" statements
+    
+    real, dimension(:,:), allocatable :: DeltaTC,  CHpert
+    real, dimension(:,:), allocatable :: DeltaQC,  CQpert
+
+    real, dimension(:,:), allocatable :: DummyZ0T, DummyCM
     
     ! -------------------------------------
     
@@ -3202,10 +3200,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=0, RC=STATUS)
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
- 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
@@ -3258,13 +3252,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL,delCQ_delQC  , 'delCQ_delQC'  ,    RC=STATUS)
     VERIFY_(STATUS)   
-    call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL,delCH_delTC  , 'delCH_delTC'  ,    RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to outputs
@@ -3400,29 +3394,19 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    if (incl_Helfand_extra_derivs ==1 .or. incl_Louis_extra_derivs ==2 ) then
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
        
-       allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(pert_tc(NT),         STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(pert_qc(NT),         STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(small_qc(NT),            STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(small_tc(NT),            STAT=STATUS)
-       VERIFY_(STATUS)
+       ! allocate variables for numerical extra derivatives (louissurface, helfsurface)
+
+       allocate(DeltaTC( NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
+       allocate(DeltaQC( NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
+
+       allocate(CHpert(  NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
+       allocate(CQpert(  NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
        
-       allocate(louis_small_qc(NT,NUM_SUBTILES), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(louis_small_tc(NT,NUM_SUBTILES), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(louis_pert_tc(NT,NUM_SUBTILES),         STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(louis_pert_qc(NT,NUM_SUBTILES),         STAT=STATUS)
-       VERIFY_(STATUS)
+       allocate(DummyZ0T(NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
+       allocate(DummyCM( NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
+
     end if
 
 !  Vegetation types used to index into tables
@@ -3516,110 +3500,161 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated(Z0 )) Z0  = Z0T(:,N)
       if(associated(D0 )) D0  = D0T
 
-!  Compute the three surface exchange coefficients
-!-------------------------------------------------
+!  Compute surface exchange coefficients
+!---------------------------------------
+      
+      call MAPL_TimerOn(MAPL,"-SURF")    ! timer for computation of MOSFC exchange coeffs and derivs (Louis or Helfand)
+      
+      ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      !
+      ! reichle, 9/9/2024
+      !
+      ! TBD: LIMIT QC+DeltaQC TO qsat(TC)?  See comment/question below (~line 5300)
+      !
+      ! TBD: VERIFY LIST OF INTENT(INOUT) VARIABLES FOR louissurface() AND helfsurface()
+      !
+      ! TBD: FOR NUMERICAL DERIVS, CAN WE COMPUTE DELTA W.R.T. VIRTUAL TEMP TO AVOID ONE CALL
+      !      TO louissurface() OR helfsurface()?
+      !
+      ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      
+      if (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
 
-      call MAPL_TimerOn(MAPL,"-SURF")
+         ! Louis surface turbulence
+         
+         WW(:,N) = 0.
+         CM(:,N) = 0.
+         
+         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==1) then
+            
+            ! analytical extra derivatives (default for Louis)
+            
+            call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,delCH_delTVA,delCQ_delTVA)
+            
+         else
+            
+            ! none .or. numerical extra derivatives
+            
+            if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
 
-      if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
+               ! Prep calculation of numerical extra derivatives.  Start with calling louissurface with perturbed inputs and
+               !  save only the perturbed exchange coeffs.  The final call with nominal inputs produces the unperturbed
+               !  exchange coeffs and other outputs (CN, RIB, ZT, ZQ, etc).
+               ! Must use properly initialized dummmies for Z0T and CM because these are intent(inout).
 
-        call MAPL_TimerOn(MAPL, '-LOUIS')
-        WW(:,N) = 0.
-        CM(:,N) = 0.
+               ! perturb TC: send in (TC+DeltaTC), get back CHpert
+               
+               DeltaTC  = MOSFC_pert_fac*TC
+               
+               DummyZ0T = Z0T
+               DummyCM  = CM
+                              
+               call louissurface(3,N,UU,WW,PS,TA,TC+DeltaTC,QA,QC        ,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CHpert,CQ    ,UUU,UCN,RE)
 
-        if (incl_Louis_extra_derivs ==1) then
+               ! perturb QC: send in (QC+DeltaQC), get back CQpert
+               
+               DeltaQC  = MOSFC_pert_fac*QC
+               
+               DummyZ0T = Z0T
+               DummyCM  = CM
 
-           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+               call louissurface(3,N,UU,WW,PS,TA,TC        ,QA,QC+DeltaQC,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CH    ,CQpert,UUU,UCN,RE)
 
-        else if (incl_Louis_extra_derivs ==2 ) then
+            end if
 
-           louis_small_TC = small_factor*TC
-           TC_pert=TC+louis_small_TC
-           call louissurface(3,N,UU,WW,PS,TA,TC_pert,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
-           louis_pert_tc=CH
-
-           louis_small_QC = small_factor*QC
-           QC_pert=QC+louis_small_QC
-           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC_pert,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
-           louis_pert_qc=CQ
-
-           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
-
-           DTC(:,N) = (louis_pert_tc(:,N) - CH(:,N) ) / louis_small_TC(:,N)
-           DQC(:,N) = (louis_pert_qc(:,N) - CQ(:,N) ) / louis_small_QC(:,N)
-
-        endif 
-
-        call MAPL_TimerOff(MAPL, '-LOUIS')
-
+            ! Call with nominal inputs [after calls with perturbed inputs to obtain correct outputs (CN, RIB, ZT, ZQ, etc.)]
+            
+            call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+            
+         end if  ! MOSFC_EXTRA_DERIVS_LAND
+         
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
-        
-        call MAPL_TimerOn(MAPL, '-HELFAND')
-        niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
-        IWATER = 3
-  
-        PSMB = PS * 0.01            ! convert to MB
-        ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
-        PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
-               (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
-  
-        if      (incl_Helfand_extra_derivs == 0) then
 
-           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,      &
-                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,           &
-                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+         ! Helfand surface turbulence
 
-        else if (incl_Helfand_extra_derivs == 1) then
+         niter  = 6                  ! number of internal iterations in the Helfand MO surface layer routine
+         IWATER = 3
+         
+         PSMB = PS * 0.01            ! convert to MB
+         
+         ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
+         PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
+              (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
+         
+         if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+            
+            ! Prep calculation of numerical extra derivatives.  Start with calling louissurface with perturbed inputs and
+            !  save only the perturbed exchange coeffs.  The final call with nominal inputs produces the unperturbed
+            !  exchange coeffs and other outputs (CN, RIB, ZT, ZQ, etc).
+            ! Must use properly initialized dummmies for Z0T and CM because these are intent(inout).
+            
+            ! perturb TC: send in (TC+DeltaTC), get back CHpert
+            
+            DeltaTC( :,N) = MOSFC_pert_fac*TC(:,N)
+            
+            DummyZ0T(:,N) = Z0T(:,N)
 
-           small_TC = small_factor*TC(:,N)
-           TC_pert(:,N)=TC(:,N)+small_TC
-           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
-                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-           pert_tc =VKH
+            CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N)+DeltaTC(:,N),QA,QC(:,N)             ,PSL,PSMB,DummyZ0T(:,N),lai,  &
+                 IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,                                                  &
+                 t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
-           small_QC = small_factor*QC(:,N)
-           QC_pert(:,N)=QC(:,N)+small_QC
-           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
-                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-           pert_qc=VKH
+            CHpert(  :,N) = VKH
+            
+            ! perturb QC: send in (QC+DeltaQC), get back CQpert
+            
+            DeltaQC( :,N) = MOSFC_pert_fac*QC(:,N)
+            
+            DummyZ0T(:,N) = Z0T(:,N)
 
-           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,       &
-                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
-                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+            CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N)             ,QA,QC(:,N)+DeltaQC(:,N),PSL,PSMB,DummyZ0T(:,N),lai,  &
+                 IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,                                                  &
+                 t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
 
-           DTC(:,N)   = (pert_tc - VKH ) / small_TC
-           DQC(:,N)   = (pert_qc - VKH ) / small_QC
+            CQpert(  :,N) = VKH
 
-        endif
-  
-        CM(:,N)  = VKM
-        CH(:,N)  = VKH
-        CQ(:,N)  = VKH
-  
-        CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
-        ZT = Z0T(:,N)
-        ZQ = Z0T(:,N)
-        RE = 0.
-        UUU = UU  
-        UCN = 0.
-  
+         end if  ! MOSFC_EXTRA_DERIVS_LAND==2
+
+         ! Call with nominal inputs [after calls with perturbed inputs to obtain correct outputs (Z0T, [*]2m, [*]10m, etc.)]
+
+         CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,       &
+              IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,                        &
+              t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+         
+         CM(:,N)  = VKM
+         CH(:,N)  = VKH
+         CQ(:,N)  = VKH
+         
+         CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
+         ZT = Z0T(:,N)
+         ZQ = Z0T(:,N)
+         RE = 0.
+         UUU = UU  
+         UCN = 0.
+         
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
-        if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
-        if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
-        if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
-        if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
-        if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
-        if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
-        if(associated(MOT2M))MOT2M = MOT2M + T2M(:)*FR(:,N)
-        if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
-        if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
-        if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
-        call MAPL_Timeroff(MAPL, "-HELFAND")
-      endif
+         if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
+         if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
+         if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
+         if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
+         if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
+         if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
+         if(associated(MOT2M ))MOT2M  = MOT2M  + T2M( :)*FR(:,N)
+         if(associated(MOQ2M ))MOQ2M  = MOQ2M  + Q2M( :)*FR(:,N)
+         if(associated(MOU2M ))MOU2M  = MOU2M  + U2M( :)*FR(:,N)
+         if(associated(MOV2M ))MOV2M  = MOV2M  + V2M( :)*FR(:,N)
 
+      endif  ! CHOOSEMOSFC
+
+      if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then                        
+         
+         ! finalize numerical derivatives
+         
+         delCH_delTC(:,N) = (CHpert(:,N) - CH(:,N)) / DeltaTC(:,N)
+         delCQ_delQC(:,N) = (CQpert(:,N) - CQ(:,N)) / DeltaQC(:,N)
+         
+      endif
+      
       call MAPL_TimerOff(MAPL,"-SURF")
 
 !  Aggregate to tile
@@ -3689,17 +3724,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    if (incl_Helfand_extra_derivs==1 .or. incl_Louis_extra_derivs==2 ) then
-       deallocate(pert_tc)
-       deallocate(pert_qc)
-       deallocate(TC_pert    )
-       deallocate(QC_pert    )
-       deallocate(small_QC   )
-       deallocate(small_TC   )
-       deallocate(louis_small_QC   )
-       deallocate(louis_small_TC   )
-       deallocate(louis_pert_tc)
-       deallocate(louis_pert_qc)
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2)
+       deallocate(DeltaTC )
+       deallocate(DeltaQC )
+       deallocate(CHpert  )
+       deallocate(CQpert  )
+       deallocate(dummyZ0T)
+       deallocate(dummyCM )
     end if
 
     !  All done
@@ -3744,8 +3775,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                 :: ALARM
 
     integer                          :: IM,JM
-    integer                          :: incl_Louis_extra_derivs
-    integer                          :: incl_Helfand_extra_derivs
 
     real                             :: SCALE4ZVG
     real                             :: SCALE4Z0_u
@@ -3778,14 +3807,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------------------------------
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
-    VERIFY_(STATUS)
-    !
-    ! original
-    !call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=1, RC=STATUS)
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
@@ -3973,10 +3994,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: cm
         real, dimension(:,:), pointer :: cq
         real, dimension(:,:), pointer :: fr
-        real, dimension(:,:), pointer :: dcq
-        real, dimension(:,:), pointer :: dch
-        real, dimension(:,:), pointer :: DTC
-        real, dimension(:,:), pointer :: DQC
+        real, dimension(:,:), pointer :: delCQ_delTVA
+        real, dimension(:,:), pointer :: delCH_delTVA
+        real, dimension(:,:), pointer :: delCH_delTC
+        real, dimension(:,:), pointer :: delCQ_delQC
         real, dimension(:,:), pointer :: RDU001
         real, dimension(:,:), pointer :: RDU002
         real, dimension(:,:), pointer :: RDU003
@@ -4148,7 +4169,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:,:) :: evsbt
         real,pointer,dimension(:,:) :: devsbt
         real,pointer,dimension(:,:) :: DEDTC 
-        real,pointer,dimension(:,:) :: DHSDQA
+        real,pointer,dimension(:,:) :: DHSDQC
         real,pointer,dimension(:,:) :: CFT
         real,pointer,dimension(:,:) :: RA
         real,pointer,dimension(:,:) :: CFQ
@@ -4514,10 +4535,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,delCH_delTC  ,'delCH_delTC'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,delCQ_delQC  ,'delCQ_delQC'        ,RC=STATUS); VERIFY_(STATUS)
 
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
@@ -4716,7 +4737,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(EVSBT    (NTILES,NUM_SUBTILES))
         allocate(DEVSBT   (NTILES,NUM_SUBTILES))
         allocate(DEDTC    (NTILES,NUM_SUBTILES))
-        allocate(DHSDQA   (NTILES,NUM_SUBTILES))
+        allocate(DHSDQC   (NTILES,NUM_SUBTILES))
         allocate(CFT      (NTILES,NUM_SUBTILES))
         allocate(CFQ      (NTILES,NUM_SUBTILES))
         allocate(TCO      (NTILES,NUM_SUBTILES))
@@ -5136,77 +5157,152 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         RDC = max(VGRDA(VEG)*min(1., LAI/VGRDB(VEG)),0.001)
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
 
-        DEDTC=0.0
-        DHSDQA=0.0
 
+        !--------------------------------------------------------------------------------------------------------
+        !                                                      
+        ! MOSFC variable names and description:                
+        !                                                      
+        !--------------------------------------------------------------------------------------------------------
+        ! GEOS_CatchGridComp.F90   | catchment.F90 | dimension  | Description
+        !--------------------------------------------------------------------------------------------------------        
+        !  TA                      |     TM        | NT         | surface (lowest model level) air temperature
+        !  QA                      |     QM        | NT         | surface (lowest model level) air spec humidity
+        !--------------------------------------------------------------------------------------------------------
+        !  TC                      |     TC        | NT-by-NSBT | canopy (air) temperature
+        !  QC                      |     QA (!)    | NT-by-NSBT | canopy (air) specific humidity
+        !  CH                      |     -         | NT-by-NSBT | exchange coeff for heat
+        !  CQ                      |     -         | NT-by-NSBT | exchange coeff for humidity
+        !  EVSBT                   |     ETURB     | NT-by-NSBT | evaporation
+        ! DEVSBT                   |    DEDQA      | NT-by-NSBT | deriv of evap w.r.t. canopy spec humidity
+        ! DEDTC                    |    DEDTC      | NT-by-NSBT | deriv of evap w.r.t. canopy temperature
+        !  SHSBT                   |     HSTURB    | NT-by-NSBT | sensible heat flux (SH)
+        ! DHSDQC (formerly DHSDQA) |    DHSDQA     | NT-by-NSBT | deriv of SH   w.r.t. canopy spec humidity 
+        ! DSHSBT                   |    DHSDTC     | NT-by-NSBT | deriv of SH   w.r.t. canopy temperature 
+        !--------------------------------------------------------------------------------------------------------
+        !   *SBT = sub-tile (?)
+        !   NT   = number of tiles
+        !   NSBT = number of subtiles (per tile)
+        !
+        ! For land, CH = CQ in Helfand and Louis.
+        !
+        !
+        ! MOSFC equations:
+        !
+        !  EVSBT =      CQ * (QC - QA)
+        !  SHSBT = Cp * CH * (TC - TA)           [ Cp  = MAPL_CP ]
+        !
+        ! Derivatives obtained via product rule.  See equations below.
+        !
+        ! For analytical derivatives, additionally use the following identities:
+        !
+        !    virtual TC: TVC = TC*(1 + eps)*QC   [ eps = MAPL_VIREPS ]
+        !    virtual TA: TVA = TA*(1 + eps)*QA
+        !
+        !    delTVC_delQC =  TC*eps
+        !    delTVC_delTC = (1 + eps)
+        !
+        !    delCQ_delQC = delCQ_delTVC * delTVC_delQC 
+        !    delCH_delTC = delCH_delTVC * delTVC_delTC
+        !
+        !    CQ=CQ(Ri) where Ri is proportional to deltaTVA=TVA-TVC --> produces a minus sign
+        !
+        !    delCQ_delTVC = -1*delCQ_delTVA
+        !    delCH_delTVC = -1*delCH_delTVA
+        !
+        !--------------------------------------------------------------------------------------------------
+        ! reichle, 9/9/2024
+        !--------------------------------------------------------------------------------------------------
+        
+        
+        ! initialize derivatives that may not be filled later
+        
+        DEDTC =0.0
+        DHSDQC=0.0
+
+        ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        !
+        ! reichle, 9/9/2024
+        !
+        ! TBD: PRECOMPUTE (TC-TA), (QC-QA), MAPL_VIREPS*TC, (1+MAPL_VIREPS*QC) ??  OR LEAVE OPTIMIZATION  TO COMPILER??
+        !
+        ! TBD: CHANGE ORDER OF "if" BLOCK, "select" BLOCK, and "do" LOOP??  (Note: "do" LOOP N IS ONLY 1..4)
+        !
+        ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+        
         if(CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
+
+           ! Catchment in offline (land-only) mode
+        
            do N=1,NUM_SUBTILES
-              CFT   (:,N) = 1.0
-              CFQ   (:,N) = 1.0
-              SHSBT (:,N) = MAPL_CP*CH(:,N)*(TC(:,N)-TA)
-              EVSBT (:,N) = CQ(:,N)*(QC(:,N)-QA)
-              DSHSBT(:,N) = MAPL_CP*CH(:,N)
-              DEVSBT(:,N) = CQ(:,N)
-              BLWN(:,N) = EMIS*MAPL_STFBOL*TC(:,N)*TC(:,N)*TC(:,N)
-              ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
-              BLWN(:,N) =  4.0*BLWN(:,N)
+
+              CFT  (:,N) = 1.0
+              CFQ  (:,N) = 1.0
+
+              SHSBT(:,N) = MAPL_CP*CH(:,N)*(TC(:,N)-TA)
+              EVSBT(:,N) =         CQ(:,N)*(QC(:,N)-QA)
+
+              BLWN( :,N) = EMIS*MAPL_STFBOL*TC(:,N)*TC(:,N)*TC(:,N)
+              ALWN( :,N) = -3.0*BLWN(:,N)*TC(:,N)
+              BLWN( :,N) =  4.0*BLWN(:,N)
+
            end do
-
-           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1 ) then
-              do N=1,NUM_SUBTILES
-                 DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
-                 DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
-                 DSHSBT(:,N)=MAPL_CP*(CH(:,N)+max(0.0,-DCH(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(TC(:,N)-TA)))
-                 DHSDQA(:,N)=max(0.0,-MAPL_CP*DCH(:,N)*MAPL_VIREPS*TC(:,N)*(TC(:,N)-TA))
-              enddo
-           endif
-                 
-           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs==2) then
-              do N=1,NUM_SUBTILES
-                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
-                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
-                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
-                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
-              enddo
-           endif
-
-           ! for helfsurface (adding derivatives for helfand MO scheme helfsurface)
-           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_Helfand_extra_derivs ==1) then
+           
+           select case (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND)
+              
+           case (0)  ! ignore derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
 
               do N=1,NUM_SUBTILES
+                 DEVSBT(:,N) =           CQ(:,N)
+                 DSHSBT(:,N) = MAPL_CP*  CH(:,N)
+              end do
 
-                 ! getting DSHSBT - derivative of sensible heat flux w.r.t. Tc (ground temperature)
-                 ! note CH and CQ are VKH (values are assigned in RUN1 after the helfsurf call is returned)
-                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
+           case (1)  ! Louis only: analytical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
 
-                 ! getting DHSDQA - cross derivative of sensible heat flux  w.r.t. Qc (ground humidity)
-                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
+              _ASSERT( CATCH_INTERNAL_STATE%CHOOSEMOSFC==0, 'must use Louis scheme for MOSFC analytical derivatives' )
+              
+              do N=1,NUM_SUBTILES
+                 DEVSBT(:,N) =           CQ(:,N) + max( 0.0,         -delCQ_delTVA(:,N)*    MAPL_VIREPS*TC(:,N) *(QC(:,N)-QA) )
+                 DEDTC( :,N) =                     max( 0.0,         -delCQ_delTVA(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA) )
+                 DSHSBT(:,N) = MAPL_CP*( CH(:,N) + max( 0.0,         -delCH_delTVA(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(TC(:,N)-TA) ) )
+                 DHSDQC(:,N) =                     max( 0.0, -MAPL_CP*delCH_delTVA(:,N)*    MAPL_VIREPS*TC(:,N) *(TC(:,N)-TA) )
+              end do
+              
+           case (2)  ! numerical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
+              
+              do N=1,NUM_SUBTILES
+                 DEVSBT(:,N) =           CQ(:,N) + max( 0.0,          delCQ_delQC( :,N)*                         (QC(:,N)-QA) )
+                 DEDTC( :,N) =                     max( 0.0,          delCH_delTC( :,N)*                         (QC(:,N)-QA) )
+                 DSHSBT(:,N) = MAPL_CP*( CH(:,N) + max( 0.0,          delCH_delTC( :,N)*                         (TC(:,N)-TA) ) )   
+                 DHSDQC(:,N) =                     max( 0.0,  MAPL_CP*delCQ_delQC( :,N)*                         (TC(:,N)-TA) )
+              end do
 
-                 ! getting DEVSBT - derivative of latent heat flux w.r.t. Qc (ground humidity)
-                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
+           case default
 
-                ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
-                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
-
-              enddo ! N-loop (NUM_SUBTILES)
-
-           endif ! if Helfand
-
-          ! BLWX = EMIS*MAPL_STFBOL*TA*TA*TA
-          ! ALWX = -3.0*BLWX*TA
-          ! BLWX =  4.0*BLWX
+              _ASSERT(.false., 'unknown MOSFC_EXTRA_DERIVS_LAND')
+              
+           end if
+           
         else
+
+           ! GCM: Catchment coupled to atmosphere 
+           
            do N=1,NUM_SUBTILES
+              
               CFT   (:,N) = (CH(:,N)/CTATM)
               CFQ   (:,N) = (CQ(:,N)/CQATM)
+              
               SHSBT (:,N) = (SH  + DSH  *(TC(:,N)-THATM))*CFT(:,N)
               EVSBT (:,N) = (EVAP+ DEVAP*(QC(:,N)-QHATM))*CFQ(:,N)
-              DSHSBT(:,N) =  DSH  *CFT(:,N)
-              DEVSBT(:,N) =  DEVAP*CFQ(:,N)
-              ALWN(:,N)=ALW
-              BLWN(:,N)=BLW
+              DSHSBT(:,N) =        DSH  *                 CFT(:,N)
+              DEVSBT(:,N) =        DEVAP*                 CFQ(:,N)
+
+              ALWN  (:,N) =  ALW
+              BLWN  (:,N) =  BLW
+
            end do
-        end if
+
+        end if   ! Catchment offline
 
         ! Compute DQS; make sure QC is between QA and QSAT; compute RA.
         !
@@ -5215,7 +5311,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !   Some 40 lines below, duplicate code was present within #ifdef LAND_UPD block
         !   (later changed to "if (LAND_FIX)") and was removed in Jan 2022. 
         !   - reichle, 14 Jan 2022.
-
+        !
+        ! reichle, 9/9/2024:
+        !
+        ! WHY IS QC RESET *AFTER* IT WAS USED TO CALCULATE THE EXCHANGE COEFFS (AND DERIVS) ABOVE???
+        !
+        ! For reference, the following comment was copied from from LDASsa m3-16, specifically, from 
+        ! reichle-LDASsa_m3-16_6/src/Components/GEOSlana_GridComp/process_cat.F90 (Lines 330-333):
+        !
+        ! ! compute surface exchange coefficients etc BEFORE possibly resetting
+        ! ! profile of Qair-QAx-Qsat(surf) -- for consistency with two-stage 
+        ! ! run-method in GEOS_CatchGridComp.F90
+        ! ! reichle+qliu,  9 Oct 2008
+        
         do N=1,NUM_SUBTILES
            DQS(:,N) = GEOS_DQSAT ( TC(:,N), PS, QSAT=QSAT(:,N), PASCALS=.true., RAMP=0.0 )
            QC (:,N) = min(max(QA(:),QSAT(:,N)),QC(:,N))
@@ -5225,7 +5333,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         QC(:,FSNW) = QSAT(:,FSNW)
         
-! --------------------------------------------------------------------------
+        ! --------------------------------------------------------------------------
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
@@ -5281,25 +5389,25 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQC(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQC(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQC(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         
         call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5690,13 +5798,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              UUU                                                  ,&
 
              EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
-             SHSBT(:,FSAT),     DHSDQA(:,FSAT),     DSHSBT(:,FSAT),&
+             SHSBT(:,FSAT),     DHSDQC(:,FSAT),     DSHSBT(:,FSAT),&
              EVSBT(:,FTRN),     DEVSBT(:,FTRN),     DEDTC(:,FTRN) ,&
-             SHSBT(:,FTRN),     DHSDQA(:,FTRN),     DSHSBT(:,FTRN),&
+             SHSBT(:,FTRN),     DHSDQC(:,FTRN),     DSHSBT(:,FTRN),&
              EVSBT(:,FWLT),     DEVSBT(:,FWLT),     DEDTC(:,FWLT) ,&
-             SHSBT(:,FWLT),     DHSDQA(:,FWLT),     DSHSBT(:,FWLT),&
+             SHSBT(:,FWLT),     DHSDQC(:,FWLT),     DSHSBT(:,FWLT),&
              EVSBT(:,FSNW),     DEVSBT(:,FSNW),     DEDTC(:,FSNW) ,&
-             SHSBT(:,FSNW),     DHSDQA(:,FSNW),     DSHSBT(:,FSNW),&
+             SHSBT(:,FSNW),     DHSDQC(:,FSNW),     DSHSBT(:,FSNW),&
 
              TA           ,     QA                                ,&
 
@@ -6159,7 +6267,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(EVSBT    )
         deallocate(DEVSBT   )
         deallocate(DEDTC    )
-        deallocate(DHSDQA   )
+        deallocate(DHSDQC   )
         deallocate(CFT      )
         deallocate(CFQ      )
         deallocate(TCO      )
@@ -6230,10 +6338,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: emis(:)=>null()
   real, pointer :: ww(:,:)=>null()
   real, pointer :: fr(:,:)=>null()
-  real, pointer :: DCQ(:,:)=>null()
-  real, pointer :: DCH(:,:)=>null()
-  real, pointer :: DTC(:,:)=>null()
-  real, pointer :: DQC(:,:)=>null()
+  real, pointer :: delCQ_delTVA(:,:)=>null()
+  real, pointer :: delCH_delTVA(:,:)=>null()
+  real, pointer :: delCH_delTC(:,:)=>null()
+  real, pointer :: delCQ_delQC(:,:)=>null()
 
   !! -prognostic-variables-
   real, pointer :: tc(:,:)=>null()
@@ -6314,13 +6422,13 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, DCQ, 'DCQ', rc=status)
+  call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, DCH, 'DCH', rc=status)
+  call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, DTC, 'DTC', rc=status)
+  call MAPL_GetPointer(INTERNAL, delCH_delTC, 'delCH_delTC', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, DQC, 'DQC', rc=status)
+  call MAPL_GetPointer(INTERNAL, delCQ_delQC, 'delCQ_delQC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, tc, 'TC', rc=status)
   VERIFY_(status)
