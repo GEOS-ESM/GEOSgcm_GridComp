@@ -4,6 +4,8 @@ from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.saturation.qsat import QSat
 
+import xarray as xr
+
 
 class TranslateQSat(TranslateFortranData2Py):
     def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
@@ -17,13 +19,20 @@ class TranslateQSat(TranslateFortranData2Py):
             self.quantity_factory
         )
 
-        #FloatField Inputs
+        # FloatField Inputs
         self.in_vars["data_vars"] = {
             "PL": {},
             "T": {},
+            "ESTBLE_TEST": {},
+            "ESTBLW_TEST": {},
+            "ESTBLX_TEST": {},
+            "IT": {},
+            "IFELSE": {},
+            "QSAT_HALFWAY": {},
+            "TI": {},
         }
 
-        #Float Inputs
+        # Float Inputs
         self.in_vars["parameters"] = []
 
         # FloatField Outputs
@@ -32,7 +41,11 @@ class TranslateQSat(TranslateFortranData2Py):
             "ESTBLE_TEST": self.grid.compute_dict(),
             "ESTBLW_TEST": self.grid.compute_dict(),
             "ESTBLX_TEST": self.grid.compute_dict(),
-            "TEMP_IN_QSAT": self.grid.compute_dict(),
+            "IT": self.grid.compute_dict(),
+            "IFELSE": self.grid.compute_dict(),
+            "QSAT_HALFWAY": self.grid.compute_dict(),
+            "TI": self.grid.compute_dict(),
+            "LOC": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -42,7 +55,7 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
-    
+
     def make_ijk_field(self, data) -> Quantity:
         qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM],
@@ -50,7 +63,7 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
-    
+
     def make_extra_dim_field(self, data) -> Quantity:
         qty = self.nmodes_quantity_factory.empty(
             [Z_DIM, "table_axis"],
@@ -58,7 +71,7 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:] = qty.np.asarray(data[:])
         return qty
-    
+
     def compute(self, inputs):
         code = QSat(
             self.stencil_factory,
@@ -69,15 +82,32 @@ class TranslateQSat(TranslateFortranData2Py):
         T = self.make_ijk_field(inputs["T"])
         PL = self.make_ijk_field(inputs["PL"])
 
+        with xr.open_dataset("/home/charleskrop/netcdfs/QSat-Out.nc") as ds:
+            ese_array = ds.data_vars["ESTBLE_TEST"].values[0, 0, :]
+            esw_array = ds.data_vars["ESTBLW_TEST"].values[0, 0, :]
+            esx_array = ds.data_vars["ESTBLX_TEST"].values[0, 0, :]
 
-        code(T,
-             PL,
+        # FloatField_Extra_Dim Variables
+        ese = self.make_extra_dim_field(ese_array)
+        esw = self.make_extra_dim_field(esw_array)
+        esx = self.make_extra_dim_field(esx_array)
+
+        code(
+            T,
+            PL,
+            ese=ese,
+            esw=esw,
+            esx=esx,
         )
 
         return {
             "QSAT": code.QSat.view[:],
-            "ESTBLE_TEST": code.table.ese,
-            "ESTBLW_TEST": code.table.esw,
-            "ESTBLX_TEST": code.table.esx,
-            "TEMP_IN_QSAT": code.table._TI
+            "ESTBLE_TEST": code.ese.view[0],
+            "ESTBLW_TEST": code.esw.view[0],
+            "ESTBLX_TEST": code.esx.view[0],
+            "IT": code._IT.view[:],
+            "IFELSE": code._IFELSE.view[:],
+            "QSAT_HALFWAY": code._QSAT_HALFWAY.view[:],
+            "TI": code._TI.view[:],
+            "LOC": code.table._LOC,
         }
