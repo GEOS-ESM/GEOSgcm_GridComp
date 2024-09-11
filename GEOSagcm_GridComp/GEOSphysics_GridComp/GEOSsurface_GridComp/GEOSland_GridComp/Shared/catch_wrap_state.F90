@@ -83,7 +83,7 @@ contains
     !            about as much CPU as Catchment.  Numerical derivatives triple the runtime of 
     !            the MOSFC scheme.
 
-    if (statePtr%CATCHMENT_OFFLINE==0) then
+    if (statePtr%CATCH_OFFLINE==0) then
 
        statePtr%MOSFC_EXTRA_DERIVS_LAND = 0        ! must be 0 for GCM
 
