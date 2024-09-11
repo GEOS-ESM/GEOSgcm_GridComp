@@ -11,7 +11,6 @@ class TranslateAerActivation(TranslateFortranData2Py):
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
         self._grid = grid
-        self.max_error = 1e-9
 
         self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
             self.quantity_factory

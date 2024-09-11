@@ -16,9 +16,6 @@ class TranslateRedistributeClouds(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-        self.max_error = 1e-9
-
-        print(grid.__dict__)
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "RAD_CF": {},
