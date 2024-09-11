@@ -142,7 +142,7 @@ class ComputeUwshcu:
 
     def __call__(
         self,
-        dotransport: Int,          
+        dotransport: Float,          
         exnifc0_in: FloatField,      
         pmid0_in: FloatField,       
         zmid0_in: FloatField,      
@@ -154,12 +154,12 @@ class ComputeUwshcu:
         qi0_in: FloatField,       
         th0_in: FloatField,         
         tr0_inout: FloatField_NTracers,      
-        tr0: FloatField_NTracers,
-        ssthl0: FloatField,
-        ssqt0: FloatField,
-        ssu0: FloatField,
-        ssv0: FloatField,
-        sstr0: FloatField_NTracers,
+        tr0_test: FloatField_NTracers,
+        ssthl0_test: FloatField,
+        ssqt0_test: FloatField,
+        ssu0_test: FloatField,
+        ssv0_test: FloatField,
+        sstr0_test: FloatField_NTracers,
     ):
         
         #self.slope = Slope(

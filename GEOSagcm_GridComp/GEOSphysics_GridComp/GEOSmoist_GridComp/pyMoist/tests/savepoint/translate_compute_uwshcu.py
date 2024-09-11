@@ -5,6 +5,7 @@ from pyMoist.compute_uwshcu import ComputeUwshcu
 import numpy as np
 from ndsl.dsl.typing import IntField 
 from pyMoist.pyMoist_constants import ncnst
+from pyMoist.types import FloatField_NTracers
 
 
 class TranslateComputeUwshcu(TranslateFortranData2Py):
@@ -55,7 +56,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
     def reshape_before(self,inputs):
         # Reshape input fields from (i*j, k) to (i, j, k)
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-        n = ncnst # Number of tracers
 
         reshaped_inputs = {}
 
@@ -65,7 +65,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             if isinstance(array, np.ndarray) and array.ndim == 2:
                 reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float32)
             elif isinstance(array, np.ndarray) and array.ndim == 3:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k, n)).astype(np.float32)
+                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float32)
             else:
                 # If not a 2D or 3D array, keep as is
                 reshaped_inputs[key] = array
@@ -75,10 +75,18 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # Add halo of 3 in i and j dimensions
         halo_arrays = {}
         for key, array in reshaped_inputs.items():
-            # Add conditional statements to deal wit 2D and 3D arrays and Floats
-            new_array = np.zeros((i+6, j+6, k), dtype=np.float64)
-            new_array[3:-3, 3:-3, :] = array
-            halo_arrays[key] = new_array
+            if isinstance(array, np.ndarray) and array.ndim == 3:
+                new_array = np.zeros((i+6, j+6, k), dtype=np.float64)
+                new_array[3:-3, 3:-3, :] = array
+                halo_arrays[key] = new_array
+            elif isinstance(array, np.ndarray) and array.ndim == 4:
+                new_array = np.zeros((i+6, j+6, k, ncnst), dtype=np.float64)
+                new_array[3:-3, 3:-3, :, :] = array
+                halo_arrays[key] = new_array
+            else:
+                # If not a 2D or 3D array, keep as is
+                new_array = array
+                halo_arrays[key] = new_array
 
         return halo_arrays
 
@@ -94,6 +102,14 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             reshaped_outputs = np.reshape(outputs, (i*j, k))
 
         return reshaped_outputs
+    
+     def make_ntracers_ijk_field(self, data) -> Quantity:
+        qty = self.nmodes_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM, ncnst],
+            "n/a",
+        )
+        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
         
 
     # Calculated Outputs
@@ -102,13 +118,15 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         inputs_2D = self.reshape_before(inputs)
         print("Reshaped 2D fields to 3D")
 
+        # Add something here to deal with tracer bundles
+
         outputs = {
-            "tr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
+            "tr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, 23], dtype=FloatField units="unknown"),
             "ssthl0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
             "ssqt0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
             "ssu0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
             "ssv0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
-            "sstr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], dtype=IntField, units="unknown"),
+            "sstr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, 23], units="unknown"),
         }
 
      
