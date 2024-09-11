@@ -5524,7 +5524,6 @@ contains
                 AERO, aero_num_, aero_dgn_, aero_sigma_, &
                 aero_density_, aero_hygroscopicity_, &
                 aero_f_dust_, aero_f_soot_, aero_f_organic_ )
-           call cpu_time(start)
            call pymoist_interface_f_run_AerActivation( &
                aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
                FRLAND, CCN_OCN*1.e6, CCN_LND*1.e6, &
@@ -5532,7 +5531,6 @@ contains
                QLCN, QICN, QLLS, QILS, &
                TMP3D, TKE, &
                NACTI, NWFA, NACTL)
-           call cpu_time(finish)
            deallocate(aero_num_)
            deallocate(aero_dgn_)
            deallocate(aero_sigma_)
@@ -5541,16 +5539,12 @@ contains
            deallocate(aero_f_dust_)
            deallocate(aero_f_soot_)
            deallocate(aero_f_organic_)
-           if (rank == 0) print *, rank, ': aer_activation: time taken = ', finish - start, 's'
          else
 #endif
-           call cpu_time(start)
            call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                                    SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                                    AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
 #ifdef PYMOIST_INTEGRATION
-           call cpu_time(finish)
-           if (rank == 0) print *, rank, '0: aer_activation: time taken = ', finish - start, 's'
          endif
 #endif
        else
