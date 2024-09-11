@@ -54,13 +54,15 @@ def _saturation_formulation(
 ):
     if formulation == SaturationFormulation.Staars:
         TT = t - MAPL_TICE
-        if TT < TSTARR1:
+        if TT <= TSTARR1:
+            LOC = 1.1
             EX = (
                 TT
                 * (TT * (TT * (TT * (TT * (TT * S16 + S15) + S14) + S13) + S12) + S11)
                 + S10
             )
         elif TT >= TSTARR1 and TT < TSTARR2:
+            LOC = 1.2
             W = (TSTARR2 - TT) / (TSTARR2 - TSTARR1)
             EX = W * (
                 TT
@@ -72,12 +74,14 @@ def _saturation_formulation(
                 + S20
             )
         elif TT >= TSTARR2 and TT < TSTARR3:
+            LOC = 1.3
             EX = (
                 TT
                 * (TT * (TT * (TT * (TT * (TT * S26 + S25) + S24) + S23) + S22) + S21)
                 + S20
             )
         elif TT >= TSTARR3 and TT < TSTARR4:
+            LOC = 1.4
             W = (TSTARR4 - TT) / (TSTARR4 - TSTARR3)
             EX = W * (
                 TT
@@ -89,17 +93,20 @@ def _saturation_formulation(
                 + BI0
             )
         else:
+            LOC = 1.5
             EX = (
                 TT
                 * (TT * (TT * (TT * (TT * (TT * BI6 + BI5) + BI4) + BI3) + BI2) + BI1)
                 + BI0
             )
     elif formulation == SaturationFormulation.CAM:
+        LOC = 2.0
         TT = MAPL_TICE / t
         EX = DI[0] * np.exp(-(DI[1] / TT + DI[2] * np.log(TT) + DI[3] * TT))
     elif formulation == SaturationFormulation.MurphyAndKoop:
+        LOC = 3.0
         EX = np.exp(CI[0] + CI[1] / t + CI[2] * np.log(t) + CI[3] * t)
-    return EX
+    return Float(EX), LOC
 
 
 def qsat_ice_scalar_exact(
@@ -117,7 +124,7 @@ def qsat_ice_scalar_exact(
         TI = temperature
 
     DX = 0  # only calulcated when DQ is not none
-    EX = _saturation_formulation(formulation, TI)
+    EX, LOC = _saturation_formulation(formulation, TI)
 
     if DQ is not None:
         if temperature < TMINICE:
@@ -128,7 +135,7 @@ def qsat_ice_scalar_exact(
             if PL > EX:
                 DD = EX
                 TI = temperature + DELTA_T
-                EX = _saturation_formulation(formulation, TI)
+                EX, _ = _saturation_formulation(formulation, TI)
                 DDQ = EX - DD
                 EX = DD
     if PL is not None:
@@ -145,4 +152,4 @@ def qsat_ice_scalar_exact(
         if DQ is not None:
             DX = DDQ * (1.0 / DELTA_T)
 
-    return EX, TI, DX
+    return EX, TI, DX, LOC
