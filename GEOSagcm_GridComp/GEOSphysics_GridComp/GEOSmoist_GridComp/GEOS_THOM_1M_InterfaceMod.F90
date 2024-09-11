@@ -1,7 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
-!#define PDFDIAG 1
+#define PDFDIAG 1
 
 !=============================================================================
 !BOP

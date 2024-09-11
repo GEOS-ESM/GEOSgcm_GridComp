@@ -1,7 +1,7 @@
 ! $Id$
 ! $Name$
 
-!#define PDFDIAG 1
+#define PDFDIAG 1
 
 module cloudnew
 

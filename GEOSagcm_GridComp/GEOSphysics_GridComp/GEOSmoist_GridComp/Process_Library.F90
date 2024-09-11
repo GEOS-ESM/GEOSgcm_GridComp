@@ -1,7 +1,7 @@
 ! $Id$
 
 #include "MAPL_Generic.h"
-!#define PDFDIAG 1
+#define PDFDIAG 1
 
 !=============================================================================
 !BOP
@@ -1888,7 +1888,7 @@ end subroutine fast_dblgss
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. abs(Skew_qw).lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec

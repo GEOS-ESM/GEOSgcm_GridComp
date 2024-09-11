@@ -2,7 +2,7 @@
 ! VERIFY_ and RETURN_ macros for error handling.
 
 !#define UWDIAG 1
-!#define PDFDIAG 1
+#define PDFDIAG 1
 
 #include "MAPL_Generic.h"
 
