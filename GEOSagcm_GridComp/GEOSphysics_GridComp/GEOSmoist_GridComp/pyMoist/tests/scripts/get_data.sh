@@ -2,14 +2,7 @@
 
 set -e -x
 
-TEST_DATA_PATH="../../test_data"
+TEST_DATA_PATH="../../test_data/" #11.5.2/Moist/
 mkdir -p $TEST_DATA_PATH
-wget https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/Moist/AerActivation_nc.tar.gz
-mv AerActivation_nc.tar.gz $TEST_DATA_PATH
-wget https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/Moist/rad_coup_data_nc.tar.gz
-mv rad_coup_data_nc.tar.gz $TEST_DATA_PATH
 cd $TEST_DATA_PATH
-tar -xzvf AerActivation_nc.tar.gz
-rm AerActivation_nc.tar.gz
-tar -xzvf rad_coup_data_nc.tar.gz
-rm rad_coup_data_nc.tar.gz
+wget -r -nH --cut-dir=5 -np -R "index.html*" https://portal.nccs.nasa.gov/datashare/astg/smt/geos-fp/translate/11.5.2/Moist/TBC_C24_L72_Debug/

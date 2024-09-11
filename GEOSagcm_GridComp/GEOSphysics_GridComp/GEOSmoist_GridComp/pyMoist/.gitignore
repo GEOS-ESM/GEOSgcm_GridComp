@@ -8,5 +8,5 @@ test_data/
 .translate-errors/
 .vscode
 test_data/
-*.mod
 sandbox/
+*.mod
