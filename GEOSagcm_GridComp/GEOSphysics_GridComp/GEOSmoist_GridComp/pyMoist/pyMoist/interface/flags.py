@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-
 from typing import TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     import cffi
@@ -40,8 +40,4 @@ def flags_fv_to_python(
 
     py_flags = MoistFlags()
     _generic_config_bridge(py_flags, fv_flags)
-    py_flags.layout = (
-        getattr(fv_flags, "layout_x"),
-        getattr(fv_flags, "layout_y"),
-    )
     return py_flags

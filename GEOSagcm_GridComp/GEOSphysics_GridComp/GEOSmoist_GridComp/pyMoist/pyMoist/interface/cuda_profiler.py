@@ -37,7 +37,7 @@ class CUDAProfiler:
             cp.cuda.nvtx.RangePop()
 
     @classmethod
-    def sync_device():
+    def sync_device(cls):
         if GPU_AVAILABLE:
             cp.cuda.runtime.deviceSynchronize()
 

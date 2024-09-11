@@ -5,14 +5,10 @@ Wraps pyMoist for GEOS interface use.
 import enum
 import logging
 import os
-from dataclasses import dataclass
-from typing import Any, Dict
 
-import numpy as np
 from gt4py.cartesian.config import build_settings as gt_build_settings
 from mpi4py import MPI
 
-import ndsl.constants
 from ndsl import (
     CompilationConfig,
     CubedSphereCommunicator,
@@ -22,7 +18,6 @@ from ndsl import (
     GridIndexing,
     NullComm,
     PerformanceCollector,
-    Quantity,
     QuantityFactory,
     StencilConfig,
     StencilFactory,
@@ -30,10 +25,10 @@ from ndsl import (
     TilePartitioner,
     orchestrate,
 )
-from ndsl.constants import N_HALO_DEFAULT, X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.dace.build import set_distributed_caches
 from ndsl.dsl.gt4py_utils import is_gpu_backend
-from ndsl.dsl.typing import Float, floating_point_precision
+from ndsl.dsl.typing import floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation

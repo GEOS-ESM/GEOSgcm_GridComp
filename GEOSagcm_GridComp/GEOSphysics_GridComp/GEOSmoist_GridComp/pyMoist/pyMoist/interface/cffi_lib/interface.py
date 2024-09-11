@@ -16,7 +16,11 @@ source = """
 from {} import ffi
 from datetime import datetime
 from mpi4py import MPI
-from pyMoist.interface.python_bridge import pyMoist_init, pyMoist_run_AerActivation, pyMoist_finalize
+from pyMoist.interface.python_bridge import (
+    pyMoist_init,
+    pyMoist_run_AerActivation,
+    pyMoist_finalize
+)
 import traceback
 
 @ffi.def_extern()
@@ -64,7 +68,7 @@ def pymoist_interface_py_finalize() -> int:
     return 0
 
 """.format(
-    TMPFILEBASE, _mpi_comm_t, _mpi_comm_t
+    TMPFILEBASE
 )
 
 with open("moist.h") as f:

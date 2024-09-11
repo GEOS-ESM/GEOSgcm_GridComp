@@ -1,6 +1,6 @@
 from math import prod
 from types import ModuleType
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, TypeAlias
 
 import cffi
 import numpy as np
@@ -9,8 +9,11 @@ from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 
 
-DeviceArray = cp.ndarray if cp else None
-PythonArray = Union[np.ndarray, (cp.ndarray if cp else None)]
+# Dev note: we would like to use cp.ndarray for Device and
+# Union of np and cp ndarray for Python but we can't
+# because cp might not be importable!
+DeviceArray: TypeAlias = np.ndarray
+PythonArray: TypeAlias = np.ndarray
 
 
 class NullStream:

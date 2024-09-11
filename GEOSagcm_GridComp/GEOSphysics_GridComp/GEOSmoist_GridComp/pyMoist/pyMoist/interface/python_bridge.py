@@ -1,10 +1,7 @@
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
 import numpy as np
-
-# from f_py_conversion import FortranPythonConversion
-# from cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from mpi4py import MPI
 
 from ndsl.dsl.gt4py_utils import is_gpu_backend
@@ -12,8 +9,8 @@ from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
+from pyMoist.interface.flags import flags_fv_to_python
 from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace
-from pyMoist.interface.flags import MoistFlags, flags_fv_to_python
 
 
 if TYPE_CHECKING:
@@ -21,9 +18,12 @@ if TYPE_CHECKING:
 
 
 class PYMOIST_WRAPPER:
-    def __init__(
+    def __init__(self) -> None:
+        self.ready = False
+
+    def init(
         self,
-        fv_flags: MoistFlags,
+        fv_flags: "cffi.FFI.CData",
         backend: str = "dace:cpu",
     ) -> None:
         self.rank = MPI.COMM_WORLD.Get_rank()
@@ -33,10 +33,10 @@ class PYMOIST_WRAPPER:
         # For Fortran<->NumPy conversion
         if is_gpu_backend(self.backend):
             numpy_module = cp
-            fortran_mem_space = MemorySpace.DEVICE
+            self.fortran_mem_space = MemorySpace.DEVICE
         else:
             numpy_module = np
-            fortran_mem_space = MemorySpace.HOST
+            self.fortran_mem_space = MemorySpace.HOST
         self.f_py = FortranPythonConversion(
             self.flags.npx,
             self.flags.npy,
@@ -47,7 +47,8 @@ class PYMOIST_WRAPPER:
         # Setup pyFV3's dynamical core
         self.pymoist = GEOSPyMoistWrapper(self.flags, backend)
 
-        self._timings = {}
+        self._timings: Dict[str, List[float]] = {}
+        self.ready = True
 
     def finalize(self):
         import json
@@ -170,11 +171,7 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(nactl, f_nactl)
 
 
-# Below is the entry point to the interface
-# ToDo: we should build the object outside of the sim loop from fortran
-# potentially by writing a pyfv3_interface_setup and caching the ptr Fortran side
-# or by having a central python interpreter object handled by CFFI to register against
-WRAPPER = None
+WRAPPER = PYMOIST_WRAPPER()
 
 
 def pyMoist_run_AerActivation(
@@ -197,8 +194,7 @@ def pyMoist_run_AerActivation(
     nwfa: "cffi.FFI.CData",
     nactl: "cffi.FFI.CData",
 ):
-    global WRAPPER
-    if not WRAPPER:
+    if not WRAPPER.ready:
         raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
     WRAPPER.aer_activation(
         aero_dgn,
@@ -223,18 +219,16 @@ def pyMoist_run_AerActivation(
 
 
 def pyMoist_finalize():
-    if WRAPPER is not None:
+    if WRAPPER.ready:
         WRAPPER.finalize()
 
 
 def pyMoist_init(fv_flags: "cffi.FFI.CData"):
     # Read in the backend
     BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
-
-    global WRAPPER
-    if WRAPPER is not None:
+    if WRAPPER.ready:
         raise RuntimeError("[PYMOIST WRAPPER] Double init")
-    WRAPPER = PYMOIST_WRAPPER(
+    WRAPPER.init(
         fv_flags=fv_flags,
         backend=BACKEND,
     )
