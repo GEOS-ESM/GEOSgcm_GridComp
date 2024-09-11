@@ -4065,10 +4065,10 @@ subroutine qs_table (n)
     real :: tc
 
     ! -----------------------------------------------------------------------
-    ! compute es over ice between - 160 deg c and -40 deg c.
+    ! compute es over ice between - 160 deg c and 0 deg c.
     ! -----------------------------------------------------------------------
 
-    do i = 1, 1200
+    do i = 1, 1600
         tem = es_table_tmin + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * li2
