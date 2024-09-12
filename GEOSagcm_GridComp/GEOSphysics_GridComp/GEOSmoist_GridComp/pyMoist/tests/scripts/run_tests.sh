@@ -1,5 +1,5 @@
 #!/bin/bash
-rm -rf ../.gt_cache_*
+rm -rf ./.gt_cache_*
 export PACE_FLOAT_PRECISION=32
 export FV3_DACEMODE=Python
 python -m pytest -v -s -x\
