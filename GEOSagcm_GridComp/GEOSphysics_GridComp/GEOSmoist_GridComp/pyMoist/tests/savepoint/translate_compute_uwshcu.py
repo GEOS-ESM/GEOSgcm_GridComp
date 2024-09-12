@@ -1,11 +1,9 @@
-from ndsl import Namelist, StencilFactory
+from ndsl import Namelist, StencilFactory, Quantity
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.compute_uwshcu import ComputeUwshcu
+from pyMoist.UW.compute_uwshcu import ComputeUwshcu
 import numpy as np
-from ndsl.dsl.typing import IntField 
 from pyMoist.pyMoist_constants import ncnst
-from pyMoist.types import FloatField_NTracers
 
 
 class TranslateComputeUwshcu(TranslateFortranData2Py):
@@ -16,18 +14,17 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         stencil_factory: StencilFactory,
     ):
         super().__init__(grid, stencil_factory)
-        self.compute_func = ComputeUwshcu(
-            self.stencil_factory,
-            self.grid.quantity_factory,
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+
+        self.ntracers_quantity_factory = ComputeUwshcu.make_ntracers_quantity_factory(
+            self.quantity_factory
         )
 
         self.max_error = 1e-9
 
-        print(grid.__dict__)
-
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "dotransport": {},
             "exnifc0_in": {},
             "pmid0_in": {},
             "zmid0_in": {},
@@ -41,7 +38,10 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "tr0_inout": {},
         }
 
-        print(self.in_vars["data_vars"])
+        # Float/Int Inputs
+        self.in_vars["parameters"] = [
+            "dotransport",
+        ]
 
         # FloatField Outputs
         self.out_vars = {
@@ -54,14 +54,11 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         }
 
     def reshape_before(self,inputs):
-        # Reshape input fields from (i*j, k) to (i, j, k)
+        # Reshape input fields to the necessary shape
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-
         reshaped_inputs = {}
-
+        
         for key, array in inputs.items():
-            print(key,array)
-            # Check if the input is a numpy array and has 2 dimensions
             if isinstance(array, np.ndarray) and array.ndim == 2:
                 reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float32)
             elif isinstance(array, np.ndarray) and array.ndim == 3:
@@ -70,8 +67,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
                 # If not a 2D or 3D array, keep as is
                 reshaped_inputs[key] = array
 
-        #reshaped_inputs = {key: np.reshape(inputs[key], (i, j, k)).astype(np.float32) for key in inputs}
-    
+        '''
         # Add halo of 3 in i and j dimensions
         halo_arrays = {}
         for key, array in reshaped_inputs.items():
@@ -87,59 +83,120 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
                 # If not a 2D or 3D array, keep as is
                 new_array = array
                 halo_arrays[key] = new_array
+                '''
 
-        return halo_arrays
+        return reshaped_inputs
+    
 
     def reshape_after(self,outputs):
-        # Reshape output fields from (i, j, k) back to (i*j, k)
+        # Reshape output fields back to original shape
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-        if len(outputs) > 1:
+        
+        if isinstance(outputs, dict):
             reshaped_outputs = {}
             for key, array in outputs.items():
-                reshaped_array = np.reshape(array.view[:,:,:], (i*j, k))
+                if array.ndim == 4: 
+                    reshaped_array = np.reshape(array, (i * j, k, ncnst))
+                else:  
+                    reshaped_array = np.reshape(array, (i * j, k))
                 reshaped_outputs[key] = reshaped_array
         else:
-            reshaped_outputs = np.reshape(outputs, (i*j, k))
+            # If outputs is not a dictionary, handle single array
+            if outputs.ndim == 4: 
+                reshaped_outputs = np.reshape(outputs, (i * j, k, ncnst))
+            else:
+                reshaped_outputs = np.reshape(outputs, (i * j, k))
 
         return reshaped_outputs
     
-     def make_ntracers_ijk_field(self, data) -> Quantity:
-        qty = self.nmodes_quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM, ncnst],
+    
+    def make_ijk_field(self, data) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM],
+            "n/a",
+        )
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
+
+    def make_ntracers_ijk_field(self, data) -> Quantity:
+        qty = self.ntracers_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM, "ntracers"],
             "n/a",
         )
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
         
 
-    # Calculated Outputs
+    # Perform stencil computation
     def compute(self, inputs):
+        compute_uwshcu = ComputeUwshcu(
+            self.stencil_factory,
+            self.grid.quantity_factory,
+        )
 
-        inputs_2D = self.reshape_before(inputs)
-        print("Reshaped 2D fields to 3D")
+        # Reshape input variables and add halo
+        inputs_reshaped = self.reshape_before(inputs)
+        print("Reshaped inputs")
+        
+        # Inputs
+        dotransport = inputs_reshaped["dotransport"]
+        exnifc0_in = self.make_ijk_field(inputs_reshaped["exnifc0_in"])
+        pmid0_in = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        zmid0_in = self.make_ijk_field(inputs_reshaped["zmid0_in"])
+        exnmid0_in = self.make_ijk_field(inputs_reshaped["exnmid0_in"])
+        u0_in = self.make_ijk_field(inputs_reshaped["u0_in"])
+        v0_in = self.make_ijk_field(inputs_reshaped["v0_in"])
+        qv0_in = self.make_ijk_field(inputs_reshaped["qv0_in"])
+        ql0_in = self.make_ijk_field(inputs_reshaped["ql0_in"])
+        qi0_in = self.make_ijk_field(inputs_reshaped["qi0_in"])
+        th0_in = self.make_ijk_field(inputs_reshaped["th0_in"])
+        tr0_inout = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
 
-        # Add something here to deal with tracer bundles
 
-        outputs = {
-            "tr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, 23], dtype=FloatField units="unknown"),
-            "ssthl0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
-            "ssqt0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
-            "ssu0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
-            "ssv0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM], units="unknown"),
-            "sstr0_test": self.grid.quantity_factory.zeros(dims=[X_DIM, Y_DIM, Z_DIM, 23], units="unknown"),
-        }
+        # Outputs
+        tr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        ssthl0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssqt0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssu0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssv0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        sstr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
 
-     
-        self.compute_func(**inputs_2D,**outputs)
-        print("Calculated conden on 3D fields")
 
-        outputs_2D = self.reshape_after(outputs)
-        print("Reshaped back to 2D")
+        compute_uwshcu(
+            dotransport=dotransport,
+            exnifc0_in=exnifc0_in,
+            pmid0_in=pmid0_in,
+            zmid0_in=zmid0_in,
+            exnmid0_in=exnmid0_in,
+            u0_in=u0_in,
+            v0_in=v0_in,
+            qv0_in=qv0_in,
+            ql0_in=ql0_in,
+            qi0_in=qi0_in,
+            th0_in=th0_in,
+            tr0_inout=tr0_inout,
+            tr0_test=tr0_test,
+            ssthl0_test=ssthl0_test,
+            ssqt0_test=ssqt0_test,
+            ssu0_test=ssu0_test,
+            ssv0_test=ssv0_test,
+            sstr0_test=sstr0_test,
+        )
+        print("Performed stencil compute_uwshcu on 3D fields")
 
-        return {"tr0_test": outputs_2D["tr0_test"],
-                "ssthl0_test": outputs_2D["ssthl0_test"],
-                "ssqt0_test": outputs_2D["ssqt0_test"],
-                "ssu0_test": outputs_2D["ssu0_test"],
-                "ssv0_test": outputs_2D["ssv0_test"],
-                "sstr0_test": outputs_2D["sstr0_test"],
+        # Reshape output variables back to original shape
+        tr0_test_3D = self.reshape_after(tr0_test.view[:,:,:,:])
+        ssthl0_test_2D = self.reshape_after(ssthl0_test.view[:,:,:])
+        ssqt0_test_2D = self.reshape_after(ssqt0_test.view[:,:,:])
+        ssu0_test_2D = self.reshape_after(ssu0_test.view[:,:,:])
+        ssv0_test_2D = self.reshape_after(ssv0_test.view[:,:,:])
+        sstr0_test_3D = self.reshape_after(sstr0_test.view[:,:,:,:])
+        print("Reshaped outputs back to original shape")
+
+        return {"tr0_test": tr0_test_3D,
+                "ssthl0_test": ssthl0_test_2D,
+                "ssqt0_test": ssqt0_test_2D,
+                "ssu0_test": ssu0_test_2D,
+                "ssv0_test": ssv0_test_2D,
+                "sstr0_test": sstr0_test_3D,
             }

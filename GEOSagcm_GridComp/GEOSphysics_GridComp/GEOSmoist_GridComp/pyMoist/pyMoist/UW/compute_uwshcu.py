@@ -1,14 +1,18 @@
+import copy
+
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD
 import pyMoist.pyMoist_constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, Float, Int 
 from ndsl import StencilFactory, QuantityFactory
 from pyMoist.types import FloatField_NTracers
 #from pyMoist.slope import Slope, calc_slope
+from ndsl.quantity import Quantity
+import numpy as np
+
 
 '''
-@gtscript.function
 def slope(field: FloatField, p0: FloatField, slope: FloatField):
     with computation(PARALLEL), interval(0, 1):
         value = (field[0, 0, 1] - field[0, 0, 0]) / (p0[0, 0, 1] - p0[0, 0, 0])
@@ -28,6 +32,29 @@ def slope(field: FloatField, p0: FloatField, slope: FloatField):
 
     return slope
 '''
+
+@gtscript.function
+def compute_slope(field: FloatField, p0: FloatField)-> Float:
+    value = (field[0, 0, 1] - field[0, 0, 0]) / (p0[0, 0, 1] - p0[0, 0, 0])
+    if value > 0.0:
+        slope = max(0.0, value)
+    else:
+        slope =  min(0.0, value)
+
+    return slope
+
+@gtscript.function
+def compute_above_below_slope(field: FloatField, p0: FloatField) -> Float:
+    above_value = (field[0, 0, 1] - field[0, 0, 0]) / (p0[0, 0, 1] - p0[0, 0, 0])
+    below_value = (field[0, 0, 0] - field[0, 0, -1]) / (p0[0, 0, 0] - p0[0, 0, -1])
+    if above_value > 0.0:
+        slope = max(0.0, min(above_value, below_value))
+    else:
+        slope = min(0.0, max(above_value, below_value))
+
+    return slope
+
+
 
 
 def compute_uwshcu(
@@ -67,9 +94,9 @@ def compute_uwshcu(
     sungsu@atmos.washington.edu    
                                                                   
     For GEOS-specific questions, email nathan.arnold@nasa.gov                                                         
-    '''
+    
 
-    '''
+    
     Add description of variables
     '''
 
@@ -106,23 +133,41 @@ def compute_uwshcu(
          thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
          thvl0 = (1.0 + zvir*qt0) * thl0
 
-         # Compute slopes of environmental variables in each layer
-         #ssthl0 = slope(thl0, pmid0)
-         #ssqt0 = slope(qt0 , pmid0)
-         #ssu0 = slope(u0  , pmid0)
-         #ssv0 = slope(v0  , pmid0)
-         ssthl0 = thl0
-         ssqt0 = qt0
-         ssu0 = u0
-         ssv0 = v0
+         sstr0 = tr0
 
-         if dotransport == 1.0:
-             n=0
-             # Loop over tracers
-             while n < constants.ncnst:
-                #sstr0[0,0,0][n] = slope(tr0[0,0,0][n], pmid0)
-                sstr0[0,0,0][n] = tr0[0,0,0][n]
-                n+=1
+    # Compute slopes of environmental variables in each layer
+    with computation(PARALLEL), interval(0,1):
+         ssthl0 = compute_slope(thl0,pmid0)
+         ssqt0 = compute_slope(qt0,pmid0)
+         ssu0 = compute_slope(u0,pmid0)
+         ssv0 = compute_slope(v0,pmid0)
+         #if dotransport == 1.0:
+         #   n=0
+         #   while n < constants.ncnst:
+         #       sstr0 = compute_slope(tr0[n],pmid0)
+         #       n+=1
+
+    with computation(PARALLEL), interval(1,-1):
+         ssthl0 = compute_above_below_slope(thl0,pmid0)
+         ssqt0 = compute_above_below_slope(qt0,pmid0)
+         ssu0 = compute_above_below_slope(u0,pmid0)
+         ssv0 = compute_above_below_slope(v0,pmid0)
+         #if dotransport == 1.0:
+         #   n=0
+         #   while n < constants.ncnst:
+         #       sstr0 = compute_above_below_slope(tr0[n],pmid0)
+         #       n+=1
+
+    with computation(PARALLEL), interval(-1,None):
+         ssthl0 = ssthl0[0,0,-1]
+         ssqt0 = ssqt0[0,0,-1]
+         ssu0 = ssu0[0,0,-1]
+         ssv0 = ssv0[0,0,-1]
+         #if dotransport == 1.0:
+         #   n=0
+         #   while n < constants.ncnst:
+         #       sstr0 = sstr0[0,0,-1][n]
+         #       n+=1
 
 
 class ComputeUwshcu:
@@ -134,11 +179,25 @@ class ComputeUwshcu:
         
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
-       
+
+        #self._slope = stencil_factory.from_dims_halo(
+        #    func=slope,
+        #    compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        #)
         self._compute_uwshcu = self.stencil_factory.from_dims_halo(
             func=compute_uwshcu,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+
+    @staticmethod
+    def make_ntracers_quantity_factory(ijk_quantity_factory: QuantityFactory):
+        ntracers_quantity_factory = copy.deepcopy(ijk_quantity_factory)
+        ntracers_quantity_factory.set_extra_dim_lengths(
+            **{
+                "ntracers": constants.ncnst,
+            }
+        )
+        return ntracers_quantity_factory
 
     def __call__(
         self,
@@ -161,24 +220,21 @@ class ComputeUwshcu:
         ssv0_test: FloatField,
         sstr0_test: FloatField_NTracers,
     ):
-        
-        #self.slope = Slope(
-        #    self.stencil_factory,
-        #    self.quantity_factory,
-        #)
+
 
         self._compute_uwshcu(
-            dotransport, 
-            exnifc0_in, 
-            pmid0_in, 
-            zmid0_in, 
-            u0_in, 
-            v0_in, 
-            qv0_in, 
-            ql0_in, 
-            qi0_in, 
-            th0_in, 
-            tr0_inout,
+            dotransport=dotransport, 
+            exnifc0_in=exnifc0_in, 
+            pmid0_in=pmid0_in, 
+            zmid0_in=zmid0_in, 
+            exnmid0_in=exnmid0_in,
+            u0_in=u0_in, 
+            v0_in=v0_in, 
+            qv0_in=qv0_in, 
+            ql0_in=ql0_in, 
+            qi0_in=qi0_in, 
+            th0_in=th0_in, 
+            tr0_inout=tr0_inout,
             tr0=tr0_test,
             ssthl0=ssthl0_test,
             ssqt0=ssqt0_test,
@@ -186,6 +242,7 @@ class ComputeUwshcu:
             ssv0=ssv0_test,
             sstr0=sstr0_test,
         )
+        
 
 
       
