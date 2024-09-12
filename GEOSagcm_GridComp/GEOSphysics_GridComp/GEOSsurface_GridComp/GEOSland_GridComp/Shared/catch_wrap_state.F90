@@ -77,11 +77,12 @@ contains
     !    
     !    0 : none                   Default for Helfand
     !    1 : analytical derivs      Default for Louis;   *not* available for Helfand
-    !    2 : numerical  derivs             
+    !    2 : numerical  derivs
+    !    3 : numerical  derivs      via virtual temp.;   *not* available for Helfand
     !
     !  Runtimes: Helfand takes ~10 times longer than Louis.  In offline mode, Helfand consumes
-    !            about as much CPU as Catchment.  Numerical derivatives triple the runtime of 
-    !            the MOSFC scheme.
+    !            about as much CPU as Catchment.  Option 2 triples the runtime of the MOSFC scheme.
+    !            Option 3 doubles the runtime of the Louis scheme.  
 
     if (statePtr%CATCH_OFFLINE==0) then
 
@@ -96,14 +97,14 @@ contains
           ! Louis
           call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=1,             __RC__ )
           ! make sure parameter values is allowed
-          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==1 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
+          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii>=0 .and. ii<=3, 'unknown MOSFC_EXTRA_DERIVS_LAND for Louis  ')
           
        elseif (statePtr%CHOOSEMOSFC==1) then
           
           ! Helfand
           call MAPL_GetResource( SCF, statePtr%MOSFC_EXTRA_DERIVS_LAND,  label='MOSFC_EXTRA_DERIVS_LAND:',  DEFAULT=0,             __RC__ )
           ! make sure parameter value is allowed (analytical derivs not implemented for Helfand)
-          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0            .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
+          ii = statePtr%MOSFC_EXTRA_DERIVS_LAND ; _ASSERT(ii==0 .or. ii==2, 'unknown MOSFC_EXTRA_DERIVS_LAND for Helfand')   
           
        else
           

@@ -1396,8 +1396,8 @@ subroutine SetServices ( GC, RC )
     RESTART            = RESTART                     ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
-
-  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+  
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
      
      ! for *analytical* extra derivatives in louissurface
      
@@ -1423,7 +1423,7 @@ subroutine SetServices ( GC, RC )
           RC=STATUS  )
      VERIFY_(STATUS)
 
-  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
      
      ! for *numerical* extra derivatives in helfsurface and louissurface
      
@@ -3253,14 +3253,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
     VERIFY_(STATUS)
     
-    if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+    if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then   
        
        call MAPL_GetPointer(INTERNAL,delCH_delTVA , 'delCH_delTVA' ,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL,delCQ_delTVA , 'delCQ_delTVA' ,    RC=STATUS)
        VERIFY_(STATUS)
        
-    elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+    elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
 
        call MAPL_GetPointer(INTERNAL,delCQ_delQC  , 'delCQ_delQC'  ,    RC=STATUS)
        VERIFY_(STATUS)   
@@ -3403,10 +3403,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
-    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
        
        ! allocate variables for numerical extra derivatives (louissurface, helfsurface)
-
+       
        allocate(DeltaTC( NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
        allocate(DeltaQC( NT,NUM_SUBTILES),STAT=STATUS);  VERIFY_(STATUS)
 
@@ -3544,7 +3544,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
             
             ! none .or. numerical extra derivatives
             
-            if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+            if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
 
                ! Prep calculation of numerical extra derivatives.  Start with calling louissurface with perturbed inputs and
                !  save only the perturbed exchange coeffs.  The final call with nominal inputs produces the unperturbed
@@ -3558,17 +3558,21 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                DummyZ0T = Z0T
                DummyCM  = CM
                               
-               call louissurface(3,N,UU,WW,PS,TA,TC+DeltaTC,QA,QC        ,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CHpert,CQ    ,UUU,UCN,RE)
-
-               ! perturb QC: send in (QC+DeltaQC), get back CQpert
+               call louissurface(   3,N,UU,WW,PS,TA,TC+DeltaTC,QA,QC        ,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CHpert,CQ    ,UUU,UCN,RE)
                
-               DeltaQC  = MOSFC_pert_fac*QC
-               
-               DummyZ0T = Z0T
-               DummyCM  = CM
+               if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+                  
+                  ! perturb QC: send in (QC+DeltaQC), get back CQpert
+                  
+                  DeltaQC  = MOSFC_pert_fac*QC
+                  
+                  DummyZ0T = Z0T
+                  DummyCM  = CM
+                  
+                  call louissurface(3,N,UU,WW,PS,TA,TC        ,QA,QC+DeltaQC,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CH    ,CQpert,UUU,UCN,RE)
 
-               call louissurface(3,N,UU,WW,PS,TA,TC        ,QA,QC+DeltaQC,PCU,LAI,DummyZ0T,DZE,DummyCM,CN,RIB,ZT,ZQ,CH    ,CQpert,UUU,UCN,RE)
-
+               end if
+                  
             end if
 
             ! Call with nominal inputs [after calls with perturbed inputs to obtain correct outputs (CN, RIB, ZT, ZQ, etc.)]
@@ -3655,12 +3659,53 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       endif  ! CHOOSEMOSFC
 
-      if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then                        
+      if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then                        
          
          ! finalize numerical derivatives
          
          delCH_delTC(:,N) = (CHpert(:,N) - CH(:,N)) / DeltaTC(:,N)
          delCQ_delQC(:,N) = (CQpert(:,N) - CQ(:,N)) / DeltaQC(:,N)
+
+      elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==3) then                        
+
+         ! finalize numerical derivatives (valid for Louis only!)
+
+         ! For Louis, the exchange coeffs depend only on the *virtual* temperature (not true for Helfand).
+         !
+         ! This lets us compute the derivatives of the exchange coefficients w.r.t. both TC and QC from 
+         ! just one additional call to louissurface() with perturbed TC.
+         !
+         ! In the following, "del" indicates a derivative and "Delta" indicates a difference term.
+         !
+         ! We have:
+         !
+         ! (1) CH = CQ
+         !
+         ! (2) TVC = TC*(1 + eps*QC)    (virtual temperature; eps = MAPL_VIREPS)
+         !
+         !     (2a) ==> delTVC_delQC = eps*TC
+         !
+         !     (2b) ==> DeltaTVC = (TVCpert - TVC) = TCpert*(1 + eps*QC) - TC*(1 + eps*QC) = DeltaTC*(1 + eps*QC)
+         !
+         ! (3) delCH_delTC  = (CHpert - CH)/DeltaTC
+         !
+         ! (4) delCH_delTVC = (CHpert - CH)/DeltaTVC = (CHpert - CH)/(DeltaTC*(1 + eps*QC))
+         !
+         ! Using (1)-(4), we have:
+         !
+         ! delCQ_delQC = delCH_delQC                                                   using (1)
+         !                                                                             
+         !             = delCH_delTVC                         * delTVC_delQC           using chain rule
+         !                                                                             
+         !             = (CHpert - CH)/(DeltaTC*(1 + eps*QC)) * delTVC_delQC           using (4)      
+         !                          
+         !             = (CHpert - CH)/DeltaTC * 1/(1+eps*QC) * eps*TC                 using (2a)
+         !
+         !             = delCH_delTC           * 1/(1+eps*QC) * eps*TC                 using (3)
+         
+         delCH_delTC(:,N) = (CHpert(:,N) - CH(:,N)) / DeltaTC(:,N)
+
+         delCQ_delQC(:,N) = delCH_delTC(:,N) * MAPL_VIREPS*TC(:,N)/(1.+MAPL_VIREPS*QC(:,N))
          
       endif
       
@@ -3733,7 +3778,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
-    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND==2) then
+    if (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND>=2) then
        deallocate(DeltaTC )
        deallocate(DeltaQC )
        deallocate(CHpert  )
@@ -4545,12 +4590,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
 
-        if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+        if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
            
            call MAPL_GetPointer(INTERNAL,delCQ_delTVA ,'delCQ_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,delCH_delTVA ,'delCH_delTVA'       ,RC=STATUS); VERIFY_(STATUS)
            
-        elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+        elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
            
            call MAPL_GetPointer(INTERNAL,delCH_delTC  ,'delCH_delTC'        ,RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,delCQ_delQC  ,'delCQ_delQC'        ,RC=STATUS); VERIFY_(STATUS)
@@ -5267,14 +5312,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            
            select case (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND)
               
-           case (0)  ! ignore derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
+           case (0)    ! ignore derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
 
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N) =           CQ(:,N)
                  DSHSBT(:,N) = MAPL_CP*  CH(:,N)
               end do
 
-           case (1)  ! Louis only: analytical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
+           case (1)    ! Louis only: analytical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
 
               _ASSERT( CATCH_INTERNAL_STATE%CHOOSEMOSFC==0, 'must use Louis scheme for MOSFC analytical derivatives' )
               
@@ -5285,7 +5330,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  DHSDQC(:,N) =                     max( 0.0, -MAPL_CP*delCH_delTVA(:,N)*    MAPL_VIREPS*TC(:,N) *(TC(:,N)-TA) )
               end do
               
-           case (2)  ! numerical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
+           case (2,3)  ! numerical derivatives of exchange coeffs w.r.t. canopy temp and specific humidity
               
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N) =           CQ(:,N) + max( 0.0,          delCQ_delQC( :,N)*                         (QC(:,N)-QA) )
@@ -6440,14 +6485,14 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
   VERIFY_(status)
 
-  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then 
+  if     (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 1) then
  
      call MAPL_GetPointer(INTERNAL, delCQ_delTVA, 'delCQ_delTVA', rc=status)
      VERIFY_(status)
      call MAPL_GetPointer(INTERNAL, delCH_delTVA, 'delCH_delTVA', rc=status)
      VERIFY_(status)
 
-  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND == 2) then 
+  elseif (CATCH_INTERNAL_STATE%MOSFC_EXTRA_DERIVS_LAND >= 2) then 
      
      call MAPL_GetPointer(INTERNAL, delCH_delTC, 'delCH_delTC', rc=status)
      VERIFY_(status)
