@@ -1,3 +1,4 @@
+import os
 from ndsl import StencilFactory, QuantityFactory, orchestrate
 from ndsl.dsl.typing import Float, FloatField, Int, IntField
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -5,6 +6,7 @@ from gt4py.cartesian.gtscript import computation, interval, PARALLEL, floor
 import gt4py.cartesian.gtscript as gtscript
 import copy
 from typing import Optional
+import xarray as xr
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.table import get_table
 from pyMoist.saturation.constants import (
@@ -271,10 +273,8 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
+        table_method: Float = 0,
     ) -> None:
-
-        self.table = get_table(formulation)
-
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
             quantity_factory
         )
@@ -282,9 +282,30 @@ class QSat:
         self.ese = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
-        self.ese.view[:] = self.table.ese
-        self.esw.view[:] = self.table.esw
-        self.esx.view[:] = self.table.esx
+
+        if table_method == 0:
+            with xr.open_dataset(
+                os.path.join(os.path.dirname(__file__), "netCDFs", "QSat_Tables.nc")
+            ) as ds:
+                ese_array = ds.data_vars["ese"].values[0, 0, :]
+                esw_array = ds.data_vars["esw"].values[0, 0, :]
+                esx_array = ds.data_vars["esx"].values[0, 0, :]
+
+                self.ese.view[:] = ese_array
+                self.esw.view[:] = esw_array
+                self.esx.view[:] = esx_array
+
+        if table_method == 1:
+            raise NotImplementedError(
+                """Calculated tables are incorrect due to differences between C and Fortran calculations.\n
+                For now the tables are being read in from a netCDF file.\n
+                See https://github.com/GEOS-ESM/SMT-Nebulae/issues/88 for more information."""
+            )
+            self.table = get_table(formulation)
+
+            self.ese.view[:] = self.table.ese
+            self.esw.view[:] = self.table.esw
+            self.esx.view[:] = self.table.esx
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")

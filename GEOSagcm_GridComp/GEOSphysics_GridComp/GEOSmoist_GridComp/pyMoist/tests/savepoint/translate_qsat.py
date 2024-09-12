@@ -41,11 +41,11 @@ class TranslateQSat(TranslateFortranData2Py):
             "ESTBLE_TEST": self.grid.compute_dict(),
             "ESTBLW_TEST": self.grid.compute_dict(),
             "ESTBLX_TEST": self.grid.compute_dict(),
-            "IT": self.grid.compute_dict(),
-            "IFELSE": self.grid.compute_dict(),
-            "QSAT_HALFWAY": self.grid.compute_dict(),
-            "TI": self.grid.compute_dict(),
-            "LOC": self.grid.compute_dict(),
+            # "IT": self.grid.compute_dict(),
+            # "IFELSE": self.grid.compute_dict(),
+            # "QSAT_HALFWAY": self.grid.compute_dict(),
+            # "TI": self.grid.compute_dict(),
+            # "LOC": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -95,9 +95,9 @@ class TranslateQSat(TranslateFortranData2Py):
         code(
             T,
             PL,
-            ese=ese,
-            esw=esw,
-            esx=esx,
+            # ese=ese,
+            # esw=esw,
+            # esx=esx,
         )
 
         return {
@@ -105,9 +105,9 @@ class TranslateQSat(TranslateFortranData2Py):
             "ESTBLE_TEST": code.ese.view[0],
             "ESTBLW_TEST": code.esw.view[0],
             "ESTBLX_TEST": code.esx.view[0],
-            "IT": code._IT.view[:],
-            "IFELSE": code._IFELSE.view[:],
-            "QSAT_HALFWAY": code._QSAT_HALFWAY.view[:],
-            "TI": code._TI.view[:],
-            "LOC": code.table._LOC,
+            # "IT": code._IT.view[:],
+            # "IFELSE": code._IFELSE.view[:],
+            # "QSAT_HALFWAY": code._QSAT_HALFWAY.view[:],
+            # "TI": code._TI.view[:],
+            # "LOC": code.table._LOC,
         }
