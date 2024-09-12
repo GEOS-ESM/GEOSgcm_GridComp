@@ -36,7 +36,7 @@ module GEOSmoist_Process_Library
    real, parameter :: aT_ICE_ALL = 252.16
    real, parameter :: aT_ICE_MAX = 268.16
    real, parameter :: aICEFRPWR  = 2.0
-   ! Over snow/ice SRF_TYPE = 2
+   ! Over snow/ice SRF_TYPE = 2 or 3
    real, parameter :: iT_ICE_ALL = 236.16
    real, parameter :: iT_ICE_MAX = 261.16
    real, parameter :: iICEFRPWR  = 6.0
@@ -424,7 +424,7 @@ module GEOSmoist_Process_Library
       ICEFRCT_C = MAX(ICEFRCT_C,0.00)
       ICEFRCT_C = ICEFRCT_C**aICEFRPWR
      ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if (SRF_TYPE == 2.0) then
+      if (SRF_TYPE >= 2.0) then
         ! Over snow/ice
         if (ICE_RADII_PARAM == 1) then
           ! Jason formula

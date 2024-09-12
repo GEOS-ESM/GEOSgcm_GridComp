@@ -217,13 +217,6 @@ module gfdl2_cloud_microphys_mod
     real :: ql_mlt = 2.0e-3 !< max value of cloud water allowed from melted cloud ice
     real :: qs_mlt = 1.0e-6 !< max cloud water due to snow melt
     
-    real :: ql_gen = 1.0e-3 !< max cloud water generation [WMP: never used]
-    real :: qi_gen = 9.82679e-5 !< max cloud ice generation at -40 C
-
-    ! cloud condensate upper bounds: "safety valves" for ql & qi
-    real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
-    real :: qi0_max = 1.0e-4 !< max cloud ice value (by other sources) [WMP: never used]
-
     ! critical autoconverion parameters
     real :: qi0_crt = 2.5e-4 !< cloud ice to snow autoconversion threshold
                              !! qi0_crt is highly dependent on horizontal resolution
@@ -290,13 +283,13 @@ module gfdl2_cloud_microphys_mod
     namelist / gfdl_cloud_microphysics_nml /                                  &
         mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r,                    &
         vi_min, vr_min, vs_min, vg_min, ql_mlt, do_qa, fix_negative, vi_max,  &
-        vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
+        vs_max, vg_max, vr_max, qs_mlt, qs0_crt,                              &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim,         c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -305,13 +298,13 @@ module gfdl2_cloud_microphys_mod
     public                                                                    &
         mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r,                    &
         vi_min, vr_min, vs_min, vg_min, ql_mlt, do_qa, fix_negative, vi_max,  &
-        vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
+        vs_max, vg_max, vr_max, qs_mlt, qs0_crt,                              &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthreshu, rthreshs, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, tau_s2v, tau_v2s, &
         tau_revp, tau_frz, do_bigg, do_evap, do_subl, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, &
-        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
+        tau_i2s, tau_l2r, qi_lim,         c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         preciprad, cld_min, use_ppm, mono_prof, in_cloud,         &
         do_icepsettle, &
@@ -585,10 +578,10 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             dp0 (k) = dp1 (k) ! moist air mass * grav
             
             ! -----------------------------------------------------------------------
-           ! import horizontal subgrid variability with pressure dependence
-           ! total water subgrid deviation in horizontal direction
-           ! default area dependent form: use dx ~ 100 km as the base
-           ! -----------------------------------------------------------------------
+            ! import horizontal subgrid variability with pressure dependence
+            ! total water subgrid deviation in horizontal direction
+            ! default area dependent form: use dx ~ 100 km as the base
+            ! -----------------------------------------------------------------------
             h_var1d(k) = min(0.30,1.0 - rhcrit(i,j,k)) ! restricted to 70%
 
             ! -----------------------------------------------------------------------
@@ -977,97 +970,11 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     call check_column (ktop, kbot, qr, no_fall)
    
     ! -----------------------------------------------------------------------
-        ! fall speed of rain
-        ! -----------------------------------------------------------------------
-        
-        if (no_fall) then
-            vtr (:) = vf_min
-        elseif (const_vr) then
-            vtr (:) = 0.5*(vr_min+vr_max)
-        else
-            do k = ktop, kbot
-                qden = qr (k) * den (k)
-                if (qr (k) < thr) then
-                    vtr (k) = vr_min
-                else
-                    vtr (k) = vr_min * vconr * sqrt (min (10., sfcrho / den (k))) * &
-                        exp (0.2 * log (qden / normr))
-                    vtr (k) = min (vr_max, max (vr_min, vtr (k)))
-                endif
-            enddo
-        endif
-
-        ze (kbot + 1) = zs
-        do k = kbot, ktop, - 1
-            ze (k) = ze (k + 1) - dz (k) ! dz < 0
-        enddo
-
-        ! -----------------------------------------------------------------------
-        ! evaporation and accretion of rain for the first 1 / 2 time step
-        ! -----------------------------------------------------------------------
-
-        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = revap
-
-        if (do_sedi_w) then
-            do k = ktop, kbot
-                dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
-            enddo
-        endif
-
-        ! -----------------------------------------------------------------------
-        ! mass flux induced by falling rain
-        ! -----------------------------------------------------------------------
-        
-        if (no_fall) then
-            r1 = 0.0
-        elseif (use_ppm) then
-            zt (ktop) = ze (ktop)
-            do k = ktop + 1, kbot
-                zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
-            enddo
-            zt (kbot + 1) = zs - dt * vtr (kbot)
-
-            do k = ktop, kbot
-                if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
-            enddo
-            call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
-        else
-            call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
-        endif
-
-        ! -----------------------------------------------------------------------
-        ! vertical velocity transportation during sedimentation
-        ! -----------------------------------------------------------------------
-
-        if (do_sedi_w) then
-            w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
-            do k = ktop + 1, kbot
-                w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
-                     / (dm (k) + m1_rain (k - 1) - m1_rain (k))
-            enddo
-        endif
-
-        ! -----------------------------------------------------------------------
-        ! heat transportation during sedimentation
-        ! -----------------------------------------------------------------------
-
-        if (do_sedi_heat) &
-            call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
-
-        ! -----------------------------------------------------------------------
-        ! evaporation and accretion of rain for the remaing 1 / 2 time step
-        ! -----------------------------------------------------------------------
-
-        call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
-        evap1 = evap1 + revap
-
-    ! -----------------------------------------------------------------------
     ! auto - conversion
     ! assuming linear subgrid vertical distribution of cloud water
     ! following lin et al. 1994, mwr
     ! -----------------------------------------------------------------------
-    
+
     ! Use In-Cloud condensates
     if (in_cloud) then
       qadum = max(qa,max(qcmin,onemsig))
@@ -1076,23 +983,23 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     endif
     ql = ql/qadum
     qi = qi/qadum
-    
+
     fac_rc = min(1.0,eis/15.0)**2 ! Estimated inversion strength determine stable regime
     fac_rc = rc * (rthreshs*fac_rc + rthreshu*(1.0-fac_rc)) ** 3
-            
+
     if (irain_f /= 0) then
-        
+
         ! -----------------------------------------------------------------------
         ! no subgrid varaibility
         ! -----------------------------------------------------------------------
-        
+
         do k = ktop, kbot
             if (tz (k) > t_wfr) then
                 qc = fac_rc * ccn (k) / den (k)
                 dq = ql (k) - qc
                 if (dq > 0.) then
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                     ! new total condensate / old condensate
@@ -1125,8 +1032,8 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     ! --------------------------------------------------------------------
                     ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
                     ! --------------------------------------------------------------------
-                    sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql0_max/qadum(k), ql(k), max(0.,sink))
+                    sink = min(1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
+                    sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
                     ! new total condensate / old condensate
@@ -1140,6 +1047,92 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
     ! Revert In-Cloud condensate
     ql = ql*qadum
     qi = qi*qadum
+
+    ! -----------------------------------------------------------------------
+    ! fall speed of rain
+    ! -----------------------------------------------------------------------
+        
+    if (no_fall) then
+        vtr (:) = vf_min
+    elseif (const_vr) then
+        vtr (:) = 0.5*(vr_min+vr_max)
+    else
+        do k = ktop, kbot
+            qden = qr (k) * den (k)
+            if (qr (k) < thr) then
+                vtr (k) = vr_min
+            else
+                vtr (k) = vr_min * vconr * sqrt (min (10., sfcrho / den (k))) * &
+                    exp (0.2 * log (qden / normr))
+                vtr (k) = min (vr_max, max (vr_min, vtr (k)))
+            endif
+        enddo
+    endif
+
+    ze (kbot + 1) = zs
+    do k = kbot, ktop, - 1
+        ze (k) = ze (k + 1) - dz (k) ! dz < 0
+    enddo
+
+    ! -----------------------------------------------------------------------
+    ! evaporation and accretion of rain for the first 1 / 2 time step
+    ! -----------------------------------------------------------------------
+
+    call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+    evap1 = revap
+
+    if (do_sedi_w) then
+        do k = ktop, kbot
+            dm (k) = dp (k) * (1. + qv (k) + ql (k) + qr (k) + qi (k) + qs (k) + qg (k))
+        enddo
+    endif
+
+    ! -----------------------------------------------------------------------
+    ! mass flux induced by falling rain
+    ! -----------------------------------------------------------------------
+      
+    if (no_fall) then
+        r1 = 0.0
+    elseif (use_ppm) then
+        zt (ktop) = ze (ktop)
+        do k = ktop + 1, kbot
+            zt (k) = ze (k) - dt * (vtr (k - 1) + vtr (k))/2.0
+        enddo
+        zt (kbot + 1) = zs - dt * vtr (kbot)
+
+        do k = ktop, kbot
+            if (zt (k + 1) >= zt (k)) zt (k + 1) = zt (k) - dz_min
+        enddo
+        call lagrangian_fall_ppm (ktop, kbot, zs, ze, zt, dp, qr, r1, m1_rain, mono_prof)
+    else
+        call implicit_fall (dt, ktop, kbot, ze, vtr, dp, qr, r1, m1_rain)
+    endif
+
+    ! -----------------------------------------------------------------------
+    ! vertical velocity transportation during sedimentation
+    ! -----------------------------------------------------------------------
+
+    if (do_sedi_w) then
+        w1 (ktop) = (dm (ktop) * w1 (ktop) + m1_rain (ktop) * vtr (ktop)) / (dm (ktop) - m1_rain (ktop))
+        do k = ktop + 1, kbot
+            w1 (k) = (dm (k) * w1 (k) - m1_rain (k - 1) * vtr (k - 1) + m1_rain (k) * vtr (k)) &
+                 / (dm (k) + m1_rain (k - 1) - m1_rain (k))
+        enddo
+    endif
+
+    ! -----------------------------------------------------------------------
+    ! heat transportation during sedimentation
+    ! -----------------------------------------------------------------------
+
+    if (do_sedi_heat) &
+        call sedi_heat (ktop, kbot, dp, m1_rain, dz, tz, qv, ql, qr, qi, qs, qg, c_liq)
+
+    ! -----------------------------------------------------------------------
+    ! evaporation and accretion of rain for the remaing 1 / 2 time step
+    ! -----------------------------------------------------------------------
+
+    call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, qa, revap, den, denfac, h_var)
+    evap1 = evap1 + revap
 
 end subroutine warm_rain
 
@@ -4065,10 +4058,10 @@ subroutine qs_table (n)
     real :: tc
 
     ! -----------------------------------------------------------------------
-    ! compute es over ice between - 160 deg c and 0 deg c.
+    ! compute es over ice between - 160 deg c and -40 deg c.
     ! -----------------------------------------------------------------------
 
-    do i = 1, 1600
+    do i = 1, 1200
         tem = es_table_tmin + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * li2
