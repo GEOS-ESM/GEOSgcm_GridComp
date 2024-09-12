@@ -4,7 +4,7 @@ from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
 import pyMoist.radiation_coupling_constants as radconstants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import Float, FloatField
 
 
 @gtscript.function
@@ -39,8 +39,10 @@ def cloud_effective_radius_ice(
     PL (Float): Pressure level.
     TE (Float): Temperature.
     QC (Float): Ice cloud mixing ratio.
-    NNL (Float): Number concentration of liquid cloud droplets. Not used in function body, but included in the Fortran code.
-    NNI (Float): Number concentration of ice cloud crystals. Not used in function body, but included in the Fortran code.
+    NNL (Float): Number concentration of liquid cloud droplets.
+                 Not used in function body, but included in the Fortran code.
+    NNI (Float): Number concentration of ice cloud crystals.
+                 Not used in function body, but included in the Fortran code.
 
     Returns:
     Float: Effective radius of ice clouds.
@@ -137,14 +139,14 @@ def _fix_up_clouds_stencil(
     Fix cloud variables to ensure physical consistency.
 
     Parameters:
-    QV (FloatField): Water vapor mixing ratio.
-    TE (FloatField): Temperature.
-    QLC (FloatField): Liquid cloud mixing ratio.
-    QIC (FloatField): Ice cloud mixing ratio.
-    CF (FloatField): Cloud fraction.
-    QLA (FloatField): Anvil liquid cloud mixing ratio.
-    QIA (FloatField): Anvil ice cloud mixing ratio.
-    AF (FloatField): Anvil cloud fraction.
+    QV (3D inout): Water vapor mixing ratio.
+    TE (3D inout): Temperature.
+    QLC (3D inout): Liquid cloud mixing ratio.
+    QIC (3D inout): Ice cloud mixing ratio.
+    CF (3D inout): Cloud fraction.
+    QLA (3D inout): Anvil liquid cloud mixing ratio.
+    QIA (3D inout): Anvil ice cloud mixing ratio.
+    AF (3D inout): Anvil cloud fraction.
     """
     with computation(PARALLEL), interval(...):
         # Fix if Anvil cloud fraction too small
@@ -232,29 +234,29 @@ def _radcouple_stencil(
     Couple radiation with cloud variables to ensure physical consistency.
 
     Parameters:
-    TE (FloatField): Temperature.
-    PL (FloatField): Pressure level.
-    CF (FloatField): Cloud fraction.
-    AF (FloatField): Anvil cloud fraction.
-    QV (FloatField): Water vapor mixing ratio.
-    QClLS (FloatField): Liquid cloud mixing ratio (large-scale).
-    QCiLS (FloatField): Ice cloud mixing ratio (large-scale).
-    QClAN (FloatField): Liquid cloud mixing ratio (anvil).
-    QCiAN (FloatField): Ice cloud mixing ratio (anvil).
-    QRN_ALL (FloatField): Rain mixing ratio.
-    QSN_ALL (FloatField): Snow mixing ratio.
-    QGR_ALL (FloatField): Graupel mixing ratio.
-    NL (FloatField): Number concentration of liquid cloud droplets.
-    NI (FloatField): Number concentration of ice cloud crystals.
-    RAD_QV (FloatField): Radiation water vapor mixing ratio.
-    RAD_QL (FloatField): Radiation liquid cloud mixing ratio.
-    RAD_QI (FloatField): Radiation ice cloud mixing ratio.
-    RAD_QR (FloatField): Radiation rain mixing ratio.
-    RAD_QS (FloatField): Radiation snow mixing ratio.
-    RAD_QG (FloatField): Radiation graupel mixing ratio.
-    RAD_CF (FloatField): Radiation cloud fraction.
-    RAD_RL (FloatField): Radiation liquid effective radius.
-    RAD_RI (FloatField): Radiation ice effective radius.
+    TE (3D in): Temperature.
+    PL (3D in): Pressure level.
+    CF (3D in): Cloud fraction.
+    AF (3D in): Anvil cloud fraction.
+    QV (3D in): Water vapor mixing ratio.
+    QClLS (3D in): Liquid cloud mixing ratio (large-scale).
+    QCiLS (3D in): Ice cloud mixing ratio (large-scale).
+    QClAN (3D in): Liquid cloud mixing ratio (anvil).
+    QCiAN (3D in): Ice cloud mixing ratio (anvil).
+    QRN_ALL (3D in): Rain mixing ratio.
+    QSN_ALL (3D in): Snow mixing ratio.
+    QGR_ALL (3D in): Graupel mixing ratio.
+    NL (3D in): Number concentration of liquid cloud droplets.
+    NI (3D in): Number concentration of ice cloud crystals.
+    RAD_QV (3D inout): Radiation water vapor mixing ratio.
+    RAD_QL (3D inout): Radiation liquid cloud mixing ratio.
+    RAD_QI (3D inout): Radiation ice cloud mixing ratio.
+    RAD_QR (3D inout): Radiation rain mixing ratio.
+    RAD_QS (3D inout): Radiation snow mixing ratio.
+    RAD_QG (3D inout): Radiation graupel mixing ratio.
+    RAD_CF (3D inout): Radiation cloud fraction.
+    RAD_RL (3D out): Radiation liquid effective radius.
+    RAD_RI (3D out): Radiation ice effective radius.
     FAC_RL (Float): Factor for liquid effective radius.
     MIN_RL (Float): Minimum liquid effective radius.
     MAX_RL (Float): Maximum liquid effective radius.
@@ -325,11 +327,14 @@ class RadiationCoupling:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self.do_qa = do_qa
-        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented. Implement QSAT0 and QSAT3 logic if diagnostics are needed, found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
+        # GEOS_GFDL_1M_InterfaceMod.F90:866 not implemented.
+        # Implement QSAT0 and QSAT3 logic if diagnostics are needed,
+        # found in GEOS/src/Shared/@GMAO_Shared/GEOS_Shared/GEOS_Utilities.F90.
         if self.do_qa:
             # RHX = Q/GEOS_QSAT( T, PLmb)
             raise NotImplementedError(
-                "[Radiation Coupling] Diagnostic (do_qa) not implemented. (GEOS_QSAT missing)"
+                "[Radiation Coupling] Diagnostic (do_qa) not implemented."
+                "(GEOS_QSAT missing)"
             )
 
     def __call__(
