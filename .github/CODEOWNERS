@@ -9,10 +9,8 @@
 # The ocean is the Ocean Team's responsibility
 /GEOSogcm_GridComp/ @GEOS-ESM/ocean-team
 # Also _connections_ to the ocean should be included in Ocean Team's responsibility
-/GEOSdataatm_GridComp/ @GEOS-ESM/ocean-team 
+/GEOSdataatm_GridComp/ @GEOS-ESM/ocean-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp/ @GEOS-ESM/ocean-team @GEOS-ESM/seaice-team
-
-
 
 # Per https://github.com/GEOS-ESM/GEOSgcm_GridComp/issues/266
 # The Land Team owns these directories (and subdirectories)
@@ -35,9 +33,9 @@
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/SurfParams.F90    @GEOS-ESM/land-team @GEOS-ESM/landice-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOS_SurfaceGridComp.F90 @GEOS-ESM/land-team @GEOS-ESM/landice-team @GEOS-ESM/ocean-team
 
-# The Python Transition Team will own Python files
-# until the Python 3 transition is completed
-*.py @GEOS-ESM/python-transition-team
-
 # The GEOS CMake Team is the CODEOWNER for the CMakeLists.txt files in this repository
 CMakeLists.txt @GEOS-ESM/cmake-team
+
+# The SMT Team owns the DSL files
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/ @GEOS-ESM/software-modernization-team-smt
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/openacc/ @GEOS-ESM/software-modernization-team-smt
