@@ -1818,7 +1818,7 @@ contains
          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                               &    
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'VFALL_ICE',                                          &
          LONG_NAME  = 'terminal_velocity_of_falling_ice',       &
          UNITS      = 'm s-1',                                           &
@@ -2005,26 +2005,26 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_S',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_snow',                  &
-         UNITS     = 'dBZ',                                     & 
+         UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_R',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_rain',                  &
-         UNITS     = 'dBZ',                                     & 
+         UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX_G',                                          &
          LONG_NAME = 'Maximum_composite_radar_reflectivity_graupel',                  &
-         UNITS     = 'dBZ',                                     & 
+         UNITS     = 'dBZ',                                     &
          DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,              RC=STATUS  ) 
-    VERIFY_(STATUS) 
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'DBZ_MAX',                                          &
@@ -5336,12 +5336,17 @@ contains
        call MAPL_GetPointer(IMPORT, FRACI,     'FRACI'     , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, SNOMAS,    'SNOMAS'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SRF_TYPE,  'SRF_TYPE'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-       SRF_TYPE = 0.0 ! Ocean
-       where (FRLAND > 0.1)
-         SRF_TYPE = 1.0 ! Land
-       end where
-       where ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
-         SRF_TYPE = 2.0 ! Ice/Snow
+
+       where ( (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
+          SRF_TYPE = 3.0 ! Ice
+       elsewhere ( SNOMAS > 0.1 .AND. SNOMAS /= MAPL_UNDEF )
+          ! NOTE: SNOMAS has UNDEFs so we need to make sure we don't
+          !       allow that to infect this comparison
+          SRF_TYPE = 2.0 ! Snow
+       elsewhere (FRLAND > 0.1)
+          SRF_TYPE = 1.0 ! Land
+       elsewhere
+          SRF_TYPE = 0.0 ! Ocean
        end where
 
        ! Allocatables
