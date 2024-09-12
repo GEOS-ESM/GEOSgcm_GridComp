@@ -1,11 +1,10 @@
 #!/bin/bash
-rm -rf ./.gt_cache_*
+rm -rf ../.gt_cache_*
 export PACE_FLOAT_PRECISION=32
-export FV3_DACEMODE=Python
-python -m pytest -v -s -x\
-    --pdb \
-    --data_path=../../test_data/11.5.2/Moist/TBC_C24_L72_Debug \
+python -m pytest -s --disable-warnings --multimodal_metric \
+    --data_path=/home/charleskrop/netcdfs \
     --backend=dace:cpu \
+    --which_rank=0 \
+    --which_modules=QSat \
     --grid=default \
-    --multimodal_metric \
     ..

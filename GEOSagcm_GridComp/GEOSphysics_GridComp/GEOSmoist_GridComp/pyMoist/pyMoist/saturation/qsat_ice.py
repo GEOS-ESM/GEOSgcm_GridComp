@@ -54,7 +54,7 @@ def _saturation_formulation(
 ):
     if formulation == SaturationFormulation.Staars:
         TT = t - MAPL_TICE
-        if TT <= TSTARR1:
+        if TT < TSTARR1:
             LOC = 1.1
             EX = (
                 TT
