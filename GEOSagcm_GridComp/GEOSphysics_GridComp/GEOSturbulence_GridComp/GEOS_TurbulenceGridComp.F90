@@ -360,7 +360,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QLLS',                                      &
+        SHORT_NAME = 'QLTOT',                                     &
         LONG_NAME  = 'liquid_condensate_mixing_ratio',            &
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -370,7 +370,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME = 'QILS',                                      &
+        SHORT_NAME = 'QITOT',                                     &
         LONG_NAME  = 'frozen_condensate_mixing_ratio',            &
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
@@ -1485,6 +1485,25 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_base_height',                           &
+       UNITS      = 'm',                                                     &
+       SHORT_NAME = 'TRINVBS',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_frequency',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'TRINVFRQ',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'Buoyancy_jump_across_inversion',                        &
        UNITS      = 'm s-2',                                                 &
        SHORT_NAME = 'DBUOY',                                                 &
@@ -1977,6 +1996,14 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'BRUNTMST',                                 &
+       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
+       UNITS      = 's-1',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'BRUNTEDGE',                                 &
        LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
        UNITS      = 's-1',                                       &
@@ -1997,61 +2024,6 @@ end if
        LONG_NAME  = 'center_height_above_surface',               &
        SHORT_NAME = 'ZLS',                                       &
        UNITS      = 'm',                                         &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'AKQQ_matrix',                           &
-       SHORT_NAME = 'AKQQX',                                      &
-       UNITS      = 's-1',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'BKQQ_matrix',                           &
-       SHORT_NAME = 'BKQQX',                                      &
-       UNITS      = 's-1',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'CKQQ_matrix',                           &
-       SHORT_NAME = 'CKQQX',                                      &
-       UNITS      = 's-1',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'YQV_coefficient',                           &
-       SHORT_NAME = 'YQVX',                                      &
-       UNITS      = 'kg kg-1',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'YQL_coefficient',                           &
-       SHORT_NAME = 'YQLX',                                      &
-       UNITS      = 'kg kg-1',                                   &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,                        &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       LONG_NAME  = 'YQI_coefficient',                           &
-       SHORT_NAME = 'YQIX',                                      &
-       UNITS      = 'kg kg-1',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,                        &
                                                         RC=STATUS  )
@@ -3022,7 +2994,7 @@ end if
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
-     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND
+     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
      real, dimension(:,:  ), pointer     :: ZPBL10P => null()
@@ -3046,10 +3018,9 @@ end if
      real, dimension(:,:,:), pointer     :: W_DIAG
      real, dimension(:,:  ), pointer     :: W_ENTR
 
-     real, dimension(:,:,:), pointer     :: YQVX,YQLX,YQIX,AKQQX,BKQQX,CKQQX
 
 ! SHOC variables
-     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,BRUNTDRY, BRUNTEDGE,ISOTROPY, &
+     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,BRUNTDRY,BRUNTMST,BRUNTEDGE,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,&
                                             TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
@@ -3215,8 +3186,8 @@ end if
      call MAPL_GetPointer(IMPORT,  PREF,    'PREF', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, RADLW,   'RADLW', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, QLTOT,    'QLLS', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, QITOT,    'QILS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,  FCLD,    'FCLD', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
@@ -3295,10 +3266,10 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.5,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.7,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=1,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=10.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=3.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
@@ -3374,6 +3345,10 @@ end if
      call MAPL_GetPointer(EXPORT,   WESFC,   'WESFC',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   DBUOY,   'DBUOY',               RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVBS, 'TRINVBS',               RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  VSCRAD,  'VSCRAD',               RC=STATUS)
      VERIFY_(STATUS)
@@ -3550,6 +3525,8 @@ end if
      call MAPL_GetPointer(EXPORT, BRUNTSHOC, 'BRUNTSHOC', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, BRUNTDRY, 'BRUNTDRY', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, BRUNTMST, 'BRUNTMST', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, BRUNTEDGE, 'BRUNTEDGE', RC=STATUS)
      VERIFY_(STATUS)
@@ -3916,7 +3893,7 @@ end if
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
       if (associated(edmf_buoyf))     edmf_buoyf   = buoyf 
       if (associated(edmf_mfx))       edmf_mfx     = edmf_mf
-      if (associated(mfaw))           mfaw         = edmf_mf/rhoe
+      if (associated(mfaw))           mfaw         = aw3  !edmf_mf/rhoe
       if (associated(slflxmf))        slflxmf      = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
       if (associated(qtflxmf))        qtflxmf      = awqv3+awql3+awqi3
       if (associated(ssrcmf))         ssrcmf       = ssrc
@@ -3937,7 +3914,7 @@ end if
       do i = 1,IM
         do j = 1,JM
           k = LM
-          do while (edmfdrya(i,j,k).gt.0.01 .and. k.gt.1)
+          do while (edmfdrya(i,j,k).gt.0.01 .and. edmfmoista(i,j,k).lt.1e-4 .and. k.gt.1)
             k = k-1
           end do
           drycblh(i,j) = ZL0(i,j,k+1)
@@ -3990,8 +3967,6 @@ end if
       if (associated(EDMF_FRC))       EDMF_FRC = 0.
      
    ENDIF
-
-   ae3 = 1.0
 
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
@@ -4048,23 +4023,15 @@ end if
                        LSHOC2,                &
                        LSHOC3,                &
                        BRUNTSHOC,             &
+                       BRUNTDRY,              &
+                       BRUNTMST,              &
+                       BRUNTEDGE,             &
                        RI,                    &
                        SHOCPRNUM,             &
                        !== Tuning params ==
                        SHOCPARAMS )
 
-        do I = 1,IM
-           do J = 1,JM
-              L=LM
-              do while (edmfmoista(I,J,L).lt.1e-5 .and. L.gt.2)
-                 L = L-1
-              end do
-              TKH(I,J,1:L) = min(0.25,TKH(I,J,1:L))
-           end do
-        end do
-
         KH(:,:,1:LM) = TKH(:,:,1:LM)
-!        KM(:,:,1:LM) = 0.5*TKH(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -4839,6 +4806,27 @@ end if
 
      if (associated(W_DIAG).or.associated(W_ENTR)) W_DIAG = OMEGA*(ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1))/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
+     ! Trade inversion base height
+     if (associated(TRINVBS)) then
+        TRINVBS = MAPL_UNDEF
+        TRINVFRQ = 0.
+        do I = 1,IM
+           do J = 1,JM
+              K = LM
+              do while (ZLE(I,J,K).lt.500.)
+                 K = K-1
+              end do
+              do while (ZLE(I,J,K).lt.5000. .and. T(I,J,K).gt.T(I,J,K-1))
+                 K = K-1
+              end do
+              if (ZLE(I,J,K).lt.5000.) then 
+                 TRINVBS(I,J) = ZLE(I,J,K-1)
+                 TRINVFRQ(I,J) = 1.
+              end if
+           end do
+        end do
+     end if
+
       SELECT CASE(PBLHT_OPTION)
 
       CASE( 1 )
@@ -4967,7 +4955,8 @@ end if
         
      AKSS(:,:,1)=0.0
      AKUU(:,:,1)=0.0
-     AKQQ(:,:,1)=0.0
+
+     RHOAW3=RHOE*AW3
 
      if (MFPARAMS%IMPLICIT == 1 .and. MFPARAMS%DISCRETE == 0) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
@@ -4975,29 +4964,25 @@ end if
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
      else
-        AKQQ(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
      end if
-!     AKQQ = AKSS
+     AKQQ = AKSS
 
      CKSS(:,:,LM)=-CT*DMI(:,:,LM)
      CKQQ(:,:,LM)=-CQ*DMI(:,:,LM)
      CKUU(:,:,LM)=-CU*DMI(:,:,LM)
   
      if (MFPARAMS%IMPLICIT == 1 .and. MFPARAMS%DISCRETE == 0) then
-        CKQQ(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
-                           + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
      else
-        CKQQ(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
      end if
-!     CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
+     CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
  
      BKSS = 1.0 - (CKSS+AKSS)
      BKQQ = 1.0 - (CKQQ+AKQQ)
@@ -5046,14 +5031,6 @@ end if
    YQI(:,:,1:LM-1) = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWQI3(:,:,1:LM-1) - RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2) )
    YU(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWU3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2) )
    YV(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*( RHOE(:,:,1:LM-1)*AWV3(:,:,1:LM-1)  - RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2) )
-
-  if (associated(YQVX)) YQVX = YQV*DT/DMI   ! Multiply by layer mass (DMI = DT/MASS)  
-  if (associated(YQLX)) YQLX = YQL*DT/DMI
-  if (associated(YQIX)) YQIX = YQI*DT/DMI
-
-  if (associated(AKQQX)) AKQQX = AKQQ
-  if (associated(BKQQX)) BKQQX = BKQQ - 1.0
-  if (associated(CKQQX)) CKQQX = CKQQ
 
    ! Add prescribed surface fluxes
    if ( SCM_SL /= 0 .and. (SCM_SL_FLUX == 1 .or. SCM_SL_FLUX == 2) ) then
@@ -5328,7 +5305,6 @@ end if
     call MAPL_GetPointer(EXPORT, SAFDIFFUSE ,  'SAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QAFDIFFUSE ,  'QAFDIFFUSE' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
-
 ! Count the firlds in TR...
 !--------------------------
 
@@ -5416,8 +5392,6 @@ end if
        
        if(associated(SRG)) then
           SG => SRG
-!       else if (trim(name)=='QLLS') then
-!          SG = S(:,:,LM)
        else
           allocate (SG(0,0), stat=STATUS)
           VERIFY_(STATUS)
@@ -5592,7 +5566,6 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           SDF = CX * (1.0-DX(:,:,LM))
        endif
 
-!       if(.not.associated(SRG) .and. trim(name)/='QLLS') then
        if(.not.associated(SRG)) then
           deallocate (SG)
        end if
@@ -6143,8 +6116,6 @@ end subroutine RUN1
 !-------------------------
 
          SX = S
-
-!         if (associated(DSG) .and. trim(NAME)=='QLLS') print *,'DSG is associated for QLLS!!!'
 
          if( associated(DSG) .and. SCM_SL == 0 ) then
             do L=1,LM 

@@ -59,8 +59,8 @@ module shoc
                  tkesbshear_inv,                                 &  ! out
                  smixt_inv, lmix_out, smixt1_inv,                &  ! out
                  smixt2_inv,smixt3_inv,                          &  ! out
-                 bruntmst_inv, ri_inv, prnum_inv,                &  ! out
-!                 bruntmst_inv, bruntdry_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
+!                 bruntmst_inv, ri_inv, prnum_inv,                &  ! out
+                 bruntmst_inv, bruntdry_inv, bruntmst2_inv, bruntedg_inv, ri_inv, prnum_inv,  &  ! out
                  shocparams )
 
 
@@ -118,8 +118,9 @@ module shoc
   real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
   real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
   real, dimension(:,:,:), pointer :: bruntmst_inv ! moist Brunt vaisala frequency
-!  real, dimension(:,:,:), pointer :: bruntdry_inv ! Brunt vaisala frequency on edges
-!  real, dimension(:,:,:), pointer :: bruntedg_inv ! Brunt vaisala frequency on edges
+  real, dimension(:,:,:), pointer :: bruntmst2_inv ! moist Brunt vaisala frequency
+  real, dimension(:,:,:), pointer :: bruntdry_inv ! Brunt vaisala frequency on edges
+  real, dimension(:,:,:), pointer :: bruntedg_inv ! Brunt vaisala frequency on edges
   real, dimension(:,:,:), pointer :: ri_inv
   real, dimension(:,:,:), pointer :: prnum_inv
 
@@ -184,7 +185,7 @@ module shoc
   real brunt       (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
 
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv, l_par
-  real, dimension(nx,ny,nz)  :: brunt_edge !, brunt_dry
+  real, dimension(nx,ny,nz)  :: brunt_edge, brunt_dry, brunt_mst
 
   real, dimension(nx,ny)     :: l_inf, l_mix, zcb, lts!, l_par!, denom, numer, cldarr
 
@@ -307,9 +308,10 @@ module shoc
   if (associated(smixt2_inv))   smixt2_inv(:,:,1:nzm)   = smixt2(:,:,nzm:1:-1)
   if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
 
-!  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
-!  if (associated(bruntdry_inv)) bruntdry_inv(:,:,0:nzm) = brunt_dry(:,:,nz:1:-1)
+  if (associated(bruntedg_inv)) bruntedg_inv(:,:,0:nzm) = brunt_edge(:,:,nz:1:-1)
+  if (associated(bruntdry_inv)) bruntdry_inv(:,:,0:nzm) = brunt_dry(:,:,nz:1:-1)
   if (associated(bruntmst_inv)) bruntmst_inv(:,:,1:nzm) = brunt(:,:,nzm:1:-1)
+  if (associated(bruntmst2_inv)) bruntmst2_inv(:,:,1:nzm) = brunt_mst(:,:,nzm:1:-1)
   if (associated(prnum_inv))    prnum_inv(:,:,0:nz-1)     = prnum(:,:,nz:1:-1)
   if (associated(ri_inv))       ri_inv(:,:,0:nz-1)        = ri(:,:,nz:1:-1)
 
@@ -449,9 +451,6 @@ contains
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
 !            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*0.5*(brunt(i,j,k)+brunt(i,j,k-1))*wrk*wrk)))
           endif
-!          if (k.ge.cldbasek(i,j)) then
-!            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
-!          end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -628,7 +627,7 @@ contains
 
 
 !          brunt_edge(i,j,k) = (2.*ggr/(thv(i,j,k)+thv(i,j,kb)))*(thv(i,j,k)-thv(i,j,kb))/adzi(i,j,k)  !g/thv/dz *(thv-thv)
-!          brunt_dry(i,j,k) = (thv(i,j,kc)-thv(i,j,kb))*betdz
+          brunt_dry(i,j,k) = (thv(i,j,kc)-thv(i,j,kb))*betdz
 
 ! Reinitialize the mixing length related arrays to zero
           smixt(i,j,k)    = 1.0   ! shoc_mod module variable smixt
@@ -769,11 +768,13 @@ contains
 
 ! Calculate Brunt-Vaisalla frequency using centered differences in the vertical
 
-             brunt(i,j,k) = cld_sgs(i,j,k)*betdz*(bbb*(hl(i,j,kc)-hl(i,j,kb))               &
+             brunt_mst(i,j,k) = betdz*(bbb*(hl(i,j,kc)-hl(i,j,kb))               &
                           + (bbb*lstarn - (1.+lstarn*dqsat)*tabs(i,j,k))     &
                           * (total_water(i,j,kc)-total_water(i,j,kb))        &
                           + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))  &
                           + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+
+             brunt(i,j,k) = cld_sgs(i,j,k)*brunt_mst(i,j,k)
 
              bbb = 0.5*(bbb + (1. + epsv*qsatt-wrk-qpl(i,j,k-1)-qpi(i,j,k-1)                &
                  + 1.61*tabs(i,j,k-1)*dqsat) / (1.+lstarn*dqsat) )
@@ -1160,7 +1161,7 @@ contains
 
     ! Update PDF_A
     if (AFRC_TSCALE.gt.0.) then
-!      pdf_a = (pdf_a+mffrc+0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
+!      pdf_a = (pdf_a+mffrc+2.*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
       pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
     else
       pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
@@ -1235,6 +1236,7 @@ contains
     end do
 
   if (DOCANUTO==0) then
+!    qt3 = ( qt3 + max(MFQT3+0.05*QT**3*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)),0.) ) / ( 1. + DT/QT3_TSCALE )
     qt3 = ( qt3 + max(MFQT3,0.) ) / ( 1. + DT/QT3_TSCALE )
     hl3 = MFHL3
     w3  = MFW3

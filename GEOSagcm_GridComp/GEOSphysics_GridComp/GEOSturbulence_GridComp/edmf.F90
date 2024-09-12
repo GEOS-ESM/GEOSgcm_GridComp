@@ -457,6 +457,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
           call Poisson(1,Nup2,kts,kte,ENTf,ENTi,the_seed)
           do i=1,Nup2   ! Vary entrainment across updrafts, 0.75-1.25x
             do k=kts,kte
+!              ENT(k,i) = ((ran1()*0.5)+0.75)*( (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
               ENT(k,i) = ((FLOAT(Nup2-i)*0.5/FLOAT(Nup2))+0.75)*( (1.-MFPARAMS%STOCHFRAC) * MFPARAMS%Ent0/L0 &
                       + MFPARAMS%STOCHFRAC * real(ENTi(k,i))*MFPARAMS%Ent0/(ZW(k)-ZW(k-1)) ) !&
             enddo
@@ -619,7 +620,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
               EntW=exp(-2.*WP*(ZW(k)-ZW(k-1)))
-              Wn2=EntW*UPW(k-1,I)**2+MFPARAMS%WA*B/WP*(1.-EntW)
+              Wn2=EntW*UPW(k-1,I)**2+(1.-EntW)*MFPARAMS%WA*B/WP
             END IF
 
 
