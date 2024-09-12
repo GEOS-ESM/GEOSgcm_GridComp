@@ -57,11 +57,11 @@ def QSat_Float_Liquid(
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
         IT = int(TT)
-        IT_PLUS_1 = (
-            IT + 1
-        )  # dace backend does not allow for [IT + 1] indexing because of cast to int
-        DDQ = esw[0][IT_PLUS_1] - esw[0][IT]
-        QS = (TT - IT) * DDQ + esw[0][IT]
+        IT_MINUS_1 = (
+            IT - 1
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        DDQ = esw[0][IT] - esw[0][IT_MINUS_1]
+        QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]
 
     if PL != -999.0:
         if PL > QS:
@@ -99,12 +99,12 @@ def QSat_Float_Ice(
             DDQ = 0.0
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
-        IT = int(TT)
-        IT_PLUS_1 = (
-            IT + 1
-        )  # dace backend does not allow for [IT + 1] indexing because of cast to int
-        DDQ = ese[0][IT_PLUS_1] - ese[0][IT]
-        QS = (TT - IT) * DDQ + ese[0][IT]
+        IT = int(floor(TT))
+        IT_MINUS_1 = (
+            IT - 1
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
+        DDQ = ese[0][IT] - ese[0][IT_MINUS_1]
+        QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]
 
     if PL != -999.0:
         if PL > QS:
@@ -153,17 +153,17 @@ def QSat_Float(
         TI = T
 
     TI = (TI - TMINTBL) * DEGSUBS + 1
-    IT = int(TI)
-    IT_PLUS_1 = (
-        IT + 1
-    )  # dace backend does not allow for [IT + 1] indexing because of cast to int
+    IT = int(floor(TI))
+    IT_MINUS_1 = (
+        IT - 1
+    )  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
     if URAMP == TMIX:
-        DQ = esx[0][IT_PLUS_1] - esx[0][IT]  # should be esx[0][IT + 1] - esx[0][IT]
-        QSAT = (TI - IT) * DQ + esx[0][IT]
+        DQ = esx[0][IT] - esx[0][IT_MINUS_1]
+        QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]
     else:
-        DQ = ese[0][IT_PLUS_1] - ese[0][IT]  # should be ese[0][IT + 1] - ese[0][IT]
-        QSAT = (TI - IT) * DQ + ese[0][IT]
+        DQ = ese[0][IT] - ese[0][IT_MINUS_1]
+        QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]
 
     if PP <= QSAT:
         QSAT = MAX_MIXING_RATIO
@@ -222,7 +222,7 @@ def QSat_FloatField(
         IT = int(floor(TI))
         IT_MINUS_1 = (
             IT - 1
-        )  # dace backend does not allow for [IT + 1] indexing because of cast to int
+        )  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
             DQ = esx[0][IT] - esx[0][IT_MINUS_1]

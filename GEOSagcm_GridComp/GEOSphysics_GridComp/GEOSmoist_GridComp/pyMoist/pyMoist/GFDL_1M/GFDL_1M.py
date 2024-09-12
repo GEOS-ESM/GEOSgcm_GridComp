@@ -1,5 +1,17 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, atan, sin, tan, sqrt, tanh, exp, log10
+from gt4py.cartesian.gtscript import (
+    computation,
+    interval,
+    PARALLEL,
+    FORWARD,
+    atan,
+    sin,
+    tan,
+    sqrt,
+    tanh,
+    exp,
+    log10,
+)
 from ndsl.boilerplate import get_factories_single_tile_numpy
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldIJ
@@ -18,6 +30,7 @@ from .GFDL_1M_Util import (
     subl,
 )
 
+
 class evap_subl_pdf:
     def __init__(
         self,
@@ -34,7 +47,6 @@ class evap_subl_pdf:
             self.stencil_factory,
             self.quantity_factory,
             formulation=formulation,
-            use_table_lookup=use_table_lookup,
         )
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
@@ -78,7 +90,9 @@ class evap_subl_pdf:
             for j in range(0, self._k_mask.view[:].shape[1]):
                 for k in range(0, self._k_mask.view[:].shape[2]):
                     self._k_mask.view[i, j, k] = k + 1
-    def __call__(self,
+
+    def __call__(
+        self,
         EIS: FloatFieldIJ,
         dw_land: Float,
         dw_ocean: Float,
@@ -110,19 +124,21 @@ class evap_subl_pdf:
         # The for loop is currently closer to being correct, with only the k level incorrect, so I am using that.
         self._get_last(PLEmb, self._tmp, self._PLEmb_top)
 
-        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date 
+        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date
         self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
-        
-        self._initial_calc(EIS,
-                           dw_land,
-                           dw_ocean,
-                           TURNRHCRIT_PARAM,
-                           self._minrhcrit,
-                           self._PLmb_at_klcl,
-                           PLmb,
-                           self._PLEmb_top,
-                           AREA,
-                           self._alpha)
+
+        self._initial_calc(
+            EIS,
+            dw_land,
+            dw_ocean,
+            TURNRHCRIT_PARAM,
+            self._minrhcrit,
+            self._PLmb_at_klcl,
+            PLmb,
+            self._PLEmb_top,
+            AREA,
+            self._alpha,
+        )
 
         self._hystpdf(
             DT_MOIST,
@@ -154,4 +170,4 @@ class evap_subl_pdf:
         # RHCRIT = Float(1.0)
         # self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, QCm)
 
-        #self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)
+        # self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)
