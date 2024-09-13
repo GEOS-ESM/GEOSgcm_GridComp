@@ -1652,7 +1652,7 @@ module GEOSmoist_Process_Library
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. abs(Skew_qw).lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec
@@ -1803,7 +1803,6 @@ module GEOSmoist_Process_Library
           ! this is qs evaluated at Tl
           qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
                 + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
-!          qs1 = GEOS_QSAT( Tl1_1, pval*0.01 )
 
           beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
 
@@ -1814,18 +1813,10 @@ module GEOSmoist_Process_Library
             beta2 = beta1
           ELSE
 
-!            IF (Tl1_2 < tbgmin) THEN
-!              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-!              lstarn2  = lsub
-!            ELSE IF (Tl1_2 >= tbgmax) THEN
-!              esval1_2 = MAPL_EQsat(Tl1_2)
-!              lstarn2  = lcond
-!            ELSE
               esval1_2 = MAPL_EQsat(Tl1_2)
               esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
               om2      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
               lstarn2  = lcond + (1.-om2)*lfus
-!            ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
                   + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
@@ -1989,7 +1980,7 @@ module GEOSmoist_Process_Library
          HLQT        , &
          W3          , &
          W2          , &
-         MFQT3       , &
+         QT3         , &
          MFHL3       , &
          PDF_A       , &  ! can remove these after development
          PDFITERS    , &
@@ -2020,7 +2011,7 @@ module GEOSmoist_Process_Library
       integer, intent(in) :: PDFSHAPE
       real, intent(inout) :: TE,QV,QLLS,QILS,CLLS,QLCN,QICN,CLCN,PDF_A
       real, intent(in)    :: NL,NI,CNVFRC,SRF_TYPE
-      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,MFQT3,MFHL3
+      real, intent(in)    :: WHL,WQT,HL2,QT2,HLQT,W3,W2,QT3,MFHL3
 #ifdef PDFDIAG
       real, intent(out)   :: PDF_SIGW1, PDF_SIGW2, PDF_W1, PDF_W2, &
                              PDF_SIGHL1, PDF_SIGHL2, PDF_HL1, PDF_HL2, &
@@ -2125,7 +2116,7 @@ module GEOSmoist_Process_Library
                                  HLQT,         &
                                  W3,           &
                                  W2,           &
-                                 MFQT3,        &
+                                 QT3,          &
                                  MFHL3,        &
                                  PDF_A,        &
 #ifdef PDFDIAG
@@ -2183,7 +2174,7 @@ module GEOSmoist_Process_Library
             ! This next line needs correcting - need proper d(del qc)/dT derivative for triangular
             ! for now, just use relaxation of 1/2 of top-hat.
             QCn = QCp + 0.5*(QCn-QCp)/(1.-(CFn*(ALPHA-1.)-(QCn/QSn))*DQS*alhxbcp)
-         elseif(PDFSHAPE.eq.5) then
+         elseif(PDFSHAPE.ge.5) then
             QCn = QCp + 0.5*(QCn-QCp)
          endif
 

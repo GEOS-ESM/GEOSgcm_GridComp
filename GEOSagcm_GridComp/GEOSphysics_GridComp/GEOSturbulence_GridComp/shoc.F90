@@ -442,16 +442,13 @@ contains
       do j=1,ny
         do i=1,nx
           ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
-          if (brunt_edge(i,j,k) <= bruntmin) then
+          if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))))
           else
             wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
 !            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*0.5*(brunt(i,j,k)+brunt(i,j,k-1))*wrk*wrk)))
           endif
-!          if (k.ge.cldbasek(i,j)) then
-!            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
-!          end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -806,10 +803,10 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) >= bruntmin) then
-              brunt2(i,j,k) = brunt(i,j,k)
-            else
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
+            else
+              brunt2(i,j,k) = brunt(i,j,K)
             endif
 
           end do
@@ -889,11 +886,10 @@ contains
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
-                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*(shocparams%LENFAC2)
+                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
                  ! Stability length scale
-                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-
+                 smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
 
                  !=== Combine component length scales ===
                  if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
@@ -1138,7 +1134,7 @@ contains
 
         ! Second moment of total water mixing ratio.  Eq 3 in BK13
         qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
-        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
+        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
         qt2_edge_nomf(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k))*qtgrad(:,:,k)  ! gradient production
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
@@ -1192,7 +1188,7 @@ contains
         else
           onemmf = 1.0 - MFFRC(:,:,k)
 
-          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) + MFW2(:,:,k)
+          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) !+ MFW2(:,:,k)
 
 !          hl2(:,:,k) = onemmf*0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )  !+ MFHL2(:,:,k)
           hl2(:,:,k) = 0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )
@@ -1220,8 +1216,8 @@ contains
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 3-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
+        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
 
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)

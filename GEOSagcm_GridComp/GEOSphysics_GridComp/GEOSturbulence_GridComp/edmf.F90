@@ -55,6 +55,7 @@ real, parameter ::     &
     real    :: MFLIMFAC
     real    :: ICE_RAMP
     real    :: PRCPCRIT
+    real    :: TREFF
  endtype EDMFPARAMS_TYPE
  type (EDMFPARAMS_TYPE) :: MFPARAMS
 
@@ -361,7 +362,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               end if
            end do
            lts = lts - thv3(IH,JH,kte)
-           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-19.))) )
+           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
         end if
       else ! if mfparams%ET not 2
         L0 = mfparams%L0
@@ -618,7 +619,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
               EntW=exp(-2.*WP*(ZW(k)-ZW(k-1)))
-              Wn2=EntW*UPW(k-1,I)**2+MFPARAMS%WA*B/WP*(1.-EntW)
+              Wn2=EntW*UPW(k-1,I)**2+(1.-EntW)*MFPARAMS%WA*B/WP
             END IF
 
 
