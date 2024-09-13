@@ -62,4 +62,4 @@ repos:
       args: [
         "--exclude=docs",
         "--ignore=W503,E302,E203,F841,F401",
-        "--max-line-length=88",]
+        "--max-line-length=100",]

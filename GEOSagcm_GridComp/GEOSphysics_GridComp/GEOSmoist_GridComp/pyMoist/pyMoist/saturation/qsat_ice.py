@@ -1,14 +1,17 @@
+from typing import Optional
+
+import numpy as np
+
+from ndsl.dsl.typing import Float
 from pyMoist.saturation.constants import (
-    MAPL_TICE,
-    ESFAC,
-    ERFAC,
     DELTA_T,
+    ERFAC,
+    ESFAC,
+    MAPL_TICE,
     MAX_MIXING_RATIO,
 )
-from ndsl.dsl.typing import Float
 from pyMoist.saturation.formulation import SaturationFormulation
-import numpy as np
-from typing import Optional
+
 
 TMINSTR = Float(-95.0)
 TMINICE = MAPL_TICE + TMINSTR
@@ -123,7 +126,7 @@ def qsat_ice_scalar_exact(
     else:
         TI = temperature
 
-    DX = 0  # only calulcated when DQ is not none
+    DX = 0.0  # only calulcated when DQ is not none
     EX, LOC = _saturation_formulation(formulation, TI)
 
     if DQ is not None:

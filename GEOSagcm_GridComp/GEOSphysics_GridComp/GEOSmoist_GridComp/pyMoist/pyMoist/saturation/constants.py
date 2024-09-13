@@ -1,5 +1,7 @@
-from ndsl.dsl.typing import Float
 import numpy as np
+
+from ndsl.dsl.typing import Float
+
 
 # Generic constants to be moved to pyMoist global constant file
 MAPL_TICE = Float(273.16)  # K
