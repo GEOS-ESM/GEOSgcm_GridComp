@@ -10,7 +10,7 @@ module GEOS_SurfaceGridCompMod
 ! !MODULE: GEOS_Surface --- A composite component for the surface components.
 
 ! !DESCRIPTION:
-! 
+!
 !   {\tt GEOS\_Surface} is a light-weight gridded component that implements the
 !      interface to the tiled surface components. The surface computational components
 !      (LAND, LAKE, OCEAN, LANDICE) are its children. All of {\tt GEOS\_Surface}'s imports and exports
@@ -24,9 +24,9 @@ module GEOS_SurfaceGridCompMod
 !      stage, the children all produce surface exchange coefficients, and during the
 !      second, they update the surface state and produce final values of the fluxes.
 !
-!      {\tt GEOS\_Surface} keeps a Private Internal State called 'SURF\_state' in the 
+!      {\tt GEOS\_Surface} keeps a Private Internal State called 'SURF\_state' in the
 !      component object. In this state it saves the tranforms between the atmospheric
-!      grid and each of the children's exchange grids. This should be done more 
+!      grid and each of the children's exchange grids. This should be done more
 !      elegantly once ESMF has exchange grid support. It also has a Internal State
 !      that is used to communicate between the two run methods. These internal states
 !      do not need to be saved in restarts.
@@ -61,7 +61,7 @@ module GEOS_SurfaceGridCompMod
                             NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
                             NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
                             NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
-                            NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD 
+                            NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
   use SurfParams,    only : SurfParams_init
   USE CATCH_CONSTANTS, ONLY :                 &
        N_SNOW_LAND      => CATCH_N_SNOW
@@ -83,8 +83,8 @@ module GEOS_SurfaceGridCompMod
 
   integer ::        LAKE
   integer ::     LANDICE
-  integer ::       OCEAN 
-  integer ::        LAND 
+  integer ::       OCEAN
+  integer ::        LAND
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
@@ -98,7 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer                    :: CHILD_MASK(NUM_CHILDREN)
   integer :: DO_OBIO, ATM_CO2
   integer :: DO_WAVES
-  integer :: CHOOSEMOSFC 
+  integer :: CHOOSEMOSFC
   logical :: DO_GOSWIM
   logical :: DO_FIRE_DANGER
   logical :: DO_DATA_ATM4OCN
@@ -116,7 +116,7 @@ module GEOS_SurfaceGridCompMod
   type T_Routing
      integer :: srcTileID, dstTileID,     &
                 srcIndex=-1, dstIndex=-1, &
-                srcPE=-1, dstPE=-1, SeqIdx=-1 
+                srcPE=-1, dstPE=-1, SeqIdx=-1
      real    :: weight
   end type T_Routing
 
@@ -129,12 +129,12 @@ module GEOS_SurfaceGridCompMod
 
 ! Internal state and its wrapper
 ! ------------------------------
-  
+
   type T_SURFACE_STATE
      private
      type (MAPL_LocStreamXFORM)  :: XFORM_IN (NUM_CHILDREN)
      type (MAPL_LocStreamXFORM)  :: XFORM_OUT(NUM_CHILDREN)
-     type (T_RiverRouting), pointer   :: RoutingType => NULL()                
+     type (T_RiverRouting), pointer   :: RoutingType => NULL()
   end type T_SURFACE_STATE
 
   type SURF_WRAP
@@ -173,15 +173,15 @@ module GEOS_SurfaceGridCompMod
 
 ! !DESCRIPTION: This version uses the GEOS\_GenericSetServices, which in addition
 !                to setting default IRF methods, also allocates
-!   our instance of a generic state and puts it in the 
+!   our instance of a generic state and puts it in the
 !   gridded component (GC). Here we override the Initialize and Run methods.
 !   The Run method is a two-stage method that implemets the interaction
 !   between the 2-stage children representing the various surface types and the 2-stage
 !   turbulence run methods.\\
 !
-!   
+!
 !   Note that, in addition to its explicit exports,
-!   the entire internal state, which is used to communicate between the two run stages, 
+!   the entire internal state, which is used to communicate between the two run stages,
 !   is exported using the ``friendly-to-self'' mechanism.\\
 !
 ! Imports are read-only quantities computed by other gridded components.\\
@@ -191,7 +191,7 @@ module GEOS_SurfaceGridCompMod
 ! surface conditions. The Export versions of these fluxes are the final
 ! values actually used in the surface budgets. The same applies to some
 ! of the radiative fluxes, for which the values exported here are those
-! actually used in the budget. 
+! actually used in the budget.
 
 !EOP
 
@@ -207,12 +207,12 @@ module GEOS_SurfaceGridCompMod
 ! Locals
 
     integer                                 :: I
-    type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
+    type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE, DO_CICE_THERMO
     character(len=ESMF_MAXSTR)              :: SURFRC
-    type(ESMF_Config)                       :: SCF        ! info from Surface Config File 
+    type(ESMF_Config)                       :: SCF        ! info from Surface Config File
 
 !=============================================================================
 
@@ -248,15 +248,15 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetResource    (MAPL, DO_OBIO,       label="USE_OCEANOBIOGEOCHEM:",   DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource    (MAPL, DO_WAVES,      label="USE_WAVES:",              DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource    (SCF,  ATM_CO2,       label='ATM_CO2:',                DEFAULT=2,          __RC__ ) 
+    call MAPL_GetResource    (SCF,  ATM_CO2,       label='ATM_CO2:',                DEFAULT=2,          __RC__ )
     call MAPL_GetResource    (SCF,  catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,          __RC__ )
     call MAPL_GetResource    (SCF,  landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,          __RC__ )
     if     (LSM_CHOICE.eq.1) then
        call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2",   __RC__ )
-    elseif (LSM_CHOICE.eq.2) then                                                                                             
-       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )           
-!    elseif (LSM_CHOICE.eq.3) then                                                                                         
-!       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
+    elseif (LSM_CHOICE.eq.2) then
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM40",  __RC__ )
+!    elseif (LSM_CHOICE.eq.3) then
+!       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )
     else
        _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
@@ -264,13 +264,13 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetResource    (SCF,  DO_FIRE_DANGER,label='FIRE_DANGER:',            DEFAULT=.false.,    __RC__ )
 
     call ESMF_ConfigDestroy(SCF, __RC__ )
-    
+
     if ((catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
        DO_GOSWIM=.true.
     else
        DO_GOSWIM=.false.
     endif
-    
+
 ! Set the Run entry point
 ! -----------------------
 
@@ -574,7 +574,7 @@ module GEOS_SurfaceGridCompMod
          UNITS              = '1'                           ,&
          DIMS               = MAPL_DimsHorzOnly,             &
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -583,7 +583,7 @@ module GEOS_SurfaceGridCompMod
          UNITS              = '1'                           ,&
          DIMS               = MAPL_DimsHorzOnly,             &
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -592,7 +592,7 @@ module GEOS_SurfaceGridCompMod
          UNITS              = '1'                           ,&
          DIMS               = MAPL_DimsHorzOnly,             &
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -601,7 +601,7 @@ module GEOS_SurfaceGridCompMod
          UNITS              = '1'                           ,&
          DIMS               = MAPL_DimsHorzOnly,             &
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                              &
@@ -646,7 +646,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
     end if
-    
+
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
          LONG_NAME  = 'skin_temperature_analysis_tendency',        &
@@ -997,7 +997,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'ASNOW'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1024,7 +1024,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSNOW'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1033,7 +1033,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSAT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1042,7 +1042,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPUNST'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1051,7 +1051,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPWLT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1060,7 +1060,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'TPSURF'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1069,7 +1069,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'FRSAT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1078,7 +1078,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'FRUST'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1087,7 +1087,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'FRWLT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1096,7 +1096,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SNOMAS'                            ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1105,7 +1105,16 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'WET1'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                             ,&
+        LONG_NAME          = 'surface_soil_wetness_for_chem'     ,&
+        UNITS              = '1'                                 ,&
+        SHORT_NAME         = 'WET1_FOR_CHEM'                     ,&
+        DIMS               = MAPL_DimsHorzOnly                   ,&
+        VLOCATION          = MAPL_VLocationNone                  ,&
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1114,7 +1123,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'WET2'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1123,7 +1132,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'WET3'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1159,7 +1168,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'LAI'                               ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1168,7 +1177,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'GRN'                               ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1177,7 +1186,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'Z2CH'                              ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1186,7 +1195,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'ROOTL'                             ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
@@ -1414,7 +1423,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SNOWDP'                            ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -1424,7 +1433,7 @@ module GEOS_SurfaceGridCompMod
         DIMS               = MAPL_DimsHorzOnly           ,&
         FIELD_TYPE         = MAPL_VectorField            ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -1434,7 +1443,7 @@ module GEOS_SurfaceGridCompMod
         DIMS               = MAPL_DimsHorzOnly           ,&
         FIELD_TYPE         = MAPL_VectorField            ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -1444,7 +1453,7 @@ module GEOS_SurfaceGridCompMod
         DIMS               = MAPL_DimsHorzOnly           ,&
         FIELD_TYPE         = MAPL_VectorField            ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -1454,7 +1463,7 @@ module GEOS_SurfaceGridCompMod
         DIMS               = MAPL_DimsHorzOnly           ,&
         FIELD_TYPE         = MAPL_VectorField            ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1463,7 +1472,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SHWTR'                     ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1472,7 +1481,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SHICE'                     ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1481,7 +1490,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'HLATWTR'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1490,7 +1499,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'HLATICE'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
      call MAPL_AddExportSpec(GC                     ,&
         LONG_NAME          = 'open_water_net_downward_longwave_flux',&
@@ -1498,7 +1507,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'LWNDWTR'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -1507,7 +1516,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'LWNDICE'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -1516,7 +1525,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SWNDWTR'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -1525,7 +1534,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SWNDICE'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1534,7 +1543,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'SNOWOCN'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -1543,7 +1552,7 @@ module GEOS_SurfaceGridCompMod
         SHORT_NAME         = 'RAINOCN'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
 
@@ -1554,7 +1563,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'EVAPOUT'                   ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1572,7 +1581,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'SHOUT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1590,7 +1599,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'DISCHARGE'                 ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1599,7 +1608,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'RUNOFF'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1608,7 +1617,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'DRAINAGE'                  ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1617,7 +1626,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'EVPINT'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1626,7 +1635,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1635,7 +1644,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'EVPVEG'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1644,7 +1653,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1689,7 +1698,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'BASEFLOW'                  ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1698,7 +1707,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'RUNSURF'                   ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1754,7 +1763,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'TCSORIG',                   &
      LONG_NAME          = 'Input_tc_for_snow',         &
@@ -1763,7 +1772,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'TPSN1IN',                   &
      LONG_NAME          = 'Input_temp_of_top_snow_lev',&
@@ -1772,7 +1781,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'TPSN1OUT',                  &
      LONG_NAME          = 'Output_temp_of_top_snow_lev',&
@@ -1781,7 +1790,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'SWNETSNOW',                    &
      LONG_NAME          = 'Net_shortwave_snow',        &
@@ -1790,7 +1799,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWUPSNOW',                    &
      LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
@@ -1799,7 +1808,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWDNSNOW',                    &
      LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
@@ -1808,7 +1817,7 @@ module GEOS_SurfaceGridCompMod
      VLOCATION          = MAPL_VLocationNone,          &
                                             RC=STATUS  )
    VERIFY_(STATUS)
- 
+
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'GHSNOW',                    &
      LONG_NAME          = 'Ground_heating_snow',       &
@@ -1986,7 +1995,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'SMELT'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -1995,7 +2004,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
@@ -2004,7 +2013,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'LWNDSRF'                   ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
@@ -2013,7 +2022,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'SWNDSRF'                   ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2022,7 +2031,7 @@ module GEOS_SurfaceGridCompMod
     SHORT_NAME         = 'LHFX'                      ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2069,7 +2078,7 @@ module GEOS_SurfaceGridCompMod
        VLOCATION          = MAPL_VLocationNone,                  &
        RC=STATUS  )
   VERIFY_(STATUS)
-     
+
   call MAPL_AddExportSpec(GC,                                    &
        LONG_NAME          = 'total_precipitation',               &
        UNITS              = 'kg m-2 s-1',                        &
@@ -2078,7 +2087,7 @@ module GEOS_SurfaceGridCompMod
        VLOCATION          = MAPL_VLocationNone,                  &
        RC=STATUS  )
   VERIFY_(STATUS)
-     
+
   call MAPL_AddExportSpec(GC,                                    &
        LONG_NAME          = 'convective_precipitation',          &
        UNITS              = 'kg m-2 s-1',                        &
@@ -2087,7 +2096,7 @@ module GEOS_SurfaceGridCompMod
        VLOCATION          = MAPL_VLocationNone,                  &
        RC=STATUS  )
   VERIFY_(STATUS)
-     
+
   call MAPL_AddExportSpec(GC,                                    &
        LONG_NAME          = 'snowfall',                          &
        UNITS              = 'kg m-2 s-1',                        &
@@ -2610,8 +2619,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_2'   ,&
@@ -2620,8 +2629,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_3'   ,&
@@ -2630,8 +2639,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_4'   ,&
@@ -2640,8 +2649,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_5'   ,&
@@ -2650,8 +2659,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'hydrophobic_black_carbon_mass_in_snow_bin_1',&
@@ -2660,8 +2669,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'hydrophilic_black_carbon_mass_in_snow_bin_2',&
@@ -2670,8 +2679,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)     
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'hydrophobic_organic_carbon_mass_in_snow_bin_1',&
@@ -2680,8 +2689,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)   
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'hydrophilic_organic_carbon_mass_in_snow_bin_2',&
@@ -2690,8 +2699,8 @@ module GEOS_SurfaceGridCompMod
           DIMS               = MAPL_DimsHorzOnly           ,&
           UNGRIDDED_DIMS     = (/N_SNOW_LAND/)             ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)    
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_1',&
@@ -2699,79 +2708,79 @@ module GEOS_SurfaceGridCompMod
        SHORT_NAME         = 'RMELTDU001'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_2',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTDU002'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_3',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTDU003'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_4',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTDU004'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_5',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTDU005'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_black_carbon_mass_flux_from_the_bottom_layer_bin_1',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTBC001'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_black_carbon_mass_flux_from_the_bottom_layer_bin_2',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTBC002'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_1',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTOC001'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
-   
+
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_2',&
        UNITS              = 'kg m-2 s-1'                ,&
        SHORT_NAME         = 'RMELTOC002'                ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
@@ -2780,16 +2789,16 @@ module GEOS_SurfaceGridCompMod
        SHORT_NAME         = 'PEATCLSM_WATERLEVEL'               ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
        UNITS              = 'kg m-2 s-1'                ,&
-       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,& 
+       SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
        DIMS               = MAPL_DimsHorzOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
-       RC=STATUS  ) 
+       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                  ,&
@@ -2927,59 +2936,60 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  )
      VERIFY_(STATUS)
 
-  IF(LSM_CHOICE > 1) THEN     
+  IF(LSM_CHOICE > 1) THEN
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_leaf-area_index',&
           UNITS              = '1'                         ,&
           SHORT_NAME         = 'CNLAI'                     ,&
           DIMS               = MAPL_DimsHorzOnly,           &
           VLOCATION          = MAPL_VLocationNone,          &
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_total_leaf-area_index'  ,&
           UNITS              = '1'                         ,&
           SHORT_NAME         = 'CNTLAI'                    ,&
           DIMS               = MAPL_DimsHorzOnly,           &
           VLOCATION          = MAPL_VLocationNone,          &
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_stem-area_index',&
           UNITS              = '1'                         ,&
           SHORT_NAME         = 'CNSAI'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_total_carbon'           ,&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNTOTC'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_total_vegetation_carbon',&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNVEGC'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_total_root_carbon'      ,&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNROOT'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      if (LSM_CHOICE == 3) then
@@ -2999,133 +3009,133 @@ module GEOS_SurfaceGridCompMod
           SHORT_NAME         = 'CNNPP'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_gross_primary_production',&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'CNGPP'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_total_soil_respiration' ,&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'CNSR'                      ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_net_ecosystem_exchange' ,&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'CNNEE'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'abstract_C_pool_to_meet_excess_MR_demand' ,&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNXSMR'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_added_to_maintain_positive_C' ,&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'CNADD'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_carbon_loss_to_fire'    ,&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'CNLOSS'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_fractional_area_burn_rate' ,&
           UNITS              = 's-1'                       ,&
           SHORT_NAME         = 'CNBURN'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'absorbed_PAR'              ,&
           UNITS              = 'W m-2'                     ,&
           SHORT_NAME         = 'PARABS'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'incident_PAR'              ,&
           UNITS              = 'W m-2'                     ,&
           SHORT_NAME         = 'PARINC'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'saturated_stomatal_conductance' ,&
           UNITS              = 'm s-1'                     ,&
           SHORT_NAME         = 'SCSAT'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'unstressed_stomatal_conductance' ,&
           UNITS              = 'm s-1'                     ,&
           SHORT_NAME         = 'SCUNS'                     ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'transpiration coefficient' ,&
           UNITS              = '1'                         ,&
           SHORT_NAME         = 'BTRANT'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'solar induced fluorescence',&
           UNITS              = 'umol m-2 sm s-1'           ,&
           SHORT_NAME         = 'SIF'                       ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'fire season length'        ,&
           UNITS              = 'days'                      ,&
           SHORT_NAME         = 'CNFSEL'                    ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
   END IF
@@ -3179,21 +3189,21 @@ module GEOS_SurfaceGridCompMod
          LONG_NAME  = 'fire weather index',        &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'BUI',                       &
          LONG_NAME  = 'buildup index',             &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ISI',                       &
          LONG_NAME  = 'initial spread index',      &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DSR',                       &
@@ -3230,21 +3240,21 @@ module GEOS_SurfaceGridCompMod
          LONG_NAME  = 'fire weather index (daily)',&
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'BUI_DAILY',                 &
          LONG_NAME  = 'buildup index (daily)',     &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ISI_DAILY',                 &
          LONG_NAME  = 'initial spread index (daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DSR_DAILY',                 &
@@ -3279,21 +3289,21 @@ module GEOS_SurfaceGridCompMod
          LONG_NAME  = 'fire weather index (daily)',&
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'BUI_DAILY_',                &
          LONG_NAME  = 'buildup index (daily)',     &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'ISI_DAILY_',                &
          LONG_NAME  = 'initial spread index (daily)', &
          UNITS      = '1',                         &
          DIMS       = MAPL_DimsHorzOnly,           &
-         VLOCATION  = MAPL_VLocationNone, __RC__) 
+         VLOCATION  = MAPL_VLocationNone, __RC__)
 
     call MAPL_AddExportSpec(GC,                    &
          SHORT_NAME = 'DSR_DAILY_',                &
@@ -3438,7 +3448,7 @@ module GEOS_SurfaceGridCompMod
         FriendlyTO         = trim(COMP_NAME),                     &
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
 
      VERIFY_(STATUS)
 
@@ -3449,7 +3459,7 @@ module GEOS_SurfaceGridCompMod
         FriendlyTO         = trim(COMP_NAME),                     &
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
 
      VERIFY_(STATUS)
 !EOS
@@ -3541,9 +3551,9 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS )
     VERIFY_(STATUS)
- 
+
     RETURN_(ESMF_SUCCESS)
-  
+
     contains
 
     subroutine OBIO_setServices(NB_CHOU, RC)
@@ -3563,7 +3573,7 @@ module GEOS_SurfaceGridCompMod
            RC=STATUS  )
       VERIFY_(STATUS)
 
-       call MAPL_AddImportSpec(GC,                              &  
+       call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'DROBIO',                            &
             LONG_NAME          = 'surface_downwelling_shortwave_beam_flux_per_OBIO_band', &
             UNITS              = 'W m-2',                             &
@@ -3598,7 +3608,7 @@ module GEOS_SurfaceGridCompMod
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -3612,14 +3622,14 @@ module GEOS_SurfaceGridCompMod
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm 
+    character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    
+
 ! Local derived type aliases
 
     type (MAPL_MetaComp    ), pointer   :: MAPL
-    type (MAPL_MetaComp    ), pointer   :: CHILD_MAPL 
+    type (MAPL_MetaComp    ), pointer   :: CHILD_MAPL
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (MAPL_LocStream       )            :: EXCH
     type (MAPL_LocStream       )            :: CHILD_LS
@@ -3630,7 +3640,7 @@ module GEOS_SurfaceGridCompMod
     character(len=ESMF_MAXSTR)              :: ROUTINGFILE
     character(len=ESMF_MAXSTR)              :: DischargeAdjustFile
 
-    type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
+    type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
     type (SURF_wrap)                        :: WRAP
     integer                                 :: I
     real, pointer                           :: FRLAND   (:,:) => NULL()
@@ -3666,7 +3676,7 @@ module GEOS_SurfaceGridCompMod
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -3725,7 +3735,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_TimerOn(MAPL,"LocStreamCreate")
 
     do I = 1, NUM_CHILDREN
-       
+
        call MAPL_LocStreamCreate(CHILD_LS, LOCSTREAM,                  &
                                  NAME = GCNAMES(I) ,                   &
                                  MASK = (/CHILD_MASK(I)/),             &
@@ -3774,13 +3784,13 @@ module GEOS_SurfaceGridCompMod
 !   attached to the surface locstream
 !------------------------------------------------------------------------
 
-    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_OCEAN  ,  FROCEAN  , RC=STATUS) 
+    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_OCEAN  ,  FROCEAN  , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRLAND   , RC=STATUS) 
+    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAND   ,  FRLAND   , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAKE   ,  FRLAKE   , RC=STATUS) 
+    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LAKE   ,  FRLAKE   , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LANDICE,  FRLANDICE, RC=STATUS) 
+    call MAPL_LocStreamFracArea( LOCSTREAM, MAPL_LANDICE,  FRLANDICE, RC=STATUS)
     VERIFY_(STATUS)
 
     FRLANDICE = max(min(FRLANDICE,1.0),0.0)
@@ -3828,7 +3838,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
        call MAPL_AttributeSet(field, NAME="MAPL_InitStatus", &
                               VALUE=MAPL_InitialRestart, RC=STATUS)
-       VERIFY_(STATUS)      
+       VERIFY_(STATUS)
     END DO
 
 ! Init land and snow constants, currently different in Icarus and GEOSldas
@@ -3874,8 +3884,8 @@ module GEOS_SurfaceGridCompMod
           call ESMFL_BundleGetPointerToData(Bundle,'EVLAND',      EVAP, RC=STATUS)
           VERIFY_(STATUS)
 
-          PCME = PCME - EVAP 
-          PUME = PUME - EVAP 
+          PCME = PCME - EVAP
+          PUME = PUME - EVAP
 
           NT = size(TileType)
 
@@ -3952,9 +3962,9 @@ module GEOS_SurfaceGridCompMod
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)              :: IAm="InitializeRiverRouting" 
+    character(len=ESMF_MAXSTR)              :: IAm="InitializeRiverRouting"
     integer                                 :: STATUS
-  
+
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
@@ -3972,12 +3982,12 @@ module GEOS_SurfaceGridCompMod
        read(unit, iostat=status) numRoutings
        VERIFY_(STATUS)
     end if
-       
+
     call MAPL_CommsBcast(vm, DATA=numRoutings, N=1, ROOT=0, RC=status)
     VERIFY_(STATUS)
 
 ! Allocate a list that will hold the maximum possible number
-!  of local routings. The list will compacted later 
+!  of local routings. The list will compacted later
 !  to the exact number.
 
     allocate(tmpLocalRoutings(numRoutings))
@@ -4012,12 +4022,12 @@ module GEOS_SurfaceGridCompMod
 
 ! For routings with a src or dst tile in the local PE,
 !  convert the tile's IDs to local indeces.
-!  Tiles that are not in the local processor are 
+!  Tiles that are not in the local processor are
 !  assigned an index of -1.
 
        Routing => tmpLocalRoutings(i)
        Routing%seqIdx = i
-       
+
        call Tile2Index(Routing, Local_Id)
 
        if(Routing%srcIndex>0 .and. Routing%dstIndex>0) then
@@ -4025,7 +4035,7 @@ module GEOS_SurfaceGridCompMod
           Routing%dstPE = myPE
        endif
 
-! If either the routing's source or destination tile 
+! If either the routing's source or destination tile
 !  was found to be in the local processor, add the routing
 !  to the list of local routings.
 
@@ -4069,7 +4079,7 @@ module GEOS_SurfaceGridCompMod
     call MPI_AllGather(numActive, 1, MP_INTEGER, &
                        BlockSizes,1, MP_INTEGER, &
                        comm,status)
-    VERIFY_(STATUS)      
+    VERIFY_(STATUS)
 
     BlockSizes = BlockSizes*3
     displ(0)=0
@@ -4082,12 +4092,12 @@ module GEOS_SurfaceGridCompMod
     call MPI_AllGatherV(Active      ,size(Active), MP_INTEGER, &
                         ActiveGlobal,blocksizes, displ, MP_INTEGER, &
                         comm,status)
-    VERIFY_(STATUS)      
+    VERIFY_(STATUS)
 
 ! Using the global list, we now visit all the local tiles that will be
 !   active in communication and find the PE and Index they
-!   are sending to or receiving from. This is sufficient to do the 
-!   routing if we do an mpi send/recv pair for every Active routing. 
+!   are sending to or receiving from. This is sufficient to do the
+!   routing if we do an mpi send/recv pair for every Active routing.
 
     do i=1,numLocalRoutings
        if(LocalRoutings(i)%srcIndex>0 .neqv. LocalRoutings(i)%dstIndex>0) then
@@ -4128,7 +4138,7 @@ module GEOS_SurfaceGridCompMod
     close(unit)
 
 #endif
-    
+
     !ALT NEW ROUTING to make communication more effective
 
     nsdx=0
@@ -4138,12 +4148,12 @@ module GEOS_SurfaceGridCompMod
     end do
     allocate(kdx(nsdx), blocksizes(nDEs), _STAT)
     blocksizes=0
-    
+
     ! exchange with everybody else
     call MPI_AllGather(nsdx, 1, MP_Integer, &
          blocksizes, 1, MP_Integer, comm, status)
     _VERIFY(status)
-    
+
     ! now everybody has blocksizes(nDEs)
 
     ntotal = sum(blocksizes) ! should be same as # of paired sources and sinks (npairs)
@@ -4151,7 +4161,7 @@ module GEOS_SurfaceGridCompMod
     allocate (karray(numRoutings), _STAT) !declare as target!!!
     karray = 0
     allocate (displ(0:nDEs), _STAT) !declare as target!!!
-    
+
     ksum = 0
     displ(0)=ksum
     do n=1,nDEs
@@ -4175,7 +4185,7 @@ module GEOS_SurfaceGridCompMod
 
     call MPI_AllGatherV(kseq, nsdx, MP_Integer, &
          tmparray, blocksizes, displ, MP_Integer, comm, status)
-    _VERIFY(STATUS)      
+    _VERIFY(STATUS)
 
     deallocate(kseq)
     do n=1,nDEs
@@ -4185,18 +4195,18 @@ module GEOS_SurfaceGridCompMod
        end do
     end do
     deallocate(tmparray)
-    
+
     allocate(RoutingType, _STAT)
     RoutingType%LocalRoutings => LocalRoutings
     RoutingType%karray => karray
     RoutingType%kdx => kdx
     RoutingType%BlockSizes => BlockSizes
     RoutingType%displ => displ
-    
+
     return
 
   contains
-    
+
     subroutine FindTile(Table, TileID, PE, Index)
       integer, intent(IN) :: Table(:,:), TileID
       integer, intent(OUT) :: PE, Index
@@ -4251,7 +4261,7 @@ module GEOS_SurfaceGridCompMod
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -4284,7 +4294,7 @@ module GEOS_SurfaceGridCompMod
     integer                             :: NT
     integer, pointer, dimension(:)      :: TYPE
 
-    type (T_SURFACE_STATE), pointer     :: SURF_INTERNAL_STATE 
+    type (T_SURFACE_STATE), pointer     :: SURF_INTERNAL_STATE
     type (SURF_wrap)                    :: WRAP
 
     type (ESMF_Time)                    :: CurrentTime
@@ -4354,7 +4364,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer  :: RH2M     (:,:)      => NULL()
     real, pointer  :: UU10M    (:,:)      => NULL()
 
-! Pointers to tile versions of imports 
+! Pointers to tile versions of imports
 
     real, pointer, dimension(:) :: PSTILE      => NULL()
     real, pointer, dimension(:) :: TATILE      => NULL()
@@ -4383,7 +4393,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: QSTILE => NULL()
     real, pointer, dimension(:) :: D0TILE => NULL()
 
-! Pointers to tiled versions of exports 
+! Pointers to tiled versions of exports
 
     real, pointer, dimension(:) :: LAITILE     => NULL()
     real, pointer, dimension(:) :: GRNTILE     => NULL()
@@ -4420,7 +4430,7 @@ module GEOS_SurfaceGridCompMod
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -4547,7 +4557,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , QFRL  , 'QFRL'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , BSTAR , 'BSTAR' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , USTAR , 'USTAR' ,  RC=STATUS); VERIFY_(STATUS)
- 
+
 ! These are force-allocated because run2 needs them or their space
 
     call MAPL_GetPointer(INTERNAL, TS    , 'TS'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -4568,7 +4578,7 @@ module GEOS_SurfaceGridCompMod
 
     NT = size(TYPE)
 
-!  Allocate tile versions of imports 
+!  Allocate tile versions of imports
 !-----------------------------------
 
     allocate(   PSTILE(NT), STAT=STATUS)
@@ -4617,7 +4627,7 @@ module GEOS_SurfaceGridCompMod
 !------------------------------------
 
 !  We do not need a tile version of RHOS
-    
+
     allocate(   CTTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
     allocate(   CQTILE(NT), STAT=STATUS)
@@ -4689,87 +4699,87 @@ module GEOS_SurfaceGridCompMod
     endif
 
     if(associated(    RI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,     RI,     RITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,     RI,     RITILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(    RE)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,     RE,     RETILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,     RE,     RETILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   LAI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    LAI,    LAITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    LAI,    LAITILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   GRN)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    GRN,    GRNTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    GRN,    GRNTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated( ROOTL)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ROOTL,  ROOTLTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  ROOTL,  ROOTLTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  Z2CH)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,   Z2CH,   Z2CHTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,   Z2CH,   Z2CHTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   VNT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    VNT,    VNTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    VNT,    VNTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   GST)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    GST,    GSTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    GST,    GSTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   Z0H)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    Z0H,    Z0HTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    Z0H,    Z0HTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(    Z0)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,     Z0,     Z0TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,     Z0,     Z0TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(ITY)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,    ITY,    ITYTILE, SAMPLE=.true., RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,    ITY,    ITYTILE, SAMPLE=.true., RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOU50M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOU50M, MOU50MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOU50M, MOU50MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOV50M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOV50M, MOV50MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOV50M, MOV50MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOT10M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  MOT10M,  MOT10MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  MOT10M,  MOT10MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOQ10M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  MOQ10M,  MOQ10MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  MOQ10M,  MOQ10MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOU10M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOU10M, MOU10MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOU10M, MOU10MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOV10M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOV10M, MOV10MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOV10M, MOV10MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOT2M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  MOT2M,  MOT2MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  MOT2M,  MOT2MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOQ2M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  MOQ2M,  MOQ2MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  MOQ2M,  MOQ2MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOU2M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOU2M, MOU2MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOU2M, MOU2MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(MOV2M)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, MOV2M, MOV2MTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, MOV2M, MOV2MTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -4826,23 +4836,23 @@ module GEOS_SurfaceGridCompMod
     UHTILE = UHTILE*CMTILE
     VHTILE = VHTILE*CMTILE
 
-    call MAPL_LocStreamTransform( LOCSTREAM, CT, CTTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, CT, CTTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, CM, CMTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, CM, CMTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, CQ, CQTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, CQ, CQTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, CN, CNTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, CN, CNTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, TH, THTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, TH, THTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, QH, QHTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, QH, QHTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, UH, UHTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, UH, UHTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, VH, VHTILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, VH, VHTILE, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_LocStreamTransform( LOCSTREAM, D0, D0TILE, RC=STATUS) 
+    call MAPL_LocStreamTransform( LOCSTREAM, D0, D0TILE, RC=STATUS)
     VERIFY_(STATUS)
 
 ! These are in the internal state
@@ -4903,7 +4913,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(  LAITILE)) deallocate(   LAITILE)
     if(associated(  GRNTILE)) deallocate(   GRNTILE)
     if(associated(ROOTLTILE)) deallocate( ROOTLTILE)
-    if(associated( Z2CHTILE)) deallocate(  Z2CHTILE)  
+    if(associated( Z2CHTILE)) deallocate(  Z2CHTILE)
     if(associated(  VNTTILE)) deallocate(   VNTTILE)
     if(associated(  GSTTILE)) deallocate(   GSTTILE)
     if(associated(  Z0HTILE)) deallocate(   Z0HTILE)
@@ -5138,7 +5148,7 @@ module GEOS_SurfaceGridCompMod
            call FILLOUT_TILE(GEX(type),    'D0',    D0TILE, XFORM, RC=STATUS)
            VERIFY_(STATUS)
         end if
- 
+
        if(associated(RITILE)) then
            call FILLOUT_TILE(GEX(type),   'RIT',   RITILE, XFORM, RC=STATUS)
            VERIFY_(STATUS)
@@ -5242,7 +5252,7 @@ module GEOS_SurfaceGridCompMod
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -5276,7 +5286,7 @@ module GEOS_SurfaceGridCompMod
     type (ESMF_Time)                    :: CurrentTime
     character(len=ESMF_MAXSTR)          :: PRECIP_FILE
 
-    type (T_SURFACE_STATE), pointer     :: surf_internal_state 
+    type (T_SURFACE_STATE), pointer     :: surf_internal_state
     type (SURF_wrap)                    :: wrap
     type(ESMF_VM)                       :: VM
     character(len=ESMF_MAXSTR), pointer :: GCNames(:)
@@ -5406,6 +5416,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNOMAS    => NULL()
     real, pointer, dimension(:,:) :: SNOWDP    => NULL()
     real, pointer, dimension(:,:) :: WET1      => NULL()
+    real, pointer, dimension(:,:) :: WET1_FOR_CHEM => NULL()
     real, pointer, dimension(:,:) :: WET2      => NULL()
     real, pointer, dimension(:,:) :: WET3      => NULL()
     real, pointer, dimension(:,:) :: WCSF      => NULL()
@@ -5447,7 +5458,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: PS_       => NULL()
 
 
-   
+
     real, pointer, dimension(:,:) :: HLATWTR  => NULL()
     real, pointer, dimension(:,:) :: HLATICE  => NULL()
     real, pointer, dimension(:,:) :: SHWTR    => NULL()
@@ -5828,10 +5839,10 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) ::  USTARITILE      => NULL()
     real, pointer, dimension(:) ::  FHOCNTILE       => NULL()
 
-    real, pointer, dimension(:) :: EVAPOUTILE       => NULL()  
-    real, pointer, dimension(:) :: SUBLIMTILE       => NULL()  
+    real, pointer, dimension(:) :: EVAPOUTILE       => NULL()
+    real, pointer, dimension(:) :: SUBLIMTILE       => NULL()
     real, pointer, dimension(:) :: SHOUTILE         => NULL()
-    real, pointer, dimension(:) :: HLWUPTILE        => NULL()  
+    real, pointer, dimension(:) :: HLWUPTILE        => NULL()
     real, pointer, dimension(:) :: LWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: SWNDSRFTILE      => NULL()
     real, pointer, dimension(:) :: RUNOFFTILE       => NULL()
@@ -5839,7 +5850,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: DISCHARGETILE    => NULL()
     real, pointer, dimension(:) :: BASEFLOWTILE     => NULL()
     real, pointer, dimension(:) :: ACCUMTILE        => NULL()
-    real, pointer, dimension(:) :: SMELTTILE        => NULL() 
+    real, pointer, dimension(:) :: SMELTTILE        => NULL()
     real, pointer, dimension(:) :: EVEGTILE         => NULL()
     real, pointer, dimension(:) :: EINTTILE         => NULL()
     real, pointer, dimension(:) :: EICETILE         => NULL()
@@ -5992,8 +6003,8 @@ module GEOS_SurfaceGridCompMod
 ! following three active only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR (=4)
 !   IMPORTS
     real, pointer, dimension(:,:)   :: CO2SC     => NULL()
-    real, pointer, dimension(:,:,:) :: DRBAND    => NULL()           
-    real, pointer, dimension(:,:,:) :: DFBAND    => NULL() 
+    real, pointer, dimension(:,:,:) :: DRBAND    => NULL()
+    real, pointer, dimension(:,:,:) :: DFBAND    => NULL()
 
 !   tiled versio of IMPORTS
     real, pointer, dimension(:)   :: CO2SCTILE     => NULL()
@@ -6008,7 +6019,7 @@ module GEOS_SurfaceGridCompMod
     Type(esmf_field)                        :: bundle_field
     Character(len=ESMF_MAXSTR), allocatable :: fieldnames(:)
 
-! interpolate wind for wind stress 
+! interpolate wind for wind stress
     real, pointer, dimension(:,:) :: UUA     => NULL()
     real, pointer, dimension(:,:) :: VVA     => NULL()
     real, pointer, dimension(:  ) :: UUATILE => NULL()
@@ -6030,10 +6041,10 @@ module GEOS_SurfaceGridCompMod
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
-    
+
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -6121,7 +6132,7 @@ module GEOS_SurfaceGridCompMod
 
        call ESMF_StateGet(      IMPORT, 'AERO_DP',   Bundle   , RC=STATUS); VERIFY_(STATUS)
        call ESMF_FieldBundleGet(Bundle, fieldCOUNT=NUM_AERO_DP, RC=STATUS); VERIFY_(STATUS)
-       
+
        allocate(AERO_DP_FIELD_NAME(NUM_AERO_DP), STAT=STATUS); VERIFY_(STATUS)
        allocate(AERO_DP(     IM,JM,NUM_AERO_DP), STAT=STATUS); VERIFY_(STATUS)
 
@@ -6149,7 +6160,7 @@ module GEOS_SurfaceGridCompMod
        call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
-       VERIFY_(STATUS)   
+       VERIFY_(STATUS)
 
        do K = 1, NUM_AERO_DP
           FIELD_NAME = trim(adjustl(AERO_DP_FIELD_NAME(K)))
@@ -6341,7 +6352,7 @@ module GEOS_SurfaceGridCompMod
            allocate( SSSD(IM,JM,NUM_SSSD), STAT=STATUS ); VERIFY_(STATUS)
            SSSD(:,:,1:NUM_SSSD) = AERO_DP(:,:,K:K+NUM_SSSD-1)
        endif
-       
+
        deallocate(AERO_DP_FIELD_NAME)
        deallocate(AERO_DP)
 
@@ -6426,9 +6437,9 @@ module GEOS_SurfaceGridCompMod
 !  ICE and FRZR) by the total file precip.
 !
 ! Per 05/2019 discussions with Rolf Reichle and Andrea Molod, the
-! following treatment is applied:       
+! following treatment is applied:
 !   In the case of tiny (< 0.1 mm/day) model precip, corrected precip
-!   is parsed by the freezing point into large-scale rain or snow. 
+!   is parsed by the freezing point into large-scale rain or snow.
 !   Future development using a ramp or more sophisticated approach is desired.
 !   Note the original correction precip threshold of 1-4 mm/d was
 !   deemed too small, and a 273.15 K temperature threshold instead of
@@ -6441,7 +6452,7 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
        PRECSUM = RCU+RLS+SNO+ICE+FRZR
-       
+
        where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
@@ -6460,7 +6471,7 @@ module GEOS_SurfaceGridCompMod
           RLS  = PCSCALE*RLS
           SNO  = PCSCALE*SNO
           ICE  = PCSCALE*ICE
-          FRZR = PCSCALE*FRZR                   
+          FRZR = PCSCALE*FRZR
        elsewhere (TA > MAPL_TICE)    ! Above is not true .AND. model is warmer than freezing
           RCU = 0.
           RLS = PTTe
@@ -6472,7 +6483,7 @@ module GEOS_SurfaceGridCompMod
           RLS = 0.
           SNO = PTTe
           ICE = 0.
-          FRZR= 0.          
+          FRZR= 0.
        endwhere
 
        where(RLS<0.0)
@@ -6524,7 +6535,7 @@ module GEOS_SurfaceGridCompMod
 
           FACT = 1.0/(PP_TAPER_LAT_HIGH-PP_TAPER_LAT_LOW)
 
-          where(abs(lats)>=PP_TAPER_LAT_LOW .and. abs(lats)<=PP_TAPER_LAT_HIGH) 
+          where(abs(lats)>=PP_TAPER_LAT_LOW .and. abs(lats)<=PP_TAPER_LAT_HIGH)
              RCU = (PCU   *(abs(lats)-PP_TAPER_LAT_LOW) + RCU *(PP_TAPER_LAT_HIGH-abs(lats)))*FACT
              RLS = (PLS   *(abs(lats)-PP_TAPER_LAT_LOW) + RLS *(PP_TAPER_LAT_HIGH-abs(lats)))*FACT
              SNO = (SNOFL *(abs(lats)-PP_TAPER_LAT_LOW) + SNO *(PP_TAPER_LAT_HIGH-abs(lats)))*FACT
@@ -6603,6 +6614,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SNOMAS  , 'SNOMAS' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWDP  , 'SNOWDP' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET1    , 'WET1'   ,  RC=STATUS); VERIFY_(STATUS)
+    ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+    !       (aka not land) to be replaced with 1.0. We want WET1 to have
+    !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+    !       to GOCART.
+    call MAPL_GetPointer(EXPORT  , WET1_FOR_CHEM    , 'WET1_FOR_CHEM'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET2    , 'WET2'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET3    , 'WET3'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WCSF    , 'WCSF'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -6827,7 +6843,7 @@ module GEOS_SurfaceGridCompMod
     if (DO_WAVES /= 0) then
        call MAPL_GetPointer(EXPORT  , PS_     , 'PS',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
        PS_ = PS
-    end if    
+    end if
 
     if (DO_FIRE_DANGER) then
        call MAPL_GetPointer(EXPORT  , FFMC        , 'FFMC'       ,  RC=STATUS); VERIFY_(STATUS)
@@ -6846,7 +6862,7 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , BUI_DAILY   , 'BUI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , ISI_DAILY   , 'ISI_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DSR_DAILY   , 'DSR_DAILY'  ,  RC=STATUS); VERIFY_(STATUS)
- 
+
        call MAPL_GetPointer(EXPORT  , FFMC_DAILY_ , 'FFMC_DAILY_',  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DMC_DAILY_  , 'DMC_DAILY_' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , DC_DAILY_   , 'DC_DAILY_'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6913,7 +6929,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     allocate( SLR  (IM,JM), STAT=STATUS)
     VERIFY_(STATUS)
-                                         
+
     allocate(  DTSTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
     allocate(  DQSTILE(NT), STAT=STATUS)
@@ -6935,7 +6951,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetResource( MAPL, SC, 'SOLAR_CONSTANT:', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, SolCycFileName, "SOLAR_CYCLE_FILE_NAME:", DEFAULT='/dev/null', RC=STATUS)
-    VERIFY_(STATUS) 
+    VERIFY_(STATUS)
 
     if(SolCycFileName /= '/dev/null') THEN
 
@@ -7195,7 +7211,7 @@ module GEOS_SurfaceGridCompMod
     end if
 
     ! option to interpolate effective wind vectors such that
-    ! stresses computed in all children will have smooth curl/divergence 
+    ! stresses computed in all children will have smooth curl/divergence
     call MAPL_GetResource(MAPL, iUseInterp, 'INTERPOLATE_ATMTAU:', &
          default=0, RC=STATUS )
     VERIFY_(STATUS)
@@ -7446,7 +7462,7 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(CNFSEL  ,CNFSELTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     END IF
 
-    if (DO_FIRE_DANGER) then 
+    if (DO_FIRE_DANGER) then
        call MKTILE(FFMC,        FFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(GFMC,        GFMCTILE,          NT,  RC=STATUS); VERIFY_(STATUS)
        call MKTILE(DMC,         DMCTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
@@ -7473,7 +7489,7 @@ module GEOS_SurfaceGridCompMod
        call MKTILE(DSR_DAILY_,  DSRDAILYTILE_,     NT,  RC=STATUS); VERIFY_(STATUS)
 
        call MKTILE(VPD,         VPDTILE,           NT,  RC=STATUS); VERIFY_(STATUS)
-    end if   
+    end if
 
 
     FRTILE = 0.0
@@ -7489,11 +7505,11 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     end do
 
-! Create the Discharge for the ocean. This is an import of 
+! Create the Discharge for the ocean. This is an import of
 !  Saltwater, which simply makes a copy to an export.
 !  That export is what goes to GcmGridComp for coupling to the OGCM.
 !  Because OGCM gets tile variables under the table from saltwater.
-!  we have to go through an unecessary packing and unpacking of the 
+!  we have to go through an unecessary packing and unpacking of the
 !  between the globally tiled discharge and the ocean only tiled discharge.
 !--------------------------------------------------------------
 
@@ -7508,8 +7524,8 @@ module GEOS_SurfaceGridCompMod
           ! it seems redundant to fill both DISCHARGETILE and RUNOFFTILE
           ! but this is done in case we need to output RUNOFF
           ! and not to change the existing code too much
-          DISCHARGETILE = RUNOFFTILE 
-    
+          DISCHARGETILE = RUNOFFTILE
+
        else
           call RouteRunoff(SURF_INTERNAL_STATE%RoutingType, RUNOFFTILE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
@@ -7518,16 +7534,16 @@ module GEOS_SurfaceGridCompMod
        !-------------------------------------------------------------------------------------
        !  Special treatment for doing ocean-coupled atmospheric replays to an analysis
        !  that used "corrected" precips.
-       
+
        !  This is done to prevent an ocean mass budget imbalance, since the atmosphere
-       !  water budget is in balance only with the "uncorrected" precip, and the land needs 
+       !  water budget is in balance only with the "uncorrected" precip, and the land needs
        !  corrected precips.
-       
+
        !  It involves using the uncorrected precip over ocean tiles, which is done here.
-       
+
        !  we also need to modify the river discharge that the the ocean sees
        !  to account, on average, for the difference between corrected and uncorrected precip
-       !  over the continents.  
+       !  over the continents.
        !-------------------------------------------------------------------------------------
 
        call MAPL_GetResource ( MAPL, DischargeAdjustFile, Label="DISCHARGE_ADJUST_FILE:", &
@@ -7572,7 +7588,7 @@ module GEOS_SurfaceGridCompMod
        !  the area of the tile. $D^t_k$ is non-zero only at ocean tiles that are river outlets.
 
        if (associated(DISCHARGE)) then
-          call MAPL_LocStreamTransform(LOCSTREAM, DISCHARGE, DISCHARGETILE, RC=STATUS) 
+          call MAPL_LocStreamTransform(LOCSTREAM, DISCHARGE, DISCHARGETILE, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
@@ -7628,76 +7644,76 @@ module GEOS_SurfaceGridCompMod
 !---------------------------------------------------------
 
     if(associated(  RUNOFF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, RUNOFF, RUNOFFTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, RUNOFF, RUNOFFTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
 
     if(associated(    TS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,     TS,     TSTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                                     
+       call MAPL_LocStreamTransform( LOCSTREAM,     TS,     TSTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated(    QS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,     QS,     QSTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                             
+       call MAPL_LocStreamTransform( LOCSTREAM,     QS,     QSTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated( ALBVR)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ALBVR,  ALBVRTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                             
+       call MAPL_LocStreamTransform( LOCSTREAM,  ALBVR,  ALBVRTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated( ALBVF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ALBVF,  ALBVFTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                             
+       call MAPL_LocStreamTransform( LOCSTREAM,  ALBVF,  ALBVFTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated( ALBNR)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ALBNR,  ALBNRTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                             
+       call MAPL_LocStreamTransform( LOCSTREAM,  ALBNR,  ALBNRTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated( ALBNF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ALBNF,  ALBNFTILE, RC=STATUS) 
-       VERIFY_(STATUS)                                             
+       call MAPL_LocStreamTransform( LOCSTREAM,  ALBNF,  ALBNFTILE, RC=STATUS)
+       VERIFY_(STATUS)
     endif
     if(associated( EMISS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  EMISS,  EMISSTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  EMISS,  EMISSTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated( FRI  )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  FRI  ,     FRTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  FRI  ,     FRTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL1)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL1, TSOIL1TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL1, TSOIL1TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL2)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL2, TSOIL2TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL2, TSOIL2TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL3)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL3, TSOIL3TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL3, TSOIL3TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL4)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL4, TSOIL4TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL4, TSOIL4TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL5)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL5, TSOIL5TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL5, TSOIL5TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSOIL6)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL6, TSOIL6TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, TSOIL6, TSOIL6TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  WET1)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,   WET1,   WET1TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,   WET1,   WET1TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  WET2)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,   WET2,   WET2TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,   WET2,   WET2TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  WET3)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,   WET3,   WET3TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,   WET3,   WET3TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  WCSF)) then
@@ -7713,23 +7729,23 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
     if(associated(WESNN1)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, WESNN1, WESNN1TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, WESNN1, WESNN1TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(WESNN2)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, WESNN2, WESNN2TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, WESNN2, WESNN2TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(WESNN3)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, WESNN3, WESNN3TILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, WESNN3, WESNN3TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated( CAPAC)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  CAPAC,  CAPACTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  CAPAC,  CAPACTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(ASNOW )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  ASNOW,  ASNOWTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  ASNOW,  ASNOWTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SHSNOW )) then
@@ -7741,47 +7757,47 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
     if(associated(TPSNO )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  TPSNO,  TPSNOTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  TPSNO,  TPSNOTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TPUST )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  TPUST,  TPUSTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  TPUST,  TPUSTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TPSAT )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  TPSAT,  TPSATTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  TPSAT,  TPSATTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TPWLT )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  TPWLT,  TPWLTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  TPWLT,  TPWLTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TPSURF )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  TPSURF, TPSURFTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  TPSURF, TPSURFTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(FRSAT )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  FRSAT,  FRSATTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  FRSAT,  FRSATTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(FRUST )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  FRUST,  FRUSTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  FRUST,  FRUSTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(FRWLT )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  FRWLT,  FRWLTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  FRWLT,  FRWLTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SNOMAS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SNOMAS,   SNOWTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SNOMAS,   SNOWTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SNOWDP)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SNOWDP,   SNODTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SNOWDP,   SNODTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  HLATN)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, HLATN,   HLATNTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, HLATN,   HLATNTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -8082,67 +8098,67 @@ module GEOS_SurfaceGridCompMod
 
 
     if(associated(  EVAPOU)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, EVAPOU,   EVAPOUTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, EVAPOU,   EVAPOUTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  SUBLIM)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SUBLIM,   SUBLIMTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SUBLIM,   SUBLIMTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  SHOU)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SHOU,   SHOUTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SHOU,   SHOUTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(   LST)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  LST,   LSTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,  LST,   LSTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  HLWUP)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, HLWUP,   HLWUPTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, HLWUP,   HLWUPTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  LWNDSRF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, LWNDSRF,   LWNDSRFTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, LWNDSRF,   LWNDSRFTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  SWNDSRF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SWNDSRF,   SWNDSRFTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SWNDSRF,   SWNDSRFTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  RUNSURF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, RUNSURF,   RUNSURFTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, RUNSURF,   RUNSURFTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  BASEFLOW)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, BASEFLOW,   BASEFLOWTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, BASEFLOW,   BASEFLOWTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  ACCUM)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, ACCUM,   ACCUMTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, ACCUM,   ACCUMTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  SMELT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, SMELT,   SMELTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, SMELT,   SMELTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  EVEG)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, EVEG,   EVEGTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, EVEG,   EVEGTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  EINT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, EINT,   EINTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, EINT,   EINTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  EICE)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, EICE,   EICETILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, EICE,   EICETILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  ESOI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, ESOI,   ESOITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, ESOI,   ESOITILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(  ESNO)) then
-       call MAPL_LocStreamTransform( LOCSTREAM, ESNO,   ESNOTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM, ESNO,   ESNOTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(WAT10CM)) then
@@ -8158,23 +8174,23 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     endif
     if(associated(EVLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,EVLAND,EVLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,EVLAND,EVLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(PRLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,PRLAND,PRLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,PRLAND,PRLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SNOLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SNOLAND,SNOLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SNOLAND,SNOLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(DRPARLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,DRPARLAND,DRPARLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,DRPARLAND,DRPARLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(DFPARLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,DFPARLAND,DFPARLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,DFPARLAND,DFPARLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
      if(associated(LHSNOW)) then
@@ -8210,75 +8226,75 @@ module GEOS_SurfaceGridCompMod
         VERIFY_(STATUS)
      endif
     if(associated(LHLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,LHLAND,LHLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,LHLAND,LHLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SHLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SHLAND,SHLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SHLAND,SHLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SWLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SWLAND,SWLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SWLAND,SWLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SWDOWNLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SWDOWNLAND,SWDOWNLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SWDOWNLAND,SWDOWNLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(LWLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,LWLAND,LWLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,LWLAND,LWLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(GHLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,GHLAND,GHLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,GHLAND,GHLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(GHTSKIN)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,GHTSKIN,GHTSKINTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,GHTSKIN,GHTSKINTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SMLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SMLAND,SMLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SMLAND,SMLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(QINFIL)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,QINFIL,QINFILTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,QINFIL,QINFILTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TWLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,TWLAND,TWLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,TWLAND,TWLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TELAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,TELAND,TELANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,TELAND,TELANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(TSLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,TSLAND,TSLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,TSLAND,TSLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(DWLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,DWLAND,DWLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,DWLAND,DWLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(DHLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,DHLAND,DHLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,DHLAND,DHLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SPLAND)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPLAND,SPLANDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SPLAND,SPLANDTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SPLH  )) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPLH  ,SPLHTILE  , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SPLH  ,SPLHTILE  , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SPWATR)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPWATR,SPWATRTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SPWATR,SPWATRTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SPSNOW)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SPSNOW,SPSNOWTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SPSNOW,SPSNOWTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -8322,187 +8338,187 @@ module GEOS_SurfaceGridCompMod
     if(associated(POROS ))call MAPL_LocStreamTransform(LOCSTREAM,POROS ,POROSTILE, RC=STATUS); VERIFY_(STATUS)
 
     if(associated(CNLAI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNLAI ,CNLAITILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNLAI ,CNLAITILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNTLAI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNTLAI,CNTLAITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNTLAI,CNTLAITILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNSAI)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNSAI ,CNSAITILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNSAI ,CNSAITILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNTOTC)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNTOTC,CNTOTCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNTOTC,CNTOTCTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNVEGC)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNVEGC,CNVEGCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNVEGC,CNVEGCTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNROOT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNROOT,CNROOTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNROOT,CNROOTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNFROOTC)) then
        call MAPL_LocStreamTransform( LOCSTREAM,CNFROOTC,CNFROOTCTILE, RC=STATUS)
        VERIFY_(STATUS)
-    endif    
+    endif
     if(associated(CNNPP)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNNPP ,CNNPPTILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNNPP ,CNNPPTILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNGPP)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNGPP ,CNGPPTILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNGPP ,CNGPPTILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNSR)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNSR  ,CNSRTILE  , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNSR  ,CNSRTILE  , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNNEE)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNNEE ,CNNEETILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNNEE ,CNNEETILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNXSMR)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNXSMR,CNXSMRTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNXSMR,CNXSMRTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNADD)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNADD ,CNADDTILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNADD ,CNADDTILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNLOSS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNLOSS,CNLOSSTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNLOSS,CNLOSSTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNBURN)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNBURN,CNBURNTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNBURN,CNBURNTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(PARABS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,PARABS,PARABSTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,PARABS,PARABSTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(PARINC)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,PARINC,PARINCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,PARINC,PARINCTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SCSAT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SCSAT ,SCSATTILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SCSAT ,SCSATTILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SCUNS)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SCUNS ,SCUNSTILE , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SCUNS ,SCUNSTILE , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(BTRANT)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,BTRANT,BTRANTTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,BTRANT,BTRANTTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(SIF)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,SIF   ,SIFTILE   , RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,SIF   ,SIFTILE   , RC=STATUS)
        VERIFY_(STATUS)
     endif
     if(associated(CNFSEL)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,CNFSEL,CNFSELTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform( LOCSTREAM,CNFSEL,CNFSELTILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
 ! Fire danger
     if (associated(FFMC)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FFMC, FFMCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC, FFMCTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(GFMC)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, GFMC, GFMCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, GFMC, GFMCTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DMC)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DMC, DMCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC, DMCTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DC)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DC, DCTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DC, DCTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(ISI)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, ISI, ISITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI, ISITILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(BUI)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, BUI, BUITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI, BUITILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(FWI)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FWI, FWITILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI, FWITILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DSR)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DSR, DSRTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR, DSRTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
 
     if (associated(FFMC_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY, FFMCDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY, FFMCDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DMC_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY, DMCDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY, DMCDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DC_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY, DCDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY, DCDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(ISI_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY, ISIDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY, ISIDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(BUI_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY, BUIDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY, BUIDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(FWI_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY, FWIDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY, FWIDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DSR_DAILY)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY, DSRDAILYTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY, DSRDAILYTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
 
     if (associated(FFMC_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY_, FFMCDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FFMC_DAILY_, FFMCDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DMC_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY_, DMCDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DMC_DAILY_, DMCDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DC_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY_, DCDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DC_DAILY_, DCDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(ISI_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY_, ISIDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, ISI_DAILY_, ISIDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(BUI_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY_, BUIDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, BUI_DAILY_, BUIDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(FWI_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY_, FWIDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, FWI_DAILY_, FWIDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(DSR_DAILY_)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY_, DSRDAILYTILE_, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, DSR_DAILY_, DSRDAILYTILE_, RC=STATUS)
        VERIFY_(STATUS)
     end if
     if (associated(VPD)) then
-       call MAPL_LocStreamTransform(LOCSTREAM, VPD, VPDTILE, RC=STATUS) 
+       call MAPL_LocStreamTransform(LOCSTREAM, VPD, VPDTILE, RC=STATUS)
        VERIFY_(STATUS)
     end if
 
@@ -8533,7 +8549,7 @@ module GEOS_SurfaceGridCompMod
     end if
 
     if (DO_DATA_ATM4OCN) then
-       ! dataAtm operates only on "saltwater" tiles. 
+       ! dataAtm operates only on "saltwater" tiles.
        ! we need to handle grid boxes withot any ocean
        ! and avoid division by 0
        where (CN == MAPL_Undef)
@@ -8559,7 +8575,7 @@ module GEOS_SurfaceGridCompMod
        if(associated(  V50M))  V50M = VH - TAUY*TMP/CM
     end if
 
-! 10m 
+! 10m
 
     if(  associated(  U10M) .or. associated(  V10M) .or.      &
          associated(  T10M) .or. associated(  Q10M)      ) then
@@ -8655,20 +8671,26 @@ module GEOS_SurfaceGridCompMod
       endif
 
 
-! Fill WET1 over non-land points
-!-------------------------------
+! Fill WET1_FOR_CHEM over non-land points to 1.0
+!-----------------------------------------------
 
-      if( associated(WET1) ) then
-          where(WET1 == MAPL_UNDEF) WET1 = 1.0
+! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+!       (aka not land) to be replaced with 1.0. We want WET1 to have
+!       MAPL_UNDEF over non-land points, so we need a separate export to pass
+!       to GOCART.
+
+      if( associated(WET1_FOR_CHEM) ) then
+          WET1_FOR_CHEM = WET1
+          where(WET1_FOR_CHEM == MAPL_UNDEF) WET1_FOR_CHEM = 1.0
       endif
 
 
 ! Fill imports/exports for OBIO
 !-------------------------------
       if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
-        call OBIO_fillExports(OCEAN, IMPORT,&    
-                              LOCSTREAM, GIM,&   
-                              surf_internal_state%xform_in(OCEAN), & 
+        call OBIO_fillExports(OCEAN, IMPORT,&
+                              LOCSTREAM, GIM,&
+                              surf_internal_state%xform_in(OCEAN), &
                               NT, NB_CHOU,&
                               CO2SC, DRBAND, DFBAND, &
                               CO2SCTILE, DRBANDTILE, DFBANDTILE, RC)
@@ -8683,7 +8705,7 @@ module GEOS_SurfaceGridCompMod
 ! from Catch are now consistently in units of Kelvin.
 ! - rreichle & borescan, 6 Nov 2020
 !
-!-----------------------      
+!-----------------------
 !      if( associated(TSOIL1) ) then
 !             where ( TSOIL1 /= MAPL_Undef ) TSOIL1 = TSOIL1 + MAPL_TICE
 !      endif
@@ -9569,11 +9591,11 @@ module GEOS_SurfaceGridCompMod
 
          call MAPL_GetPointer(GEX(type), dum, 'VPD',         ALLOC=associated(VPDTILE),        notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
-      end if   
+      end if
 
 
-! All children can produce these                       
-                                                                                       
+! All children can produce these
+
       call MAPL_GetPointer(GEX(type), dum, 'DELTS'  , ALLOC=associated(DTSTILE)    , RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'DELQS'  , ALLOC=associated(DQSTILE)    , RC=STATUS)
@@ -10015,7 +10037,7 @@ module GEOS_SurfaceGridCompMod
       if(associated(CNFROOTCTILE)) then
          call FILLOUT_TILE(GEX(type), 'CNFROOTC', CNFROOTCTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
-      end if      
+      end if
       if(associated(CNNPPTILE)) then
          call FILLOUT_TILE(GEX(type), 'CNNPP' ,   CNNPPTILE , XFORM, RC=STATUS)
          VERIFY_(STATUS)
@@ -10341,11 +10363,11 @@ module GEOS_SurfaceGridCompMod
       if(associated(WFLUXTILE)) then
          call FILLOUT_TILE(GEX(type), 'WATERFLUX',WFLUXTILE,   XFORM, RC=STATUS)
          VERIFY_(STATUS)
-      end if 
+      end if
       if(associated(SFLUXTILE)) then
          call FILLOUT_TILE(GEX(type), 'SALTFLUX',SFLUXTILE,   XFORM, RC=STATUS)
          VERIFY_(STATUS)
-      end if 
+      end if
       if(associated(FSWTHRUTILE)) then
          call FILLOUT_TILE(GEX(type), 'FSWTHRU' ,FSWTHRUTILE,   XFORM, RC=STATUS)
          VERIFY_(STATUS)
@@ -10457,7 +10479,7 @@ module GEOS_SurfaceGridCompMod
       if (associated(DSRDAILYTILE_)) then
          call FILLOUT_TILE(GEX(type), 'DSR_DAILY_', DSRDAILYTILE_, XFORM, RC=STATUS)
          VERIFY_(STATUS)
-      end if   
+      end if
       if (associated(VPDTILE)) then
          call FILLOUT_TILE(GEX(type), 'VPD', VPDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
@@ -10466,13 +10488,13 @@ module GEOS_SurfaceGridCompMod
 
       call MAPL_TimerOff(MAPL,"--RUN2_"//trim(GCNames(type)))
       call MAPL_TimerOff(MAPL,           trim(GCNames(type)))
-      
+
       RETURN_(ESMF_SUCCESS)
-      
+
     end subroutine DOTYPE
 
   end subroutine RUN2
-  
+
   subroutine MKTILE_1D(VAR, TILEVAR, NT, RC)
     real, pointer                  :: VAR(:,:)
     real, pointer                  :: TILEVAR(:)
@@ -10530,7 +10552,7 @@ module GEOS_SurfaceGridCompMod
     if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
-!--------------------------------------------------------------      
+!--------------------------------------------------------------
       RETURN_(ESMF_SUCCESS)
 
     else
@@ -10544,7 +10566,7 @@ module GEOS_SurfaceGridCompMod
 ! Fill the variable from the provided stream variable.
 !-----------------------------------------------------
 
-      call MAPL_LocStreamTransform( PTR, XFORM, TILE, RC=STATUS ) 
+      call MAPL_LocStreamTransform( PTR, XFORM, TILE, RC=STATUS )
       VERIFY_(STATUS)
     end if
 
@@ -10574,7 +10596,7 @@ module GEOS_SurfaceGridCompMod
     if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
-!--------------------------------------------------------------      
+!--------------------------------------------------------------
 
        RETURN_(ESMF_SUCCESS)
 
@@ -10619,7 +10641,7 @@ module GEOS_SurfaceGridCompMod
     if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
-!--------------------------------------------------------------      
+!--------------------------------------------------------------
 
        RETURN_(ESMF_SUCCESS)
 
@@ -10630,7 +10652,7 @@ module GEOS_SurfaceGridCompMod
 
       _ASSERT(associated(PTR),'needs informative message')
 
-      call MAPL_LocStreamTransform( TILE, XFORM, PTR, RC=STATUS ) 
+      call MAPL_LocStreamTransform( TILE, XFORM, PTR, RC=STATUS )
       VERIFY_(STATUS)
 
     end if
@@ -10661,7 +10683,7 @@ module GEOS_SurfaceGridCompMod
     if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
-!--------------------------------------------------------------      
+!--------------------------------------------------------------
 
        RETURN_(ESMF_SUCCESS)
 
@@ -10675,7 +10697,7 @@ module GEOS_SurfaceGridCompMod
          RETURN_(ESMF_SUCCESS)
       else
          do I = 1, SIZE(PTR,2)
-            call MAPL_LocStreamTransform( TILE(:,I), XFORM, PTR(:,I), RC=STATUS ) 
+            call MAPL_LocStreamTransform( TILE(:,I), XFORM, PTR(:,I), RC=STATUS )
             VERIFY_(STATUS)
          enddo
       end if
@@ -10719,7 +10741,7 @@ module GEOS_SurfaceGridCompMod
       kdx => RoutingType%kdx
       BlockSizes => RoutingType%BlockSizes
       displ => RoutingType%displ
-    
+
       Discharge   = 0.0
 
       n=size(kdx)
@@ -10734,7 +10756,7 @@ module GEOS_SurfaceGridCompMod
       end do
       call MPI_AllGatherV(td, n, MP_Real, &
            tarray, blocksizes, displ, MP_Real, comm, status)
-      _VERIFY(STATUS)      
+      _VERIFY(STATUS)
 
       do i=1,size(Routing)
          if(Routing(i)%DstPE==myPE) then
@@ -10746,14 +10768,14 @@ module GEOS_SurfaceGridCompMod
       end do
       deallocate(td, _STAT)
       deallocate(tarray, _STAT)
-      
+
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
 
     subroutine OBIO_fillExports(type, IMPORT, &
                                 LOCSTREAM, GIM, &
                                 XFORM, &
-                                NT, NB_CHOU, &   
+                                NT, NB_CHOU, &
                                 CO2SC, DRBAND, DFBAND, &
                                 CO2SCTILE, DRBANDTILE, DFBANDTILE, RC)
 
