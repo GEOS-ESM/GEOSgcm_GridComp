@@ -64,11 +64,9 @@ CL = [
 
 def _saturation_formulation(formulation: SaturationFormulation, t: Float):
     if formulation == SaturationFormulation.Staars:
-        LOC = 1.0
         TT = t - MAPL_TICE
         EX = TT * (TT * (TT * (TT * (TT * (TT * B6 + B5) + B4) + B3) + B2) + B1) + B0
     elif formulation == SaturationFormulation.CAM:
-        LOC = 2.0
         TT = TS / t
         EX = 10.0 ** (
             DL[0] * (TT - 1.0)
@@ -79,13 +77,12 @@ def _saturation_formulation(formulation: SaturationFormulation, t: Float):
             + 2.0
         )
     elif formulation == SaturationFormulation.MurphyAndKoop:
-        LOC = 3.0
         EX = np.exp(
             (CL[0] + CL[1] / t + CL[2] * np.log(t) + CL[3] * t)
             + np.tanh(CL[4] * (t - CL[5]))
             * (CL[6] + CL[7] / t + CL[8] * np.log(t) + CL[9] * t)
         )
-    return Float(EX), LOC
+    return Float(EX)
 
 
 def qsat_liquid_scalar_exact(
@@ -104,7 +101,7 @@ def qsat_liquid_scalar_exact(
         TI = temperature
 
     DX = 0.0  # DX only calculated when DQ is present
-    EX, LOC = _saturation_formulation(formulation, TI)
+    EX = _saturation_formulation(formulation, TI)
 
     if DQ is not None:
         if temperature < TMINLQU:
@@ -132,4 +129,4 @@ def qsat_liquid_scalar_exact(
     elif DQ is not None:
         DX = DDQ * (1.0 / DELTA_T)
 
-    return EX, TI, DX, LOC
+    return EX, TI, DX

@@ -197,10 +197,6 @@ def QSat_FloatField(
     PASCALS_trigger: bool,
     RAMP_trigger: bool,
     DQSAT_trigger: bool,
-    IT_Float: FloatField,
-    IFELSE: FloatField,
-    QSAT_HALFWAY: FloatField,
-    TI: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         if RAMP_trigger:
@@ -221,7 +217,6 @@ def QSat_FloatField(
             TI = T
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
-        IT_Float = int(floor(TI))
         IT = int(floor(TI))
         IT_MINUS_1 = (
             IT - 1
@@ -233,14 +228,11 @@ def QSat_FloatField(
         else:
             DQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
             QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
-        QSAT_HALFWAY = QSAT
         if PP <= QSAT:
-            IFELSE = 1
             QSAT = MAX_MIXING_RATIO
             if DQSAT_trigger:
                 DQSAT = 0.0
         else:
-            IFELSE = 0
             DD = 1.0 / (PP - (1.0 - ESFAC) * QSAT)
             QSAT = ESFAC * QSAT * DD
             if DQSAT_trigger:
@@ -321,12 +313,6 @@ class QSat:
 
         self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
-        # For testing
-        self._IT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._IFELSE = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._QSAT_HALFWAY = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._TI = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._QSat_FloatField = stencil_factory.from_dims_halo(
             func=QSat_FloatField,
@@ -370,10 +356,6 @@ class QSat:
                 PASCALS,
                 RAMP_trigger,
                 DQSAT,
-                self._IT,
-                self._IFELSE,
-                self._QSAT_HALFWAY,
-                self._TI,
             )
 
         if not use_table_lookup:
