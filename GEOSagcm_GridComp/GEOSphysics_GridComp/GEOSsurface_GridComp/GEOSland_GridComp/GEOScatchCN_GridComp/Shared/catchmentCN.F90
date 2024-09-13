@@ -1248,11 +1248,11 @@ CONTAINS
 
       DO N=1,NCH
 
-        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
         IF(CAPAC(N).LT.1.E-10) THEN
-           RUNOFF(N) = RUNOFF(N)+CAPAC(N)/DTSTEP
+           RUNSRF(N) = RUNSRF(N)+CAPAC(N)/DTSTEP
            CAPAC(N) = 0.0
            endif
+        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
 
         EINT(N) = EINT(N) * ALHE
         ESOI(N) = ESOI(N) * ALHE
