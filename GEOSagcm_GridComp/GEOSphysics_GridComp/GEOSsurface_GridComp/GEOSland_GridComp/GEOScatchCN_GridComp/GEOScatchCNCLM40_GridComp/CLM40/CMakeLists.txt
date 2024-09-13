@@ -39,7 +39,7 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNShared esmf NetCDF::NetCDF_Fortran
+  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNShared ESMF::ESMF NetCDF::NetCDF_Fortran
   TYPE SHARED)
 
 if (is_openmp)
