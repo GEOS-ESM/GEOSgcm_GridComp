@@ -12,7 +12,7 @@ from pyMoist.saturation.constants import (
     TMAXTBL,
     TMINLQU,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation.types import SaturationFormulation
 
 
 # Below are actual 64-bit float in Fortran

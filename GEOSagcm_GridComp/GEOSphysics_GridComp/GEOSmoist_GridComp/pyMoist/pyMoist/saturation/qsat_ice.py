@@ -10,7 +10,7 @@ from pyMoist.saturation.constants import (
     MAPL_TICE,
     MAX_MIXING_RATIO,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation.types import SaturationFormulation
 
 
 TMINSTR = Float(-95.0)

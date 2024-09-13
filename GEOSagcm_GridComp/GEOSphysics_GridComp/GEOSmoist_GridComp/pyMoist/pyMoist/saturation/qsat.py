@@ -21,7 +21,7 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation.types import SaturationFormulation, TableMethod
 
 
 # FloatField with extra dimension initialized to handle table data
@@ -277,7 +277,7 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        table_method: Float = 0,
+        table_method: TableMethod = TableMethod.NetCDF,
     ) -> None:
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
             quantity_factory
@@ -287,7 +287,7 @@ class QSat:
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
 
-        if table_method == 0:
+        if table_method == TableMethod.NetCDF:
             with xr.open_dataset(
                 os.path.join(os.path.dirname(__file__), "netCDFs", "QSat_Tables.nc")
             ) as ds:
@@ -298,10 +298,9 @@ class QSat:
                 self.ese.view[:] = ese_array
                 self.esw.view[:] = esw_array
                 self.esx.view[:] = esx_array
-
-        if table_method == 1:
+        elif table_method == TableMethod.Computation:
             raise NotImplementedError(
-                """Calculated tables are incorrect due to differences between
+                """[QSat]  Calculated tables are incorrect due to differences between
                 C and Fortran calculations.\n
                 For now the tables are being read in from a netCDF file.\n
                 See https://github.com/GEOS-ESM/SMT-Nebulae/issues/88
@@ -312,6 +311,10 @@ class QSat:
             # self.ese.view[:] = self.table.ese
             # self.esw.view[:] = self.table.esw
             # self.esx.view[:] = self.table.esx
+        else:
+            raise NotImplementedError(
+                f"[QSat] Unknown {table_method} to create estimation table"
+            )
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -348,22 +351,12 @@ class QSat:
         PASCALS: bool = False,
         DQSAT: bool = False,
         use_table_lookup: bool = True,
-        ese: Optional[FloatField_Extra_Dim] = None,  # type: ignore
-        esw: Optional[FloatField_Extra_Dim] = None,  # type: ignore
-        esx: Optional[FloatField_Extra_Dim] = None,  # type: ignore
     ):
         if RAMP is None:
             RAMP = self._RAMP
             RAMP_trigger = False
         else:
             RAMP_trigger = True
-
-        if ese is not None:
-            self.ese = ese
-        if esw is not None:
-            self.esw = esw
-        if esx is not None:
-            self.esx = esx
 
         if use_table_lookup:
             self._QSat_FloatField(
