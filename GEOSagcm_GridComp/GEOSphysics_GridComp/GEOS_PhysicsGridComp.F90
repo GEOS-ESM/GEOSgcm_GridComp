@@ -1054,7 +1054,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                   &
          SHORT_NAME  = [character(len=7) ::           &
-                         'QV','QLLS','QILS','FCLD', &
+                         'QV','QLTOT','QITOT','FCLD', &
                          'WTHV2','WQT_DC','CNV_MFC'],           &
          DST_ID      = TURBL,                         &
          SRC_ID      = MOIST,                         &
