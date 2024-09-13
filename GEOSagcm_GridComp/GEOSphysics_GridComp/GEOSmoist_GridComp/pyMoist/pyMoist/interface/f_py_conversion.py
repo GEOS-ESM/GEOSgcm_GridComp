@@ -26,7 +26,7 @@ class NullStream:
     def __enter__(self):
         pass
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         pass
 
 
@@ -133,7 +133,7 @@ class FortranPythonConversion:
 
     def fortran_to_python(
         self,
-        fptr: np.ndarray,
+        fptr: "cffi.FFI.CData",
         dim: Optional[List[int]] = None,
         swap_axes: Optional[Tuple[int, int]] = None,
     ) -> PythonArray:

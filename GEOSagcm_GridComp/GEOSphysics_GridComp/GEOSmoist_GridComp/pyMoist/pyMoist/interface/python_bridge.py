@@ -108,7 +108,12 @@ class PYMOIST_WRAPPER:
             )
             aero_sigma = self.f_py.fortran_to_python(
                 f_aero_sigma,
-                [self.flags.npx, self.flags.npy, self.flags.npz, self.flags.n_modes],
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                    self.flags.npz,
+                    self.flags.n_modes,
+                ],
             )
 
             frland = self.f_py.fortran_to_python(
