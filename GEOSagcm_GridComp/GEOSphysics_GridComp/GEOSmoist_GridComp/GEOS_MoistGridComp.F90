@@ -54,7 +54,7 @@ module GEOS_MoistGridCompMod
   real    :: CCN_OCN
   real    :: CCN_LND
 #ifdef PYMOIST_INTEGRATION
-  LOGICAL :: USE_PYMOIST = .false.
+  LOGICAL :: USE_PYMOIST_AER = .false. ! Replace Aer Activation with pyMoist port
 #endif
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -5332,12 +5332,11 @@ contains
        ! pyMoist requires the `n_modes` parameter to be readable for AerActivation, this is written
        ! in the Chemistry init and order of inits is not guaranteed so we wait for first execution
        ! to run initialization
-     call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.false., RC=STATUS); VERIFY_(STATUS);
+     call MAPL_GetResource(MAPL, USE_PYMOIST_AER, 'USE_PYMOIST_AER:', default=.false., RC=STATUS); VERIFY_(STATUS);
      call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
-     if (USE_PYMOIST .and. init_pymoist) then
+     if (USE_PYMOIST_AER .and. init_pymoist) then
           call cpu_time(start)
           init_pymoist = .false.
-          call MAPL_GetResource(MAPL, USE_PYMOIST, 'USE_PYMOIST:', default=.false., RC=STATUS); VERIFY_(STATUS)
           call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
           call MAPL_GetResource( MAPL, NX, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
           call MAPL_GetResource( MAPL, NY, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
@@ -5508,7 +5507,7 @@ contains
          endif
          ! Pressures in Pa
 #ifdef PYMOIST_INTEGRATION
-         if (USE_PYMOIST) then
+         if (USE_PYMOIST_AER) then
            ! Current integration does not allow us to use MAPL_Get from inside pyMoist
            ! so we extract the required field here
            allocate(aero_num_(IM, JM, LM, n_modes))
