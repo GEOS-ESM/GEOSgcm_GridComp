@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import numpy as np
 
 from ndsl.dsl.typing import Float
@@ -9,9 +11,9 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
 from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
+from pyMoist.saturation.types import SaturationFormulation
 
 
 class SaturationVaporPressureTable:
@@ -85,7 +87,9 @@ class SaturationVaporPressureTable:
 
 
 # Table needs to be calculated only once
-_cached_estimated_saturation = {
+_cached_estimated_saturation: Dict[
+    SaturationFormulation, Optional[SaturationVaporPressureTable]
+] = {
     SaturationFormulation.MurphyAndKoop: None,
     SaturationFormulation.CAM: None,
     SaturationFormulation.Staars: None,

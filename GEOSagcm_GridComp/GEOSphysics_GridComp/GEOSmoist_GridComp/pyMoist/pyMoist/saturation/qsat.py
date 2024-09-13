@@ -8,7 +8,7 @@ from gt4py.cartesian.gtscript import PARALLEL, computation, floor, interval
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, Int, IntField
+from ndsl.dsl.typing import Float, FloatField
 from pyMoist.saturation.constants import (
     DEGSUBS,
     ERFAC,
@@ -21,8 +21,7 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.table import get_table
+from pyMoist.saturation.types import SaturationFormulation, TableMethod
 
 
 # FloatField with extra dimension initialized to handle table data
@@ -32,6 +31,7 @@ from pyMoist.saturation.table import get_table
 # flexible table sixes (larger than TABLESIZE, with increased granulatiry).
 # Current implementation does not allow for flexible table sizes
 # so if needed this will have to be implemented in another way.
+# DEV NOTE: we have to "type ignore" the indexation due to a misread of mypy
 FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 
 
@@ -42,8 +42,8 @@ FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 # hard transition at zero C.
 @gtscript.function
 def QSat_Float_Liquid(
-    esw: FloatField_Extra_Dim,  # type: ignore
-    estlqu: Float,  # type: ignore
+    esw: FloatField_Extra_Dim,  # type: ignore  # type: ignore
+    estlqu: Float,
     TL: Float,
     PL: Float = -999.0,
     DQ_trigger: bool = False,
@@ -54,7 +54,7 @@ def QSat_Float_Liquid(
         if DQ_trigger:
             DDQ = 0.0
     elif TL >= TMAXTBL:
-        QS = esw[0][TABLESIZE - 1]
+        QS = esw[0][TABLESIZE - 1]  # type: ignore
         if DQ_trigger:
             DDQ = 0.0
     else:
@@ -63,8 +63,8 @@ def QSat_Float_Liquid(
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int
-        DDQ = esw[0][IT] - esw[0][IT_MINUS_1]
-        QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]
+        DDQ = esw[0][IT] - esw[0][IT_MINUS_1]  # type: ignore
+        QS = (TT - IT) * DDQ + esw[0][IT_MINUS_1]  # type: ignore
 
     if PL != -999.0:
         if PL > QS:
@@ -85,7 +85,7 @@ def QSat_Float_Liquid(
 
 @gtscript.function
 def QSat_Float_Ice(
-    ese: FloatField_Extra_Dim,
+    ese: FloatField_Extra_Dim,  # type: ignore
     estfrz: Float,
     TL: Float,
     PL: Float = -999.0,
@@ -93,7 +93,7 @@ def QSat_Float_Ice(
 ):
     # qsatice.code with UTBL = True
     if TL <= TMINTBL:
-        QS = ese[0][0]
+        QS = ese[0][0]  # type: ignore
         if DQ_trigger:
             DDQ = 0.0
     elif TL >= MAPL_TICE:
@@ -106,8 +106,8 @@ def QSat_Float_Ice(
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int
-        DDQ = ese[0][IT] - ese[0][IT_MINUS_1]
-        QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]
+        DDQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
+        QS = (TT - IT) * DDQ + ese[0][IT_MINUS_1]  # type: ignore
 
     if PL != -999.0:
         if PL > QS:
@@ -129,8 +129,8 @@ def QSat_Float_Ice(
 # Function version of QSat_table
 @gtscript.function
 def QSat_Float(
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: FloatField_Extra_Dim,  # type: ignore
+    esx: FloatField_Extra_Dim,  # type: ignore
     T: Float,
     PL: Float,
     RAMP: Float = -999.0,
@@ -162,11 +162,11 @@ def QSat_Float(
     )  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
     if URAMP == TMIX:
-        DQ = esx[0][IT] - esx[0][IT_MINUS_1]
-        QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]
+        DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
+        QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]  # type: ignore
     else:
-        DQ = ese[0][IT] - ese[0][IT_MINUS_1]
-        QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]
+        DQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
+        QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
 
     if PP <= QSAT:
         QSAT = MAX_MIXING_RATIO
@@ -187,8 +187,8 @@ def QSat_Float(
 
 # Stencils implement QSAT0 function from GEOS_Utilities.F90
 def QSat_FloatField(
-    ese: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: FloatField_Extra_Dim,  # type: ignore
+    esx: FloatField_Extra_Dim,  # type: ignore
     T: FloatField,
     PL: FloatField,
     QSAT: FloatField,
@@ -197,10 +197,6 @@ def QSat_FloatField(
     PASCALS_trigger: bool,
     RAMP_trigger: bool,
     DQSAT_trigger: bool,
-    IT_Float: FloatField,
-    IFELSE: FloatField,
-    QSAT_HALFWAY: FloatField,
-    TI: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         if RAMP_trigger:
@@ -221,26 +217,22 @@ def QSat_FloatField(
             TI = T
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
-        IT_Float = int(floor(TI))
         IT = int(floor(TI))
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int
 
         if URAMP == TMIX:
-            DQ = esx[0][IT] - esx[0][IT_MINUS_1]
-            QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]
+            DQ = esx[0][IT] - esx[0][IT_MINUS_1]  # type: ignore
+            QSAT = (TI - IT) * DQ + esx[0][IT_MINUS_1]  # type: ignore
         else:
-            DQ = ese[0][IT] - ese[0][IT_MINUS_1]
-            QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]
-        QSAT_HALFWAY = QSAT
+            DQ = ese[0][IT] - ese[0][IT_MINUS_1]  # type: ignore
+            QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
         if PP <= QSAT:
-            IFELSE = 1
             QSAT = MAX_MIXING_RATIO
             if DQSAT_trigger:
                 DQSAT = 0.0
         else:
-            IFELSE = 0
             DD = 1.0 / (PP - (1.0 - ESFAC) * QSAT)
             QSAT = ESFAC * QSAT * DD
             if DQSAT_trigger:
@@ -251,17 +243,18 @@ class QSat:
     """Traditional satuation specific humidity.
     In Fortran: GEOS_Utilities:QSat
 
-    Uses various formulations of the saturation vapor pressure to compute the saturation specific
-    humidity for temperature T and pressure PL.
+    Uses various formulations of the saturation vapor pressure to compute
+    the saturation specific humidity for temperature T and pressure PL.
 
-    The function get_table called in __init__ creates tables using exact calculations (equivalent
-    to UTBL=False in Fortran). get_table can be called again for further exact computations.
+    The function get_table called in __init__ creates tables using exact
+    calculations (equivalent to UTBL=False in Fortran).
+    `get_table` can be called again for further exact computations.
     QSat_FloatField computes QSat for an entire field using table lookups
     (equivalent to UTBL=True in Fortran).
 
     For temperatures <= TMIX (-20C)
-    the calculation is done over ice; for temperatures >= ZEROC (0C) the calculation
-    is done over liquid water; and in between these values,
+    the calculation is done over ice; for temperatures >= ZEROC (0C)
+    the calculation is done over liquid water; and in between these values,
     it interpolates linearly between the two.
 
     The optional RAMP is the width of this
@@ -276,7 +269,7 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        table_method: Float = 0,
+        table_method: TableMethod = TableMethod.NetCDF,
     ) -> None:
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
             quantity_factory
@@ -286,7 +279,7 @@ class QSat:
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
 
-        if table_method == 0:
+        if table_method == TableMethod.NetCDF:
             with xr.open_dataset(
                 os.path.join(os.path.dirname(__file__), "netCDFs", "QSat_Tables.nc")
             ) as ds:
@@ -297,29 +290,28 @@ class QSat:
                 self.ese.view[:] = ese_array
                 self.esw.view[:] = esw_array
                 self.esx.view[:] = esx_array
-
-        if table_method == 1:
+        elif table_method == TableMethod.Computation:
             raise NotImplementedError(
-                """Calculated tables are incorrect due to differences between C and Fortran calculations.\n
+                """[QSat]  Calculated tables are incorrect due to differences between
+                C and Fortran calculations.\n
                 For now the tables are being read in from a netCDF file.\n
-                See https://github.com/GEOS-ESM/SMT-Nebulae/issues/88 for more information."""
+                See https://github.com/GEOS-ESM/SMT-Nebulae/issues/88
+                for more information."""
             )
-            self.table = get_table(formulation)
+            # self.table = get_table(formulation)
 
-            self.ese.view[:] = self.table.ese
-            self.esw.view[:] = self.table.esw
-            self.esx.view[:] = self.table.esx
+            # self.ese.view[:] = self.table.ese
+            # self.esw.view[:] = self.table.esw
+            # self.esx.view[:] = self.table.esx
+        else:
+            raise NotImplementedError(
+                f"[QSat] Unknown {table_method} to create estimation table"
+            )
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
         self.QSat = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-        # For testing
-        self._IT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._IFELSE = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._QSAT_HALFWAY = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._TI = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._QSat_FloatField = stencil_factory.from_dims_halo(
@@ -345,22 +337,12 @@ class QSat:
         PASCALS: bool = False,
         DQSAT: bool = False,
         use_table_lookup: bool = True,
-        ese: Optional[FloatField_Extra_Dim] = None,
-        esw: Optional[FloatField_Extra_Dim] = None,
-        esx: Optional[FloatField_Extra_Dim] = None,
     ):
         if RAMP is None:
             RAMP = self._RAMP
             RAMP_trigger = False
         else:
             RAMP_trigger = True
-
-        if ese is not None:
-            self.ese = ese
-        if esw is not None:
-            self.esw = esw
-        if esx is not None:
-            self.esx = esx
 
         if use_table_lookup:
             self._QSat_FloatField(
@@ -374,13 +356,10 @@ class QSat:
                 PASCALS,
                 RAMP_trigger,
                 DQSAT,
-                self._IT,
-                self._IFELSE,
-                self._QSAT_HALFWAY,
-                self._TI,
             )
 
         if not use_table_lookup:
             raise NotImplementedError(
-                "Saturation calculation: exact formulation not available, only table look up"
+                "Saturation calculation: exact formulation not available,"
+                " only table look up"
             )
