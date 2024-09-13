@@ -1,0 +1,398 @@
+2024-09-13 10:58:06|INFO|rank 0|ndsl.logging:Constant selected: ConstantVersions.GFS
+============================= test session starts ==============================
+platform linux -- Python 3.11.7, pytest-8.2.2, pluggy-1.5.0
+rootdir: /home/charleskrop/GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+plugins: Faker-26.0.0, subtests-0.13.1, devtools-0.12.2
+collected 2 items
+
+../test_translate.py Fs
+
+=================================== FAILURES ===================================
+_______________ test_sequential_savepoint[GFDL_1M-rank=0-call=0] _______________
+
+cmd = ['/usr/bin/gcc', '-Wsign-compare', '-fwrapv', '-Wall', '-fPIC', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', ...]
+search_path = True, verbose = False, dry_run = False, env = None
+
+    def spawn(cmd, search_path=True, verbose=False, dry_run=False, env=None):
+        """Run another program, specified as a command list 'cmd', in a new process.
+    
+        'cmd' is just the argument list for the new process, ie.
+        cmd[0] is the program to run and cmd[1:] are the rest of its arguments.
+        There is no way to run a program with a name different from that of its
+        executable.
+    
+        If 'search_path' is true (the default), the system's executable
+        search path will be used to find the program; otherwise, cmd[0]
+        must be the exact path to the executable.  If 'dry_run' is true,
+        the command will not actually be run.
+    
+        Raise DistutilsExecError if running the program fails in any way; just
+        return on success.
+        """
+        log.info(subprocess.list2cmdline(cmd))
+        if dry_run:
+            return
+    
+        if search_path:
+            executable = shutil.which(cmd[0])
+            if executable is not None:
+                cmd[0] = executable
+    
+        try:
+>           subprocess.check_call(cmd, env=_inject_macos_ver(env))
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/spawn.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+popenargs = (['/usr/bin/gcc', '-Wsign-compare', '-fwrapv', '-Wall', '-fPIC', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', ...],)
+kwargs = {'env': None}, retcode = 1
+cmd = ['/usr/bin/gcc', '-Wsign-compare', '-fwrapv', '-Wall', '-fPIC', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', ...]
+
+    def check_call(*popenargs, **kwargs):
+        """Run command with arguments.  Wait for command to complete.  If
+        the exit code was zero then return, otherwise raise
+        CalledProcessError.  The CalledProcessError object will have the
+        return code in the returncode attribute.
+    
+        The arguments are the same as for the call function.  Example:
+    
+        check_call(["ls", "-l"])
+        """
+        retcode = call(*popenargs, **kwargs)
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+>           raise CalledProcessError(retcode, cmd)
+E           subprocess.CalledProcessError: Command '['/usr/bin/gcc', '-Wsign-compare', '-fwrapv', '-Wall', '-fPIC', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS_requirements/boost/include', '-I/home/charleskrop/GEOS_requirements/venv/include', '-I/home/charleskrop/GEOS_requirements/python3/include/python3.11', '-c', '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.cpp', '-o', '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.o', '-std=c++17', '-ftemplate-depth=1024', '-fvisibility=hidden', '-fPIC', '-isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include', '-isystem/home/charleskrop/GEOS_requirements/boost/include', '-DBOOST_PP_VARIADICS', '-O3', '-DNDEBUG', '-isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include', '-fopenmp']' returned non-zero exit status 1.
+
+/home/charleskrop/GEOS_requirements/python3/lib/python3.11/subprocess.py:413: CalledProcessError
+
+The above exception was the direct cause of the following exception:
+
+self = <distutils.unixccompiler.UnixCCompiler object at 0x7f9581510c50>
+obj = '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.g...he_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.o'
+src = '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.cpp'
+ext = '.cpp'
+cc_args = ['-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS.../charleskrop/GEOS_requirements/venv/include', '-I/home/charleskrop/GEOS_requirements/python3/include/python3.11', '-c']
+extra_postargs = ['-std=c++17', '-ftemplate-depth=1024', '-fvisibility=hidden', '-fPIC', '-isystem/home/charleskrop/GEOS_requirements/v...python3.11/site-packages/gridtools_cpp/data/include', '-isystem/home/charleskrop/GEOS_requirements/boost/include', ...]
+pp_opts = ['-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS...I/home/charleskrop/GEOS_requirements/venv/include', '-I/home/charleskrop/GEOS_requirements/python3/include/python3.11']
+
+    def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
+        compiler_so = compiler_fixup(self.compiler_so, cc_args + extra_postargs)
+        try:
+>           self.spawn(compiler_so + cc_args + [src, '-o', obj] + extra_postargs)
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/unixccompiler.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/ccompiler.py:1044: in spawn
+    spawn(cmd, dry_run=self.dry_run, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cmd = ['/usr/bin/gcc', '-Wsign-compare', '-fwrapv', '-Wall', '-fPIC', '-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', ...]
+search_path = True, verbose = False, dry_run = False, env = None
+
+    def spawn(cmd, search_path=True, verbose=False, dry_run=False, env=None):
+        """Run another program, specified as a command list 'cmd', in a new process.
+    
+        'cmd' is just the argument list for the new process, ie.
+        cmd[0] is the program to run and cmd[1:] are the rest of its arguments.
+        There is no way to run a program with a name different from that of its
+        executable.
+    
+        If 'search_path' is true (the default), the system's executable
+        search path will be used to find the program; otherwise, cmd[0]
+        must be the exact path to the executable.  If 'dry_run' is true,
+        the command will not actually be run.
+    
+        Raise DistutilsExecError if running the program fails in any way; just
+        return on success.
+        """
+        log.info(subprocess.list2cmdline(cmd))
+        if dry_run:
+            return
+    
+        if search_path:
+            executable = shutil.which(cmd[0])
+            if executable is not None:
+                cmd[0] = executable
+    
+        try:
+            subprocess.check_call(cmd, env=_inject_macos_ver(env))
+        except OSError as exc:
+            raise DistutilsExecError(
+                f"command {_debug(cmd)!r} failed: {exc.args[-1]}"
+            ) from exc
+        except subprocess.CalledProcessError as err:
+>           raise DistutilsExecError(
+                f"command {_debug(cmd)!r} failed with exit code {err.returncode}"
+            ) from err
+E           distutils.errors.DistutilsExecError: command '/usr/bin/gcc' failed with exit code 1
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/spawn.py:77: DistutilsExecError
+
+During handling of the above exception, another exception occurred:
+
+dist = <setuptools.dist.Distribution object at 0x7f9582d70c90>
+
+    def run_commands(dist):
+        """Given a Distribution object run all the commands,
+        raising ``SystemExit`` errors in the case of failure.
+    
+        This function assumes that either ``sys.argv`` or ``dist.script_args``
+        is already set accordingly.
+        """
+        try:
+>           dist.run_commands()
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/core.py:200: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/dist.py:970: in run_commands
+    self.run_command(cmd)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/dist.py:974: in run_command
+    super().run_command(command)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/dist.py:989: in run_command
+    cmd_obj.run()
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/command/build_ext.py:93: in run
+    _build_ext.run(self)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/command/build_ext.py:359: in run
+    self.build_extensions()
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/command/build_ext.py:479: in build_extensions
+    self._build_extensions_serial()
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/command/build_ext.py:505: in _build_extensions_serial
+    self.build_extension(ext)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/command/build_ext.py:254: in build_extension
+    _build_ext.build_extension(self, ext)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/command/build_ext.py:560: in build_extension
+    objects = self.compiler.compile(
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/ccompiler.py:605: in compile
+    self._compile(obj, src, ext, cc_args, extra_postargs, pp_opts)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <distutils.unixccompiler.UnixCCompiler object at 0x7f9581510c50>
+obj = '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.g...he_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.o'
+src = '.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.cpp'
+ext = '.cpp'
+cc_args = ['-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS.../charleskrop/GEOS_requirements/venv/include', '-I/home/charleskrop/GEOS_requirements/python3/include/python3.11', '-c']
+extra_postargs = ['-std=c++17', '-ftemplate-depth=1024', '-fvisibility=hidden', '-fPIC', '-isystem/home/charleskrop/GEOS_requirements/v...python3.11/site-packages/gridtools_cpp/data/include', '-isystem/home/charleskrop/GEOS_requirements/boost/include', ...]
+pp_opts = ['-I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include', '-I/home/charleskrop/GEOS...I/home/charleskrop/GEOS_requirements/venv/include', '-I/home/charleskrop/GEOS_requirements/python3/include/python3.11']
+
+    def _compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
+        compiler_so = compiler_fixup(self.compiler_so, cc_args + extra_postargs)
+        try:
+            self.spawn(compiler_so + cc_args + [src, '-o', obj] + extra_postargs)
+        except DistutilsExecError as msg:
+>           raise CompileError(msg)
+E           distutils.errors.CompileError: command '/usr/bin/gcc' failed with exit code 1
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/unixccompiler.py:193: CompileError
+
+During handling of the above exception, another exception occurred:
+
+case = SavepointCase(savepoint_name='GFDL_1M', data_dir='/home/charleskrop/netcdfs', rank=0, i_call=0, testobj=<savepoint.tra...te_GFDL_1M.TranslateGFDL_1M object at 0x7f9586e17f10>, grid=<ndsl.stencils.testing.grid.Grid object at 0x7f9586d19610>)
+backend = 'dace:cpu', print_failures = False, failure_stride = 1
+subtests = SubTests(ihook=<_pytest.config.compat.PathAwareHookProxy object at 0x7f963bca83d0>, suspend_capture_ctx=<bound method ...apture_fixture=None>>, request=<SubRequest 'subtests' for <Function test_sequential_savepoint[GFDL_1M-rank=0-call=0]>>)
+caplog = <_pytest.logging.LogCaptureFixture object at 0x7f9585f2e690>
+threshold_overrides = None, multimodal_metric = False, xy_indices = True
+
+    @pytest.mark.sequential
+    @pytest.mark.skipif(
+        MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
+        reason="Running in parallel with mpi",
+    )
+    def test_sequential_savepoint(
+        case: SavepointCase,
+        backend,
+        print_failures,
+        failure_stride,
+        subtests,
+        caplog,
+        threshold_overrides,
+        multimodal_metric,
+        xy_indices=True,
+    ):
+        if case.testobj is None:
+            pytest.xfail(
+                f"no translate object available for savepoint {case.savepoint_name}"
+            )
+        stencil_config = StencilConfig(
+            compilation_config=CompilationConfig(backend=backend),
+            dace_config=DaceConfig(
+                communicator=None,
+                backend=backend,
+            ),
+        )
+        # Reduce error threshold for GPU
+        if stencil_config.is_gpu_backend:
+            case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
+            case.testobj.near_zero = max(case.testobj.near_zero, GPU_NEAR_ZERO)
+        if threshold_overrides is not None:
+            process_override(
+                threshold_overrides, case.testobj, case.savepoint_name, backend
+            )
+        if case.testobj.skip_test:
+            return
+        input_data = dataset_to_dict(case.ds_in)
+        input_names = (
+            case.testobj.serialnames(case.testobj.in_vars["data_vars"])
+            + case.testobj.in_vars["parameters"]
+        )
+        try:
+            input_data = {name: input_data[name] for name in input_names}
+        except KeyError as e:
+            raise KeyError(
+                f"Variable {e} was described in the translate test but cannot be found in the NetCDF"
+            )
+        original_input_data = copy.deepcopy(input_data)
+        # run python version of functionality
+>       output = case.testobj.compute(input_data)
+
+/home/charleskrop/GEOS_requirements/ndsl/ndsl/stencils/testing/test_translate.py:183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../savepoint/translate_GFDL_1M.py:110: in compute
+    code = evap_subl_pdf(
+../../pyMoist/GFDL_1M/GFDL_1M.py:65: in __init__
+    self._hystpdf = self.stencil_factory.from_dims_halo(
+/home/charleskrop/GEOS_requirements/ndsl/ndsl/dsl/stencil.py:930: in from_dims_halo
+    return self.from_origin_domain(
+/home/charleskrop/GEOS_requirements/ndsl/ndsl/dsl/stencil.py:886: in from_origin_domain
+    return cls(
+/home/charleskrop/GEOS_requirements/ndsl/ndsl/dsl/stencil.py:337: in __init__
+    self.stencil_object = gtscript.stencil(
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/gtscript.py:320: in stencil
+    return _decorator(definition)
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/gtscript.py:307: in _decorator
+    out = gt_loader.gtscript_loader(
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/loader.py:75: in gtscript_loader
+    stencil_class = load_stencil(
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/loader.py:60: in load_stencil
+    return builder.build()
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/stencil_builder.py:93: in build
+    stencil_class = self.backend.generate()
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/backend/dace_backend.py:782: in generate
+    pyext_module_name, pyext_file_path = self.generate_extension()
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/backend/dace_backend.py:807: in generate_extension
+    return self.make_extension(stencil_ir=self.builder.gtir, uses_cuda=False)
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/backend/gtc_common.py:309: in make_extension
+    result = self.build_extension_module(gt_pyext_sources, pyext_opts, uses_cuda=uses_cuda)
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/backend/base.py:426: in build_extension_module
+    module_name, file_path = pyext_builder.build_pybind_ext(**pyext_build_args)
+/home/charleskrop/GEOS_requirements/ndsl/external/gt4py/src/gt4py/cartesian/backend/pyext_builder.py:257: in build_pybind_ext
+    setuptools.setup(**setuptools_args)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/__init__.py:103: in setup
+    return distutils.core.setup(**attrs)
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/core.py:184: in setup
+    return run_commands(dist)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+dist = <setuptools.dist.Distribution object at 0x7f9582d70c90>
+
+    def run_commands(dist):
+        """Given a Distribution object run all the commands,
+        raising ``SystemExit`` errors in the case of failure.
+    
+        This function assumes that either ``sys.argv`` or ``dist.script_args``
+        is already set accordingly.
+        """
+        try:
+            dist.run_commands()
+        except KeyboardInterrupt:
+            raise SystemExit("interrupted")
+        except OSError as exc:
+            if DEBUG:
+                sys.stderr.write(f"error: {exc}\n")
+                raise
+            else:
+                raise SystemExit(f"error: {exc}")
+    
+        except (DistutilsError, CCompilerError) as msg:
+            if DEBUG:
+                raise
+            else:
+>               raise SystemExit("error: " + str(msg))
+E               SystemExit: error: command '/usr/bin/gcc' failed with exit code 1
+
+/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/setuptools/_distutils/core.py:214: SystemExit
+------------------------------ Captured log call -------------------------------
+INFO     root:dist.py:986 running build_ext
+INFO     root:build_ext.py:533 building '_GT_.pyMoist.saturation.qsat.QSat_FloatField.m_QSat_FloatField__dacecpu_52c0824bd6_pyext' extension
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD
+INFO     root:spawn.py:61 gcc -Wsign-compare -fwrapv -Wall -fPIC -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/boost/include -I/home/charleskrop/GEOS_requirements/venv/include -I/home/charleskrop/GEOS_requirements/python3/include/python3.11 -c .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/bindings.cpp -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/bindings.o -std=c++17 -ftemplate-depth=1024 -fvisibility=hidden -fPIC -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include -isystem/home/charleskrop/GEOS_requirements/boost/include -DBOOST_PP_VARIADICS -O3 -DNDEBUG -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include -fopenmp
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_/pyMoist/saturation
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_/pyMoist/saturation/qsat
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_/pyMoist/saturation/qsat/QSat_FloatField
+INFO     root:spawn.py:61 g++ -shared .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/bindings.o -L/home/charleskrop/GEOS_requirements/python3/lib -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext_BUILD/_GT_/pyMoist/saturation/qsat/QSat_FloatField/m_QSat_FloatField__dacecpu_52c0824bd6_pyext.cpython-311-x86_64-linux-gnu.so -O3 -DNDEBUG -fopenmp
+INFO     root:dist.py:986 running build_ext
+INFO     root:build_ext.py:533 building '_GT_.pyMoist.GFDL_1M.GFDL_1M_Util.get_last.m_get_last__dacecpu_7f630088bb_pyext' extension
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD
+INFO     root:spawn.py:61 gcc -Wsign-compare -fwrapv -Wall -fPIC -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/boost/include -I/home/charleskrop/GEOS_requirements/venv/include -I/home/charleskrop/GEOS_requirements/python3/include/python3.11 -c .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/bindings.cpp -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/bindings.o -std=c++17 -ftemplate-depth=1024 -fvisibility=hidden -fPIC -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include -isystem/home/charleskrop/GEOS_requirements/boost/include -DBOOST_PP_VARIADICS -O3 -DNDEBUG -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include -fopenmp
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/get_last
+INFO     root:spawn.py:61 g++ -shared .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/bindings.o -L/home/charleskrop/GEOS_requirements/python3/lib -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/get_last/m_get_last__dacecpu_7f630088bb_pyext.cpython-311-x86_64-linux-gnu.so -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp
+INFO     root:dist.py:986 running build_ext
+INFO     root:build_ext.py:533 building '_GT_.pyMoist.GFDL_1M.GFDL_1M_Util.hybrid_index_2dout.m_hybrid_index_2dout__dacecpu_924974538d_pyext' extension
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD
+INFO     root:spawn.py:61 gcc -Wsign-compare -fwrapv -Wall -fPIC -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/boost/include -I/home/charleskrop/GEOS_requirements/venv/include -I/home/charleskrop/GEOS_requirements/python3/include/python3.11 -c .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/bindings.cpp -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/bindings.o -std=c++17 -ftemplate-depth=1024 -fvisibility=hidden -fPIC -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include -isystem/home/charleskrop/GEOS_requirements/boost/include -DBOOST_PP_VARIADICS -O3 -DNDEBUG -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include -fopenmp
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout
+INFO     root:spawn.py:61 g++ -shared .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/bindings.o -L/home/charleskrop/GEOS_requirements/python3/lib -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/hybrid_index_2dout/m_hybrid_index_2dout__dacecpu_924974538d_pyext.cpython-311-x86_64-linux-gnu.so -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp
+INFO     root:dist.py:986 running build_ext
+INFO     root:build_ext.py:533 building '_GT_.pyMoist.GFDL_1M.GFDL_1M_Util.initial_calc.m_initial_calc__dacecpu_7bae0ce289_pyext' extension
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD
+INFO     root:spawn.py:61 gcc -Wsign-compare -fwrapv -Wall -fPIC -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/boost/include -I/home/charleskrop/GEOS_requirements/venv/include -I/home/charleskrop/GEOS_requirements/python3/include/python3.11 -c .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/bindings.cpp -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/bindings.o -std=c++17 -ftemplate-depth=1024 -fvisibility=hidden -fPIC -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include -isystem/home/charleskrop/GEOS_requirements/boost/include -DBOOST_PP_VARIADICS -O3 -DNDEBUG -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include -fopenmp
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc
+INFO     root:spawn.py:61 g++ -shared .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/bindings.o -L/home/charleskrop/GEOS_requirements/python3/lib -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext_BUILD/_GT_/pyMoist/GFDL_1M/GFDL_1M_Util/initial_calc/m_initial_calc__dacecpu_7bae0ce289_pyext.cpython-311-x86_64-linux-gnu.so -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp -O3 -DNDEBUG -fopenmp
+INFO     root:dist.py:986 running build_ext
+INFO     root:build_ext.py:533 building '_GT_.pyMoist.GFDL_1M.GFDL_1M_Util.hystpdf.m_hystpdf__dacecpu_afeeb9db5b_pyext' extension
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf
+INFO     root:dir_util.py:70 creating .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD
+INFO     root:spawn.py:61 gcc -Wsign-compare -fwrapv -Wall -fPIC -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/pybind11/include -I/home/charleskrop/GEOS_requirements/boost/include -I/home/charleskrop/GEOS_requirements/venv/include -I/home/charleskrop/GEOS_requirements/python3/include/python3.11 -c .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.cpp -o .gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/.gt_cache_000000/py311_1013/dacecpu/pyMoist/GFDL_1M/GFDL_1M_Util/hystpdf/m_hystpdf__dacecpu_afeeb9db5b_pyext_BUILD/bindings.o -std=c++17 -ftemplate-depth=1024 -fvisibility=hidden -fPIC -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/gridtools_cpp/data/include -isystem/home/charleskrop/GEOS_requirements/boost/include -DBOOST_PP_VARIADICS -O3 -DNDEBUG -isystem/home/charleskrop/GEOS_requirements/venv/lib/python3.11/site-packages/dace/runtime/include -fopenmp
+=========================== short test summary info ============================
+FAILED ../test_translate.py::test_sequential_savepoint[GFDL_1M-rank=0-call=0]
+================== 1 failed, 1 skipped, 23 warnings in 39.25s ==================

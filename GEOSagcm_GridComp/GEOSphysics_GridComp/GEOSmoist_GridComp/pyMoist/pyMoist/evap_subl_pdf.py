@@ -1,11 +1,25 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, atan, sin, tan, sqrt, tanh, exp, log10
+import numpy as np
+from gt4py.cartesian.gtscript import (
+    FORWARD,
+    PARALLEL,
+    atan,
+    computation,
+    exp,
+    interval,
+    log10,
+    sin,
+    sqrt,
+    tan,
+    tanh,
+)
+
+import pyMoist.pyMoist_constants as constants
+from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.boilerplate import get_factories_single_tile_numpy
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldIJ
-from ndsl import StencilFactory, QuantityFactory, orchestrate
-import numpy as np
-import pyMoist.pyMoist_constants as constants
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntField, IntFieldIJ
+
 
 @gtscript.function
 def air_density(PL: Float, TE: Float) -> Float:
@@ -22,6 +36,7 @@ def air_density(PL: Float, TE: Float) -> Float:
     air_density = (100.0 * PL) / (constants.rdry * TE)
     return air_density
 
+
 @gtscript.function
 def ice_fraction_modis(
     temp: Float,
@@ -29,10 +44,20 @@ def ice_fraction_modis(
     srf_type: Float,
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-    tc = max(-46.0, min(temp-constants.t_ice, 46.0)) # convert to celcius and limit range from -46:46 C
-    ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-    ice_frct = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+    tc = max(
+        -46.0, min(temp - constants.t_ice, 46.0)
+    )  # convert to celcius and limit range from -46:46 C
+    ptc = (
+        7.6725
+        + 1.0118 * tc
+        + 0.1422 * tc ** 2
+        + 0.0106 * tc ** 3
+        + 0.000339 * tc ** 4
+        + 0.00000395 * tc ** 5
+    )
+    ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
+
 
 @gtscript.function
 def ice_fraction(
@@ -46,37 +71,64 @@ def ice_fraction(
     if temp <= constants.JaT_ICE_ALL:
         icefrct_c = 1.000
     elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-        icefrct_c = sin(0.5 * constants.PI * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)))
+        icefrct_c = sin(
+            0.5
+            * constants.PI
+            * (
+                1.00
+                - (temp - constants.JaT_ICE_ALL)
+                / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)
+            )
+        )
     else:
         icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c,1.00),0.00) ** constants.aICEFRPWR
+    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     if srf_type == 2.0:
         if temp <= constants.JiT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (constants.JiT_ICE_MAX - constants.JiT_ICE_ALL)
+            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
+                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
     elif srf_type > 1.0:
         if temp <= constants.lT_ICE_ALL:
-           icefrct_m = 1.000
+            icefrct_m = 1.000
         elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
-           icefrct_m = sin(0.5 * constants.PI * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)))
+            icefrct_m = sin(
+                0.5
+                * constants.PI
+                * (
+                    1.00
+                    - (temp - constants.lT_ICE_ALL)
+                    / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)
+                )
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
     else:
         if temp <= constants.oT_ICE_ALL:
-           icefrct_m = 1.000
+            icefrct_m = 1.000
         elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
-           icefrct_m = sin(0.5 * constants.PI * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)))
+            icefrct_m = sin(
+                0.5
+                * constants.PI
+                * (
+                    1.00
+                    - (temp - constants.oT_ICE_ALL)
+                    / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)
+                )
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
-    ice_frac = icefrct_m * (1.0-cnv_frc) + icefrct_c * cnv_frc
+    ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
     return ice_frac
+
 
 @gtscript.function
 def cloud_effective_radius_liquid(
@@ -128,6 +180,7 @@ def cloud_effective_radius_liquid(
         )
     return RADIUS
 
+
 @gtscript.function
 def cloud_effective_radius_ice(
     PL: Float,
@@ -160,21 +213,20 @@ def cloud_effective_radius_ice(
         if TE > constants.t_ice or QC <= 0.0:
             BB = -2.0
         else:
-            BB = -2.0 + log10(WC / 50.0) * (
-                1.0e-3 * (constants.t_ice - TE) ** 1.5
-            )
+            BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.t_ice - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - constants.t_ice
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC**0.2214)
-        BB = 0.79570 * (WC**0.2535)
+        AA = 45.8966 * (WC ** 0.2214)
+        BB = 0.79570 * (WC ** 0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
+
 
 @gtscript.function
 def dqsat(
@@ -183,20 +235,20 @@ def dqsat(
     RAMP: FloatField = False,
     PASCALS: FloatField = False,
     QSAT: FloatField = False,
-): #unfinished
+):  # unfinished
     if RAMP:
         URAMP = -abs(RAMP)
     else:
         URAMP = constants.TIMX
-    
+
     if PASCALS:
         PP = PL
     else:
         PP = PL * 100
-    
+
     if (URAMP == constants.TIMX or URAMP == 0) and constants.UTBL == True:
         if constants.FIRST == True:
-            pass #need to make new class in different file that initializes table (GEOS_Utilities.F90 subroutine ESINIT)
+            pass  # need to make new class in different file that initializes table (GEOS_Utilities.F90 subroutine ESINIT)
 
     if TL < constants.TMINTBL:
         TI = constants.TMINTBL
@@ -204,19 +256,23 @@ def dqsat(
         TI = constants.TMAXTBL - 0.001
     else:
         TI = TL
-    
+
     TT = (TI - constants.TMINTBL) * constants.DEGSUBS + 1
     # IT = int(TT) # need to find replacement for int, perhaps Int?
 
     # if URAMP == constants.TMIX:
-    #     DQQ = 
+    #     DQQ =
 
-def get_last(in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField):
+
+def get_last(
+    in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField
+):
     with computation(FORWARD), interval(-1, None):
         temporary_field = in_field
 
     with computation(PARALLEL), interval(...):
         out_field = temporary_field
+
 
 def hybrid_index_2dout(
     data_field: FloatField,
@@ -227,6 +283,7 @@ def hybrid_index_2dout(
     with computation(FORWARD), interval(...):
         if k_mask == k_index_desired:
             out_field = data_field
+
 
 def initial_calc(
     EIS: FloatFieldIJ,
@@ -239,29 +296,40 @@ def initial_calc(
     PLEmb_top: FloatField,
     AREA: FloatFieldIJ,
     ALPHA: FloatField,
-): 
+):
     with computation(PARALLEL), interval(...):
         # Send the condensates through the pdf after convection
-        facEIS = max(0.0, min(1.0, EIS/10.0))**2
+        facEIS = max(0.0, min(1.0, EIS / 10.0)) ** 2
         # determine combined minrhcrit in stable/unstable regimes
-        minrhcrit = (1.0-dw_ocean)*(1.0-facEIS) + (1.0-dw_land)*facEIS
+        minrhcrit = (1.0 - dw_ocean) * (1.0 - facEIS) + (1.0 - dw_land) * facEIS
         # determine the turn pressure using the LCL
         if TURNRHCRIT_PARAM <= 0:
-            turnrhcrit = PLmb_at_klcl -250 # implementation of for loop needs to go here
+            turnrhcrit = (
+                PLmb_at_klcl - 250
+            )  # implementation of for loop needs to go here
         else:
             turnrhcrit = TURNRHCRIT_PARAM
 
     # lower turn from maxrhcrit=1.0 # implemented in multiple "with" statements to deal with hybrid indexing
-    with computation(PARALLEL), interval(0,-1):
+    with computation(PARALLEL), interval(0, -1):
         # Use Slingo-Ritter (1985) formulation for critical rel ative humidity
         RHCRIT = 1.0
         if PLmb <= turnrhcrit:
             RHCRIT = minrhcrit
         else:
-            RHCRIT = minrhcrit + (1.0-minrhcrit)/(19.) * ((atan( (2.*(PLmb-turnrhcrit)/(PLEmb_top-turnrhcrit)-1.) *
-                tan(20.*constants.PI/21.-0.5*constants.PI) )
-                + 0.5*constants.PI) * 21./constants.PI - 1.)
-    with computation(PARALLEL), interval(-1,None):
+            RHCRIT = minrhcrit + (1.0 - minrhcrit) / (19.0) * (
+                (
+                    atan(
+                        (2.0 * (PLmb - turnrhcrit) / (PLEmb_top - turnrhcrit) - 1.0)
+                        * tan(20.0 * constants.PI / 21.0 - 0.5 * constants.PI)
+                    )
+                    + 0.5 * constants.PI
+                )
+                * 21.0
+                / constants.PI
+                - 1.0
+            )
+    with computation(PARALLEL), interval(-1, None):
         # lower turn from maxrhcrit=1.0
         if PLmb <= turnrhcrit:
             RHCRIT = minrhcrit
@@ -269,7 +337,8 @@ def initial_calc(
             RHCRIT = 1.0
     with computation(PARALLEL), interval(...):
         # include grid cell area scaling and limit RHcrit to > 70%\
-        ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)*sqrt(sqrt(AREA/1.e10))))
+        ALPHA = max(0.0, min(0.30, (1.0 - RHCRIT) * sqrt(sqrt(AREA / 1.0e10))))
+
 
 def hystpdf(
     DT_MOIST: Float,
@@ -301,21 +370,24 @@ def hystpdf(
     PDFITERS: FloatField,
     WTHV2: FloatField,
     WQL: FloatField,
-): #unfinished
+):  # unfinished
     with computation(PARALLEL), interval(...):
-        scice = 1.0 # don't ask, I don't know
+        scice = 1.0  # don't ask, I don't know
         if CLCN < 1.0:
             tmpARR = 1.0 / (1.0 - CLCN)
         else:
             tmpARR = 0.0
-        if CLCN > 0.0: # need to make sure this is equivilant to fortran CLCN > tiny(0.0)
+        if (
+            CLCN > 0.0
+        ):  # need to make sure this is equivilant to fortran CLCN > tiny(0.0)
             QAx = (QLCN + QICN) / CLCN
         else:
             QAx = 0.0
         CFn = CLLS * tmpARR
         QCn = (QLLS + QILS) * tmpARR
         QCi = QILS * tmpARR
-        #DQS = dqsat(T, PLmb, QSn)
+        # DQS = dqsat(T, PLmb, QSn)
+
 
 def meltfrz(
     dt: Float,
@@ -327,18 +399,35 @@ def meltfrz(
 ):
     with computation(PARALLEL), interval(...):
         if T < constants.t_ice:
-            fQi  = ice_fraction( T, cnv_frc, srf_type)
-            dQil = QLCN *(1.0 - exp( -dt * fQi / constants.taufrz))
-            dQil = max(0., dQil)
+            fQi = ice_fraction(T, cnv_frc, srf_type)
+            dQil = QLCN * (1.0 - exp(-dt * fQi / constants.taufrz))
+            dQil = max(0.0, dQil)
             QICN = QICN + dQil
             QLCN = QLCN - dQil
-            T = T + (constants.latent_heat_sublimation - constants.latent_heat_vaporization) * dQil / constants.cpdry
+            T = (
+                T
+                + (
+                    constants.latent_heat_sublimation
+                    - constants.latent_heat_vaporization
+                )
+                * dQil
+                / constants.cpdry
+            )
         if T > constants.t_ice:
             dQil = -QICN
-            dQil = min(0., dQil)
+            dQil = min(0.0, dQil)
             QICN = QICN + dQil
             QLCN = QLCN - dQil
-            T = T + (constants.latent_heat_sublimation - constants.latent_heat_vaporization) * dQil / constants.cpdry
+            T = (
+                T
+                + (
+                    constants.latent_heat_sublimation
+                    - constants.latent_heat_vaporization
+                )
+                * dQil
+                / constants.cpdry
+            )
+
 
 def evap(
     DT_MOIST: Float,
@@ -360,18 +449,35 @@ def evap(
     with computation(PARALLEL), interval(...):
         EVAPC = Q
         # Evaporation of cloud water. DelGenio et al formulation (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
-        ES = 100.* PLmb * QST  / (constants.epsilon + (1.0 - constants.epsilon) * QST)  # (100's <-^ convert from mbar to Pa)
-        RHx = min(Q/QST, 1.00)
-        K1 = (constants.latent_heat_vaporization**2) * constants.RHO_W / (constants.K_COND * constants.rvap * (T**2))
-        K2 = constants.rvap * T * constants.RHO_W / (constants.DIFFU * (1000. / PLmb) * ES)
+        ES = (
+            100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
+        )  # (100's <-^ convert from mbar to Pa)
+        RHx = min(Q / QST, 1.00)
+        K1 = (
+            (constants.latent_heat_vaporization ** 2)
+            * constants.RHO_W
+            / (constants.K_COND * constants.rvap * (T ** 2))
+        )
+        K2 = (
+            constants.rvap
+            * T
+            * constants.RHO_W
+            / (constants.DIFFU * (1000.0 / PLmb) * ES)
+        )
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts for increased diffusivity at lower pressure
-        if CLCN > 0. and QLCN > 0.:
+        if CLCN > 0.0 and QLCN > 0.0:
             QCm = QLCN / CLCN
         else:
-            QCm = 0.
+            QCm = 0.0
         RADIUS = cloud_effective_radius_liquid(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and RADIUS > 0.0:
-            EVAP = CCW_EVAP_EFF * QLCN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * RADIUS**2)
+            EVAP = (
+                CCW_EVAP_EFF
+                * QLCN
+                * DT_MOIST
+                * (RHCRIT - RHx)
+                / ((K1 + K2) * RADIUS ** 2)
+            )
             EVAP = min(EVAP, QLCN)
         else:
             EVAP = 0.0
@@ -382,6 +488,7 @@ def evap(
         # QLCN = QLCN - EVAP
         # T = T - (constants.latent_heat_vaporization/constants.cpdry) * EVAP
         # EVAPC = (Q - EVAPC) / DT_MOIST
+
 
 def subl(
     DT_MOIST: Float,
@@ -400,27 +507,45 @@ def subl(
 ):
     with computation(PARALLEL), interval(...):
         # Sublimation of cloud water. DelGenio et al formulation (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
-        ES = 100.* PLmb * QST  / (constants.epsilon + (1.0-constants.epsilon)*QST) # (100s <-^ convert from mbar to Pa)
-        RHx = min(Q/QST, 1.00)
-        K1 = (constants.latent_heat_vaporization**2) * constants.RHO_I / (constants.K_COND * constants.rvap * (T**2))
-        K2 = constants.rvap * T * constants.RHO_I / (constants.DIFFU * (1000./PLmb) * ES)
+        ES = (
+            100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
+        )  # (100s <-^ convert from mbar to Pa)
+        RHx = min(Q / QST, 1.00)
+        K1 = (
+            (constants.latent_heat_vaporization ** 2)
+            * constants.RHO_I
+            / (constants.K_COND * constants.rvap * (T ** 2))
+        )
+        K2 = (
+            constants.rvap
+            * T
+            * constants.RHO_I
+            / (constants.DIFFU * (1000.0 / PLmb) * ES)
+        )
         # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts for increased diffusivity at lower pressure
-        if CLCN > 0. and QICN > 0.:
+        if CLCN > 0.0 and QICN > 0.0:
             QCm = QICN / CLCN
         else:
-            QCm = 0.
+            QCm = 0.0
         radius = cloud_effective_radius_ice(PLmb, T, QCm, NACTL, NACTI)
         if RHx < RHCRIT and radius > 0.0:
-            SUBL = CCI_EVAP_EFF * QICN * DT_MOIST * (RHCRIT - RHx) / ((K1 + K2) * radius**2)
+            SUBL = (
+                CCI_EVAP_EFF
+                * QICN
+                * DT_MOIST
+                * (RHCRIT - RHx)
+                / ((K1 + K2) * radius ** 2)
+            )
             SUBL = min(SUBL, QICN)
         else:
             SUBL = 0.0
         QC = QLCN + QICN
-        if QC > 0.:
+        if QC > 0.0:
             CLCN = CLCN * (QC - SUBL) / QC
         Q = Q + SUBL
         QICN = QICN - SUBL
-        T = T - (constants.latent_heat_sublimation/constants.cpdry) * SUBL
+        T = T - (constants.latent_heat_sublimation / constants.cpdry) * SUBL
+
 
 class evap_subl_pdf:
     def __init__(
@@ -469,7 +594,9 @@ class evap_subl_pdf:
             for j in range(0, self._k_mask.view[:].shape[1]):
                 for k in range(0, self._k_mask.view[:].shape[2]):
                     self._k_mask.view[i, j, k] = k + 1
-    def __call__(self,
+
+    def __call__(
+        self,
         EIS: FloatFieldIJ,
         dw_land: Float,
         dw_ocean: Float,
@@ -500,16 +627,42 @@ class evap_subl_pdf:
         # The for loop is currently closer to being correct, with only the k level incorrect, so I am using that.
         self._get_last(PLEmb, self._tmp, self._PLEmb_top)
 
-        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date 
+        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date
         self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
-        
-        self._initial_calc(EIS=EIS, dw_land=dw_land, dw_ocean=dw_ocean, TURNRHCRIT_PARAM=TURNRHCRIT_PARAM, minrhcrit=self._minrhcrit, 
-                           PLmb_at_klcl=self._PLmb_at_klcl, PLmb=PLmb, PLEmb_top=self._PLEmb_top, AREA=AREA, ALPHA=self._alpha)
+
+        self._initial_calc(
+            EIS=EIS,
+            dw_land=dw_land,
+            dw_ocean=dw_ocean,
+            TURNRHCRIT_PARAM=TURNRHCRIT_PARAM,
+            minrhcrit=self._minrhcrit,
+            PLmb_at_klcl=self._PLmb_at_klcl,
+            PLmb=PLmb,
+            PLEmb_top=self._PLEmb_top,
+            AREA=AREA,
+            ALPHA=self._alpha,
+        )
 
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
 
         RHCRIT = Float(1.0)
-        self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, RADIUS, QCm)
+        self._evap(
+            DT_MOIST,
+            CCW_EVAP_EFF,
+            RHCRIT,
+            PLmb,
+            T,
+            Q,
+            QLCN,
+            QICN,
+            CLCN,
+            NACTL,
+            NACTI,
+            QST,
+            self._evapc,
+            RADIUS,
+            QCm,
+        )
 
-        #self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)
+        # self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)

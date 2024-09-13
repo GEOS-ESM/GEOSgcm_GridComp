@@ -14,7 +14,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self._grid = grid
         self.max_error = 1e-9
 
-        #FloatField Inputs
+        # FloatField Inputs
         self.in_vars["data_vars"] = {
             "EIS": {},
             "PLmb": {},
@@ -38,14 +38,15 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "QCm": {},
         }
 
-        #Float Inputs
-        self.in_vars["parameters"] = ["dw_land",
-                                      "dw_ocean",
-                                      "TURNRHCRIT_PARAM",
-                                      "DT_MOIST",
-                                      "CCW_EVAP_EFF",
-                                      "CCI_EVAP_EFF",
-                                      "PDFSHAPE",
+        # Float Inputs
+        self.in_vars["parameters"] = [
+            "dw_land",
+            "dw_ocean",
+            "TURNRHCRIT_PARAM",
+            "DT_MOIST",
+            "CCW_EVAP_EFF",
+            "CCI_EVAP_EFF",
+            "PDFSHAPE",
         ]
 
         # FloatField Outputs
@@ -67,7 +68,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         )
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
-    
+
     def make_ijk_field(self, data) -> Quantity:
         qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM],
@@ -75,7 +76,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
-    
+
     def compute(self, inputs):
         # FloatField Variables
         EIS = self.make_ij_field(inputs["EIS"])
@@ -112,32 +113,33 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             self.quantity_factory,
         )
 
-        code(EIS,
-             dw_land,
-             dw_ocean,
-             PDFSHAPE,
-             TURNRHCRIT_PARAM,
-             PLmb,
-             KLCL,
-             PLEmb,
-             AREA,
-             DT_MOIST,
-             CNV_FRC,
-             SRF_TYPE,
-             T,
-             QLCN,
-             QICN,
-             QLLS,
-             QILS,
-             CCW_EVAP_EFF,
-             CCI_EVAP_EFF,
-             Q,
-             CLLS,
-             CLCN,
-             NACTL,
-             NACTI,
-             QST,
-             QCm,
+        code(
+            EIS,
+            dw_land,
+            dw_ocean,
+            PDFSHAPE,
+            TURNRHCRIT_PARAM,
+            PLmb,
+            KLCL,
+            PLEmb,
+            AREA,
+            DT_MOIST,
+            CNV_FRC,
+            SRF_TYPE,
+            T,
+            QLCN,
+            QICN,
+            QLLS,
+            QILS,
+            CCW_EVAP_EFF,
+            CCI_EVAP_EFF,
+            Q,
+            CLLS,
+            CLCN,
+            NACTL,
+            NACTI,
+            QST,
+            QCm,
         )
 
         return {

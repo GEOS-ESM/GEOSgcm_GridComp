@@ -13,14 +13,14 @@ class Translatefind_klcl(TranslateFortranData2Py):
         self._grid = grid
         self.max_error = 1e-9
 
-        #FloatField Inputs
+        # FloatField Inputs
         self.in_vars["data_vars"] = {
             "PLmb": {},
             "T": {},
             "Q": {},
         }
 
-        #Float Inputs
+        # Float Inputs
         self.in_vars["parameters"] = []
 
         # FloatField Outputs
@@ -35,7 +35,7 @@ class Translatefind_klcl(TranslateFortranData2Py):
         )
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
-    
+
     def make_ijk_field(self, data) -> Quantity:
         qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM],
@@ -43,7 +43,7 @@ class Translatefind_klcl(TranslateFortranData2Py):
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
-    
+
     def compute(self, inputs):
         code = find_klcl(
             self.stencil_factory,
@@ -55,9 +55,10 @@ class Translatefind_klcl(TranslateFortranData2Py):
         P = self.make_ijk_field(inputs["PLmb"])
         Q = self.make_ijk_field(inputs["Q"])
 
-        code(T,
-             P,
-             Q,
+        code(
+            T,
+            P,
+            Q,
         )
 
         return {

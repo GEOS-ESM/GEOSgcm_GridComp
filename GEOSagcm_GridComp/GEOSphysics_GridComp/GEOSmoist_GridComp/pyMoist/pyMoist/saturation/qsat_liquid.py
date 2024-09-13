@@ -1,17 +1,20 @@
-from ndsl.dsl.typing import Float
 from typing import Optional
+
+import numpy as np
+
+from ndsl.dsl.typing import Float
 from pyMoist.saturation.constants import (
-    TMINLQU,
+    DEGSUBS,
     DELTA_T,
-    MAPL_TICE,
-    ESFAC,
     ERFAC,
+    ESFAC,
+    MAPL_TICE,
     MAX_MIXING_RATIO,
     TMAXTBL,
-    DEGSUBS,
+    TMINLQU,
 )
 from pyMoist.saturation.formulation import SaturationFormulation
-import numpy as np
+
 
 # Below are actual 64-bit float in Fortran
 B6 = 6.136820929e-11 * 100.0

@@ -1,8 +1,8 @@
 import gt4py.cartesian.gtscript as gtscript
 
+from ndsl.dsl.typing import Float
 from pyMoist.aer_activation_constants import n_modes
 from pyMoist.saturation.constants import TABLESIZE
-from ndsl.dsl.typing import Float
 
 
 # Global space
