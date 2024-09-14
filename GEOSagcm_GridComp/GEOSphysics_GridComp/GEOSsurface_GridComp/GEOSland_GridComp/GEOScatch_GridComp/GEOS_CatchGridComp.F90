@@ -1418,6 +1418,30 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+  ! for optional extra derivatives in helfsurface
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'tc difference, optional in helfsurface'  ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'DTC'                       ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddInternalSpec(GC                  ,&
+    LONG_NAME          = 'qc difference, optional in helfsurface'  ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'DQC'                       ,&
+    DIMS               = MAPL_DimsTileTile           ,&
+    NUM_SUBTILES       = NUM_SUBTILES                ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartSkip            ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
   !---------- GOSWIM snow impurity related variables ----------
  
   if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then 
@@ -2717,6 +2741,10 @@ subroutine SetServices ( GC, RC )
     end if
     call MAPL_TimerAdd(GC,    name="-SURF"  ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,    name="-LOUIS"  ,RC=STATUS)
+    VERIFY_(STATUS)    
+    call MAPL_TimerAdd(GC,    name="-HELFAND"  ,RC=STATUS)
+    VERIFY_(STATUS)    
     call MAPL_TimerAdd(GC,    name="RUN2"   ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-CATCH" ,RC=STATUS)
@@ -3011,8 +3039,24 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:,:), pointer :: CQ
     real, dimension(:,:), pointer :: FR
     real, dimension(:,:), pointer :: WW
+
+    ! for optional extra derivatives in louissurface
+       
     real, dimension(:,:), pointer :: DCH
     real, dimension(:,:), pointer :: DCQ
+    
+    ! for optional extra derivatives in helfsurface
+    
+    real, dimension(:,:), pointer :: DTC
+    real, dimension(:,:), pointer :: DQC
+    
+    real, dimension(:,:), allocatable :: TC_pert
+    real, dimension(:,:), allocatable :: QC_pert
+    
+    real, dimension(:),   allocatable :: pert_tc
+    real, dimension(:),   allocatable :: pert_qc
+    real, dimension(:,:),   allocatable :: louis_pert_tc
+    real, dimension(:,:),   allocatable :: louis_pert_qc
 
 ! -----------------------------------------------------
 ! EXPORT Pointers
@@ -3096,6 +3140,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real                :: SCALE4Z0_u
     real                :: MIN_VEG_HEIGHT 
     
+    ! for optional extra derivatives in helfsurface
+
+    integer            :: incl_Helfand_extra_derivs, incl_Louis_extra_derivs
+    real, parameter    :: small_factor = 0.001       ! determines size of perturbation for computation of numerical derivatives
+    real, allocatable  :: small_TC(:)
+    real, allocatable  :: small_QC(:) 
+
+    real, allocatable  :: louis_small_TC(:,:)
+    real, allocatable  :: louis_small_QC(:,:)
+
+    ! -------------------------------------
+
     type(CATCH_WRAP)               :: wrap
     type (T_CATCH_STATE), pointer  :: CATCH_INTERNAL_STATE
 
@@ -3143,6 +3199,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          RC=STATUS )
     VERIFY_(STATUS)
     
+    call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
@@ -3199,6 +3258,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,DQC  , 'DQC'     ,    RC=STATUS)
+    VERIFY_(STATUS)   
+    call MAPL_GetPointer(INTERNAL,DTC  , 'DTC'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+
 
 ! Pointers to outputs
 !--------------------
@@ -3333,6 +3397,31 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(IWATER(NT),STAT=STATUS)
     VERIFY_(STATUS)
 
+    if (incl_Helfand_extra_derivs ==1 .or. incl_Louis_extra_derivs ==2 ) then
+       
+       allocate(TC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(QC_pert(NT,NUM_SUBTILES),STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(pert_tc(NT),         STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(pert_qc(NT),         STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(small_qc(NT),            STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(small_tc(NT),            STAT=STATUS)
+       VERIFY_(STATUS)
+       
+       allocate(louis_small_qc(NT,NUM_SUBTILES), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_small_tc(NT,NUM_SUBTILES), STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_pert_tc(NT,NUM_SUBTILES),         STAT=STATUS)
+       VERIFY_(STATUS)
+       allocate(louis_pert_qc(NT,NUM_SUBTILES),         STAT=STATUS)
+       VERIFY_(STATUS)
+    end if
+
 !  Vegetation types used to index into tables
 !--------------------------------------------
 
@@ -3429,25 +3518,77 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       call MAPL_TimerOn(MAPL,"-SURF")
       if(CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.0) then
+        call MAPL_TimerOn(MAPL, '-LOUIS')
         WW(:,N) = 0.
         CM(:,N) = 0.
 
-        call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+        if (incl_Louis_extra_derivs ==1) then
+       
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+    
+        else if (incl_Louis_extra_derivs ==2 ) then
+
+           louis_small_TC = small_factor*TC
+           TC_pert=TC+louis_small_TC
+           call louissurface(3,N,UU,WW,PS,TA,TC_pert,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+           louis_pert_tc=CH
+
+           louis_small_QC = small_factor*QC
+           QC_pert=QC+louis_small_QC
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC_pert,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+           louis_pert_qc=CQ
+    
+           call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
+
+           DTC(:,N) = (louis_pert_tc(:,N) - CH(:,N) ) / louis_small_TC(:,N)
+           DQC(:,N) = (louis_pert_qc(:,N) - CQ(:,N) ) / louis_small_QC(:,N)
+
+        endif
+
+        call MAPL_TimerOff(MAPL, '-LOUIS')
 
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
-  
+
+        call MAPL_TimerOn(MAPL, '-HELFAND')
         niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
         IWATER = 3
-  
+
         PSMB = PS * 0.01            ! convert to MB
-! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
+        ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
         PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
                (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
-  
-        CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-                      IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
-                      t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-  
+
+        if      (incl_Helfand_extra_derivs == 0) then
+
+           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,      &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,           &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+
+        else if (incl_Helfand_extra_derivs == 1) then
+
+           small_TC = small_factor*TC(:,N)
+           TC_pert(:,N)=TC(:,N)+small_TC
+           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC_pert(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           pert_tc =VKH
+
+           small_QC = small_factor*QC(:,N)
+           QC_pert(:,N)=QC(:,N)+small_QC
+           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC_pert(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+           pert_qc=VKH
+
+           CALL helfsurface(UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,       &
+                            IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,            &
+                            t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+
+           DTC(:,N)   = (pert_tc - VKH ) / small_TC
+           DQC(:,N)   = (pert_qc - VKH ) / small_QC
+
+        endif  
+
         CM(:,N)  = VKM
         CH(:,N)  = VKH
         CQ(:,N)  = VKH
@@ -3471,7 +3612,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
         if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
         if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
-
+        call MAPL_Timeroff(MAPL, "-HELFAND")
       endif
       call MAPL_TimerOff(MAPL,"-SURF")
 
@@ -3542,6 +3683,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(IWATER)
     deallocate(PSMB)
     deallocate(PSL)
+    if (incl_Helfand_extra_derivs==1 .or. incl_Louis_extra_derivs==2 ) then
+       deallocate(pert_tc)
+       deallocate(pert_qc)
+       deallocate(TC_pert    )
+       deallocate(QC_pert    )
+       deallocate(small_QC   )
+       deallocate(small_TC   )
+       deallocate(louis_small_QC   )
+       deallocate(louis_small_TC   )
+       deallocate(louis_pert_tc)
+       deallocate(louis_pert_qc)
+    end if
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3581,17 +3734,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Local derived type aliases
 ! ------------------------------------------------------------------------------
 
-    type(MAPL_MetaComp),pointer :: MAPL
-    type(ESMF_Alarm)                :: ALARM
-
-    integer :: IM,JM
-    integer :: incl_Louis_extra_derivs
-    real                           :: SCALE4ZVG
-    real                           :: SCALE4Z0_u
-    real                            :: MIN_VEG_HEIGHT
-    type(ESMF_VM)                   :: VM
-    type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
-    type (CATCH_WRAP)                       :: wrap
+    type(MAPL_MetaComp),pointer      :: MAPL
+    type(ESMF_Alarm)                 :: ALARM
+    
+    integer                          :: IM,JM
+    integer                          :: incl_Louis_extra_derivs
+    integer                          :: incl_Helfand_extra_derivs
+       
+    real                             :: SCALE4ZVG
+    real                             :: SCALE4Z0_u
+    real                             :: MIN_VEG_HEIGHT
+    type(ESMF_VM)                    :: VM
+    type (T_CATCH_STATE), pointer    :: CATCH_INTERNAL_STATE
+    type (CATCH_WRAP)                :: wrap
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3619,9 +3774,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
+    ! original
+    !call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs,   Label="INCL_LOUIS_EXTRA_DERIVS:",   DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
-
+        
+    call MAPL_GetResource ( MAPL, incl_Helfand_extra_derivs, Label="INCL_HELFAND_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+  
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
 
    select case (CATCH_INTERNAL_STATE%Z0_FORMULATION)
@@ -3809,6 +3969,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: fr
         real, dimension(:,:), pointer :: dcq
         real, dimension(:,:), pointer :: dch
+        real, dimension(:,:), pointer :: DTC
+        real, dimension(:,:), pointer :: DQC
         real, dimension(:,:), pointer :: RDU001
         real, dimension(:,:), pointer :: RDU002
         real, dimension(:,:), pointer :: RDU003
@@ -4348,6 +4510,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DTC        ,'DTC'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,DQC        ,'DQC'        ,RC=STATUS); VERIFY_(STATUS)
+      
         if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
@@ -4980,7 +5145,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALWN(:,N) = -3.0*BLWN(:,N)*TC(:,N)
               BLWN(:,N) =  4.0*BLWN(:,N)
            end do
-           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1) then
+
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs ==1 ) then
               do N=1,NUM_SUBTILES
                  DEVSBT(:,N)=CQ(:,N)+max(0.0,-DCQ(:,N)*MAPL_VIREPS*TC(:,N)*(QC(:,N)-QA))
                  DEDTC(:,N) =max(0.0,-DCQ(:,N)*(1.+MAPL_VIREPS*QC(:,N))*(QC(:,N)-QA))
@@ -4988,6 +5154,38 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  DHSDQA(:,N)=max(0.0,-MAPL_CP*DCH(:,N)*MAPL_VIREPS*TC(:,N)*(TC(:,N)-TA))
               enddo
            endif
+
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==0 .and. incl_Louis_extra_derivs==2) then
+              do N=1,NUM_SUBTILES
+                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
+                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
+                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
+                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
+              enddo
+           endif
+
+           ! for helfsurface (adding derivatives for helfand MO scheme helfsurface)
+           if(CATCH_INTERNAL_STATE%CHOOSEMOSFC==1 .and. incl_Helfand_extra_derivs ==1) then
+
+              do N=1,NUM_SUBTILES
+
+                 ! getting DSHSBT - derivative of sensible heat flux w.r.t. Tc (ground temperature)
+                 ! note CH and CQ are VKH (values are assigned in RUN1 after the helfsurf call is returned)
+                 DSHSBT(:,N)= MAPL_CP*( CH(:,N) +max(0.0,(TC(:,N)-TA) * DTC(:,N)))
+
+                 ! getting DHSDQA - cross derivative of sensible heat flux  w.r.t. Qc (ground humidity)
+                 DHSDQA(:,N)=max(0.0,(TC(:,N)-TA) * MAPL_CP * DQC(:,N))
+
+                 ! getting DEVSBT - derivative of latent heat flux w.r.t. Qc (ground humidity)
+                 DEVSBT(:,N)=CQ(:,N)+max(0.0,(QC(:,N)-QA) * DQC(:,N))
+
+                ! getting DEDTC - cross derivative of latent heat flux w.r.t. Tc (ground temperature)
+                 DEDTC(:,N) =max(0.0,(QC(:,N)-QA) * DTC(:,N))
+
+              enddo ! N-loop (NUM_SUBTILES)
+
+           endif ! if Helfand
+
           ! BLWX = EMIS*MAPL_STFBOL*TA*TA*TA
           ! ALWX = -3.0*BLWX*TA
           ! BLWX =  4.0*BLWX
@@ -6028,6 +6226,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: fr(:,:)=>null()
   real, pointer :: DCQ(:,:)=>null()
   real, pointer :: DCH(:,:)=>null()
+  real, pointer :: DTC(:,:)=>null()
+  real, pointer :: DQC(:,:)=>null()
+
   !! -prognostic-variables-
   real, pointer :: tc(:,:)=>null()
   real, pointer :: qc(:,:)=>null()
@@ -6110,6 +6311,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, DCQ, 'DCQ', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, DCH, 'DCH', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, DTC, 'DTC', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, DQC, 'DQC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, tc, 'TC', rc=status)
   VERIFY_(status)
