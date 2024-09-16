@@ -5099,6 +5099,9 @@ contains
 
     type (ESMF_Config)                  :: CF
 
+    !$ser verbatim integer :: comm, rank, mpierr, n_modes   
+    !$ser verbatim type(ESMF_VM) :: vm
+
     !=============================================================================
 
     ! Begin...
@@ -5152,6 +5155,9 @@ contains
     ! All done
     !---------
 
+    !$ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
+    !$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+    !$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
     !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
 
     RETURN_(ESMF_SUCCESS)
@@ -5236,20 +5242,12 @@ contains
     integer :: IM,JM,LM
     integer :: I, J, L
 
-    integer :: comm, rank, mpierr, n_modes
-    
-    type(ESMF_VM) :: vm
-
     real, allocatable, dimension(:,:,:,:) :: aero_num_, aero_dgn_, aero_sigma_, aero_density_
     real, allocatable, dimension(:,:,:,:) :: aero_f_dust_, aero_f_soot_, aero_f_organic_
     real, allocatable, dimension(:,:,:,:) :: aero_hygroscopicity_
-
-    call ESMF_VMGetCurrent(vm,rc=status)
-    call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
-    call MPI_COMM_rank(comm,rank,mpierr)
+    integer                               :: n_modes = 0
 
 #ifdef PYMOIST_INTEGRATION
-    integer                               :: n_modes = 0
     integer                               :: NX, NY
     type(moist_flags_interface_type)      :: moist_flags
     logical                               :: init_pymoist = .true.
@@ -5521,32 +5519,6 @@ contains
          endif
 
          timestep = timestep + 1
-         print*,'timestep = ', timestep, ' : rank = ', rank
-
-     allocate(aero_num_(IM, JM, LM, 14))
-     allocate(aero_dgn_(IM, JM, LM, 14))
-     allocate(aero_sigma_(IM, JM, LM, 14))
-     allocate(aero_density_(IM, JM, LM, 14))
-     allocate(aero_hygroscopicity_(IM, JM, LM, 14))
-     allocate(aero_f_dust_(IM, JM, LM, 14))
-     allocate(aero_f_soot_(IM, JM, LM, 14))
-     allocate(aero_f_organic_(IM, JM, LM, 14))
-
-     call extract_tracer_data(IM,JM,LM, n_modes, AERO, aero_num_, aero_dgn_, aero_sigma_, aero_density_, aero_hygroscopicity_, &
-                                    aero_f_dust_, aero_f_soot_, aero_f_organic_)
-
-     !do i = 1,14
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_num) = ', sum(aero_num_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_dgn) = ', sum(aero_dgn_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_sigma) = ', sum(aero_sigma_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_hygroscopicity) = ', sum(aero_hygroscopicity_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_density) = ', sum(aero_density_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_dust) = ', sum(aero_f_dust_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_soot) = ', sum(aero_f_soot_(:,:,:,i)), 'n = ', i
-     !     print*, 'In GEO_MGC: rank = ', rank, 'sum(aero_f_organic) = ', sum(aero_f_organic_(:,:,:,i)), 'n = ', i
-     !enddo
-
-     print*,'n_modes = ', n_modes
 
 ! Note : AeroProps is allocated above, so serialization of AeroProps isn't necessary as an input since it does not 
 !        contain any preset data.
@@ -5586,7 +5558,17 @@ contains
           deallocate(aero_f_organic_)
          else
 #endif
+          !$ser verbatim call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
           !$ser savepoint AerActivation-In timestep=timestep
+          !$ser verbatim allocate(aero_num_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_dgn_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_sigma_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_density_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_hygroscopicity_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_f_dust_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_f_soot_(IM, JM, LM, n_modes))
+          !$ser verbatim allocate(aero_f_organic_(IM, JM, LM, n_modes))     
+          !$ser verbatim call extract_aerosol_data( IM,JM,LM, n_modes, AERO, aero_num_, aero_dgn_, aero_sigma_, aero_density_, aero_hygroscopicity_, aero_f_dust_, aero_f_soot_, aero_f_organic_ )
           !$ser data T=T PLmb=PLmb PLE=PLE ZL0=ZL0 ZLE0=ZLE0 QLCN=QLCN QICN=QICN
           !$ser data QLLS=QLLS QILS=QILS SH=SH EVAP=EVAP KPBL=KPBL TKE=TKE TMP3D=TMP3D FRLAND=FRLAND 
           !$ser data CCN_LND=CCN_LND CCN_OCN=CCN_OCN
@@ -5600,6 +5582,15 @@ contains
                                    AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
           !$ser savepoint AerActivation-Out timestep=timestep
           !$ser data NACTL=NACTL NACTI=NACTI NWFA=NWFA
+          !$ser verbatim deallocate(aero_num_)
+          !$ser verbatim deallocate(aero_dgn_)
+          !$ser verbatim deallocate(aero_sigma_)
+          !$ser verbatim deallocate(aero_density_)
+          !$ser verbatim deallocate(aero_hygroscopicity_)
+          !$ser verbatim deallocate(aero_f_dust_)
+          !$ser verbatim deallocate(aero_f_soot_)
+          !$ser verbatim deallocate(aero_f_organic_)
+
 #ifdef PYMOIST_INTEGRATION
          endif
 #endif
