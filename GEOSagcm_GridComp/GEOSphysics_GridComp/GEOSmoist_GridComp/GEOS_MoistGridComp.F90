@@ -19,13 +19,13 @@ module GEOS_MoistGridCompMod
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
+  fs_read_field, &
   fs_create_savepoint, &
   fs_add_savepoint_metainfo, &
-  fs_write_field, &
-  fs_read_field
+  fs_write_field
 USE utils_ppser, ONLY:  &
-  ppser_initialize, &
   ppser_get_mode, &
+  ppser_initialize, &
   ppser_savepoint, &
   ppser_serializer, &
   ppser_serializer_ref, &
@@ -77,10 +77,10 @@ USE utils_ppser_kbuff
   real    :: CCN_LND
 
   integer, save :: timestep = 0
-
 #ifdef PYMOIST_INTEGRATION
   LOGICAL :: USE_PYMOIST_AER = .false. ! Replace Aer Activation with pyMoist port
 #endif
+
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -5257,6 +5257,7 @@ contains
     integer :: I, J, L
 
     integer :: comm, rank, mpierr, n_modes
+    
     type(ESMF_VM) :: vm
 
     real, allocatable, dimension(:,:,:,:) :: aero_num_, aero_dgn_, aero_sigma_, aero_density_
@@ -5277,7 +5278,7 @@ contains
     real                                  :: start, finish
     integer                               :: comm, rank, mpierr
 #endif
-    
+
     !=============================================================================
 
     ! Begin...
@@ -5570,8 +5571,43 @@ contains
 ! Note : AeroProps is allocated above, so serialization of AeroProps isn't necessary as an input since it does not 
 !        contain any preset data.
 
+         ! Pressures in Pa
+#ifdef PYMOIST_INTEGRATION
+         if (USE_PYMOIST_AER) then
+          ! Current integration does not allow us to use MAPL_Get from inside pyMoist
+          ! so we extract the required field here
+          allocate(aero_num_(IM, JM, LM, n_modes))
+          allocate(aero_dgn_(IM, JM, LM, n_modes))
+          allocate(aero_sigma_(IM, JM, LM, n_modes))
+          allocate(aero_density_(IM, JM, LM, n_modes))
+          allocate(aero_hygroscopicity_(IM, JM, LM, n_modes))
+          allocate(aero_f_dust_(IM, JM, LM, n_modes))
+          allocate(aero_f_soot_(IM, JM, LM, n_modes))
+          allocate(aero_f_organic_(IM, JM, LM, n_modes))     
+          call extract_aerosol_data( &
+               IM,JM,LM, n_modes, &
+               AERO, aero_num_, aero_dgn_, aero_sigma_, &
+               aero_density_, aero_hygroscopicity_, &
+               aero_f_dust_, aero_f_soot_, aero_f_organic_ )
+          call pymoist_interface_f_run_AerActivation( &
+              aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
+              FRLAND, CCN_OCN*1.e6, CCN_LND*1.e6, &
+              T, PLmb*100.0, &
+              QLCN, QICN, QLLS, QILS, &
+              TMP3D, TKE, &
+              NACTI, NWFA, NACTL)
+          deallocate(aero_num_)
+          deallocate(aero_dgn_)
+          deallocate(aero_sigma_)
+          deallocate(aero_density_)
+          deallocate(aero_hygroscopicity_)
+          deallocate(aero_f_dust_)
+          deallocate(aero_f_soot_)
+          deallocate(aero_f_organic_)
+         else
+#endif
 #ifdef SERIALIZE
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5504
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5587
 PRINT *, '>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<'
 PRINT *, '>>> WARNING: SERIALIZATION IS ON <<<'
 PRINT *, '>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<'
@@ -5582,10 +5618,10 @@ call ppser_initialize( &
            prefix='Generator', &
            mpi_rank=rank, &
            unique_id=.true.)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5505
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5588
 call fs_create_savepoint('AerActivation-In', ppser_savepoint)
 call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5506
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5589
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'T', T)
@@ -5612,7 +5648,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QLCN', QLCN, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'QICN', QICN, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5507
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5590
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'QLLS', QLLS)
@@ -5642,7 +5678,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'TMP3D', TMP3D, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'FRLAND', FRLAND, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5508
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5591
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'CCN_LND', CCN_LND)
@@ -5654,7 +5690,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_LND', CCN_LND, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'CCN_OCN', CCN_OCN, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5509
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5592
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'NACTL', NACTL)
@@ -5672,7 +5708,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NWFA', NWFA, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'n_modes', n_modes, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5510
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5593
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'AERO_NUM', aero_num_)
@@ -5690,7 +5726,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_SIGMA', aero_sigma_, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_DENSITY', aero_density_, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5511
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5594
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'AERO_HYGROSCOPICITY', aero_hygroscopicity_)
@@ -5705,7 +5741,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_F_DUST', aero_f_dust_, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_F_SOOT', aero_f_soot_, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5512
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5595
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'AERO_F_ORGANIC', aero_f_organic_)
@@ -5714,7 +5750,7 @@ SELECT CASE ( ppser_get_mode() )
   CASE(2)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'AERO_F_ORGANIC', aero_f_organic_, ppser_zrperturb)
 END SELECT
-! file: /home/mad/work/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5513
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5596
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'USE_AEROSOL_NN', USE_AEROSOL_NN)
@@ -5724,48 +5760,33 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'USE_AEROSOL_NN', USE_AEROSOL_NN, ppser_zrperturb)
 END SELECT
 #endif
-
-         ! Pressures in Pa
-#ifdef PYMOIST_INTEGRATION
-         if (USE_PYMOIST_AER) then
-           ! Current integration does not allow us to use MAPL_Get from inside pyMoist
-           ! so we extract the required field here
-           allocate(aero_num_(IM, JM, LM, n_modes))
-           allocate(aero_dgn_(IM, JM, LM, n_modes))
-           allocate(aero_sigma_(IM, JM, LM, n_modes))
-           allocate(aero_density_(IM, JM, LM, n_modes))
-           allocate(aero_hygroscopicity_(IM, JM, LM, n_modes))
-           allocate(aero_f_dust_(IM, JM, LM, n_modes))
-           allocate(aero_f_soot_(IM, JM, LM, n_modes))
-           allocate(aero_f_organic_(IM, JM, LM, n_modes))     
-           call extract_aerosol_data( &
-                IM,JM,LM, n_modes, &
-                AERO, aero_num_, aero_dgn_, aero_sigma_, &
-                aero_density_, aero_hygroscopicity_, &
-                aero_f_dust_, aero_f_soot_, aero_f_organic_ )
-           call pymoist_interface_f_run_AerActivation( &
-               aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
-               FRLAND, CCN_OCN*1.e6, CCN_LND*1.e6, &
-               T, PLmb*100.0, &
-               QLCN, QICN, QLLS, QILS, &
-               TMP3D, TKE, &
-               NACTI, NWFA, NACTL)
-           deallocate(aero_num_)
-           deallocate(aero_dgn_)
-           deallocate(aero_sigma_)
-           deallocate(aero_density_)
-           deallocate(aero_hygroscopicity_)
-           deallocate(aero_f_dust_)
-           deallocate(aero_f_soot_)
-           deallocate(aero_f_organic_)
-         else
-#endif
-           call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+          call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
                                    SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
                                    AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+#ifdef SERIALIZE
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5600
+call fs_create_savepoint('AerActivation-Out', ppser_savepoint)
+call fs_add_savepoint_metainfo(ppser_savepoint, 'timestep', timestep)
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5601
+SELECT CASE ( ppser_get_mode() )
+  CASE(0)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'NACTL', NACTL)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'NACTI', NACTI)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'NWFA', NWFA)
+  CASE(1)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTL', NACTL)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTI', NACTI)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NWFA', NWFA)
+  CASE(2)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTL', NACTL, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NACTI', NACTI, ppser_zrperturb)
+    call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'NWFA', NWFA, ppser_zrperturb)
+END SELECT
+#endif
 #ifdef PYMOIST_INTEGRATION
          endif
 #endif
+
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3
