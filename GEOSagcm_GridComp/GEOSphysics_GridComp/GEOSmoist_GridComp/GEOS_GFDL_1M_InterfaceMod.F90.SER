@@ -588,15 +588,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$ser data EIS=EIS
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        !$ser verbatim call ser_set_nz(LM)
-        !$ser verbatim call ser_set_ny(JM)
-        !$ser verbatim call ser_set_nx(IM)
+        !$ser verbatim call ser_set_D2(JM)
+        !$ser verbatim call ser_set_D1(IM)
         do L=1,LM
           do J=1,JM
            do I=1,IM
-           !$ser verbatim call ser_set_i(I)
-           !$ser verbatim call ser_set_j(J)
-           !$ser verbatim call ser_set_k(L)
+           !$ser verbatim call ser_set_idx_d2(J)
+           !$ser verbatim call ser_set_idx_d1(I)
            
            ! Send the condensates through the pdf after convection
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
@@ -679,10 +677,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       .false.        , &
                       USE_BERGERON)
              !$ser savepoint IJKBUFF_TEST-In
-             !$ser data_ijkbuff RHX=RHX(I,J,L) Q=Q(I,J,L) T=T(I,J,L) PLmb=PLmb(I,J,L)
+             !$ser data_buffered RHX=RHX(I,J,L) Q_as_2D=Q(I,J,L) T_as_2D=T(I,J,L) PLmb_as_2D=PLmb(I,J,L)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              !$ser savepoint IJKBUFF_TEST-Out
-             !$ser data_ijkbuff RHX=RHX(I,J,L)
+             !$ser data_buffered RHX=RHX(I,J,L)
             endif
              if (LMELTFRZ) then
            ! meltfrz new condensates
