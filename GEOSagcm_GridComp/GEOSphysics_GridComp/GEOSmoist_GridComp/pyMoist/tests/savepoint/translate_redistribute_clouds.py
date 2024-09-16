@@ -1,5 +1,4 @@
 from ndsl import Namelist, StencilFactory
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.redistribute_clouds import RedistributeClouds
 
@@ -17,9 +16,6 @@ class TranslateRedistributeClouds(TranslateFortranData2Py):
             self.grid.quantity_factory,
         )
 
-        self.max_error = 1e-9
-
-        print(grid.__dict__)
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "RAD_CF": {},

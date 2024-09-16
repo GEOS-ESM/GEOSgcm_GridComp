@@ -6,9 +6,13 @@ MODULE Aer_Actv_Single_Moment
       USE ESMF
       USE MAPL
       USE aer_cloud, only: AerProps
+#ifdef PYMOIST_INTEGRATION
+      use pymoist_interface_mod, only: pymoist_interface_f_run_AerActivation
+#endif
+   
 !-------------------------------------------------------------------------------------------------------------------------
       IMPLICIT NONE
-      PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR, extract_tracer_data
+      PUBLIC ::  Aer_Activation, USE_BERGERON, USE_AEROSOL_NN, R_AIR, extract_aerosol_data
       PRIVATE
 
        ! Real kind for activation.
@@ -38,8 +42,8 @@ MODULE Aer_Actv_Single_Moment
 
 !>----------------------------------------------------------------------------------------------------------------------
 !>----------------------------------------------------------------------------------------------------------------------
-      SUBROUTINE extract_tracer_data(IM,JM,LM, n_modes, aero_aci, aci_num_, aci_dgn_, aci_sigma_, aci_density_, aci_hygroscopicity_, &
-                                    aci_f_dust_, aci_f_soot_, aci_f_organic_)
+      SUBROUTINE extract_aerosol_data(IM,JM,LM, n_modes, aero_aci, aci_num_, aci_dgn_, aci_sigma_, aci_density_, aci_hygroscopicity_, &
+            aci_f_dust_, aci_f_soot_, aci_f_organic_)
 
             integer, intent(in) :: IM, JM, LM
             integer, intent(out) :: n_modes
