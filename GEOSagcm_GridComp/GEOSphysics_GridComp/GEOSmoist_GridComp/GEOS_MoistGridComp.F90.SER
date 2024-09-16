@@ -5152,6 +5152,8 @@ contains
     ! All done
     !---------
 
+    !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
@@ -5584,7 +5586,6 @@ contains
           deallocate(aero_f_organic_)
          else
 #endif
-          !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
           !$ser savepoint AerActivation-In timestep=timestep
           !$ser data T=T PLmb=PLmb PLE=PLE ZL0=ZL0 ZLE0=ZLE0 QLCN=QLCN QICN=QICN
           !$ser data QLLS=QLLS QILS=QILS SH=SH EVAP=EVAP KPBL=KPBL TKE=TKE TMP3D=TMP3D FRLAND=FRLAND 
