@@ -1,16 +1,31 @@
 import copy
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD
 import pyMoist.pyMoist_constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Float
+from ndsl.dsl.typing import FloatField, Float, Int
 from ndsl import StencilFactory, QuantityFactory
 from pyMoist.types import FloatField_NTracers
 
 
 @gtscript.function
-def slope_3D(kmask: Float, field: Float, field_above: Float, field_below: Float, p0: Float, p0_above: Float, p0_below: Float):
+def slope(kmask: Float, field: Float, field_above: Float, field_below: Float, p0: Float, p0_above: Float, p0_below: Float):
+    """
+    Calculates slope of a given field.
+
+    Parameters:
+    kmask (Float): K-level mask (e.g., 1 for k=0, 2 for k=1,71, 3 for k=72).
+    field (Float): Field of interest.
+    field_above (Float): 1 k-level above field (e.g., field[0,0,1]).
+    field_below (Float): 1 k-level below field (e.g., field[0,0,-1]).
+    p0 (Float): Pressure 
+    p0_above (Float): 1 k-level above p0 (e.g., p0[0,0,1]).
+    p0_below (Float): 1 k-level below p0 (e.g., p0[0,0,-1]).
+
+    Returns:
+    Slope: Slope of the field of interest.
+    """
     if kmask == 1:
         value = (field_above - field) / (p0_above - p0)
         if value > 0.0:
@@ -35,7 +50,6 @@ def slope_3D(kmask: Float, field: Float, field_above: Float, field_below: Float,
     return slope
 
         
-
 def compute_uwshcu(
     dotransport: Float,           
     exnifc0_in: FloatField,     
@@ -56,9 +70,6 @@ def compute_uwshcu(
     ssv0: FloatField,
     sstr0: FloatField_NTracers,
     kmask: FloatField,
-    temp: FloatField,
-    temp_below: FloatField,
-    temp_above: FloatField,
 ):
     '''
     University of Washington Shallow Convection Scheme          
@@ -106,16 +117,46 @@ def compute_uwshcu(
          thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
          thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
 
-         ssthl0 = slope_3D(kmask,thl0,thl0_above,thl0_above,pmid0,pmid0_above,pmid0_above)
-         ssqt0 = slope_3D(kmask,qt0,qt0_above,qt0_above,pmid0,pmid0_above,pmid0_above)
-         ssu0 = slope_3D(kmask,u0,u0_above,u0_above,pmid0,pmid0_above,pmid0_above)
-         ssv0 = slope_3D(kmask,v0,v0_above,v0_above,pmid0,pmid0_above,pmid0_above)
+         if dotransport == 1.0:
+            n=0
+            # Loop over tracers
+            while n < constants.ncnst:
+                tr0[0,0,0][n] = tr0_inout[0,0,0][n]
+                n+=1
+
+         ssthl0 = slope(kmask,thl0,thl0_above,thl0_above,pmid0,pmid0_above,pmid0_above)
+         ssqt0 = slope(kmask,qt0,qt0_above,qt0_above,pmid0,pmid0_above,pmid0_above)
+         ssu0 = slope(kmask,u0,u0_above,u0_above,pmid0,pmid0_above,pmid0_above)
+         ssv0 = slope(kmask,v0,v0_above,v0_above,pmid0,pmid0_above,pmid0_above)
+
+         if dotransport == 1.0:
+             # Raise error if constants.ncnst != ncnst
+             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,1][0],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,0][1],tr0[0,0,1][1],tr0[0,0,1][1],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,0][2],tr0[0,0,1][2],tr0[0,0,1][2],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,0][3],tr0[0,0,1][3],tr0[0,0,1][3],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,0][4],tr0[0,0,1][4],tr0[0,0,1][4],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,0][5],tr0[0,0,1][5],tr0[0,0,1][5],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,0][6],tr0[0,0,1][6],tr0[0,0,1][6],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,0][7],tr0[0,0,1][7],tr0[0,0,1][7],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,0][8],tr0[0,0,1][8],tr0[0,0,1][8],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,0][9],tr0[0,0,1][9],tr0[0,0,1][9],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,0][10],tr0[0,0,1][10],tr0[0,0,1][10],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,0][11],tr0[0,0,1][11],tr0[0,0,1][11],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,0][12],tr0[0,0,1][12],tr0[0,0,1][12],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,0][13],tr0[0,0,1][13],tr0[0,0,1][13],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,0][14],tr0[0,0,1][14],tr0[0,0,1][14],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,0][15],tr0[0,0,1][15],tr0[0,0,1][15],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,0][16],tr0[0,0,1][16],tr0[0,0,1][16],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,0][17],tr0[0,0,1][17],tr0[0,0,1][17],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,0][18],tr0[0,0,1][18],tr0[0,0,1][18],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,0][19],tr0[0,0,1][19],tr0[0,0,1][19],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,0][20],tr0[0,0,1][20],tr0[0,0,1][20],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,0][21],tr0[0,0,1][21],tr0[0,0,1][21],pmid0,pmid0_above,pmid0_above)
+             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,0][22],tr0[0,0,1][22],tr0[0,0,1][22],pmid0,pmid0_above,pmid0_above)
 
 
-    with computation(PARALLEL), interval(1,-1):
-         #id_exit = False
-
-         zvir = 0.609 # r_H2O/r_air-1
+    with computation(FORWARD), interval(1,-1):
          pmid0 = pmid0_in
          pmid0_above = pmid0_in[0,0,1]
          pmid0_below = pmid0_in[0,0,-1]
@@ -143,39 +184,50 @@ def compute_uwshcu(
                 tr0[0,0,0][n] = tr0_inout[0,0,0][n]
                 n+=1
 
-         #Compute basic thermodynamic variables directly from  
-         #input variables for each column                      
-         
-         # Compute internal environmental variables
          exnmid0 = exnmid0_in
          exnmid0_above = exnmid0_in[0,0,1]
          exnmid0_below = exnmid0_in[0,0,-1]
-         exnifc0 = exnifc0_in
          t0 = th0_in * exnmid0
          t0_above = th0_in[0,0,1] * exnmid0_above
          t0_below = th0_in[0,0,-1] * exnmid0_below
-         s0 = constants.gravity*zmid0 + constants.cpdry*t0
          qt0 = qv0 + ql0 + qi0
          qt0_above = qv0_above + ql0_above + qi0_above
          qt0_below = qv0_below + ql0_below + qi0_below
          thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
          thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
          thl0_below = (t0_below - constants.latent_heat_vaporization*ql0_below/constants.cpdry - constants.latent_heat_sublimation*qi0_below/constants.cpdry) / exnmid0_below
-         thvl0 = (1.0 + zvir*qt0) * thl0
         
-         ssthl0 = slope_3D(kmask,thl0,thl0_above,thl0_below,pmid0,pmid0_above,pmid0_below)
-         ssqt0 = slope_3D(kmask,qt0,qt0_above,qt0_below,pmid0,pmid0_above,pmid0_below)
-         ssu0 = slope_3D(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
-         ssv0 = slope_3D(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
+         ssthl0 = slope(kmask,thl0,thl0_above,thl0_below,pmid0,pmid0_above,pmid0_below)
+         ssqt0 = slope(kmask,qt0,qt0_above,qt0_below,pmid0,pmid0_above,pmid0_below)
+         ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
+         ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
 
+      
          if dotransport == 1.0:
-             n=0
-             while n < constants.ncnst:
-                temp = tr0[0,0,0][n]
-                temp_above = tr0[0,0,1][n]
-                temp_below = tr0[0,0,-1][n]
-                sstr0[0,0,0][n] = slope_3D(kmask,temp,temp_above,temp_below,pmid0,pmid0_above,pmid0_below)
-                n+=1
+             # Raise error if constants.ncnst != ncnst
+             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,-1][0],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,0][1],tr0[0,0,1][1],tr0[0,0,-1][1],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,0][2],tr0[0,0,1][2],tr0[0,0,-1][2],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,0][3],tr0[0,0,1][3],tr0[0,0,-1][3],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,0][4],tr0[0,0,1][4],tr0[0,0,-1][4],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,0][5],tr0[0,0,1][5],tr0[0,0,-1][5],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,0][6],tr0[0,0,1][6],tr0[0,0,-1][6],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,0][7],tr0[0,0,1][7],tr0[0,0,-1][7],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,0][8],tr0[0,0,1][8],tr0[0,0,-1][8],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,0][9],tr0[0,0,1][9],tr0[0,0,-1][9],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,0][10],tr0[0,0,1][10],tr0[0,0,-1][10],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,0][11],tr0[0,0,1][11],tr0[0,0,-1][11],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,0][12],tr0[0,0,1][12],tr0[0,0,-1][12],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,0][13],tr0[0,0,1][13],tr0[0,0,-1][13],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,0][14],tr0[0,0,1][14],tr0[0,0,-1][14],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,0][15],tr0[0,0,1][15],tr0[0,0,-1][15],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,0][16],tr0[0,0,1][16],tr0[0,0,-1][16],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,0][17],tr0[0,0,1][17],tr0[0,0,-1][17],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,0][18],tr0[0,0,1][18],tr0[0,0,-1][18],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,0][19],tr0[0,0,1][19],tr0[0,0,-1][19],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,0][20],tr0[0,0,1][20],tr0[0,0,-1][20],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,0][21],tr0[0,0,1][21],tr0[0,0,-1][21],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,0][22],tr0[0,0,1][22],tr0[0,0,-1][22],pmid0,pmid0_above,pmid0_below)
 
     with computation(PARALLEL), interval(-1,None):
          pmid0 = pmid0_in[0,0,-1]
@@ -210,12 +262,45 @@ def compute_uwshcu(
          thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
          thl0_below = (t0_below - constants.latent_heat_vaporization*ql0_below/constants.cpdry - constants.latent_heat_sublimation*qi0_below/constants.cpdry) / exnmid0_below
 
-         ssthl0 = slope_3D(kmask,thl0,thl0_above,thl0_below,pmid0,pmid0_above,pmid0_below)
-         ssqt0 = slope_3D(kmask,qt0,qt0_above,qt0_below,pmid0,pmid0_above,pmid0_below)
-         ssu0 = slope_3D(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
-         ssv0 = slope_3D(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
+         if dotransport == 1.0:
+            n=0
+            # Loop over tracers
+            while n < constants.ncnst:
+                tr0[0,0,0][n] = tr0_inout[0,0,0][n]
+                n+=1
 
-    
+         ssthl0 = slope(kmask,thl0,thl0_above,thl0_below,pmid0,pmid0_above,pmid0_below)
+         ssqt0 = slope(kmask,qt0,qt0_above,qt0_below,pmid0,pmid0_above,pmid0_below)
+         ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
+         ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
+
+         if dotransport == 1.0:
+             # Raise error if constants.ncnst != ncnst
+             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,-1][0],tr0[0,0,0][0],tr0[0,0,-2][0],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,-1][1],tr0[0,0,0][1],tr0[0,0,-2][1],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,-1][2],tr0[0,0,0][2],tr0[0,0,-2][2],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,-1][3],tr0[0,0,0][3],tr0[0,0,-2][3],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,-1][4],tr0[0,0,0][4],tr0[0,0,-2][4],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,-1][5],tr0[0,0,0][5],tr0[0,0,-2][5],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,-1][6],tr0[0,0,0][6],tr0[0,0,-2][6],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,-1][7],tr0[0,0,0][7],tr0[0,0,-2][7],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,-1][8],tr0[0,0,0][8],tr0[0,0,-2][8],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,-1][9],tr0[0,0,0][9],tr0[0,0,-2][9],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,-1][10],tr0[0,0,0][10],tr0[0,0,-2][10],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,-1][11],tr0[0,0,0][11],tr0[0,0,-2][11],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,-1][12],tr0[0,0,0][12],tr0[0,0,-2][12],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,-1][13],tr0[0,0,0][13],tr0[0,0,-2][13],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,-1][14],tr0[0,0,0][14],tr0[0,0,-2][14],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,-1][15],tr0[0,0,0][15],tr0[0,0,-2][15],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,-1][16],tr0[0,0,0][16],tr0[0,0,-2][16],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,-1][17],tr0[0,0,0][17],tr0[0,0,-2][17],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,-1][18],tr0[0,0,0][18],tr0[0,0,-2][18],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,-1][19],tr0[0,0,0][19],tr0[0,0,-2][19],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,-1][20],tr0[0,0,0][20],tr0[0,0,-2][20],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,-1][21],tr0[0,0,0][21],tr0[0,0,-2][21],pmid0,pmid0_above,pmid0_below)
+             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,-1][22],tr0[0,0,0][22],tr0[0,0,-2][22],pmid0,pmid0_above,pmid0_below)
+
+
 
 
 class ComputeUwshcu:
@@ -223,7 +308,23 @@ class ComputeUwshcu:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        ncnst: Int,
     ) -> None:
+        """
+        Initialize the ComputeUwshcu class.
+
+        Parameters:
+        stencil_factory (StencilFactory): Factory for creating stencil computations.
+        quantity_factory (QuantityFactory): Factory for creating quantities.
+        ncnst (Int): Number of tracers.
+
+        Raises:
+        NotImplementedError: If the number of tracers is not equal to the expected number.
+        """
+        if constants.ncnst != ncnst:
+            raise NotImplementedError(
+                f"Coding limitation: 23 tracers are expected, getting {ncnst}"
+            )
         
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
@@ -243,10 +344,6 @@ class ComputeUwshcu:
                         self._k_mask.view[i, j, k] = 3
                     else:
                         self._k_mask.view[i, j, k] = 2
-        
-        self._temp = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._temp_above = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._temp_below = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
 
     @staticmethod
@@ -303,9 +400,6 @@ class ComputeUwshcu:
             ssv0=ssv0_test,
             sstr0=sstr0_test,
             kmask=self._k_mask,
-            temp=self._temp,
-            temp_below=self._temp_below,
-            temp_above=self._temp_above,
         )
         
 

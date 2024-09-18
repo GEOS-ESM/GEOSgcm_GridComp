@@ -41,6 +41,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # Float/Int Inputs
         self.in_vars["parameters"] = [
             "dotransport",
+            "ncnst",
         ]
 
         # FloatField Outputs
@@ -60,31 +61,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         
         for key, array in inputs.items():
             if isinstance(array, np.ndarray) and array.ndim == 2:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float32)
+                reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float64)
             elif isinstance(array, np.ndarray) and array.ndim == 3:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float32)
+                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float64)
             else:
                 # If not a 2D or 3D array, keep as is
                 reshaped_inputs[key] = np.float32(array)
-
-        '''
-        # Add halo of 3 in i and j dimensions
-        halo_arrays = {}
-        for key, array in reshaped_inputs.items():
-            if isinstance(array, np.ndarray) and array.ndim == 3:
-                new_array = np.zeros((i+6, j+6, k), dtype=np.float64)
-                new_array[3:-3, 3:-3, :] = array
-                halo_arrays[key] = new_array
-            elif isinstance(array, np.ndarray) and array.ndim == 4:
-                new_array = np.zeros((i+6, j+6, k, ncnst), dtype=np.float64)
-                new_array[3:-3, 3:-3, :, :] = array
-                halo_arrays[key] = new_array
-            else:
-                # If not a 2D or 3D array, keep as is
-                new_array = array
-                halo_arrays[key] = new_array
-                '''
-                
 
         return reshaped_inputs
     
@@ -133,6 +115,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         compute_uwshcu = ComputeUwshcu(
             self.stencil_factory,
             self.grid.quantity_factory,
+            int(inputs["ncnst"]),
         )
 
         # Reshape input variables and add halo
@@ -141,17 +124,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         
         # Inputs
         dotransport = inputs_reshaped["dotransport"]
-        #exnifc0_in = inputs_reshaped["exnifc0_in"]
-        #pmid0_in = inputs_reshaped["pmid0_in"]
-        #zmid0_in = inputs_reshaped["zmid0_in"]
-        #exnmid0_in = inputs_reshaped["exnmid0_in"]
-        #u0_in = inputs_reshaped["u0_in"]
-        #v0_in = inputs_reshaped["v0_in"]
-        #qv0_in = inputs_reshaped["qv0_in"]
-        #ql0_in = inputs_reshaped["ql0_in"]
-        #qi0_in = inputs_reshaped["qi0_in"]
-        #th0_in = inputs_reshaped["th0_in"]
-        #tr0_inout = inputs_reshaped["tr0_inout"]
         exnifc0_in = self.make_ijk_field(inputs_reshaped["exnifc0_in"])
         pmid0_in = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         zmid0_in = self.make_ijk_field(inputs_reshaped["zmid0_in"])
@@ -164,16 +136,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         th0_in = self.make_ijk_field(inputs_reshaped["th0_in"])
         tr0_inout = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
 
-
-
         # Outputs
-        #tr0_test = inputs_reshaped["tr0_inout"]
-        #ssthl0_test = inputs_reshaped["pmid0_in"]
-        #ssqt0_test = inputs_reshaped["pmid0_in"]
-        #ssu0_test = inputs_reshaped["pmid0_in"]
-        #ssv0_test = inputs_reshaped["pmid0_in"]
-        #sstr0_test = inputs_reshaped["tr0_inout"]
-        #tr0_test = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         tr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
         ssthl0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         ssqt0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
