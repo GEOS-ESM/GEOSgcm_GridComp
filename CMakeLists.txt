@@ -8,6 +8,13 @@ set (alldirs
   GEOSwgcm_GridComp
   )
 
+option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" ON)
+
+if (BUILD_WITH_GIGATRAJ)
+  add_definitions (-DHAS_GIGATRAJ)
+  set (alldirs ${alldirs} GEOSgigatraj_GridComp) 
+endif()
+
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
 
