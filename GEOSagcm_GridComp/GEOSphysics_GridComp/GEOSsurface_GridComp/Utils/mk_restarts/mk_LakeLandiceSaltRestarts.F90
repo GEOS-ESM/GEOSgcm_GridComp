@@ -88,6 +88,9 @@ program mk_LakeLandiceSaltRestarts
 
      call InFmt%open(InRestart,pFIO_READ,rc=rc)
      InCfg = InFmt%read(rc=rc)
+     i = Incfg%get_dimension('tile', _RC)
+     _ASSERT( i == itiles, "The tile number in restart is inconsistent with the tile file: mk_LakeLandiceSaltRestarts")
+
      call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/otiles/),rc=rc)
 
      i = index(InRestart,'/',back=.true.)
