@@ -109,7 +109,6 @@ def conden(
     thl: Float, 
     qt: Float,
     ese: FloatField,
-    esw: FloatField,
     esx: FloatField,
 ):
 
@@ -120,7 +119,7 @@ def conden(
     leff = (1.0 - nu) * radconstants.MAPL_ALHL + nu * radconstants.MAPL_ALHS # Effective latent heat
     temps = tc
     ps = p
-    qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0) # Saturation specific humidity
+    qs, _ = QSat_Float(ese, esx, temps, ps / 100.0) # Saturation specific humidity
     rvls = qs
     
     if qs >= qt:      # no condensation
@@ -134,7 +133,7 @@ def conden(
         iteration = 0
         while iteration < 10:
             temps = temps + ((tc - temps) * radconstants.MAPL_CPDRY / leff + qt - rvls) / (radconstants.MAPL_CPDRY / leff + (constants.rdry / constants.rvap) * leff * rvls / (radconstants.MAPL_RDRY * temps * temps))
-            qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0)
+            qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration+=1
         qc = max(qt - qs, 0.0)
@@ -178,7 +177,6 @@ def compute_uwshcu(
     id_check: IntField,
     kmask: FloatField,
     ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
 ):
     '''
@@ -239,34 +237,13 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_above,pmid0,pmid0_above,pmid0_above)
          ssv0 = slope(kmask,v0,v0_above,v0_above,pmid0,pmid0_above,pmid0_above)
 
-         # Calculate slope for each tracer by hand
          if dotransport == 1.0:
-             # Raise error if constants.ncnst != ncnst
-             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,1][0],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,0][1],tr0[0,0,1][1],tr0[0,0,1][1],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,0][2],tr0[0,0,1][2],tr0[0,0,1][2],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,0][3],tr0[0,0,1][3],tr0[0,0,1][3],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,0][4],tr0[0,0,1][4],tr0[0,0,1][4],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,0][5],tr0[0,0,1][5],tr0[0,0,1][5],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,0][6],tr0[0,0,1][6],tr0[0,0,1][6],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,0][7],tr0[0,0,1][7],tr0[0,0,1][7],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,0][8],tr0[0,0,1][8],tr0[0,0,1][8],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,0][9],tr0[0,0,1][9],tr0[0,0,1][9],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,0][10],tr0[0,0,1][10],tr0[0,0,1][10],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,0][11],tr0[0,0,1][11],tr0[0,0,1][11],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,0][12],tr0[0,0,1][12],tr0[0,0,1][12],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,0][13],tr0[0,0,1][13],tr0[0,0,1][13],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,0][14],tr0[0,0,1][14],tr0[0,0,1][14],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,0][15],tr0[0,0,1][15],tr0[0,0,1][15],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,0][16],tr0[0,0,1][16],tr0[0,0,1][16],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,0][17],tr0[0,0,1][17],tr0[0,0,1][17],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,0][18],tr0[0,0,1][18],tr0[0,0,1][18],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,0][19],tr0[0,0,1][19],tr0[0,0,1][19],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,0][20],tr0[0,0,1][20],tr0[0,0,1][20],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,0][21],tr0[0,0,1][21],tr0[0,0,1][21],pmid0,pmid0_above,pmid0_above)
-             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,0][22],tr0[0,0,1][22],tr0[0,0,1][22],pmid0,pmid0_above,pmid0_above)
-
-
+             n=0
+             while n < constants.ncnst:
+                if True:
+                    sstr0[0,0,0][n] = slope(kmask,tr0[0,0,0][n],tr0[0,0,1][n],tr0[0,0,1][n],pmid0,pmid0_above,pmid0_above)
+                n+=1
+             
     with computation(PARALLEL), interval(1,-1):
          pmid0 = pmid0_in
          pmid0_above = pmid0_in[0,0,1]
@@ -313,33 +290,14 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
          ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
 
-         # Calculate slope for each tracer by hand
-         if dotransport == 1.0:
-             # Raise error if constants.ncnst != ncnst
-             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,-1][0],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,0][1],tr0[0,0,1][1],tr0[0,0,-1][1],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,0][2],tr0[0,0,1][2],tr0[0,0,-1][2],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,0][3],tr0[0,0,1][3],tr0[0,0,-1][3],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,0][4],tr0[0,0,1][4],tr0[0,0,-1][4],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,0][5],tr0[0,0,1][5],tr0[0,0,-1][5],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,0][6],tr0[0,0,1][6],tr0[0,0,-1][6],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,0][7],tr0[0,0,1][7],tr0[0,0,-1][7],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,0][8],tr0[0,0,1][8],tr0[0,0,-1][8],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,0][9],tr0[0,0,1][9],tr0[0,0,-1][9],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,0][10],tr0[0,0,1][10],tr0[0,0,-1][10],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,0][11],tr0[0,0,1][11],tr0[0,0,-1][11],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,0][12],tr0[0,0,1][12],tr0[0,0,-1][12],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,0][13],tr0[0,0,1][13],tr0[0,0,-1][13],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,0][14],tr0[0,0,1][14],tr0[0,0,-1][14],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,0][15],tr0[0,0,1][15],tr0[0,0,-1][15],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,0][16],tr0[0,0,1][16],tr0[0,0,-1][16],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,0][17],tr0[0,0,1][17],tr0[0,0,-1][17],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,0][18],tr0[0,0,1][18],tr0[0,0,-1][18],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,0][19],tr0[0,0,1][19],tr0[0,0,-1][19],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,0][20],tr0[0,0,1][20],tr0[0,0,-1][20],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,0][21],tr0[0,0,1][21],tr0[0,0,-1][21],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,0][22],tr0[0,0,1][22],tr0[0,0,-1][22],pmid0,pmid0_above,pmid0_below)
 
+         if dotransport == 1.0:
+             n=0
+             while n < constants.ncnst:
+                if True:
+                    sstr0[0,0,0][n] = slope(kmask,tr0[0,0,0][n],tr0[0,0,1][n],tr0[0,0,-1][n],pmid0,pmid0_above,pmid0_below)
+                n+=1
+         
     with computation(PARALLEL), interval(-1,None):
          pmid0 = pmid0_in[0,0,-1]
          pmid0_above = pmid0_in
@@ -385,32 +343,15 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
          ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
 
+        
          # Calculate slope for each tracer by hand
          if dotransport == 1.0:
-             # Raise error if constants.ncnst != ncnst
-             sstr0[0,0,0][0] = slope(kmask,tr0[0,0,-1][0],tr0[0,0,0][0],tr0[0,0,-2][0],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][1] = slope(kmask,tr0[0,0,-1][1],tr0[0,0,0][1],tr0[0,0,-2][1],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][2] = slope(kmask,tr0[0,0,-1][2],tr0[0,0,0][2],tr0[0,0,-2][2],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][3] = slope(kmask,tr0[0,0,-1][3],tr0[0,0,0][3],tr0[0,0,-2][3],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][4] = slope(kmask,tr0[0,0,-1][4],tr0[0,0,0][4],tr0[0,0,-2][4],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][5] = slope(kmask,tr0[0,0,-1][5],tr0[0,0,0][5],tr0[0,0,-2][5],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][6] = slope(kmask,tr0[0,0,-1][6],tr0[0,0,0][6],tr0[0,0,-2][6],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][7] = slope(kmask,tr0[0,0,-1][7],tr0[0,0,0][7],tr0[0,0,-2][7],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][8] = slope(kmask,tr0[0,0,-1][8],tr0[0,0,0][8],tr0[0,0,-2][8],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][9] = slope(kmask,tr0[0,0,-1][9],tr0[0,0,0][9],tr0[0,0,-2][9],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][10] = slope(kmask,tr0[0,0,-1][10],tr0[0,0,0][10],tr0[0,0,-2][10],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][11] = slope(kmask,tr0[0,0,-1][11],tr0[0,0,0][11],tr0[0,0,-2][11],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][12] = slope(kmask,tr0[0,0,-1][12],tr0[0,0,0][12],tr0[0,0,-2][12],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][13] = slope(kmask,tr0[0,0,-1][13],tr0[0,0,0][13],tr0[0,0,-2][13],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][14] = slope(kmask,tr0[0,0,-1][14],tr0[0,0,0][14],tr0[0,0,-2][14],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][15] = slope(kmask,tr0[0,0,-1][15],tr0[0,0,0][15],tr0[0,0,-2][15],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][16] = slope(kmask,tr0[0,0,-1][16],tr0[0,0,0][16],tr0[0,0,-2][16],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][17] = slope(kmask,tr0[0,0,-1][17],tr0[0,0,0][17],tr0[0,0,-2][17],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][18] = slope(kmask,tr0[0,0,-1][18],tr0[0,0,0][18],tr0[0,0,-2][18],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][19] = slope(kmask,tr0[0,0,-1][19],tr0[0,0,0][19],tr0[0,0,-2][19],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][20] = slope(kmask,tr0[0,0,-1][20],tr0[0,0,0][20],tr0[0,0,-2][20],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][21] = slope(kmask,tr0[0,0,-1][21],tr0[0,0,0][21],tr0[0,0,-2][21],pmid0,pmid0_above,pmid0_below)
-             sstr0[0,0,0][22] = slope(kmask,tr0[0,0,-1][22],tr0[0,0,0][22],tr0[0,0,-2][22],pmid0,pmid0_above,pmid0_below)
+            n=0
+            while n < constants.ncnst:
+                if True:
+                    sstr0[0,0,0][n] = slope(kmask,tr0[0,0,-1][n],tr0[0,0,0][n],tr0[0,0,-2][n],pmid0,pmid0_above,pmid0_below)
+                n+=1
+             
 
     with computation(PARALLEL), interval(1,None):
          zvir = 0.609 # r_H2O/r_air-1
@@ -418,7 +359,7 @@ def compute_uwshcu(
          thl0bot = thl0 + ssthl0*(pifc0_in[0,0,-1] - pmid0)
          qt0bot = qt0 + ssqt0*(pifc0_in[0,0,-1] - pmid0)
 
-         thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0,0,-1],thl0bot,qt0bot,ese,esw,esx)
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0,0,-1],thl0bot,qt0bot,ese,esx)
          # Raise an error if id_check = 1
          thv0bot  = thj*(1. + zvir*qvj - qlj - qij)
          thvl0bot = thl0bot*(1. + zvir*qt0bot)
@@ -427,7 +368,7 @@ def compute_uwshcu(
          qt0top  = qt0 + ssqt0*(pifc0 - pmid0)
 
     with computation(PARALLEL), interval(0,-1):
-         thj, qvj, qlj, qij, qse, id_check = conden(pifc0,thl0top,qt0top,ese,esw,esx)
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0,thl0top,qt0top,ese,esx)
          # Raise an error if id_check = 1
          thv0top  = thj*(1. + zvir*qvj - qlj - qij)
          thvl0top = thl0top*(1. + zvir*qt0top)
@@ -446,7 +387,6 @@ class ComputeUwshcu:
         quantity_factory: QuantityFactory,
         ncnst: Int,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        use_table_lookup: bool = True,
     ) -> None:
         """
         Initialize the ComputeUwshcu class.
@@ -455,14 +395,7 @@ class ComputeUwshcu:
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
         ncnst (Int): Number of tracers.
-
-        Raises:
-        NotImplementedError: If the number of tracers is not equal to the expected number.
         """
-        if constants.ncnst != ncnst:
-            raise NotImplementedError(
-                f"Coding limitation: 23 tracers are expected, getting {ncnst}"
-            )
         
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
@@ -523,15 +456,14 @@ class ComputeUwshcu:
         qse_test: FloatField,
         id_check_test: IntField,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        use_table_lookup: bool = True,
     ):  
-        
+         
         self.qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
             formulation=formulation,
-            use_table_lookup=use_table_lookup,
         )
+        
 
         self._compute_uwshcu(
             dotransport=dotransport, 
@@ -560,9 +492,8 @@ class ComputeUwshcu:
             qse=qse_test,
             id_check=id_check_test,
             kmask=self._k_mask,
-            ese=self.qsat._ese, 
-            esw=self.qsat._esw, 
-            esx=self.qsat._esx,
+            ese=self.qsat.ese, 
+            esx=self.qsat.esx,
         )
         
 
