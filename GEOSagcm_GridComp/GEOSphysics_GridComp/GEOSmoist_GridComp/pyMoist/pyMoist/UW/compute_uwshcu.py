@@ -1,13 +1,15 @@
 import copy
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, sin
 import pyMoist.pyMoist_constants as constants
+import pyMoist.radiation_coupling_constants as radconstants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Float, Int
+from ndsl.dsl.typing import FloatField, Float, Int, IntField
 from ndsl import StencilFactory, QuantityFactory
 from pyMoist.types import FloatField_NTracers
-
+from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
+from pyMoist.saturation.formulation import SaturationFormulation
 
 @gtscript.function
 def slope(kmask: Float, field: Float, field_above: Float, field_below: Float, p0: Float, p0_above: Float, p0_below: Float):
@@ -49,10 +51,109 @@ def slope(kmask: Float, field: Float, field_above: Float, field_below: Float, p0
     
     return slope
 
+@gtscript.function
+def exnerfn(
+    p: Float,
+)-> Float:
+    
+    return (p / 100000.0) ** (radconstants.MAPL_RDRY / radconstants.MAPL_CPDRY)
+
+@gtscript.function
+def ice_fraction(
+    temp: Float,
+    cnv_frc: Float,
+    srf_type: Float,
+):
+    # Anvil clouds
+    # Anvil-Convective sigmoidal function like figure 6(right)
+    # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
+    if temp <= constants.JaT_ICE_ALL:
+        icefrct_c = 1.000
+    elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
+        icefrct_c = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)))
+    else:
+        icefrct_c = 0.00
+    icefrct_c = max(min(icefrct_c,1.00),0.00) ** constants.aICEFRPWR
+    # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+    if srf_type == 2.0:
+        if temp <= constants.JiT_ICE_ALL:
+            icefrct_m = 1.000
+        elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
+            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (constants.JiT_ICE_MAX - constants.JiT_ICE_ALL)
+        else:
+            icefrct_m = 0.00
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
+    elif srf_type > 1.0:
+        if temp <= constants.lT_ICE_ALL:
+           icefrct_m = 1.000
+        elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
+           icefrct_m = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)))
+        else:
+            icefrct_m = 0.00
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
+    else:
+        if temp <= constants.oT_ICE_ALL:
+           icefrct_m = 1.000
+        elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
+           icefrct_m = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)))
+        else:
+            icefrct_m = 0.00
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
+    ice_frac = icefrct_m * (1.0-cnv_frc) + icefrct_c * cnv_frc
+    return ice_frac
+
+
+@gtscript.function
+def conden(
+    p: Float, 
+    thl: Float, 
+    qt: Float,
+    ese: FloatField,
+    esw: FloatField,
+    esx: FloatField,
+):
+
+    tc = thl * exnerfn(p)
+    
+    icefrac = ice_fraction(tc, 0.0, 0.0)
+    nu = icefrac
+    leff = (1.0 - nu) * radconstants.MAPL_ALHL + nu * radconstants.MAPL_ALHS # Effective latent heat
+    temps = tc
+    ps = p
+    qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0) # Saturation specific humidity
+    rvls = qs
+    
+    if qs >= qt:      # no condensation
+        id_check = 0
+        qv = qt
+        qc = 0.0
+        ql = 0.0
+        qi = 0.0
+        th = thl
+    else:             # condensation
+        iteration = 0
+        while iteration < 10:
+            temps = temps + ((tc - temps) * radconstants.MAPL_CPDRY / leff + qt - rvls) / (radconstants.MAPL_CPDRY / leff + (constants.rdry / constants.rvap) * leff * rvls / (radconstants.MAPL_RDRY * temps * temps))
+            qs, _ = QSat_Float(ese, esw, esx, temps, ps / 100.0)
+            rvls = qs
+            iteration+=1
+        qc = max(qt - qs, 0.0)
+        qv = qt - qc
+        ql = qc * (1.0 - nu)
+        qi = nu * qc
+        th = temps / exnerfn(p)
+        if abs((temps - (leff / radconstants.MAPL_CPDRY) * qc) - tc) >= 1.0:
+            id_check = 1
+        else:
+            id_check = 0
+
+    return th, qv, ql, qi, rvls, id_check 
+
         
 def compute_uwshcu(
     dotransport: Float,           
-    exnifc0_in: FloatField,     
+    exnifc0_in: FloatField,
+    pifc0_in: FloatField,     
     pmid0_in: FloatField,       
     zmid0_in: FloatField,       
     exnmid0_in: FloatField,     
@@ -69,7 +170,16 @@ def compute_uwshcu(
     ssu0: FloatField,
     ssv0: FloatField,
     sstr0: FloatField_NTracers,
+    thj: FloatField,
+    qvj: FloatField,
+    qlj: FloatField,
+    qij: FloatField,
+    qse: FloatField,
+    id_check: IntField,
     kmask: FloatField,
+    ese: FloatField_Extra_Dim,
+    esw: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
 ):
     '''
     University of Washington Shallow Convection Scheme          
@@ -129,6 +239,7 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_above,pmid0,pmid0_above,pmid0_above)
          ssv0 = slope(kmask,v0,v0_above,v0_above,pmid0,pmid0_above,pmid0_above)
 
+         # Calculate slope for each tracer by hand
          if dotransport == 1.0:
              # Raise error if constants.ncnst != ncnst
              sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,1][0],pmid0,pmid0_above,pmid0_above)
@@ -156,7 +267,7 @@ def compute_uwshcu(
              sstr0[0,0,0][22] = slope(kmask,tr0[0,0,0][22],tr0[0,0,1][22],tr0[0,0,1][22],pmid0,pmid0_above,pmid0_above)
 
 
-    with computation(FORWARD), interval(1,-1):
+    with computation(PARALLEL), interval(1,-1):
          pmid0 = pmid0_in
          pmid0_above = pmid0_in[0,0,1]
          pmid0_below = pmid0_in[0,0,-1]
@@ -202,7 +313,7 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
          ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
 
-      
+         # Calculate slope for each tracer by hand
          if dotransport == 1.0:
              # Raise error if constants.ncnst != ncnst
              sstr0[0,0,0][0] = slope(kmask,tr0[0,0,0][0],tr0[0,0,1][0],tr0[0,0,-1][0],pmid0,pmid0_above,pmid0_below)
@@ -274,6 +385,7 @@ def compute_uwshcu(
          ssu0 = slope(kmask,u0,u0_above,u0_below,pmid0,pmid0_above,pmid0_below)
          ssv0 = slope(kmask,v0,v0_above,v0_below,pmid0,pmid0_above,pmid0_below)
 
+         # Calculate slope for each tracer by hand
          if dotransport == 1.0:
              # Raise error if constants.ncnst != ncnst
              sstr0[0,0,0][0] = slope(kmask,tr0[0,0,-1][0],tr0[0,0,0][0],tr0[0,0,-2][0],pmid0,pmid0_above,pmid0_below)
@@ -300,6 +412,30 @@ def compute_uwshcu(
              sstr0[0,0,0][21] = slope(kmask,tr0[0,0,-1][21],tr0[0,0,0][21],tr0[0,0,-2][21],pmid0,pmid0_above,pmid0_below)
              sstr0[0,0,0][22] = slope(kmask,tr0[0,0,-1][22],tr0[0,0,0][22],tr0[0,0,-2][22],pmid0,pmid0_above,pmid0_below)
 
+    with computation(PARALLEL), interval(1,None):
+         zvir = 0.609 # r_H2O/r_air-1
+         pifc0 = pifc0_in
+         thl0bot = thl0 + ssthl0*(pifc0_in[0,0,-1] - pmid0)
+         qt0bot = qt0 + ssqt0*(pifc0_in[0,0,-1] - pmid0)
+
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0,0,-1],thl0bot,qt0bot,ese,esw,esx)
+         # Raise an error if id_check = 1
+         thv0bot  = thj*(1. + zvir*qvj - qlj - qij)
+         thvl0bot = thl0bot*(1. + zvir*qt0bot)
+
+         thl0top = thl0 + ssthl0*(pifc0 - pmid0)
+         qt0top  = qt0 + ssqt0*(pifc0 - pmid0)
+
+    with computation(PARALLEL), interval(0,-1):
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0,thl0top,qt0top,ese,esw,esx)
+         # Raise an error if id_check = 1
+         thv0top  = thj*(1. + zvir*qvj - qlj - qij)
+         thvl0top = thl0top*(1. + zvir*qt0top)
+
+    with computation(PARALLEL), interval(-1,None):
+         thv0top  = thv0bot
+         thvl0top = thvl0bot
+        
 
 
 
@@ -309,6 +445,8 @@ class ComputeUwshcu:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         ncnst: Int,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_table_lookup: bool = True,
     ) -> None:
         """
         Initialize the ComputeUwshcu class.
@@ -360,7 +498,8 @@ class ComputeUwshcu:
     def __call__(
         self,
         dotransport: Float,          
-        exnifc0_in: FloatField,      
+        exnifc0_in: FloatField, 
+        pifc0_in:FloatField,     
         pmid0_in: FloatField,       
         zmid0_in: FloatField,      
         exnmid0_in: FloatField,     
@@ -377,12 +516,27 @@ class ComputeUwshcu:
         ssu0_test: FloatField,
         ssv0_test: FloatField,
         sstr0_test: FloatField_NTracers,
+        thj_test: FloatField,
+        qvj_test: FloatField,
+        qlj_test: FloatField,
+        qij_test: FloatField,
+        qse_test: FloatField,
+        id_check_test: IntField,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_table_lookup: bool = True,
     ):  
         
+        self.qsat = QSat(
+            self.stencil_factory,
+            self.quantity_factory,
+            formulation=formulation,
+            use_table_lookup=use_table_lookup,
+        )
 
         self._compute_uwshcu(
             dotransport=dotransport, 
             exnifc0_in=exnifc0_in, 
+            pifc0_in=pifc0_in,
             pmid0_in=pmid0_in, 
             zmid0_in=zmid0_in, 
             exnmid0_in=exnmid0_in,
@@ -399,7 +553,16 @@ class ComputeUwshcu:
             ssu0=ssu0_test,
             ssv0=ssv0_test,
             sstr0=sstr0_test,
+            thj=thj_test,
+            qvj= qvj_test,
+            qlj=qlj_test,
+            qij=qij_test,
+            qse=qse_test,
+            id_check=id_check_test,
             kmask=self._k_mask,
+            ese=self.qsat._ese, 
+            esw=self.qsat._esw, 
+            esx=self.qsat._esx,
         )
         
 

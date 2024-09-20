@@ -26,6 +26,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "exnifc0_in": {},
+            "pifc0_in": {},
             "pmid0_in": {},
             "zmid0_in": {},
             "exnmid0_in": {},
@@ -52,6 +53,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "ssu0_test": self.grid.compute_dict(),
             "ssv0_test": self.grid.compute_dict(),
             "sstr0_test": self.grid.compute_dict(),
+            "thj_test": self.grid.compute_dict(),
+            "qvj_test": self.grid.compute_dict(),
+            "qlj_test": self.grid.compute_dict(),
+            "qij_test": self.grid.compute_dict(),
+            "qse_test": self.grid.compute_dict(),
+            "id_check_test": self.grid.compute_dict(),
         }
 
     def reshape_before(self,inputs):
@@ -125,6 +132,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # Inputs
         dotransport = inputs_reshaped["dotransport"]
         exnifc0_in = self.make_ijk_field(inputs_reshaped["exnifc0_in"])
+        pifc0_in = self.make_ijk_field(inputs_reshaped["pifc0_in"])
         pmid0_in = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         zmid0_in = self.make_ijk_field(inputs_reshaped["zmid0_in"])
         exnmid0_in = self.make_ijk_field(inputs_reshaped["exnmid0_in"])
@@ -136,6 +144,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         th0_in = self.make_ijk_field(inputs_reshaped["th0_in"])
         tr0_inout = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
 
+
         # Outputs
         tr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
         ssthl0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
@@ -143,11 +152,20 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         ssu0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         ssv0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         sstr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        thj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qvj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qlj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qij_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qse_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        id_check_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        id_check_test = np.int64(id_check_test.view[:,:,:])
+
 
 
         compute_uwshcu(
             dotransport=dotransport,
             exnifc0_in=exnifc0_in,
+            pifc0_in=pifc0_in,
             pmid0_in=pmid0_in,
             zmid0_in=zmid0_in,
             exnmid0_in=exnmid0_in,
@@ -164,6 +182,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             ssu0_test=ssu0_test,
             ssv0_test=ssv0_test,
             sstr0_test=sstr0_test,
+            thj_test=thj_test,
+            qvj_test=qvj_test,
+            qlj_test=qlj_test,
+            qij_test=qij_test,
+            qse_test=qse_test,
+            id_check_test=id_check_test,
         )
         print("Performed compute_uwshcu on reshaped inputs")
 
@@ -174,6 +198,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         ssu0_test_2D = self.reshape_after(ssu0_test.view[:,:,:])
         ssv0_test_2D = self.reshape_after(ssv0_test.view[:,:,:])
         sstr0_test_3D = self.reshape_after(sstr0_test.view[:,:,:,:])
+        thj_test_3D =  self.reshape_after(thj_test.view[:,:,:])
+        qvj_test_3D = self.reshape_after(qvj_test.view[:,:,:])
+        qlj_test_3D = self.reshape_after(qlj_test.view[:,:,:])
+        qij_test_3D = self.reshape_after(qij_test.view[:,:,:])
+        qse_test_3D = self.reshape_after(qse_test.view[:,:,:])
+        id_check_test_3D = self.reshape_after(id_check_test.view[:,:,:])
         print("Reshaped outputs back to original shape")
 
         return {"tr0_test": tr0_test_3D,
@@ -182,4 +212,10 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
                 "ssu0_test": ssu0_test_2D,
                 "ssv0_test": ssv0_test_2D,
                 "sstr0_test": sstr0_test_3D,
+                "thj_test": thj_test_3D,
+                "qvj_test": qvj_test_3D,
+                "qlj_test": qlj_test_3D,
+                "qij_test": qij_test_3D,
+                "qse_test": qse_test_3D,
+                "id_check_test": id_check_test_3D,
             }
