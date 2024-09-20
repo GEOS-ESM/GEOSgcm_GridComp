@@ -33,6 +33,10 @@ module GEOS_MoistGridCompMod
   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
   use GEOS_UtilsMod
+#ifdef PYMOIST_INTEGRATION
+  use pymoist_interface_mod
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
+#endif
 
   implicit none
 
@@ -49,7 +53,9 @@ module GEOS_MoistGridCompMod
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
-
+#ifdef PYMOIST_INTEGRATION
+  LOGICAL :: USE_PYMOIST_AER = .false. ! Replace Aer Activation with pyMoist port
+#endif
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -5225,6 +5231,20 @@ contains
     integer :: IM,JM,LM
     integer :: I, J, L
 
+#ifdef PYMOIST_INTEGRATION
+    real, allocatable, dimension(:,:,:,:) :: aero_num_, aero_dgn_, aero_sigma_, aero_density_
+    real, allocatable, dimension(:,:,:,:) :: aero_f_dust_, aero_f_soot_, aero_f_organic_
+    real, allocatable, dimension(:,:,:,:) :: aero_hygroscopicity_
+    integer                               :: n_modes = 0
+    integer                               :: NX, NY
+    type(moist_flags_interface_type)      :: moist_flags
+    logical                               :: init_pymoist = .true.
+    ! IEEE trapping see below
+    logical                               :: halting_mode(5)
+    real                                  :: start, finish
+    integer                               :: comm, rank, mpierr
+#endif
+    
     !=============================================================================
 
     ! Begin...
@@ -5236,6 +5256,11 @@ contains
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, VM=VMG, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+#ifdef PYMOIST_INTEGRATION
+    call ESMF_VMGet(VMG, mpiCommunicator=comm)
+    call MPI_Comm_rank(comm, rank, mpierr)
+#endif
 
     ! Get my internal MAPL_Generic state
     !-----------------------------------
@@ -5302,6 +5327,31 @@ contains
        where ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) .OR. (FRACI > 0.5) )
          SRF_TYPE = 2.0 ! Ice/Snow
        end where
+
+#ifdef PYMOIST_INTEGRATION
+       ! pyMoist requires the `n_modes` parameter to be readable for AerActivation, this is written
+       ! in the Chemistry init and order of inits is not guaranteed so we wait for first execution
+       ! to run initialization
+     call MAPL_GetResource(MAPL, USE_PYMOIST_AER, 'USE_PYMOIST_AER:', default=.false., RC=STATUS); VERIFY_(STATUS);
+     call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
+     if (USE_PYMOIST_AER .and. init_pymoist) then
+          call cpu_time(start)
+          init_pymoist = .false.
+          call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
+          call MAPL_GetResource( MAPL, NX, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
+          call MAPL_GetResource( MAPL, NY, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
+          call ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
+          call make_moist_flags_C_interop(IM, JM, LM, NX, NY, 6, n_modes, moist_flags)
+          ! A workaround to the issue of SIGFPE abort during importing of numpy, is to
+          ! disable trapping of FPEs temporarily, call the Python interface and resume trapping
+          call ieee_get_halting_mode(ieee_all, halting_mode)
+          call ieee_set_halting_mode(ieee_all, .false.)
+          call pymoist_interface_f_init(moist_flags)
+          call ieee_set_halting_mode(ieee_all, halting_mode)
+          call cpu_time(finish)
+          if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'
+     endif
+#endif   
 
        ! Allocatables
         ! Edge variables
@@ -5456,9 +5506,46 @@ contains
            TMP3D = W
          endif
          ! Pressures in Pa
-         call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
-                             SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
-                             AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+#ifdef PYMOIST_INTEGRATION
+         if (USE_PYMOIST_AER) then
+           ! Current integration does not allow us to use MAPL_Get from inside pyMoist
+           ! so we extract the required field here
+           allocate(aero_num_(IM, JM, LM, n_modes))
+           allocate(aero_dgn_(IM, JM, LM, n_modes))
+           allocate(aero_sigma_(IM, JM, LM, n_modes))
+           allocate(aero_density_(IM, JM, LM, n_modes))
+           allocate(aero_hygroscopicity_(IM, JM, LM, n_modes))
+           allocate(aero_f_dust_(IM, JM, LM, n_modes))
+           allocate(aero_f_soot_(IM, JM, LM, n_modes))
+           allocate(aero_f_organic_(IM, JM, LM, n_modes))     
+           call extract_aerosol_data( &
+                IM,JM,LM, n_modes, &
+                AERO, aero_num_, aero_dgn_, aero_sigma_, &
+                aero_density_, aero_hygroscopicity_, &
+                aero_f_dust_, aero_f_soot_, aero_f_organic_ )
+           call pymoist_interface_f_run_AerActivation( &
+               aero_dgn_, aero_num_, aero_hygroscopicity_, aero_sigma_, &
+               FRLAND, CCN_OCN*1.e6, CCN_LND*1.e6, &
+               T, PLmb*100.0, &
+               QLCN, QICN, QLLS, QILS, &
+               TMP3D, TKE, &
+               NACTI, NWFA, NACTL)
+           deallocate(aero_num_)
+           deallocate(aero_dgn_)
+           deallocate(aero_sigma_)
+           deallocate(aero_density_)
+           deallocate(aero_hygroscopicity_)
+           deallocate(aero_f_dust_)
+           deallocate(aero_f_soot_)
+           deallocate(aero_f_organic_)
+         else
+#endif
+           call Aer_Activation(IM,JM,LM, Q, T, PLmb*100.0, PLE, ZL0, ZLE0, QLCN, QICN, QLLS, QILS, &
+                                   SH, EVAP, KPBL, TKE, TMP3D, FRLAND, USE_AERO_BUFFER, &
+                                   AeroProps, AERO, NACTL, NACTI, NWFA, CCN_LND*1.e6, CCN_OCN*1.e6)
+#ifdef PYMOIST_INTEGRATION
+         endif
+#endif
        else
          do L=1,LM
            NACTL(:,:,L) = (CCN_LND*FRLAND + CCN_OCN*(1.0-FRLAND))*1.e6 ! #/m^3

@@ -1,8 +1,7 @@
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation.qsat import QSat
+from pyMoist.saturation import QSat, TableMethod
 
 
 class TranslateQSat(TranslateFortranData2Py):
@@ -17,13 +16,13 @@ class TranslateQSat(TranslateFortranData2Py):
             self.quantity_factory
         )
 
-        #FloatField Inputs
+        # FloatField Inputs
         self.in_vars["data_vars"] = {
             "PL": {},
             "T": {},
         }
 
-        #Float Inputs
+        # Float Inputs
         self.in_vars["parameters"] = []
 
         # FloatField Outputs
@@ -38,7 +37,7 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:, :] = qty.np.asarray(data[:, :])
         return qty
-    
+
     def make_ijk_field(self, data) -> Quantity:
         qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM],
@@ -46,7 +45,7 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
-    
+
     def make_extra_dim_field(self, data) -> Quantity:
         qty = self.nmodes_quantity_factory.empty(
             [Z_DIM, "table_axis"],
@@ -54,22 +53,23 @@ class TranslateQSat(TranslateFortranData2Py):
         )
         qty.view[:] = qty.np.asarray(data[:])
         return qty
-    
+
     def compute(self, inputs):
-        code = QSat(
+        qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
+            table_method=TableMethod.NetCDF,
         )
 
         # FloatField Variables
         T = self.make_ijk_field(inputs["T"])
         PL = self.make_ijk_field(inputs["PL"])
 
-
-        code(T,
-             PL,
+        qsat(
+            T,
+            PL,
         )
 
         return {
-            "QSAT": code.QSat.view[:],
+            "QSAT": qsat.QSat.view[:],
         }

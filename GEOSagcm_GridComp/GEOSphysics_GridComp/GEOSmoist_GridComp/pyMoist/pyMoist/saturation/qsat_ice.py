@@ -1,14 +1,17 @@
+from typing import Optional
+
+import numpy as np
+
+from ndsl.dsl.typing import Float
 from pyMoist.saturation.constants import (
-    MAPL_TICE,
-    ESFAC,
-    ERFAC,
     DELTA_T,
+    ERFAC,
+    ESFAC,
+    MAPL_TICE,
     MAX_MIXING_RATIO,
 )
-from ndsl.dsl.typing import Float
-from pyMoist.saturation.formulation import SaturationFormulation
-import numpy as np
-from typing import Optional
+from pyMoist.saturation.types import SaturationFormulation
+
 
 TMINSTR = Float(-95.0)
 TMINICE = MAPL_TICE + TMINSTR
@@ -99,7 +102,7 @@ def _saturation_formulation(
         EX = DI[0] * np.exp(-(DI[1] / TT + DI[2] * np.log(TT) + DI[3] * TT))
     elif formulation == SaturationFormulation.MurphyAndKoop:
         EX = np.exp(CI[0] + CI[1] / t + CI[2] * np.log(t) + CI[3] * t)
-    return EX
+    return Float(EX)
 
 
 def qsat_ice_scalar_exact(
@@ -116,7 +119,7 @@ def qsat_ice_scalar_exact(
     else:
         TI = temperature
 
-    DX = 0  # only calulcated when DQ is not none
+    DX = 0.0  # only calulcated when DQ is not none
     EX = _saturation_formulation(formulation, TI)
 
     if DQ is not None:
@@ -128,7 +131,7 @@ def qsat_ice_scalar_exact(
             if PL > EX:
                 DD = EX
                 TI = temperature + DELTA_T
-                EX = _saturation_formulation(formulation, TI)
+                EX, _ = _saturation_formulation(formulation, TI)
                 DDQ = EX - DD
                 EX = DD
     if PL is not None:
@@ -146,8 +149,3 @@ def qsat_ice_scalar_exact(
             DX = DDQ * (1.0 / DELTA_T)
 
     return EX, TI, DX
-
-
-def qsat_ice_scalar_table():
-    """Reference Fortran: QSATICE0 w/ UTBL=True"""
-    raise NotImplementedError("Nope.")

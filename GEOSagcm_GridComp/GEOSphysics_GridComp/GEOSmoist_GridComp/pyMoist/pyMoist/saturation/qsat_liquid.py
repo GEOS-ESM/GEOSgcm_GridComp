@@ -1,19 +1,18 @@
-from ndsl.dsl.typing import Float
 from typing import Optional
-from pyMoist.saturation.constants import (
-    TMINLQU,
-    DELTA_T,
-    MAPL_TICE,
-    ESFAC,
-    MAX_MIXING_RATIO,
-    TMAXTBL,
-    DEGSUBS,
-)
-from pyMoist.saturation.formulation import SaturationFormulation
+
 import numpy as np
 
-
-ERFAC = DEGSUBS / ESFAC
+from ndsl.dsl.typing import Float
+from pyMoist.saturation.constants import (
+    DELTA_T,
+    ERFAC,
+    ESFAC,
+    MAPL_TICE,
+    MAX_MIXING_RATIO,
+    TMAXTBL,
+    TMINLQU,
+)
+from pyMoist.saturation.types import SaturationFormulation
 
 
 # Below are actual 64-bit float in Fortran
@@ -83,7 +82,7 @@ def _saturation_formulation(formulation: SaturationFormulation, t: Float):
             + np.tanh(CL[4] * (t - CL[5]))
             * (CL[6] + CL[7] / t + CL[8] * np.log(t) + CL[9] * t)
         )
-    return EX
+    return Float(EX)
 
 
 def qsat_liquid_scalar_exact(
@@ -101,7 +100,7 @@ def qsat_liquid_scalar_exact(
     else:
         TI = temperature
 
-    DX = 0  # DX only calculated when DQ is present
+    DX = 0.0  # DX only calculated when DQ is present
     EX = _saturation_formulation(formulation, TI)
 
     if DQ is not None:
@@ -113,7 +112,7 @@ def qsat_liquid_scalar_exact(
             if PL > EX:
                 DD = EX
                 TI = temperature + DELTA_T
-                EX = _saturation_formulation(formulation, TI)
+                EX, _ = _saturation_formulation(formulation, TI)
                 DDQ = EX - DD
                 EX = DD
 
@@ -131,8 +130,3 @@ def qsat_liquid_scalar_exact(
         DX = DDQ * (1.0 / DELTA_T)
 
     return EX, TI, DX
-
-
-def qsat_liquid_scalar_table():
-    """Reference Fortran: QSATLQU0 w/ UTBL=True"""
-    raise NotImplementedError("Nope.")

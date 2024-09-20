@@ -10,7 +10,7 @@ The code lists 3 ways, with each a specific set of formulation.
     - Latest code, carrying for every subsequent code the "exact" formulations for the different saturations schemes
     - Can run with in exact mode or in table mode
 - `Qsat` & `DQsat` are the "traditional" called, which are flagged as deprecated in docs but still in use
-    - Can run in exact mode (and ping back to GEOS_QSatLqu/Ice) or in table mode 
+    - Can run in exact mode (and ping back to GEOS_QSatLqu/Ice) or in table mode
 
 The table (ESINIT) is a constant computation that leverages the GEOS_QsatLqu/GEOS_QSatIce to freeze results in increment
 of 0.1 Pa (per documenttion)
