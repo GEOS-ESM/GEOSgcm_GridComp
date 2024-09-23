@@ -3145,7 +3145,7 @@ end if
      if (JASON_TRB) then
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default= 6.0,    RC=STATUS); VERIFY_(STATUS)
      else                 
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-6.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,   RC=STATUS); VERIFY_(STATUS)
      endif
 
      ! Imports for CLASP heterogeneity coupling in EDMF

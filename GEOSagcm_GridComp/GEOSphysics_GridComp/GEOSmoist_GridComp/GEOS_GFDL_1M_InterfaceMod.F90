@@ -270,7 +270,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -278,10 +278,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, MIN_RL          , 'MIN_RL:'          , DEFAULT= 2.5e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RL          , 'MAX_RL:'          , DEFAULT=60.0e-6, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCW_EVAP_EFF = 8.e-3
+                                 CCW_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCW_EVAP_EFF, 'CCW_EVAP_EFF:', DEFAULT= CCW_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-                                 CCI_EVAP_EFF = 8.e-3
+                                 CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
@@ -526,10 +526,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     endif
     TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
     call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
-    ! Only use EIS over ocean waters and clear land, otherwise set to 0.0
-    where (SRF_TYPE .ge. 2.0)
-       EIS = 0.0
-    end where
 
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -669,7 +665,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-             RHCRIT = 1.0
+             RHCRIT = 1.0-ALPHA
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
                   DT_MOIST      , &
