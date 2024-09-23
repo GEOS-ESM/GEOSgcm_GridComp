@@ -121,9 +121,15 @@ endforeach ()
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES ESMF NetCDF::NetCDF_Fortran
+  DEPENDENCIES ESMF::ESMF NetCDF::NetCDF_Fortran
   TYPE SHARED
 )
 
 target_compile_definitions (${this} PRIVATE USE_NETCDF GEOSCOUPLED FORTRANUNDERSCORE)
+
+# GCC 14 is taking *forever* to compile icepack_shortwave_data.F90
+# so we're going to use -O0 for this file only
+if (CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
+  set_source_files_properties(icepack/columnphysics/icepack_shortwave_data.F90 PROPERTIES COMPILE_OPTIONS ${FOPT0})
+endif ()
 
