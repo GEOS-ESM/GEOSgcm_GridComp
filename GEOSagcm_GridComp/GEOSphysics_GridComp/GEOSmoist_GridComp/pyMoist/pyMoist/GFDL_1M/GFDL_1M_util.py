@@ -52,10 +52,10 @@ def ice_fraction_modis(
     ptc = (
         7.6725
         + 1.0118 * tc
-        + 0.1422 * tc ** 2
-        + 0.0106 * tc ** 3
-        + 0.000339 * tc ** 4
-        + 0.00000395 * tc ** 5
+        + 0.1422 * tc**2
+        + 0.0106 * tc**3
+        + 0.000339 * tc**4
+        + 0.00000395 * tc**5
     )
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
@@ -217,14 +217,14 @@ def cloud_effective_radius_ice(
         else:
             BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.t_ice - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - constants.t_ice
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC ** 0.2214)
-        BB = 0.79570 * (WC ** 0.2535)
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
@@ -338,16 +338,15 @@ def bergeron_partition(
     esw: FloatField_Extra_Dim,
     estfrz: Float,
     estlqu: Float,
+    count: Float,
 ):
-    fQI = 0
-    DIFF = 0.0
-    DEP = 0.0
     QI = QILS + QICN  # neccesary because NI is for convective and large scale
     QL = QLLS + QLCN
-    QTOT = QI + QL
-    FQA = 0.0
+    QTOT = QI + QLLS
     if QTOT > 0.0:
         FQA = (QICN + QILS) / QTOT
+    else:
+        FQA = 0.0
     NIX = (1.0 - FQA) * NI
 
     DQALL = DQALL / DTIME
@@ -366,9 +365,7 @@ def bergeron_partition(
             QVINC = Q
             QSLIQ, _ = QSat_Float_Liquid(esw, estlqu, TE, PL * 100.0)
             QSICE, DQSI = QSat_Float_Ice(ese, estfrz, TE, PL * 100.0, DQ_trigger=True)
-            # QSICE = 0; DQSI = 0
             QVINC = min(QVINC, QSLIQ)  # limit to below water saturation
-
             # Calculate deposition onto preexisting ice
 
             DIFF = (
@@ -378,12 +375,8 @@ def bergeron_partition(
             )  # From Seinfeld and Pandis 2006
             DENAIR = PL * 100.0 / constants.rdry / TE
             DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC)  # From PK 97
-            LHcorr = (
-                1.0
-                + DQSI
-                * constants.latent_heat_sublimation
-                / constants.rdry
-                / constants.kappa
+            LHcorr = 1.0 + DQSI * constants.latent_heat_sublimation / (
+                constants.rdry / constants.kappa
             )  # must be ice deposition
 
             if NIX > 1.0 and QILS > 1.0e-10:
@@ -422,7 +415,7 @@ def bergeron_partition(
             if DQALL != 0.0:
                 fQI = max(min(DQI / DQALL, 1.0), 0.0)
 
-    return fQI
+    return fQI, DQALL
 
 
 def get_last(
@@ -523,6 +516,12 @@ def hystpdf(
     esx: FloatField_Extra_Dim,
     estfrz: Float,
     estlqu: Float,
+    PDFITERS: FloatField,
+    TESTVAR_2: FloatField,
+    TESTVAR_3: FloatField,
+    TESTVAR_4: FloatField,
+    TESTVAR_5: FloatField,
+    TESTVAR_6: FloatField,
     USE_BERGERON: bool = True,
 ):
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
@@ -543,7 +542,8 @@ def hystpdf(
         QCn = (QLLS + QILS) * tmpARR
         QCi = QILS * tmpARR
         TEn = TE
-        QSx, DQS = QSat_Float(ese, esx, TE, PL, DQSAT_trigger=True)
+        if True:
+            QSx, _ = QSat_Float(ese, esx, TE, PL, DQSAT_trigger=False)
         QVn = (Q - QSx * CLCN) * tmpARR
 
         QT = QCn + QVn  # Total LS water after microphysics
@@ -554,7 +554,8 @@ def hystpdf(
             QCp = QCn
             CFp = CFn
             TEp = TEn
-            QSn, DQS = QSat_Float(ese, esx, TE, PL, DQSAT_trigger=True)
+            if True:
+                QSn, DQS = QSat_Float(ese, esx, TEn, PL, DQSAT_trigger=True)
 
             # SC_ICE option not implemented, will go here if needed
             # Fortran:
@@ -571,8 +572,10 @@ def hystpdf(
                 sigmaqt1 = max(ALPHA / sqrt(3.0), 0.001)
 
             if PDFSHAPE < 5:
-                CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
-                QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
+                if True:
+                    CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
+                if True:
+                    QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
             # elif PDFSHAPE == 5:
             # NOT IMPLEMENTED
             # raise NotImplementedError(
@@ -586,33 +589,34 @@ def hystpdf(
                 Nfac = (
                     100.0 * PL * constants.R_AIR / TEn
                 )  # density times conversion factor
-                NLv = NL / Nfac
                 NIv = NI / Nfac
-                fQi = bergeron_partition(
-                    DT_MOIST,
-                    PL,
-                    TE,
-                    Q,
-                    QILS,
-                    QICN,
-                    QLLS,
-                    QLCN,
-                    NI,
-                    DQALL,
-                    cnv_frc,
-                    srf_type,
-                    ese,
-                    esw,
-                    estfrz,
-                    estlqu,
-                )
+                if True:
+                    fQi, DQALL = bergeron_partition(
+                        DT_MOIST,
+                        PL,
+                        TEn,
+                        QT,
+                        QILS,
+                        QICN,
+                        QLLS,
+                        QLCN,
+                        NIv,
+                        DQALL,
+                        cnv_frc,
+                        srf_type,
+                        ese,
+                        esw,
+                        estfrz,
+                        estlqu,
+                        count,
+                    )
             else:
-                fQi = ice_fraction(TEn, cnv_frc, srf_type)
+                if True:
+                    fQi = ice_fraction(TEn, cnv_frc, srf_type)
 
-            latent_heat_factor = (
-                (1.0 - fQi) * constants.latent_heat_vaporization / constants.cpdry
-                + fQi * constants.latent_heat_fusion / constants.cpdry
-            )
+            latent_heat_factor = (1.0 - fQi) * (
+                constants.latent_heat_vaporization / constants.cp
+            ) + fQi * (constants.latent_heat_sublimation / constants.cp)
             if PDFSHAPE == 1:
                 QCn = QCp + (QCn - QCp) / (
                     1.0 - (CFn * (ALPHA - 1.0) - (QCn / QSn)) * DQS * latent_heat_factor
@@ -635,17 +639,27 @@ def hystpdf(
                 TEp
                 + (1.0 - fQi)
                 * constants.latent_heat_vaporization
-                / constants.cpdry
+                / constants.cp
                 * ((QCn - QCp) * (1.0 - CLCN) + (QAo - QAx) * CLCN)
                 + fQi
                 * constants.latent_heat_sublimation
-                / constants.cpdry
+                / constants.cp
                 * ((QCn - QCp) * (1.0 - CLCN) + (QAo - QAx) * CLCN)
             )
 
             PDFITERS = count
+            # TODO Differences in constants between fortran and python cause calculation of TEn to
+            # be slightly off (at order 10^-5), causing the following conditional to occasionsally
+            # trigger incorrectly, leading to occasional errors in various fields at the end of the
+            # PDF stencil.
+            if count == 1:
+                TESTVAR_2 = TEn - TEp
+                TESTVAR_3 = TEn
+                TESTVAR_4 = TEp
             if abs(TEn - TEp) < 0.00001:
                 count = 21  # break out of loop
+            else:
+                count = count + 1
 
         if CLCN < 1.0:
             CLLS = CFn * (1.0 - CLCN)
@@ -694,7 +708,7 @@ def hystpdf(
         QLCN = QLCN + dQLCN
         QILS = QILS + dQILS
         QLLS = QLLS + dQLLS
-        Q = Q - dQICN + dQILS + dQLCN + dQLLS
+        Q = Q - (dQICN + dQILS + dQLCN + dQLLS)
         TE = (
             TE
             + constants.latent_heat_vaporization
@@ -786,9 +800,9 @@ def evap(
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.latent_heat_vaporization**2)
             * constants.RHO_W
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.rvap * (T**2))
         )
         K2 = (
             constants.rvap
@@ -808,7 +822,7 @@ def evap(
                 * QLCN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS ** 2)
+                / ((K1 + K2) * RADIUS**2)
             )
             EVAP = min(EVAP, QLCN)
         else:
@@ -844,9 +858,9 @@ def subl(
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.latent_heat_vaporization**2)
             * constants.RHO_I
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.rvap * (T**2))
         )
         K2 = (
             constants.rvap
@@ -866,7 +880,7 @@ def subl(
                 * QICN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * radius ** 2)
+                / ((K1 + K2) * radius**2)
             )
             SUBL = min(SUBL, QICN)
         else:

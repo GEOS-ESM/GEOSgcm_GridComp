@@ -20,7 +20,7 @@ import numpy as np
 import pyMoist.pyMoist_constants as constants
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat
-from .GFDL_1M_Util import (
+from .GFDL_1M_util import (
     get_last,
     hybrid_index_2dout,
     initial_calc,
@@ -91,6 +91,22 @@ class evap_subl_pdf:
                 for k in range(0, self._k_mask.view[:].shape[2]):
                     self._k_mask.view[i, j, k] = k + 1
 
+        # TESTING
+        self.TESTVAR_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_3 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_4 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_5 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_6 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
+        self.TESTVAR_1.view[:] = -999.0
+        self.TESTVAR_2.view[:] = -999.0
+        self.TESTVAR_3.view[:] = -999.0
+        self.TESTVAR_4.view[:] = -999.0
+        self.TESTVAR_5.view[:] = -999.0
+        self.TESTVAR_6.view[:] = -999.0
+        # END TESTING
+
     def __call__(
         self,
         EIS: FloatFieldIJ,
@@ -160,8 +176,14 @@ class evap_subl_pdf:
             self.qsat.ese,
             self.qsat.esw,
             self.qsat.esx,
-            Float(self.qsat.table.frz),
-            Float(self.qsat.table.lqu),
+            self.qsat.esw.view[0][12316],
+            self.qsat.esw.view[0][8316],
+            self.TESTVAR_1,
+            self.TESTVAR_2,
+            self.TESTVAR_3,
+            self.TESTVAR_4,
+            self.TESTVAR_5,
+            self.TESTVAR_6,
         )
 
         # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)

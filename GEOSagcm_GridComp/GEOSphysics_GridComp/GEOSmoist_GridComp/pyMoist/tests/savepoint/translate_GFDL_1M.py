@@ -4,6 +4,9 @@ from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M import evap_subl_pdf
 from pyMoist.saturation.formulation import SaturationFormulation
+import os
+import xarray as xr
+import numpy as np
 
 
 class TranslateGFDL_1M(TranslateFortranData2Py):
@@ -13,6 +16,64 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         self.quantity_factory = grid.quantity_factory
         self._grid = grid
         self.max_error = 1e-9
+
+        # # TESTING
+        # # print(os.path.dirname(os.path.dirname(__file__)))
+        # with xr.open_dataset(
+        #     os.path.join(
+        #         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        #         "pyMoist",
+        #         "saturation",
+        #         "netCDFs",
+        #         "QSat_Tables.nc",
+        #     )
+        # ) as ds:
+        #     ese_array = ds.data_vars["ese"].values[0, 0, :]
+        #     esw_array = ds.data_vars["esw"].values[0, 0, :]
+        #     esx_array = ds.data_vars["esx"].values[0, 0, :]
+
+        # with xr.open_dataset("/home/charleskrop/netcdfs/QSat-Out.nc") as ds:
+        #     estfrz = ds.data_vars["ESTFRZ_TEST"].values[0, 0, 0]
+        #     estlqu = ds.data_vars["ESTLQU_TEST"].values[0, 0, 0]
+
+        # esefrz_index = -999
+        # eswfrz_index = -999
+        # esxfrz_index = -999
+        # eselqu_index = -999
+        # eswlqu_index = -999
+        # esxlqu_index = -999
+        # for i in range(len(ese_array)):
+        #     if ese_array[i] == estfrz:
+        #         esefrz_index = i
+        #     if esw_array[i] == estfrz:
+        #         eswfrz_index = i
+        #     if esx_array[i] == estfrz:
+        #         esxfrz_index = i
+        #     if ese_array[i] == estlqu:
+        #         eselqu_index = i
+        #     if esw_array[i] == estlqu:
+        #         eswlqu_index = i
+        #     if esx_array[i] == estlqu:
+        #         esxlqu_index = i
+
+        # print("esefrz_index: ", esefrz_index)
+        # print("eswfrz_index: ", eswfrz_index)
+        # print("esxfrz_index: ", esxfrz_index)
+        # print("eselqu_index: ", eselqu_index)
+        # print("eswlqu_index: ", eswlqu_index)
+        # print("esxlqu_index: ", esxlqu_index)
+
+        # with xr.open_dataset("/home/charleskrop/netcdfs/GFDL_1M-Out.nc") as ds:
+        #     TESTVAR_1 = ds.data_vars["TESTVAR_1"].values[0, 0, :, :, :]
+        #     TESTVAR_2 = ds.data_vars["TESTVAR_2"].values[0, 0, :, :, :]
+        #     TESTVAR_3 = ds.data_vars["TESTVAR_3"].values[0, 0, :, :, :]
+        #     TESTVAR_4 = ds.data_vars["TESTVAR_4"].values[0, 0, :, :, :]
+        #     TESTVAR_5 = ds.data_vars["TESTVAR_5"].values[0, 0, :, :, :]
+        #     if np.all(TESTVAR_2 == TESTVAR_5):
+        #         print("YUH")
+        #     else:
+        #         print("NAH")
+        # # END TESTING
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
@@ -59,6 +120,12 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "QLCN": self.grid.compute_dict(),
             "QICN": self.grid.compute_dict(),
             "CLCN": self.grid.compute_dict(),
+            # "TESTVAR_1": self.grid.compute_dict(),
+            # "TESTVAR_2": self.grid.compute_dict(),
+            # "TESTVAR_3": self.grid.compute_dict(),
+            # "TESTVAR_4": self.grid.compute_dict(),
+            # "TESTVAR_5": self.grid.compute_dict(),
+            # "TESTVAR_6": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -151,4 +218,10 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "QLCN": QLCN.view[:],
             "QICN": QICN.view[:],
             "CLCN": CLCN.view[:],
+            # "TESTVAR_1": code.TESTVAR_1.view[:],
+            # "TESTVAR_2": code.TESTVAR_2.view[:],
+            # "TESTVAR_3": code.TESTVAR_3.view[:],
+            # "TESTVAR_4": code.TESTVAR_4.view[:],
+            # "TESTVAR_5": code.TESTVAR_5.view[:],
+            # "TESTVAR_6": code.TESTVAR_6.view[:],
         }

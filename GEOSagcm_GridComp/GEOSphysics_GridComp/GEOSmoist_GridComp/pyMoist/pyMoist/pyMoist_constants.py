@@ -182,3 +182,10 @@ TMINICE = Float(ZEROC + TMINSTR)
 
 # aer activation constants
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1 # also used in GFDL_1M, but defined in aer
+
+debug = True
+if debug == True:
+    latent_heat_vaporization = 2466500.00
+    latent_heat_fusion = 333700.000
+    latent_heat_sublimation = 2800200.00
+    cp = 1004.68225
