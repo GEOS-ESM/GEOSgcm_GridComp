@@ -5700,7 +5700,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
              CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
              cat_id, VEG, DZSF_in_mm                              ,&     ! cat_id is set to no-data above !!!
-             PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
+             PCU      ,     PLS_IN    ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
              EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
