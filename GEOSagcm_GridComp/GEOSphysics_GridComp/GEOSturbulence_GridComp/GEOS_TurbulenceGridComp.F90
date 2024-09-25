@@ -1485,9 +1485,18 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'trade_inversion_base_height',                           &
-       UNITS      = 'm',                                                     &
+       LONG_NAME  = 'trade_inversion_base_pressure',                         &
+       UNITS      = 'Pa',                                                    &
        SHORT_NAME = 'TRINVBS',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_temperature_jump',                      &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'TRINVDELT',                                             &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -2994,7 +3003,7 @@ end if
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
-     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ
+     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
      real, dimension(:,:  ), pointer     :: ZPBL10P => null()
@@ -3348,7 +3357,9 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TRINVBS, 'TRINVBS',               RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',               RC=STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVDELT, 'TRINVDELT',           RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',             RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  VSCRAD,  'VSCRAD',               RC=STATUS)
      VERIFY_(STATUS)
@@ -4796,20 +4807,48 @@ end if
      ! Trade inversion base height
      if (associated(TRINVBS)) then
         TRINVBS = MAPL_UNDEF
+        TRINVDELT = MAPL_UNDEF
         TRINVFRQ = 0.
         do I = 1,IM
            do J = 1,JM
               K = LM
-              do while (ZLE(I,J,K).lt.500.)
+
+              do while (PLO(I,J,K).gt.95000.)
                  K = K-1
               end do
-              do while (ZLE(I,J,K).lt.5000. .and. T(I,J,K).gt.T(I,J,K-1))
-                 K = K-1
-              end do
-              if (ZLE(I,J,K).lt.5000.) then 
-                 TRINVBS(I,J) = ZLE(I,J,K-1)
-                 TRINVFRQ(I,J) = 1.
-              end if
+              do L = K,1,-1    ! K is first level above 950mb
+                 if (PLO(I,J,L).lt.60000.) exit
+                 
+                 if (T(I,J,L-1).ge.T(I,J,L)) then ! if next level is warmer...
+                    LTOP = L
+                    do while (T(I,J,LTOP).ge.T(I,J,L)) ! find depth of warm layer
+                       LTOP = LTOP-1
+                    end do
+                    LTOP = LTOP+1   ! LTOP is index of highest level inside warm layer
+
+                    if (  MAXVAL(T(I,J,LTOP:L))-T(I,J,L).ge.0.5 .or. &
+                         (MAXVAL(T(I,J,LTOP:L))-T(I,J,L).gt.0.01 .and. PLO(I,J,L)-PLO(I,J,LTOP)>2500.) ) then
+
+                       ! only save if DELTA-T exceeds any previous inversion
+                       if ( TRINVFRQ(I,J).eq.0. .or. &
+                            (TRINVFRQ(I,J).ne.0. .and. MAXVAL(T(I,J,LTOP:L))-T(I,J,L).gt.TRINVDELT(I,J)) ) then
+                          TRINVBS(I,J)   = PLO(I,J,L)
+                          TRINVDELT(I,J) = MAXVAL(T(I,J,LTOP:L))-T(I,J,L)
+                          TRINVFRQ(I,J)  = 1.
+                       end if
+
+                    end if
+                 end if ! next level warmer
+
+              end do ! L vert loop
+
+!              do while (PLE(I,J,K).gt.60000. .and. T(I,J,K).gt.T(I,J,K-1))
+!                 K = K-1
+!              end do
+!              if (PLE(I,J,K).gt.60000.) then 
+!                 TRINVBS(I,J) = PLE(I,J,K-1)
+!                 TRINVFRQ(I,J) = 1.
+!              end if
            end do
         end do
      end if
