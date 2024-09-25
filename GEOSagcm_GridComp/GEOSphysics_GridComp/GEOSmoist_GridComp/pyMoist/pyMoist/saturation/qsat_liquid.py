@@ -14,6 +14,7 @@ from pyMoist.saturation.constants import (
 )
 from pyMoist.saturation.types import SaturationFormulation
 
+
 f64 = np.float64
 
 # Below are actual 64-bit float in Fortran
