@@ -11,14 +11,3 @@ class SaturationFormulation(enum.Enum):
     Staars = 1
     CAM = 2
     MurphyAndKoop = 3
-
-
-class TableMethod(enum.Enum):
-    """
-    The table creation methods:
-        - load from netCDF
-        - compute form exact formulation
-    """
-
-    NetCDF = 1
-    Computation = 2
