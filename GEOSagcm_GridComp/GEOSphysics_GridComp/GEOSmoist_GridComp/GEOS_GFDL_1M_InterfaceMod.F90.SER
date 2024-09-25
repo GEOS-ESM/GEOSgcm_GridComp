@@ -588,13 +588,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$ser data EIS=EIS
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-        !$ser verbatim call ser_set_D2(JM)
-        !$ser verbatim call ser_set_D1(IM)
+        !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
         do L=1,LM
           do J=1,JM
            do I=1,IM
-           !$ser verbatim call ser_set_idx_d2(J)
-           !$ser verbatim call ser_set_idx_d1(I)
+           !$ser verbatim call ser_set_indices(I, J, L, 1)
            
            ! Send the condensates through the pdf after convection
              facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
@@ -676,14 +674,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , &
                       USE_BERGERON)
-             !$ser savepoint IJKBUFF_TEST-In
-             !$ser data_buffered RHX=RHX(I,J,L) Q_as_2D=Q(I,J,L) T_as_2D=T(I,J,L) PLmb_as_2D=PLmb(I,J,L)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
-             !$ser savepoint IJKBUFF_TEST-Out
-             !$ser data_buffered RHX=RHX(I,J,L)
             endif
-             if (LMELTFRZ) then
-           ! meltfrz new condensates
+            !$ser savepoint meltfrz-In
+            !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
+            !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
+            !$ser data_buffered Dx=1 DT_MOIST=DT_MOIST
+            if (LMELTFRZ) then
+             ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
                             SRF_TYPE(I,J), &
@@ -697,7 +695,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             QLLS(I,J,L)  , &
                             QILS(I,J,L) )
              endif
-           ! evaporation for CN
+             !$ser savepoint meltfrz-Out
+             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
+             ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
              RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
