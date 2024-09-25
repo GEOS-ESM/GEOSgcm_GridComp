@@ -40,13 +40,19 @@ deg_per_km = (radius / 1000) * deg_2_rad
 h2omw =  Float(18.015) # kg/Kmole
 o3mw = Float(47.9982) # kg/Kmole
 latent_heat_vaporization = Float(2.4665E6) # J/kg @15C @1atm
+xlv = 2.4665E6 # xlv used in compute_uwshcu
 latent_heat_fusion = Float(3.3370E5) # J/kg @1atm
+xlf = 3.3370E5 # xlf used in compute_uwshcu
 latent_heat_sublimation = latent_heat_vaporization+latent_heat_fusion # J/kg
+xls = xlv + xlf # xls used in compute_uwshcu
 
 # Earth Specific Chemistry and Thermodynamic Constants
 airmw = Float(28.965) # kg/Kmole
 rdry = runiv/airmw # J/(kg K)
 cpdry = 3.5 * rdry # J/(kg K)
+cp = 1004.68311 # cpdry used in compute_uwshcu
+ep2 = 0.621957481 # used in compute_uwshcu
+r = 287.052307 # used in compute_uwshcu
 cvdry = cpdry-rdry # J/(kg K)
 rvap = runiv/h2omw # J/(kg K)
 cpvap = 4 * rvap # J/(kg K)

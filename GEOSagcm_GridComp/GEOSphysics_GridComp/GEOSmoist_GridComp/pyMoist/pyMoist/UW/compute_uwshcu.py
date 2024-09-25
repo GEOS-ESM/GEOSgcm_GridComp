@@ -56,8 +56,9 @@ def exnerfn(
     p: Float,
 )-> Float:
     
-    return (p / 100000.0) ** (radconstants.MAPL_RDRY / radconstants.MAPL_CPDRY)
+    return (p / 100000.0) ** (constants.r / constants.cp)
 
+  
 @gtscript.function
 def ice_fraction(
     temp: Float,
@@ -70,36 +71,62 @@ def ice_fraction(
     if temp <= constants.JaT_ICE_ALL:
         icefrct_c = 1.000
     elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-        icefrct_c = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)))
+        icefrct_c = sin(
+            0.5
+            * constants.PI
+            * (
+                1.00
+                - (temp - constants.JaT_ICE_ALL)
+                / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)
+            )
+        )
     else:
         icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c,1.00),0.00) ** constants.aICEFRPWR
+    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     if srf_type == 2.0:
         if temp <= constants.JiT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (constants.JiT_ICE_MAX - constants.JiT_ICE_ALL)
+            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
+                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
     elif srf_type > 1.0:
         if temp <= constants.lT_ICE_ALL:
-           icefrct_m = 1.000
+            icefrct_m = 1.000
         elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
-           icefrct_m = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)))
+            icefrct_m = sin(
+                0.5
+                * constants.PI
+                * (
+                    1.00
+                    - (temp - constants.lT_ICE_ALL)
+                    / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)
+                )
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
     else:
         if temp <= constants.oT_ICE_ALL:
-           icefrct_m = 1.000
+            icefrct_m = 1.000
         elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
-           icefrct_m = sin(0.5 * radconstants.MAPL_PI * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)))
+            icefrct_m = sin(
+                0.5
+                * constants.PI
+                * (
+                    1.00
+                    - (temp - constants.oT_ICE_ALL)
+                    / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)
+                )
+            )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
-    ice_frac = icefrct_m * (1.0-cnv_frc) + icefrct_c * cnv_frc
+    ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
     return ice_frac
 
 
@@ -108,15 +135,15 @@ def conden(
     p: Float, 
     thl: Float, 
     qt: Float,
-    ese: FloatField,
-    esx: FloatField,
+    ese: FloatField_Extra_Dim,
+    esx: FloatField_Extra_Dim,
 ):
 
     tc = thl * exnerfn(p)
     
     icefrac = ice_fraction(tc, 0.0, 0.0)
     nu = icefrac
-    leff = (1.0 - nu) * radconstants.MAPL_ALHL + nu * radconstants.MAPL_ALHS # Effective latent heat
+    leff = (1.0 - nu) * constants.xlv + nu * constants.xls # Effective latent heat
     temps = tc
     ps = p
     qs, _ = QSat_Float(ese, esx, temps, ps / 100.0) # Saturation specific humidity
@@ -132,7 +159,7 @@ def conden(
     else:             # condensation
         iteration = 0
         while iteration < 10:
-            temps = temps + ((tc - temps) * radconstants.MAPL_CPDRY / leff + qt - rvls) / (radconstants.MAPL_CPDRY / leff + (constants.rdry / constants.rvap) * leff * rvls / (radconstants.MAPL_RDRY * temps * temps))
+            temps = temps + ((tc - temps) * constants.cp / leff + qt - rvls) / (constants.cp / leff + constants.ep2 * leff * rvls / (constants.r * temps * temps))
             qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
             rvls = qs
             iteration+=1
@@ -141,17 +168,16 @@ def conden(
         ql = qc * (1.0 - nu)
         qi = nu * qc
         th = temps / exnerfn(p)
-        if abs((temps - (leff / radconstants.MAPL_CPDRY) * qc) - tc) >= 1.0:
+        if abs((temps - (leff / constants.cp) * qc) - tc) >= 1.0:
             id_check = 1
         else:
             id_check = 0
-
-    return th, qv, ql, qi, rvls, id_check 
+            
+    return th, qv, ql, qi, rvls, id_check
 
         
 def compute_uwshcu(
     dotransport: Float,           
-    exnifc0_in: FloatField,
     pifc0_in: FloatField,     
     pmid0_in: FloatField,       
     zmid0_in: FloatField,       
@@ -222,8 +248,8 @@ def compute_uwshcu(
          exnmid0_above = exnmid0_in[0,0,1]
          t0 = th0_in * exnmid0
          t0_above = th0_in[0,0,1] * exnmid0_above
-         thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
-         thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
+         thl0 = (t0 - ((constants.xlv*ql0)/constants.cp) - ((constants.xls*qi0)/constants.cp)) / exnmid0
+         thl0_above = (t0_above - ((constants.xlv*ql0_above)/constants.cp) - ((constants.xls*qi0_above)/constants.cp)) / exnmid0_above
 
          if dotransport == 1.0:
             n=0
@@ -281,9 +307,9 @@ def compute_uwshcu(
          qt0 = qv0 + ql0 + qi0
          qt0_above = qv0_above + ql0_above + qi0_above
          qt0_below = qv0_below + ql0_below + qi0_below
-         thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
-         thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
-         thl0_below = (t0_below - constants.latent_heat_vaporization*ql0_below/constants.cpdry - constants.latent_heat_sublimation*qi0_below/constants.cpdry) / exnmid0_below
+         thl0 = (t0 - ((constants.xlv*ql0)/constants.cp) - ((constants.xls*qi0)/constants.cp)) / exnmid0
+         thl0_above = (t0_above - ((constants.xlv*ql0_above)/constants.cp) - ((constants.xls*qi0_above)/constants.cp)) / exnmid0_above
+         thl0_below = (t0_below - ((constants.xlv*ql0_below)/constants.cp) - ((constants.xls*qi0_below)/constants.cp)) / exnmid0_below
         
          ssthl0 = slope(kmask,thl0,thl0_above,thl0_below,pmid0,pmid0_above,pmid0_below)
          ssqt0 = slope(kmask,qt0,qt0_above,qt0_below,pmid0,pmid0_above,pmid0_below)
@@ -327,9 +353,9 @@ def compute_uwshcu(
          qt0 = qv0 + ql0 + qi0
          qt0_above = qv0_above + ql0_above + qi0_above
          qt0_below = qv0_below + ql0_below + qi0_below
-         thl0 = (t0 - constants.latent_heat_vaporization*ql0/constants.cpdry - constants.latent_heat_sublimation*qi0/constants.cpdry) / exnmid0
-         thl0_above = (t0_above - constants.latent_heat_vaporization*ql0_above/constants.cpdry - constants.latent_heat_sublimation*qi0_above/constants.cpdry) / exnmid0_above
-         thl0_below = (t0_below - constants.latent_heat_vaporization*ql0_below/constants.cpdry - constants.latent_heat_sublimation*qi0_below/constants.cpdry) / exnmid0_below
+         thl0 = (t0 - ((constants.xlv*ql0)/constants.cp) - ((constants.xls*qi0)/constants.cp)) / exnmid0
+         thl0_above = (t0_above - ((constants.xlv*ql0_above)/constants.cp) - ((constants.xls*qi0_above)/constants.cp)) / exnmid0_above
+         thl0_below = (t0_below - ((constants.xlv*ql0_below)/constants.cp) - ((constants.xls*qi0_below)/constants.cp)) / exnmid0_below
 
          if dotransport == 1.0:
             n=0
@@ -350,25 +376,32 @@ def compute_uwshcu(
             while n < constants.ncnst:
                 if True:
                     sstr0[0,0,0][n] = slope(kmask,tr0[0,0,-1][n],tr0[0,0,0][n],tr0[0,0,-2][n],pmid0,pmid0_above,pmid0_below)
-                n+=1
-             
+                n+=1   
 
-    with computation(PARALLEL), interval(1,None):
+    with computation(PARALLEL), interval(...):
+         pmid0 = pmid0_in
+         exnmid0 = exnmid0_in
+         qv0 = qv0_in
+         ql0 = ql0_in
+         qi0 = qi0_in
+         qt0 = qv0 + ql0 + qi0
+         t0 = th0_in * exnmid0
+         thl0 = (t0 - constants.xlv*ql0/constants.cp - constants.xls*qi0/constants.cp) / exnmid0
          zvir = 0.609 # r_H2O/r_air-1
          pifc0 = pifc0_in
-         thl0bot = thl0 + ssthl0*(pifc0_in[0,0,-1] - pmid0)
-         qt0bot = qt0 + ssqt0*(pifc0_in[0,0,-1] - pmid0)
+         thl0bot = thl0 + ssthl0*(pifc0 - pmid0)
+         qt0bot = qt0 + ssqt0*(pifc0 - pmid0)
 
-         thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0,0,-1],thl0bot,qt0bot,ese,esx)
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0,thl0bot,qt0bot,ese,esx)
          # Raise an error if id_check = 1
          thv0bot  = thj*(1. + zvir*qvj - qlj - qij)
          thvl0bot = thl0bot*(1. + zvir*qt0bot)
 
-         thl0top = thl0 + ssthl0*(pifc0 - pmid0)
-         qt0top  = qt0 + ssqt0*(pifc0 - pmid0)
+         thl0top = thl0 + ssthl0*(pifc0_in[0,0,1] - pmid0)
+         qt0top  = qt0 + ssqt0*(pifc0_in[0,0,1] - pmid0)
 
     with computation(PARALLEL), interval(0,-1):
-         thj, qvj, qlj, qij, qse, id_check = conden(pifc0,thl0top,qt0top,ese,esx)
+         thj, qvj, qlj, qij, qse, id_check = conden(pifc0_in[0,0,1],thl0top,qt0top,ese,esx)
          # Raise an error if id_check = 1
          thv0top  = thj*(1. + zvir*qvj - qlj - qij)
          thvl0top = thl0top*(1. + zvir*qt0top)
@@ -376,7 +409,6 @@ def compute_uwshcu(
     with computation(PARALLEL), interval(-1,None):
          thv0top  = thv0bot
          thvl0top = thvl0bot
-        
 
 
 
@@ -431,7 +463,6 @@ class ComputeUwshcu:
     def __call__(
         self,
         dotransport: Float,          
-        exnifc0_in: FloatField, 
         pifc0_in:FloatField,     
         pmid0_in: FloatField,       
         zmid0_in: FloatField,      
@@ -467,7 +498,6 @@ class ComputeUwshcu:
 
         self._compute_uwshcu(
             dotransport=dotransport, 
-            exnifc0_in=exnifc0_in, 
             pifc0_in=pifc0_in,
             pmid0_in=pmid0_in, 
             zmid0_in=zmid0_in, 

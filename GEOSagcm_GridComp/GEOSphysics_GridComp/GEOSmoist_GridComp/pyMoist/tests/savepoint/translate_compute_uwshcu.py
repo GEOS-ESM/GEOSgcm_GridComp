@@ -1,9 +1,10 @@
 from ndsl import Namelist, StencilFactory, Quantity
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.UW.compute_uwshcu import ComputeUwshcu
 import numpy as np
 from pyMoist.pyMoist_constants import ncnst
+from ndsl.dsl.typing import FloatField, Float, Int, IntField
 
 
 class TranslateComputeUwshcu(TranslateFortranData2Py):
@@ -25,7 +26,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "exnifc0_in": {},
             "pifc0_in": {},
             "pmid0_in": {},
             "zmid0_in": {},
@@ -67,10 +67,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         reshaped_inputs = {}
         
         for key, array in inputs.items():
-            if isinstance(array, np.ndarray) and array.ndim == 2:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float64)
+            if isinstance(array, np.ndarray) and array.shape[1] == k and array.ndim == 2:
+                reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float32)
+            elif isinstance(array, np.ndarray) and array.shape[1] == k+1 and array.ndim == 2:
+                reshaped_inputs[key] = np.reshape(array, (i, j, k+1)).astype(np.float32)
             elif isinstance(array, np.ndarray) and array.ndim == 3:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float64)
+                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float32)
             else:
                 # If not a 2D or 3D array, keep as is
                 reshaped_inputs[key] = np.float32(array)
@@ -98,12 +100,20 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
                 reshaped_outputs = np.reshape(outputs, (i * j, k)).astype(np.float64)
 
         return reshaped_outputs
-    
-    
-    def make_ijk_field(self, data) -> Quantity:
+      
+     
+    def make_ijk_field(self, data, dtype=FloatField) -> Quantity:
         qty = self.quantity_factory.empty(
             [X_DIM, Y_DIM, Z_DIM],
-            "n/a",
+            "n/a", dtype=dtype
+        )
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
+    
+    def make_zinterface_field(self, data, dtype=FloatField) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            "n/a", dtype=dtype
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
@@ -131,8 +141,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         
         # Inputs
         dotransport = inputs_reshaped["dotransport"]
-        exnifc0_in = self.make_ijk_field(inputs_reshaped["exnifc0_in"])
-        pifc0_in = self.make_ijk_field(inputs_reshaped["pifc0_in"])
+        pifc0_in = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
         pmid0_in = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         zmid0_in = self.make_ijk_field(inputs_reshaped["zmid0_in"])
         exnmid0_in = self.make_ijk_field(inputs_reshaped["exnmid0_in"])
@@ -157,14 +166,11 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qlj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qij_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qse_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        id_check_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        id_check_test = np.int64(id_check_test.view[:,:,:])
-
+        id_check_test = self.make_ijk_field(inputs_reshaped["pmid0_in"], dtype=Int)
 
 
         compute_uwshcu(
             dotransport=dotransport,
-            exnifc0_in=exnifc0_in,
             pifc0_in=pifc0_in,
             pmid0_in=pmid0_in,
             zmid0_in=zmid0_in,
