@@ -19,7 +19,7 @@ endif ()
 
 set_source_files_properties(mkMITAquaRaster.F90 PROPERTIES COMPILE_FLAGS "${BYTERECLEN}")
 
-esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared esmf NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran)
+esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_SurfaceShared GEOS_LandShared ESMF::ESMF NetCDF::NetCDF_Fortran OpenMP::OpenMP_Fortran)
 
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
    target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)

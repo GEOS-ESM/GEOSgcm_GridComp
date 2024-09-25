@@ -269,7 +269,8 @@ def ask_questions(default_grid="Cubed-Sphere"):
                  "c720  -- 1/8  deg ( 14   km)", \
                  "c768  -- 1/10 deg ( 12   km)", \
                  "c1000 -- 1/10 deg ( 10   km)", \
-                 "c1152 -- 1/10 deg (  8   km)", \
+                 "c1120 -- 1/12 deg (  8   km)", \
+                 "c1152 -- 1/12 deg (  8   km)", \
                  "c1440 -- 1/16 deg (  7   km)", \
                  "c2880 -- 1/32 deg (  3   km)", \
                  "c3072 -- 1/32 deg (  3   km)", \
