@@ -11,34 +11,31 @@ module GEOS_IrrigationGridCompMod
 ! !MODULE: GEOS_Irrigation -- child to the "Land" gridded component.  
 
 !DESCRIPTION:
-!   {\tt GEOS\_Irrigation} is a gridded component that performs the
-!   necessary interpolation to provide refreshed values of the 
-!   dynamic vegetation values prescribed by external data/observations.\\
+!   {\tt GEOS\_Irrigation} is a gridded component that calculates
+!   irrigation rates that are (optionally) used in the Catchment[CN] model.\\
 !
-! Exports from this routine are the instaneous values of the
-! irrigation rates from 4 different irrigation methods on tilespace :
+! Exports from this routine are the instantaneous values of the
+! irrigation rates from 4 different irrigation methods on tilespace:
 ! 1) drip, 2) sprinkler, 3) furrow, and 4) flood. 
-! Because Land models (CATCH/CATCHCN) use
-! irrigation rates as a water input in water budget calculation, 
-! All exports and imports are stored on the
-! tile grid inherited from the parent routine.\\
+! Catchment[CN] (optionally) uses these irrigation rates as inputs to
+! the water budget calculations.  All imports and exports are stored 
+! in tile space.  Soil parameters and root zone soil moisture are 
+! imports from the Catchment[CN] gridded component.\\
 ! 
-! I. Parameter Class 1: Time and spatially dependent parameters 
-! from a binary data file\\
-! 
-! The gridded component stores the surrounding observations of 
-! each parameter in the internal state.  All internals are static parameters.
+! Temporally and spatially varying irrigation model parameters are 
+! from a binary data file.\\
 !
-! EXPORTS:  SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE\\ 
+! All internals are static parameters.\\
+!
+! IMPORTS:   POROS, WPWET, VGWMAX, WCRZ, LAI\\
+!
+! EXPORTS:   SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE\\ 
 !  
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
 !            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
+!
 ! OPTIONAL INTERNALS:  SRATE, DRATE, FRATE\\
 !  
-! This GC imports soil parameters and root zone soil moisture from land models
-!    to compute soil moisture state for IRRIGRATE calculation.  
-! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI \\
-!
 ! !USES: 
 
   use ESMF
@@ -75,7 +72,7 @@ contains
     integer, optional                  :: RC  ! return code
 
 ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
-!                the Initialize and Finalize services, as well as allocating
+!   the Initialize and Finalize services, as well as allocating
 !   our instance of a generic state and putting it in the 
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
@@ -128,14 +125,17 @@ contains
 ! Get runtime switches
 ! -----------------------------------------------------------
 
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG   , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_TRIGGER:', value=IRRIG_TRIGGER,DEFAULT=0, __RC__ )    
-    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:' , value=IRRIG_METHOD, DEFAULT=0, __RC__ )
+    call MAPL_GetResource(MAPL, SURFRC, label='SURFRC:', default='GEOS_SurfaceGridComp.rc', RC=STATUS); VERIFY_(STATUS)
+
+    SCF = ESMF_ConfigCreate(rc=status)                                                                ; VERIFY_(STATUS)
+
+    call ESMF_ConfigLoadFile(    SCF, SURFRC, rc=status)                                              ; VERIFY_(STATUS)
+
+    call ESMF_ConfigGetAttribute(SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG    , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute(SCF, label='IRRIG_TRIGGER:', value=IRRIG_TRIGGER, DEFAULT=0, __RC__ )    
+    call ESMF_ConfigGetAttribute(SCF, label='IRRIG_METHOD:' , value=IRRIG_METHOD , DEFAULT=0, __RC__ )
    
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call ESMF_ConfigDestroy     (SCF, __RC__)
 
     ! Leave GEOSirrigation_GridComp if RUN_IRRIG == 0
     if(RUN_IRRIG == 0) then
@@ -146,9 +146,9 @@ contains
 ! Set the the Initialize and Run entry point
 ! -----------------------------------------------------------
 
-    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
+    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
+    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
     VERIFY_(STATUS)
 
 ! BOS
@@ -381,9 +381,9 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)  	 
     
-     call MAPL_AddExportSpec(GC                                ,&
-         SHORT_NAME = 'FURROWRATE'                             ,&
-         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
+     call MAPL_AddExportSpec(GC                               ,&
+         SHORT_NAME = 'FURROWRATE'                            ,&
+         LONG_NAME  = 'furrow_irrigation_rate'                ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -405,8 +405,8 @@ contains
 
     call MAPL_AddImportSpec(GC                                ,&
          SHORT_NAME = 'POROS'                                 ,&         
-         LONG_NAME  = 'soil_porosit'                          ,&
-         UNITS      = '1'                                     ,&
+         LONG_NAME  = 'soil_porosity'                         ,&
+         UNITS      = 'm3 m-3'                                ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          RC=STATUS  ) 
@@ -497,14 +497,14 @@ contains
         
     ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)          :: IAm="Initialize"
-    integer                             :: STATUS
-    character(len=ESMF_MAXSTR)          :: COMP_NAME
+    character(len=ESMF_MAXSTR)      :: IAm="Initialize"
+    integer                         :: STATUS
+    character(len=ESMF_MAXSTR)      :: COMP_NAME
 
     ! Locals
 
-    type (MAPL_MetaComp),     pointer  :: MAPL=>null()
-    type (ESMF_State       )           :: INTERNAL
+    type (MAPL_MetaComp),   pointer :: MAPL=>null()
+    type (ESMF_State   )            :: INTERNAL
 
     ! INTERNAL pointers
 
@@ -523,8 +523,8 @@ contains
     real, dimension(:),     pointer :: FURROWRATE
     real, dimension(:),     pointer :: FLOODRATE
 
-    type(irrigation_model),pointer :: IM
-    type (IRRIG_wrap)              :: wrap
+    type(irrigation_model), pointer :: IM
+    type (IRRIG_wrap)               :: wrap
     
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -556,33 +556,37 @@ contains
     ! get pointers to internal variables
     ! ----------------------------------
 
-    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',              RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',                  RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FURROWRATE,    'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SPRINKLERRATE,    'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DRIPRATE,         'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FURROWRATE,       'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FLOODRATE,        'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
-    ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in which IRRIGFRAC and PADDYFRAC in BCs are fractions.
-    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.01).
+    ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in 
+    ! which IRRIGFRAC and PADDYFRAC in BCs are fractions.
+    ! The irrigation model would run on tiles with IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.01).
 
     where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
- !to assign the entire cell to the largest fraction remove comments below,
-        ! where (PADDYFRAC >= IRRIGFRAC)
-        !    PADDYFRAC = 1.
-        !    IRRIGFRAC = 0.
-        ! elsewhere
-        !    PADDYFRAC = 0.
-        !    IRRIGFRAC = 1.
-        ! endwhere
+
+       ! uncomment the following block to assign the entire cell to the largest fraction:
+       
+       ! where (PADDYFRAC >= IRRIGFRAC)
+       !    PADDYFRAC = 1.
+       !    IRRIGFRAC = 0.
+       ! elsewhere
+       !    PADDYFRAC = 0.
+       !    IRRIGFRAC = 1.
+       ! endwhere
+
     elsewhere
        PADDYFRAC = 0.
        IRRIGFRAC = 0.
@@ -592,23 +596,22 @@ contains
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
-                    
+       
        call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, & 
-         IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+            IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
-
+       
        ! crop calendar based irrigation
        ! ==============================
 
        call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, &
-       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+            CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
 
     ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
-    ! irrigated tile fraction before exporting to land models.
- 
+    ! irrigated tile fraction before exporting to Catchment[CN].
 
     SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
     DRIPRATE      = DRIPRATE     *(IRRIGFRAC)
@@ -637,14 +640,14 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)         :: IAm
-    integer                            :: STATUS
-    character(len=ESMF_MAXSTR)         :: COMP_NAME
+    character(len=ESMF_MAXSTR)      :: IAm
+    integer                         :: STATUS
+    character(len=ESMF_MAXSTR)      :: COMP_NAME
 
 ! Locals
 
-    type (MAPL_MetaComp),     pointer  :: MAPL=>null()
-    type (ESMF_State       )           :: INTERNAL
+    type (MAPL_MetaComp),   pointer :: MAPL=>null()
+    type (ESMF_State   )            :: INTERNAL
 
 ! INTERNAL pointers
 
@@ -672,26 +675,25 @@ contains
     
 ! IMPORT pointers
     
-    real, dimension(:), pointer :: POROS
-    real, dimension(:), pointer :: WPWET
-    real, dimension(:), pointer :: VGWMAX
-    real, dimension(:), pointer :: WCRZ
-    real, dimension(:), pointer :: LAI
+    real, dimension(:),     pointer :: POROS
+    real, dimension(:),     pointer :: WPWET
+    real, dimension(:),     pointer :: VGWMAX
+    real, dimension(:),     pointer :: WCRZ
+    real, dimension(:),     pointer :: LAI
   
 ! Time attributes 
 
-    type(ESMF_Time)             :: CURRENT_TIME
-    integer                     :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr
+    type(ESMF_Time)                 :: CURRENT_TIME
+    integer                         :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr
 
 ! Others/ Locals
 
-    type(irrigation_model),pointer :: IM
-    type (IRRIG_wrap)              :: wrap
-    real,pointer,dimension(:)      :: lons
-    integer                        :: ntiles, n
-    real, dimension(:),allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF
-    real                           :: DT, T1, T2
-
+    type(irrigation_model), pointer :: IM
+    type (IRRIG_wrap)               :: wrap
+    real, dimension(:),     pointer :: lons
+    integer                         :: ntiles, n
+    real, dimension(:), allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF
+    real                            :: DT, T1, T2
 
     ! Get the target components name and set-up traceback handle.
     ! -----------------------------------------------------------
@@ -724,38 +726,38 @@ contains
     ! get pointers to internal variables
     ! ----------------------------------
 
-    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGPLANT     ,'IRRIGPLANT',   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGHARVEST   ,'IRRIGHARVEST', RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, SPRINKLERFR    ,'SPRINKLERFR',  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DRIPFR         ,'DRIPFR',       RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, FLOODFR        ,'FLOODFR',      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LAIMIN         ,'LAIMIN',       RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LAIMAX         ,'LAIMAX',       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',              RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGPLANT     ,'IRRIGPLANT',                 RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGHARVEST   ,'IRRIGHARVEST',               RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, SPRINKLERFR    ,'SPRINKLERFR',                RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRIPFR         ,'DRIPFR',                     RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FLOODFR        ,'FLOODFR',                    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LAIMIN         ,'LAIMIN',                     RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LAIMAX         ,'LAIMAX',                     RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FURROWRATE,    'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SPRINKLERRATE,   'SPRINKLERRATE', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DRIPRATE,        'DRIPRATE',      ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FLOODRATE,       'FLOODRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FURROWRATE,      'FURROWRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
   
     
     
     ! get pointers to IMPORT variables
     ! --------------------------------
 
-    call MAPL_GetPointer(IMPORT, POROS  , 'POROS',  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WPWET  , 'WPWET',  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, VGWMAX , 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WCRZ   , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, LAI    , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, POROS  ,         'POROS',                       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WPWET  ,         'WPWET',                       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, VGWMAX ,         'VGWMAX',                      RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WCRZ   ,         'WCRZ',                        RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, LAI    ,         'LAI',                         RC=STATUS) ; VERIFY_(STATUS)
         
     ! Get time and parameters from local state
     ! ----------------------------------------
@@ -791,8 +793,8 @@ contains
     allocate (RZDEF      (1:NTILES))
 
     ! soil moisture state
-    SMWP  = VGWMAX * WPWET           ! RZ soil moisture content at wilting point [mm]
-    SMSAT = VGWMAX                   ! RZ soil moisture at saturation  [mm]
+    SMWP  =  VGWMAX        * WPWET   ! RZ soil moisture content at wilting point [mm]
+    SMSAT =  VGWMAX                  ! RZ soil moisture at saturation  [mm]
     SMCNT = (VGWMAX/POROS) * WCRZ    ! actual RZ soil moisture content [mm]
 
     DO N = 1, NTILES
@@ -808,12 +810,14 @@ contains
           local_hour(n) = real(NINT(local_hour(n)))
        end if
 
-       ! The reference soil moisture content is set to lower tercile of RZ soil moisture range [mm] to be consistent 
-       ! with ASTRFR = 0.333 used in CATCH/CATCHCN.
-       ! Perhaps, soil field capacity (FIELDCAP) is the desired parameter here - the upper limit
-       ! of water content that soil can hold for plants after excess water drained off downward quickly.
-       ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
-       ! in irrigation_IMxJM_DL.dat file.
+       ! The reference soil moisture content is set to lower tercile of the root zone soil 
+       ! moisture range [mm] to be consistent with ASTRFR = 0.333 used in Catchment[CN].
+       !
+       ! Note on choice of SMREF:
+       !    Perhaps, soil field capacity (FIELDCAP) is the desired parameter here - the upper limit
+       !    of water content that the soil can hold for plants after excess water drained off downward 
+       !    quickly.  In future, could switch to FIELDCAP, which has already been derived
+       !    on tiles and is available in the irrigation_IMxJM_DL.dat file.
        
        SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/ 3.)
 
@@ -849,7 +853,7 @@ contains
     endif
 
     ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
-    ! irrigated tile fraction before exporting to land models.
+    ! irrigated tile fraction before exporting to Catchment[CN].
  
     SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
     DRIPRATE      = DRIPRATE     *(IRRIGFRAC)

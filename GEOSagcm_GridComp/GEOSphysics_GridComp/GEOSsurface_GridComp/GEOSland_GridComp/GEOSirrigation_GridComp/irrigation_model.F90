@@ -6,99 +6,107 @@ MODULE IRRIGATION_MODULE
   USE ESMF
   
   IMPLICIT NONE
+
   ! Irrigation Module
+  !
   ! First Version: March 21, 2021 (Sarith Mahanama)
   ! Second Version: June 25, 2024 (Stefano Casirati)
   !
   ! This module computes irrigation rates by 4 different methods: sprinkler, flood, furrow, and drip.
-  ! Computed irrigation rates return to the land model as rates that water is added to
-  ! the hydrological cycle by irrigation. Subsequently, land models add irrigation feedback: 
-  !     1) sprinkler irrigation rate to large scale precipitation (for irrigated tiles fractions);
-  !     2)  drip irrigation volume to rootzone excess (for irrigated tiles fractions); 
-  !     3)  furrow irrigation volume to rootzone excess (for irrigated tiles fractions);
-  !     4)  flood irrigation volume to surface excess (only for paddy tiles fractions).
+  ! The computed irrigation rates (exports) are imports to Catchment[CN], where the irrigation water 
+  ! is added to water balance as follows:
+  !   1) sprinkler irrigation rate added to large scale precipitation (for irrigated tiles fractions);
+  !   2) drip irrigation volume    added to rootzone excess (for irrigated tiles fractions); 
+  !   3) furrow irrigation volume  added to rootzone excess (for irrigated tiles fractions);
+  !   4) flood irrigation volume   added to surface excess (only for paddy tiles fractions).
 
-  ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
-  ! irrigation rates for the day and maintains the same rate through out the irrigation duration.
+  ! The model uses the rootzone soil moisture state at the local start time of irrigation to compute 
+  ! irrigation rates for the day and maintains the same rate throughout the irrigation duration.
   ! 
-  ! Sprinkler and Flood/Furrow Irrigation methods were adapted from LIS CLSMF2.5 irrigation module (Rodell et al., 2024 (Under Review) 
-  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 10% water loss. (Source FAO)
-  ! 
+  ! Sprinkler and Flood/Furrow Irrigation methods were adapted from LIS CLSMF2.5 irrigation module 
+  ! (Rodell et al., 2024 (Under Review) 
+  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation 
+  ! method assumes a 10% water loss. (Source FAO)
   !
   ! (1) EXPORTS - MODEL OUTPUTS TO THE LAND MODEL (IRRIGATION RATES):
-  !    1) SPRINKLERRATE [kg m-2 s-1]
-  !    2) DRIPRATE [kg m-2 s-1]
-  !    3) FURROWRATE [kg m-2 s-1]   
-  !    4) FLOODRATE [kg m-2 s-1]    
+  !     1) SPRINKLERRATE [kg m-2 s-1]
+  !     2) DRIPRATE      [kg m-2 s-1]
+  !     3) FURROWRATE    [kg m-2 s-1]   
+  !     4) FLOODRATE     [kg m-2 s-1]    
   !
   ! (2) IRRIGATED AND PADDY TILES:
   ! During land BC's generation, the fraction of irrigated crops and paddy is set to zero 
   ! if their sum is below an irrigation threshold (default 1%).
   ! Irrigated fractions can be irrigated with sprinkler, drip, and furrow,
   ! while paddy fractions can only be irrigated using the flood irrigation method.
-  ! Vegetation characteristics and vegetation dynamic parameters 
-  ! for irrigated crops and paddy tiles were taken from the nearest grass or cropland tile.
+  ! Vegetation characteristics and vegetation dynamic parameters for irrigated
+  ! crops and paddy tiles were taken from the nearest grass or cropland tile.
   !
   ! (3) MODEL INPUTS:
-  !     SMWP    : rootzone soil moisture content at wilting point [mm] 
-  !     SMSAT   : rootzone soil moisture content at saturation [mm] 
-  !     SMREF   : rootzone soil moisture is at lower tercile of RZ soil moisture range [mm]
-  !     SMCNT   : currrent root zone soil moisture content [mm] 
+  !     SMWP    : rootzone soil moisture content at wilting point                       [mm] 
+  !     SMSAT   : rootzone soil moisture content at saturation                          [mm] 
+  !     SMREF   : rootzone soil moisture is at lower tercile of RZ soil moisture range  [mm]
+  !     SMCNT   : currrent rootzone soil moisture content                               [mm] 
   !     RZDEF   : rootzone moisture deficit to reach complete soil saturation for paddy [mm]
   !     LOCAL_HOUR to set irrigation switch.
   !
   ! (4) SEASONAL CYLCE OF CROP WATER DEMAND:
-  ! The module provides 2 options to determine the seasonal cycle of crop water demand:
-  !    4.1) IRRIG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
+  !     The module provides 2 options to determine the seasonal cycle of crop water demand:
+  !     4.1) IRRIG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
   !          The LAI-based trigger (Default and the current LIS implementation)
   !          uses precomputed minimum and maximum LAI on irrigateed pixels to determine
   !          beginning and end of crop growing seasons.
   !
-  !          This LAI-based trigger is also equipped with an additional control parameter, IRRIG_METHOD, which is good to choose the method of irrigation
-  !          that woould run on corresponding fractions       
-  !          i)  0: (Default) All 4 methods (sprinkler/furrow/flood/drip) concurrently.
-  !          ii) 1: Sprinkler irrigation on entire tile.
-  !          iv) 2: Drip irrigation on entire tile.
-  !          iii)3: Furrow/Flood irrigation on entire tile.
+  !          This LAI-based trigger is also equipped with an additional control parameter, IRRIG_METHOD, 
+  !          which is good to choose the method of irrigation that would run on corresponding fraction:
+  !              i)   0: (Default) All 4 methods (sprinkler/furrow/flood/drip) concurrently.
+  !              ii)  1: Sprinkler irrigation on entire tile.
+  !              iv)  2: Drip irrigation on entire tile.
+  !              iii) 3: Furrow/Flood irrigation on entire tile.
   !
-  !     IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
-  !          IRRIGFRAC    : fraction of tile covered by irrigated crops (values between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation
-  !                         Threshold)
-  !          PADDYFRAC    : fraction of tile covered by paddy (values between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation
-  !                         Threshold)
-  !          SPRINKLERFR  : fraction of tile equipped for sprinkler irrigation
-  !          DRIPFR       : fraction of tile equipped for drip irrigation
-  !          FLOODFR      : fraction of tile equipped for flood/furrow irrigation
-  !          LAI          : time varying Leaf Area Index from the model
-  !          LAIMIN       : Minimum LAI spatially averaged over the irrigated tile fraction 
-  !          LAIMAX       : Maximum LAI spatially averaged over the irrigated tile fraction
+  !          IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
+  !              IRRIGFRAC    : fraction of tile covered by irrigated crops;
+  !                             ranges between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation Threshold)
+  !              PADDYFRAC    : fraction of tile covered by paddy;
+  !                             ranges between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation Threshold)
+  !              SPRINKLERFR  : fraction of tile equipped for sprinkler irrigation
+  !              DRIPFR       : fraction of tile equipped for drip irrigation
+  !              FLOODFR      : fraction of tile equipped for flood/furrow irrigation
+  !              LAI          : time varying Leaf Area Index from the model
+  !              LAIMIN       : Minimum LAI spatially averaged over the irrigated tile fraction 
+  !              LAIMAX       : Maximum LAI spatially averaged over the irrigated tile fraction
   !
-  !    4.2) IRRIG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
-  !          uses 26 crop calendars based on monthly crop growing areas of below crops.
-  !          1       Wheat                      14      Oil palm                              
-  !          2       Maize                      15      Rape seed / Canola    
-  !          3       Rice                       16      Groundnuts / Peanuts  
-  !          4       Barley                     17      Pulses                
-  !          5       Rye                        18      Citrus                
-  !          6       Millet                     19      Date palm             
-  !          7       Sorghum                    20      Grapes / Vine         
-  !          8       Soybeans                   21      Cotton                
-  !          9       Sunflower                  22      Cocoa                 
-  !          10      Potatoes                   23      Coffee                
-  !          11      Cassava                    24      Others perennial      
-  !          12      Sugar cane                 25      Fodder grasses        
-  !          13      Sugar beet                 26      Others annual         
+  !     4.2) IRRIG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
+  !          Uses 26 crop calendars based on monthly crop growing areas of below crops.
+  !               1    Wheat                      14    Oil palm                              
+  !               2    Maize                      15    Rape seed / Canola    
+  !               3    Rice                       16    Groundnuts / Peanuts  
+  !               4    Barley                     17    Pulses                
+  !               5    Rye                        18    Citrus                
+  !               6    Millet                     19    Date palm             
+  !               7    Sorghum                    20    Grapes / Vine         
+  !               8    Soybeans                   21    Cotton                
+  !               9    Sunflower                  22    Cocoa                 
+  !              10    Potatoes                   23    Coffee                
+  !              11    Cassava                    24    Others perennial      
+  !              12    Sugar cane                 25    Fodder grasses        
+  !              13    Sugar beet                 26    Others annual         
   !
-  !     IRRIG_TRIGGER: 1 SPECIFIC INPUTS:
-  !          DOFYR        : day of year
-  !          IRRIGTYPE    : Preferred Irrig method (NTILES, 26) -
-  !                         (0)CONCURRENT (default), (1)SPRINKLER ONLY (2)DRIP ONLY (3)FLOOD/FURROW ONLY, and (-negative) AVOID this method 
-  !          CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been adjusted such that
-  !                         CROPIRRIGFRAC is 1. on paddy tiles; the sum of available crop fractions is 1. on irrigated crop tiles;
-  !                         and is zero on non-irrigated tiles.
-  !          IRRIGPLANT   : DOY start planting (NTILES, 2, 26) - up to two seasons
-  !          IRRIGHARVEST : DOY end harvesting (NTILES, 2, 26) - up to two seasons
-  !          If IRRIGPLANT/IRRIGHARVEST = 998, the crop is not grown on that tile 
+  !          IRRIG_TRIGGER: 1 SPECIFIC INPUTS:
+  !              DOFYR        : day of year
+  !              IRRIGTYPE    : Preferred Irrig method (NTILES, 26) -
+  !                             0   CONCURRENT (default), 
+  !                             1   SPRINKLER ONLY 
+  !                             2   DRIP ONLY 
+  !                             3   FLOOD/FURROW ONLY, and 
+  !                             <0  AVOID this method 
+  !              CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been 
+  !                             adjusted such that CROPIRRIGFRAC=1. on paddy tiles; the sum of available 
+  !                             crop fractions equals 1. on irrigated crop tiles;
+  !                             and is zero on non-irrigated tiles.
+  !              IRRIGPLANT   : DOY start planting (NTILES, 2, 26) - up to two seasons
+  !              IRRIGHARVEST : DOY end harvesting (NTILES, 2, 26) - up to two seasons
+  !              If IRRIGPLANT/IRRIGHARVEST = 998, the crop is not grown on that tile 
   !
   ! (5) MODEL UPDATES (OPTIONAL INTERNALS):
   !     SRATE, DRATE, and FRATE contain irrigation rates applied on individual fractions at any given time.
@@ -116,27 +124,27 @@ MODULE IRRIGATION_MODULE
      
      ! Below parameters can be set via RC file.
 
-     REAL :: irrig_thres      =  0.01 ! threshold of tile fraction to turn the irrigation model on. 
-     REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
-     REAL :: efcor            =  25.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
-     REAL :: MIDS_LENGTH      =  0.6 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
+     REAL :: irrig_thres      =   0.01 ! threshold of tile fraction to turn the irrigation model on. 
+     REAL :: lai_thres        =   0.6  ! threshold of LAI range to turn irrigation on
+     REAL :: efcor            =  25.0  ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
+     REAL :: MIDS_LENGTH      =   0.6  ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
      
      ! Sprinkler parameters
      ! --------------------
-     REAL :: sprinkler_stime  =  6.0 ! sprinkler irrigatrion start time [hours]
-     REAL :: sprinkler_dur    =  4.0 ! sprinkler irrigation duration [hours]
-     REAL :: sprinkler_thres  =  0.7 ! soil moisture threshhold to trigger sprinkler irrigation
+     REAL :: sprinkler_stime  =   6.0  ! sprinkler irrigatrion start time [hours]
+     REAL :: sprinkler_dur    =   4.0  ! sprinkler irrigation duration [hours]
+     REAL :: sprinkler_thres  =   0.7  ! soil moisture threshhold to trigger sprinkler irrigation
      
      ! Drip parameters 
      ! ---------------
-     REAL :: drip_stime       =  8.0 ! drip irrigatrion start time [hours] 
-     REAL :: drip_dur         =  8.0 ! drip irrigation duration [hours]
+     REAL :: drip_stime       =   8.0  ! drip irrigatrion start time [hours] 
+     REAL :: drip_dur         =   8.0  ! drip irrigation duration [hours]
      
      ! Flood parameters
      ! ----------------
-     REAL :: flood_stime      =  6.0 ! flood irrigatrion start time [hours]
-     REAL :: flood_dur        =  8.0 ! flood irrigation duration [hours]
-     REAL :: flood_thres      =  0.6 ! soil moisture threshhold to trigger flood irrigation
+     REAL :: flood_stime      =   6.0  ! flood irrigatrion start time [hours]
+     REAL :: flood_dur        =   8.0  ! flood irrigation duration [hours]
+     REAL :: flood_thres      =   0.6  ! soil moisture threshhold to trigger flood irrigation
 
      
   end type irrig_params
@@ -230,7 +238,7 @@ contains
           CHECK_IRRIGFRACS: IF ((IRRIGFRAC(N) > 0.).OR.(PADDYFRAC(N)>0.)) THEN
 
              !-----------------------------------------------------------------------------
-             !     Get the root zone moisture availability to the plant
+             !     Get the rootzone moisture availability to the plant
              !-----------------------------------------------------------------------------
              if (IRRIGFRAC(N) > 0.) then
                 if(SMREF(N) > SMWP(N))then

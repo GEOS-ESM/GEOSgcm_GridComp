@@ -746,38 +746,38 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         SHORT_NAME = 'SPRINKLERRATE'                         ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
+         LONG_NAME          = 'sprinkler_irrigation_rate'   ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'SPRINKLERRATE'               ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME  = 'drip_irrigation_rate'	              ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         SHORT_NAME = 'DRIPRATE'                              ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
+         LONG_NAME          = 'drip_irrigation_rate'	    ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'DRIPRATE'                    ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         SHORT_NAME = 'FURROWRATE'                             ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
+         LONG_NAME          = 'furrow_irrigation_rate'      ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FURROWRATE'                  ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME  = 'flood_irrigation_rate'                 ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         SHORT_NAME = 'FLOODRATE'                             ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
+         LONG_NAME          = 'flood_irrigation_rate'       ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FLOODRATE'                   ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -3880,6 +3880,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ity
         real, dimension(:),   pointer :: ASCATZ0
         real, dimension(:),   pointer :: NDVI
+
         real, dimension(:),   pointer :: SPRINKLERRATE
         real, dimension(:),   pointer :: DRIPRATE
         real, dimension(:),   pointer :: FURROWRATE
@@ -4469,7 +4470,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,DRIPRATE,     'DRIPRATE'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,FURROWRATE,   'FURROWRATE'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,FLOODRATE,    'FLOODRATE'    ,RC=STATUS); VERIFY_(STATUS)
-
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -5228,8 +5228,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! driver
 ! --------------------------------------------------------------------------
 
-        _ASSERT(count(PLS<0.)==0,'needs informative message')
-        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(PLS   <0.)==0,'needs informative message')
+        _ASSERT(count(PCU   <0.)==0,'needs informative message')
         _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
@@ -5245,7 +5245,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         TILEZERO = 0.0
 
-        PLS_IN = PLS
+        PLS_IN   = PLS
 
         ! --------------------------------------------------------------------------
         ! Add irrigation model imports
@@ -5256,13 +5256,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               PLS_IN = PLS_IN + SPRINKLERRATE
            end where
            where (DRIPRATE > 0)
-              RZEXC  = RZEXC + DRIPRATE*DT
+              RZEXC  = RZEXC + DRIPRATE  *DT
            end where
            where (FURROWRATE > 0)
               RZEXC  = RZEXC + FURROWRATE*DT
            end where
            where (FLOODRATE > 0)
-              SRFEXC  = SRFEXC + FLOODRATE*DT
+              SRFEXC = SRFEXC + FLOODRATE*DT
            end where
         endif
 
