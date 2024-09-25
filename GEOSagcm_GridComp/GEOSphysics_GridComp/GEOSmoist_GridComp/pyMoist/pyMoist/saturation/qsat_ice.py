@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from ndsl.dsl.typing import Float, f64
+from ndsl.dsl.typing import Float
 from pyMoist.saturation.constants import (
     DELTA_T,
     ERFAC,
@@ -12,6 +12,7 @@ from pyMoist.saturation.constants import (
 )
 from pyMoist.saturation.types import SaturationFormulation
 
+f64 = np.float64
 
 TMINSTR = Float(-95.0)
 TMINICE = MAPL_TICE + TMINSTR

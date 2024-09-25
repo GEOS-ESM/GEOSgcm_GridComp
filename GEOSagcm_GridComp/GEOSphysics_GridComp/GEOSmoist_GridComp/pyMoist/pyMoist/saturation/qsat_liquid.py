@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from ndsl.dsl.typing import Float, f64
+from ndsl.dsl.typing import Float
 from pyMoist.saturation.constants import (
     DELTA_T,
     ERFAC,
@@ -14,6 +14,7 @@ from pyMoist.saturation.constants import (
 )
 from pyMoist.saturation.types import SaturationFormulation
 
+f64 = np.float64
 
 # Below are actual 64-bit float in Fortran
 B6 = f64(Float(6.136820929e-11) * Float(100.0))
