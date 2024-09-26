@@ -61,59 +61,69 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "id_check_test": self.grid.compute_dict(),
         }
 
-    def reshape_before(self,inputs):
+    def reshape_before(self, inputs):
         # Reshape input fields to the necessary shape
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
         reshaped_inputs = {}
-        
+
         for key, array in inputs.items():
-            if isinstance(array, np.ndarray) and array.shape[1] == k and array.ndim == 2:
+            if (
+                isinstance(array, np.ndarray)
+                and array.shape[1] == k
+                and array.ndim == 2
+            ):
                 reshaped_inputs[key] = np.reshape(array, (i, j, k)).astype(np.float32)
-            elif isinstance(array, np.ndarray) and array.shape[1] == k+1 and array.ndim == 2:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k+1)).astype(np.float32)
+            elif (
+                isinstance(array, np.ndarray)
+                and array.shape[1] == k + 1
+                and array.ndim == 2
+            ):
+                reshaped_inputs[key] = np.reshape(array, (i, j, k + 1)).astype(
+                    np.float32
+                )
             elif isinstance(array, np.ndarray) and array.ndim == 3:
-                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(np.float32)
+                reshaped_inputs[key] = np.reshape(array, (i, j, k, ncnst)).astype(
+                    np.float32
+                )
             else:
                 # If not a 2D or 3D array, keep as is
                 reshaped_inputs[key] = np.float32(array)
 
         return reshaped_inputs
-    
 
-    def reshape_after(self,outputs):
+    def reshape_after(self, outputs):
         # Reshape output fields back to original shape
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-        
+
         if isinstance(outputs, dict):
             reshaped_outputs = {}
             for key, array in outputs.items():
-                if array.ndim == 4: 
-                    reshaped_array = np.reshape(array, (i * j, k, ncnst)).astype(np.float64)
-                else:  
+                if array.ndim == 4:
+                    reshaped_array = np.reshape(array, (i * j, k, ncnst)).astype(
+                        np.float64
+                    )
+                else:
                     reshaped_array = np.reshape(array, (i * j, k)).astype(np.float64)
                 reshaped_outputs[key] = reshaped_array
         else:
             # If outputs is not a dictionary, handle single array
-            if outputs.ndim == 4: 
-                reshaped_outputs = np.reshape(outputs, (i * j, k, ncnst)).astype(np.float64)
+            if outputs.ndim == 4:
+                reshaped_outputs = np.reshape(outputs, (i * j, k, ncnst)).astype(
+                    np.float64
+                )
             else:
                 reshaped_outputs = np.reshape(outputs, (i * j, k)).astype(np.float64)
 
         return reshaped_outputs
-      
-     
+
     def make_ijk_field(self, data, dtype=FloatField) -> Quantity:
-        qty = self.quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_DIM],
-            "n/a", dtype=dtype
-        )
+        qty = self.quantity_factory.empty([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=dtype)
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
-    
+
     def make_zinterface_field(self, data, dtype=FloatField) -> Quantity:
         qty = self.quantity_factory.empty(
-            [X_DIM, Y_DIM, Z_INTERFACE_DIM],
-            "n/a", dtype=dtype
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a", dtype=dtype
         )
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
@@ -125,7 +135,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         )
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
-        
 
     # Perform stencil computation
     def compute(self, inputs):
@@ -138,7 +147,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # Reshape input variables and add halo
         inputs_reshaped = self.reshape_before(inputs)
         print("Reshaped inputs")
-        
+
         # Inputs
         dotransport = inputs_reshaped["dotransport"]
         pifc0_in = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
@@ -153,7 +162,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         th0_in = self.make_ijk_field(inputs_reshaped["th0_in"])
         tr0_inout = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
 
-
         # Outputs
         tr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
         ssthl0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
@@ -167,7 +175,6 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qij_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qse_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         id_check_test = self.make_ijk_field(inputs_reshaped["pmid0_in"], dtype=Int)
-
 
         compute_uwshcu(
             dotransport=dotransport,
@@ -198,30 +205,31 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         print("Performed compute_uwshcu on reshaped inputs")
 
         # Reshape output variables back to original shape
-        tr0_test_3D = self.reshape_after(tr0_test.view[:,:,:,:])
-        ssthl0_test_2D = self.reshape_after(ssthl0_test.view[:,:,:])
-        ssqt0_test_2D = self.reshape_after(ssqt0_test.view[:,:,:])
-        ssu0_test_2D = self.reshape_after(ssu0_test.view[:,:,:])
-        ssv0_test_2D = self.reshape_after(ssv0_test.view[:,:,:])
-        sstr0_test_3D = self.reshape_after(sstr0_test.view[:,:,:,:])
-        thj_test_3D =  self.reshape_after(thj_test.view[:,:,:])
-        qvj_test_3D = self.reshape_after(qvj_test.view[:,:,:])
-        qlj_test_3D = self.reshape_after(qlj_test.view[:,:,:])
-        qij_test_3D = self.reshape_after(qij_test.view[:,:,:])
-        qse_test_3D = self.reshape_after(qse_test.view[:,:,:])
-        id_check_test_3D = self.reshape_after(id_check_test.view[:,:,:])
+        tr0_test_3D = self.reshape_after(tr0_test.view[:, :, :, :])
+        ssthl0_test_2D = self.reshape_after(ssthl0_test.view[:, :, :])
+        ssqt0_test_2D = self.reshape_after(ssqt0_test.view[:, :, :])
+        ssu0_test_2D = self.reshape_after(ssu0_test.view[:, :, :])
+        ssv0_test_2D = self.reshape_after(ssv0_test.view[:, :, :])
+        sstr0_test_3D = self.reshape_after(sstr0_test.view[:, :, :, :])
+        thj_test_3D = self.reshape_after(thj_test.view[:, :, :])
+        qvj_test_3D = self.reshape_after(qvj_test.view[:, :, :])
+        qlj_test_3D = self.reshape_after(qlj_test.view[:, :, :])
+        qij_test_3D = self.reshape_after(qij_test.view[:, :, :])
+        qse_test_3D = self.reshape_after(qse_test.view[:, :, :])
+        id_check_test_3D = self.reshape_after(id_check_test.view[:, :, :])
         print("Reshaped outputs back to original shape")
 
-        return {"tr0_test": tr0_test_3D,
-                "ssthl0_test": ssthl0_test_2D,
-                "ssqt0_test": ssqt0_test_2D,
-                "ssu0_test": ssu0_test_2D,
-                "ssv0_test": ssv0_test_2D,
-                "sstr0_test": sstr0_test_3D,
-                "thj_test": thj_test_3D,
-                "qvj_test": qvj_test_3D,
-                "qlj_test": qlj_test_3D,
-                "qij_test": qij_test_3D,
-                "qse_test": qse_test_3D,
-                "id_check_test": id_check_test_3D,
-            }
+        return {
+            "tr0_test": tr0_test_3D,
+            "ssthl0_test": ssthl0_test_2D,
+            "ssqt0_test": ssqt0_test_2D,
+            "ssu0_test": ssu0_test_2D,
+            "ssv0_test": ssv0_test_2D,
+            "sstr0_test": sstr0_test_3D,
+            "thj_test": thj_test_3D,
+            "qvj_test": qvj_test_3D,
+            "qlj_test": qlj_test_3D,
+            "qij_test": qij_test_3D,
+            "qse_test": qse_test_3D,
+            "id_check_test": id_check_test_3D,
+        }
