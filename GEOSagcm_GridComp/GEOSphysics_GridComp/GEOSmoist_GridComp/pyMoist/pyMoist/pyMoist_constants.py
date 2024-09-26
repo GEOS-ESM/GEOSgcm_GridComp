@@ -15,7 +15,7 @@ rad_to_deg = 180 / PI
 # Following taken from PhysicalConstants.F90
 # Universal Constants
 CODATA_2018_CONSTANTS = True  # set for now, needs to be dynamic
-if CODATA_2018_CONSTANTS == True:
+if CODATA_2018_CONSTANTS is True:
     stfbol = Float(5.670374419e-8)  # W/(m^2 K^4)
     avogad = Float(6.02214076e26)  # 1/kmol
     runiv = Float(8314.462618)  # J/(Kmole K)
@@ -51,6 +51,7 @@ rvap = runiv / h2omw  # J/(kg K)
 cpvap = 4 * rvap  # J/(kg K)
 cvvap = cpvap - rvap  # J/(kg K)
 kappa = rdry / cpdry  # (2.0/7.0) # translator note no clue what 2/7 references
+cp = rdry / kappa
 epsilon = h2omw / airmw  # --
 deltap = cpvap / cpdry  # --
 deltav = cvvap / cvdry  # --
@@ -184,7 +185,7 @@ TMINICE = Float(ZEROC + TMINSTR)
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1 # also used in GFDL_1M, but defined in aer
 
 debug = True
-if debug == True:
+if debug is True:
     latent_heat_vaporization = 2466500.00
     latent_heat_fusion = 333700.000
     latent_heat_sublimation = 2800200.00

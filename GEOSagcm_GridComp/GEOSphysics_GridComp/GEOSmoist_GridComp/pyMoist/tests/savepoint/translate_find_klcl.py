@@ -1,8 +1,7 @@
+from misc_unused.find_klcl import find_klcl
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.find_klcl import find_klcl
 
 
 class Translatefind_klcl(TranslateFortranData2Py):

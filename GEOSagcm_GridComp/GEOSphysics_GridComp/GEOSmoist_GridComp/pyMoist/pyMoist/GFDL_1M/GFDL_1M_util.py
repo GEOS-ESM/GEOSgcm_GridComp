@@ -1,5 +1,4 @@
 import gt4py.cartesian.gtscript as gtscript
-import numpy as np
 from gt4py.cartesian.gtscript import (
     FORWARD,
     PARALLEL,
@@ -11,14 +10,10 @@ from gt4py.cartesian.gtscript import (
     sin,
     sqrt,
     tan,
-    tanh,
 )
 
 import pyMoist.pyMoist_constants as constants
-from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.boilerplate import get_factories_single_tile_numpy
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntField, IntFieldIJ
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.extratypes import FloatField_Extra_Dim
 from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
 
@@ -199,8 +194,10 @@ def cloud_effective_radius_ice(
     PL (Float): Pressure level.
     TE (Float): Temperature.
     QC (Float): Ice cloud mixing ratio.
-    NNL (Float): Number concentration of liquid cloud droplets. Not used in function body, but included in the Fortran code.
-    NNI (Float): Number concentration of ice cloud crystals. Not used in function body, but included in the Fortran code.
+    NNL (Float): Number concentration of liquid cloud droplets.
+        Not used in function body, but included in the Fortran code.
+    NNI (Float): Number concentration of ice cloud crystals.
+        Not used in function body, but included in the Fortran code.
 
     Returns:
     Float: Effective radius of ice clouds.
@@ -464,7 +461,8 @@ def initial_calc(
         else:
             turnrhcrit = TURNRHCRIT_PARAM
 
-    # lower turn from maxrhcrit=1.0 # implemented in multiple "with" statements to deal with hybrid indexing
+    # lower turn from maxrhcrit=1.0 # implemented in multiple "with" statements
+    # to deal with hybrid indexing
     with computation(PARALLEL), interval(0, -1):
         # Use Slingo-Ritter (1985) formulation for critical rel ative humidity
         RHCRIT = 1.0
@@ -511,19 +509,15 @@ def hystpdf(
     CLCN: FloatField,
     NL: FloatField,
     NI: FloatField,
+    RHX: FloatField,
     ese: FloatField_Extra_Dim,
     esw: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
     estfrz: Float,
     estlqu: Float,
-    PDFITERS: FloatField,
-    TESTVAR_2: FloatField,
-    TESTVAR_3: FloatField,
-    TESTVAR_4: FloatField,
-    TESTVAR_5: FloatField,
-    TESTVAR_6: FloatField,
-    USE_BERGERON: bool = True,
 ):
+    from __externals__ import USE_BERGERON
+
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
     # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False
     with computation(PARALLEL), interval(...):
@@ -542,8 +536,7 @@ def hystpdf(
         QCn = (QLLS + QILS) * tmpARR
         QCi = QILS * tmpARR
         TEn = TE
-        if True:
-            QSx, _ = QSat_Float(ese, esx, TE, PL, DQSAT_trigger=False)
+        QSx, _ = QSat_Float(ese, esx, TE, PL)
         QVn = (Q - QSx * CLCN) * tmpARR
 
         QT = QCn + QVn  # Total LS water after microphysics
@@ -554,16 +547,7 @@ def hystpdf(
             QCp = QCn
             CFp = CFn
             TEp = TEn
-            if True:
-                QSn, DQS = QSat_Float(ese, esx, TEn, PL, DQSAT_trigger=True)
-
-            # SC_ICE option not implemented, will go here if needed
-            # Fortran:
-            # if(present(SC_ICE)) then
-            #     scice = min(max(SC_ICE, 1.0), 1.7)
-            #     qsnx= Qsn*scice !
-            #     if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
-            # end if
+            QSn, DQS = QSat_Float(ese, esx, TEn, PL, DQSAT_trigger=True)
 
             if PDFSHAPE < 3:  # 1 = top-hat 2 = triangulat
                 sigmaqt1 = ALPHA * QSn
@@ -572,17 +556,8 @@ def hystpdf(
                 sigmaqt1 = max(ALPHA / sqrt(3.0), 0.001)
 
             if PDFSHAPE < 5:
-                if True:
-                    CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
-                if True:
-                    QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
-            # elif PDFSHAPE == 5:
-            # NOT IMPLEMENTED
-            # raise NotImplementedError(
-            #     "Function: partition_dblgss not implemented.\nReference Fortran: Process_LibraryF90"
-            # )
-            # note for future: fQI modifications within this conditional are irrlevant.
-            # bergeron_partition (Fortran version) takes fQI as an input, but overwrites it
+                CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
+                QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
 
             if USE_BERGERON:
                 DQALL = QCn - QCp
@@ -590,29 +565,27 @@ def hystpdf(
                     100.0 * PL * constants.R_AIR / TEn
                 )  # density times conversion factor
                 NIv = NI / Nfac
-                if True:
-                    fQi, DQALL = bergeron_partition(
-                        DT_MOIST,
-                        PL,
-                        TEn,
-                        QT,
-                        QILS,
-                        QICN,
-                        QLLS,
-                        QLCN,
-                        NIv,
-                        DQALL,
-                        cnv_frc,
-                        srf_type,
-                        ese,
-                        esw,
-                        estfrz,
-                        estlqu,
-                        count,
-                    )
+                fQi, DQALL = bergeron_partition(
+                    DT_MOIST,
+                    PL,
+                    TEn,
+                    QT,
+                    QILS,
+                    QICN,
+                    QLLS,
+                    QLCN,
+                    NIv,
+                    DQALL,
+                    cnv_frc,
+                    srf_type,
+                    ese,
+                    esw,
+                    estfrz,
+                    estlqu,
+                    count,
+                )
             else:
-                if True:
-                    fQi = ice_fraction(TEn, cnv_frc, srf_type)
+                fQi = ice_fraction(TEn, cnv_frc, srf_type)
 
             latent_heat_factor = (1.0 - fQi) * (
                 constants.latent_heat_vaporization / constants.cp
@@ -621,11 +594,6 @@ def hystpdf(
                 QCn = QCp + (QCn - QCp) / (
                     1.0 - (CFn * (ALPHA - 1.0) - (QCn / QSn)) * DQS * latent_heat_factor
                 )
-            # elif PDFSHAPE == 2:
-            # NOT IMPLEMENTED
-            # raise NotImplementedError(
-            #     "Fortran comments says code is incorrect and therefore not implemented. See Process_Library.F90"
-            # )
             elif PDFSHAPE == 5:
                 QCn = QCp + 0.5 * (QCn - QCp)
 
@@ -648,14 +616,11 @@ def hystpdf(
             )
 
             PDFITERS = count
-            # TODO Differences in constants between fortran and python cause calculation of TEn to
-            # be slightly off (at order 10^-5), causing the following conditional to occasionsally
-            # trigger incorrectly, leading to occasional errors in various fields at the end of the
+            # TODO Differences in constants between fortran and python cause
+            # calculation of TEn to be slightly off (at order 10^-5), causing
+            # the following conditional to occasionsally trigger incorrectly,
+            # leading to occasional errors in various fields at the end of the
             # PDF stencil.
-            if count == 1:
-                TESTVAR_2 = TEn - TEp
-                TESTVAR_3 = TEn
-                TESTVAR_4 = TEp
             if abs(TEn - TEp) < 0.00001:
                 count = 21  # break out of loop
             else:
@@ -735,6 +700,9 @@ def hystpdf(
             QLCN = 0.0
             CLCN = 0.0
 
+        denom, _ = QSat_Float(ese, esx, TE, PL)
+        RHX = Q / denom
+
 
 def meltfrz(
     dt: Float,
@@ -745,7 +713,7 @@ def meltfrz(
     QICN: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        if T < constants.t_ice:
+        if T <= constants.t_ice:
             fQi = ice_fraction(T, cnv_frc, srf_type)
             dQil = QLCN * (1.0 - exp(-dt * fQi / constants.taufrz))
             dQil = max(0.0, dQil)
@@ -758,9 +726,9 @@ def meltfrz(
                     - constants.latent_heat_vaporization
                 )
                 * dQil
-                / constants.cpdry
+                / constants.cp
             )
-        if T > constants.t_ice:
+        else:
             dQil = -QICN
             dQil = min(0.0, dQil)
             QICN = QICN + dQil
@@ -772,14 +740,13 @@ def meltfrz(
                     - constants.latent_heat_vaporization
                 )
                 * dQil
-                / constants.cpdry
+                / constants.cp
             )
 
 
 def evap(
     DT_MOIST: Float,
     CCW_EVAP_EFF: Float,
-    RHCRIT: Float,
     PLmb: FloatField,
     T: FloatField,
     Q: FloatField,
@@ -790,11 +757,12 @@ def evap(
     NACTI: FloatField,
     QST: FloatField,
     EVAPC: FloatField,
-    QCm: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         EVAPC = Q
-        # Evaporation of cloud water. DelGenio et al formulation (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
+        RHCRIT = 1
+        # Evaporation of cloud water. DelGenio et al formulation
+        # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         ES = (
             100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
         )  # (100's <-^ convert from mbar to Pa)
@@ -810,7 +778,8 @@ def evap(
             * constants.RHO_W
             / (constants.DIFFU * (1000.0 / PLmb) * ES)
         )
-        # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts for increased diffusivity at lower pressure
+        # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
+        # for increased diffusivity at lower pressure
         if CLCN > 0.0 and QLCN > 0.0:
             QCm = QLCN / CLCN
         else:
@@ -839,7 +808,6 @@ def evap(
 def subl(
     DT_MOIST: Float,
     CCI_EVAP_EFF: Float,
-    RHCRIT: Float,
     PLmb: FloatField,
     T: FloatField,
     Q: FloatField,
@@ -852,7 +820,10 @@ def subl(
     EVAPC: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        # Sublimation of cloud water. DelGenio et al formulation (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
+        SUBLC = Q
+        RHCRIT = 1
+        # Sublimation of cloud water. DelGenio et al formulation
+        # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         ES = (
             100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
         )  # (100s <-^ convert from mbar to Pa)
@@ -868,7 +839,8 @@ def subl(
             * constants.RHO_I
             / (constants.DIFFU * (1000.0 / PLmb) * ES)
         )
-        # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts for increased diffusivity at lower pressure
+        # Here, DIFFU is given for 1000 mb so 1000./PLmb accounts
+        # for increased diffusivity at lower pressure
         if CLCN > 0.0 and QICN > 0.0:
             QCm = QICN / CLCN
         else:
@@ -891,3 +863,94 @@ def subl(
         Q = Q + SUBL
         QICN = QICN - SUBL
         T = T - (constants.latent_heat_sublimation / constants.cpdry) * SUBL
+        SUBLC = (Q - SUBLC) / DT_MOIST
+
+
+def fix_up_clouds(
+    QV: FloatField,
+    TE: FloatField,
+    QLC: FloatField,
+    QIC: FloatField,
+    CF: FloatField,
+    QLA: FloatField,
+    QIA: FloatField,
+    AF: FloatField,
+) -> None:
+    """
+    Fix cloud variables to ensure physical consistency.
+
+    Parameters:
+    QV (3D inout): Water vapor mixing ratio.
+    TE (3D inout): Temperature.
+    QLC (3D inout): Liquid cloud mixing ratio.
+    QIC (3D inout): Ice cloud mixing ratio.
+    CF (3D inout): Cloud fraction.
+    QLA (3D inout): Anvil liquid cloud mixing ratio.
+    QIA (3D inout): Anvil ice cloud mixing ratio.
+    AF (3D inout): Anvil cloud fraction.
+    """
+    with computation(PARALLEL), interval(...):
+        # Fix if Anvil cloud fraction too small
+        if AF < 1.0e-5:
+            QV = QV + QLA + QIA
+            TE = (
+                TE
+                - (constants.latent_heat_vaporization / constants.cp) * QLA
+                - (constants.latent_heat_vaporization / constants.cp) * QIA
+            )
+            AF = 0.0
+            QLA = 0.0
+            QIA = 0.0
+        # Fix if LS cloud fraction too small
+        if CF < 1.0e-5:
+            QV = QV + QLC + QIC
+            TE = (
+                TE
+                - (constants.latent_heat_vaporization / constants.cp) * QLC
+                - (constants.latent_heat_sublimation / constants.cp) * QIC
+            )
+            CF = 0.0
+            QLC = 0.0
+            QIC = 0.0
+        # LS LIQUID too small
+        if QLC < 1.0e-8:
+            QV = QV + QLC
+            TE = TE - (constants.latent_heat_vaporization / constants.cp) * QLC
+            QLC = 0.0
+        # LS ICE too small
+        if QIC < 1.0e-8:
+            QV = QV + QIC
+            TE = TE - (constants.latent_heat_sublimation / constants.cp) * QIC
+            QIC = 0.0
+        # Anvil LIQUID too small
+        if QLA < 1.0e-8:
+            QV = QV + QLA
+            TE = TE - (constants.latent_heat_vaporization / constants.cp) * QLA
+            QLA = 0.0
+        # Anvil ICE too small
+        if QIA < 1.0e-8:
+            QV = QV + QIA
+            TE = TE - (constants.latent_heat_sublimation / constants.cp) * QIA
+            QIA = 0.0
+        # Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
+        if (QLA + QIA) < 1.0e-8:
+            QV = QV + QLA + QIA
+            TE = (
+                TE
+                - (constants.latent_heat_vaporization / constants.cp) * QLA
+                - (constants.latent_heat_sublimation / constants.cp) * QIA
+            )
+            AF = 0.0
+            QLA = 0.0
+            QIA = 0.0
+        # Fix ALL cloud quants if LS cloud LIQUID+ICE too small
+        if (QLC + QIC) < 1.0e-8:
+            QV = QV + QLC + QIC
+            TE = (
+                TE
+                - (constants.latent_heat_vaporization / constants.cp) * QLC
+                - (constants.latent_heat_sublimation / constants.cp) * QIC
+            )
+            CF = 0.0
+            QLC = 0.0
+            QIC = 0.0

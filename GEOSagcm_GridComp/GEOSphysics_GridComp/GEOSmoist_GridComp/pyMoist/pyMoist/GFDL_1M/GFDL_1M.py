@@ -1,32 +1,17 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    computation,
-    interval,
-    PARALLEL,
-    FORWARD,
-    atan,
-    sin,
-    tan,
-    sqrt,
-    tanh,
-    exp,
-    log10,
-)
-from ndsl.boilerplate import get_factories_single_tile_numpy
+from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntField, IntFieldIJ
-from ndsl import StencilFactory, QuantityFactory, orchestrate
-import numpy as np
-import pyMoist.pyMoist_constants as constants
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat
+
 from .GFDL_1M_util import (
+    evap,
+    fix_up_clouds,
     get_last,
     hybrid_index_2dout,
-    initial_calc,
     hystpdf,
+    initial_calc,
     meltfrz,
-    evap,
     subl,
 )
 
@@ -37,8 +22,14 @@ class evap_subl_pdf:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        use_table_lookup: bool = True,
+        USE_BERGERON: bool = True,
     ):
+        if USE_BERGERON is not True:
+            raise NotImplementedError(
+                "Untested option for USE_BERGERON. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
@@ -65,6 +56,9 @@ class evap_subl_pdf:
         self._hystpdf = self.stencil_factory.from_dims_halo(
             func=hystpdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_BERGERON": USE_BERGERON,
+            },
         )
         self._meltfrz = self.stencil_factory.from_dims_halo(
             func=meltfrz,
@@ -78,6 +72,10 @@ class evap_subl_pdf:
             func=subl,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+        self._fix_up_clouds = self.stencil_factory.from_dims_halo(
+            func=fix_up_clouds,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
         self._tmp = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         self._minrhcrit = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._PLEmb_top = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -85,27 +83,13 @@ class evap_subl_pdf:
         self._halo = self.stencil_factory.grid_indexing.n_halo
         self._k_mask = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._alpha = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self._evapc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.rhx = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.evapc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.sublc = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         for i in range(0, self._k_mask.view[:].shape[0]):
             for j in range(0, self._k_mask.view[:].shape[1]):
                 for k in range(0, self._k_mask.view[:].shape[2]):
                     self._k_mask.view[i, j, k] = k + 1
-
-        # TESTING
-        self.TESTVAR_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.TESTVAR_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.TESTVAR_3 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.TESTVAR_4 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.TESTVAR_5 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.TESTVAR_6 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-        self.TESTVAR_1.view[:] = -999.0
-        self.TESTVAR_2.view[:] = -999.0
-        self.TESTVAR_3.view[:] = -999.0
-        self.TESTVAR_4.view[:] = -999.0
-        self.TESTVAR_5.view[:] = -999.0
-        self.TESTVAR_6.view[:] = -999.0
-        # END TESTING
 
     def __call__(
         self,
@@ -134,13 +118,33 @@ class evap_subl_pdf:
         NACTL: FloatField,
         NACTI: FloatField,
         QST: FloatField,
-        QCm: FloatField,
+        LMELTFRZ: bool = True,
     ):
-        # Theoretically, the following stencil and for loop should provide the same (correct) result. However, they both provide different incorrect results
-        # The for loop is currently closer to being correct, with only the k level incorrect, so I am using that.
+        if LMELTFRZ is not True:
+            raise NotImplementedError(
+                "Untested option for LMELTFRZ. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if PDFSHAPE != 1:
+            raise NotImplementedError(
+                "Untested option for PDFSHAPE. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if CCW_EVAP_EFF <= 0:
+            raise NotImplementedError(
+                "Untested option for CCW_EVAP_EFF. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if CCI_EVAP_EFF <= 0:
+            raise NotImplementedError(
+                "Untested option for CCI_EVAP_EFF. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+
         self._get_last(PLEmb, self._tmp, self._PLEmb_top)
 
-        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as indended (backend issue), will need to be addressed at later date
+        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as
+        # indended (backend issue), will need to be addressed at later date
         self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
 
         self._initial_calc(
@@ -173,23 +177,48 @@ class evap_subl_pdf:
             CLCN,
             NACTL,
             NACTI,
+            self.rhx,
             self.qsat.ese,
             self.qsat.esw,
             self.qsat.esx,
             self.qsat.esw.view[0][12316],
             self.qsat.esw.view[0][8316],
-            self.TESTVAR_1,
-            self.TESTVAR_2,
-            self.TESTVAR_3,
-            self.TESTVAR_4,
-            self.TESTVAR_5,
-            self.TESTVAR_6,
         )
 
-        # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
-        # self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
+        if LMELTFRZ is True:
+            self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
+            self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
 
-        # RHCRIT = Float(1.0)
-        # self._evap(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc, QCm)
+        if CCW_EVAP_EFF > 0.0:
+            self._evap(
+                DT_MOIST,
+                CCW_EVAP_EFF,
+                PLmb,
+                T,
+                Q,
+                QLCN,
+                QICN,
+                CLCN,
+                NACTL,
+                NACTI,
+                QST,
+                self.evapc,
+            )
 
-        # self._subl(DT_MOIST, CCW_EVAP_EFF, RHCRIT, PLmb, T, Q, QLCN, QICN, CLCN, NACTL, NACTI, QST, self._evapc)
+        if CCI_EVAP_EFF > 0.0:
+            self._subl(
+                DT_MOIST,
+                CCW_EVAP_EFF,
+                PLmb,
+                T,
+                Q,
+                QLCN,
+                QICN,
+                CLCN,
+                NACTL,
+                NACTI,
+                QST,
+                self.sublc,
+            )
+
+        self._fix_up_clouds(Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN)

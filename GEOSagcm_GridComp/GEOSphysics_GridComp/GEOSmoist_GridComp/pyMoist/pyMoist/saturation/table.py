@@ -11,9 +11,9 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
+from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
 from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
-from pyMoist.saturation.types import SaturationFormulation
 
 
 class SaturationVaporPressureTable:
@@ -97,6 +97,8 @@ _cached_estimated_saturation: Dict[
 def get_table(
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
+    print(type(formulation))
+    print(_cached_estimated_saturation.keys())
     if _cached_estimated_saturation[formulation] is None:
         _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(
             formulation
