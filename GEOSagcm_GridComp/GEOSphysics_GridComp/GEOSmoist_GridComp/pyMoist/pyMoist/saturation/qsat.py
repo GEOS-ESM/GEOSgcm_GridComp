@@ -194,7 +194,7 @@ def QSat_FloatField(
     DQSAT: FloatField,
     RAMP: FloatField,
 ):
-    from __externals__ import USE_RAMP, USE_PASCALS, FILL_DQSAT
+    from __externals__ import FILL_DQSAT, USE_PASCALS, USE_RAMP
 
     with computation(PARALLEL), interval(...):
         if USE_RAMP:
