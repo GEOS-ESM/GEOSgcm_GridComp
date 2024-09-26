@@ -1,5 +1,5 @@
 ## UW Convection Port
-## Date: 9/18/24
+## Date: 9/26/24
 
 ### GEOS_UW_InterfaceMod.F90
 ### uwshcu.F90
@@ -14,11 +14,18 @@
 ## General notes
 - The main calculations in uwshcu.F90 are very long and involve loops along the i and k dimensions. To serialize the data within loops, a workaround has been implemented in the .SER file. This workaround involves defining test variables outside of the loop, creating a savepoint before the loop, and saving the data after the loop has finished.
 
-- In the Fortran, 'slope' and 'conden' uses 2D input variables. These variables can be serialized as 2D arrays, however, they need to be reshaped to shape(i,j,k) prior to the stencil computation. This workaround has been implemented in translate_slope.py and translate_conden.py
+- In the Fortran, 'slope' and 'conden' use 2D input variables. These variables can be serialized as 2D arrays, however, they need to be reshaped to shape(i,j,k) prior to the stencil computation. This workaround has been implemented in translate_slope.py and translate_conden.py
 
-- Slope and conden stencils must be rewritten as gt4py functions in order to be used within the larger stencils. Currently, Slope has been rewritten as a function and verified. Conden is in progress.
+- Slope and conden stencils must be rewritten as gt4py functions in order to be used within the larger stencils. Currently, Slope has been rewritten as a function and verified. Conden is in progress. These stencils have been deleted (conden.py and slope.py).
 
 - 'compute_uwshcu' creates tracer bundles, which have an extra dimension e.g., tr0_inout[576,72,23]. These variables can be serialized as 3D variables, but need to be reshaped to 4D and converted to 4D quantities.
+
+-'pifc0_in' and some other unused variables in 'compute_uwshcu' have 73 k levels. These variables should be initialized as quantities using Z_INTERFACE_DIM instead of Z_DIM.
+
+- 9/26/24 Ran into some translate test issues that stem from the gt4py branch. 'compute_uwshcu' was not verifying on gt4py cast_to_int branch. Switching to unstable/develop led to much better numerics: 
+Better numerics: 60294592b47910816915adc1f51e7c715481405d
+Probable change: e0fb2a2410909a9ce63d0c15f33325dc3577eb70
+UW original port : cfc8a721829fdaad245715def3aa8721b89b1d09
 
 
 ## Next steps

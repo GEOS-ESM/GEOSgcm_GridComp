@@ -242,6 +242,8 @@ def compute_uwshcu(
 
     # Start Main Calculation
     with computation(PARALLEL), interval(0, 1):
+        id_exit = False
+
         pmid0 = pmid0_in
         pmid0_above = pmid0_in[0, 0, 1]
         u0 = u0_in
@@ -485,6 +487,263 @@ def compute_uwshcu(
     with computation(PARALLEL), interval(-1, None):
         thv0top = thv0bot
         thvl0top = thvl0bot
+
+    with computation(PARALLEL), interval(...):
+        # Save input and related environmental thermodynamic variables 
+        # for use at "iter_cin=2" when "del_CIN >= 0" 
+
+        qv0_o(:k0)          = qv0(:k0)
+        ql0_o(:k0)          = ql0(:k0)
+        qi0_o(:k0)          = qi0(:k0)
+        t0_o(:k0)           = t0(:k0)
+        s0_o(:k0)           = s0(:k0)
+        u0_o(:k0)           = u0(:k0)
+        v0_o(:k0)           = v0(:k0)
+        qt0_o(:k0)          = qt0(:k0)
+        thl0_o(:k0)         = thl0(:k0)
+        thvl0_o(:k0)        = thvl0(:k0)
+        ssthl0_o(:k0)       = ssthl0(:k0)
+        ssqt0_o(:k0)        = ssqt0(:k0)
+        thv0bot_o(:k0)      = thv0bot(:k0)
+        thv0top_o(:k0)      = thv0top(:k0)
+        thvl0bot_o(:k0)     = thvl0bot(:k0)
+        thvl0top_o(:k0)     = thvl0top(:k0)
+        ssu0_o(:k0)         = ssu0(:k0) 
+        ssv0_o(:k0)         = ssv0(:k0) 
+    
+        if dotransport == 1):
+        do m = 1, ncnst
+        tr0_o(:k0,m)     = tr0(:k0,m)
+        sstr0_o(:k0,m)   = sstr0(:k0,m)
+    
+        # Initialize output variables at each grid point
+        umf(0:k0)          = 0.0
+        dcm(:k0)           = 0.0
+        emf(0:k0)          = 0.0
+        slflx(0:k0)        = 0.0
+        qtflx(0:k0)        = 0.0
+        uflx(0:k0)         = 0.0
+        vflx(0:k0)         = 0.0
+        qvten(:k0)         = 0.0
+        qlten(:k0)         = 0.0
+        qiten(:k0)         = 0.0
+        sten(:k0)          = 0.0
+        uten(:k0)          = 0.0
+        vten(:k0)          = 0.0
+        qrten(:k0)         = 0.0
+        qsten(:k0)         = 0.0
+        dwten(:k0)         = 0.0
+        diten(:k0)         = 0.0
+        cufrc(:k0)         = 0.0
+        qcu(:k0)           = 0.0
+        qlu(:k0)           = 0.0
+        qiu(:k0)           = 0.0
+        fer(:k0)           = 0.0
+        fdr(:k0)           = 0.0
+        xco(:k0)           = 0.0
+        cin                = 0.0
+        cinlcl             = 0.0
+        cbmf               = 0.0
+        qc(:k0)            = 0.0
+        #qldet(:k0)         = 0.0
+        #qidet(:k0)         = 0.0
+        qc_l(:k0)          = 0.0
+        qc_i(:k0)          = 0.0
+        cnt                = real(k0)
+        cnb                = 0.0
+        qtten(:k0)         = 0.0
+        slten(:k0)         = 0.0   
+        ufrc(0:k0)         = 0.0  
+
+        thlu(0:k0)         = MAPL_UNDEF
+        qtu(0:k0)          = MAPL_UNDEF
+        uu(0:k0)           = MAPL_UNDEF
+        vu(0:k0)           = MAPL_UNDEF
+        wu(0:k0)           = MAPL_UNDEF
+        thvu(0:k0)         = MAPL_UNDEF
+        thlu_emf(0:k0)     = MAPL_UNDEF
+        qtu_emf(0:k0)      = MAPL_UNDEF
+        uu_emf(0:k0)       = MAPL_UNDEF
+        vu_emf(0:k0)       = MAPL_UNDEF
+        
+        ufrcinvbase         = 0.0
+        ufrclcl             = 0.0
+        winvbase            = 0.0
+        wlcl                = 0.0
+        emfkbup             = 0.0 
+        cbmflimit           = 0.0
+
+        uemf(0:k0)         = 0.0
+        comsub(:k0)        = 0.0
+        qlten_sink(:k0)    = 0.0
+        qiten_sink(:k0)    = 0.0
+        qlten_det(:k0)     = 0.0
+        qiten_det(:k0)     = 0.0 
+        #nlten_sink(:k0)    = 0.0
+        #niten_sink(:k0)    = 0.0 
+
+        if dotransport == 1:
+        do m = 1, ncnst
+            trflx(0:k0,m)   = 0.0
+            trten(:k0,m)    = 0.0
+            tru(0:k0,m)     = 0.0
+            tru_emf(0:k0,m) = 0.0
+        
+        '''
+        Below 'iter' loop is for implicit CIN closure
+
+        It is important to note that this iterative cin loop is located at the outer  
+        shell of the code. Thus, source air properties can also be changed during the 
+        iterative cin calculation, because cumulus convection induces non-zero fluxes 
+        even at interfaces below PBL top height through 'fluxbelowinv' subroutine. 
+        '''
+        iter = 0
+        while iter < iter_cin: #iter_cin = 2
+            '''
+            Cumulus scale height                                                    
+            In contrast to the premitive code, cumulus scale height is iteratively 
+            calculated at each time step, and at each iterative cin step.          
+            It is not clear whether I should locate below two lines within or  out 
+            of the iterative cin loop. 
+            '''
+            tscaleh = cush                        
+            cush    = -1.0
+            tkeavg   = 0.0
+            qtavg   = 0.0
+            uavg    = 0.0
+            vavg    = 0.0
+            '''
+            Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer 
+            index with PBLH in it. When PBLH is exactly at interface, 'kinv' is the 
+            layer index having PBLH as a lower interface.                          
+            In the previous code, I set the lower limit of 'kinv' by 2  in order to
+            be consistent with the other parts of the code. However in the modified 
+            code, I allowed 'kinv' to be 1 & if 'kinv = 1', I just exit the program 
+            without performing cumulus convection. This new approach seems to be    
+            more reasonable: if PBL height is within 'kinv=1' layer, surface is STL 
+            interface (bflxs <= 0) and interface just above the surface should be   
+            either non-turbulent (Ri>0.19) or stably turbulent (0<=Ri<0.19 but this 
+            interface is identified as a base external interface of upperlying CL.  
+            Thus, when 'kinv=1', PBL scheme guarantees 'bflxs <= 0'.  For this case 
+            it is reasonable to assume that cumulus convection does not happen.     
+            When these is SBCL, PBL height from the PBL scheme is likely to be very 
+            close at 'kinv-1' interface, but not exactly, since 'zi' information is 
+            changed between two model time steps. In order to ensure correct identi 
+            fication of 'kinv' for general case including SBCL, I imposed an offset 
+            of 5 [m] in the below 'kinv' finding block.
+            '''
+            
+            # invert kpbl index
+            if kpbl_in >= k0/2:
+                kinv = k0 - kpbl_in + 1
+            else:
+                kinv = 5
+
+            #continue    
+
+            if kinv <= 1:     
+                exit_kinv1 = 1.
+                id_exit = True
+                #go to 333
+
+            if (id_exit):
+                PRINT *, "EXITING UWSCHU!!!!!!!!!!!!"
+                exit_uwcu(i) = 1.
+            if (scverbose) then
+                call write_parallel('------- UW ShCu: Exited!')
+
+            # Initialize output variables when cumulus convection was not performed.
+            umf_out(i,0:k0)             = 0.   
+            dcm_out(i,:k0)              = 0.   
+            qvten_out(i,:k0)            = 0.
+            qlten_out(i,:k0)            = 0.
+            qiten_out(i,:k0)            = 0.
+            sten_out(i,:k0)             = 0.
+            uten_out(i,:k0)             = 0.
+            vten_out(i,:k0)             = 0.
+            qrten_out(i,:k0)            = 0.
+            qsten_out(i,:k0)            = 0.
+            cufrc_out(i,:k0)            = 0.
+            cush_inout(i)               = -1.
+            qldet_out(i,:k0)            = 0.
+            qidet_out(i,:k0)            = 0.
+            qtflx_out(i,0:k0)           = 0.
+            slflx_out(i,0:k0)           = 0.
+            uflx_out(i,0:k0)            = 0.
+            vflx_out(i,0:k0)            = 0.
+
+            fer_out(i,1:k0)             = MAPL_UNDEF
+            fdr_out(i,1:k0)             = MAPL_UNDEF
+            #ifdef UWDIAG
+     cbmf_out(i)                 = 0.   
+     cnt_out(i)                  = 1.
+     cnb_out(i)                  = real(k0)
+     qcu_out(i,:k0)              = 0.
+     qlu_out(i,:k0)              = 0.
+     qiu_out(i,:k0)              = 0.
+     qc_out(i,:k0)               = 0.
+     xc_out(i,1:k0)              = MAPL_UNDEF
+     cinh_out(i)                 = cin 
+     cinlclh_out(i)              = cinlcl
+#     qtten_out(i,k0:1:-1)        = 0.
+#     slten_out(i,k0:1:-1)        = 0.
+#     ufrc_out(i,k0:0:-1)         = 0.
+#     uflx_out(i,k0:0:-1)         = 0.  
+#     vflx_out(i,k0:0:-1)         = 0.  
+
+     ufrcinvbase_out(i)           = 0. 
+     ufrclcl_out(i)               = 0. 
+     winvbase_out(i)              = 0.    
+     wlcl_out(i)                  = MAPL_UNDEF    
+     plcl_out(i)                  = MAPL_UNDEF
+     pinv_out(i)                  = MAPL_UNDEF
+     prel_out(i)                  = MAPL_UNDEF
+     plfc_out(i)                  = MAPL_UNDEF
+     pbup_out(i)                  = MAPL_UNDEF
+     ppen_out(i)                  = MAPL_UNDEF
+     qtsrc_out(i)                 = MAPL_UNDEF 
+     thlsrc_out(i)                = MAPL_UNDEF    
+     thvlsrc_out(i)               = MAPL_UNDEF
+     emfkbup_out(i)               = 0.
+     cbmflimit_out(i)             = 0.    
+     tkeavg_out(i)                = tkeavg    
+     zinv_out(i)                  = 0.    
+     rcwp_out(i)                  = 0.    
+     rlwp_out(i)                  = 0.    
+     riwp_out(i)                  = 0.    
+
+     wu_out(i,k0:0:-1)           = MAPL_UNDEF
+     qtu_out(i,k0:0:-1)          = MAPL_UNDEF
+     thlu_out(i,k0:0:-1)         = MAPL_UNDEF 
+     thvu_out(i,k0:0:-1)         = MAPL_UNDEF 
+     uu_out(i,k0:0:-1)           = MAPL_UNDEF
+     vu_out(i,k0:0:-1)           = MAPL_UNDEF
+     qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEF
+     thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEF         
+     uu_emf_out(i,k0:0:-1)       = MAPL_UNDEF  
+     vu_emf_out(i,k0:0:-1)       = MAPL_UNDEF
+     uemf_out(i,k0:0:-1)         = MAPL_UNDEF
+   
+     dwten_out(i,k0:1:-1)        = 0.    
+     diten_out(i,k0:1:-1)        = 0.    
+
+        excessu_arr_out(i,k0:1:-1)  = 0.    
+        excess0_arr_out(i,k0:1:-1)  = 0.    
+        xc_arr_out(i,k0:1:-1)       = 0.    
+        aquad_arr_out(i,k0:1:-1)    = 0.    
+        bquad_arr_out(i,k0:1:-1)    = 0.    
+        cquad_arr_out(i,k0:1:-1)    = 0.    
+        bogbot_arr_out(i,k0:1:-1)   = 0.    
+        bogtop_arr_out(i,k0:1:-1)   = 0.    
+
+        if (dotransport.eq.1) then
+        do m = 1, ncnst
+          trten_out(i,:k0,m)       = 0.
+          trflx_out(i,k0:0:-1,m)   = 0.  
+          tru_out(i,k0:0:-1,m)     = 0.
+          tru_emf_out(i,k0:0:-1,m) = 0.
+
+           
 
 
 class ComputeUwshcu:
