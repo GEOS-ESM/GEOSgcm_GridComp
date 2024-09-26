@@ -193,17 +193,16 @@ def QSat_FloatField(
     QSAT: FloatField,
     DQSAT: FloatField,
     RAMP: FloatField,
-    PASCALS_trigger: bool,
-    RAMP_trigger: bool,
-    DQSAT_trigger: bool,
 ):
+    from __externals__ import USE_RAMP, USE_PASCALS, FILL_DQSAT
+
     with computation(PARALLEL), interval(...):
-        if RAMP_trigger:
+        if USE_RAMP:
             URAMP = -abs(RAMP)
         else:
             URAMP = TMIX
 
-        if PASCALS_trigger:
+        if USE_PASCALS:
             PP = PL
         else:
             PP = PL * 100.0
@@ -229,12 +228,12 @@ def QSat_FloatField(
             QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
         if PP <= QSAT:
             QSAT = MAX_MIXING_RATIO
-            if DQSAT_trigger:
+            if FILL_DQSAT:
                 DQSAT = 0.0
         else:
             DD = 1.0 / (PP - (1.0 - ESFAC) * QSAT)
             QSAT = ESFAC * QSAT * DD
-            if DQSAT_trigger:
+            if FILL_DQSAT:
                 DQSAT = ESFAC * DQ * DEGSUBS * PP * (DD * DD)
 
 
@@ -268,6 +267,9 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
+        use_ramp: bool = False,
+        use_pascals: bool = False,
+        fill_dqsat: bool = False,
     ) -> None:
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
             quantity_factory
@@ -291,6 +293,11 @@ class QSat:
         self._QSat_FloatField = stencil_factory.from_dims_halo(
             func=QSat_FloatField,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_RAMP": use_ramp,
+                "USE_PASCALS": use_pascals,
+                "FILL_DQSAT": fill_dqsat,
+            },
         )
 
     @staticmethod
@@ -307,16 +314,13 @@ class QSat:
         self,
         T: FloatField,
         PL: FloatField,
-        RAMP: Optional[FloatField] = None,
-        PASCALS: bool = False,
-        DQSAT: bool = False,
+        DQSat: Optional[FloatField] = None,
         use_table_lookup: bool = True,
     ):
-        if RAMP is None:
-            RAMP = self._RAMP
-            RAMP_trigger = False
+        if DQSat:
+            dqsat = DQSat
         else:
-            RAMP_trigger = True
+            dqsat = self._DQSAT
 
         if use_table_lookup:
             self._QSat_FloatField(
@@ -325,11 +329,8 @@ class QSat:
                 T,
                 PL,
                 self.QSat,
-                self._DQSAT,
-                RAMP,
-                PASCALS,
-                RAMP_trigger,
-                DQSAT,
+                dqsat,
+                self._RAMP,
             )
 
         if not use_table_lookup:
