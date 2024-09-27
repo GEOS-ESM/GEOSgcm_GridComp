@@ -3,20 +3,18 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat
-
-from .GFDL_1M_util import (
-    evap,
-    fix_up_clouds,
-    get_last,
-    hybrid_index_2dout,
-    hystpdf,
+from pyMoist.shared_data_manipulation import get_last, hybrid_index_2dout
+from pyMoist.shared_incloud_processes import fix_up_clouds
+from .GFDL_1M_unique import (
     initial_calc,
+    hystpdf,
     meltfrz,
+    evap,
     subl,
 )
 
 
-class evap_subl_pdf:
+class GFDL_1M:
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -143,8 +141,6 @@ class evap_subl_pdf:
 
         self._get_last(PLEmb, self._tmp, self._PLEmb_top)
 
-        # Temporary implementation of hybrid_index_2dout.py, perhaps not working as
-        # indended (backend issue), will need to be addressed at later date
         self._hybrid_index_2dout(PLmb, self._k_mask, KLCL, self._PLmb_at_klcl)
 
         self._initial_calc(
@@ -185,7 +181,7 @@ class evap_subl_pdf:
             self.qsat.esw.view[0][8316],
         )
 
-        if LMELTFRZ is True:
+        if LMELTFRZ:
             self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLCN, QICN)
             self._meltfrz(DT_MOIST, CNV_FRC, SRF_TYPE, T, QLLS, QILS)
 

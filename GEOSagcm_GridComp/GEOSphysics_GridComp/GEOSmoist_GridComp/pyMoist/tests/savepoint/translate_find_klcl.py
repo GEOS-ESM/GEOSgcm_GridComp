@@ -1,4 +1,4 @@
-from misc_unused.find_klcl import find_klcl
+from pyMoist.GFDL_1M.find_klcl import FindKLCL
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -44,7 +44,7 @@ class Translatefind_klcl(TranslateFortranData2Py):
         return qty
 
     def compute(self, inputs):
-        code = find_klcl(
+        code = FindKLCL(
             self.stencil_factory,
             self.quantity_factory,
         )

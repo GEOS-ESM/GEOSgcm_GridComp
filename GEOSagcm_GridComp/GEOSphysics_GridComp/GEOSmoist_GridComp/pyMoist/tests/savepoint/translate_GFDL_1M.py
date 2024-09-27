@@ -2,7 +2,7 @@ from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M import evap_subl_pdf
+from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 
 
 class TranslateGFDL_1M(TranslateFortranData2Py):
@@ -107,7 +107,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         CCI_EVAP_EFF = Float(inputs["CCI_EVAP_EFF"])
         PDFSHAPE = Float(inputs["PDFSHAPE"])
 
-        code = evap_subl_pdf(self.stencil_factory, self.quantity_factory)
+        code = GFDL_1M(self.stencil_factory, self.quantity_factory)
 
         code(
             EIS,

@@ -1,10 +1,9 @@
 #!/bin/bash
-# rm -rf ./.gt_cache_*
-export PACE_FLOAT_PRECISION=32
-python -m pytest -s --disable-warnings --multimodal_metric \
-    --data_path=/home/charleskrop/netcdfs \
-    --backend=dace:cpu \
+
+python -m pytest -v -s \
+    --data_path=../../test_data/moist \
+    --backend=numpy \
     --which_rank=0 \
-    --which_modules=GFDL_1M \
+    --which_modules=RadCouple \
     --grid=default \
     ..

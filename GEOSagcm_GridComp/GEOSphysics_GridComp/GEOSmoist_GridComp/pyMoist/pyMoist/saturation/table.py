@@ -97,8 +97,6 @@ _cached_estimated_saturation: Dict[
 def get_table(
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
-    print(type(formulation))
-    print(_cached_estimated_saturation.keys())
     if _cached_estimated_saturation[formulation] is None:
         _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(
             formulation
