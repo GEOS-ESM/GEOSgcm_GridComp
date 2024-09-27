@@ -584,8 +584,12 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then 
           QSNOW = QSNOW + PTR3D*DT_MOIST
         endif
-        !$ser savepoint Evap_subl_pdf-In
-        !$ser data EIS=EIS
+        !$ser savepoint GFDL_1M-In
+        !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
+        !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
+        !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
+        !$ser data DT_MOIST_Float=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
+        !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
@@ -740,8 +744,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
-       !$ser savepoint Evap_subl_pdf-Out
-       !$ser data SUBLC=SUBLC
+       !$ser savepoint GFDL_1M-Out
+       !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN RHX=RHX EVAPC=EVAPC SUBLC=SUBLC
 
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
