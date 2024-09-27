@@ -8,7 +8,7 @@ import pyMoist.pyMoist_constants as constants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
-from pyMoist.field_types import FloatField_Extra_Dim
+from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat, QSat_Float
 
@@ -31,9 +31,9 @@ def _find_klcl(
     T_top: FloatFieldIJ,
     P_top: FloatFieldIJ,
     Q_top: FloatFieldIJ,
-    ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: FloatField_VaporSaturationTable,
+    esw: FloatField_VaporSaturationTable,
+    esx: FloatField_VaporSaturationTable,
     PLCL: FloatFieldIJ,
 ):
     with computation(FORWARD), interval(-1, None):

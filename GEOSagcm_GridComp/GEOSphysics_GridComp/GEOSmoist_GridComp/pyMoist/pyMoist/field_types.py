@@ -6,4 +6,4 @@ from pyMoist.saturation.constants import TABLESIZE
 
 
 FloatField_NModes = gtscript.Field[gtscript.IJK, (Float, (n_modes))]
-FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
+FloatField_VaporSaturationTable = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]

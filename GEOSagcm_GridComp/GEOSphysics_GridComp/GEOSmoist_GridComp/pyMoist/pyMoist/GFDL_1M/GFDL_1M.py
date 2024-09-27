@@ -3,7 +3,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat
-from pyMoist.shared_data_manipulation import get_last, hybrid_index_2dout
+from pyMoist.shared_gt4py_workarounds import get_last, hybrid_index_2dout
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
 from .evap_subl_pdf_core import evap, hystpdf, initial_calc, meltfrz, subl

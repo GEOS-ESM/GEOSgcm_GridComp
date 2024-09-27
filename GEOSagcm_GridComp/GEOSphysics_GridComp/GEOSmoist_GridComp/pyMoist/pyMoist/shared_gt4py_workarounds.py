@@ -10,6 +10,7 @@ from ndsl.dsl.typing import FloatField, FloatFieldIJ
 def get_last(
     in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField
 ):
+    """Workaround for getting last value, e.g. `Field[max(K)]`"""
     with computation(FORWARD), interval(-1, None):
         temporary_field = in_field
 
@@ -23,6 +24,8 @@ def hybrid_index_2dout(
     k_index_desired: FloatFieldIJ,
     out_field: FloatFieldIJ,
 ):
+    """Workaround for absolute index in K and relative in I/J,
+    e.g. `Float[0,0,Absolute(k_index_desired)]`"""
     with computation(FORWARD), interval(...):
         if k_mask == k_index_desired:
             out_field = data_field

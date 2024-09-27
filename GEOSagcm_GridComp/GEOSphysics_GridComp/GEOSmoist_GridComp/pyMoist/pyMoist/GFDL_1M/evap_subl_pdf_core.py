@@ -14,7 +14,7 @@ from gt4py.cartesian.gtscript import (
 )
 import pyMoist.pyMoist_constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-from pyMoist.field_types import FloatField_Extra_Dim
+from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
 from pyMoist.shared_incloud_processes import (
     ice_fraction,
@@ -127,8 +127,8 @@ def bergeron_partition(
     DQALL: Float,
     CNV_FRC: Float,
     SRF_TYPE: Float,
-    ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
+    ese: FloatField_VaporSaturationTable,
+    esw: FloatField_VaporSaturationTable,
     estfrz: Float,
     estlqu: Float,
     count: Float,
@@ -285,9 +285,9 @@ def hystpdf(
     NL: FloatField,
     NI: FloatField,
     RHX: FloatField,
-    ese: FloatField_Extra_Dim,
-    esw: FloatField_Extra_Dim,
-    esx: FloatField_Extra_Dim,
+    ese: FloatField_VaporSaturationTable,
+    esw: FloatField_VaporSaturationTable,
+    esx: FloatField_VaporSaturationTable,
     estfrz: Float,
     estlqu: Float,
 ):
