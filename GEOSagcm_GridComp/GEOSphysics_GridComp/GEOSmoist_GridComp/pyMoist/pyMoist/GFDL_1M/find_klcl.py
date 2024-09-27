@@ -1,14 +1,9 @@
 """This function identifies the index of the lifted
-condensation level (LCL) within a column. LCL is 
+condensation level (LCL) within a column. LCL is
 the point at which a lifted parcel becomes saturated."""
 
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    computation,
-    interval,
-    log,
-)
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval, log
+
 import pyMoist.pyMoist_constants as constants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -21,7 +16,7 @@ from pyMoist.saturation.qsat import QSat, QSat_Float
 def _get_last(
     in_field: FloatField, temporary_field: FloatFieldIJ, out_field: FloatField
 ):
-# TODO: Workaround for hybrid indexing
+    # TODO: Workaround for hybrid indexing
     with computation(FORWARD), interval(-1, None):
         temporary_field = in_field
 

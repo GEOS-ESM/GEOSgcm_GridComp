@@ -1,7 +1,7 @@
-from pyMoist.GFDL_1M.find_klcl import FindKLCL
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from pyMoist.GFDL_1M.find_klcl import FindKLCL
 
 
 class Translatefind_klcl(TranslateFortranData2Py):

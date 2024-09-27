@@ -2,13 +2,8 @@
 These functions manupilate data to formats more friendly to
 gt4py and/or deal with gt4py I/O shortcomings."""
 
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
-    computation,
-    interval,
-)
-import pyMoist.pyMoist_constants as constants
+from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval
+
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 

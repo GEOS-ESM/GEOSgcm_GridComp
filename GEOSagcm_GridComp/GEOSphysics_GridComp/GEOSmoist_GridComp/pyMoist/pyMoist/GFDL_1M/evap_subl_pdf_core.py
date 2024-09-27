@@ -1,5 +1,6 @@
-"""Functions and stencils in this file are only called by GFDL_1M,
-and need not be visible to the rest pyMoist."""
+"""Functions and stencils in this file make up the core of the evap/subl/pdf loop,
+called before the GFDL_1M driver in the Fortran. Functions in this file are
+unique to GFDL_1M and need not be visible to the rest pyMoist."""
 
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
