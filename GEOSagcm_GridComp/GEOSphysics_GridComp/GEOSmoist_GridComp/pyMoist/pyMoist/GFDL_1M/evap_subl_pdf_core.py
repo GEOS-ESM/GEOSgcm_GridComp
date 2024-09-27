@@ -12,14 +12,15 @@ from gt4py.cartesian.gtscript import (
     sqrt,
     tan,
 )
+
 import pyMoist.pyMoist_constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
 from pyMoist.shared_incloud_processes import (
-    ice_fraction,
     cloud_effective_radius_ice,
     cloud_effective_radius_liquid,
+    ice_fraction,
 )
 
 
@@ -198,7 +199,8 @@ def bergeron_partition(
                     DQI = min(DEP, DQALL + QLLS / DTIME)
                     DQL = DQALL - DQI
                 else:
-                    DQL = DQALL  # could happen because the PDF allows condensation in subsaturated conditions
+                    DQL = DQALL  # could happen because the PDF allows
+                    # condensation in subsaturated conditions
                     DQI = 0.0
             if (
                 DQALL < 0.0
@@ -543,9 +545,9 @@ def evap(
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization**2)
+            (constants.latent_heat_vaporization ** 2)
             * constants.RHO_W
-            / (constants.K_COND * constants.rvap * (T**2))
+            / (constants.K_COND * constants.rvap * (T ** 2))
         )
         K2 = (
             constants.rvap
@@ -566,7 +568,7 @@ def evap(
                 * QLCN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS**2)
+                / ((K1 + K2) * RADIUS ** 2)
             )
             EVAP = min(EVAP, QLCN)
         else:
@@ -604,9 +606,9 @@ def subl(
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization**2)
+            (constants.latent_heat_vaporization ** 2)
             * constants.RHO_I
-            / (constants.K_COND * constants.rvap * (T**2))
+            / (constants.K_COND * constants.rvap * (T ** 2))
         )
         K2 = (
             constants.rvap
@@ -627,7 +629,7 @@ def subl(
                 * QICN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * radius**2)
+                / ((K1 + K2) * radius ** 2)
             )
             SUBL = min(SUBL, QICN)
         else:
