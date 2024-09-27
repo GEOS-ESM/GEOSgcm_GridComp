@@ -7,6 +7,7 @@ from pyMoist.shared_data_manipulation import get_last, hybrid_index_2dout
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
 from .evap_subl_pdf_core import evap, hystpdf, initial_calc, meltfrz, subl
+from pyMoist.GFDL_1M.evap_subl_pdf_core import evap, hystpdf, initial_calc, meltfrz, subl
 
 
 class GFDL_1M:
