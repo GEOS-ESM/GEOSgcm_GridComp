@@ -3472,7 +3472,8 @@ ENDIF ! vertical discretization formulation
 	      dp=100.*(po_cup(i,k)-po_cup(i,k+1))
 	      !--- add congestus and deep plumes, and convert to kg/kg/s
               revsu_gf(i,k) = revsu_gf(i,k) + evap_flx(i,k)*g/dp
-              prfil_gf(i,k) = prfil_gf(i,k) + prec_flx(i,k)*g/dp
+              !--- leave precip flux in kg/m2/s
+              prfil_gf(i,k) = prfil_gf(i,k) + prec_flx(i,k) 
            enddo
        enddo
 
