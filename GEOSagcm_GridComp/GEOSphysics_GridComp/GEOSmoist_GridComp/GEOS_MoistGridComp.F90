@@ -8748,10 +8748,6 @@ contains
          trdlx    =  1.0   
          KEX      =  1.E-04
 
-         ! adjust units to be [kg kg-1 s-1]
-         REV_CN_GF = REV_CN_GF*iMASS
-         RSU_CN_GF = RSU_CN_GF*iMASS
-
          call MAPL_TimerOff(STATE,"-GF")
       ENDIF
 !-srf-gf-scheme 
