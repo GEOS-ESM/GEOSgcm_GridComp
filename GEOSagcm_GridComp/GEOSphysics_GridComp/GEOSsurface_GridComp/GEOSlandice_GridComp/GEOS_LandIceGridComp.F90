@@ -229,7 +229,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'TST',                               &
-        LONG_NAME          = 'surface_skin_temperature',          &
+        LONG_NAME          = 'surface_temperature',          &
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -391,7 +391,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'fractional_area_of_glaciated_surface_snowcover',&
+    LONG_NAME          = 'fractional_snow_covered_area_of_glaciated_surface',&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'ASNOW_GL'                  ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -479,7 +479,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'top_snow_layer_mass_change_due_to_sub_con',   &
+    LONG_NAME          = 'top_snow_layer_mass_change_due_to_sublimation_and_condensation',   &
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'WESNSC'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -563,7 +563,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'contribution_to_smb_from_rain_frozen_onto_bare_ice',   &
+    LONG_NAME          = 'contribution_to_surface_mass_balance_from_rain_frozen_onto_bare_ice',   &
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'RAINRFZ'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -572,7 +572,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowmelt_flux'             ,&
+    LONG_NAME          = 'snow_melt_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'SMELT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -581,7 +581,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'icemelt_flux'             ,&
+    LONG_NAME          = 'ice_melt_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'IMELT'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -617,7 +617,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'melt_water_content',   &
+    LONG_NAME          = 'snowpack_meltwater_content',   &
     UNITS              = 'kg m-2'                ,&
     SHORT_NAME         = 'MELTWTRCONT'               ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -788,7 +788,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'surface_outgoing_longwave_flux',&
+        LONG_NAME          = 'surface_emitted_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -842,7 +842,7 @@ module GEOS_LandiceGridCompMod
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
-        LONG_NAME          = 'Ground_heating_for_tskin'  ,&
+        LONG_NAME          = 'glacier_ice_heating_flux'  ,&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'GHTSKIN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
@@ -1166,7 +1166,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1175,7 +1175,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1238,7 +1238,7 @@ module GEOS_LandiceGridCompMod
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &

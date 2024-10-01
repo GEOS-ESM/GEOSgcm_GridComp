@@ -2,10 +2,7 @@ version: 2.1
 
 # Anchors to prevent forgetting to update a version
 baselibs_version: &baselibs_version v7.7.0
-# NOTE: The new version number is needed because R21C now
-# needs a new NRL file. Rather than try and back port it
-# to a v10 bcs, we just up the version for this PR
-bcs_version: &bcs_version v11.3.0
+bcs_version: &bcs_version v11.6.0
 
 orbs:
   ci: geos-esm/circleci-tools@1

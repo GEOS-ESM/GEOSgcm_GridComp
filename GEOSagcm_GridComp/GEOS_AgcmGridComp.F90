@@ -331,7 +331,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                      &
          SHORT_NAME = 'DPSDT_CON',                                     &
-         LONG_NAME  = 'surface_pressure_adjustment_due_to_constraint', &
+         LONG_NAME  = 'surface_pressure_analysis_tendency_adjustment_due_to_dry_mass_constraint', &
          UNITS      = 'Pa s-1',                                        &
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                   RC=STATUS  )
@@ -357,7 +357,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTDT_ANA',                                  &
-         LONG_NAME  = 'total_temperature_analysis_tendency',       &
+         LONG_NAME  = 'tendency_of_air_temperature_due_to_analysis',       &
          UNITS      = 'K s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -373,7 +373,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQVDT_ANA',                                        &
-         LONG_NAME  = 'total_specific_humidity_vapor_analysis_tendency',  &
+         LONG_NAME  = 'tendency_of_specific_humidity_due_to_analysis',  &
          UNITS      = 'kg kg-1 s-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
@@ -381,7 +381,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQVDT_CON',                                        &
-         LONG_NAME  = 'total_specific_humidity_vapor_analysis_tendency_due_to_Constraint',  &
+         LONG_NAME  = 'specific_humidity_analysis_tendency_adjustment_due_to_dry_mass_constraint',  &
          UNITS      = 'kg kg-1 s-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
@@ -413,7 +413,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT_ANA',                                 &
-         LONG_NAME  = 'total_skin_temperature_tendency',           &
+         LONG_NAME  = 'total_skin_temperature_analysis_tendency',           &
          UNITS      = 'K s-1',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )

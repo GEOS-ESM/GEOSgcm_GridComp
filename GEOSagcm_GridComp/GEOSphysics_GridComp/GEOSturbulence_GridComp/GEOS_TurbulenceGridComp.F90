@@ -1424,7 +1424,7 @@ contains
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'QTFLXTRB',                                 &
          LONG_NAME  = 'kinematic_total_water_flux_from_turbulence',         &
-         UNITS      = 'kg kg-1 m-1 s-1',                          &
+         UNITS      = 'kg kg-1 m s-1',                          &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
      VERIFY_(STATUS)
@@ -1432,14 +1432,14 @@ contains
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'SLFLXTRB',                                 &
          LONG_NAME  = 'kinematic_liquid_water_static_energy_flux_from_turbulence', &
-         UNITS      = 'J kg-1 m-1 s-1',                           &
+         UNITS      = 'J kg-1 m s-1',                           &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'UFLXTRB',                                  &
-         LONG_NAME  = 'kinematic_turbulent_flux_of_zonal_wind_component',   &
+         LONG_NAME  = 'kinematic_turbulent_flux_of_eastward_wind_component',   &
          UNITS      = 'm2 s-2',                                   &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
@@ -1447,7 +1447,7 @@ contains
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'VFLXTRB',                                  &
-         LONG_NAME  = 'kinematic_turbulent_flux_of_meridional_wind_component', &
+         LONG_NAME  = 'kinematic_turbulent_flux_of_northward_wind_component', &
          UNITS      = 'm2 s-2',                                   &
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationEdge,              RC=STATUS  )
@@ -1567,7 +1567,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'pbltop_pressure',                                       &
+       LONG_NAME  = 'pressure_at_top_of_planetary_boundary_layer',                                       &
        UNITS      = 'Pa',                                                    &
        SHORT_NAME = 'PPBL',                                                  &
        DIMS       = MAPL_DimsHorzOnly,                                       &
@@ -1720,7 +1720,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'transcom_planetary_boundary_layer_height',              &
+       LONG_NAME  = 'Bulk_Richardson_planetary_boundary_layer_height',              &
        SHORT_NAME = 'TCZPBL',                                                &
        UNITS      = 'm',                                                     &
        DIMS       = MAPL_DimsHorzOnly,                                       &
@@ -1792,7 +1792,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'boundary_layer_height_from_refractivity_gradient',      &
+       LONG_NAME  = 'planetary_boundary_layer_height_from_refractivity_gradient',      &
        SHORT_NAME = 'ZPBLRFRCT',                                             &
        UNITS      = 'm',                                                     &
        DIMS       = MAPL_DimsHorzOnly,                                       &

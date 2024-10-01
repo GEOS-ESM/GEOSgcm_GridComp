@@ -535,7 +535,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'DRPARN',                            &
-        LONG_NAME          = 'normalized_surface_downwelling_par_beam_flux', &
+        LONG_NAME          = 'normalized_surface_downwelling_PAR_beam_flux', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -544,7 +544,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'DFPARN',                            &
-        LONG_NAME          = 'normalized_surface_downwelling_par_diffuse_flux', &
+        LONG_NAME          = 'normalized_surface_downwelling_PAR_diffuse_flux', &
         UNITS              = '1',                                 &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -589,7 +589,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'LWDNSRF',                           &
-        LONG_NAME          = 'surface_downwelling_longwave_flux', &
+        LONG_NAME          = 'surface_absorbed_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -598,7 +598,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'ALW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -607,7 +607,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_AddImportSpec(GC,                              &
         SHORT_NAME         = 'BLW',                               &
-        LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux', &
+        LONG_NAME          = 'linearization_of_surface_emitted_longwave_flux', &
         UNITS              = 'W m-2 K-1',                         &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -1074,6 +1074,15 @@ module GEOS_SurfaceGridCompMod
         DIMS               = MAPL_DimsHorzOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
                                                        RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                             ,&
+        LONG_NAME          = 'soil_wetness_surface_for_chem'     ,&
+        UNITS              = '1'                                 ,&
+        SHORT_NAME         = 'WET1_FOR_CHEM'                     ,&
+        DIMS               = MAPL_DimsHorzOnly                   ,&
+        VLOCATION          = MAPL_VLocationNone                  ,&
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
@@ -1553,15 +1562,6 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'max_water_content'         ,&
-    UNITS              = 'kg m-2'                    ,&
-    SHORT_NAME         = 'CDCR2'                     ,&
-    DIMS               = MAPL_DimsHorzOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'river_discharge_at_ocean_points',&
     UNITS              = 'kg m-2 s-1'                ,&
     SHORT_NAME         = 'DISCHARGE'                 ,&
@@ -1589,7 +1589,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'interception_loss_energy_flux',&
+    LONG_NAME          = 'interception_loss_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPINT'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1598,7 +1598,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baresoil_evap_energy_flux' ,&
+    LONG_NAME          = 'baresoil_evaporation_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1607,7 +1607,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'transpiration_energy_flux' ,&
+    LONG_NAME          = 'transpiration_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPVEG'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1616,7 +1616,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_ice_evaporation_energy_flux_on_land',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux_on_land',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1625,7 +1625,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowpack_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSNO'                    ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1680,7 +1680,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'total_evaporatranspiration_land',          &
+    LONG_NAME          = 'total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1770,7 +1770,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWUPSNOW',                    &
-     LONG_NAME          = 'surface_upwelling_longwave_flux_snow',         &
+     LONG_NAME          = 'surface_emitted_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1779,7 +1779,7 @@ module GEOS_SurfaceGridCompMod
  
    call MAPL_AddExportSpec(GC,                    &
      SHORT_NAME         = 'LWDNSNOW',                    &
-     LONG_NAME          = 'surface_downwelling_longwave_flux_snow',         &
+     LONG_NAME          = 'surface_absorbed_longwave_flux_snow',         &
      UNITS              = 'W m-2',                     &
      DIMS               = MAPL_DimsHorzOnly,           &
      VLOCATION          = MAPL_VLocationNone,          &
@@ -1922,8 +1922,8 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPLAND',                    &
-    LONG_NAME          = 'rate_of_spurious_energy_source_land',&
+    SHORT_NAME         = 'SPLAND',                    &              ! a.k.a. SPSHLAND
+    LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1931,8 +1931,17 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPWATR',                    &
-    LONG_NAME          = 'rate_of_spurious_water_source_land',&
+    SHORT_NAME         = 'SPLH',                      &
+    LONG_NAME          = 'Spurious_latent_heat_flux_land',&
+    UNITS              = 'W m-2',                     &
+    DIMS               = MAPL_DimsHorzOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SPWATR',                    &              ! a.k.a. SPEVLAND
+    LONG_NAME          = 'Spurious_evapotranspiration_flux_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1941,7 +1950,7 @@ module GEOS_SurfaceGridCompMod
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPSNOW',                    &
-    LONG_NAME          = 'rate_of_spurious_snow_energy_source_land',&
+    LONG_NAME          = 'Spurious_snow_energy_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsHorzOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -1958,7 +1967,7 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_outgoing_longwave_flux',&
+    LONG_NAME          = 'surface_emitted_longwave_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLWUP'                     ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -1985,7 +1994,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'total_latent_energy_flux'  ,&
+    LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'LHFX'                      ,&
     DIMS               = MAPL_DimsHorzOnly           ,&
@@ -2760,6 +2769,141 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  ) 
      VERIFY_(STATUS)
 
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL1',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT1'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL2',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT2'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL3',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT3'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL4',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT4'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL5',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT5'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL6',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT6'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_PRMC_and_GWETPROF',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZPR'                      ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_RZMC_and_GWETROOT',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZRZ'                      ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_SFMC_and_GWETTOP',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZSF'                      ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSATLAND_TUNSTLAND_and_TWLTLAND',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZTS'                      ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_degree_of_saturation_units'  ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'WPWET'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_equivalent_mass_of_total_profile_water'  ,&
+       UNITS              = 'kg m-2'                         ,&
+       SHORT_NAME         = 'WPEMW'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_volumetric_units'  ,&
+       UNITS              = 'm3 m-3'                    ,&
+       SHORT_NAME         = 'WPMC'                      ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'maximum_soil_water_content_above_wilting_point'  ,&
+       UNITS              = 'kg m-2'                    ,&
+       SHORT_NAME         = 'CDCR2'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_porosity'             ,&
+       UNITS              = 'm3 m-3'                    ,&
+       SHORT_NAME         = 'POROS'                     ,&
+       DIMS               = MAPL_DimsHorzOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+     VERIFY_(STATUS)
+
   IF(LSM_CHOICE > 1) THEN     
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_leaf-area_index',&
@@ -3156,7 +3300,7 @@ module GEOS_SurfaceGridCompMod
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'TS',                                &
-        LONG_NAME          = 'surface_skin_temperature',          &
+        LONG_NAME          = 'surface_temperature',          &
         UNITS              = 'K',                                 &
         FriendlyTO         = trim(COMP_NAME),                     &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -5125,6 +5269,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SNOMAS    => NULL()
     real, pointer, dimension(:,:) :: SNOWDP    => NULL()
     real, pointer, dimension(:,:) :: WET1      => NULL()
+    real, pointer, dimension(:,:) :: WET1_FOR_CHEM => NULL()
     real, pointer, dimension(:,:) :: WET2      => NULL()
     real, pointer, dimension(:,:) :: WET3      => NULL()
     real, pointer, dimension(:,:) :: WCSF      => NULL()
@@ -5134,7 +5279,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: WESNN2    => NULL()
     real, pointer, dimension(:,:) :: WESNN3    => NULL()
     real, pointer, dimension(:,:) :: CAPAC     => NULL()
-    real, pointer, dimension(:,:) :: CDCR2     => NULL()
     real, pointer, dimension(:,:) :: TAUXO     => NULL()
     real, pointer, dimension(:,:) :: TAUYO     => NULL()
     real, pointer, dimension(:,:) :: EVAPO     => NULL()
@@ -5276,6 +5420,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: DWLAND       => NULL()
     real, pointer, dimension(:,:) :: DHLAND       => NULL()
     real, pointer, dimension(:,:) :: SPLAND       => NULL()
+    real, pointer, dimension(:,:) :: SPLH         => NULL()
     real, pointer, dimension(:,:) :: SPWATR       => NULL()
     real, pointer, dimension(:,:) :: SPSNOW       => NULL()
     real, pointer, dimension(:,:) :: RCU          => NULL()
@@ -5311,6 +5456,21 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:)   :: RMELTOC002  => NULL()
     real, pointer, dimension(:,:)   :: PEATCLSM_WATERLEVEL => NULL()
     real, pointer, dimension(:,:)   :: PEATCLSM_FSWCHANGE  => NULL()
+    real, pointer, dimension(:,:)   :: DZGT1       => NULL()
+    real, pointer, dimension(:,:)   :: DZGT2       => NULL()
+    real, pointer, dimension(:,:)   :: DZGT3       => NULL()
+    real, pointer, dimension(:,:)   :: DZGT4       => NULL()
+    real, pointer, dimension(:,:)   :: DZGT5       => NULL()
+    real, pointer, dimension(:,:)   :: DZGT6       => NULL()
+    real, pointer, dimension(:,:)   :: DZPR        => NULL()
+    real, pointer, dimension(:,:)   :: DZRZ        => NULL()
+    real, pointer, dimension(:,:)   :: DZSF        => NULL()
+    real, pointer, dimension(:,:)   :: DZTS        => NULL()
+    real, pointer, dimension(:,:)   :: WPWET       => NULL()
+    real, pointer, dimension(:,:)   :: WPEMW       => NULL()
+    real, pointer, dimension(:,:)   :: WPMC        => NULL()
+    real, pointer, dimension(:,:)   :: CDCR2       => NULL()
+    real, pointer, dimension(:,:)   :: POROS       => NULL()
 
 ! CN model
     real, pointer, dimension(:,:) :: CNLAI       => NULL()
@@ -5465,7 +5625,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: WESNN2TILE   => NULL()
     real, pointer, dimension(:) :: WESNN3TILE   => NULL()
     real, pointer, dimension(:) :: CAPACTILE    => NULL()
-    real, pointer, dimension(:) :: CDCR2TILE    => NULL()
     real, pointer, dimension(:) :: HLATNTILE    => NULL()
 
     real, pointer, dimension(:) :: HLATWTRTILE    => NULL()
@@ -5579,6 +5738,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: DWLANDTILE       => NULL()
     real, pointer, dimension(:) :: DHLANDTILE       => NULL()
     real, pointer, dimension(:) :: SPLANDTILE       => NULL()
+    real, pointer, dimension(:) :: SPLHTILE         => NULL()
     real, pointer, dimension(:) :: SPWATRTILE       => NULL()
     real, pointer, dimension(:) :: SPSNOWTILE       => NULL()
     real, pointer, dimension(:,:) :: RDU001TILE     => NULL()
@@ -5601,6 +5761,22 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: RMELTOC002TILE   => NULL()
     real, pointer, dimension(:) :: PEATCLSM_WATERLEVELTILE  => NULL()
     real, pointer, dimension(:) :: PEATCLSM_FSWCHANGETILE   => NULL()
+    real, pointer, dimension(:) :: DZGT1TILE        => NULL()
+    real, pointer, dimension(:) :: DZGT2TILE        => NULL()
+    real, pointer, dimension(:) :: DZGT3TILE        => NULL()
+    real, pointer, dimension(:) :: DZGT4TILE        => NULL()
+    real, pointer, dimension(:) :: DZGT5TILE        => NULL()
+    real, pointer, dimension(:) :: DZGT6TILE        => NULL()
+    real, pointer, dimension(:) :: DZPRTILE         => NULL()
+    real, pointer, dimension(:) :: DZRZTILE         => NULL()
+    real, pointer, dimension(:) :: DZSFTILE         => NULL()
+    real, pointer, dimension(:) :: DZTSTILE         => NULL()
+    real, pointer, dimension(:) :: WPWETTILE        => NULL()
+    real, pointer, dimension(:) :: WPEMWTILE        => NULL()
+    real, pointer, dimension(:) :: WPMCTILE         => NULL()
+    real, pointer, dimension(:) :: CDCR2TILE        => NULL()
+    real, pointer, dimension(:) :: POROSTILE        => NULL()
+
 
     real, pointer, dimension(:) :: CNLAITILE        => NULL()
     real, pointer, dimension(:) :: CNTLAITILE       => NULL()
@@ -6285,6 +6461,11 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SNOMAS  , 'SNOMAS' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWDP  , 'SNOWDP' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET1    , 'WET1'   ,  RC=STATUS); VERIFY_(STATUS)
+    ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+    !       (aka not land) to be replaced with 1.0. We want WET1 to have
+    !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+    !       to GOCART.
+    call MAPL_GetPointer(EXPORT  , WET1_FOR_CHEM    , 'WET1_FOR_CHEM'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET2    , 'WET2'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WET3    , 'WET3'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WCSF    , 'WCSF'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -6294,7 +6475,6 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , WESNN2  , 'WESNN2' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , WESNN3  , 'WESNN3' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , CAPAC   , 'CAPAC'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , CDCR2   , 'CDCR2'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TAUXO   , 'TAUX'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TAUYO   , 'TAUY'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , EVAPO   , 'EVAP'   ,  RC=STATUS); VERIFY_(STATUS)
@@ -6441,6 +6621,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , DWLAND  , 'DWLAND' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , DHLAND  , 'DHLAND' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SPLAND  , 'SPLAND' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SPLH    , 'SPLH'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SPWATR  , 'SPWATR' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SPSNOW  , 'SPSNOW' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RDU001  , 'RDU001' ,  RC=STATUS); VERIFY_(STATUS)
@@ -6463,7 +6644,21 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , RMELTOC002 , 'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , PEATCLSM_WATERLEVEL, 'PEATCLSM_WATERLEVEL', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , PEATCLSM_FSWCHANGE,  'PEATCLSM_FSWCHANGE',  RC=STATUS); VERIFY_(STATUS)
-
+    call MAPL_GetPointer(EXPORT  , DZGT1   ,  'DZGT1' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZGT2   ,  'DZGT2' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZGT3   ,  'DZGT3' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZGT4   ,  'DZGT4' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZGT5   ,  'DZGT5' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZGT6   ,  'DZGT6' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZPR    ,  'DZPR'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZRZ    ,  'DZRZ'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZSF    ,  'DZSF'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , DZTS    ,  'DZTS'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WPWET   ,  'WPWET' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WPEMW   ,  'WPEMW' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , WPMC    ,  'WPMC'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , CDCR2   ,  'CDCR2' ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , POROS   ,  'POROS' ,  RC=STATUS); VERIFY_(STATUS)
 
     IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6930,7 +7125,6 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(WESNN2  ,WESNN2TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(WESNN3  ,WESNN3TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(CAPAC   ,CAPACTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
-    call MKTILE(CDCR2   ,CDCR2TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(HLATN   ,HLATNTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
 
     call MKTILE(HLATWTR   ,HLATWTRTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7003,7 +7197,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDSRF ,LWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDSRF ,SWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
-!ALT    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(RUNOFF  ,RUNOFFTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
 !ALT    call MKTILE(DISCHARGE,DISCHARGETILE,NT,RC=STATUS); VERIFY_(STATUS)
     if (associated(SURF_INTERNAL_STATE%LocalRoutings)) then ! routing file exists
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
@@ -7051,6 +7245,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(DWLAND  ,DWLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(DHLAND  ,DHLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SPLAND  ,SPLANDTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SPLH    ,SPLHTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SPWATR  ,SPWATRTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SPSNOW  ,SPSNOWTILE  ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RDU001  ,RDU001TILE  ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7073,6 +7268,21 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(RMELTOC002 ,RMELTOC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(PEATCLSM_WATERLEVEL,PEATCLSM_WATERLEVELTILE,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(PEATCLSM_FSWCHANGE ,PEATCLSM_FSWCHANGETILE ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT1   ,DZGT1TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT2   ,DZGT2TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT3   ,DZGT3TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT4   ,DZGT4TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT5   ,DZGT5TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZGT6   ,DZGT6TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZPR    ,DZPRTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZRZ    ,DZRZTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZSF    ,DZSFTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(DZTS    ,DZTSTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(WPWET   ,WPWETTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(WPEMW   ,WPEMWTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(WPMC    ,WPMCTILE    ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(CDCR2   ,CDCR2TILE   ,NT,RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(POROS   ,POROSTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
     
     IF (LSM_CHOICE > 1) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7375,10 +7585,6 @@ module GEOS_SurfaceGridCompMod
     endif
     if(associated( CAPAC)) then
        call MAPL_LocStreamTransform( LOCSTREAM,  CAPAC,  CAPACTILE, RC=STATUS) 
-       VERIFY_(STATUS)
-    endif
-    if(associated( CDCR2)) then
-       call MAPL_LocStreamTransform( LOCSTREAM,  CDCR2,  CDCR2TILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
     if(associated(ASNOW )) then
@@ -7922,6 +8128,10 @@ module GEOS_SurfaceGridCompMod
        call MAPL_LocStreamTransform( LOCSTREAM,SPLAND,SPLANDTILE, RC=STATUS) 
        VERIFY_(STATUS)
     endif
+    if(associated(SPLH  )) then
+       call MAPL_LocStreamTransform( LOCSTREAM,SPLH  ,SPLHTILE  , RC=STATUS) 
+       VERIFY_(STATUS)
+    endif
     if(associated(SPWATR)) then
        call MAPL_LocStreamTransform( LOCSTREAM,SPWATR,SPWATRTILE, RC=STATUS) 
        VERIFY_(STATUS)
@@ -7954,6 +8164,21 @@ module GEOS_SurfaceGridCompMod
     if(associated(RMELTOC002 ))call MAPL_LocStreamTransform(LOCSTREAM,RMELTOC002 ,RMELTOC002TILE, RC=STATUS); VERIFY_(STATUS)
     if(associated(PEATCLSM_WATERLEVEL))call MAPL_LocStreamTransform(LOCSTREAM,PEATCLSM_WATERLEVEL,PEATCLSM_WATERLEVELTILE,RC=STATUS); VERIFY_(STATUS)
     if(associated(PEATCLSM_FSWCHANGE ))call MAPL_LocStreamTransform(LOCSTREAM,PEATCLSM_FSWCHANGE ,PEATCLSM_FSWCHANGETILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT1 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT1 ,DZGT1TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT2 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT2 ,DZGT2TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT3 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT3 ,DZGT3TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT4 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT4 ,DZGT4TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT5 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT5 ,DZGT5TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZGT6 ))call MAPL_LocStreamTransform(LOCSTREAM,DZGT6 ,DZGT6TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZPR  ))call MAPL_LocStreamTransform(LOCSTREAM,DZPR  ,DZPRTILE , RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZRZ  ))call MAPL_LocStreamTransform(LOCSTREAM,DZRZ  ,DZRZTILE , RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZSF  ))call MAPL_LocStreamTransform(LOCSTREAM,DZSF  ,DZSFTILE , RC=STATUS); VERIFY_(STATUS)
+    if(associated(DZTS  ))call MAPL_LocStreamTransform(LOCSTREAM,DZTS  ,DZTSTILE , RC=STATUS); VERIFY_(STATUS)
+    if(associated(WPWET ))call MAPL_LocStreamTransform(LOCSTREAM,WPWET ,WPWETTILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(WPEMW ))call MAPL_LocStreamTransform(LOCSTREAM,WPEMW ,WPEMWTILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(WPMC  ))call MAPL_LocStreamTransform(LOCSTREAM,WPMC  ,WPMCTILE , RC=STATUS); VERIFY_(STATUS)
+    if(associated(CDCR2 ))call MAPL_LocStreamTransform(LOCSTREAM,CDCR2 ,CDCR2TILE, RC=STATUS); VERIFY_(STATUS)
+    if(associated(POROS ))call MAPL_LocStreamTransform(LOCSTREAM,POROS ,POROSTILE, RC=STATUS); VERIFY_(STATUS)
 
     if(associated(CNLAI)) then
        call MAPL_LocStreamTransform( LOCSTREAM,CNLAI ,CNLAITILE , RC=STATUS) 
@@ -8276,11 +8501,17 @@ module GEOS_SurfaceGridCompMod
       endif
 
 
-! Fill WET1 over non-land points
-!-------------------------------
+! Fill WET1_FOR_CHEM over non-land points to 1.0
+!-----------------------------------------------
 
-      if( associated(WET1) ) then
-          where(WET1 == MAPL_UNDEF) WET1 = 1.0
+! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+!       (aka not land) to be replaced with 1.0. We want WET1 to have
+!       MAPL_UNDEF over non-land points, so we need a separate export to pass
+!       to GOCART.
+
+      if( associated(WET1_FOR_CHEM) ) then
+          WET1_FOR_CHEM = WET1
+          where(WET1_FOR_CHEM == MAPL_UNDEF) WET1_FOR_CHEM = 1.0
       endif
 
 
@@ -8436,7 +8667,6 @@ module GEOS_SurfaceGridCompMod
     if(associated(WESNN2TILE  )) deallocate(WESNN2TILE  )
     if(associated(WESNN3TILE  )) deallocate(WESNN3TILE  )
     if(associated(CAPACTILE   )) deallocate(CAPACTILE   )
-    if(associated(CDCR2TILE   )) deallocate(CDCR2TILE   )
     if(associated(ASNOWTILE   )) deallocate(ASNOWTILE   )
     if(associated(SHSNOWTILE  )) deallocate(SHSNOWTILE  )
     if(associated(AVETSNOWTILE)) deallocate(AVETSNOWTILE)
@@ -8555,7 +8785,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(SWDOWNLANDTILE  )) deallocate(SWDOWNLANDTILE  )
     if(associated(LWLANDTILE  )) deallocate(LWLANDTILE  )
     if(associated(GHLANDTILE  )) deallocate(GHLANDTILE  )
-    if(associated(GHTSKINTILE  )) deallocate(GHTSKINTILE  )
+    if(associated(GHTSKINTILE )) deallocate(GHTSKINTILE )
     if(associated(SMLANDTILE  )) deallocate(SMLANDTILE  )
     if(associated(QINFILTILE  )) deallocate(QINFILTILE  )
     if(associated(TWLANDTILE  )) deallocate(TWLANDTILE  )
@@ -8564,6 +8794,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(DWLANDTILE  )) deallocate(DWLANDTILE  )
     if(associated(DHLANDTILE  )) deallocate(DHLANDTILE  )
     if(associated(SPLANDTILE  )) deallocate(SPLANDTILE  )
+    if(associated(SPLHTILE    )) deallocate(SPLHTILE    )
     if(associated(SPWATRTILE  )) deallocate(SPWATRTILE  )
     if(associated(SPSNOWTILE  )) deallocate(SPSNOWTILE  )
     if(associated(RDU001TILE  )) deallocate(RDU001TILE  )
@@ -8586,13 +8817,29 @@ module GEOS_SurfaceGridCompMod
     if(associated(RMELTOC002TILE )) deallocate(RMELTOC002TILE )
     if(associated(PEATCLSM_WATERLEVELTILE)) deallocate(PEATCLSM_WATERLEVELTILE)
     if(associated(PEATCLSM_FSWCHANGETILE )) deallocate(PEATCLSM_FSWCHANGETILE )
+    if(associated(DZGT1TILE   )) deallocate(DZGT1TILE   )
+    if(associated(DZGT2TILE   )) deallocate(DZGT2TILE   )
+    if(associated(DZGT3TILE   )) deallocate(DZGT3TILE   )
+    if(associated(DZGT4TILE   )) deallocate(DZGT4TILE   )
+    if(associated(DZGT5TILE   )) deallocate(DZGT5TILE   )
+    if(associated(DZGT6TILE   )) deallocate(DZGT6TILE   )
+    if(associated(DZPRTILE    )) deallocate(DZPRTILE    )
+    if(associated(DZRZTILE    )) deallocate(DZRZTILE    )
+    if(associated(DZSFTILE    )) deallocate(DZSFTILE    )
+    if(associated(DZTSTILE    )) deallocate(DZTSTILE    )
+    if(associated(WPWETTILE   )) deallocate(WPWETTILE   )
+    if(associated(WPEMWTILE   )) deallocate(WPEMWTILE   )
+    if(associated(WPMCTILE    )) deallocate(WPMCTILE    )
+    if(associated(CDCR2TILE   )) deallocate(CDCR2TILE   )
+    if(associated(POROSTILE   )) deallocate(POROSTILE   )
+
     if(associated(CNLAITILE   )) deallocate(CNLAITILE   )
     if(associated(CNTLAITILE  )) deallocate(CNTLAITILE  )
     if(associated(CNSAITILE   )) deallocate(CNSAITILE   )
     if(associated(CNTOTCTILE  )) deallocate(CNTOTCTILE  )
     if(associated(CNVEGCTILE  )) deallocate(CNVEGCTILE  )
     if(associated(CNROOTTILE  )) deallocate(CNROOTTILE  )
-    if(associated(CNFROOTCTILE  )) deallocate(CNFROOTCTILE  )
+    if(associated(CNFROOTCTILE)) deallocate(CNFROOTCTILE)
     if(associated(CNNPPTILE   )) deallocate(CNNPPTILE   )
     if(associated(CNGPPTILE   )) deallocate(CNGPPTILE   )
     if(associated(CNSRTILE    )) deallocate(CNSRTILE    )
@@ -8880,6 +9127,8 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SPLAND'  , ALLOC=associated(SPLANDTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPLH'    , ALLOC=associated(SPLHTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SPWATR'  , ALLOC=associated(SPWATRTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'SPSNOW'  , ALLOC=associated(SPSNOWTILE  ), notFoundOK=.true., RC=STATUS)
@@ -8929,6 +9178,37 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'PEATCLSM_FSWCHANGE' , ALLOC=associated(PEATCLSM_FSWCHANGETILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT1' , ALLOC=associated(DZGT1TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT2' , ALLOC=associated(DZGT2TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT3' , ALLOC=associated(DZGT3TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT4' , ALLOC=associated(DZGT4TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT5' , ALLOC=associated(DZGT5TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZGT6' , ALLOC=associated(DZGT6TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZPR'  , ALLOC=associated(DZPRTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZRZ'  , ALLOC=associated(DZRZTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZSF'  , ALLOC=associated(DZSFTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DZTS'  , ALLOC=associated(DZTSTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WPWET' , ALLOC=associated(WPWETTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WPEMW' , ALLOC=associated(WPEMWTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WPMC'  , ALLOC=associated(WPMCTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'CDCR2' , ALLOC=associated(CDCR2TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'POROS' , ALLOC=associated(POROSTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+
 
       IF (LSM_CHOICE > 1) THEN
          call MAPL_GetPointer(GEX(type), dum, 'CNLAI'   , ALLOC=associated(CNLAITILE   ), notFoundOK=.true., RC=STATUS)
@@ -9358,10 +9638,6 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'CAPAC',   CAPACTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      if(associated(CDCR2TILE)) then
-         call FILLOUT_TILE(GEX(type), 'CDCR2',   CDCR2TILE, XFORM, RC=STATUS)
-         VERIFY_(STATUS)
-      end if
       if(associated(RUNOFFTILE)) then
          call FILLOUT_TILE(GEX(type), 'RUNOFF', RUNOFFTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
@@ -9527,6 +9803,10 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'SPLAND',   SPLANDTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
+      if(associated(SPLHTILE  )) then
+         call FILLOUT_TILE(GEX(type), 'SPLH'  ,   SPLHTILE,   XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
       if(associated(SPWATRTILE)) then
          call FILLOUT_TILE(GEX(type), 'SPWATR',   SPWATRTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
@@ -9556,6 +9836,21 @@ module GEOS_SurfaceGridCompMod
       if(associated(RMELTOC002TILE)) call FILLOUT_TILE(GEX(type), 'RMELTOC002' , RMELTOC002TILE , XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(PEATCLSM_WATERLEVELTILE)) call FILLOUT_TILE(GEX(type), 'PEATCLSM_WATERLEVEL', PEATCLSM_WATERLEVELTILE, XFORM, RC=STATUS);VERIFY_(STATUS)
       if(associated(PEATCLSM_FSWCHANGETILE))  call FILLOUT_TILE(GEX(type), 'PEATCLSM_FSWCHANGE' , PEATCLSM_FSWCHANGETILE , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT1TILE))  call FILLOUT_TILE(GEX(type), 'DZGT1'  , DZGT1TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT2TILE))  call FILLOUT_TILE(GEX(type), 'DZGT2'  , DZGT2TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT3TILE))  call FILLOUT_TILE(GEX(type), 'DZGT3'  , DZGT3TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT4TILE))  call FILLOUT_TILE(GEX(type), 'DZGT4'  , DZGT4TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT5TILE))  call FILLOUT_TILE(GEX(type), 'DZGT5'  , DZGT5TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZGT6TILE))  call FILLOUT_TILE(GEX(type), 'DZGT6'  , DZGT6TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZPRTILE ))  call FILLOUT_TILE(GEX(type), 'DZPR'   , DZPRTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZRZTILE ))  call FILLOUT_TILE(GEX(type), 'DZRZ'   , DZRZTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZSFTILE ))  call FILLOUT_TILE(GEX(type), 'DZSF'   , DZSFTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(DZTSTILE ))  call FILLOUT_TILE(GEX(type), 'DZTS'   , DZTSTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(WPWETTILE))  call FILLOUT_TILE(GEX(type), 'WPWET'  , WPWETTILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(WPEMWTILE))  call FILLOUT_TILE(GEX(type), 'WPEMW'  , WPEMWTILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(WPMCTILE ))  call FILLOUT_TILE(GEX(type), 'WPMC'   , WPMCTILE   , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(CDCR2TILE))  call FILLOUT_TILE(GEX(type), 'CDCR2'  , CDCR2TILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
+      if(associated(POROSTILE))  call FILLOUT_TILE(GEX(type), 'POROS'  , POROSTILE  , XFORM, RC=STATUS);VERIFY_(STATUS)
 
       if(associated(CNLAITILE)) then
          call FILLOUT_TILE(GEX(type), 'CNLAI' ,   CNLAITILE , XFORM, RC=STATUS)

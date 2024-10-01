@@ -788,8 +788,8 @@ contains
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DQVDTSCL',                                     &
-         LONG_NAME  = 'tendency_of_water_vapor_due_to_mass_scaling',  &
-         UNITS      = 'kg m-2 s-1',                                   &
+         LONG_NAME  = 'specific_humidity_tendency_adjustment_due_to_mass_scaling',  &
+         UNITS      = 'kg kg-1 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
@@ -1235,7 +1235,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'LWI      ', 'FRLAND   ', 'FRLANDICE',   &
-                         'FROCEAN  ', 'FRLAKE   ', 'WET1     ',   &
+                         'FROCEAN  ', 'FRLAKE   ',                &
                          'GRN      ', 'USTAR    ', 'U10M     ',   &
                          'V10M     ', 'SH       ', 'Z0H      ',   &
                          'LAI      ', 'TSOIL1   ', 'FRACI    ',   &
@@ -1249,6 +1249,18 @@ contains
                          'PRECTOT  '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+     !       (aka not land) to be replaced with 1.0. We want WET1 to have
+     !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+     !       to GOCART which is WET1 with all non-land points set to 1.0.
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
+        SRC_ID      = SURF,                                       &
+        DST_NAME  = [ 'WET1' ],                                   &
+        DST_ID      = CHEM,                                       &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
