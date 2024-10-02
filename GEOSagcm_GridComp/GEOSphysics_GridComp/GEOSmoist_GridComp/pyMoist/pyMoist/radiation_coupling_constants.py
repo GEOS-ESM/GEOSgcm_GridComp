@@ -7,6 +7,10 @@ from ndsl.dsl.typing import Float
 # Define whether or not to use CODATA 2018 constants
 CODATA_2018_CONSTANTS = True
 
+# MAPL_UNDEF is set to 1E15 in the Fortran
+# We keep it as is for now to match 11.5.2 GEOS
+MAPL_UNDEF = 1e15
+
 # Math Constants
 MAPL_PI_R8 = Float(3.14159265358979323846e0)
 MAPL_PI = MAPL_PI_R8
