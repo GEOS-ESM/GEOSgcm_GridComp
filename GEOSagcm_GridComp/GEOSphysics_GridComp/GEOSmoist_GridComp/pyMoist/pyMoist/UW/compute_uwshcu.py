@@ -1,11 +1,11 @@
 import copy
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, sin
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, BACKWARD, sin
 import pyMoist.pyMoist_constants as constants
 import pyMoist.radiation_coupling_constants as radconstants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Float, Int, IntField
+from ndsl.dsl.typing import FloatField, Float, Int, IntFieldIJ, IntField, FloatFieldIJ, BoolField
 from ndsl import StencilFactory, QuantityFactory
 from pyMoist.types import FloatField_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
@@ -190,9 +190,11 @@ def conden(
 
 def compute_uwshcu(
     dotransport: Float,
+    ncnst: Int,
+    k0: Int,
+    kpbl_in: IntFieldIJ,
     pifc0_in: FloatField,
     pmid0_in: FloatField,
-    zmid0_in: FloatField,
     exnmid0_in: FloatField,
     u0_in: FloatField,
     v0_in: FloatField,
@@ -201,6 +203,31 @@ def compute_uwshcu(
     qi0_in: FloatField,
     th0_in: FloatField,
     tr0_inout: FloatField_NTracers,
+    umf_out: FloatField, 
+    dcm_out: FloatField,
+    qvten_out: FloatField,
+    qlten_out: FloatField,
+    qiten_out: FloatField,
+    sten_out: FloatField,
+    uten_out: FloatField,
+    vten_out: FloatField,
+    qrten_out: FloatField,
+    qsten_out: FloatField,
+    cufrc_out: FloatField,
+    fer_out: FloatField,
+    fdr_out: FloatField,
+    qldet_out: FloatField,
+    qidet_out: FloatField,
+    qlsub_out: FloatField,
+    qisub_out: FloatField,
+    ndrop_out: FloatField,
+    nice_out: FloatField,
+    tpert_out: FloatFieldIJ,
+    qpert_out: FloatFieldIJ,
+    qtflx_out: FloatField,
+    slflx_out: FloatField, 
+    uflx_out: FloatField, 
+    vflx_out: FloatField, 
     tr0: FloatField_NTracers,
     ssthl0: FloatField,
     ssqt0: FloatField,
@@ -216,6 +243,7 @@ def compute_uwshcu(
     kmask: FloatField,
     ese: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
+    unexpected_id_exit: IntField,
 ):
     """
     University of Washington Shallow Convection Scheme
@@ -240,10 +268,30 @@ def compute_uwshcu(
     Add description of variables
     """
 
-    # Start Main Calculation
-    with computation(PARALLEL), interval(0, 1):
+    with computation(FORWARD), interval(...):
         id_exit = False
 
+        # Initialize output variables defined
+        umf_out = 0.0 
+        dcm_out = 0.0
+        cufrc_out = 0.0
+        fer_out = radconstants.MAPL_UNDEF
+        fdr_out = radconstants.MAPL_UNDEF
+        qldet_out = 0.0
+        qidet_out = 0.0
+        qlsub_out = 0.0
+        qisub_out = 0.0
+        ndrop_out = 0.0
+        nice_out = 0.0
+        qtflx_out[0,0,1] = 0.0 
+        slflx_out[0,0,1] = 0.0 
+        uflx_out[0,0,1] = 0.0 
+        vflx_out[0,0,1] = 0.0 
+        tpert_out = 0.0
+        qpert_out = 0.0
+
+    # Start Main Calculation
+    with computation(PARALLEL), interval(0, 1):
         pmid0 = pmid0_in
         pmid0_above = pmid0_in[0, 0, 1]
         u0 = u0_in
@@ -276,7 +324,7 @@ def compute_uwshcu(
         if dotransport == 1.0:
             n = 0
             # Loop over tracers
-            while n < constants.ncnst:
+            while n < ncnst:
                 tr0[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
                 n += 1
 
@@ -289,24 +337,22 @@ def compute_uwshcu(
 
         if dotransport == 1.0:
             n = 0
-            while n < constants.ncnst:
-                if True:
-                    sstr0[0, 0, 0][n] = slope(
-                        kmask,
-                        tr0[0, 0, 0][n],
-                        tr0[0, 0, 1][n],
-                        tr0[0, 0, 1][n],
-                        pmid0,
-                        pmid0_above,
-                        pmid0_above,
-                    )
+            while n < ncnst:
+                sstr0[0, 0, 0][n] = slope(
+                    kmask,
+                    tr0[0, 0, 0][n],
+                    tr0[0, 0, 1][n],
+                    tr0[0, 0, 1][n],
+                    pmid0,
+                    pmid0_above,
+                    pmid0_above,
+                )
                 n += 1
 
     with computation(PARALLEL), interval(1, -1):
         pmid0 = pmid0_in
         pmid0_above = pmid0_in[0, 0, 1]
         pmid0_below = pmid0_in[0, 0, -1]
-        zmid0 = zmid0_in
         u0 = u0_in
         u0_above = u0_in[0, 0, 1]
         u0_below = u0_in[0, 0, -1]
@@ -326,7 +372,7 @@ def compute_uwshcu(
         if dotransport == 1.0:
             n = 0
             # Loop over tracers
-            while n < constants.ncnst:
+            while n < ncnst:
                 tr0[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
                 n += 1
 
@@ -364,17 +410,16 @@ def compute_uwshcu(
 
         if dotransport == 1.0:
             n = 0
-            while n < constants.ncnst:
-                if True:
-                    sstr0[0, 0, 0][n] = slope(
-                        kmask,
-                        tr0[0, 0, 0][n],
-                        tr0[0, 0, 1][n],
-                        tr0[0, 0, -1][n],
-                        pmid0,
-                        pmid0_above,
-                        pmid0_below,
-                    )
+            while n < ncnst:
+                sstr0[0, 0, 0][n] = slope(
+                    kmask,
+                    tr0[0, 0, 0][n],
+                    tr0[0, 0, 1][n],
+                    tr0[0, 0, -1][n],
+                    pmid0,
+                    pmid0_above,
+                    pmid0_below,
+                )
                 n += 1
 
     with computation(PARALLEL), interval(-1, None):
@@ -425,7 +470,7 @@ def compute_uwshcu(
         if dotransport == 1.0:
             n = 0
             # Loop over tracers
-            while n < constants.ncnst:
+            while n < ncnst:
                 tr0[0, 0, 0][n] = tr0_inout[0, 0, 0][n]
                 n += 1
 
@@ -439,17 +484,16 @@ def compute_uwshcu(
         # Calculate slope for each tracer by hand
         if dotransport == 1.0:
             n = 0
-            while n < constants.ncnst:
-                if True:
-                    sstr0[0, 0, 0][n] = slope(
-                        kmask,
-                        tr0[0, 0, -1][n],
-                        tr0[0, 0, 0][n],
-                        tr0[0, 0, -2][n],
-                        pmid0,
-                        pmid0_above,
-                        pmid0_below,
-                    )
+            while n < ncnst:
+                sstr0[0, 0, 0][n] = slope(
+                    kmask,
+                    tr0[0, 0, -1][n],
+                    tr0[0, 0, 0][n],
+                    tr0[0, 0, -2][n],
+                    pmid0,
+                    pmid0_above,
+                    pmid0_below,
+                )
                 n += 1
 
     with computation(PARALLEL), interval(...):
@@ -469,7 +513,10 @@ def compute_uwshcu(
         qt0bot = qt0 + ssqt0 * (pifc0 - pmid0)
 
         thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
-        # Raise an error if id_check = 1
+        
+        #if id_check == 1:
+        #    raise ValueError("Expected id_check == 0, got id_check == 1!")
+        
         thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
         thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
@@ -480,7 +527,10 @@ def compute_uwshcu(
         thj, qvj, qlj, qij, qse, id_check = conden(
             pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
         )
-        # Raise an error if id_check = 1
+        
+        #if id_check == 1:
+        #    raise ValueError("Expected id_check == 0, got id_check == 1!")
+        
         thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
         thvl0top = thl0top * (1.0 + zvir * qt0top)
 
@@ -488,107 +538,7 @@ def compute_uwshcu(
         thv0top = thv0bot
         thvl0top = thvl0bot
 
-    with computation(PARALLEL), interval(...):
-        # Save input and related environmental thermodynamic variables 
-        # for use at "iter_cin=2" when "del_CIN >= 0" 
-
-        qv0_o(:k0)          = qv0(:k0)
-        ql0_o(:k0)          = ql0(:k0)
-        qi0_o(:k0)          = qi0(:k0)
-        t0_o(:k0)           = t0(:k0)
-        s0_o(:k0)           = s0(:k0)
-        u0_o(:k0)           = u0(:k0)
-        v0_o(:k0)           = v0(:k0)
-        qt0_o(:k0)          = qt0(:k0)
-        thl0_o(:k0)         = thl0(:k0)
-        thvl0_o(:k0)        = thvl0(:k0)
-        ssthl0_o(:k0)       = ssthl0(:k0)
-        ssqt0_o(:k0)        = ssqt0(:k0)
-        thv0bot_o(:k0)      = thv0bot(:k0)
-        thv0top_o(:k0)      = thv0top(:k0)
-        thvl0bot_o(:k0)     = thvl0bot(:k0)
-        thvl0top_o(:k0)     = thvl0top(:k0)
-        ssu0_o(:k0)         = ssu0(:k0) 
-        ssv0_o(:k0)         = ssv0(:k0) 
-    
-        if dotransport == 1):
-        do m = 1, ncnst
-        tr0_o(:k0,m)     = tr0(:k0,m)
-        sstr0_o(:k0,m)   = sstr0(:k0,m)
-    
-        # Initialize output variables at each grid point
-        umf(0:k0)          = 0.0
-        dcm(:k0)           = 0.0
-        emf(0:k0)          = 0.0
-        slflx(0:k0)        = 0.0
-        qtflx(0:k0)        = 0.0
-        uflx(0:k0)         = 0.0
-        vflx(0:k0)         = 0.0
-        qvten(:k0)         = 0.0
-        qlten(:k0)         = 0.0
-        qiten(:k0)         = 0.0
-        sten(:k0)          = 0.0
-        uten(:k0)          = 0.0
-        vten(:k0)          = 0.0
-        qrten(:k0)         = 0.0
-        qsten(:k0)         = 0.0
-        dwten(:k0)         = 0.0
-        diten(:k0)         = 0.0
-        cufrc(:k0)         = 0.0
-        qcu(:k0)           = 0.0
-        qlu(:k0)           = 0.0
-        qiu(:k0)           = 0.0
-        fer(:k0)           = 0.0
-        fdr(:k0)           = 0.0
-        xco(:k0)           = 0.0
-        cin                = 0.0
-        cinlcl             = 0.0
-        cbmf               = 0.0
-        qc(:k0)            = 0.0
-        #qldet(:k0)         = 0.0
-        #qidet(:k0)         = 0.0
-        qc_l(:k0)          = 0.0
-        qc_i(:k0)          = 0.0
-        cnt                = real(k0)
-        cnb                = 0.0
-        qtten(:k0)         = 0.0
-        slten(:k0)         = 0.0   
-        ufrc(0:k0)         = 0.0  
-
-        thlu(0:k0)         = MAPL_UNDEF
-        qtu(0:k0)          = MAPL_UNDEF
-        uu(0:k0)           = MAPL_UNDEF
-        vu(0:k0)           = MAPL_UNDEF
-        wu(0:k0)           = MAPL_UNDEF
-        thvu(0:k0)         = MAPL_UNDEF
-        thlu_emf(0:k0)     = MAPL_UNDEF
-        qtu_emf(0:k0)      = MAPL_UNDEF
-        uu_emf(0:k0)       = MAPL_UNDEF
-        vu_emf(0:k0)       = MAPL_UNDEF
-        
-        ufrcinvbase         = 0.0
-        ufrclcl             = 0.0
-        winvbase            = 0.0
-        wlcl                = 0.0
-        emfkbup             = 0.0 
-        cbmflimit           = 0.0
-
-        uemf(0:k0)         = 0.0
-        comsub(:k0)        = 0.0
-        qlten_sink(:k0)    = 0.0
-        qiten_sink(:k0)    = 0.0
-        qlten_det(:k0)     = 0.0
-        qiten_det(:k0)     = 0.0 
-        #nlten_sink(:k0)    = 0.0
-        #niten_sink(:k0)    = 0.0 
-
-        if dotransport == 1:
-        do m = 1, ncnst
-            trflx(0:k0,m)   = 0.0
-            trten(:k0,m)    = 0.0
-            tru(0:k0,m)     = 0.0
-            tru_emf(0:k0,m) = 0.0
-        
+    with computation(FORWARD), interval(...):        
         '''
         Below 'iter' loop is for implicit CIN closure
 
@@ -597,8 +547,10 @@ def compute_uwshcu(
         iterative cin calculation, because cumulus convection induces non-zero fluxes 
         even at interfaces below PBL top height through 'fluxbelowinv' subroutine. 
         '''
-        iter = 0
-        while iter < iter_cin: #iter_cin = 2
+    
+        iter=0
+        iter_cin=2
+        while iter < iter_cin:
             '''
             Cumulus scale height                                                    
             In contrast to the premitive code, cumulus scale height is iteratively 
@@ -606,12 +558,7 @@ def compute_uwshcu(
             It is not clear whether I should locate below two lines within or  out 
             of the iterative cin loop. 
             '''
-            tscaleh = cush                        
-            cush    = -1.0
-            tkeavg   = 0.0
-            qtavg   = 0.0
-            uavg    = 0.0
-            vavg    = 0.0
+
             '''
             Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer 
             index with PBLH in it. When PBLH is exactly at interface, 'kinv' is the 
@@ -633,125 +580,65 @@ def compute_uwshcu(
             of 5 [m] in the below 'kinv' finding block.
             '''
             
-            # invert kpbl index
-            if kpbl_in >= k0/2:
+            # Invert kpbl index
+            if kpbl_in >= k0:
                 kinv = k0 - kpbl_in + 1
             else:
-                kinv = 5
-
-            #continue    
+                kinv = 5   
 
             if kinv <= 1:     
-                exit_kinv1 = 1.
                 id_exit = True
-                #go to 333
+            
+            if unexpected_id_exit == 0:
+                unexpected_id_exit = 1
+            #else:
+                #if unexpected_id_exit == False:
+                #    unexpected_id_exit = True
+    
 
-            if (id_exit):
-                PRINT *, "EXITING UWSCHU!!!!!!!!!!!!"
-                exit_uwcu(i) = 1.
-            if (scverbose) then
-                call write_parallel('------- UW ShCu: Exited!')
+            # Cumulus convection goes here
+            # This section has NOT BEEN PORTED
+            # If id_exit == False the code will be triggered and an error will be raised
 
-            # Initialize output variables when cumulus convection was not performed.
-            umf_out(i,0:k0)             = 0.   
-            dcm_out(i,:k0)              = 0.   
-            qvten_out(i,:k0)            = 0.
-            qlten_out(i,:k0)            = 0.
-            qiten_out(i,:k0)            = 0.
-            sten_out(i,:k0)             = 0.
-            uten_out(i,:k0)             = 0.
-            vten_out(i,:k0)             = 0.
-            qrten_out(i,:k0)            = 0.
-            qsten_out(i,:k0)            = 0.
-            cufrc_out(i,:k0)            = 0.
-            cush_inout(i)               = -1.
-            qldet_out(i,:k0)            = 0.
-            qidet_out(i,:k0)            = 0.
-            qtflx_out(i,0:k0)           = 0.
-            slflx_out(i,0:k0)           = 0.
-            uflx_out(i,0:k0)            = 0.
-            vflx_out(i,0:k0)            = 0.
+            iter_cin += 1
 
-            fer_out(i,1:k0)             = MAPL_UNDEF
-            fdr_out(i,1:k0)             = MAPL_UNDEF
-            #ifdef UWDIAG
-     cbmf_out(i)                 = 0.   
-     cnt_out(i)                  = 1.
-     cnb_out(i)                  = real(k0)
-     qcu_out(i,:k0)              = 0.
-     qlu_out(i,:k0)              = 0.
-     qiu_out(i,:k0)              = 0.
-     qc_out(i,:k0)               = 0.
-     xc_out(i,1:k0)              = MAPL_UNDEF
-     cinh_out(i)                 = cin 
-     cinlclh_out(i)              = cinlcl
-#     qtten_out(i,k0:1:-1)        = 0.
-#     slten_out(i,k0:1:-1)        = 0.
-#     ufrc_out(i,k0:0:-1)         = 0.
-#     uflx_out(i,k0:0:-1)         = 0.  
-#     vflx_out(i,k0:0:-1)         = 0.  
+        # Initialize output variables when cumulus convection was not performed.
+        umf_out[0,0,1]      = 0.0   
+        dcm_out             = 0.0   
+        qvten_out           = 0.0
+        qlten_out           = 0.0
+        qiten_out           = 0.0
+        sten_out            = 0.0
+        uten_out            = 0.0
+        vten_out            = 0.0
+        qrten_out           = 0.0
+        qsten_out           = 0.0
+        cufrc_out           = 0.0
+        cush_inout          = -1.0
+        qldet_out           = 0.0
+        qidet_out           = 0.0
+        fer_out             = radconstants.MAPL_UNDEF
+        fdr_out             = radconstants.MAPL_UNDEF
+        qtflx_out[0,0,1]    = 0.0
+        slflx_out[0,0,1]    = 0.0
+        uflx_out[0,0,1]     = 0.0
+        vflx_out[0,0,1]     = 0.0
 
-     ufrcinvbase_out(i)           = 0. 
-     ufrclcl_out(i)               = 0. 
-     winvbase_out(i)              = 0.    
-     wlcl_out(i)                  = MAPL_UNDEF    
-     plcl_out(i)                  = MAPL_UNDEF
-     pinv_out(i)                  = MAPL_UNDEF
-     prel_out(i)                  = MAPL_UNDEF
-     plfc_out(i)                  = MAPL_UNDEF
-     pbup_out(i)                  = MAPL_UNDEF
-     ppen_out(i)                  = MAPL_UNDEF
-     qtsrc_out(i)                 = MAPL_UNDEF 
-     thlsrc_out(i)                = MAPL_UNDEF    
-     thvlsrc_out(i)               = MAPL_UNDEF
-     emfkbup_out(i)               = 0.
-     cbmflimit_out(i)             = 0.    
-     tkeavg_out(i)                = tkeavg    
-     zinv_out(i)                  = 0.    
-     rcwp_out(i)                  = 0.    
-     rlwp_out(i)                  = 0.    
-     riwp_out(i)                  = 0.    
+    with computation(PARALLEL), interval(0,1):
+        umf_out             = 0.0
+        qtflx_out           = 0.0
+        slflx_out           = 0.0
+        uflx_out            = 0.0
+        vflx_out            = 0.0
 
-     wu_out(i,k0:0:-1)           = MAPL_UNDEF
-     qtu_out(i,k0:0:-1)          = MAPL_UNDEF
-     thlu_out(i,k0:0:-1)         = MAPL_UNDEF 
-     thvu_out(i,k0:0:-1)         = MAPL_UNDEF 
-     uu_out(i,k0:0:-1)           = MAPL_UNDEF
-     vu_out(i,k0:0:-1)           = MAPL_UNDEF
-     qtu_emf_out(i,k0:0:-1)      = MAPL_UNDEF
-     thlu_emf_out(i,k0:0:-1)     = MAPL_UNDEF         
-     uu_emf_out(i,k0:0:-1)       = MAPL_UNDEF  
-     vu_emf_out(i,k0:0:-1)       = MAPL_UNDEF
-     uemf_out(i,k0:0:-1)         = MAPL_UNDEF
-   
-     dwten_out(i,k0:1:-1)        = 0.    
-     diten_out(i,k0:1:-1)        = 0.    
-
-        excessu_arr_out(i,k0:1:-1)  = 0.    
-        excess0_arr_out(i,k0:1:-1)  = 0.    
-        xc_arr_out(i,k0:1:-1)       = 0.    
-        aquad_arr_out(i,k0:1:-1)    = 0.    
-        bquad_arr_out(i,k0:1:-1)    = 0.    
-        cquad_arr_out(i,k0:1:-1)    = 0.    
-        bogbot_arr_out(i,k0:1:-1)   = 0.    
-        bogtop_arr_out(i,k0:1:-1)   = 0.    
-
-        if (dotransport.eq.1) then
-        do m = 1, ncnst
-          trten_out(i,:k0,m)       = 0.
-          trflx_out(i,k0:0:-1,m)   = 0.  
-          tru_out(i,k0:0:-1,m)     = 0.
-          tru_emf_out(i,k0:0:-1,m) = 0.
-
+            
            
-
 
 class ComputeUwshcu:
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        ncnst: Int,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         """
@@ -795,9 +682,11 @@ class ComputeUwshcu:
     def __call__(
         self,
         dotransport: Float,
+        ncnst: Int,
+        k0: Int,
+        kpbl_in: IntFieldIJ,
         pifc0_in: FloatField,
         pmid0_in: FloatField,
-        zmid0_in: FloatField,
         exnmid0_in: FloatField,
         u0_in: FloatField,
         v0_in: FloatField,
@@ -806,6 +695,31 @@ class ComputeUwshcu:
         qi0_in: FloatField,
         th0_in: FloatField,
         tr0_inout: FloatField_NTracers,
+        umf_out: FloatField,
+        dcm_out: FloatField,
+        qvten_out: FloatField,
+        qlten_out: FloatField,
+        qiten_out: FloatField,
+        sten_out: FloatField,
+        uten_out: FloatField,
+        vten_out: FloatField,
+        qrten_out: FloatField,
+        qsten_out: FloatField,
+        cufrc_out: FloatField,
+        fer_out: FloatField,
+        fdr_out: FloatField,
+        qldet_out: FloatField,
+        qidet_out: FloatField,
+        qlsub_out: FloatField,
+        qisub_out: FloatField,
+        ndrop_out: FloatField,
+        nice_out: FloatField,
+        tpert_out: FloatFieldIJ,
+        qpert_out: FloatFieldIJ,
+        qtflx_out: FloatField,
+        slflx_out: FloatField,
+        uflx_out: FloatField,
+        vflx_out: FloatField,
         tr0_test: FloatField_NTracers,
         ssthl0_test: FloatField,
         ssqt0_test: FloatField,
@@ -818,6 +732,7 @@ class ComputeUwshcu:
         qij_test: FloatField,
         qse_test: FloatField,
         id_check_test: IntField,
+        unexpected_id_exit: IntField,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
 
@@ -827,11 +742,21 @@ class ComputeUwshcu:
             formulation=formulation,
         )
 
+        unexpected_id_exit = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=IntField)
+        for i in range(0, unexpected_id_exit.view[:].shape[0]):
+            for j in range(0, unexpected_id_exit.view[:].shape[1]):
+                for k in range(0, unexpected_id_exit.view[:].shape[2]):
+                    unexpected_id_exit.view[i, j, k] = 0
+
+
+
         self._compute_uwshcu(
             dotransport=dotransport,
+            ncnst=ncnst,
+            k0=k0,
+            kpbl_in=kpbl_in,
             pifc0_in=pifc0_in,
             pmid0_in=pmid0_in,
-            zmid0_in=zmid0_in,
             exnmid0_in=exnmid0_in,
             u0_in=u0_in,
             v0_in=v0_in,
@@ -840,6 +765,31 @@ class ComputeUwshcu:
             qi0_in=qi0_in,
             th0_in=th0_in,
             tr0_inout=tr0_inout,
+            umf_out=umf_out,
+            dcm_out=dcm_out,
+            qvten_out=qvten_out,
+            qlten_out=qlten_out,
+            qiten_out=qiten_out,
+            sten_out=sten_out,
+            uten_out=uten_out,
+            vten_out=vten_out,
+            qrten_out=qrten_out,
+            qsten_out=qsten_out,
+            cufrc_out=cufrc_out,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
+            qldet_out=qldet_out,
+            qidet_out=qidet_out,
+            qlsub_out=qlsub_out,
+            qisub_out=qisub_out,
+            ndrop_out=ndrop_out,
+            nice_out=nice_out,
+            tpert_out=tpert_out,
+            qpert_out=qpert_out,
+            qtflx_out=qtflx_out,
+            slflx_out=slflx_out,
+            uflx_out=uflx_out,
+            vflx_out=vflx_out,
             tr0=tr0_test,
             ssthl0=ssthl0_test,
             ssqt0=ssqt0_test,
@@ -855,4 +805,12 @@ class ComputeUwshcu:
             kmask=self._k_mask,
             ese=self.qsat.ese,
             esx=self.qsat.esx,
+            unexpected_id_exit = unexpected_id_exit,
         )
+
+        print(unexpected_id_exit)
+
+        #if unexpected_id_exit:
+        #    raise NotImplementedError(
+        #        "Cumulus convection was triggered! This code has not been ported."
+        #)
