@@ -1,11 +1,19 @@
 import copy
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, BACKWARD, sin
+from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, sin
 import pyMoist.pyMoist_constants as constants
 import pyMoist.radiation_coupling_constants as radconstants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import FloatField, Float, Int, IntFieldIJ, IntField, FloatFieldIJ, BoolField
+from ndsl.dsl.typing import (
+    FloatField,
+    Float,
+    Int,
+    IntFieldIJ,
+    IntField,
+    FloatFieldIJ,
+    BoolField,
+)
 from ndsl import StencilFactory, QuantityFactory
 from pyMoist.types import FloatField_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
@@ -65,6 +73,9 @@ def slope(
 def exnerfn(
     p: Float,
 ) -> Float:
+    """
+    Add description of function and variables
+    """
 
     return (p / 100000.0) ** (radconstants.MAPL_RGAS / constants.cp)
 
@@ -148,6 +159,9 @@ def conden(
     ese: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
 ):
+    """
+    Add description of function and variables
+    """
 
     tc = thl * exnerfn(p)
 
@@ -203,7 +217,7 @@ def compute_uwshcu(
     qi0_in: FloatField,
     th0_in: FloatField,
     tr0_inout: FloatField_NTracers,
-    umf_out: FloatField, 
+    umf_out: FloatField,
     dcm_out: FloatField,
     qvten_out: FloatField,
     qlten_out: FloatField,
@@ -225,9 +239,9 @@ def compute_uwshcu(
     tpert_out: FloatFieldIJ,
     qpert_out: FloatFieldIJ,
     qtflx_out: FloatField,
-    slflx_out: FloatField, 
-    uflx_out: FloatField, 
-    vflx_out: FloatField, 
+    slflx_out: FloatField,
+    uflx_out: FloatField,
+    vflx_out: FloatField,
     tr0: FloatField_NTracers,
     ssthl0: FloatField,
     ssqt0: FloatField,
@@ -243,7 +257,8 @@ def compute_uwshcu(
     kmask: FloatField,
     ese: FloatField_Extra_Dim,
     esx: FloatField_Extra_Dim,
-    unexpected_id_exit: IntField,
+    id_exit: BoolField,
+    id_check_flag: BoolField,
 ):
     """
     University of Washington Shallow Convection Scheme
@@ -269,10 +284,8 @@ def compute_uwshcu(
     """
 
     with computation(FORWARD), interval(...):
-        id_exit = False
-
         # Initialize output variables defined
-        umf_out = 0.0 
+        umf_out = 0.0
         dcm_out = 0.0
         cufrc_out = 0.0
         fer_out = radconstants.MAPL_UNDEF
@@ -283,10 +296,10 @@ def compute_uwshcu(
         qisub_out = 0.0
         ndrop_out = 0.0
         nice_out = 0.0
-        qtflx_out[0,0,1] = 0.0 
-        slflx_out[0,0,1] = 0.0 
-        uflx_out[0,0,1] = 0.0 
-        vflx_out[0,0,1] = 0.0 
+        qtflx_out[0, 0, 1] = 0.0
+        slflx_out[0, 0, 1] = 0.0
+        uflx_out[0, 0, 1] = 0.0
+        vflx_out[0, 0, 1] = 0.0
         tpert_out = 0.0
         qpert_out = 0.0
 
@@ -513,10 +526,10 @@ def compute_uwshcu(
         qt0bot = qt0 + ssqt0 * (pifc0 - pmid0)
 
         thj, qvj, qlj, qij, qse, id_check = conden(pifc0, thl0bot, qt0bot, ese, esx)
-        
-        #if id_check == 1:
-        #    raise ValueError("Expected id_check == 0, got id_check == 1!")
-        
+
+        if id_check == 1:
+            id_check_flag = True
+
         thv0bot = thj * (1.0 + zvir * qvj - qlj - qij)
         thvl0bot = thl0bot * (1.0 + zvir * qt0bot)
 
@@ -527,10 +540,10 @@ def compute_uwshcu(
         thj, qvj, qlj, qij, qse, id_check = conden(
             pifc0_in[0, 0, 1], thl0top, qt0top, ese, esx
         )
-        
-        #if id_check == 1:
-        #    raise ValueError("Expected id_check == 0, got id_check == 1!")
-        
+
+        if id_check == 1:
+            id_check_flag = True
+
         thv0top = thj * (1.0 + zvir * qvj - qlj - qij)
         thvl0top = thl0top * (1.0 + zvir * qt0top)
 
@@ -538,28 +551,28 @@ def compute_uwshcu(
         thv0top = thv0bot
         thvl0top = thvl0bot
 
-    with computation(FORWARD), interval(...):        
-        '''
+    with computation(FORWARD), interval(...):
+        """
         Below 'iter' loop is for implicit CIN closure
 
         It is important to note that this iterative cin loop is located at the outer  
         shell of the code. Thus, source air properties can also be changed during the 
         iterative cin calculation, because cumulus convection induces non-zero fluxes 
         even at interfaces below PBL top height through 'fluxbelowinv' subroutine. 
-        '''
-    
-        iter=0
-        iter_cin=2
-        while iter < iter_cin:
-            '''
+        """
+       
+        iteration = 0
+        iter_max = 2
+        while iteration < iter_max:
+            """
             Cumulus scale height                                                    
             In contrast to the premitive code, cumulus scale height is iteratively 
             calculated at each time step, and at each iterative cin step.          
             It is not clear whether I should locate below two lines within or  out 
             of the iterative cin loop. 
-            '''
+            """
 
-            '''
+            """
             Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer 
             index with PBLH in it. When PBLH is exactly at interface, 'kinv' is the 
             layer index having PBLH as a lower interface.                          
@@ -578,61 +591,52 @@ def compute_uwshcu(
             changed between two model time steps. In order to ensure correct identi 
             fication of 'kinv' for general case including SBCL, I imposed an offset 
             of 5 [m] in the below 'kinv' finding block.
-            '''
-            
+            """
+
             # Invert kpbl index
             if kpbl_in >= k0:
                 kinv = k0 - kpbl_in + 1
             else:
-                kinv = 5   
+                kinv = 5
 
-            if kinv <= 1:     
+            if kinv <= 1:
                 id_exit = True
-            
-            if unexpected_id_exit == 0:
-                unexpected_id_exit = 1
-            #else:
-                #if unexpected_id_exit == False:
-                #    unexpected_id_exit = True
-    
 
             # Cumulus convection goes here
             # This section has NOT BEEN PORTED
             # If id_exit == False the code will be triggered and an error will be raised
 
-            iter_cin += 1
+            iteration += 1
 
         # Initialize output variables when cumulus convection was not performed.
-        umf_out[0,0,1]      = 0.0   
-        dcm_out             = 0.0   
-        qvten_out           = 0.0
-        qlten_out           = 0.0
-        qiten_out           = 0.0
-        sten_out            = 0.0
-        uten_out            = 0.0
-        vten_out            = 0.0
-        qrten_out           = 0.0
-        qsten_out           = 0.0
-        cufrc_out           = 0.0
-        cush_inout          = -1.0
-        qldet_out           = 0.0
-        qidet_out           = 0.0
-        fer_out             = radconstants.MAPL_UNDEF
-        fdr_out             = radconstants.MAPL_UNDEF
-        qtflx_out[0,0,1]    = 0.0
-        slflx_out[0,0,1]    = 0.0
-        uflx_out[0,0,1]     = 0.0
-        vflx_out[0,0,1]     = 0.0
+        umf_out[0, 0, 1] = 0.0
+        dcm_out = 0.0
+        qvten_out = 0.0
+        qlten_out = 0.0
+        qiten_out = 0.0
+        sten_out = 0.0
+        uten_out = 0.0
+        vten_out = 0.0
+        qrten_out = 0.0
+        qsten_out = 0.0
+        cufrc_out = 0.0
+        cush_inout = -1.0
+        qldet_out = 0.0
+        qidet_out = 0.0
+        fer_out = radconstants.MAPL_UNDEF
+        fdr_out = radconstants.MAPL_UNDEF
+        qtflx_out[0, 0, 1] = 0.0
+        slflx_out[0, 0, 1] = 0.0
+        uflx_out[0, 0, 1] = 0.0
+        vflx_out[0, 0, 1] = 0.0
 
-    with computation(PARALLEL), interval(0,1):
-        umf_out             = 0.0
-        qtflx_out           = 0.0
-        slflx_out           = 0.0
-        uflx_out            = 0.0
-        vflx_out            = 0.0
+    with computation(PARALLEL), interval(0, 1):
+        umf_out = 0.0
+        qtflx_out = 0.0
+        slflx_out = 0.0
+        uflx_out = 0.0
+        vflx_out = 0.0
 
-            
-           
 
 class ComputeUwshcu:
     def __init__(
@@ -647,7 +651,6 @@ class ComputeUwshcu:
         Parameters:
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
-        ncnst (Int): Number of tracers.
         """
 
         self.stencil_factory = stencil_factory
@@ -668,6 +671,14 @@ class ComputeUwshcu:
                         self._k_mask.view[i, j, k] = 3
                     else:
                         self._k_mask.view[i, j, k] = 2
+
+        self.id_exit = self.quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
+        )
+
+        self.id_check_flag = self.quantity_factory.zeros(
+            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
+        )
 
     @staticmethod
     def make_ntracers_quantity_factory(ijk_quantity_factory: QuantityFactory):
@@ -732,23 +743,16 @@ class ComputeUwshcu:
         qij_test: FloatField,
         qse_test: FloatField,
         id_check_test: IntField,
-        unexpected_id_exit: IntField,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
-
         self.qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
             formulation=formulation,
         )
 
-        unexpected_id_exit = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a", dtype=IntField)
-        for i in range(0, unexpected_id_exit.view[:].shape[0]):
-            for j in range(0, unexpected_id_exit.view[:].shape[1]):
-                for k in range(0, unexpected_id_exit.view[:].shape[2]):
-                    unexpected_id_exit.view[i, j, k] = 0
-
-
+        self.id_exit.view[:, :, :] = False
+        self.id_check_flag.view[:, :, :] = False
 
         self._compute_uwshcu(
             dotransport=dotransport,
@@ -805,12 +809,19 @@ class ComputeUwshcu:
             kmask=self._k_mask,
             ese=self.qsat.ese,
             esx=self.qsat.esx,
-            unexpected_id_exit = unexpected_id_exit,
+            id_exit=self.id_exit,
+            id_check_flag=self.id_check_flag,
         )
 
-        print(unexpected_id_exit)
+        if (self.id_exit.view[:, :, :] == False).all():
+            raise NotImplementedError(
+                "Expected id_exit == True, got id_exit == False! "
+                "Cumulus convection was unexpectedly triggered! "
+                "This code has not been ported."
+            )
 
-        #if unexpected_id_exit:
-        #    raise NotImplementedError(
-        #        "Cumulus convection was triggered! This code has not been ported."
-        #)
+        if (self.id_check_flag.view[:, :, :] == True).all():
+            raise NotImplementedError(
+                "Expected id_check == 0, got id_check == 1! " 
+                "Code has been triggered that has not been ported."
+            )

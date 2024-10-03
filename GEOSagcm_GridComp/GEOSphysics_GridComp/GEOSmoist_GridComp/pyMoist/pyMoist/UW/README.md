@@ -27,6 +27,7 @@ Better numerics: 60294592b47910816915adc1f51e7c715481405d
 Probable change: e0fb2a2410909a9ce63d0c15f33325dc3577eb70
 UW original port : cfc8a721829fdaad245715def3aa8721b89b1d09
 
+- Fortran constant MAPL_UNDEF is used in compute_uwshcu, which is currently assigned the value 1E15. We plan to keep this constant as is for now to match 11.5.2 GEOS. However, we plan to change this at some point.
 
 ## Next steps
 - Finish porting and testing compute_uwshcu
