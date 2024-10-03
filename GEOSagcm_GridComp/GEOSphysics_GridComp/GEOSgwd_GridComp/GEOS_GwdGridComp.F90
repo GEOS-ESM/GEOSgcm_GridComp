@@ -853,8 +853,12 @@ contains
         call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0, _RC)
       else  
         call MAPL_GetResource( MAPL, self%GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, _RC)
-        call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
-        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=16, _RC)
+        call MAPL_GetResource( MAPL, self%NCAR_NRDG,     Label="NCAR_NRDG:",     default=0,  _RC) ! use 0 [1:16] to disable [enable] ridge scheme
+        if (self%NCAR_NRDG == 16) then
+           call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, _RC)
+        else
+           call MAPL_GetResource( MAPL, self%NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.250, _RC)
+        endif
       endif
 
 ! Rayleigh friction
@@ -913,22 +917,25 @@ contains
       ! Orographic Scheme
       call MAPL_GetResource( MAPL, NCAR_ORO_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,    _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5,  _RC)
-      call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
       if (self%NCAR_NRDG > 0) then
-        ! Ridge Scheme
-          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,   Label="NCAR_ORO_TNDMAX:",  default=400.0, _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2, Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=250.0,_RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
+        ! Ridge Scheme
           do thread = 0, num_threads-1
              call gw_rdg_init ( self%workspaces(thread)%rdg_band, NCAR_ORO_GW_DC, NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_TNDMAX, NCAR_ORO_PGWV )
           end do
       else
         ! Old Scheme
-          call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=2.0,  _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=0.5,   _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,   _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=250.0, _RC)
+          NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
              call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
                                 NCAR_ORO_FCRIT2, NCAR_ORO_WAVELENGTH, NCAR_ORO_PGWV, &
-                                NCAR_ORO_SOUTH_FAC )
+                                NCAR_ORO_SOUTH_FAC, NCAR_ORO_TNDMAX )
           end do
       endif
 

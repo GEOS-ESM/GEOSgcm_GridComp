@@ -174,11 +174,13 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
       if (INT(ZERO_DIFF) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
-                                     SGS_W_TIMESCALE = 1
+                                     SGS_W_TIMESCALE = 4 ! Hours
                   if (LHYDROSTATIC)  SGS_W_TIMESCALE = 0
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
+         if (SGS_W_TIMESCALE == 0) then
+           call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default=  3600., RC=STATUS );VERIFY_(STATUS)
+           call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+         endif
       else
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
          call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
@@ -368,6 +370,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
     real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
     real, pointer, dimension(:,:,:) :: ENTR, ENTR_DP, ENTR_MD, ENTR_SH
+    real, pointer, dimension(:,:,:) :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH     
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
@@ -540,19 +543,14 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR     ,'ENTR'      ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_DP  ,'ENTR_DP'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_MD  ,'ENTR_MD'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_SH  ,'ENTR_SH'   ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-
-    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_DP, 'SGS_VVEL_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_MD, 'SGS_VVEL_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SGS_VVEL_SH, 'SGS_VVEL_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -614,6 +612,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
+                                 , SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH            &
                                  ,TPWI, TPWI_star, LFR_GF, CNV_TR)
     ELSE
          !- call GF/GEOS5 interface routine

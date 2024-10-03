@@ -1262,6 +1262,36 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'SGS_VVEL_DP',                                    &
+         LONG_NAME = 'subgridscale_vert_vel_in_gf_deep_convection_updraft',  &
+         UNITS     = 'm s-1',                                      &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+  
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'SGS_VVEL_MD',                                    &
+         LONG_NAME = 'subgridscale_vert_vel_in_gf_mid_convection_updraft',  &
+         UNITS     = 'm s-1',                                      &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+  
+    VERIFY_(STATUS)
+  
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'SGS_VVEL_SH',                                    &
+         LONG_NAME = 'subgridscale_vert_vel_in_gf_shallow_convection_updraft',  &
+         UNITS     = 'm s-1',                                      &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CNV_UPDF',                                    &
          LONG_NAME = 'updraft_areal_fraction',                      &
          UNITS     = '1',                                           &

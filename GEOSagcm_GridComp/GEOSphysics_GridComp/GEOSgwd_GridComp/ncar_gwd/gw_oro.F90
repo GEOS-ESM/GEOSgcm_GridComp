@@ -17,28 +17,28 @@ public :: gw_oro_init
 
 real,parameter :: PI      = 3.14159265358979323846  ! pi
 
-real :: gw_oro_south_fac
+real, protected :: gw_oro_south_fac
+real, protected :: gw_oro_tndmax
 
 contains
 
 !==========================================================================
 
 !------------------------------------
-subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac)
+subroutine gw_oro_init (band, gw_dc, fcrit2, wavelength, pgwv, oro_south_fac, oro_tndmax)
 #include <netcdf.inc>
 
   type(GWBand), intent(inout) :: band
-  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac
+  real, intent(in) :: gw_dc,fcrit2,wavelength,oro_south_fac,oro_tndmax
   integer, intent(in)  :: pgwv
-
-  
 
 ! Need to call GWBand for oro waves
 
   band  = GWBand(pgwv, gw_dc, fcrit2, wavelength )
 
   gw_oro_south_fac = oro_south_fac
-  
+  gw_oro_tndmax = oro_tndmax
+ 
 end subroutine gw_oro_init
 
 !------------------------------------
@@ -317,7 +317,8 @@ subroutine gw_oro_ifc( band, &
 
      ! Apply efficiency and limiters
      call energy_momentum_adjust(ncol, pver, band, pint, delp, u, v, dt, c, tau, &
-                        effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level)
+                        effgw, t, ubm, ubi, xv, yv, utgw, vtgw, ttgw, tend_level, &
+                        tndmax_in=gw_oro_tndmax)
 
 end subroutine gw_oro_ifc
 
