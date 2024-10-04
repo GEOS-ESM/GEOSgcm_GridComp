@@ -96,9 +96,6 @@ module GEOSmoist_Process_Library
   ! Radar parameter
   integer :: DBZ_LIQUID_SKIN=1
 
-  ! ice vfall param in GFDL
-  integer :: ICE_VFALL_PARAM = 1
-
   ! option for cloud liq/ice radii
   integer :: LIQ_RADII_PARAM = 1
   integer :: ICE_RADII_PARAM = 1
@@ -149,7 +146,7 @@ module GEOSmoist_Process_Library
   public :: pdffrac, pdfcondensate, partition_dblgss
   public :: SIGMA_DX, SIGMA_EXP
   public :: CNV_FRACTION_MIN, CNV_FRACTION_MAX, CNV_FRACTION_EXP
-  public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM, ICE_VFALL_PARAM
+  public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
 

@@ -41,7 +41,7 @@ module gfdl2_cloud_microphys_mod
   ! use fms_mod, only: write_version_number, open_namelist_file, &
   !                    check_nml_error, close_file, file_exist,  &
   !                    fms_init
-    use GEOSmoist_Process_Library, only: sigma, ice_fraction, LDRADIUS4, ICE_VFALL_PARAM
+    use GEOSmoist_Process_Library, only: sigma, ice_fraction, LDRADIUS4
     use MAPL, only: MAPL_AM_I_ROOT
 
     implicit none
@@ -50,6 +50,10 @@ module gfdl2_cloud_microphys_mod
 
     public gfdl_cloud_microphys_driver, gfdl_cloud_microphys_init, gfdl_cloud_microphys_end
     public cloud_diagnosis
+    public ICE_LSC_VFALL_PARAM, ICE_CNV_VFALL_PARAM
+
+    integer :: ICE_LSC_VFALL_PARAM = 1 
+    integer :: ICE_CNV_VFALL_PARAM = 2
 
     real :: missing_value = - 1.e10
 
@@ -3044,21 +3048,34 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 tc     = tk (k) - tice ! deg C
                 IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
 
-               if (ICE_VFALL_PARAM == 1) then
+               if (ICE_LSC_VFALL_PARAM == 1) then
                ! -----------------------------------------------------------------------
                ! use deng and mace (2008, grl)
                ! https://doi.org/10.1029/2008GL035054
                ! -----------------------------------------------------------------------
                 viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
-                viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
                else 
                ! -----------------------------------------------------------------------
                ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
                !                               ice clouds: Results from SPartICus'
                ! -----------------------------------------------------------------------
                 viLSC  = MAX(10.0,lsc_icefall*(1.411*tc + 11.71*log10(IWC*1.e3) + 82.35))
+               endif
+
+               if (ICE_CNV_VFALL_PARAM == 1) then
+               ! -----------------------------------------------------------------------
+               ! use deng and mace (2008, grl)
+               ! https://doi.org/10.1029/2008GL035054
+               ! -----------------------------------------------------------------------
+                viCNV   = anv_icefall*10.0**(log10(IWC) * (tc * (aaC * tc + bbC) + ccC) + ddC * tc + eeC)
+               else
+               ! -----------------------------------------------------------------------
+               ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in
+               !                               ice clouds: Results from SPartICus'
+               ! -----------------------------------------------------------------------
                 viCNV  = MAX(10.0,anv_icefall*(1.119*tc + 14.21*log10(IWC*1.e3) + 68.85))
                endif
+
 
                ! Combine
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
