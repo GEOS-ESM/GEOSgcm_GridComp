@@ -1,9 +1,7 @@
 import copy
-import os
 from typing import Optional
 
 import gt4py.cartesian.gtscript as gtscript
-import xarray as xr
 from gt4py.cartesian.gtscript import PARALLEL, computation, floor, interval
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
@@ -21,7 +19,8 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.types import SaturationFormulation, TableMethod
+from pyMoist.saturation.table import get_table
+from pyMoist.saturation.types import SaturationFormulation
 
 
 # FloatField with extra dimension initialized to handle table data
@@ -194,17 +193,16 @@ def QSat_FloatField(
     QSAT: FloatField,
     DQSAT: FloatField,
     RAMP: FloatField,
-    PASCALS_trigger: bool,
-    RAMP_trigger: bool,
-    DQSAT_trigger: bool,
 ):
+    from __externals__ import FILL_DQSAT, USE_PASCALS, USE_RAMP
+
     with computation(PARALLEL), interval(...):
-        if RAMP_trigger:
+        if USE_RAMP:
             URAMP = -abs(RAMP)
         else:
             URAMP = TMIX
 
-        if PASCALS_trigger:
+        if USE_PASCALS:
             PP = PL
         else:
             PP = PL * 100.0
@@ -230,12 +228,12 @@ def QSat_FloatField(
             QSAT = (TI - IT) * DQ + ese[0][IT_MINUS_1]  # type: ignore
         if PP <= QSAT:
             QSAT = MAX_MIXING_RATIO
-            if DQSAT_trigger:
+            if FILL_DQSAT:
                 DQSAT = 0.0
         else:
             DD = 1.0 / (PP - (1.0 - ESFAC) * QSAT)
             QSAT = ESFAC * QSAT * DD
-            if DQSAT_trigger:
+            if FILL_DQSAT:
                 DQSAT = ESFAC * DQ * DEGSUBS * PP * (DD * DD)
 
 
@@ -269,7 +267,9 @@ class QSat:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        table_method: TableMethod = TableMethod.NetCDF,
+        use_ramp: bool = False,
+        use_pascals: bool = False,
+        fill_dqsat: bool = False,
     ) -> None:
         self.extra_dim_quantity_factory = self.make_extra_dim_quantity_factory(
             quantity_factory
@@ -279,34 +279,10 @@ class QSat:
         self.esw = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
         self.esx = self.extra_dim_quantity_factory.zeros([Z_DIM, "table_axis"], "n/a")
 
-        if table_method == TableMethod.NetCDF:
-            with xr.open_dataset(
-                os.path.join(os.path.dirname(__file__), "netCDFs", "QSat_Tables.nc")
-            ) as ds:
-                ese_array = ds.data_vars["ese"].values[0, 0, :]
-                esw_array = ds.data_vars["esw"].values[0, 0, :]
-                esx_array = ds.data_vars["esx"].values[0, 0, :]
-
-                self.ese.view[:] = ese_array
-                self.esw.view[:] = esw_array
-                self.esx.view[:] = esx_array
-        elif table_method == TableMethod.Computation:
-            raise NotImplementedError(
-                """[QSat]  Calculated tables are incorrect due to differences between
-                C and Fortran calculations.\n
-                For now the tables are being read in from a netCDF file.\n
-                See https://github.com/GEOS-ESM/SMT-Nebulae/issues/88
-                for more information."""
-            )
-            # self.table = get_table(formulation)
-
-            # self.ese.view[:] = self.table.ese
-            # self.esw.view[:] = self.table.esw
-            # self.esx.view[:] = self.table.esx
-        else:
-            raise NotImplementedError(
-                f"[QSat] Unknown {table_method} to create estimation table"
-            )
+        self.table = get_table(formulation)
+        self.ese.view[:] = self.table.ese
+        self.esw.view[:] = self.table.esw
+        self.esx.view[:] = self.table.esx
 
         self._RAMP = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self._DQSAT = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -317,6 +293,11 @@ class QSat:
         self._QSat_FloatField = stencil_factory.from_dims_halo(
             func=QSat_FloatField,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "USE_RAMP": use_ramp,
+                "USE_PASCALS": use_pascals,
+                "FILL_DQSAT": fill_dqsat,
+            },
         )
 
     @staticmethod
@@ -333,16 +314,13 @@ class QSat:
         self,
         T: FloatField,
         PL: FloatField,
-        RAMP: Optional[FloatField] = None,
-        PASCALS: bool = False,
-        DQSAT: bool = False,
+        DQSat: Optional[FloatField] = None,
         use_table_lookup: bool = True,
     ):
-        if RAMP is None:
-            RAMP = self._RAMP
-            RAMP_trigger = False
+        if DQSat:
+            dqsat = DQSat
         else:
-            RAMP_trigger = True
+            dqsat = self._DQSAT
 
         if use_table_lookup:
             self._QSat_FloatField(
@@ -351,11 +329,8 @@ class QSat:
                 T,
                 PL,
                 self.QSat,
-                self._DQSAT,
-                RAMP,
-                PASCALS,
-                RAMP_trigger,
-                DQSAT,
+                dqsat,
+                self._RAMP,
             )
 
         if not use_table_lookup:

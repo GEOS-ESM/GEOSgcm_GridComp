@@ -1,7 +1,7 @@
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation import QSat, TableMethod
+from pyMoist.saturation import QSat
 
 
 class TranslateQSat(TranslateFortranData2Py):
@@ -58,7 +58,6 @@ class TranslateQSat(TranslateFortranData2Py):
         qsat = QSat(
             self.stencil_factory,
             self.quantity_factory,
-            table_method=TableMethod.NetCDF,
         )
 
         # FloatField Variables
