@@ -1278,8 +1278,8 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
-     IF (DO_OBIO /= 0) THEN 
-     call MAPL_AddConnectivity ( GC,                               &
+     IF (DO_OBIO /= 0) THEN
+        call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
          DST_ID      = SURF,                                       &
@@ -1353,7 +1353,7 @@ contains
 
      call MAPL_AddConnectivity ( GC,                              &
         SHORT_NAME  = (/ 'LWI      ', 'FRLAND   ', 'FRLANDICE',   &
-                         'FROCEAN  ', 'FRLAKE   ', 'WET1     ',   &
+                         'FROCEAN  ', 'FRLAKE   ',                &
                          'GRN      ', 'USTAR    ', 'U10M     ',   &
                          'V10M     ', 'SH       ', 'Z0H      ',   &
                          'LAI      ', 'TSOIL1   ', 'FRACI    ',   &
@@ -1367,6 +1367,18 @@ contains
                          'PRECTOT  '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     ! NOTE: GOCART's dust code expects WET1 to have all the cells with MAPL_UNDEF
+     !       (aka not land) to be replaced with 1.0. We want WET1 to have
+     !       MAPL_UNDEF over non-land points, so we need a separate export to pass
+     !       to GOCART which is WET1 with all non-land points set to 1.0.
+     call MAPL_AddConnectivity ( GC,                              &
+        SRC_NAME  = [ 'WET1_FOR_CHEM' ],                          &
+        SRC_ID      = SURF,                                       &
+        DST_NAME  = [ 'WET1' ],                                   &
+        DST_ID      = CHEM,                                       &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1523,7 +1535,7 @@ contains
           CHILD      = TURBL,                           &
           RC=STATUS  )
        VERIFY_(STATUS)
-     endif 
+     endif
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &
@@ -2073,10 +2085,10 @@ contains
 ! The original 3D increments:
 
     call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
-  
+
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
@@ -2088,7 +2100,7 @@ contains
 
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)                           
+    VERIFY_(STATUS)
 
     call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )

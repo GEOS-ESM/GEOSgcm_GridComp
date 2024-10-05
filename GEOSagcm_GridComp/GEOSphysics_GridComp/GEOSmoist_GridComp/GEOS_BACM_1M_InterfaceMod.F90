@@ -476,6 +476,16 @@ subroutine BACM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do
     end do
 
+    call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
+    if (associated(PTR2D)) then
+      tmp2d = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
+      do J=1,JM
+         do I=1,IM
+           PTR2D(I,J) = ZL0(I,J,tmp2d(I,J))
+         end do
+      end do
+    endif
+
     ! Export Tendencies
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DQIDT_macro, 'DQIDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)

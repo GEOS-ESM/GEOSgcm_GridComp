@@ -18,7 +18,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SuperdynGridComp.F90)
   esma_add_library (${this}
     SRCS GEOS_SuperdynGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL GEOS_Shared esmf)
+    DEPENDENCIES MAPL GEOS_Shared ESMF::ESMF)
 
 else ()
 
