@@ -1133,7 +1133,7 @@ contains
           DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
      VERIFY_(STATUS)
   endif
-  if (trim(co2provider) .eq. 'GHG' .and. CO2_ .eq. -2.0) then
+  if (trim(co2provider) .eq. 'RRG' .and. CO2_ .eq. -2.0) then
      CALL MAPL_AddConnectivity( GC, &
           SHORT_NAME  = (/'CO2'/), &
           DST_ID=RAD, SRC_ID=CHEM, RC=STATUS    )
