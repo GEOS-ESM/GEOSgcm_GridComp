@@ -31,19 +31,19 @@ def slope(
     p0_below: Float,
 ):
     """
-    Calculates slope of a given field.
+    Function that calculates slope of a given field at each grid cell.
 
-    Parameters:
-    kmask (Float): K-level mask (e.g., 1 for k=0, 2 for k=1,71, 3 for k=72).
-    field (Float): Field of interest.
-    field_above (Float): 1 k-level above field (e.g., field[0,0,1]).
-    field_below (Float): 1 k-level below field (e.g., field[0,0,-1]).
-    p0 (Float): Pressure
-    p0_above (Float): 1 k-level above p0 (e.g., p0[0,0,1]).
-    p0_below (Float): 1 k-level below p0 (e.g., p0[0,0,-1]).
+    Inputs:
+    kmask (Float): K-level mask (e.g., 1 for k=0, 2 for k=1,71, 3 for k=72)
+    field (Float): Field of interest [N/A]
+    field_above (Float): The k-level above field (e.g., field[0,0,1]) [N/A]
+    field_below (Float): The k-level below field (e.g., field[0,0,-1]) [N/A]
+    p0 (Float): Pressure [Pa]
+    p0_above (Float): The k-level above p0 (e.g., p0[0,0,1]) [Pa]
+    p0_below (Float): The k-level below p0 (e.g., p0[0,0,-1]) [Pa]
 
     Returns:
-    Slope: Slope of the field of interest.
+    slope (Float): Slope of the field of interest [N/A]
     """
     if kmask == 1:
         value = (field_above - field) / (p0_above - p0)
@@ -74,7 +74,13 @@ def exnerfn(
     p: Float,
 ) -> Float:
     """
-    Add description of function and variables
+    Function that calculates the Exner function for a given pressure.
+
+    Inputs:
+    p (Float): Atmospheric pressure [Pa]
+
+    Returns:
+    (p / 100000.0) ** (radconstants.MAPL_RGAS / constants.cp) (Float): Exner function
     """
 
     return (p / 100000.0) ** (radconstants.MAPL_RGAS / constants.cp)
@@ -160,16 +166,31 @@ def conden(
     esx: FloatField_Extra_Dim,
 ):
     """
-    Add description of function and variables
+    Function that determines if condensation process has occurred.
+
+    Inputs:
+    p (Float): Pressure [Pa]
+    thl (Float): Temperature [K]
+    qt (Float): Mixing ratio [kg/kg]
+    ese (FloatField_Extra_Dim): Used in QSat_Float [N/A]
+    esx (FloatField_Extra_Dim): Used in for QSat_Float [N/A]
+
+    Returns:
+    th (Float): Temperature [K]
+    qv (Float): Water vapor mixing ratio [kg/kg]
+    ql (Float): Liquid water mixing ratio [kg/kg]
+    qi (Float): Ice water mixing ratio [kg/kg]
+    rvls (Float): Saturation specific humidity [kg/kg]
+    id_check (Int): Flag that indicates if condensation occurs (0 for no condensation, 1 for condensation).
     """
 
-    tc = thl * exnerfn(p)
+    tc = thl * exnerfn(p) # tc is a real*8 (64-bit) in the Fortran
 
-    nu = ice_fraction(tc, 0.0, 0.0)
-    leff = (1.0 - nu) * constants.xlv + (nu * constants.xls)  # Effective latent heat
+    nu = ice_fraction(tc, 0.0, 0.0) # nu is a real*8 (64-bit) in the Fortran
+    leff = (1.0 - nu) * constants.xlv + (nu * constants.xls)  # Effective latent heat, nu is a real*8 (64-bit) in the Fortran
     temps = tc
     ps = p
-    qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)  # Saturation specific humidity
+    qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)  # qs is a real*8 (64-bit) in the Fortran
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -186,10 +207,10 @@ def conden(
                 constants.cp / leff
                 + constants.ep2 * leff * rvls / (constants.r * temps * temps)
             )
-            qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
+            qs, _ = QSat_Float(ese, esx, temps, ps / 100.0) # qs is a real*8 (64-bit) in the Fortran
             rvls = qs
             iteration += 1
-        qc = max(qt - qs, 0.0)
+        qc = max(qt - qs, 0.0) # qc is a real*8 (64-bit) in the Fortran
         qv = qt - qc
         ql = qc * (1.0 - nu)
         qi = nu * qc
@@ -277,14 +298,69 @@ def compute_uwshcu(
     sungsu@atmos.washington.edu
 
     For GEOS-specific questions, email nathan.arnold@nasa.gov
-    """
 
-    """
-    Add description of variables
+    Parameters:
+    dotransport (Float in): Transport tracers [1 true]
+    ncnst (Int in): Number of tracers
+    k0 (Int in): Number of vertical levels
+    kpbl_in (2D in): Boundary layer top layer index
+    pifc0_in (3D in): Environmental pressure at interfaces [Pa]
+    pmid0_in (3D in): Environmental pressure at midpoints [Pa]
+    exnmid0_in (3D in): Exner function at midpoints
+    u0_in (3D in): Environmental zonal wind [m/s]
+    v0_in (3D in): Environmental meridional wind [m/s]
+    qv0_in (3D in): Environmental specific humidity
+    ql0_in (3D in): Environmental liquid water specific humidity
+    qi0_in (3D in): Environmental ice specific humidity
+    th0_in (3D in): Environmental potential temperature [K]
+    tr0_inout (4D in): Environmental tracers [ #, kg/kg ]
+    umf_out (3D out): Updraft mass flux at the interfaces [ kg/m2/s ]
+    dcm_out (3D out): Detrained cloudy air mass
+    qvten_out (3D out): Tendency of water vapor specific humidity [ kg/kg/s ]
+    qlten_out (3D out): Tendency of liquid water specific humidity [ kg/kg/s ]
+    qiten_out (3D out): Tendency of ice specific humidity [ kg/kg/s ]
+    sten_out (3D out): Tendency of dry static energy [ J/kg/s ]
+    uten_out (3D out): Tendency of zonal wind [ m/s2 ]
+    vten_out (3D out): Tendency of meridional wind [ m/s2 ]
+    qrten_out (3D out): Tendency of rain water specific humidity [ kg/kg/s ]
+    qsten_out (3D out): Tendency of snow specific humidity [ kg/kg/s ]
+    cufrc_out (3D out): Shallow cumulus cloud fraction at the layer mid-point [ fraction ]
+    fer_out (3D out): Fractional lateral entrainment rate [ 1/Pa ]
+    fdr_out (3D out): Fractional lateral detrainment rate [ 1/Pa ]
+    qldet_out (3D out): [N/A]
+    qidet_out (3D out): [N/A]
+    qlsub_out (3D out): [N/A]
+    qisub_out (3D out): [N/A]
+    ndrop_out (3D out): [N/A]
+    nice_out (3D out): [N/A]
+    tpert_out (2D out): Temperature perturbation
+    qpert_out (2D out): Humidity perturbation
+    qtflx_out (3D out): [N/A]
+    slflx_out (3D out): [N/A]
+    uflx_out (3D out): [N/A]
+    vflx_out (3D out): [N/A]
+    tr0 (4D in): Environmental tracers [ #, kg/kg ]
+    ssthl0 (3D inout): [N/A]
+    ssqt0 (3D inout): [N/A]
+    ssu0 (3D inout): [N/A]
+    ssv0 (3D inout): [N/A]
+    sstr0 (4D inout): [N/A]
+    thj (3D inout): [N/A]
+    qvj (3D inout): [N/A]
+    qlj (3D inout): [N/A]
+    qij (3D inout): [N/A]
+    qse (3D inout): [N/A]
+    id_check (3D in): 1 for condensation, 0 for no condensation
+    kmask (3D in): K-level mask (e.g., 1 for k=0, 2 for k=1,71, 3 for k=72)
+    ese: FloatField_Extra_Dim,
+    esx:: FloatField_Extra_Dim,
+    id_exit (3D inout): Flag that will raise an error if id_exit == False
+    id_check_flag (3D inout): Flag that will raise an error if id_check == 1
+
     """
 
     with computation(FORWARD), interval(...):
-        # Initialize output variables defined
+        # Initialize output variables
         umf_out = 0.0
         dcm_out = 0.0
         cufrc_out = 0.0
@@ -651,6 +727,7 @@ class ComputeUwshcu:
         Parameters:
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
+        formulation: Saturation Formulation used for QSat
         """
 
         self.stencil_factory = stencil_factory
