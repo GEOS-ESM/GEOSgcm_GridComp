@@ -26,14 +26,14 @@ from pyMoist.shared_incloud_processes import (
 
 @gtscript.function
 def pdffrac(
-    flag: Int,
+    pdfshape: Int,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
     qstar: Float,
     clfrac: Float,
 ):
-    if flag == 1:
+    if pdfshape == 1:
         if (qtmean + sigmaqt1) < qstar:
             clfrac = 0.0
         else:
@@ -43,36 +43,22 @@ def pdffrac(
                 )
             else:
                 clfrac = 1.0
-    elif flag == 2:
-        qtmode = qtmean + (sigmaqt1 - sigmaqt2) / 3.0
-        qtmin = max(qtmode - sigmaqt1, 0.0)
-        qtmax = qtmode + sigmaqt2
-        if qtmax <= qstar:
-            clfrac = 0.0
-        elif (qtmode <= qstar) and (qstar <= qtmax):
-            clfrac = (
-                (qtmax - qstar) * (qtmax - qstar) / ((qtmax - qtmin) * (qtmax - qtmode))
-            )
-        elif (qtmin <= qstar) and (qstar < qtmode):
-            clfrac = 1.0 - (
-                (qstar - qtmin) * (qstar - qtmin) / ((qtmax - qtmin) * (qtmode - qtmin))
-            )
-        elif qstar <= qtmin:
-            clfrac = 1.0
+
+    # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
 
     return clfrac
 
 
 @gtscript.function
 def pdfcondensate(
-    flag: Int,
+    pdfshape: Int,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
     qstar: Float,
     condensate: Float,
 ):
-    if flag == 1:
+    if pdfshape == 1:
         if (qtmean + sigmaqt1) < qstar:
             condensate = 0.0
         elif qstar > (qtmean - sigmaqt1):
@@ -84,32 +70,8 @@ def pdfcondensate(
                 condensate = qtmean - qstar
         else:
             condensate = qtmean - qstar
-    elif flag == 2:
-        qtmode = qtmean + (sigmaqt1 - sigmaqt2) / 3.0
-        qtmin = max(qtmode - sigmaqt1, 0.0)
-        qtmax = qtmode + sigmaqt2
-        if qtmax <= qstar:
-            condensate = 0.0
-        elif (qtmode <= qstar) and (qstar < qtmax):
-            constB = 2.0 / ((qtmax - qtmin) * (qtmax - qtmode))
-            cloudf = (
-                (qtmax - qstar) * (qtmax - qstar) / ((qtmax - qtmin) * (qtmax - qtmode))
-            )
-            term1 = (qstar * qstar * qstar) / 3.0
-            term2 = (qtmax * qstar * qstar) / 2.0
-            term3 = (qtmax * qtmax * qtmax) / 6.0
-            condensate = constB * (term1 - term2 + term3) - qstar * cloudf
-        elif (qtmin <= qstar) and (qstar < qtmode):
-            constA = 2.0 / ((qtmax - qtmin) * (qtmode - qtmin))
-            cloudf = 1.0 - (
-                (qstar - qtmin) * (qstar - qtmin) / ((qtmax - qtmin) * (qtmode - qtmin))
-            )
-            term1 = (qstar * qstar * qstar) / 3.0
-            term2 = (qtmin * qstar * qstar) / 2.0
-            term3 = (qtmin * qtmin * qtmin) / 6.0
-            condensate = qtmean - (constA * (term1 - term2 + term3)) - qstar * cloudf
-        elif qstar <= qtmin:
-            condensate = qtmean - qstar
+
+    # Above code only executes when pdfshape = 1. Fortran code exists for pdfshape = 2
 
     return condensate
 
@@ -293,10 +255,10 @@ def hystpdf(
     estfrz: Float,
     estlqu: Float,
 ):
-    from __externals__ import USE_BERGERON
+    from __externals__ import use_bergeron
 
     # Reference Fortran: Process_Library.F90: subroutine hystpdf
-    # with PDFSHAPE = 1, USE_BERGERON = True, and SC_ICE = False
+    # with PDFSHAPE = 1, use_bergeron = True, and SC_ICE = False
     with computation(PARALLEL), interval(...):
         scice = 1.0  # don't ask, I don't know
         if CLCN < 1.0:
@@ -336,7 +298,7 @@ def hystpdf(
                 CFn = pdffrac(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, CFn)
                 QCn = pdfcondensate(PDFSHAPE, QT, sigmaqt1, sigmaqt2, QSn, QCn)
 
-            if USE_BERGERON:
+            if use_bergeron:
                 DQALL = QCn - QCp
                 Nfac = (
                     100.0 * PL * constants.R_AIR / TEn
@@ -481,7 +443,7 @@ def hystpdf(
         RHX = Q / denom
 
 
-def meltfrz(
+def melt_freeze(
     dt: Float,
     cnv_frc: FloatFieldIJ,
     srf_type: FloatFieldIJ,
@@ -521,7 +483,7 @@ def meltfrz(
             )
 
 
-def evap(
+def evaporate(
     DT_MOIST: Float,
     CCW_EVAP_EFF: Float,
     PLmb: FloatField,
@@ -545,9 +507,9 @@ def evap(
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.latent_heat_vaporization**2)
             * constants.RHO_W
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.rvap * (T**2))
         )
         K2 = (
             constants.rvap
@@ -568,7 +530,7 @@ def evap(
                 * QLCN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS ** 2)
+                / ((K1 + K2) * RADIUS**2)
             )
             EVAP = min(EVAP, QLCN)
         else:
@@ -582,7 +544,7 @@ def evap(
         EVAPC = (Q - EVAPC) / DT_MOIST
 
 
-def subl(
+def sublimate(
     DT_MOIST: Float,
     CCI_EVAP_EFF: Float,
     PLmb: FloatField,
@@ -606,9 +568,9 @@ def subl(
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.latent_heat_vaporization**2)
             * constants.RHO_I
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.rvap * (T**2))
         )
         K2 = (
             constants.rvap
@@ -629,7 +591,7 @@ def subl(
                 * QICN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * radius ** 2)
+                / ((K1 + K2) * radius**2)
             )
             SUBL = min(SUBL, QICN)
         else:

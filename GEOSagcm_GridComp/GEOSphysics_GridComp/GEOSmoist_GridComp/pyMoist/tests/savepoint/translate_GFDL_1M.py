@@ -107,9 +107,9 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         CCI_EVAP_EFF = Float(inputs["CCI_EVAP_EFF"])
         PDFSHAPE = Float(inputs["PDFSHAPE"])
 
-        code = GFDL_1M(self.stencil_factory, self.quantity_factory)
+        stencil = GFDL_1M(self.stencil_factory, self.quantity_factory)
 
-        code(
+        stencil(
             EIS,
             dw_land,
             dw_ocean,
@@ -146,7 +146,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "QLCN": QLCN.view[:],
             "QICN": QICN.view[:],
             "CLCN": CLCN.view[:],
-            "RHX": code.rhx.view[:],
-            "EVAPC": code.evapc.view[:],
-            "SUBLC": code.sublc.view[:],
+            "RHX": stencil.rhx.view[:],
+            "EVAPC": stencil.evapc.view[:],
+            "SUBLC": stencil.sublc.view[:],
         }

@@ -1,12 +1,15 @@
+"""This module is the wrapper for the GFDL_1M microphysics scheme (in progress). I/O and error
+handling is performed here. Calculations can be found in deeper functions."""
+
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.evap_subl_pdf_core import (
-    evap,
+    evaporate,
     hystpdf,
     initial_calc,
-    meltfrz,
-    subl,
+    melt_freeze,
+    sublimate,
 )
 from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat import QSat
@@ -15,16 +18,20 @@ from pyMoist.shared_incloud_processes import fix_up_clouds
 
 
 class GFDL_1M:
+    """This class is the wrapper for the GFDL_1M microphysics scheme. I/O and error handling
+    are perfromed at this level, all calculations are performed within deeper functions.
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
-        USE_BERGERON: bool = True,
+        use_bergeron: bool = True,
     ):
-        if USE_BERGERON is not True:
+        if use_bergeron is not True:
             raise NotImplementedError(
-                "Untested option for USE_BERGERON. Code may be missing or incomplete. \
+                "Untested option for use_bergeron. Code may be missing or incomplete. \
                     Disable this error manually to continue."
             )
 
@@ -55,19 +62,19 @@ class GFDL_1M:
             func=hystpdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "USE_BERGERON": USE_BERGERON,
+                "use_bergeron": use_bergeron,
             },
         )
         self._meltfrz = self.stencil_factory.from_dims_halo(
-            func=meltfrz,
+            func=melt_freeze,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self._evap = self.stencil_factory.from_dims_halo(
-            func=evap,
+            func=evaporate,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self._subl = self.stencil_factory.from_dims_halo(
-            func=subl,
+            func=sublimate,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
         self._fix_up_clouds = self.stencil_factory.from_dims_halo(
@@ -118,26 +125,7 @@ class GFDL_1M:
         QST: FloatField,
         LMELTFRZ: bool = True,
     ):
-        if LMELTFRZ is not True:
-            raise NotImplementedError(
-                "Untested option for LMELTFRZ. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
-            )
-        if PDFSHAPE != 1:
-            raise NotImplementedError(
-                "Untested option for PDFSHAPE. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
-            )
-        if CCW_EVAP_EFF <= 0:
-            raise NotImplementedError(
-                "Untested option for CCW_EVAP_EFF. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
-            )
-        if CCI_EVAP_EFF <= 0:
-            raise NotImplementedError(
-                "Untested option for CCI_EVAP_EFF. Code may be missing or incomplete. \
-                    Disable this error manually to continue."
-            )
+        self.check_flags(LMELTFRZ, PDFSHAPE, CCW_EVAP_EFF, CCI_EVAP_EFF)
 
         self._get_last(PLEmb, self._tmp, self._PLEmb_top)
 
@@ -218,3 +206,31 @@ class GFDL_1M:
             )
 
         self._fix_up_clouds(Q, T, QLLS, QILS, CLLS, QLCN, QICN, CLCN)
+
+    def check_flags(
+        self,
+        LMELTFRZ: bool,
+        PDFSHAPE: Float,
+        CCW_EVAP_EFF: Float,
+        CCI_EVAP_EFF: Float,
+    ):
+        if LMELTFRZ is not True:
+            raise NotImplementedError(
+                "Untested option for LMELTFRZ. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if PDFSHAPE != 1:
+            raise NotImplementedError(
+                "Untested option for PDFSHAPE. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if CCW_EVAP_EFF <= 0:
+            raise NotImplementedError(
+                "Untested option for CCW_EVAP_EFF. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
+        if CCI_EVAP_EFF <= 0:
+            raise NotImplementedError(
+                "Untested option for CCI_EVAP_EFF. Code may be missing or incomplete. \
+                    Disable this error manually to continue."
+            )
