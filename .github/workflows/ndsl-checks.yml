@@ -33,6 +33,7 @@ jobs:
             cd ndsl
             pip install -e .[develop]
             pip install -e ../GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist
+            pip install pylint==3.2.6
         - name: Run lint via pre-commit
           run: |
             cd ./GCMGridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist

@@ -8,7 +8,12 @@ from setuptools import find_namespace_packages, setup
 with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
-test_requirements = ["pytest", "pytest-subtests", "serialbox", "coverage"]
+test_requirements = [
+    "pytest",
+    "pytest-subtests",
+    "serialbox",
+    "coverage",
+]
 ndsl_requirements = ["ndsl @ git+https://github.com/NOAA-GFDL/NDSL.git@2024.04.00"]
 develop_requirements = test_requirements + ndsl_requirements + ["pre-commit"]
 

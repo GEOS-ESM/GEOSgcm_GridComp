@@ -1,4 +1,4 @@
-import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian import gtscript
 from ndsl.dsl.typing import Float
 
 import pyMoist.aer_activation_constants as constants

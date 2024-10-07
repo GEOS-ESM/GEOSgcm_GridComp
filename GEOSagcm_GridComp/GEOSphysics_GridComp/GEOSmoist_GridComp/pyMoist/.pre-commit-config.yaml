@@ -43,16 +43,6 @@ repos:
         entry: codespell
         args:  ["--ignore-words","GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/ignored_codespell.txt"]
 
--   repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-    -   id: pydocstyle
-        name: pydocstyle
-        description: Check docstrings in Python code for compliance with conventions
-        entry: pydocstyle
-        types: [python]
-        args: ["--ignore=D101,D102,D103,D105,D107,D203,D213,D406,D407"]
-
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.6.0
@@ -60,9 +50,15 @@ repos:
     # Run the linter.
     - id: ruff
       name: ruff linting
-      args: [ --fix ]
-    - id: ruff
-      name: ruff isort
-      args: ["--select","I","--fix"]
+      args: [--fix ]
     # Run the formatter.
     - id: ruff-format
+      name: ruff formatting
+-   repo: local
+    hooks:
+    -   id: pylint
+        name: pylint
+        language: system
+        entry: pylint
+        args:
+        - --rcfile=GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/.pylintrc

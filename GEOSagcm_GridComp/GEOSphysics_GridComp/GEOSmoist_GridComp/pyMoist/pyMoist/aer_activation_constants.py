@@ -56,5 +56,5 @@ ALPHAT = 0.960e00  # thermal accommodation coefficient [1]
 # Define how many modes in an aerosol
 n_modes = 14
 
-# Python euqivalent of Fortran's tiny(X)
+# Python equivalent of Fortran's tiny(X)
 FLOAT_TINY = np.finfo(Float).tiny

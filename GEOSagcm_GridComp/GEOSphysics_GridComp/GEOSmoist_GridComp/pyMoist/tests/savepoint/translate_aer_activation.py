@@ -1,13 +1,20 @@
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.stencils.testing.translate import (
+    TranslateFortranData2Py,
+)
 
 from pyMoist.aer_activation import AerActivation
 
 
 class TranslateAerActivation(TranslateFortranData2Py):
-    def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
+    def __init__(
+        self,
+        grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
@@ -15,7 +22,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
         self.max_error = 1e-9
 
         self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
-            self.quantity_factory
+            self.quantity_factory,
         )
 
         # FloatField Inputs
@@ -91,7 +98,7 @@ class TranslateAerActivation(TranslateFortranData2Py):
             self.stencil_factory,
             self.quantity_factory,
             int(inputs["n_modes"]),
-            USE_AERSOL_NN=True,
+            use_aersol_nn=True,
         )
 
         # Outputs

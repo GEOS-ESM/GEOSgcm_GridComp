@@ -1,0 +1,6 @@
+[MAIN]
+ignore-patterns=^__init__.py$
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=100

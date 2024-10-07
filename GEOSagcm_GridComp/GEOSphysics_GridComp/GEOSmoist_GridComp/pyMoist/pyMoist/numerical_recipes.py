@@ -1,10 +1,10 @@
-import gt4py.cartesian.gtscript as gtscript
+from gt4py.cartesian import gtscript
 from gt4py.cartesian.gtscript import exp, log
 from ndsl.dsl.typing import Float
 
 
 @gtscript.function
-def GammLn(xx: Float) -> Float:
+def log_of_gamma(xx: Float) -> Float:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -23,17 +23,17 @@ def GammLn(xx: Float) -> Float:
     y = x
     tmp = x + 5.5
     tmp = (x + 0.5) * log(tmp) - tmp
-    ser = 1.000000000190015
+    stirling_approximation = 1.000000000190015
 
-    ser += 76.18009172947146 / (y + 1)
-    ser += -86.50532032941677 / (y + 1)
-    ser += 24.01409824083091 / (y + 1)
-    ser += -1.231739572450155 / (y + 1)
-    ser += 0.001208650973866179 / (y + 1)
-    ser += -0.000005395239384953 / (y + 1)
+    stirling_approximation += 76.18009172947146 / (y + 1)
+    stirling_approximation += -86.50532032941677 / (y + 1)
+    stirling_approximation += 24.01409824083091 / (y + 1)
+    stirling_approximation += -1.231739572450155 / (y + 1)
+    stirling_approximation += 0.001208650973866179 / (y + 1)
+    stirling_approximation += -0.000005395239384953 / (y + 1)
 
-    gammln = tmp + log(stp * ser / x)
-    return gammln
+    log_of_gamma = tmp + log(stp * stirling_approximation / x)
+    return log_of_gamma
 
 
 @gtscript.function
@@ -53,7 +53,7 @@ def gser(a: Float, x: Float, gln: Float) -> Float:
     """
     eps = 3.0e-9  # was eps=3.0d-07 in press et al.
     itmax = 10000  # was itmax=100   in press et al.
-    gln = GammLn(a)
+    gln = log_of_gamma(a)
     if x <= 0:
         # Fortran messages here x < 0 in gser
         # TODO: Allow print in GT4Py
@@ -95,7 +95,7 @@ def gcf_matrix(a: Float, x: Float, gln: Float) -> Float:
     itmax = 10000
     eps = 3.0e-7
     fpmin = 1.0e-30
-    gln = GammLn(a)
+    gln = log_of_gamma(a)
     b = x + 1.0 - a
     c = 1.0 / fpmin
     d = 1.0 / b
@@ -121,7 +121,7 @@ def gcf_matrix(a: Float, x: Float, gln: Float) -> Float:
 
 
 @gtscript.function
-def GammP(a: Float, x: Float) -> Float:
+def incomplete_gamma(a: Float, x: Float) -> Float:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -138,7 +138,7 @@ def GammP(a: Float, x: Float) -> Float:
     # TODO: Allow print in GT4Py
     # if (x < 0.0) or (a <= 0.0):
     #    raise ValueError("aero_actv: function gammp: bad arguments")
-    gln = GammLn(a)
+    gln = log_of_gamma(a)
     if x < a + 1.0:
         gammp = gser(a, x, gln)
     else:
@@ -147,7 +147,7 @@ def GammP(a: Float, x: Float) -> Float:
 
 
 @gtscript.function
-def Erf(x: Float) -> Float:
+def error_function(x: Float) -> Float:
     """
     See numerical recipes, w. press et al., 2nd edition.
 
@@ -161,7 +161,7 @@ def Erf(x: Float) -> Float:
     """
     erf = 0.0
     if x < 0.0e00:
-        erf = -1.0 * GammP(0.5, x**2)
+        erf = -1.0 * incomplete_gamma(0.5, x**2)
     else:
-        erf = GammP(0.5, x**2)
+        erf = incomplete_gamma(0.5, x**2)
     return erf

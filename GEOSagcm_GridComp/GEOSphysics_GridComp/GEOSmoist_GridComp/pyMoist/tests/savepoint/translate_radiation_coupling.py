@@ -1,5 +1,7 @@
 from ndsl import Namelist, StencilFactory
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.stencils.testing.translate import (
+    TranslateFortranData2Py,
+)
 
 from pyMoist.radiation_coupling import RadiationCoupling
 

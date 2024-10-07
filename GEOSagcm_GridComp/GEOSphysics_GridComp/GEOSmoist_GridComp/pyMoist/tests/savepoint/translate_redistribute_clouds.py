@@ -1,5 +1,7 @@
 from ndsl import Namelist, StencilFactory
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from ndsl.stencils.testing.translate import (
+    TranslateFortranData2Py,
+)
 
 from pyMoist.redistribute_clouds import RedistributeClouds
 
@@ -14,7 +16,6 @@ class TranslateRedistributeClouds(TranslateFortranData2Py):
         super().__init__(grid, stencil_factory)
         self.compute_func = RedistributeClouds(
             self.stencil_factory,
-            self.grid.quantity_factory,
         )
 
         self.max_error = 1e-9

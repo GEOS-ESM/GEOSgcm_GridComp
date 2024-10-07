@@ -1,6 +1,9 @@
+line-length = 100
+
 [lint]
-ignore = ["F841"]
+select = ["C","E","F","I","N", "FA", "G", "Q", "PL", "RUF"]
+ignore = ["C901", "D101","D102","D103","D105","D107","D203","D213","D406","D407", "F841","PLR2004"]
+
 
 [lint.per-file-ignores]
-# Ignore `E402` (import violations) in all `__init__.py` files
 "__init__.py" = ["F401"]
