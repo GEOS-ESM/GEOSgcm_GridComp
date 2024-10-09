@@ -45,6 +45,8 @@ module GEOS_CatchGridCompMod
   USE CATCH_CONSTANTS, ONLY :                  &
        N_SNOW         => CATCH_N_SNOW,         &
        N_GT           => CATCH_N_GT,           &
+       DZGT           => CATCH_DZGT,           &
+       DZTSURF        => CATCH_DZTSURF,        &
        RHOFS          => CATCH_SNOW_RHOFS,     &
        SNWALB_VISMAX  => CATCH_SNOW_VISMAX,    &
        SNWALB_NIRMAX  => CATCH_SNOW_NIRMAX,    &
@@ -113,7 +115,7 @@ real,   parameter :: EMSSNO        =    0.99999
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
 
-! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
+! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul2013
 ! SURFLAY moved to internal state 
 
 contains
@@ -812,7 +814,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'max_soil_water_content_above_wilting_point'         ,&
+    LONG_NAME          = 'maximum_soil_water_content_above_wilting_point'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CDCR2'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -846,7 +848,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_porosity'             ,&
-    UNITS              = '1'                         ,&
+    UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'POROS'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -856,7 +858,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
-    LONG_NAME          = 'wetness_at_wilting_point'  ,&
+    LONG_NAME          = 'soil_wilting_point_in_degree_of_saturation_units'  ,&
     UNITS              = '1'                         ,&
     SHORT_NAME         = 'WPWET'                     ,&
     FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1571,7 +1573,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'interception_loss_energy_flux',&
+    LONG_NAME          = 'interception_loss_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPINT'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1580,7 +1582,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'baresoil_evap_energy_flux' ,&
+    LONG_NAME          = 'baresoil_evaporation_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSOI'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1589,7 +1591,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'transpiration_energy_flux' ,&
+    LONG_NAME          = 'transpiration_latent_heat_flux' ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPVEG'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1598,7 +1600,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1635,7 +1637,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snowpack_evaporation_energy_flux',&
+    LONG_NAME          = 'snowpack_evaporation_latent_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPSNO'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -1724,7 +1726,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'total_latent_energy_flux'  ,&
+    LONG_NAME          = 'total_latent_heat_flux_consistent_with_evaporation_from_turbulence'  ,&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'HLATN'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2075,7 +2077,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'change_upward_sensible_energy_flux',&
+    LONG_NAME          = 'change_upward_sensible_heat_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'DELSH'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2321,7 +2323,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'EVLAND',                    &
-    LONG_NAME          = 'Evaporation_land',          &
+    LONG_NAME          = 'Total_evapotranspiration_land',          &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2562,8 +2564,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPLAND',                    &
-    LONG_NAME          = 'rate_of_spurious_land_energy_source',&
+    SHORT_NAME         = 'SPLAND',                    &              ! a.k.a. SPSHLAND
+    LONG_NAME          = 'Spurious_sensible_heat_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2571,8 +2573,17 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'SPWATR',                    &
-    LONG_NAME          = 'rate_of_spurious_land_water_source',&
+    SHORT_NAME         = 'SPLH',                      &
+    LONG_NAME          = 'Spurious_latent_heat_flux_land',&
+    UNITS              = 'W m-2',                     &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'SPWATR',                    &              ! a.k.a. SPEVLAND
+    LONG_NAME          = 'Spurious_evapotranspiration_flux_land',&
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2581,7 +2592,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPSNOW',                    &
-    LONG_NAME          = 'rate_of_spurious_snow_energy',&
+    LONG_NAME          = 'Spurious_snow_energy_flux_land',&
     UNITS              = 'W m-2',                     &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -2695,6 +2706,115 @@ subroutine SetServices ( GC, RC )
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,& 
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL1',&
+       UNITS              = 'm'                         ,&     
+       SHORT_NAME         = 'DZGT1'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL2',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT2'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL3',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT3'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL4',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT4'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL5',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT5'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSOIL6',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZGT6'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_PRMC_and_GWETPROF',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZPR'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_RZMC_and_GWETROOT',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZRZ'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_SFMC_and_GWETTOP',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZSF'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'thickness_of_soil_layer_associated_with_TSATLAND_TUNSTLAND_and_TWLTLAND',&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'DZTS'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_equivalent_mass_of_total_profile_water',&
+       UNITS              = 'kg m-2'                    ,&
+       SHORT_NAME         = 'WPEMW'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+       LONG_NAME          = 'soil_wilting_point_in_volumetric_units',&
+       UNITS              = 'm3 m-3'                    ,&
+       SHORT_NAME         = 'WPMC'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
 
 !EOS
 
@@ -3903,7 +4023,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: DWLAND
         real, dimension(:),   pointer :: DHLAND
         real, dimension(:),   pointer :: SPLAND
-        real, dimension(:),   pointer :: SPWATR
+        real, dimension(:),   pointer :: SPLH
+        real, dimension(:),   pointer :: SPWATR  
         real, dimension(:),   pointer :: SPSNOW
 
         real, dimension(:),   pointer :: WAT10CM
@@ -3911,24 +4032,39 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ICESOI
         real, dimension(:),   pointer :: SHSNOW
         real, dimension(:),   pointer :: AVETSNOW
-        real, pointer, dimension(:)   :: RMELTDU001
-        real, pointer, dimension(:)   :: RMELTDU002
-        real, pointer, dimension(:)   :: RMELTDU003
-        real, pointer, dimension(:)   :: RMELTDU004
-        real, pointer, dimension(:)   :: RMELTDU005
-        real, pointer, dimension(:)   :: RMELTBC001
-        real, pointer, dimension(:)   :: RMELTBC002
-        real, pointer, dimension(:)   :: RMELTOC001
-        real, pointer, dimension(:)   :: RMELTOC002
-        real, pointer, dimension(:)   :: PEATCLSM_WATERLEVEL
-        real, pointer, dimension(:)   :: PEATCLSM_FSWCHANGE
+        real, dimension(:),   pointer :: RMELTDU001
+        real, dimension(:),   pointer :: RMELTDU002
+        real, dimension(:),   pointer :: RMELTDU003
+        real, dimension(:),   pointer :: RMELTDU004
+        real, dimension(:),   pointer :: RMELTDU005
+        real, dimension(:),   pointer :: RMELTBC001
+        real, dimension(:),   pointer :: RMELTBC002
+        real, dimension(:),   pointer :: RMELTOC001
+        real, dimension(:),   pointer :: RMELTOC002
+
+        real, dimension(:),   pointer :: PEATCLSM_WATERLEVEL
+        real, dimension(:),   pointer :: PEATCLSM_FSWCHANGE
+
+        real, dimension(:),   pointer :: DZGT1
+        real, dimension(:),   pointer :: DZGT2
+        real, dimension(:),   pointer :: DZGT3
+        real, dimension(:),   pointer :: DZGT4
+        real, dimension(:),   pointer :: DZGT5
+        real, dimension(:),   pointer :: DZGT6
+        real, dimension(:),   pointer :: DZPR
+        real, dimension(:),   pointer :: DZRZ
+        real, dimension(:),   pointer :: DZSF
+        real, dimension(:),   pointer :: DZTS 
+        real, dimension(:),   pointer :: WPEMW
+        real, dimension(:),   pointer :: WPMC
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
         ! --------------------------------------------------------------------------
 
         INTEGER,pointer,dimension(:) :: CAT_ID
-        real,pointer,dimension(:) :: dzsf
+
+        real,pointer,dimension(:) :: DZSF_in_mm
         real,pointer,dimension(:) :: swnetfree
         real,pointer,dimension(:) :: swnetsnow
         real,pointer,dimension(:) :: qa1
@@ -3951,11 +4087,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1
         real,pointer,dimension(:) :: LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW
         real,pointer,dimension(:) :: TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE
-        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, EVACC, SHACC
+        real,pointer,dimension(:) :: WCHANGE, ECHANGE, HSNACC, LHOUT, EVACC, LHACC, SHACC
         real,pointer,dimension(:) :: SNOVR, SNOVF, SNONR, SNONF
         real,pointer,dimension(:) :: VSUVR, VSUVF
         real,pointer,dimension(:) :: ALWX, BLWX
-        real,pointer,dimension(:) :: LHACC, SUMEV
         real,pointer,dimension(:) :: FICE1TMP
         real,pointer,dimension(:) :: SLDTOT
  
@@ -4183,13 +4318,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_Get ( MAPL                 ,&
              RUNALARM  = ALARM                            ,&
              ORBIT     = ORBIT                            ,&
-             TILELATS  = LATS                             ,&
-             TILELONS  = LONS                             ,&
+             TILELATS  = LATS                             ,&      ! [radians]
+             TILELONS  = LONS                             ,&      ! [radians]
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
         VERIFY_(STATUS)
-
-
+      
         ! --------------------------------------------------------------------------
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
@@ -4446,6 +4580,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SPLH,   'SPLH'   ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
@@ -4459,6 +4594,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL',RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PEATCLSM_FSWCHANGE, 'PEATCLSM_FSWCHANGE', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT1,  'DZGT1'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT2,  'DZGT2'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT3,  'DZGT3'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT4,  'DZGT4'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT5,  'DZGT5'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZGT6,  'DZGT6'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZPR,   'DZPR'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZRZ,   'DZRZ'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZSF,   'DZSF'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,DZTS,   'DZTS'   ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WPEMW,  'WPEMW'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,WPMC ,  'WPMC'   ,             RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
 
@@ -4473,7 +4620,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(FICESOUT(N_SNOW,NTILES))
 
         allocate(TILEZERO (NTILES))
-        allocate(DZSF     (NTILES))
+        allocate(DZSF_in_mm(NTILES))
         allocate(SWNETFREE(NTILES))
         allocate(SWNETSNOW(NTILES))
         allocate(VEG      (NTILES))  
@@ -4502,7 +4649,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(WCHANGE  (NTILES))
         allocate(ECHANGE  (NTILES))
         allocate(HSNACC   (NTILES))
+        allocate(LHOUT    (NTILES))
         allocate(EVACC    (NTILES))
+        allocate(LHACC    (NTILES))
         allocate(SHACC    (NTILES))
         allocate(VSUVR    (NTILES))
         allocate(VSUVF    (NTILES))
@@ -4525,8 +4674,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TCSORIG1  (NTILES))
         allocate(TPSN1IN1  (NTILES))
         allocate(TPSN1OUT1 (NTILES))
-        allocate(LHACC     (NTILES))
-        allocate(SUMEV     (NTILES))
         allocate(FICE1TMP  (NTILES)) 
         allocate(SLDTOT    (NTILES))             ! total solid precip
         allocate(FSW_CHANGE(NTILES))
@@ -4631,14 +4778,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Catchment Id and vegetation types used to index into tables
         ! --------------------------------------------------------------------------
 
-        CAT_ID = 1
+        CAT_ID = -999                 ! meaningless!!!
         VEG    = nint(ITY)
 
         ! --------------------------------------------------------------------------
         ! surface layer depth for soil moisture
         ! --------------------------------------------------------------------------
         
-        DZSF(    :) = CATCH_INTERNAL_STATE%SURFLAY
+        DZSF_in_mm(:) = CATCH_INTERNAL_STATE%SURFLAY       ! same as DZSF but in units of [mm]
 
         ! --------------------------------------------------------------------------
         ! build arrays from internal state
@@ -5138,7 +5285,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call WRITE_PARALLEL(CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF_in_mm, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF1,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5425,7 +5572,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     SNDZN_INCR (3,:) = SNDZN3_INCR
 
                     call apply_catch_incr(NTILES,                                                        &
-                         DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                            &
+                         DZSF_in_mm, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,                      &
                          ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4, bf1, bf2,     &
                          TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
                          CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                               &
@@ -5469,10 +5616,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if (ntiles >0) then
 
-             call CATCHMENT ( NTILES, LONS, LATS                  ,&
+             call CATCHMENT ( NTILES, LONS, LATS                  ,&     ! LONS, LATS are in [radians] !!!
              DT,CATCH_INTERNAL_STATE%USE_FWET_FOR_RUNOFF          ,&
              CATCH_INTERNAL_STATE%FWETC, CATCH_INTERNAL_STATE%FWETL,&
-             cat_id, VEG, DZSF                                    ,&
+             cat_id, VEG, DZSF_in_mm                              ,&     ! cat_id is set to no-data above !!!
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5511,14 +5658,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              CAPAC, CATDEF, RZEXC, SRFEXC, GHTCNT, TSURF          ,&
              WESNN, HTSNNN, SNDZN                                 ,&
 
-             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&
-             EVPICE                                               ,&
+             EVAPOUT, SHOUT, RUNOFF, EVPINT, EVPSOI, EVPVEG       ,&  ! EVAPOUT:                        kg/m2/s
+             EVPICE                                               ,&  ! EVPINT, EVPSOI, EVPVEG, EVPICE: W/m2
              BFLOW                                                ,&
              RUNSURF                                              ,&
              SMELT                                                ,&
              HLWUP                                                ,&  ! *emitted* longwave only (excl reflected)
              SWNDSRF                                              ,&
-             HLATN                                                ,&
+             LHOUT                                                ,&  ! renamed from HLATN to avoid confusion w/ HLATN=LHFX in SurfaceGC
              QINFIL                                               ,&
              AR1                                                  ,&
              AR2                                                  ,&
@@ -5529,14 +5676,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TC(:,FSNW)                                           ,&
              ASNOW                                                ,&
              TP1, TP2, TP3, TP4, TP5, TP6,  SFMC, RZMC, PRMC      ,&
-             ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC, EVACC, SHACC   ,&
+             ENTOT,WTOT, WCHANGE, ECHANGE, HSNACC                 ,&      
+             EVACC                                                ,&  ! kg/m2/s 
+             LHACC, SHACC                                         ,&  ! W/m2
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
              TCSORIG1, TPSN1IN1, TPSN1OUT1, FSW_CHANGE, FICESOUT  ,&
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS)
 
         end if
         
@@ -5556,14 +5705,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
         if (CATCH_INTERNAL_STATE%CATCH_OFFLINE /=0) then
+           
+           ! in offline mode, disregard the GCM-specific TC/QC modifications and the 
+           ! accounting terms for turbulent fluxes (but not snow heat accounting term)
+           
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
            QC(:,FSAT) = QA1_0
            QC(:,FTRN) = QA2_0
            QC(:,FWLT) = QA4_0
-           EVACC = 0.0
-           SHACC = 0.0
+           
+           EVACC      = 0.0
+           LHACC      = 0.0
+           SHACC      = 0.0
+
         endif
 
         QC(:,FSNW) =  GEOS_QSAT ( TC(:,FSNW), PS, PASCALS=.true., RAMP=0.0 )
@@ -5582,7 +5738,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             currTime=CURRENT_TIME+DELT,  &
             RC=STATUS )
         VERIFY_(STATUS)
-
+      
         ZTH = max(0.0,ZTH)
 
         ! --------------------------------------------------------------------------
@@ -5653,21 +5809,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TST     = TST   +           TC(:,N)          *FR(:,N)
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
-
-        if (CATCH_INTERNAL_STATE%CATCH_OFFLINE == 0) then
-!amm add correction term to latent heat diagnostics (HLATN is always allocated)
-!    this will impact the export LHLAND
-        HLATN = HLATN - LHACC
-! also add some portion of the correction term to evap from soil, int, veg and snow
-        SUMEV = EVPICE+EVPSOI+EVPVEG+EVPINT
-        where(SUMEV>0.)
-        EVPICE = EVPICE - EVACC*EVPICE/SUMEV
-        EVPSOI = EVPSOI - EVACC*EVPSOI/SUMEV
-        EVPINT = EVPINT - EVACC*EVPINT/SUMEV
-        EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
-        endwhere
-        endif
-
+        
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
         if(associated( WET1 )) WET1   = max(min(SFMC / POROS,1.0),0.0)
@@ -5681,13 +5823,80 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
-        if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
-        if(associated(LHLAND)) LHLAND = HLATN
-        if(associated(SHLAND)) SHLAND = SHOUT-SHACC
+       
+        ! -----------------------------------------------------------------------------------------
+        !
+        ! IMPORTANT: Surface turbulent fluxes in [*]LAND exports are returned as calculated by Catchment! 
+        !
+        ! For completeness, also return the "accounting" terms that represent the difference between
+        ! the flux calculated by Catchment and the flux calculated by the atmosphere (Turbulence GC).
+        !
+        !   EVAP__calculated_by_atmosphere = EVLAND - EVACC     kg/m2/s
+        !   EFLUX_calculated_by_atmosphere = LHLAND - LHACC     W/m2      
+        !   HFLUX_calculated_by_atmosphere = SHLAND - SHACC     W/m2
+        !
+        ! Note: LHACC added for completeness and consistency with the mass flux term (EVACC);
+        !       strictly speaking, the atmosphere only receives the evap mass flux and the sensible 
+        !       heat flux, but not the latent heat flux.
+        !
+        ! In previous model versions, the [*]ACC accouting terms were subtracted from the
+        ! Catchment-calculated fluxes, thus returning the turbulent fluxes as calculated by 
+        ! the atmosphere.
+        !
+        ! Note: In offline mode, the [*]ACC accounting terms are zeroed out above. 
+        !
+        ! - reichle, 17 July 2024
+         
+        if(associated(EVLAND)) EVLAND = EVAPOUT   ! EVLAND is what Catchment thinks it should be 
+        if(associated(LHLAND)) LHLAND = LHOUT     ! LHLAND is what Catchment thinks it should be
+        if(associated(SHLAND)) SHLAND = SHOUT     ! SHLAND is what Catchment thinks it should be
+        
+        if(associated(SPWATR)) SPWATR = EVACC
+        if(associated(SPLH  )) SPLH   = LHACC
+        if(associated(SPLAND)) SPLAND = SHACC
+        
+        ! Compute latent heat flux that is consistent with the evap mass flux as calculated 
+        ! by the atmosphere (Turbulence GC).  In the "flx" HISTORY collection, EFLUX is 
+        ! the all-surface latent heat flux, with HLATN (as below) being the land contribution.
+
+        HLATN   = LHOUT   - LHACC
+
+        ! In previous model versions, the evap mass flux EVAPOUT and the sensible heat flux SHOUT
+        ! were returned as calculated by Catchment.  These diagnostic are not written in MERRA-2.
+        ! In FP and GEOSIT, they are only included in ocean ("ocn") Collections.  They appear to 
+        ! be used also in the "gmichem" and "S2S" collections. 
+        ! For consistency with previous model versions, keep returning EVAPOUT and SHOUT as 
+        ! calculated by Catchment.
+
+        ! Overview of surface turbulent flux variables in subroutine catchment(), the Catch, Land, and Surface Gridded Components, and the M21 "lnd" HISTORY collection
+        !
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! Description        | Units   | catchment() | CatchGC                     | LandGC  | SurfaceGC              | HISTORY    | Notes                                                        |
+        !                    |         | ArgName     | VarName | export            | export  | export  | averaged     | M21C       |                                                              |
+        !                    |         |             |         | (tile)            | (tile)  | (grid)  | over         | "lnd"      |                                                              |
+        !=========================================================================================================================================================================================|
+        ! evap mass flux     | kg/m2/s | EVAP        | EVAPOUT | EVLAND            | EVLAND  | EVLAND  | land         | EVLAND     |                                                              |
+        ! evap mass flux     | kg/m2/s | -           | -       | EVAPOUT           | EVAPOUT | EVAPOUT | all surfaces | n/a        |                                                              |
+        ! EV accounting term | kg/m2/s | EVACC       | EVACC   | SPWATR            | SPWATR  | SPWATR  | land         | SPEVLAND   | EVLAND-SPEVLAND = EVAP_from_TurbGC [100% land]               |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! latent heat flux   | W/m2    | LHFLUX      | LHOUT   | LHLAND            | LHLAND  | LHLAND  | land         | LHLAND     |                                                              |
+        ! latent heat flux   | W/m2    | -           | -       | HLATN=LHOUT-LHACC | HLATN   | LHFX    | all surfaces | n/a        | consistent w/ EVAP_from_TurbGC [100% land]                   |
+        ! LH accounting term | W/m2    | LHACC       | LHACC   | SPLH              | SPLH    | SPLH    | land         | SPLHLAND   | (LHLAND-SPLHLAND) consistent w/ EVAP_from_TurbGC [100% land] |
+        ! LH component       | W/m2    | EINT        | EVPINT  | EVPINT            | EVPINT  | EVPINT  | land         | LHLANDINTR |                                                              |
+        ! LH component       | W/m2    | ESOI        | EVPSOI  | EVPSOI            | EVPSOI  | EVPSOI  | land         | LHLANDSOIL |                                                              | 
+        ! LH component       | W/m2    | EVEG        | EVPVEG  | EVPVEG            | EVPVEG  | EVPVEG  | land         | LHLANDTRNS |                                                              |
+        ! LH component       | W/m2    | ESNO        | EVPICE  | EVPICE            | EVPICE  | EVPICE  | land         | LHLANDSBLN |                                                              |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+        ! sensible heat flux | W/m2    | SHFLUX      | SHOUT   | SHLAND            | SHLAND  | SHLAND  | land         | SHLAND     |                                                              |
+        ! sensible heat flux | W/m2    | -           | -       | SHOUT             | SHOUT   | SHOUT   | all surfaces | n/a        |                                                              |
+        ! SH accounting term | W/m2    | SHACC       | SHACC   | SPLAND            | SPLAND  | SPLAND  | land         | SPSHLAND   | SHLAND-SPSHLAND = SH_from_TurbGC [for 100% land]             |
+        !-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+                                                                                                         
+        
         if(associated(SWLAND)) SWLAND = SWNDSRF
         if(associated(LWLAND)) LWLAND = LWNDSRF
         if(associated(GHLAND)) GHLAND = GHFLX
@@ -5711,8 +5920,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(TSLAND)) TSLAND = WESNN(1,:) + WESNN(2,:) + WESNN(3,:)
         if(associated(DWLAND)) DWLAND = WCHANGE
         if(associated(DHLAND)) DHLAND = ECHANGE
-        if(associated(SPLAND)) SPLAND = SHACC
-        if(associated(SPWATR)) SPWATR = EVACC
         if(associated(SPSNOW)) SPSNOW = HSNACC
 
         if(associated(FRSAT )) FRSAT  = max( min( FR(:,FSAT),1.0 ), 0.0 )
@@ -5735,6 +5942,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
         if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+
+        if(associated(DZGT1 )) DZGT1  = DZGT(1)                               ! [m]
+        if(associated(DZGT2 )) DZGT2  = DZGT(2)                               ! [m]
+        if(associated(DZGT3 )) DZGT3  = DZGT(3)                               ! [m]
+        if(associated(DZGT4 )) DZGT4  = DZGT(4)                               ! [m]
+        if(associated(DZGT5 )) DZGT5  = DZGT(5)                               ! [m]
+        if(associated(DZGT6 )) DZGT6  = DZGT(6)                               ! [m]
+                            
+        if(associated(DZPR  )) DZPR   = CDCR2/(1.-WPWET)/POROS/MAPL_RHOWTR    ! [m] 
+        if(associated(DZRZ  )) DZRZ   = VGWMAX/POROS/MAPL_RHOWTR              ! [m]
+        if(associated(DZSF  )) DZSF   = DZSF_in_mm/1000.                      ! [m]
+        if(associated(DZTS  )) DZTS   = DZTSURF                               ! [m]
+                            
+        if(associated(WPEMW )) WPEMW  = WPWET*POROS*DZPR*MAPL_RHOWTR          ! [kg/m2]
+        if(associated(WPMC  )) WPMC   = WPWET*POROS                           ! [m3/m3]
+
         if(associated(PEATCLSM_FSWCHANGE  )) then
            where (POROS >= PEATCLSM_POROS_THRESHOLD)
               PEATCLSM_FSWCHANGE = FSW_CHANGE
@@ -5830,7 +6053,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(SNDZN    )
         deallocate(FICESOUT )
         deallocate(TILEZERO )
-        deallocate(DZSF     )
+        deallocate(DZSF_in_mm)
         deallocate(SWNETFREE)
         deallocate(SWNETSNOW)
         deallocate(VEG      )
@@ -5863,15 +6086,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(LWDNSNOW1)
         deallocate(NETSWSNOW)
         deallocate(TCSORIG1 )
-        deallocate(LHACC )
-        deallocate(SUMEV )
         deallocate(TPSN1IN1 )
         deallocate(TPSN1OUT1)
         deallocate(GHFLXTSKIN)
         deallocate(WCHANGE  )
         deallocate(ECHANGE  )
         deallocate(HSNACC   )
+        deallocate(LHOUT    )
         deallocate(EVACC    )
+        deallocate(LHACC    )
         deallocate(SHACC    )
         !deallocate(VISDF    )
         !deallocate(NIRDF    )
@@ -5994,7 +6217,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   !! Miscellaneous
   integer :: ntiles
   real, allocatable :: dummy(:)
-  real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
+  real, allocatable :: DZSF_in_mm(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
   type(T_CATCH_STATE), pointer :: CATCH_INTERNAL_STATE
   type(CATCH_WRAP) :: wrap
@@ -6125,9 +6348,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  allocate(dzsf(ntiles), stat=status)
+  allocate(DZSF_in_mm(ntiles), stat=status)
   VERIFY_(status)
-  dzsf = CATCH_INTERNAL_STATE%SURFLAY
+  DZSF_in_mm = CATCH_INTERNAL_STATE%SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
@@ -6146,18 +6369,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   srfexccp = srfexc
   rzexccp = rzexc
   call catch_calc_soil_moist(                                                   &
-       ! intent(in)
-       ntiles, dzsf, vgwmax, cdcr1, cdcr2,                                      &
+       ntiles, DZSF_in_mm, vgwmax, cdcr1, cdcr2,                                &
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
        arw1, arw2, arw3, arw4,bf1, bf2,                                         &
-       ! intent(inout)
-       ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &
-       ! use this one can match process_cat
-       ! srfexc, rzexc, catdef,                                             &
-       ! intent(out)
        ar1, ar2, dummy                                                          &
        )
 
@@ -6177,14 +6394,14 @@ subroutine RUN0(gc, import, export, clock, rc)
    qc(:,FSNW) = MAPL_EQsat(tc(:,FSNW),PS,OverIce=.true.)
 
   ! Clean up
-  if (allocated(catdefcp)) deallocate(catdefcp)
-  if (allocated(srfexccp)) deallocate(srfexccp)
-  if (allocated(rzexccp)) deallocate(rzexccp)
-  if (allocated(dummy)) deallocate(dummy)
-  if (allocated(dzsf)) deallocate(dzsf)
-  if (allocated(ar1)) deallocate(ar1)
-  if (allocated(ar2)) deallocate(ar2)
-  if (allocated(wesnn)) deallocate(wesnn)
+  if (allocated(catdefcp))   deallocate(catdefcp)
+  if (allocated(srfexccp))   deallocate(srfexccp)
+  if (allocated(rzexccp))    deallocate(rzexccp)
+  if (allocated(dummy))      deallocate(dummy)
+  if (allocated(DZSF_in_mm)) deallocate(DZSF_in_mm)
+  if (allocated(ar1))        deallocate(ar1)
+  if (allocated(ar2))        deallocate(ar2)
+  if (allocated(wesnn))      deallocate(wesnn)
 
   ! All done
   RETURN_(ESMF_SUCCESS)

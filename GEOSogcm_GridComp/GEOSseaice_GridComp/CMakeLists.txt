@@ -6,7 +6,7 @@ if ( NOT BUILD_MIT_OCEAN )
  esma_add_library (${this}
    SRCS GEOS_SeaIceGridComp.F90
    SUBCOMPONENTS GEOSdataseaice_GridComp GEOSCICEDyna_GridComp CICE_GEOSPlug
-   DEPENDENCIES MAPL CICE4 esmf)
+   DEPENDENCIES MAPL CICE4 ESMF::ESMF)
 else()
 
   add_compile_definitions(BUILD_MIT_OCEAN)
@@ -14,5 +14,5 @@ else()
   esma_add_library (${this}
     SRCS GEOS_SeaIceGridComp.F90
     SUBCOMPONENTS GEOSdataseaice_GridComp GEOSMITDyna_GridComp
-    DEPENDENCIES MAPL esmf)
+    DEPENDENCIES MAPL ESMF::ESMF)
 endif()

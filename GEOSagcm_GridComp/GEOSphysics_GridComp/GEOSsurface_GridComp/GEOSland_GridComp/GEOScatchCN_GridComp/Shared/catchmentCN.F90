@@ -135,7 +135,7 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &  ! LONS, LATS are in [radians] !!!
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
        DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -870,6 +870,7 @@ CONTAINS
         sumdepth=sum(sndz)
 
         CALL StieglitzSnow_snowrt(                                             &
+                   LONS(N), LATS(N),                                           &  ! in      [radians]  !!!
                    N_sm, N_snow, MAPL_Land,                                    &  ! in   
                    CATCH_SNOW_MAXDEPTH, CATCH_SNOW_RHOFS, CATCH_SNOW_DZPARAM,  &  ! in   
                    t1, area, tkgnd, pr, snowf, ts, DTSTEP,                     &  ! in   
@@ -1247,11 +1248,11 @@ CONTAINS
 
       DO N=1,NCH
 
-        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
         IF(CAPAC(N).LT.1.E-10) THEN
-           RUNOFF(N) = RUNOFF(N)+CAPAC(N)/DTSTEP
+           RUNSRF(N) = RUNSRF(N)+CAPAC(N)/DTSTEP
            CAPAC(N) = 0.0
            endif
+        RUNOFF(N) = RUNSRF(N)+BFLOW(N)
 
         EINT(N) = EINT(N) * ALHE
         ESOI(N) = ESOI(N) * ALHE
