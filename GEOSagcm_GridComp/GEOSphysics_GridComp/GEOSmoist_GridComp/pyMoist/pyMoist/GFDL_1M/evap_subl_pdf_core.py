@@ -507,9 +507,9 @@ def evaporate(
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization**2)
+            (constants.latent_heat_vaporization ** 2)
             * constants.RHO_W
-            / (constants.K_COND * constants.rvap * (T**2))
+            / (constants.K_COND * constants.rvap * (T ** 2))
         )
         K2 = (
             constants.rvap
@@ -530,7 +530,7 @@ def evaporate(
                 * QLCN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS**2)
+                / ((K1 + K2) * RADIUS ** 2)
             )
             EVAP = min(EVAP, QLCN)
         else:
@@ -568,9 +568,9 @@ def sublimate(
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization**2)
+            (constants.latent_heat_vaporization ** 2)
             * constants.RHO_I
-            / (constants.K_COND * constants.rvap * (T**2))
+            / (constants.K_COND * constants.rvap * (T ** 2))
         )
         K2 = (
             constants.rvap
@@ -591,7 +591,7 @@ def sublimate(
                 * QICN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * radius**2)
+                / ((K1 + K2) * radius ** 2)
             )
             SUBL = min(SUBL, QICN)
         else:

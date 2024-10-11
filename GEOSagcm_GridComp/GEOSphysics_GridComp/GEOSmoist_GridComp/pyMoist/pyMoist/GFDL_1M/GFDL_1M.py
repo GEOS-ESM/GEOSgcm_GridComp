@@ -1,5 +1,6 @@
-"""This module is the wrapper for the GFDL_1M microphysics scheme (in progress). I/O and error
-handling is performed here. Calculations can be found in deeper functions."""
+"""This module is the wrapper for the GFDL_1M microphysics scheme (in progress).
+I/O and errorhandling is performed here.
+Calculations can be found in deeper functions."""
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
