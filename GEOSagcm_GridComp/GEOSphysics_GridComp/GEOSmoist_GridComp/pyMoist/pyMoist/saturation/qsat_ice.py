@@ -10,7 +10,7 @@ from pyMoist.saturation.constants import (
     MAPL_TICE,
     MAX_MIXING_RATIO,
 )
-from pyMoist.saturation.types import SaturationFormulation
+from pyMoist.saturation.formulation import SaturationFormulation
 
 
 f64 = np.float64
