@@ -5,7 +5,7 @@ processes/quantities."""
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log10, sin
 
-import pyMoist.pyMoist_constants as constants
+import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField
 
 

@@ -13,7 +13,7 @@ from gt4py.cartesian.gtscript import (
     tan,
 )
 
-import pyMoist.pyMoist_constants as constants
+import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid

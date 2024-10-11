@@ -147,3 +147,10 @@ LBE = Float(1.0) / Float(3.0) - Float(0.14)
 
 # Aer Activation constants
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in aer
+
+
+# Python euqivalent of Fortran's tiny(X)
+FLOAT_TINY = np.finfo(Float).tiny
+
+# Define how many modes in an Aerosol Activation
+N_MODES = 14

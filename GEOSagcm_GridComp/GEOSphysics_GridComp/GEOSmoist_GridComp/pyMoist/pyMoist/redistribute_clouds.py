@@ -1,6 +1,6 @@
 from gt4py.cartesian.gtscript import PARALLEL, computation, interval
 
-import pyMoist.pyMoist_constants as constants
+import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import FloatField
