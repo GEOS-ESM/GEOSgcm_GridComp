@@ -15,15 +15,15 @@ def ice_fraction_modis(
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
     tc = max(
-        -46.0, min(temp - constants.t_ice, 46.0)
+        -46.0, min(temp - constants.MAPL_TICE, 46.0)
     )  # convert to celcius and limit range from -46:46 C
     ptc = (
         7.6725
         + 1.0118 * tc
-        + 0.1422 * tc ** 2
-        + 0.0106 * tc ** 3
-        + 0.000339 * tc ** 4
-        + 0.00000395 * tc ** 5
+        + 0.1422 * tc**2
+        + 0.0106 * tc**3
+        + 0.000339 * tc**4
+        + 0.00000395 * tc**5
     )
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
@@ -43,7 +43,7 @@ def ice_fraction(
     elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
         icefrct_c = sin(
             0.5
-            * constants.PI
+            * constants.MAPL_PI
             * (
                 1.00
                 - (temp - constants.JaT_ICE_ALL)
@@ -70,7 +70,7 @@ def ice_fraction(
         elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
             icefrct_m = sin(
                 0.5
-                * constants.PI
+                * constants.MAPL_PI
                 * (
                     1.00
                     - (temp - constants.lT_ICE_ALL)
@@ -86,7 +86,7 @@ def ice_fraction(
         elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
             icefrct_m = sin(
                 0.5
-                * constants.PI
+                * constants.MAPL_PI
                 * (
                     1.00
                     - (temp - constants.oT_ICE_ALL)
@@ -124,7 +124,7 @@ def cloud_effective_radius_liquid(
     """
     # Calculate liquid water content
     WC = (
-        1.0e3 * (100.0 * PL) / (constants.rdry * TE) * QC
+        1.0e3 * (100.0 * PL) / (constants.MAPL_RDRY * TE) * QC
     )  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
     # Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
@@ -136,9 +136,9 @@ def cloud_effective_radius_liquid(
             max(
                 2.5e-6,
                 1.0e-6
-                * constants.bx
-                * (WC / NNX) ** constants.r13bbeta
-                * constants.abeta
+                * constants.BX
+                * (WC / NNX) ** constants.R13BBETA
+                * constants.ABETA
                 * 6.92,
             ),
         )
@@ -146,7 +146,7 @@ def cloud_effective_radius_liquid(
         # [liu&daum, 2000 and 2005. liu et al 2008]
         RADIUS = min(
             60.0e-6,
-            max(2.5e-6, 1.0e-6 * constants.Lbx * (WC / NNX) ** constants.Lbe),
+            max(2.5e-6, 1.0e-6 * constants.LBX * (WC / NNX) ** constants.LBE),
         )
     return RADIUS
 
@@ -177,24 +177,24 @@ def cloud_effective_radius_ice(
     """
     # Calculate ice water content
     WC = (
-        1.0e3 * (100.0 * PL) / (constants.rdry * TE) * QC
+        1.0e3 * (100.0 * PL) / (constants.MAPL_RDRY * TE) * QC
     )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
     if constants.ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
-        if TE > constants.t_ice or QC <= 0.0:
+        if TE > constants.MAPL_TICE or QC <= 0.0:
             BB = -2.0
         else:
-            BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.t_ice - TE) ** 1.5)
+            BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.MAPL_TICE - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
-        TC = TE - constants.t_ice
+        TC = TE - constants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC ** 0.2214)
-        BB = 0.79570 * (WC ** 0.2535)
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
@@ -229,8 +229,8 @@ def fix_up_clouds(
             QV = QV + QLA + QIA
             TE = (
                 TE
-                - (constants.latent_heat_vaporization / constants.cp) * QLA
-                - (constants.latent_heat_vaporization / constants.cp) * QIA
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLA
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QIA
             )
             AF = 0.0
             QLA = 0.0
@@ -240,8 +240,8 @@ def fix_up_clouds(
             QV = QV + QLC + QIC
             TE = (
                 TE
-                - (constants.latent_heat_vaporization / constants.cp) * QLC
-                - (constants.latent_heat_sublimation / constants.cp) * QIC
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLC
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * QIC
             )
             CF = 0.0
             QLC = 0.0
@@ -249,30 +249,34 @@ def fix_up_clouds(
         # LS LIQUID too small
         if QLC < 1.0e-8:
             QV = QV + QLC
-            TE = TE - (constants.latent_heat_vaporization / constants.cp) * QLC
+            TE = (
+                TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLC
+            )
             QLC = 0.0
         # LS ICE too small
         if QIC < 1.0e-8:
             QV = QV + QIC
-            TE = TE - (constants.latent_heat_sublimation / constants.cp) * QIC
+            TE = TE - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * QIC
             QIC = 0.0
         # Anvil LIQUID too small
         if QLA < 1.0e-8:
             QV = QV + QLA
-            TE = TE - (constants.latent_heat_vaporization / constants.cp) * QLA
+            TE = (
+                TE - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLA
+            )
             QLA = 0.0
         # Anvil ICE too small
         if QIA < 1.0e-8:
             QV = QV + QIA
-            TE = TE - (constants.latent_heat_sublimation / constants.cp) * QIA
+            TE = TE - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * QIA
             QIA = 0.0
         # Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
         if (QLA + QIA) < 1.0e-8:
             QV = QV + QLA + QIA
             TE = (
                 TE
-                - (constants.latent_heat_vaporization / constants.cp) * QLA
-                - (constants.latent_heat_sublimation / constants.cp) * QIA
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLA
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * QIA
             )
             AF = 0.0
             QLA = 0.0
@@ -282,8 +286,8 @@ def fix_up_clouds(
             QV = QV + QLC + QIC
             TE = (
                 TE
-                - (constants.latent_heat_vaporization / constants.cp) * QLC
-                - (constants.latent_heat_sublimation / constants.cp) * QIC
+                - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP) * QLC
+                - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP) * QIC
             )
             CF = 0.0
             QLC = 0.0

@@ -9,10 +9,6 @@ All global constants used for aer_actv_single_moment.F90
 # MAPL Constants
 MAPL_TICE = 273.16  # K
 
-# Aerosol Activation Constants
-# 32 bit
-R_AIR = 3.47e-3  # m3 Pa kg-1K-1
-
 # 64 bit
 ZERO_PAR = 1.0e-6  # small non-zero value
 AI = 0.0000594

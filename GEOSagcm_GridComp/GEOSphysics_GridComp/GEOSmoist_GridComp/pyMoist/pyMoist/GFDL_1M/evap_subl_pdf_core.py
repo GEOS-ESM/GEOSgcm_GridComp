@@ -106,7 +106,7 @@ def bergeron_partition(
     NIX = (1.0 - FQA) * NI
 
     DQALL = DQALL / DTIME
-    TC = TE - constants.t_ice
+    TC = TE - constants.MAPL_TICE
 
     # Completelely glaciated cloud:
     if TE >= constants.iT_ICE_MAX:  # liquid cloud
@@ -126,24 +126,24 @@ def bergeron_partition(
 
             DIFF = (
                 (0.211 * 1013.25 / (PL + 0.1))
-                * (((TE + 0.1) / constants.t_ice) ** 1.94)
+                * (((TE + 0.1) / constants.MAPL_TICE) ** 1.94)
                 * 1e-4
             )  # From Seinfeld and Pandis 2006
-            DENAIR = PL * 100.0 / constants.rdry / TE
+            DENAIR = PL * 100.0 / constants.MAPL_RDRY / TE
             DENICE = 1000.0 * (0.9167 - 1.75e-4 * TC - 5.0e-7 * TC * TC)  # From PK 97
-            LHcorr = 1.0 + DQSI * constants.latent_heat_sublimation / (
-                constants.rdry / constants.kappa
+            LHcorr = 1.0 + DQSI * constants.MAPL_LATENT_HEAT_SUBLIMATION / (
+                constants.MAPL_RDRY / constants.MAPL_KAPPA
             )  # must be ice deposition
 
             if NIX > 1.0 and QILS > 1.0e-10:
                 DC = max(
-                    (QILS / (NIX * DENICE * constants.PI)) ** 0.333, 20.0e-6
+                    (QILS / (NIX * DENICE * constants.MAPL_PI)) ** 0.333, 20.0e-6
                 )  # Assumme monodisperse size dsitribution
             else:
                 DC = 20.0e-6
 
             TEFF = (
-                NIX * DENAIR * 2.0 * constants.PI * DIFF * DC / LHcorr
+                NIX * DENAIR * 2.0 * constants.MAPL_PI * DIFF * DC / LHcorr
             )  # 1/Dep time scale
 
             DEP = 0.0
@@ -212,12 +212,12 @@ def initial_calc(
                 (
                     atan(
                         (2.0 * (PLmb - turnrhcrit) / (PLEmb_top - turnrhcrit) - 1.0)
-                        * tan(20.0 * constants.PI / 21.0 - 0.5 * constants.PI)
+                        * tan(20.0 * constants.MAPL_PI / 21.0 - 0.5 * constants.MAPL_PI)
                     )
-                    + 0.5 * constants.PI
+                    + 0.5 * constants.MAPL_PI
                 )
                 * 21.0
-                / constants.PI
+                / constants.MAPL_PI
                 - 1.0
             )
     with computation(PARALLEL), interval(-1, None):
@@ -327,8 +327,8 @@ def hystpdf(
                 fQi = ice_fraction(TEn, cnv_frc, srf_type)
 
             latent_heat_factor = (1.0 - fQi) * (
-                constants.latent_heat_vaporization / constants.cp
-            ) + fQi * (constants.latent_heat_sublimation / constants.cp)
+                constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CP
+            ) + fQi * (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CP)
             if PDFSHAPE == 1:
                 QCn = QCp + (QCn - QCp) / (
                     1.0 - (CFn * (ALPHA - 1.0) - (QCn / QSn)) * DQS * latent_heat_factor
@@ -345,12 +345,12 @@ def hystpdf(
             TEn = (
                 TEp
                 + (1.0 - fQi)
-                * constants.latent_heat_vaporization
-                / constants.cp
+                * constants.MAPL_LATENT_HEAT_VAPORIZATION
+                / constants.MAPL_CP
                 * ((QCn - QCp) * (1.0 - CLCN) + (QAo - QAx) * CLCN)
                 + fQi
-                * constants.latent_heat_sublimation
-                / constants.cp
+                * constants.MAPL_LATENT_HEAT_SUBLIMATION
+                / constants.MAPL_CP
                 * ((QCn - QCp) * (1.0 - CLCN) + (QAo - QAx) * CLCN)
             )
 
@@ -415,10 +415,10 @@ def hystpdf(
         Q = Q - (dQICN + dQILS + dQLCN + dQLLS)
         TE = (
             TE
-            + constants.latent_heat_vaporization
-            / constants.cpdry
+            + constants.MAPL_LATENT_HEAT_VAPORIZATION
+            / constants.MAPL_CPDRY
             * (dQICN + dQILS + dQLCN + dQLLS)
-            + constants.latent_heat_fusion / constants.cpdry * (dQICN + dQILS)
+            + constants.MAPL_LATENT_HEAT_FUSION / constants.MAPL_CPDRY * (dQICN + dQILS)
         )
 
         # We need to take care of situations where QS moves past QA
@@ -432,8 +432,8 @@ def hystpdf(
             Q = Q + QICN + QLCN
             TE = (
                 TE
-                - constants.latent_heat_sublimation / constants.cpdry * QICN
-                - constants.latent_heat_vaporization / constants.cpdry * QLCN
+                - constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY * QICN
+                - constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY * QLCN
             )
             QICN = 0.0
             QLCN = 0.0
@@ -452,20 +452,20 @@ def melt_freeze(
     QICN: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        if T <= constants.t_ice:
+        if T <= constants.MAPL_TICE:
             fQi = ice_fraction(T, cnv_frc, srf_type)
-            dQil = QLCN * (1.0 - exp(-dt * fQi / constants.taufrz))
+            dQil = QLCN * (1.0 - exp(-dt * fQi / constants.TAUFRZ))
             dQil = max(0.0, dQil)
             QICN = QICN + dQil
             QLCN = QLCN - dQil
             T = (
                 T
                 + (
-                    constants.latent_heat_sublimation
-                    - constants.latent_heat_vaporization
+                    constants.MAPL_LATENT_HEAT_SUBLIMATION
+                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
                 )
                 * dQil
-                / constants.cp
+                / constants.MAPL_CP
             )
         else:
             dQil = -QICN
@@ -475,11 +475,11 @@ def melt_freeze(
             T = (
                 T
                 + (
-                    constants.latent_heat_sublimation
-                    - constants.latent_heat_vaporization
+                    constants.MAPL_LATENT_HEAT_SUBLIMATION
+                    - constants.MAPL_LATENT_HEAT_VAPORIZATION
                 )
                 * dQil
-                / constants.cp
+                / constants.MAPL_CP
             )
 
 
@@ -503,16 +503,16 @@ def evaporate(
         # Evaporation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         ES = (
-            100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
+            100.0 * PLmb * QST / (constants.EPSILON + (1.0 - constants.EPSILON) * QST)
         )  # (100's <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_W
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
         )
         K2 = (
-            constants.rvap
+            constants.MAPL_RVAP
             * T
             * constants.RHO_W
             / (constants.DIFFU * (1000.0 / PLmb) * ES)
@@ -530,7 +530,7 @@ def evaporate(
                 * QLCN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * RADIUS ** 2)
+                / ((K1 + K2) * RADIUS**2)
             )
             EVAP = min(EVAP, QLCN)
         else:
@@ -540,7 +540,7 @@ def evaporate(
             CLCN = CLCN * (QC - EVAP) / QC
         Q = Q + EVAP
         QLCN = QLCN - EVAP
-        T = T - (constants.latent_heat_vaporization / constants.cpdry) * EVAP
+        T = T - (constants.MAPL_LATENT_HEAT_VAPORIZATION / constants.MAPL_CPDRY) * EVAP
         EVAPC = (Q - EVAPC) / DT_MOIST
 
 
@@ -564,16 +564,16 @@ def sublimate(
         # Sublimation of cloud water. DelGenio et al formulation
         # (Eq.s 15-17, 1996, J. Clim., 9, 270-303)
         ES = (
-            100.0 * PLmb * QST / (constants.epsilon + (1.0 - constants.epsilon) * QST)
+            100.0 * PLmb * QST / (constants.EPSILON + (1.0 - constants.EPSILON) * QST)
         )  # (100s <-^ convert from mbar to Pa)
         RHx = min(Q / QST, 1.00)
         K1 = (
-            (constants.latent_heat_vaporization ** 2)
+            (constants.MAPL_LATENT_HEAT_VAPORIZATION**2)
             * constants.RHO_I
-            / (constants.K_COND * constants.rvap * (T ** 2))
+            / (constants.K_COND * constants.MAPL_RVAP * (T**2))
         )
         K2 = (
-            constants.rvap
+            constants.MAPL_RVAP
             * T
             * constants.RHO_I
             / (constants.DIFFU * (1000.0 / PLmb) * ES)
@@ -591,7 +591,7 @@ def sublimate(
                 * QICN
                 * DT_MOIST
                 * (RHCRIT - RHx)
-                / ((K1 + K2) * radius ** 2)
+                / ((K1 + K2) * radius**2)
             )
             SUBL = min(SUBL, QICN)
         else:
@@ -601,5 +601,5 @@ def sublimate(
             CLCN = CLCN * (QC - SUBL) / QC
         Q = Q + SUBL
         QICN = QICN - SUBL
-        T = T - (constants.latent_heat_sublimation / constants.cpdry) * SUBL
+        T = T - (constants.MAPL_LATENT_HEAT_SUBLIMATION / constants.MAPL_CPDRY) * SUBL
         SUBLC = (Q - SUBLC) / DT_MOIST
