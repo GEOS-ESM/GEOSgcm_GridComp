@@ -12,7 +12,7 @@ from pyMoist.saturation.constants import (
     TMAXTBL,
     TMINLQU,
 )
-from pyMoist.saturation.types import SaturationFormulation
+from pyMoist.saturation.formulation import SaturationFormulation
 
 
 f64 = np.float64

@@ -11,9 +11,9 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
+from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
 from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
-from pyMoist.saturation.types import SaturationFormulation
 
 
 class SaturationVaporPressureTable:
