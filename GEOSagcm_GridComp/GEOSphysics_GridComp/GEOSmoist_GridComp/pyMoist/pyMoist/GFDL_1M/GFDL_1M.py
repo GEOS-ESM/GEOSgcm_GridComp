@@ -59,6 +59,7 @@ class GFDL_1M:
             func=initial_calc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+        # TODO: rename: is this "Hydrostatic PDF"?
         self._hystpdf = self.stencil_factory.from_dims_halo(
             func=hystpdf,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
