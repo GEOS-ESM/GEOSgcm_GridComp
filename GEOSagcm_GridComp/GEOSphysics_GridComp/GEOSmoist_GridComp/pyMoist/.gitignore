@@ -5,7 +5,7 @@ __pycache__/
 *.egg-info/
 test_data/
 .gt_cache_*
-.translate-errors/
+.translate-*/
 .vscode
 test_data/
 sandbox/
