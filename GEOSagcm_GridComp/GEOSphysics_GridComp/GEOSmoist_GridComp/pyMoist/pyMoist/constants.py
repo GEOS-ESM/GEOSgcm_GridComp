@@ -7,13 +7,14 @@ from ndsl.dsl.typing import Float
 
 f32 = np.float64
 f64 = np.float64
+i32 = np.int32
 
 # Define number of tracers
-NCNST = 23
+NCNST = i32(23)
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
-MAPL_UNDEF = 1e15
+MAPL_UNDEF = Float(1e15)
 
 # Math Constants
 MAPL_PI_R8 = f64(3.14159265358979323846e0)
@@ -24,14 +25,14 @@ MAPL_RADIANS_TO_DEGREES = f64(f64(180.0e0) / MAPL_PI_R8)
 
 # Following taken from PhysicalConstants.F90
 # Universal Constants
-CODATA_2018_CONSTANTS = True  # set for now, needs to be dynamic
+CODATA_2018_CONSTANTS = False  # set for now, needs to be dynamic
 if CODATA_2018_CONSTANTS:
-    stfbol = Float(5.670374419e-8)  # W/(m^2 K^4)
-    avogad = Float(6.02214076e26)  # 1/kmol
+    MAPL_STFBOL = Float(5.670374419e-8)  # W/(m^2 K^4)
+    MAPL_AVOGAD = Float(6.02214076e26)  # 1/kmol
     MAPL_RUNIV = Float(8314.462618)  # J/(Kmole K)
 else:
-    stfbol = Float(5.6734e-8)  # W/(m^2 K^4)
-    avogad = Float(6.023e26)  # 1/kmol
+    MAPL_STFBOL = Float(5.6734e-8)  # W/(m^2 K^4)
+    MAPL_AVOGAD = Float(6.023e26)  # 1/kmol
     MAPL_RUNIV = Float(8314.47)  # J/(Kmole K)
 
 # Earth Constants
@@ -64,9 +65,9 @@ MAPL_CPDRY = Float(3.5) * MAPL_RDRY  # J/(kg K)
 MAPL_KAPPA = MAPL_RDRY / MAPL_CPDRY  # (2.0/7.0)
 MAPL_CVDRY = MAPL_CPDRY - MAPL_RDRY  # J/(kg K)
 MAPL_RVAP = MAPL_RUNIV / H2OMW  # J/(kg K)
-MAPL_CPVAP = 4 * MAPL_RVAP  # J/(kg K)
+MAPL_CPVAP = Float(4) * MAPL_RVAP  # J/(kg K)
 MAPL_CVVAP = MAPL_CPVAP - MAPL_RVAP  # J/(kg K)
-MAPL_RGAS = MAPL_RDRY  # J/(kg K) (DEPRECATED)
+MAPL_RGAS = MAPL_RDRY  # MAPL_RDRY  # J/(kg K) (DEPRECATED)
 MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
 
 EPSILON = H2OMW / MAPL_AIRMW  # --
