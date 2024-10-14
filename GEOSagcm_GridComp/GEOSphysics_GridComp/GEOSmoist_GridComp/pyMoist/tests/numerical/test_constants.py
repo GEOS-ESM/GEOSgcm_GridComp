@@ -4,7 +4,7 @@ import numpy as np
 
 
 def _check_dtype(np_var, py_or_np_var):
-    if isinstance(py_or_np_var, bool):
+    if isinstance(py_or_np_var, bool) or isinstance(py_or_np_var, int):
         return True
     return np_var.dtype == py_or_np_var.dtype
 
@@ -13,8 +13,13 @@ def _get_constant_from_module():
     # All public module var
     const_module_var = [item for item in dir(const) if not item.startswith("_")]
     # Get rid of the imports
-    const_module_var.remove("np")
-    const_module_var.remove("Float")
+    imports = ["np", "Float"]
+    for i in imports:
+        const_module_var.remove(i)
+    # Remove non testable constants
+    non_testable_const = ["MAPL_UNDEF", "NCNST", "N_MODES", "FLOAT_TINY"]
+    for nc in non_testable_const:
+        const_module_var.remove(nc)
     return const_module_var
 
 
