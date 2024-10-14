@@ -19,13 +19,13 @@ module GEOS_MoistGridCompMod
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
-  fs_create_savepoint, &
-  fs_read_field, &
+  fs_write_field, &
   fs_add_savepoint_metainfo, &
-  fs_write_field
+  fs_read_field, &
+  fs_create_savepoint
 USE utils_ppser, ONLY:  &
-  ppser_initialize, &
   ppser_get_mode, &
+  ppser_initialize, &
   ppser_savepoint, &
   ppser_serializer, &
   ppser_serializer_ref, &
@@ -5263,6 +5263,7 @@ SELECT CASE ( ppser_get_mode() )
     call fs_write_field(ppser_serializer, ppser_savepoint, 'MAPL_RHO_SEAICE', MAPL_RHO_SEAICE)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'MAPL_RHO_SNOW', MAPL_RHO_SNOW)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'MAPL_CELSIUS_TO_KELVIN', MAPL_CELSIUS_TO_KELVIN)
+    call fs_write_field(ppser_serializer, ppser_savepoint, 'MAPL_STFBOL', MAPL_STFBOL)
 END SELECT
 ! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_MoistGridComp.F90.SER lineno: #5172
 SELECT CASE ( ppser_get_mode() )

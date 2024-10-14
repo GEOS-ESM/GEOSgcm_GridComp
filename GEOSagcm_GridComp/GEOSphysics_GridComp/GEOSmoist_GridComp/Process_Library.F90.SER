@@ -3674,6 +3674,7 @@ subroutine update_cld( &
 !$ser verbatim subroutine serialize_process_libraries_constants()
 !$ser savepoint Constants.ProcessLibrary-In
 !$ser data_writeonly aT_ICE_ALL=aT_ICE_ALL aT_ICE_MAX=aT_ICE_MAX aICEFRPWR=aICEFRPWR iT_ICE_ALL=iT_ICE_ALL iT_ICE_MAX=iT_ICE_MAX iICEFRPWR=iICEFRPWR lT_ICE_ALL=lT_ICE_ALL lT_ICE_MAX=lT_ICE_MAX lICEFRPWR=lICEFRPWR oT_ICE_ALL=oT_ICE_ALL oT_ICE_MAX=oT_ICE_MAX oICEFRPWR=oICEFRPWR JaT_ICE_ALL=JaT_ICE_ALL JaT_ICE_MAX=JaT_ICE_MAX JaICEFRPWR=JaICEFRPWR JiT_ICE_ALL=JiT_ICE_ALL JiT_ICE_MAX=JiT_ICE_MAX JiICEFRPWR=JiICEFRPWR EPSILON=EPSILON K_COND=K_COND DIFFU=DIFFU TAUFRZ=taufrz dQCMAX=dQCmax ABETA=abeta R13BBETA=r13bbeta BX=bx RHO_W=RHO_W LDISS=Ldiss LK=Lk LBE=Lbe LBX=Lbx RHO_I=RHO_I CPBGRAV=cpbgrav GRAVBCP=gravbcp ALHLBCP=alhlbcp ALHFBCP=alhfbcp ALHSBCP=alhsbcp
+!$ser data_writeonly LIQ_RADII_PARAM=LIQ_RADII_PARAM ICE_RADII_PARAM=ICE_RADII_PARAM R_AIR=R_AIR
 !$ser verbatim end subroutine serialize_process_libraries_constants
 
 end module GEOSmoist_Process_Library
