@@ -115,7 +115,7 @@ ALHLBCP = MAPL_ALHL / MAPL_CP
 ALHSBCP = MAPL_ALHS / MAPL_CP
 
 # Constants for cloud_effective_radius_liquid and cloud_effective_radius_ice
-LIQ_RADII_PARAM = 0
+LIQ_RADII_PARAM = 2
 ICE_RADII_PARAM = 1
 BX = Float(100.0) * (Float(3.0) / (Float(4.0) * MAPL_PI)) ** (Float(1.0) / Float(3.0))
 R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)

@@ -1,6 +1,5 @@
+import os
 import pyMoist.constants as const
-
-import numpy as np
 
 
 def _check_dtype(np_var, py_or_np_var):
@@ -26,9 +25,10 @@ def _get_constant_from_module():
 if __name__ == "__main__":
     import xarray as xr
 
-    test_data_dir = "/home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/test_data/11.5.2/Moist/TBC_C24_L72_Debug"
-
-    ds = xr.open_mfdataset(f"{test_data_dir}/Constants.*.nc")
+    this_dir_path = os.path.dirname(os.path.realpath(__file__))
+    data_dir = os.path.abspath(os.path.join(this_dir_path, "./data"))
+    print(f"Looking in {data_dir}")
+    ds = xr.open_mfdataset(f"{data_dir}/Constants.*.nc")
     const_module_var = _get_constant_from_module()
     unchecked_vars = set()
     for v in const_module_var:
@@ -47,4 +47,7 @@ if __name__ == "__main__":
                 )
         else:
             unchecked_vars.add(v)
-    print(f"Unchecked var: {unchecked_vars}")
+
+    # Fail for unchecked vars
+    if unchecked_vars != set():
+        print(f"Unchecked var: {unchecked_vars}")
