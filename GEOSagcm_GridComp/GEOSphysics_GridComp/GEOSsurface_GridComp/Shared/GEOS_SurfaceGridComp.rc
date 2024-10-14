@@ -190,18 +190,18 @@
 #
 # ----- Below default parameter values can also be changed via this resource file:
 #
-# IRRIG_THRES:     0.5 # threshold of tile fraction to turn the irrigation model on.
-# LAI_THRES:       0.6 # threshold of LAI range to turn irrigation on
-# SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
-# SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
-# SPRINKLER_THRES: 0.7 # soil moisture threshhold to trigger sprinkler irrigation
-# DRIP_STIME:      8.0 # drip irrigatrion start time [hours]
-# DRIP_DUR:        8.0 # drip irrigation duration [hours]
-# FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
-# FLOOD_DUR:       1.0 # flood irrigation duration [hours]
-# FLOOD_THRES:     0.6 # soil moisture threshhold to trigger flood irrigation
-# IRR_EFCOR:      30.0 # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
-# MIDS_LENGTH:     0.6 # Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER     : 1)
+# GEOSldas=>IRRIG_THRES:     0.01 # threshold of tile fraction to turn the irrigation model on.
+# GEOSldas=>LAI_THRES:       0.6 # threshold of LAI range to turn irrigation on
+# GEOSldas=>SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
+# GEOSldas=>SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
+# GEOSldas=>SPRINKLER_THRES: 0.7 # soil moisture threshhold to trigger sprinkler irrigation
+# GEOSldas=>DRIP_STIME:      8.0 # drip irrigatrion start time [hours]
+# GEOSldas=>DRIP_DUR:        8.0 # drip irrigation duration [hours]
+# GEOSldas=>FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
+# GEOSldas=>FLOOD_DUR:       8.0 # flood irrigation duration [hours]
+# GEOSldas=>FLOOD_THRES:     0.7 # soil moisture threshhold to trigger flood irrigation
+# GEOSldas=>IRR_EFCOR:      25.0 # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
+# GEOSldas=>MIDS_LENGTH:     0.6 # Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER     : 1)
 #                      # lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
 
 

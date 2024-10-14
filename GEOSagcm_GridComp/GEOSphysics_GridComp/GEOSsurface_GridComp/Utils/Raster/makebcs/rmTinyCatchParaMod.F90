@@ -228,15 +228,14 @@ contains
 
      case ("v13")
        LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD'
+       SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
        SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .true.
        IRRIGBCS    = .true.
-
-
 
     case default
 

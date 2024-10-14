@@ -207,7 +207,7 @@ contains
   SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
             SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, RZDEF,          &
-            SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE, SRATE, DRATE, FRATE)
+            SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE, SRATE, DRATE, FRATE)
 
     implicit none
     class (irrigation_model), intent(inout) :: this
@@ -329,7 +329,7 @@ contains
     ! Update SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE EXPORTS to be sent to land models.
     ! FLOODRATE is weighted averaged over irrigated crops + paddy fractions.
         
-    call this%update_irates (SPRINKLERRATE,DRIPRATE,FURROWRATE,FLOODRATE, &
+    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, FURROWRATE, &
          IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_lai_trigger
@@ -340,7 +340,7 @@ contains
        SPRINKLERFR, DRIPFR, FLOODFR,                        &
        CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
        SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
-       SPRINKLERRATE, DRIPRATE,FURROWRATE, FLOODRATE, SRATE, DRATE, FRATE)
+       SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE, SRATE, DRATE, FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
@@ -483,7 +483,7 @@ contains
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE update_irates_lai (this,SPRINKLERRATE,DRIPRATE,FURROWRATE,FLOODRATE, &
+  SUBROUTINE update_irates_lai (this,SPRINKLERRATE,DRIPRATE,FLOODRATE, FURROWRATE, &
        IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
     
     implicit none
