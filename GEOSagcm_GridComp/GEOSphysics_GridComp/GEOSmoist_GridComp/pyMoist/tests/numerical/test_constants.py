@@ -1,4 +1,5 @@
 import os
+
 import pyMoist.constants as const
 
 
@@ -37,8 +38,7 @@ if __name__ == "__main__":
             py = getattr(const, v)
             if not _check_dtype(f90, py):
                 print(
-                    f"🔶 {v} {f90.dtype} != {py.dtype} "
-                    f"(value f90: {f90} | py: {py})"
+                    f"🔶 {v} {f90.dtype} != {py.dtype} " f"(value f90: {f90} | py: {py})"
                 )
             else:
                 print(
