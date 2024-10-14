@@ -1,4 +1,3 @@
-#define ACC_PREFIX !$acc
 ! $Id$
 
 #include "MAPL_Generic.h"
@@ -8,27 +7,6 @@
 !BOP
 
 module GEOSmoist_Process_Library
-
-#ifdef SERIALIZE
-USE m_serialize, ONLY: &
-  fs_create_savepoint, &
-  fs_add_savepoint_metainfo, &
-  fs_write_field
-USE utils_ppser, ONLY:  &
-  ppser_get_mode, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
-  ppser_intlength, &
-  ppser_reallength, &
-  ppser_realtype, &
-  ppser_zrperturb, &
-  ppser_get_mode
-USE savepoint_helpers
-USE utils_ppser_buffered
-USE utils_ppser_kbuff
-#endif
-
 
   use ESMF
   use MAPL
@@ -163,9 +141,7 @@ USE utils_ppser_kbuff
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
   public :: pdf_alpha
-#ifdef SERIALIZE
-public :: serialize_process_libraries_constants
-#endif
+  !$ser verbatim public :: serialize_process_libraries_constants
 
   public :: sigma
 
@@ -3695,52 +3671,9 @@ subroutine update_cld( &
 
  end subroutine cs_prof
 
-#ifdef SERIALIZE
-subroutine serialize_process_libraries_constants()
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90.SER lineno: #3675
-call fs_create_savepoint('Constants.ProcessLibrary-In', ppser_savepoint)
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90.SER lineno: #3676
-SELECT CASE ( ppser_get_mode() )
-  CASE(0)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'aT_ICE_ALL', aT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'aT_ICE_MAX', aT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'aICEFRPWR', aICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'iT_ICE_ALL', iT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'iT_ICE_MAX', iT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'iICEFRPWR', iICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'lT_ICE_ALL', lT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'lT_ICE_MAX', lT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'lICEFRPWR', lICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'oT_ICE_ALL', oT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'oT_ICE_MAX', oT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'oICEFRPWR', oICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JaT_ICE_ALL', JaT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JaT_ICE_MAX', JaT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JaICEFRPWR', JaICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JiT_ICE_ALL', JiT_ICE_ALL)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JiT_ICE_MAX', JiT_ICE_MAX)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'JiICEFRPWR', JiICEFRPWR)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'EPSILON', EPSILON)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'K_COND', K_COND)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'DIFFU', DIFFU)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'TAUFRZ', taufrz)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'dQCMAX', dQCmax)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'ABETA', abeta)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'R13BBETA', r13bbeta)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'BX', bx)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'RHO_W', RHO_W)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'LDISS', Ldiss)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'LK', Lk)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'LBE', Lbe)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'LBX', Lbx)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'RHO_I', RHO_I)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'CPBGRAV', cpbgrav)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'GRAVBCP', gravbcp)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'ALHLBCP', alhlbcp)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'ALHFBCP', alhfbcp)
-    call fs_write_field(ppser_serializer, ppser_savepoint, 'ALHSBCP', alhsbcp)
-END SELECT
-end subroutine serialize_process_libraries_constants
-#endif
+!$ser verbatim subroutine serialize_process_libraries_constants()
+!$ser savepoint Constants.ProcessLibrary-In
+!$ser data_writeonly aT_ICE_ALL=aT_ICE_ALL aT_ICE_MAX=aT_ICE_MAX aICEFRPWR=aICEFRPWR iT_ICE_ALL=iT_ICE_ALL iT_ICE_MAX=iT_ICE_MAX iICEFRPWR=iICEFRPWR lT_ICE_ALL=lT_ICE_ALL lT_ICE_MAX=lT_ICE_MAX lICEFRPWR=lICEFRPWR oT_ICE_ALL=oT_ICE_ALL oT_ICE_MAX=oT_ICE_MAX oICEFRPWR=oICEFRPWR JaT_ICE_ALL=JaT_ICE_ALL JaT_ICE_MAX=JaT_ICE_MAX JaICEFRPWR=JaICEFRPWR JiT_ICE_ALL=JiT_ICE_ALL JiT_ICE_MAX=JiT_ICE_MAX JiICEFRPWR=JiICEFRPWR EPSILON=EPSILON K_COND=K_COND DIFFU=DIFFU TAUFRZ=taufrz dQCMAX=dQCmax ABETA=abeta R13BBETA=r13bbeta BX=bx RHO_W=RHO_W LDISS=Ldiss LK=Lk LBE=Lbe LBX=Lbx RHO_I=RHO_I CPBGRAV=cpbgrav GRAVBCP=gravbcp ALHLBCP=alhlbcp ALHFBCP=alhfbcp ALHSBCP=alhsbcp
+!$ser verbatim end subroutine serialize_process_libraries_constants
 
 end module GEOSmoist_Process_Library
