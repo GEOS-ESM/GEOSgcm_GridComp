@@ -21,9 +21,9 @@ def _get_constant_from_module():
 if __name__ == "__main__":
     import xarray as xr
 
-    ds = xr.open_dataset(
-        "/home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/test_data/11.5.2/Moist/TBC_C24_L72_Debug/Constants-Out.nc"
-    )
+    test_data_dir = "/home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/test_data/11.5.2/Moist/TBC_C24_L72_Debug"
+
+    ds = xr.open_mfdataset(f"{test_data_dir}/Constants.*.nc")
     const_module_var = _get_constant_from_module()
     unchecked_vars = set()
     for v in const_module_var:

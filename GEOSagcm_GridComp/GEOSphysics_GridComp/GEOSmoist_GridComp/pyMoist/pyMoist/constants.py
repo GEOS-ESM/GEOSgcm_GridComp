@@ -55,7 +55,6 @@ MAPL_ALHF = MAPL_LATENT_HEAT_FUSION  # J/kg
 MAPL_LATENT_HEAT_SUBLIMATION = MAPL_ALHL + MAPL_ALHF  # J/kg
 MAPL_ALHS = MAPL_LATENT_HEAT_SUBLIMATION  # J/kg
 H2OMW = Float(18.015)  # kg/Kmole
-O3MW = Float(47.9982)  # kg/Kmole
 
 # Earth Specific Chemistry and Thermodynamic Constants
 MAPL_TICE = Float(273.16)  # K
@@ -71,21 +70,7 @@ MAPL_RGAS = MAPL_RDRY  # MAPL_RDRY  # J/(kg K) (DEPRECATED)
 MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
 
 EPSILON = H2OMW / MAPL_AIRMW  # --
-deltap = MAPL_CPVAP / MAPL_CPDRY  # --
-deltav = MAPL_CVVAP / MAPL_CVDRY  # --
-gammad = MAPL_CPDRY / MAPL_CVDRY  # --
-REFERENCE_PRESSURE = Float(100000)  # Pa
-CAPICE = Float(2000)  # J/(K kg)
-CAPWTR = Float(4218)  # J/(K kg)
-RHOWTR = Float(1000)  # kg/m^3
-NUAIR = Float(1.533e-5)  # m^2/s (@ 18C)
-SURFACE_PRESSURE = Float(98470)  # Pa
-KARMAN = Float(0.40)  # --
-USMIN = Float(1.00)  # m/s
-RHO_SEAWATER = Float(1026.0)  # sea water density [kg/m^3]
-RHO_SEAICE = Float(917.0)  # sea ice density [kg/m^3]
-RHO_SNOW = Float(330.0)  # snow density [kg/m^3]
-CELSISU_TO_KELVIN = Float(273.15)  # K
+CELSIUS_TO_KELVIN = Float(273.15)  # K
 
 
 # ice_fraction constants
@@ -119,7 +104,7 @@ JiICEFRPWR = Float(4.0)
 TAUFRZ = Float(450)
 K_COND = Float(2.4e-2)  # J m**-1 s**-1 K**-1
 DIFFU = Float(2.2e-5)  # m**2 s**-1
-DQCMAX = Float(1.0e-4)
+dQCMAX = Float(1.0e-4)
 
 # cloud radius Constants based on DOI 10.1088/1748-9326/3/4/045021
 RHO_I = Float(916.8)  # Density of ice crystal in kg/m^3
