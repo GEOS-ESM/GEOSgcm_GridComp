@@ -4,7 +4,7 @@ meteorological quantities"""
 
 import gt4py.cartesian.gtscript as gtscript
 
-import pyMoist.pyMoist_constants as constants
+import pyMoist.constants as constants
 from ndsl.dsl.typing import Float
 
 
@@ -20,5 +20,5 @@ def air_density(PL: Float, TE: Float) -> Float:
     Returns:
     Float: Calculated air density.
     """
-    air_density = (100.0 * PL) / (constants.rdry * TE)
+    air_density = (100.0 * PL) / (constants.MAPL_RDRY * TE)
     return air_density
