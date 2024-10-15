@@ -1,7 +1,7 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import PARALLEL, computation, interval, log10
 
-import pyMoist.radiation_coupling_constants as radconstants
+import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField
@@ -19,7 +19,7 @@ def air_density(PL: Float, TE: Float) -> Float:
     Returns:
     Float: Calculated air density.
     """
-    air_density = (100.0 * PL) / (radconstants.MAPL_RGAS * TE)
+    air_density = (100.0 * PL) / (constants.MAPL_RGAS * TE)
     return air_density
 
 
@@ -52,20 +52,18 @@ def cloud_effective_radius_ice(
         1.0e3 * air_density(PL, TE) * QC
     )  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
-    if radconstants.ICE_RADII_PARAM == 1:
+    if constants.ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
-        if TE > radconstants.MAPL_TICE or QC <= 0.0:
+        if TE > constants.MAPL_TICE or QC <= 0.0:
             BB = -2.0
         else:
-            BB = -2.0 + log10(WC / 50.0) * (
-                1.0e-3 * (radconstants.MAPL_TICE - TE) ** 1.5
-            )
+            BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.MAPL_TICE - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
         RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
-        TC = TE - radconstants.MAPL_TICE
+        TC = TE - constants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
         AA = 45.8966 * (WC ** 0.2214)
         BB = 0.79570 * (WC ** 0.2535)
@@ -103,16 +101,16 @@ def cloud_effective_radius_liquid(
     # Calculate cloud drop number concentration from the aerosol model + ....
     NNX = max(NNL * 1.0e-6, 10.0)
     # Calculate Radius in meters [m]
-    if radconstants.LIQ_RADII_PARAM == 1:
+    if constants.LIQ_RADII_PARAM == 1:
         # Jason Version
         RADIUS = min(
             60.0e-6,
             max(
                 2.5e-6,
                 1.0e-6
-                * radconstants.BX
-                * (WC / NNX) ** radconstants.R13BBETA
-                * radconstants.ABETA
+                * constants.BX
+                * (WC / NNX) ** constants.R13BBETA
+                * constants.ABETA
                 * 6.92,
             ),
         )
@@ -120,7 +118,7 @@ def cloud_effective_radius_liquid(
         # [liu&daum, 2000 and 2005. liu et al 2008]
         RADIUS = min(
             60.0e-6,
-            max(2.5e-6, 1.0e-6 * radconstants.LBX * (WC / NNX) ** radconstants.LBE),
+            max(2.5e-6, 1.0e-6 * constants.LBX * (WC / NNX) ** constants.LBE),
         )
     return RADIUS
 
@@ -152,48 +150,48 @@ def _fix_up_clouds_stencil(
         # Fix if Anvil cloud fraction too small
         if AF < 1.0e-5:
             QV = QV + QLA + QIA
-            TE = TE - (radconstants.ALHLBCP) * QLA - (radconstants.ALHSBCP) * QIA
+            TE = TE - (constants.ALHLBCP) * QLA - (constants.ALHSBCP) * QIA
             AF = 0.0
             QLA = 0.0
             QIA = 0.0
         # Fix if LS cloud fraction too small
         if CF < 1.0e-5:
             QV = QV + QLC + QIC
-            TE = TE - (radconstants.ALHLBCP) * QLC - (radconstants.ALHSBCP) * QIC
+            TE = TE - (constants.ALHLBCP) * QLC - (constants.ALHSBCP) * QIC
             CF = 0.0
             QLC = 0.0
             QIC = 0.0
         # LS LIQUID too small
         if QLC < 1.0e-8:
             QV = QV + QLC
-            TE = TE - (radconstants.ALHLBCP) * QLC
+            TE = TE - (constants.ALHLBCP) * QLC
             QLC = 0.0
         # LS ICE too small
         if QIC < 1.0e-8:
             QV = QV + QIC
-            TE = TE - (radconstants.ALHSBCP) * QIC
+            TE = TE - (constants.ALHSBCP) * QIC
             QIC = 0.0
         # Anvil LIQUID too small
         if QLA < 1.0e-8:
             QV = QV + QLA
-            TE = TE - (radconstants.ALHLBCP) * QLA
+            TE = TE - (constants.ALHLBCP) * QLA
             QLA = 0.0
         # Anvil ICE too small
         if QIA < 1.0e-8:
             QV = QV + QIA
-            TE = TE - (radconstants.ALHSBCP) * QIA
+            TE = TE - (constants.ALHSBCP) * QIA
             QIA = 0.0
         # Fix ALL cloud quants if Anvil cloud LIQUID+ICE too small
         if (QLA + QIA) < 1.0e-8:
             QV = QV + QLA + QIA
-            TE = TE - (radconstants.ALHLBCP) * QLA - (radconstants.ALHSBCP) * QIA
+            TE = TE - (constants.ALHLBCP) * QLA - (constants.ALHSBCP) * QIA
             AF = 0.0
             QLA = 0.0
             QIA = 0.0
         # Fix ALL cloud quants if LS cloud LIQUID+ICE too small
         if (QLC + QIC) < 1.0e-8:
             QV = QV + QLC + QIC
-            TE = TE - (radconstants.ALHLBCP) * QLC - (radconstants.ALHSBCP) * QIC
+            TE = TE - (constants.ALHLBCP) * QLC - (constants.ALHSBCP) * QIC
             CF = 0.0
             QLC = 0.0
             QIC = 0.0
