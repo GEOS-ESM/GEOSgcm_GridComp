@@ -2,8 +2,6 @@ import copy
 
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, FORWARD, sin
-import pyMoist.pyMoist_constants as constants
-import pyMoist.radiation_coupling_constants as radconstants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import (
     FloatField,
@@ -15,9 +13,15 @@ from ndsl.dsl.typing import (
     BoolField,
 )
 from ndsl import StencilFactory, QuantityFactory
-from pyMoist.types import FloatField_NTracers
+from pyMoist.field_types import FloatField_NTracers
 from pyMoist.saturation.qsat import QSat, QSat_Float, FloatField_Extra_Dim
 from pyMoist.saturation.formulation import SaturationFormulation
+import pyMoist.constants as const
+
+
+P00 = Float(1e5)  # Reference pressure
+ZVIR = Float(0.609)  # r_H2O/r_air-1
+ROVCP = const.MAPL_RGAS / const.MAPL_CP  # Gas constant over specific heat
 
 
 @gtscript.function
@@ -80,10 +84,10 @@ def exnerfn(
     p (Float): Atmospheric pressure [Pa]
 
     Returns:
-    (p / 100000.0) ** (radconstants.MAPL_RGAS / constants.cp) (Float): Exner function
+    (p / 100000.0) ** (const.MAPL_RGAS / const.MAPL_CP) (Float): Exner function
     """
 
-    return (p / 100000.0) ** (radconstants.MAPL_RGAS / constants.cp)
+    return (p / 100000.0) ** (const.MAPL_RGAS / const.MAPL_CP)
 
 
 @gtscript.function
@@ -95,64 +99,61 @@ def ice_fraction(
     # Anvil clouds
     # Anvil-Convective sigmoidal function like figure 6(right)
     # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if temp <= constants.JaT_ICE_ALL:
+    if temp <= const.JaT_ICE_ALL:
         icefrct_c = 1.000
-    elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
+    elif temp > const.JaT_ICE_ALL and temp <= const.JaT_ICE_MAX:
         icefrct_c = sin(
             0.5
-            * constants.PI
+            * const.MAPL_PI
             * (
                 1.00
-                - (temp - constants.JaT_ICE_ALL)
-                / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)
+                - (temp - const.JaT_ICE_ALL) / (const.JaT_ICE_MAX - const.JaT_ICE_ALL)
             )
         )
     else:
         icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
+    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** const.aICEFRPWR
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     if srf_type == 2.0:
-        if temp <= constants.JiT_ICE_ALL:
+        if temp <= const.JiT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
-                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
+        elif temp > const.JiT_ICE_ALL and temp <= const.JiT_ICE_MAX:
+            icefrct_m = 1.00 - (temp - const.JiT_ICE_ALL) / (
+                const.JiT_ICE_MAX - const.JiT_ICE_ALL
             )
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** const.iICEFRPWR
     elif srf_type > 1.0:
-        if temp <= constants.lT_ICE_ALL:
+        if temp <= const.lT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
+        elif temp > const.lT_ICE_ALL and temp <= const.lT_ICE_MAX:
             icefrct_m = sin(
                 0.5
-                * constants.PI
+                * const.MAPL_PI
                 * (
                     1.00
-                    - (temp - constants.lT_ICE_ALL)
-                    / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)
+                    - (temp - const.lT_ICE_ALL) / (const.lT_ICE_MAX - const.lT_ICE_ALL)
                 )
             )
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** const.lICEFRPWR
     else:
-        if temp <= constants.oT_ICE_ALL:
+        if temp <= const.oT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
+        elif temp > const.oT_ICE_ALL and temp <= const.oT_ICE_MAX:
             icefrct_m = sin(
                 0.5
-                * constants.PI
+                * const.MAPL_PI
                 * (
                     1.00
-                    - (temp - constants.oT_ICE_ALL)
-                    / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)
+                    - (temp - const.oT_ICE_ALL) / (const.oT_ICE_MAX - const.oT_ICE_ALL)
                 )
             )
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** const.oICEFRPWR
     ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
     return ice_frac
 
@@ -184,13 +185,17 @@ def conden(
     id_check (Int): Flag that indicates if condensation occurs (0 for no condensation, 1 for condensation).
     """
 
-    tc = thl * exnerfn(p) # tc is a real*8 (64-bit) in the Fortran
+    tc = thl * exnerfn(p)  # tc is a real*8 (64-bit) in the Fortran
 
-    nu = ice_fraction(tc, 0.0, 0.0) # nu is a real*8 (64-bit) in the Fortran
-    leff = (1.0 - nu) * constants.xlv + (nu * constants.xls)  # Effective latent heat, nu is a real*8 (64-bit) in the Fortran
+    nu = ice_fraction(tc, 0.0, 0.0)  # nu is a real*8 (64-bit) in the Fortran
+    leff = (1.0 - nu) * const.MAPL_ALHL + (
+        nu * const.MAPL_ALHS
+    )  # Effective latent heat, nu is a real*8 (64-bit) in the Fortran
     temps = tc
     ps = p
-    qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)  # qs is a real*8 (64-bit) in the Fortran
+    qs, _ = QSat_Float(
+        ese, esx, temps, ps / 100.0
+    )  # qs is a real*8 (64-bit) in the Fortran
     rvls = qs
 
     if qs >= qt:  # no condensation
@@ -203,19 +208,21 @@ def conden(
     else:  # condensation
         iteration = 0
         while iteration < 10:
-            temps = temps + ((tc - temps) * constants.cp / leff + qt - rvls) / (
-                constants.cp / leff
-                + constants.ep2 * leff * rvls / (constants.r * temps * temps)
+            temps = temps + ((tc - temps) * const.MAPL_CP / leff + qt - rvls) / (
+                const.MAPL_CP / leff
+                + const.EPSILON * leff * rvls / (const.MAPL_RGAS * temps * temps)
             )
-            qs, _ = QSat_Float(ese, esx, temps, ps / 100.0) # qs is a real*8 (64-bit) in the Fortran
+            qs, _ = QSat_Float(
+                ese, esx, temps, ps / 100.0
+            )  # qs is a real*8 (64-bit) in the Fortran
             rvls = qs
             iteration += 1
-        qc = max(qt - qs, 0.0) # qc is a real*8 (64-bit) in the Fortran
+        qc = max(qt - qs, 0.0)  # qc is a real*8 (64-bit) in the Fortran
         qv = qt - qc
         ql = qc * (1.0 - nu)
         qi = nu * qc
         th = temps / exnerfn(p)
-        if abs((temps - (leff / constants.cp) * qc) - tc) >= 1.0:
+        if abs((temps - (leff / const.MAPL_CP) * qc) - tc) >= 1.0:
             id_check = 1
         else:
             id_check = 0
@@ -299,6 +306,18 @@ def compute_uwshcu(
 
     For GEOS-specific questions, email nathan.arnold@nasa.gov
 
+    In the original Fortran some constants where renamed.
+    We use the original names, follows is a correspondence,
+    between the names we use and the original fortran:
+    MAPL_ALHL             = xlv
+    MAPL_ALHF             = xlf
+    MAPL_ALHS             = xls
+    MAPL_CP               = cp
+    MAPL_RGAS             = r
+    MAPL_GRAV             = g
+    EPSILON               = ep2
+
+
     Parameters:
     dotransport (Float in): Transport tracers [1 true]
     ncnst (Int in): Number of tracers
@@ -364,8 +383,8 @@ def compute_uwshcu(
         umf_out = 0.0
         dcm_out = 0.0
         cufrc_out = 0.0
-        fer_out = radconstants.MAPL_UNDEF
-        fdr_out = radconstants.MAPL_UNDEF
+        fer_out = const.MAPL_UNDEF
+        fdr_out = const.MAPL_UNDEF
         qldet_out = 0.0
         qidet_out = 0.0
         qlsub_out = 0.0
@@ -401,13 +420,13 @@ def compute_uwshcu(
         t0_above = th0_in[0, 0, 1] * exnmid0_above
         thl0 = (
             t0
-            - ((constants.xlv * ql0) / constants.cp)
-            - ((constants.xls * qi0) / constants.cp)
+            - ((const.MAPL_ALHL * ql0) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0) / const.MAPL_CP)
         ) / exnmid0
         thl0_above = (
             t0_above
-            - ((constants.xlv * ql0_above) / constants.cp)
-            - ((constants.xls * qi0_above) / constants.cp)
+            - ((const.MAPL_ALHL * ql0_above) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0_above) / const.MAPL_CP)
         ) / exnmid0_above
 
         if dotransport == 1.0:
@@ -476,18 +495,18 @@ def compute_uwshcu(
         qt0_below = qv0_below + ql0_below + qi0_below
         thl0 = (
             t0
-            - ((constants.xlv * ql0) / constants.cp)
-            - ((constants.xls * qi0) / constants.cp)
+            - ((const.MAPL_ALHL * ql0) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0) / const.MAPL_CP)
         ) / exnmid0
         thl0_above = (
             t0_above
-            - ((constants.xlv * ql0_above) / constants.cp)
-            - ((constants.xls * qi0_above) / constants.cp)
+            - ((const.MAPL_ALHL * ql0_above) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0_above) / const.MAPL_CP)
         ) / exnmid0_above
         thl0_below = (
             t0_below
-            - ((constants.xlv * ql0_below) / constants.cp)
-            - ((constants.xls * qi0_below) / constants.cp)
+            - ((const.MAPL_ALHL * ql0_below) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0_below) / const.MAPL_CP)
         ) / exnmid0_below
 
         ssthl0 = slope(
@@ -542,18 +561,18 @@ def compute_uwshcu(
         qt0_below = qv0_below + ql0_below + qi0_below
         thl0 = (
             t0
-            - ((constants.xlv * ql0) / constants.cp)
-            - ((constants.xls * qi0) / constants.cp)
+            - ((const.MAPL_ALHL * ql0) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0) / const.MAPL_CP)
         ) / exnmid0
         thl0_above = (
             t0_above
-            - ((constants.xlv * ql0_above) / constants.cp)
-            - ((constants.xls * qi0_above) / constants.cp)
+            - ((const.MAPL_ALHL * ql0_above) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0_above) / const.MAPL_CP)
         ) / exnmid0_above
         thl0_below = (
             t0_below
-            - ((constants.xlv * ql0_below) / constants.cp)
-            - ((constants.xls * qi0_below) / constants.cp)
+            - ((const.MAPL_ALHL * ql0_below) / const.MAPL_CP)
+            - ((const.MAPL_ALHS * qi0_below) / const.MAPL_CP)
         ) / exnmid0_below
 
         if dotransport == 1.0:
@@ -594,7 +613,9 @@ def compute_uwshcu(
         qt0 = qv0 + ql0 + qi0
         t0 = th0_in * exnmid0
         thl0 = (
-            t0 - constants.xlv * ql0 / constants.cp - constants.xls * qi0 / constants.cp
+            t0
+            - const.MAPL_ALHL * ql0 / const.MAPL_CP
+            - const.MAPL_ALHS * qi0 / const.MAPL_CP
         ) / exnmid0
         zvir = 0.609  # r_H2O/r_air-1
         pifc0 = pifc0_in
@@ -636,7 +657,7 @@ def compute_uwshcu(
         iterative cin calculation, because cumulus convection induces non-zero fluxes 
         even at interfaces below PBL top height through 'fluxbelowinv' subroutine. 
         """
-       
+
         iteration = 0
         iter_max = 2
         while iteration < iter_max:
@@ -699,8 +720,8 @@ def compute_uwshcu(
         cush_inout = -1.0
         qldet_out = 0.0
         qidet_out = 0.0
-        fer_out = radconstants.MAPL_UNDEF
-        fdr_out = radconstants.MAPL_UNDEF
+        fer_out = const.MAPL_UNDEF
+        fdr_out = const.MAPL_UNDEF
         qtflx_out[0, 0, 1] = 0.0
         slflx_out[0, 0, 1] = 0.0
         uflx_out[0, 0, 1] = 0.0
@@ -762,7 +783,7 @@ class ComputeUwshcu:
         ntracers_quantity_factory = copy.deepcopy(ijk_quantity_factory)
         ntracers_quantity_factory.set_extra_dim_lengths(
             **{
-                "ntracers": constants.ncnst,
+                "ntracers": const.NCNST,
             }
         )
         return ntracers_quantity_factory
@@ -899,6 +920,6 @@ class ComputeUwshcu:
 
         if (self.id_check_flag.view[:, :, :] == True).all():
             raise NotImplementedError(
-                "Expected id_check == 0, got id_check == 1! " 
+                "Expected id_check == 0, got id_check == 1! "
                 "Code has been triggered that has not been ported."
             )
