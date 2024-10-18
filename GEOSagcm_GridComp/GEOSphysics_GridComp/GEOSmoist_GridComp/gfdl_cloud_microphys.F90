@@ -148,7 +148,7 @@ module gfdl2_cloud_microphys_mod
     logical :: do_evap = .true. !< do evaporation
     logical :: do_subl = .true. !< do sublimation
     logical :: in_cloud = .true. !< use in-cloud autoconversion
-    logical :: do_qa = .false. !< do inline cloud fraction (WMP: in FV3 dynamics)
+    logical :: do_qa = .true. !< do inline cloud fraction (WMP: in FV3 dynamics)
     logical :: do_icepsettle = .true. ! include ice pressure settling function
     logical :: preciprad = .true. !< consider precipitates in cloud fraciton calculation
     logical :: fix_negative = .true. !< fix negative water species

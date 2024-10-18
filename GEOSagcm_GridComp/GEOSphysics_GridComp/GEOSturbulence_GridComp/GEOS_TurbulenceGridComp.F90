@@ -3147,10 +3147,10 @@ end if
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=100.0,  RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LOUIS,          trim(COMP_NAME)//"_LOUIS:",        default=5.0,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ALHFAC,         trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ALMFAC,         trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-     if (JASON_TRB) then
+     call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
+      if (JASON_TRB) then
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
@@ -3166,7 +3166,7 @@ end if
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)

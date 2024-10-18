@@ -228,7 +228,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
+    call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
@@ -271,7 +271,7 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, ANV_ICEFALL     , 'ANV_ICEFALL:'     , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LS_ICEFALL      , 'LS_ICEFALL:'      , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, ICE_RADII_PARAM , 'ICE_RADII_PARAM:' , DEFAULT= 2     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, FAC_RI          , 'FAC_RI:'          , DEFAULT= 1.0   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MIN_RI          , 'MIN_RI:'          , DEFAULT=  5.e-6, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, MAX_RI          , 'MAX_RI:'          , DEFAULT=100.e-6, RC=STATUS); VERIFY_(STATUS)
@@ -578,9 +578,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
-             if (PLmb(i,j,l) .le. turnrhcrit) then
-                RHCRIT = minrhcrit
-             else
+             if (SRF_TYPE(i,j) < 2.0) then ! skip over snow/ice to reduce cloud content
+              if (PLmb(i,j,l) .le. turnrhcrit) then
+                 RHCRIT = minrhcrit
+              else
                 if (L.eq.LM) then
                    RHCRIT = 1.0
                 else
@@ -588,6 +589,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                            ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
+              endif
              endif
            ! limit RHcrit to > 70%
              ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)))
