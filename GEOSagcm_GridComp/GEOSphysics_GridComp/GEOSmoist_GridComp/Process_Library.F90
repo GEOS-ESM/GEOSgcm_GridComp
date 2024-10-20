@@ -37,9 +37,9 @@ module GEOSmoist_Process_Library
    real, parameter :: aT_ICE_MAX = 268.16
    real, parameter :: aICEFRPWR  = 2.0
    ! Over snow SRF_TYPE = 2 and over ice SRF_TYPE = 3
-   real, parameter :: iT_ICE_ALL = 236.16
+   real, parameter :: iT_ICE_ALL = 238.66
    real, parameter :: iT_ICE_MAX = 261.16
-   real, parameter :: iICEFRPWR  = 6.0
+   real, parameter :: iICEFRPWR  = 5.0
    ! Over Land     SRF_TYPE = 1
    real, parameter :: lT_ICE_ALL = 239.16
    real, parameter :: lT_ICE_MAX = 261.16
@@ -2098,7 +2098,7 @@ module GEOSmoist_Process_Library
          DQS = GEOS_DQSAT( TEn, PL, QSAT=QSn )
 
          if(present(SC_ICE)) then
-         	scice = min(max(SC_ICE, 1.0), 1.7)
+            scice = min(max(SC_ICE, 1.0), 1.7)
             qsnx= Qsn*scice !
             if ((QCi .ge. 0.0) .and. (Qsn .gt. Qt))  QSn=Qsnx !this way we do not evaporate preexisting ice but maintain supersat
          end if
@@ -3468,15 +3468,16 @@ subroutine update_cld( &
       WHERE (QLCN+QLLS > 0.0)
          FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
       END WHERE
-      ! put all new condensate into LS
+      ! Liquid
       DQC = QL - (QLCN+QLLS)
       WHERE (DQC > 0.0)
+      ! put all new condensate into LS
         QLLS = QLLS+DQC
-        DQC = 0.0
-      END WHERE
+      ELSEWHERE            
       ! any loss of condensate uses the FCN ratio
-      QLCN = QLCN + DQC*(    FCN)
-      QLLS = QLLS + DQC*(1.0-FCN)
+        QLCN = QLCN + DQC*(    FCN)
+        QLLS = QLLS + DQC*(1.0-FCN)
+      END WHERE
 
      ! Redistribute ice CN/LS portions based on prior fractions
       ! FCN Needs to be calculated first
@@ -3484,15 +3485,16 @@ subroutine update_cld( &
       WHERE (QICN+QILS > 0.0)
          FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
       END WHERE
-      ! put all new condensate into LS
+      ! Ice
       DQC = QI - (QICN+QILS)
       WHERE (DQC > 0.0)
+      ! put all new condensate into LS
         QILS = QILS+DQC
-        DQC = 0.0
-      END WHERE
+      ELSEWHERE   
       ! any loss of condensate uses the FCN ratio
-      QICN = QICN + DQC*(    FCN)
-      QILS = QILS + DQC*(1.0-FCN)
+        QICN = QICN + DQC*(    FCN)
+        QILS = QILS + DQC*(1.0-FCN)
+      END WHERE
 
      ! Redistribute cloud-fraction CN/LS portions based on prior fractions
       ! FCN Needs to be calculated first
@@ -3500,15 +3502,16 @@ subroutine update_cld( &
       WHERE (CLCN+CLLS > 0.0)
          FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
       END WHERE
-      ! put all new condensate into LS
+      ! Cloud
       DQC = CF - (CLCN+CLLS)
       WHERE (DQC > 0.0)
+      ! put all new condensate into LS
         CLLS = CLLS+DQC
-        DQC = 0.0
-      END WHERE
+      ELSEWHERE
       ! any loss of condensate uses the FCN ratio
-      CLCN = CLCN + DQC*(    FCN)
-      CLLS = CLLS + DQC*(1.0-FCN)
+        CLCN = CLCN + DQC*(    FCN)
+        CLLS = CLLS + DQC*(1.0-FCN)
+      END WHERE
 
    end subroutine REDISTRIBUTE_CLOUDS
 
