@@ -1,10 +1,10 @@
 from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation import QSat
+from pyMoist.GFDL_1M.find_klcl import FindKLCL
 
 
-class TranslateQSat(TranslateFortranData2Py):
+class Translatefind_klcl(TranslateFortranData2Py):
     def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
@@ -12,14 +12,11 @@ class TranslateQSat(TranslateFortranData2Py):
         self._grid = grid
         self.max_error = 1e-9
 
-        self.nmodes_quantity_factory = QSat.make_extra_dim_quantity_factory(
-            self.quantity_factory
-        )
-
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "PL": {},
+            "PLmb": {},
             "T": {},
+            "Q": {},
         }
 
         # Float Inputs
@@ -27,7 +24,7 @@ class TranslateQSat(TranslateFortranData2Py):
 
         # FloatField Outputs
         self.out_vars = {
-            "QSAT": self.grid.compute_dict(),
+            "KLCL": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -46,29 +43,23 @@ class TranslateQSat(TranslateFortranData2Py):
         qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
         return qty
 
-    def make_extra_dim_field(self, data) -> Quantity:
-        qty = self.nmodes_quantity_factory.empty(
-            [Z_DIM, "table_axis"],
-            "n/a",
-        )
-        qty.view[:] = qty.np.asarray(data[:])
-        return qty
-
     def compute(self, inputs):
-        qsat = QSat(
+        code = FindKLCL(
             self.stencil_factory,
             self.quantity_factory,
         )
 
         # FloatField Variables
         T = self.make_ijk_field(inputs["T"])
-        PL = self.make_ijk_field(inputs["PL"])
+        P = self.make_ijk_field(inputs["PLmb"])
+        Q = self.make_ijk_field(inputs["Q"])
 
-        qsat(
+        code(
             T,
-            PL,
+            P,
+            Q,
         )
 
         return {
-            "QSAT": qsat.QSat.view[:],
+            "KLCL": code.KLCL.view[:],
         }

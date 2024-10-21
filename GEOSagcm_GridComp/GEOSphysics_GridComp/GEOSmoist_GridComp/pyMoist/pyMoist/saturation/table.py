@@ -11,9 +11,9 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
+from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
 from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
-from pyMoist.saturation.types import SaturationFormulation
 
 
 class SaturationVaporPressureTable:
@@ -35,12 +35,11 @@ class SaturationVaporPressureTable:
         self._LOC = np.empty(TABLESIZE, dtype=Float)
 
         for i in range(TABLESIZE):
-            t = i * DELTA_T + TMINTBL
+            t = Float(i * DELTA_T) + TMINTBL
             (
                 self._estimated_esw[i],
                 self._TI[i],
                 _,
-                self._LOC[i],
             ) = qsat_liquid_scalar_exact(t, formulation)
 
             if t > MAPL_TICE:
@@ -50,7 +49,6 @@ class SaturationVaporPressureTable:
                     self._estimated_ese[i],
                     self._TI[i],
                     _,
-                    self._LOC[i],
                 ) = qsat_ice_scalar_exact(t, formulation)
 
             t = t - MAPL_TICE
@@ -62,8 +60,8 @@ class SaturationVaporPressureTable:
             else:
                 self._estimated_esx[i] = self._estimated_ese[i]
 
-        self._estimated_frz, _, _, _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
-        self._estimated_lqu, _, _, _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
+        self._estimated_frz, _, _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
+        self._estimated_lqu, _, _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
 
     @property
     def ese(self):
