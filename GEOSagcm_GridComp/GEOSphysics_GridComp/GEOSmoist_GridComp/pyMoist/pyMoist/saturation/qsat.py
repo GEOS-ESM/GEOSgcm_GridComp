@@ -19,8 +19,8 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
+from pyMoist.saturation.formulation import SaturationFormulation
 from pyMoist.saturation.table import get_table
-from pyMoist.saturation.types import SaturationFormulation
 
 
 # FloatField with extra dimension initialized to handle table data

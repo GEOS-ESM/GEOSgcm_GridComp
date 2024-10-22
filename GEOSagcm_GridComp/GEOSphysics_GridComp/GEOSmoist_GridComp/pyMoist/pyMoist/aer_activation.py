@@ -2,12 +2,55 @@ import copy
 
 from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log, sqrt
 
-import pyMoist.aer_activation_constants as constants
+import pyMoist.constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pyMoist.field_types import FloatField_NModes
 from pyMoist.numerical_recipes import Erf
-from pyMoist.types import FloatField_NModes
+
+
+# 64 bit
+ZERO_PAR = 1.0e-6  # small non-zero value
+AI = 0.0000594
+BI = 3.33
+CI = 0.0264
+DI = 0.0033
+
+BETAAI = -2.262e3
+GAMAI = 5.113e6
+DELTAAI = 2.809e3
+DENSIC = 917.0  # Ice crystal density in kgm-3
+
+# 32 bit
+NN_MIN = 100.0e6
+NN_MAX = 1000.0e6
+
+# ACTFRAC_Mat constants - all 64 bit
+PI = 3.141592653589793e00
+TWOPI = 2.0e00 * PI
+SQRT2 = 1.414213562e00
+THREESQRT2BY2 = 1.5e00 * SQRT2
+
+AVGNUM = 6.0221367e23  # [1/mol]
+RGASJMOL = 8.31451e00  # [j/mol/k]
+WMOLMASS = 18.01528e-03  # molar mass of h2o [kg/mol]
+AMOLMASS = 28.966e-03  # molar mass of air     [kg/mol]
+ASMOLMSS = 132.1406e-03  # molar mass of nh42so4 [kg/mol]
+DENH2O = 1.00e03  # density of water [kg/m^3]
+DENAMSUL = 1.77e03  # density of pure ammonium sulfate [kg/m^3]
+XNUAMSUL = 3.00e00  # number of ions formed when the salt is dissolved in water [1]
+PHIAMSUL = 1.000e00  # osmotic coefficient value in a-r 1998. [1]
+GRAVITY = 9.81e00  # grav. accel. at the earth's surface [m/s/s]
+HEATVAP = 40.66e03 / WMOLMASS  # latent heat of vap. for water and tnbp [j/kg]
+CPAIR = 1006.0e00  # heat capacity of air [j/kg/k]
+T0DIJ = 273.15e00  # reference temp. for dv [k]
+P0DIJ = 101325.0e00  # reference pressure for dv [pa]
+DIJH2O0 = 0.211e-04  # reference value of dv [m^2/s] (p&k,2nd ed., p.503)
+DELTAV = 1.096e-07  # vapor jump length [m]
+DELTAT = 2.160e-07  # thermal jump length [m]
+ALPHAC = 1.000e00  # condensation mass accommodation coefficient [1]
+ALPHAT = 0.960e00  # thermal accommodation coefficient [1]
 
 
 def aer_activation_stencil(
@@ -67,12 +110,11 @@ def aer_activation_stencil(
     None
     """
     with computation(PARALLEL), interval(...):
-
         # Compute nwfa
         # Fortran AeroProps aero_kap is aero_hygroscopicity
         nfaux = 0.0
         n = 0
-        while n < constants.n_modes:
+        while n < constants.N_MODES:
             if aero_hygroscopicity[0, 0, 0][n] > 0.4:
                 nfaux += aero_num[0, 0, 0][n]
             n += 1
@@ -97,17 +139,15 @@ def aer_activation_stencil(
             and (wupdraft < 100.0)
         ):
             n = 0
-            while n < constants.n_modes:
+            while n < constants.N_MODES:
                 ni[0, 0, 0][n] = max(
-                    aero_num[0, 0, 0][n] * air_den, constants.ZERO_PAR
+                    aero_num[0, 0, 0][n] * air_den, ZERO_PAR
                 )  # unit: [m-3]
                 rg[0, 0, 0][n] = max(
-                    aero_dgn[0, 0, 0][n] * 0.5 * 1.0e6, constants.ZERO_PAR
+                    aero_dgn[0, 0, 0][n] * 0.5 * 1.0e6, ZERO_PAR
                 )  # unit: [um]
                 sig0[0, 0, 0][n] = aero_sigma[0, 0, 0][n]  # unit: [um]
-                bibar[0, 0, 0][n] = max(
-                    aero_hygroscopicity[0, 0, 0][n], constants.ZERO_PAR
-                )
+                bibar[0, 0, 0][n] = max(aero_hygroscopicity[0, 0, 0][n], ZERO_PAR)
                 n += 1
 
             """
@@ -147,70 +187,50 @@ def aer_activation_stencil(
 
             # These variables are common to all modes and need only be computed once.
             dv = (
-                constants.DIJH2O0
-                * (constants.P0DIJ / plo)
-                * (tk / constants.T0DIJ) ** 1.94e00
+                DIJH2O0 * (P0DIJ / plo) * (tk / T0DIJ) ** 1.94e00
             )  # [m^2/s] (p&k,2nd ed., p.503)
             surten = 76.10e-3 - 0.155e-3 * (tk - 273.15e00)  # [j/m^2]
             wpe = exp(
                 77.34491296 - 7235.424651 / tk - 8.2 * log(tk) + tk * 5.7113e-3
             )  # [pa]
-            dumw = sqrt(
-                constants.TWOPI * constants.WMOLMASS / constants.RGASJMOL / tk
-            )  # [s/m]
+            dumw = sqrt(TWOPI * WMOLMASS / RGASJMOL / tk)  # [s/m]
             dvprime = dv / (
-                (rdrp / (rdrp + constants.DELTAV))
-                + (dv * dumw / (rdrp * constants.ALPHAC))
+                (rdrp / (rdrp + DELTAV)) + (dv * dumw / (rdrp * ALPHAC))
             )  # [m^2/s] - eq. (17)
             xka = (
                 5.69 + 0.017 * (tk - 273.15)
             ) * 418.4e-5  # [j/m/s/k] (0.0238 j/m/s/k at 273.15 k)
-            duma = sqrt(
-                constants.TWOPI * constants.AMOLMASS / constants.RGASJMOL / tk
-            )  # [s/m]
+            duma = sqrt(TWOPI * AMOLMASS / RGASJMOL / tk)  # [s/m]
             xkaprime = xka / (
-                (rdrp / (rdrp + constants.DELTAT))
-                + (
-                    xka
-                    * duma
-                    / (rdrp * constants.ALPHAT * constants.DENH2O * constants.CPAIR)
-                )
+                (rdrp / (rdrp + DELTAT))
+                + (xka * duma / (rdrp * ALPHAT * DENH2O * CPAIR))
             )  # [j/m/s/k]
             g = 1.0 / (
-                (constants.DENH2O * constants.RGASJMOL * tk)
-                / (wpe * dvprime * constants.WMOLMASS)
-                + ((constants.HEATVAP * constants.DENH2O) / (xkaprime * tk))
-                * (
-                    (constants.HEATVAP * constants.WMOLMASS) / (constants.RGASJMOL * tk)
-                    - 1.0
-                )
+                (DENH2O * RGASJMOL * tk) / (wpe * dvprime * WMOLMASS)
+                + ((HEATVAP * DENH2O) / (xkaprime * tk))
+                * ((HEATVAP * WMOLMASS) / (RGASJMOL * tk) - 1.0)
             )  # [m^2/s]
-            a = (2.0 * surten * constants.WMOLMASS) / (
-                constants.DENH2O * constants.RGASJMOL * tk
-            )  # [m]
-            alpha = (constants.GRAVITY / (constants.RGASJMOL * tk)) * (
-                (constants.WMOLMASS * constants.HEATVAP) / (constants.CPAIR * tk)
-                - constants.AMOLMASS
+            a = (2.0 * surten * WMOLMASS) / (DENH2O * RGASJMOL * tk)  # [m]
+            alpha = (GRAVITY / (RGASJMOL * tk)) * (
+                (WMOLMASS * HEATVAP) / (CPAIR * tk) - AMOLMASS
             )  # [1/m]
-            gamma = (constants.RGASJMOL * tk) / (wpe * constants.WMOLMASS) + (
-                constants.WMOLMASS * constants.HEATVAP * constants.HEATVAP
+            gamma = (RGASJMOL * tk) / (wpe * WMOLMASS) + (
+                WMOLMASS * HEATVAP * HEATVAP
             ) / (
-                constants.CPAIR * plo * constants.AMOLMASS * tk
+                CPAIR * plo * AMOLMASS * tk
             )  # [m^3/kg]
             dum = sqrt(alpha * wupdraft / g)  # [1/m]
             zeta = 2.0 * a * dum / 3.0  # [1]
 
             # These variables must be computed for each mode
             n = 0
-            while n < constants.n_modes:
+            while n < constants.N_MODES:
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
                 smax = 0.0  # [1]
                 sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
                 ) ** 1.5  # [1]
-                eta = dum ** 3 / (
-                    constants.TWOPI * constants.DENH2O * gamma * ni[0, 0, 0][n]
-                )  # [1]
+                eta = dum ** 3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
                 f1 = 0.5 * exp(2.50 * xlogsigm ** 2)  # [1]
                 f2 = 1.0 + 0.25 * xlogsigm  # [1]
                 smax = (
@@ -226,13 +246,13 @@ def aer_activation_stencil(
             smax = 1.0e00 / sqrt(smax)  # [1]
             n = 0
             u = 0.0
-            while n < constants.n_modes:
+            while n < constants.N_MODES:
                 sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
                 ) ** 1.5  # [1]
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
                 ac = rg[0, 0, 0][n] * (sm / smax) ** 0.66666666666666667  # [um]
-                u = log(ac / rg[0, 0, 0][n]) / (constants.SQRT2 * xlogsigm)  # [1]
+                u = log(ac / rg[0, 0, 0][n]) / (SQRT2 * xlogsigm)  # [1]
                 fracactn = 0.5 * (1.0 - Erf(u))  # [1]
                 nact[0, 0, 0][n] = fracactn * ni[0, 0, 0][n]  # [#/m^3]
                 n += 1
@@ -240,7 +260,7 @@ def aer_activation_stencil(
             numbinit = 0.0
             nactl = 0.0
             n = 0
-            while n < constants.n_modes:
+            while n < constants.N_MODES:
                 numbinit += aero_num[0, 0, 0][n] * air_den
                 nactl += nact[0, 0, 0][n]
                 n += 1
@@ -252,7 +272,7 @@ def aer_activation_stencil(
         ):
             numbinit = 0.0
             n = 0
-            while n < constants.n_modes:
+            while n < constants.N_MODES:
                 # diameters > 0.5 microns
                 if aero_dgn[0, 0, 0][n] >= 0.5e-6:
                     numbinit += aero_num[0, 0, 0][n]
@@ -260,23 +280,20 @@ def aer_activation_stencil(
             numbinit *= air_den  # [#/m3]
             # Number of activated IN following deMott (2010) [#/m3]
             nacti = (
-                constants.AI
-                * ((constants.MAPL_TICE - tk) ** constants.BI)
-                * (
-                    numbinit
-                    ** (constants.CI * (constants.MAPL_TICE - tk) + constants.DI)
-                )
+                AI
+                * ((constants.MAPL_TICE - tk) ** BI)
+                * (numbinit ** (CI * (constants.MAPL_TICE - tk) + DI))
             )
 
         # apply limits for NACTL/NACTI
-        if nactl < constants.NN_MIN:
-            nactl = constants.NN_MIN
-        if nactl > constants.NN_MAX:
-            nactl = constants.NN_MAX
-        if nacti < constants.NN_MIN:
-            nacti = constants.NN_MIN
-        if nacti > constants.NN_MAX:
-            nacti = constants.NN_MAX
+        if nactl < NN_MIN:
+            nactl = NN_MIN
+        if nactl > NN_MAX:
+            nactl = NN_MAX
+        if nacti < NN_MIN:
+            nacti = NN_MIN
+        if nacti > NN_MAX:
+            nacti = NN_MAX
 
 
 class AerActivation:
@@ -312,9 +329,10 @@ class AerActivation:
         """
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
-        if constants.n_modes != n_modes:
+        if constants.N_MODES != n_modes:
             raise NotImplementedError(
-                f"Coding limitation: 14 modes are expected, getting {n_modes}"
+                f"Coding limitation: {constants.N_MODES} modes are expected, "
+                f"getting {n_modes}"
             )
 
         if not USE_AERSOL_NN:
@@ -361,7 +379,7 @@ class AerActivation:
         nmodes_quantity_factory = copy.deepcopy(ijk_quantity_factory)
         nmodes_quantity_factory.set_extra_dim_lengths(
             **{
-                "n_modes": constants.n_modes,
+                "n_modes": constants.N_MODES,
             }
         )
         return nmodes_quantity_factory
