@@ -228,9 +228,13 @@ def compute_uwshcu(
     ncnst: Int,
     k0: Int,
     kpbl_in: IntFieldIJ,
-    pifc0_in: FloatField,
+    pifc0_in: FloatField, # Zinterfacedim
+    zifc0_in: FloatField,
     pmid0_in: FloatField,
+    zmid0_in: FloatField,
     exnmid0_in: FloatField,
+    exnifc0_in: FloatField, # Zinterfacedim
+    dp0_in: FloatField,
     u0_in: FloatField,
     v0_in: FloatField,
     qv0_in: FloatField,
@@ -238,6 +242,10 @@ def compute_uwshcu(
     qi0_in: FloatField,
     th0_in: FloatField,
     tr0_inout: FloatField_NTracers,
+    frland_in: FloatField,
+    tke_in: FloatField, # Zinterfacedim
+    rkfre: FloatFieldIJ,
+    cush_inout: FloatFieldIJ,
     umf_out: FloatField,
     dcm_out: FloatField,
     qvten_out: FloatField,
@@ -303,16 +311,24 @@ def compute_uwshcu(
     dotransport (Float in): Transport tracers [1 true]
     ncnst (Int in): Number of tracers
     k0 (Int in): Number of vertical levels
+
     kpbl_in (2D in): Boundary layer top layer index
     pifc0_in (3D in): Environmental pressure at interfaces [Pa]
+    zifc0_in (3D in): Environmental height at interfaces [m]
+    exnifc0_in (3D in): Exner function at interfaces
     pmid0_in (3D in): Environmental pressure at midpoints [Pa]
+    zmid0_in (3D in): Environmental height at midpoints [m]
     exnmid0_in (3D in): Exner function at midpoints
+    dp0_in (3D in): Environmental layer pressure thickness
     u0_in (3D in): Environmental zonal wind [m/s]
     v0_in (3D in): Environmental meridional wind [m/s]
     qv0_in (3D in): Environmental specific humidity
     ql0_in (3D in): Environmental liquid water specific humidity
     qi0_in (3D in): Environmental ice specific humidity
     th0_in (3D in): Environmental potential temperature [K]
+    tke_in (3D in): Turbulent kinetic energy at interfaces
+    rkfre (2D in): Resolution dependent Vertical velocity variance as fraction of tke. 
+    cush_inout (2D inout): Convective scale height [m]
     tr0_inout (4D in): Environmental tracers [ #, kg/kg ]
     umf_out (3D out): Updraft mass flux at the interfaces [ kg/m2/s ]
     dcm_out (3D out): Detrained cloudy air mass
@@ -378,6 +394,47 @@ def compute_uwshcu(
         vflx_out[0, 0, 1] = 0.0
         tpert_out = 0.0
         qpert_out = 0.0
+
+        # Initialize variable that are calculated from inputs
+        #frc_rasn = 
+        cush = cush_inout
+        zmid0 = zmid0_in
+        zifc0 = zifc0_in
+        tke = tke_in
+        dp0 = dp0_in
+
+        # Initialize diagnostic variables here
+
+        # Initialize more variables
+        exit_UWCu             = 0.0 
+        exit_conden           = 0.0 
+        exit_klclk0           = 0.0 
+        exit_klfck0           = 0.0 
+        exit_ufrc             = 0.0 
+        exit_wtw              = 0.0 
+        exit_drycore          = 0.0 
+        exit_wu               = 0.0 
+        exit_cufilter         = 0.0 
+        exit_kinv1            = 0.0 
+        exit_rei              = 0.0 
+
+        limit_shcu            = 0.0 
+        limit_negcon          = 0.0 
+        limit_ufrc            = 0.0
+        limit_ppen            = 0.0
+        limit_emf             = 0.0
+        limit_cinlcl          = 0.0
+        limit_cin             = 0.0
+        limit_cbmf            = 0.0
+        limit_rei             = 0.0
+
+        ind_delcin            = 0.0
+
+        ### TEMPORARY TEST SETTINGS
+        ixcldice = 1
+        ixcldliq = 2
+        ixnumliq = 3
+        ixnumice = 4
 
     # Start Main Calculation
     with computation(PARALLEL), interval(0, 1):
@@ -627,6 +684,114 @@ def compute_uwshcu(
         thv0top = thv0bot
         thvl0top = thvl0bot
 
+    with computation(PARALLEL), interval(...):
+        '''
+        Save input and related environmental thermodynamic variables 
+        for use at "iter_cin=2" when "del_CIN >= 0"
+        '''
+        qv0_o          = qv0
+        ql0_o          = ql0
+        qi0_o          = qi0
+        t0_o           = t0
+        s0_o           = s0
+        u0_o           = u0
+        v0_o           = v0
+        qt0_o          = qt0
+        thl0_o         = thl0
+        thvl0_o        = thvl0
+        ssthl0_o       = ssthl0
+        ssqt0_o        = ssqt0
+        thv0bot_o      = thv0bot
+        thv0top_o      = thv0top
+        thvl0bot_o     = thvl0bot
+        thvl0top_o     = thvl0top
+        ssu0_o         = ssu0
+        ssv0_o         = ssv0 
+
+        if dotransport == 1.0:
+            m=0
+            while m < ncnst:
+                tr0_o[0, 0, 0][m]     = tr0[0, 0, 0][m]
+                sstr0_o[0, 0, 0][m]   = sstr0[0, 0, 0][m]
+                m += 1
+
+        # Initialize output variables at each grid point
+        umf          = 0.0
+        dcm          = 0.0
+        emf          = 0.0
+        slflx        = 0.0
+        qtflx        = 0.0
+        uflx         = 0.0
+        vflx         = 0.0
+        qvten        = 0.0
+        qlten        = 0.0
+        qiten        = 0.0
+        sten         = 0.0
+        uten         = 0.0
+        vten         = 0.0
+        qrten        = 0.0
+        qsten        = 0.0
+        dwte         = 0.0
+        diten        = 0.0
+        cufrc        = 0.0
+        qcu          = 0.0
+        qlu          = 0.0
+        qiu          = 0.0
+        fer          = 0.0
+        fdr          = 0.0
+        xco          = 0.0
+        cin          = 0.0
+        cinlcl       = 0.0
+        cbmf         = 0.0
+        qc           = 0.0
+        #qldet       = 0.0
+        #qidet       = 0.0
+        qc_l         = 0.0
+        qc_i         = 0.0
+        cnt          = k0
+        cnb          = 0.0
+        qtten        = 0.0
+        slten        = 0.0   
+        ufrc         = 0.0  
+
+        thlu         = radconstants.MAPL_UNDEF
+        qtu          = radconstants.MAPL_UNDEF
+        uu           = radconstants.MAPL_UNDEF
+        vu           = radconstants.MAPL_UNDEF
+        wu           = radconstants.MAPL_UNDEF
+        thvu         = radconstants.MAPL_UNDEF
+        thlu_emf     = radconstants.MAPL_UNDEF
+        qtu_emf      = radconstants.MAPL_UNDEF
+        uu_emf       = radconstants.MAPL_UNDEF
+        vu_emf       = radconstants.MAPL_UNDEF
+        
+        ufrcinvbase  = 0.0
+        ufrclcl      = 0.0
+        winvbase     = 0.0
+        wlcl         = 0.0
+        emfkbup      = 0.0 
+        cbmflimit    = 0.0
+
+        uemf         = 0.0
+        comsub       = 0.0
+        qlten_sink   = 0.0
+        qiten_sink   = 0.0
+        qlten_det    = 0.0
+        qiten_det    = 0.0 
+        #nlten_sink  = 0.0
+        #iten_sink   = 0.0 
+
+        if dotransport == 1.0:
+            m = 0
+            while m < ncnst:
+                trflx[0,0,0][m]   = 0.0
+                trten[0,0,0][m]    = 0.0
+                tru[0,0,0][m]    = 0.0
+                tru_emf[0,0,0][m] = 0.0
+                m+=1
+       
+
+
     with computation(FORWARD), interval(...):
         """
         Below 'iter' loop is for implicit CIN closure
@@ -638,8 +803,8 @@ def compute_uwshcu(
         """
        
         iteration = 0
-        iter_max = 2
-        while iteration < iter_max:
+        iter_cin = 2
+        while iteration < iter_cin:
             """
             Cumulus scale height                                                    
             In contrast to the premitive code, cumulus scale height is iteratively 
@@ -647,6 +812,13 @@ def compute_uwshcu(
             It is not clear whether I should locate below two lines within or  out 
             of the iterative cin loop. 
             """
+
+            tscaleh = cush                        
+            cush    = -1.0
+            tkeavg   = 0.0
+            qtavg   = 0.0
+            uavg    = 0.0
+            vavg    = 0.0
 
             """
             Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer 
@@ -675,15 +847,39 @@ def compute_uwshcu(
             else:
                 kinv = 5
 
+            # 15 continue
+
             if kinv <= 1:
                 id_exit = True
+                #print('------- UW ShCu: Exit, kinv<=1')
 
-            # Cumulus convection goes here
-            # This section has NOT BEEN PORTED
-            # If id_exit == False the code will be triggered and an error will be raised
+            if kinv <= k0/4:
+                id_exit = True
+                #print('------- UW ShCu: Exit, kinv>k0/4')
+
+            '''
+            Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL 
+            In the current code, 'tkeavg' is obtained by averaging all interfacial TKE 
+            within the PBL. However, in order to be conceptually consistent with   PBL
+            scheme, 'tkeavg' should be calculated by considering surface buoyancy flux.
+            If surface buoyancy flux is positive ( bflxs >0 ), surface interfacial TKE 
+            should be included in calculating 'tkeavg', while if bflxs <= 0,   surface 
+            interfacial TKE should not be included in calculating 'tkeavg'.   I should 
+            modify the code when 'bflxs' is available as an input of cumulus scheme.   
+            'thvlmin' is a minimum 'thvl' within PBL obtained by comparing top &  base 
+            interface values of 'thvl' in each layers within the PBL.    
+            '''
+
+            dpsum    = 0.0
+            thvlmin  = 1000.0
+            thvlavg  = 0.0
 
             iteration += 1
 
+
+
+
+'''
         # Initialize output variables when cumulus convection was not performed.
         umf_out[0, 0, 1] = 0.0
         dcm_out = 0.0
@@ -712,6 +908,7 @@ def compute_uwshcu(
         slflx_out = 0.0
         uflx_out = 0.0
         vflx_out = 0.0
+'''
 
 
 class ComputeUwshcu:
@@ -890,10 +1087,10 @@ class ComputeUwshcu:
             id_check_flag=self.id_check_flag,
         )
 
-        if (self.id_exit.view[:, :, :] == False).all():
+        if (self.id_exit.view[:, :, :] == True).all():
             raise NotImplementedError(
-                "Expected id_exit == True, got id_exit == False! "
-                "Cumulus convection was unexpectedly triggered! "
+                "Expected id_exit == False, got id_exit == True! "
+                "Exit UWSHCU! "
                 "This code has not been ported."
             )
 
