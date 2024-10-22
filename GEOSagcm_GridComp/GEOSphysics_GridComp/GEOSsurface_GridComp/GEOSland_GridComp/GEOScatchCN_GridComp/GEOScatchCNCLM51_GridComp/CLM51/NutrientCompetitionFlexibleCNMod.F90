@@ -53,7 +53,7 @@ module NutrientCompetitionFlexibleCNMod
   !
   interface nutrient_competition_FlexibleCN_type
      ! initialize a new nutrient_competition_FlexibleCN_type object
-    ! module procedure constructor
+     module procedure constructor
   end interface nutrient_competition_FlexibleCN_type
   !
 
@@ -66,12 +66,12 @@ module NutrientCompetitionFlexibleCNMod
 contains
 
   !------------------------------------------------------------------------
-!  type(nutrient_competition_FlexibleCN_type) function constructor()
-!    !
-!    ! !DESCRIPTION:
-!    ! Creates an object of type nutrient_competition_FlexibleCN_type.
-!    ! For now, this is simply a place-holder.
-!  end function constructor
+  type(nutrient_competition_FlexibleCN_type) function constructor()
+    !
+    ! !DESCRIPTION:
+    ! Creates an object of type nutrient_competition_FlexibleCN_type.
+    ! For now, this is simply a place-holder.
+  end function constructor
 
   !------------------------------------------------------------------------
   subroutine Init(this, bounds)

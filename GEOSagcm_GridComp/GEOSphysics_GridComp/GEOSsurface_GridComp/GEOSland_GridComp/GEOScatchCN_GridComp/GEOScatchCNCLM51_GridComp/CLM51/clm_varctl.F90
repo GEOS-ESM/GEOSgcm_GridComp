@@ -41,13 +41,17 @@ module clm_varctl
   logical, public :: use_biomass_heat_storage = .false.
   logical, public :: use_fertilizer      = .false.
 
-  logical, public :: downreg_opt = .true.
+ ! logical, public :: downreg_opt = .true.
+  logical, public :: downreg_opt = .false.
   logical, public :: nscalar_opt = .true.
-  integer, public :: plant_ndemand_opt = 0
+ ! integer, public :: plant_ndemand_opt = 0
+  integer, public :: plant_ndemand_opt = 3
   logical, public :: substrate_term_opt = .true.
   logical, public :: temp_scalar_opt = .true.
-  integer, public :: CN_residual_opt = 0
-  integer, public :: CN_partition_opt = 0
+ ! integer, public :: CN_residual_opt = 0
+  integer, public :: CN_residual_opt = 1
+ ! integer, public :: CN_partition_opt = 0
+  integer, public :: CN_partition_opt = 1
 
   logical, public :: use_c13 = .false.                  ! true => use C-13 model
   logical, public :: use_c14 = .false.                  ! true => use C-14 model
@@ -77,12 +81,17 @@ module clm_varctl
   !----------------------------------------------------------
   !  flexibleCN
   !----------------------------------------------------------
-  logical, public :: use_flexibleCN = .false.
-  logical, public :: CNratio_floating = .false.
-  integer, public :: CN_evergreen_phenology_opt = 0
-  logical, public :: lnc_opt = .false.
+  !logical, public :: use_flexibleCN = .false.
+  logical, public :: use_flexibleCN = .true.
+  !logical, public :: CNratio_floating = .false.
+  logical, public :: CNratio_floating = .true.
+  !integer, public :: CN_evergreen_phenology_opt = 0
+  integer, public :: CN_evergreen_phenology_opt = 1
+  !logical, public :: lnc_opt = .false.
+  logical, public :: lnc_opt = .true.
   logical, public :: reduce_dayl_factor = .false.
-  integer, public :: vcmax_opt = 0
+  !integer, public :: vcmax_opt = 0
+  integer, public :: vcmax_opt = 3
 
   !----------------------------------------------------------
   ! BGC logic and datasets
