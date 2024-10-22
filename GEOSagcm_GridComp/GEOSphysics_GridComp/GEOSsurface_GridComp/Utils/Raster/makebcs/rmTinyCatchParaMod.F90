@@ -2008,10 +2008,10 @@ integer :: n_threads=1
 
     INTEGER, allocatable, dimension(:) :: CATID  
     integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib
-    INTEGER, allocatable, dimension (:) :: id,I_INDEX,J_INDEX 
+    INTEGER, allocatable, dimension (:) :: id,I_INDEX,J_INDEX,typ_array
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
     REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath
     character*200 :: gtopo30
@@ -2063,6 +2063,7 @@ integer :: n_threads=1
     allocate(i_index(ip))
     allocate(j_index(ip))
     allocate(tile_area(ip))  
+    allocate(typ_array(ip))  ! Added to track typ values
     id=0
     read (10,*)j_dum
 
@@ -2075,21 +2076,28 @@ integer :: n_threads=1
 !    dx_gcm = 360./float(nc_gcm)
 !    dy_gcm = 180./float(nr_gcm)    
 
+    count = 0
     do n = 1,ip
  
       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+            typ_array(n) = typ
 	    tile_area(n) = tarea
             id(n)=pfs
 	    i_index(n) = ig 
 	    j_index(n) = jg 
 
-       if (typ == 100) ip2 = n
+      !Test for Lauren diff typ from tile file
+      !if (typ == 20 ) then
+      if (typ == 100) then
+      !if (typ == 20 .or. typ == 100) then
+          count = count + 1
+      end if
        if(ierr /= 0)write (*,*)'Problem reading'
     end do
     close (10,status='keep')
 
-    maxcat=ip2-ip1
+    maxcat = count
 
 ! Tile elevation
     allocate(tile_ele(1:maxcat))
@@ -2106,7 +2114,7 @@ integer :: n_threads=1
        read (10)(catid(i),i=1,i_sib)
 
        do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
+             if((catid(i) > ip1).and.(catid(i) <= maxcat))then
 	        tile_ele(catid(i)-ip1) = tile_ele(catid(i)-ip1) + raster(i,j)*   &	
 			(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
 		tile_area_land(catid(i)-ip1) = tile_area_land(catid(i)-ip1) +  &	
@@ -2114,7 +2122,16 @@ integer :: n_threads=1
 	     endif
 	enddo	
     enddo
-    tile_ele = tile_ele/tile_area_land
+
+    ! Before dividing tile_ele by tile_area_land, add a check to prevent division by zero
+    do j = 1, maxcat
+     if (tile_area_land(j) > 0.0) then
+       tile_ele(j) = tile_ele(j) / tile_area_land(j)
+     else
+       tile_ele(j) = 0.0
+     end if
+    end do
+
     close (10, status='keep')  
 
     ! adjustment Global Mean Topography to 614.649 (615.662 GTOPO 30) m
@@ -2154,7 +2171,7 @@ integer :: n_threads=1
        if (index(dateline,'DE')/=0) then
           
           do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
+             if((catid(i) > ip1).and.(catid(i) <= maxcat))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
                 mxx =-180. + float(i)  *360./float(i_sib)
                 if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2165,7 +2182,7 @@ integer :: n_threads=1
           end do
        else
          do i=1,i_sib- i_sib/nc_gcm/2         
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then
+            if((catid(i) > ip1).and.(catid(i) <= maxcat))then
                mnx =-180. + float(i-1)*360./float(i_sib)
                mxx =-180. + float(i)  *360./float(i_sib)
                if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2175,7 +2192,7 @@ integer :: n_threads=1
             endif
          end do
          do i=i_sib- i_sib/nc_gcm/2  +1,i_sib       
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then               
+            if((catid(i) > ip1).and.(catid(i) <= maxcat))then               
                mnx =-360. -180. + float(i-1)*360./float(i_sib)
                mxx =-360. -180. + float(i)  *360./float(i_sib)
                if(mnx < -180. ) mnx = mnx + 360.
@@ -2203,8 +2220,12 @@ integer :: n_threads=1
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
  !      endif
-       write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
-            limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
+         if (typ_array(j) == 100) then
+           write (10,'(i10,i8,5(2x,f9.4))') j+ip1, id(j+ip1), limits(j,1), limits(j,2), limits(j,3), limits(j,4), tile_ele(j)
+        else
+           write (10,'(i10,i8,5(2x,f14.4))') j+ip1, id(j+ip1), limits(j,1), limits(j,2), limits(j,3), limits(j,4), tile_ele(j)
+        endif
+
     end do
 
     deallocate (limits)
