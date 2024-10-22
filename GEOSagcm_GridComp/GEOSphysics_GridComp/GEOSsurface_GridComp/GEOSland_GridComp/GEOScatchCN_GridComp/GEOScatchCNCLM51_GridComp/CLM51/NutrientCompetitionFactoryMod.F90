@@ -72,8 +72,8 @@ contains
             source=nutrient_competition_clm45default_type())
 
     case ("flexible_cn")
-     !  allocate(nutrient_competition_method, &
-     !       source=nutrient_competition_FlexibleCN_type())
+       allocate(nutrient_competition_method, &
+            source=nutrient_competition_FlexibleCN_type())
 
     case default
        write(iulog,*) subname//' ERROR: unknown method: ', method
