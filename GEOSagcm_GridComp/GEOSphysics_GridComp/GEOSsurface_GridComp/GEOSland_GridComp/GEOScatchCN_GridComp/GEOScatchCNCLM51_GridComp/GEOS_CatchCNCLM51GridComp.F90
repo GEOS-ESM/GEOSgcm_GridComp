@@ -6888,7 +6888,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       wet_in = max(min(PRMC / POROS,1.0),0.0)  
  
       call catchcn_calc_rc(ntiles,fveg,TCx,QAx,PS,co2v,dayl_fac, &
-            T2M10D,TA,cond,psis,wet_in,bee,capac,fwet,ZTH,ityp,&
+            T2M10D,TA,cond,psis,rzm,bee,capac,fwet,ZTH,ityp,&
             DRPAR,DFPAR,albdir,albdif,dtc,dea,water_inst,bgc_vegetation_inst,rc00,rcdq,rcdt,&
             laisun,laisha,psnsun,psnsha,lmrsun,lmrsha,parzone,&
             btran)

@@ -55,7 +55,7 @@
  real, intent(in) :: tm(nch)              ! air temperature at agcm reference height (K)
  real, intent(in) :: cond(nch)            ! saturated hydraulic conductivity (m/s)
  real, intent(in) :: psis(nch)            ! saturated matric potential [m]
- real, intent(in) :: wet3(nch)            ! average soil profile wetness [-]
+ real, intent(in) :: wet3(nch,num_zon)    ! average soil profile wetness [-]
  real, intent(in) :: bee(nch)             ! Clapp-Hornberger 'b' [-]
  real, intent(in) :: capac(nch)           ! interception reservoir capacity [kg m^-2] 
  real, intent(in) :: fwet(nch)            ! fraction of canopy that is wet (0-1)
@@ -275,9 +275,9 @@
 
        soilstate_inst%hksat_col (n,1:nlevgrnd) = 1000.*COND(nc)                          ! saturated hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%hk_l_col   (n,1:nlevgrnd) = 1000.*COND(nc)*(wet3(nc)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
+       soilstate_inst%hk_l_col   (n,1:nlevgrnd) = 1000.*COND(nc)*(wet3(nc,nz)**(2*bee(nc)+3)) ! actual hydraulic conductivity mapped to CLM space
                                                                                ! and converted to [mm/s]
-       soilstate_inst%smp_l_col  (n,1:nlevgrnd) = 1000.*PSIS(nc)*(max(1.e-06_r8,wet3(nc))**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
+       soilstate_inst%smp_l_col  (n,1:nlevgrnd) = 1000.*PSIS(nc)*(max(1.e-06_r8,wet3(nc,nz))**(-bee(nc)))    ! actual soil matric potential mapped to CLM space 
                                                                                ! and converted to [mm]
        soilstate_inst%bsw_col    (n,1:nlevgrnd) = bee(nc)                                 ! Clapp-Hornberger 'b'
        soilstate_inst%sucsat_col (n,1:nlevgrnd) = 1000.*psis(nc)*(-1)                     ! minimum soil suction [mm]
