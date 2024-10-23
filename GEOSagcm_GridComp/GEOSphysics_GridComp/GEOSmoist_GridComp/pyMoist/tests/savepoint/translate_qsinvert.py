@@ -48,7 +48,7 @@ class TranslateQsInvert(TranslateFortranData2Py):
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
         reshaped_inputs = {}
         for key, array in inputs.items():
-            reshaped_inputs[key] = np.reshape(array[:,0,0,0], (i, j)).astype(np.float32)
+            reshaped_inputs[key] = np.reshape(array[:,1,0,0], (i, j)).astype(np.float32)
       
         return reshaped_inputs
 
@@ -56,7 +56,7 @@ class TranslateQsInvert(TranslateFortranData2Py):
     def reshape_after(self, outputs):
         # Reshape output fields back to original shape
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-        reshaped_outputs = np.reshape(outputs, (i * j)).astype(np.float64)
+        reshaped_outputs = np.reshape(outputs, (i * j)).astype(np.float32)
 
         return reshaped_outputs
 
@@ -99,7 +99,7 @@ class TranslateQsInvert(TranslateFortranData2Py):
         print("Reshaped outputs back to original shape...")
 
         plcl_4D = inputs["pifc0"]
-        plcl_4D[:,0,0,0] = plcl_out
+        plcl_4D[:,1,0,0] = plcl_out
 
         return {"plcl": plcl_4D
             }

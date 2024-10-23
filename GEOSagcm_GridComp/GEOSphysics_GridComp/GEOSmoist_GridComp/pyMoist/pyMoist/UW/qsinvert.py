@@ -1,7 +1,6 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log
 import pyMoist.pyMoist_constants as constants
-import pyMoist.radiation_coupling_constants as radconstants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import (
     FloatFieldIJ,
@@ -31,7 +30,7 @@ def qsinvert(
     psmin  = 10000.0 # Default saturation pressure [Pa] if iteration does not converge
     dpsmax = 1.0     # Tolerance [Pa] for convergence of iteration
     p00 = 1E5
-    rovcp = radconstants.MAPL_RGAS/radconstants.MAPL_CP
+    rovcp = constants.r/constants.cp
 
     # Calculate best initial guess of pLCL
 
@@ -41,45 +40,54 @@ def qsinvert(
     qs, _ = QSat_Float(ese, esx, Tgeos, Pgeos/100.0)
     es       = ps_in * qs  / (constants.ep2 + (1.0-constants.ep2)*qs )
     rhi      = qt/qs
+
+
     if rhi <= 0.01:
         #print('Source air is too dry and pLCL is set to psmin in uwshcu.F90')
         qsinvert = psmin
-    
-    TLCL     =  55.0 + 1.0/(1.0/(Ti-55.0)-log(rhi)/2840.0) # Bolton's formula. MWR.1980.Eq.(22)
-    PiLCL    =  TLCL/thl
-    ps       =  p00*(PiLCL)**(1.0/rovcp)
 
-    iteration = 0
-    while iteration < 10:
-       Pis      =  (ps/p00)**rovcp   # Exner function
-       Ts       =  thl*Pis
-       Tgeos    = Ts
-       Pgeos    = ps
-       qs, _       = QSat_Float(ese, esx, Tgeos, Pgeos/100.0)
-       Qgeos    = qs
-       #dqsdT, _    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, QSAT=Qgeos)
-       dqsdT, _    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, DQSAT_trigger=True)
-       gam      = (constants.xlv/constants.cp)*dqsdT
-       err      =  qt - qs
-       nu       =  ice_fraction(Ts,0.0,0.0)       
-       leff     =  (1.0 - nu)*constants.xlv + nu*constants.xls                  
-       dlnqsdT  =  gam*(constants.cp/leff)/qs
-       dTdPis   =  thl
-       dPisdps  =  rovcp*Pis/ps 
-       dlnqsdps = -1.0/(ps - (1. - constants.ep2)*es)
-       derrdps  = -qs*(dlnqsdT * dTdPis * dPisdps + dlnqsdps)
-       #if derrdps = 0:
-            #print("QSINVERT: derrdps=0 !!!")
-       dps      = -err/derrdps
-       ps       =  ps + dps
-       if ps < 0:
-            qsinvert = psmin
-       if abs(dps) < dpsmax:
-            qsinvert = ps
-        
-       iteration += 1
+    else:
 
-    qsinvert = psmin
+        TLCL     =  55.0 + 1.0/(1.0/(Ti-55.0)-log(rhi)/2840.0) # Bolton's formula. MWR.1980.Eq.(22)
+        PiLCL    =  TLCL/thl
+        ps       =  p00*(PiLCL)**(1.0/rovcp)
+
+        iteration = 0
+        while iteration < 10:
+            Pis      =  (ps/p00)**rovcp   # Exner function
+            Ts       =  thl*Pis
+            Tgeos    = Ts
+            Pgeos    = ps
+            #qs, _       = QSat_Float(ese, esx, Tgeos, Pgeos/100.0)
+            #Qgeos    = qs
+            #dqsdT, _    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, QSAT=Qgeos)
+            qs, dqsdT    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, DQSAT_trigger=True)
+            gam      = (constants.xlv/constants.cp)*dqsdT
+            err      =  qt - qs
+            nu       =  ice_fraction(Ts,0.0,0.0)       
+            leff     =  (1.0 - nu)*constants.xlv + nu*constants.xls                  
+            dlnqsdT  =  gam*(constants.cp/leff)/qs
+            dTdPis   =  thl
+            dPisdps  =  rovcp*Pis/ps 
+            dlnqsdps = -1.0/(ps - (1. - constants.ep2)*es)
+            derrdps  = -qs*(dlnqsdT * dTdPis * dPisdps + dlnqsdps)
+            #if derrdps = 0:
+                    #print("QSINVERT: derrdps=0 !!!")
+            dps      = -err/derrdps
+            ps       =  ps + dps
+            
+            if ps < 0.0:
+                qsinvert = psmin
+                iteration=10
+                    
+            elif abs(dps) <= dpsmax:
+                qsinvert = ps
+                iteration=10
+
+            else:
+                qsinvert=psmin
+                
+            iteration += 1
 
     return qsinvert
 
