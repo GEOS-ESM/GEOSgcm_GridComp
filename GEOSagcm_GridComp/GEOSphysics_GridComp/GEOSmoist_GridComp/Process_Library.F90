@@ -88,7 +88,7 @@ module GEOSmoist_Process_Library
 
   ! base grid length for sigma calculation
   real :: SIGMA_DX  = 500.0
-  real :: SIGMA_EXP = 2.0
+  real :: SIGMA_EXP = 1.0
 
   ! control for order of plumes
   logical :: SH_MD_DP = .FALSE.
@@ -1050,6 +1050,14 @@ module GEOSmoist_Process_Library
          AF  )
 
       real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA
+      real :: FCLD
+
+      ! Ensure total cloud fraction <= 1.0
+      FCLD = CF + AF
+      if (FCLD > 1.0) then
+         CF = CF*(1.0/FCLD)
+         AF = AF*(1.0/FCLD)
+      end if
 
       ! Fix if Anvil cloud fraction too small
       if (AF < 1.E-5) then
@@ -2059,7 +2067,7 @@ module GEOSmoist_Process_Library
       real :: TEp, QSp, CFp, QVp, QCp
       real :: TEn, QSn, CFn, QVn, QCn
 
-      real :: QAo, QAx, QCx, QC, fQi, QCi, qsnx
+      real :: QCx, QC, fQi, QCi, qsnx
       real :: dQICN, dQLCN, dQILS, dQLLS, Nfac, NLv, NIv
 
       real :: tmpARR
@@ -2071,12 +2079,8 @@ module GEOSmoist_Process_Library
 
       scice =  1.0
 
-
                       tmpARR = 0.0
       if (CLCN < 1.0) tmpARR = 1.0/(1.0-CLCN)
-
-                            QAx = 0.0
-      if (CLCN > tiny(0.0)) QAx = (QLCN+QICN)/CLCN
 
       CFn = (CLLS       )*tmpARR
       QCn = (QLLS + QILS)*tmpARR
@@ -2170,6 +2174,7 @@ module GEOSmoist_Process_Library
 
          IF(USE_BERGERON) THEN
            DQCALL = QCn - QCp
+           CLLS = CFn * (1.-CLCN)
            Nfac = 100.*PL*R_AIR/TEn !density times conversion factor
            NLv = NL/Nfac
            NIv = NI/Nfac
@@ -2205,41 +2210,21 @@ module GEOSmoist_Process_Library
             QCn = QCp + 0.5*(QCn-QCp)
          endif
 
-         if ( CLCN > 0. ) then
-            QAo = QAx
-         else
-            QAo = 0.
-         end if
-
          QVn = QVp - (QCn - QCp)
-         TEn = TEp + (1.0-fQi)*(alhlbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN ) &
-                   +      fQi *(alhsbcp)*( (QCn - QCp)*(1.-CLCN) + (QAo-QAx)*CLCN )
+         TEn = TEp + (1.0-fQi)*(alhlbcp)*(QCn - QCp)*(1.-CLCN)  &
+                   +      fQi *(alhsbcp)*(QCn - QCp)*(1.-CLCN)
 
          PDFITERS = n
          if (abs(TEn - TEp) .lt. 0.00001) exit
 
       enddo ! qsat iteration
 
-      if ( CLCN < 1.0 ) then
-         CLLS = CFn * (1.-CLCN)
-         QCn  = QCn * (1.-CLCN)
-         QAo  = QAo *     CLCN
-      else
-         ! Special case CLCN=1, i.e., box filled with anvil.
-         !   - Note: no guarantee QV_box > QS_box
-         CLLS = 0.              ! Remove any LS cloud
-         QAo  = QLCN+QICN+QLLS+QILS  ! Add all LS condensate to anvil type
-         QCn  = 0.              ! Remove same from new LS
-         QT   = QAo + QV        ! Update total water
-         ! Now set anvil condensate to any excess of total water
-         ! over QSx (saturation value at top)
-         QAo = MAX( QT - QSx, 0. )
-      end if
-
       ! Now take {\em New} condensate and partition into ice and liquid
 
       ! large-scale
-      QCx = QCn - (QLLS+QILS)
+      CLLS = CFn * (1.-CLCN)
+      QCn  = QCn * (1.-CLCN)
+      QCx  = QCn - (QLLS+QILS)
       if (QCx .lt. 0.0) then  !net evaporation
          dQLLS = max(QCx        , -QLLS) ! Water evaporates first
          dQILS = max(QCx - dQLLS, -QILS) ! Then sublimation
@@ -2248,47 +2233,16 @@ module GEOSmoist_Process_Library
          dQILS =      fQi *QCx
       end if
 
-      ! convective
-      QAx = QAo - (QLCN+QICN)
-      if  (QAx .lt. 0.0) then  !net evaporation
-         dQLCN = max(QAx        , -QLCN) ! Water evaporates first
-         dQICN = max(QAx - dQLCN, -QICN) ! Then sublimation
-      else
-         dQLCN  = (1.0-fQi)*QAx
-         dQICN  =      fQi *QAx
-      end if
-
       ! Clean-up cloud if fractions are too small
-      if ( CLCN < 1.e-5 ) then
-         dQICN = -QICN
-         dQLCN = -QLCN
-      end if
       if ( CLLS < 1.e-5 ) then
          dQILS = -QILS
          dQLLS = -QLLS
       end if
 
-      QICN   = QICN + dQICN
-      QLCN   = QLCN + dQLCN
       QILS   = QILS + dQILS
       QLLS   = QLLS + dQLLS
-      QV     = QV -         (dQICN+dQILS+dQLCN+dQLLS)
-      TE     = TE + alhlbcp*(dQICN+dQILS+dQLCN+dQLLS) + alhfbcp*(dQICN+dQILS)
-
-      ! We need to take care of situations where QS moves past QA
-      ! during QSAT iteration. This should be only when QA/AF is small
-      ! to begin with. Effect is to make QAo negative. So, we
-      ! "evaporate" offending QA's
-      !
-      ! We get rid of anvil fraction also, although strictly
-      ! speaking, PDF-wise, we should not do this.
-      if ( QAo <= 0. ) then
-         QV   = QV + QICN + QLCN
-         TE   = TE - alhsbcp*QICN - alhlbcp*QLCN
-         QICN = 0.
-         QLCN = 0.
-         CLCN = 0.
-      end if
+      QV     = QV -         (dQILS+dQLLS)
+      TE     = TE + alhlbcp*(dQILS+dQLLS) + alhfbcp*(dQILS)
 
    end subroutine hystpdf
 
@@ -3445,22 +3399,6 @@ subroutine update_cld( &
      ! local storage for cnv fraction of condensate/cloud
       real :: FCN(size(CF,1),size(CF,2),size(CF,3))
       real :: DQC(size(CF,1),size(CF,2),size(CF,3))
-
-     ! Fix cloud quants if too small
-      WHERE (QL+QI < 1.E-8)
-         QV = QV + QL + QI
-         TE = TE - alhlbcp*QL - alhsbcp*QI
-         CF  = 0.
-         QL  = 0.
-         QI  = 0.
-      END WHERE
-      WHERE (CF < 1.E-5)
-         QV = QV + QL + QI
-         TE = TE - alhlbcp*QL - alhsbcp*QI
-         CF  = 0.
-         QL  = 0.
-         QI  = 0.
-      END WHERE
 
      ! Redistribute liquid CN/LS portions based on prior fractions
       ! FCN Needs to be calculated first

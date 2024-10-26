@@ -49,6 +49,7 @@ module GEOS_MoistGridCompMod
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
+  logical :: MOVE_CN_TO_LS 
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -3643,8 +3644,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME ='CLLSX1',                                       &
+         LONG_NAME  ='final_large_scale_cloud_area_fraction',            &
+         UNITS      ='1',                                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                           &
          SHORT_NAME ='CLCNX0',                                       &
          LONG_NAME  ='convective_cloud_area_fraction',             &
+         UNITS      ='1',                                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME ='CLCNX1',                                       &
+         LONG_NAME  ='final_convective_cloud_area_fraction',             &
          UNITS      ='1',                                          &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -5201,6 +5218,8 @@ contains
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
 
+    call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5359,6 +5378,25 @@ contains
        call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'AERO',    AERO     , RC=STATUS); VERIFY_(STATUS)
        call   ESMF_StateGet(IMPORT,'MTR',     TR       , RC=STATUS); VERIFY_(STATUS)
+
+       if (MOVE_CN_TO_LS) then
+         do L = 1, LM
+           do J = 1, JM
+             do I = 1, IM
+              ! Move all QL,QI,CL to LS
+               QLLS(I,J,L) = QLLS(I,J,L)+QLCN(I,J,L)
+               QLCN(I,J,L) = 0.0
+               QILS(I,J,L) = QILS(I,J,L)+QICN(I,J,L)
+               QICN(I,J,L) = 0.0
+               CLLS(I,J,L) = CLLS(I,J,L)+CLCN(I,J,L)
+               CLCN(I,J,L) = 0.0
+              ! cleanup clouds
+               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
+            enddo 
+          enddo
+         enddo
+         MOVE_CN_TO_LS = .FALSE.
+       endif
 
        ! Update SRF_TYPE for ice_fraction
        call MAPL_GetPointer(IMPORT, FRLAND,    'FRLAND'    , RC=STATUS); VERIFY_(STATUS)
@@ -6023,6 +6061,12 @@ contains
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QICNX1', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QICN
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CLLSX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLLS
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CLCNX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLCN
 
        ! Fill wind, temperature & RH exports needed for SYNCTQ
 

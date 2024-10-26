@@ -285,9 +285,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
                                  CCI_EVAP_EFF = 4.e-3
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
@@ -578,10 +578,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
-             if (SRF_TYPE(i,j) < 2.0) then ! skip over snow/ice to reduce cloud content
-              if (PLmb(i,j,l) .le. turnrhcrit) then
-                 RHCRIT = minrhcrit
-              else
+             if (PLmb(i,j,l) .le. turnrhcrit) then
+                RHCRIT = minrhcrit
+             else
                 if (L.eq.LM) then
                    RHCRIT = 1.0
                 else
@@ -589,7 +588,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                            ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
-              endif
              endif
            ! limit RHcrit to > 70%
              ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)))
