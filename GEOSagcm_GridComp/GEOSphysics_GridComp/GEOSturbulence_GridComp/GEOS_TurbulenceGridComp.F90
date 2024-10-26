@@ -185,10 +185,6 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
-! Beljaars parameters
-    real, parameter ::      &
-        dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
-        dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 contains
 
 !=============================================================================
@@ -6571,27 +6567,23 @@ end subroutine RUN1
       do L = LM, 1, -1
         do J = 1, JM
           do I = 1, IM
-           ! determine the resolution dependent tuning factor
-            CBl = 1.08371722e-7 * VARFLT(i,j) * &
-                  MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+           ! determine the resolution dependent wsp amplification factor based on Arakawa sigma function
+            CBl = ABS(C_B) * MAX(1.e-9,MIN(1.0,1.0-0.9839*EXP(-0.09835*(SQRT(AREA(i,j))/1000.0))))
            ! determine the efolding height
            !Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B) ! From UFS
             Hefold = LAMBDA_B 
             FKV(I,J,L) = 0.0
-            if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
-                  wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  if (ABS(C_B) > 1.0) then
-                     wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
-                  else
-                     wsp  = wsp0
-                  endif
-                  FKV_temp = Z(I,J,L)/Hefold
-                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                  FKV_temp = CBl*(FKV_temp/Hefold)*wsp
+           !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
+            if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
+                wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MAX(CBl,wsp0) ! enhance winds
+                FKV_temp = Z(I,J,L)/Hefold
+                FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/Hefold) * wsp
 
-                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
-                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
+                BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+                FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
             end if
           end do
         end do
