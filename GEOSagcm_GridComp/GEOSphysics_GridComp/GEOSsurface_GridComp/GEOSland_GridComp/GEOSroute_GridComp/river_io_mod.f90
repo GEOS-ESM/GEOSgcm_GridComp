@@ -9,9 +9,9 @@ private
 public :: read_input,read_restart,read_runoff,write_output
 
 real*8, parameter :: rho = 1.D3      ! Water density in kg/m^3
-character(len=500) :: input_dir="input/" ! Directory for input files
-character(len=500) :: output_dir="/Users/zsp/Desktop/work/ROUTING_PR/results_temp_PR/" ! Directory for output files
-character(len=500) :: runoff_dir="/Users/zsp/Desktop/work/river/SMAP_Nature_v10.0_M36/" ! Directory for runoff files
+character(len=500) :: input_dir="/discover/nobackup/yzeng3/work/river_routing_model_offline/input/" ! Directory for input files
+character(len=500) :: output_dir="/discover/nobackup/yzeng3/river_output/" ! Directory for output files
+character(len=500) :: runoff_dir="/discover/nobackup/yzeng3/GEOldas_output/" ! Directory for runoff files
 
 integer :: nlon=964 !for M36, change to 3856 for M09
 integer :: nlat=406 !for M36, change to 1624 for M09
