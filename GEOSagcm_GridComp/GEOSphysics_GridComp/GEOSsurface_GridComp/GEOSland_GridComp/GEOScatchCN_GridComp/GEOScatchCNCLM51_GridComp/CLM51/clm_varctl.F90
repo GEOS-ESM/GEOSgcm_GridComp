@@ -29,17 +29,17 @@ module clm_varctl
   logical, public :: use_crop = .false.
 
   logical, public :: use_lch4            = .false.
-  logical, public :: use_nitrif_denitrif = .false.
-  logical, public :: use_vertsoilc       = .false.
-  logical, public :: use_century_decomp  = .false.
+  logical, public :: use_nitrif_denitrif = .true.  
+  logical, public :: use_vertsoilc       = .true.
+  logical, public :: use_century_decomp  = .true.
   logical, public :: use_cn              = .true.
   logical, public :: use_cndv            = .false.
   logical, public :: use_grainproduct    = .false.
   logical, public :: use_dynroot         = .false.
-  logical, public :: use_bedrock = .false. ! true => use spatially variable soil depth
+  logical, public :: use_bedrock = .true. ! true => use spatially variable soil depth
   logical, public :: use_extralakelayers = .false.
   logical, public :: use_biomass_heat_storage = .false.
-  logical, public :: use_fertilizer      = .false.
+  logical, public :: use_fertilizer      = .true.
 
  ! logical, public :: downreg_opt = .true.
   logical, public :: downreg_opt = .false.
