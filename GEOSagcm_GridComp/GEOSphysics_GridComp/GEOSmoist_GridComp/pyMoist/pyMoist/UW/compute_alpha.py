@@ -1,13 +1,9 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, exp, FORWARD
-import pyMoist.pyMoist_constants as constants
-import pyMoist.radiation_coupling_constants as radconstants
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from gt4py.cartesian.gtscript import exp
+import pyMoist.constants as constants
 from ndsl.dsl.typing import (
-    FloatFieldIJ,
     Float,
 )
-from ndsl import StencilFactory, QuantityFactory
 
 
 @gtscript.function
@@ -31,47 +27,3 @@ def compute_alpha(
     compute_alpha = x0
 
     return compute_alpha
-
-
-def ComputeAlpha(
-    del_CIN: FloatFieldIJ,
-    ke: FloatFieldIJ,
-    alpha: FloatFieldIJ,
-    ):
-
-    with computation(FORWARD), interval(...):
-        alpha = compute_alpha(del_CIN, ke)
-
-        
-class Compute_Alpha:
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        quantity_factory: QuantityFactory,
-    ) -> None:
-
-        self.stencil_factory = stencil_factory
-        self.quantity_factory = quantity_factory
-        grid_indexing = stencil_factory.grid_indexing
-        self._Compute_Alpha = self.stencil_factory.from_dims_halo(
-            func=ComputeAlpha,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-    def __call__(
-        self,
-        del_CIN: FloatFieldIJ,
-        ke: FloatFieldIJ,
-        alpha: FloatFieldIJ,
-    ):
-
-        self._Compute_Alpha(
-            del_CIN=del_CIN,
-            ke=ke,
-            alpha=alpha,
-        )
-
-
-  
-    
-

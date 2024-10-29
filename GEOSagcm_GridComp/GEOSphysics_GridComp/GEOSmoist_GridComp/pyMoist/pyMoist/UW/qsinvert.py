@@ -58,9 +58,6 @@ def qsinvert(
             Ts       =  thl*Pis
             Tgeos    = Ts
             Pgeos    = ps
-            #qs, _       = QSat_Float(ese, esx, Tgeos, Pgeos/100.0)
-            #Qgeos    = qs
-            #dqsdT, _    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, QSAT=Qgeos)
             qs, dqsdT    = QSat_Float(ese, esx, Tgeos, Pgeos/100.0, DQSAT_trigger=True)
             gam      = (constants.xlv/constants.cp)*dqsdT
             err      =  qt - qs
