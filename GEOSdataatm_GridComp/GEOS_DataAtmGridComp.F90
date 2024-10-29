@@ -590,7 +590,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     SPEED = SQRT(Uair**2 + Vair**2)
 
     IM = size(Uair, 1)
-    JM = size(Uair, 1)
+    JM = size(Uair, 2)
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
