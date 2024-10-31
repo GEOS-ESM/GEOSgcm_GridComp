@@ -34,6 +34,10 @@ module GEOS_GigatrajGridCompMod
     character(len=ESMF_MAXSTR), allocatable :: ExtraCompNames(:)
     character(len=ESMF_MAXSTR), allocatable :: ExtrabundleNames(:)
     character(len=ESMF_MAXSTR), allocatable :: ExtraAliasNames(:)
+
+    character(len=ESMF_MAXSTR) :: vertical_coord
+    character(len=ESMF_MAXSTR) :: vertical_tendency
+
     type(VerticalData) :: vdata
     logical :: regrid_to_latlon
   end type
@@ -230,9 +234,22 @@ contains
     call ESMF_GridCompGet(GC, grid=CubedGrid, _RC)
     call MAPL_GridGet(CubedGrid, globalCellCountPerDim=DIMS, _RC)
 
-    levs_center = [1000.,  975.,  950.,  925.,  900., 875., 850., 825., 800., 775., 750., 725.,700., 650., 600., 550., 500., &
+    call MAPL_GetResource(MPL, GigaTrajInternalPtr%vertical_coord, "GIGATRAJ_VERTICAL_COORD:", default='PL', rc=status)
+    select case(trim(GigaTrajInternalPtr%vertical_coord))
+    case ('PL')
+       levs_center = [1000.,  975.,  950.,  925.,  900., 875., 850., 825., 800., 775., 750., 725.,700., 650., 600., 550., 500., &
+                   450., 400., 350., 300., 250., 200., 150., 100.,  70.,  50.,  40.,  30., 20., 10., 7., 5., 4., 3., 2., &
+                   1., 0.7, 0.5, 0.4,  0.3, 0.2, 0.1, 0.07, 0.05, 0.04, 0.03, 0.02]*100
+       GigaTrajInternalPtr%vertical_tendency = 'OMEGA'
+    case('TH')
+       levs_center = [1000.,  975.,  950.,  925.,  900., 875., 850., 825., 800., 775., 750., 725.,700., 650., 600., 550., 500., &
                    450., 400., 350., 300., 250., 200., 150., 100.,  70.,  50.,  40.,  30., 20., 10., 7., 5., 4., 3., 2., &
                    1., 0.7, 0.5, 0.4,  0.3, 0.2, 0.1, 0.07, 0.05, 0.04, 0.03, 0.02]
+       GigaTrajInternalPtr%vertical_tendency = 'DTDTDYN'
+    case default
+       _ASSERT(.false., "vertical coordinate is needed")
+    end select    
+
     npz = size(levs_center, 1)
     GigaTrajInternalPtr%npz = npz
     GigaTrajInternalPtr%Integrate_DT = Integrate_DT
@@ -283,7 +300,7 @@ contains
     call ESMF_GridGetCoord(grid_ , coordDim=1, localDE=0, &
               staggerloc=ESMF_STAGGERLOC_CENTER, &
               farrayPtr=centerX, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     ptr(1:imc,1:jmc)=centerX
     call ESMF_FieldHalo(field,rh,rc=status)
@@ -351,7 +368,12 @@ contains
     enddo
     ! WJiang notes: the vcoord should be consistent with the HISTORY.rc
     levs_ptr=>levs_center
-    GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'log(PLE)', vscale = 100.0, vunit = 'hPa',_RC)
+    select case (trim(GigaTrajInternalPtr%vertical_coord))
+    case ('PL')
+      GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'log(PL)', vscale = 1.0, vunit = 'Pa',_RC)
+    case ('TH')
+      GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'TH', vscale = 1.0, vunit = 'K',_RC)
+    end select
 
     call MAPL_Grid_interior(Grid_,i1,i2,j1,j2)
     if (GigaTrajInternalPtr%regrid_to_latlon) then
@@ -434,11 +456,11 @@ contains
 
    if (trim(GigaRstFile) == 'NONE') then
       ! without restart file, get value from import
-      call init_metsrc_field0(GC,  IMPORT,  ctime, 'PLE', _RC)
+      call init_metsrc_field0(GC,  IMPORT,  ctime,  _RC)
    else
       INQUIRE(FILE= GigaRstFile, EXIST=file_exists) 
       _ASSERT( file_exists, " GIGATRAJ_INTERNAL_RESTART_FILE does not exist")
-      call init_metsrc_field0(GC, INTERNAL, ctime, 'PL',  _RC)
+      call init_metsrc_field0(GC, INTERNAL, ctime,  _RC)
    endif
 
    call MAPL_GetResource(MPL, other_fields, "GIGATRAJ_EXTRA_FIELDS:", default='NONE', _RC)
@@ -472,23 +494,6 @@ contains
          call ESMF_AttributeGet(tmp_field, NAME='LONG_NAME', VALUE=LONG_NAME, _RC)
          call ESMF_AttributeGet(tmp_field, NAME='UNITS', VALUE=UNITS, _RC)
     
-         !tmp_name =trim(fieldnames(i))
- 
-         !if ( index(compnames(i), 'CA.oc') /=0 .or. &
-         !     index(compnames(i), 'CA.bc') /=0 ) then
-         !
-         !   if (index(tmp_name,'phobic') ==0 .or. &
-         !      index(tmp_name,'philic')  ==0 ) then
-
-         !      call ESMF_FieldGet(tmp_field,farrayPtr=ptr3d,rc=status)
-         !      do k = 1, size(ptr3d, 3)
-         !        fieldname = trim(FieldNames(i))//'00'//i_to_string(k)
-         !        call create_new_vars( trim(long_name), trim(fieldname), trim(units))
-         !      enddo
-         !      cycle
-         !   endif
-         !endif
-
          call create_new_vars( trim(long_name), trim(aliasnames(i)), trim(units))
 
      enddo
@@ -591,11 +596,10 @@ contains
 
  end subroutine GetInitVars
 
- subroutine Init_metsrc_field0 (GC, state, ctime, PL, RC )
+ subroutine Init_metsrc_field0 (GC, state, ctime, RC )
     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
     type(ESMF_State),    intent(inout) :: state
     character(*), target,   intent(in) :: ctime
-    character(*),           intent(in) :: PL
     integer, optional,     intent(out) :: RC     ! Error code
 
     character(len=ESMF_MAXSTR)    :: IAm 
@@ -608,35 +612,22 @@ contains
     real, dimension(:,:,:), allocatable :: U_inter, V_inter, W_inter, P_inter
     real, dimension(:,:,:), allocatable, target  :: haloU, haloV, haloW, haloP
     integer :: counts(3), dims(3), d1,d2,km,lm, i1,i2,j1,j2
+    character(len=:), allocatable :: vcoord
 
     Iam = "init_metsrc_field0"
 
-    call MAPL_GetPointer(state, U, "U", _RC)
-    call MAPL_GetPointer(state, V, "V", _RC)
-    call MAPL_GetPointer(state, W, "OMEGA", _RC)
-
-
-    PL0=>null()
-    if (PL == 'PL') then
-       call MAPL_GetPointer(state, P, "PL", _RC)
-    else if (PL == 'PLE') then
-       call MAPL_GetPointer(state, PLE, "PLE", _RC)
-       d1 =size(PLE,1)
-       d2 =size(PLE,2)
-       km =size(PLE,3)-1
-       allocate(PL0(d1,d2,km))
-       ! WJ notes, PLE's lower bound is (1,1,0)
-       PL0 = (PLE(:,:,1:km)+PLE(:,:,0:km-1))*0.5
-       P => PL0
-       W = 0.0
-    endif
-
-    
-
-
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
-    call ESMF_StateGet(state, 'PLE', field=GigaTrajInternalPtr%vdata%interp_var, rc=status)
+
+    call MAPL_GetPointer(state, U, "U", _RC)
+    call MAPL_GetPointer(state, V, "V", _RC)
+    call MAPL_GetPointer(state, W, trim(GigaTrajInternalPtr%vertical_tendency), _RC)
+    call MAPL_GetPointer(state, P, trim(GigaTrajInternalPtr%vertical_coord), _RC)
+
+    vcoord = "PL"
+    if (trim(GigaTrajInternalPtr%vertical_coord) == "TH") vcoord = "ZLE"
+
+    call ESMF_StateGet(state, vcoord , field=GigaTrajInternalPtr%vdata%interp_var, rc=status)
     call GigaTrajInternalPtr%vdata%setup_eta_to_pressure(_RC)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
@@ -719,12 +710,12 @@ contains
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
   
-    integer :: lm, d1, d2
+    integer :: lm, d1, d2, k
     integer ::counts(3), DIMS(3), comm, ierror
     type (ESMF_VM)   :: vm
   
     real, dimension(:,:,:), pointer     :: U_cube, V_cube, W_cube, P_cube, PLE_Cube, with_halo
-    real, dimension(:,:,:), pointer     :: U_internal, V_internal, W_internal, P_internal, PLE_internal
+    real, dimension(:,:,:), pointer     :: internal_field, model_field
 
     real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
     real, dimension(:,:,:), allocatable :: U_inter, V_inter, W_inter, P_inter
@@ -736,30 +727,25 @@ contains
     type(ESMF_State)            :: INTERNAL
     type(MAPL_MetaComp),pointer :: MPL  
     type(ESMF_Alarm)  :: GigaTrajIntegrateAlarm
+    type(MAPL_VarSpec ), pointer:: internal_specs(:)
+    character(len=ESMF_MAXSTR)  :: SHORT_NAME
+    character(len=:), allocatable :: vcoord
 
 !---------------
 !  Update internal 
 !---------------
-    call MAPL_GetPointer(Import, U_cube, "U", _RC)
-    call MAPL_GetPointer(Import, V_cube, "V", _RC)
-    call MAPL_GetPointer(Import, W_cube, "OMEGA", _RC)
-    call MAPL_GetPointer(Import, P_cube, "PL", _RC)
-    call MAPL_GetPointer(Import, PLE_cube, "PLE", _RC)
-
+    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
+    GigaTrajInternalPtr => wrap%ptr
     call MAPL_GetObjectFromGC ( GC, MPL, _RC)
     call MAPL_Get (MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
 
-    call MAPL_GetPointer(INTERNAL, U_internal, "U", _RC)
-    call MAPL_GetPointer(INTERNAL, V_internal, "V", _RC)
-    call MAPL_GetPointer(INTERNAL, W_internal, "OMEGA", _RC)
-    call MAPL_GetPointer(INTERNAL, P_internal, "PL", _RC)
-    call MAPL_GetPointer(INTERNAL, PLE_internal, "PLE", _RC)
- 
-    U_internal = U_cube
-    V_internal = V_cube
-    W_internal = W_cube
-    P_internal = P_cube
-    PLE_internal = PLE_cube
+    call MAPL_GridCompGetVarSpecs(GC, INTERNAL=internal_specs, _RC)
+    do K=1,size(internal_specs)
+       call MAPL_VarSpecGet(internal_specs(k), SHORT_NAME=SHORT_NAME, _RC)
+       call MAPL_GetPointer(Import, model_field, trim(short_name), _RC)
+       call MAPL_GetPointer(INTERNAL, internal_field, trim(short_name), _RC)
+       internal_field(:,:,:) = model_field(:,:,:)
+    enddo
 
     call ESMF_ClockGetAlarm(clock, 'GigatrajIntegrate', GigaTrajIntegrateAlarm, _RC)
 
@@ -776,8 +762,6 @@ contains
  
     ! W.J note: this run is after agcm's run. The clock is not yet ticked
     !           So the values we are using are at (CurrentTime + ModelTimeStep)
-    call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
-    GigaTrajInternalPtr => wrap%ptr
 
     CurrentTime = CurrentTime + ModelTimeStep
     call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime) 
@@ -792,6 +776,10 @@ contains
 !---------------
 ! Step 1) Regrid the metData field from cubed to lat-lon
 !---------------
+    call MAPL_GetPointer(Import, U_cube, "U", _RC)
+    call MAPL_GetPointer(Import, V_cube, "V", _RC)
+    call MAPL_GetPointer(Import, W_cube, trim(GigaTrajInternalPtr%vertical_tendency), _RC)
+    call MAPL_GetPointer(Import, P_cube, trim(GigaTrajInternalPtr%vertical_coord), _RC)
 
     lm = size(GigaTrajInternalPtr%vdata%levs)
     d1 = size(u_cube,1)
@@ -821,8 +809,9 @@ contains
     allocate(haloW(counts(1)+2, counts(2)+2,lm), source = 0.0)
     allocate(haloP(counts(1)+2, counts(2)+2,lm), source = 0.0)
 
-
-    call ESMF_StateGet(import, 'PLE', field=GigaTrajInternalPtr%vdata%interp_var, rc=status)
+    vcoord = 'PL'
+    if (trim(GigaTrajInternalPtr%vertical_coord) == 'TH') vcoord = 'ZLE'
+    call ESMF_StateGet(import, vcoord, field=GigaTrajInternalPtr%vdata%interp_var, _RC)
     call GigaTrajInternalPtr%vdata%setup_eta_to_pressure(_RC)
 
     call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(U_cube, U_inter,rc=status)
@@ -1223,6 +1212,7 @@ contains
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)      :: wrap
     character(len=20), target :: ctime
+    character(len=:), allocatable :: vAlias
 
     Iam = "write_parcels"
     call ESMF_ClockGetAlarm(clock, 'GigatrajOut', GigaTrajOutAlarm, _RC)
@@ -1249,6 +1239,11 @@ contains
 
     call MPI_Comm_rank(comm, my_rank, ierror); _VERIFY(ierror)
     if (my_rank ==0) then
+       if (trim(GigaTrajInternalPtr%vertical_coord) == 'PL') then
+         vAlias = 'P'
+         zs0 = zs0 / 100.0 ! hard coded, conert Pa back to hPa
+       endif
+       if (trim(GigaTrajInternalPtr%vertical_coord) == 'TH') vAlias = 'Theta'
        ! reorder
        ids0       = ids0 + 1 ! element start 0, make it to 1 for ordering
        ids0(ids0) = [(k, k=1,size(ids0))]
@@ -1275,7 +1270,7 @@ contains
 
        call formatter%put_var('lat', lats0, start=[1, last_time+1], _RC)
        call formatter%put_var('lon', lons0, start=[1, last_time+1], _RC)
-       call formatter%put_var('P',   zs0,   start=[1, last_time+1], _RC)
+       call formatter%put_var(vAlias,   zs0,   start=[1, last_time+1], _RC)
        call formatter%put_var('time',  [tint_d],  start=[last_time+1], _RC)
      endif
 
@@ -1383,6 +1378,7 @@ contains
      class(Variable), pointer :: t
      type(Attribute), pointer :: attr
      class(*), pointer :: units
+     character(len=:), allocatable :: vAlias
      character(len=ESMF_MAXSTR) :: Iam ="read_parcels"
 
      call ESMF_VMGetCurrent(vm, _RC)
@@ -1409,12 +1405,14 @@ contains
      endif
 
      allocate(lats0(total_num), lons0(total_num), zs0(total_num),ids0(total_num))
-
+     if (trim(internal%vertical_coord) == 'PL') vAlias = 'P'
+     if (trim(internal%vertical_coord) == 'TH') vAlias = 'Theta'
+        
      if (my_rank ==0) then
         call formatter%get_var('lat', lats0, start = [1,last_time], _RC)
         call formatter%get_var('lon', lons0, start = [1,last_time], _RC)
-        call formatter%get_var('P',   zs0,   start = [1,last_time], _RC)
-        !call formatter%get_var('id',  ids0_r,start = [1,last_time], _RC)
+        call formatter%get_var(vAlias,zs0,   start = [1,last_time], _RC)
+        if (vAlias == 'P') zs0 = zs0*100.0 ! hard coded from hPa to Pa
         call formatter%close(_RC)
         ids0 = [(k, k=0,total_num-1)]
      endif
@@ -1544,7 +1542,7 @@ contains
     real, dimension(:,:,:), allocatable :: field_latlon, field_inter
 
     real, dimension(:,:,:), allocatable, target  :: haloField
-    integer :: counts(3), dims(3), d1,d2,km, count3
+    integer :: counts(3), dims(3), d1, d2, lm, count3
     character(len=:), target, allocatable :: field_
 
     Iam = "get_metsrc_data"
@@ -1567,19 +1565,24 @@ contains
 
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
-    if (GigaTrajInternalPtr%regrid_to_latlon) then
-       grid_ = GigaTrajInternalPtr%LatLonGrid
-    else
-       grid_ = GigaTrajInternalPtr%CubedGrid
-    endif
 
-    call MAPL_GridGet(grid_, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+    lm = size(GigaTrajInternalPtr%vdata%levs)
+    d1 = size(ptr3d,1)
+    d2 = size(ptr3d,2)
 
-    allocate(field_inter(counts(1),counts(2),DIMS(3)))
+    allocate(field_inter(d1,d2,lm), source = 0.0)
     call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(ptr3d, field_inter,rc=status)
 
-    allocate(field_latlon(counts(1),counts(2),dims(3)))
-    allocate(haloField(counts(1)+2, counts(2)+2,dims(3)), source = 0.0)
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       grid_ = GigaTrajInternalPtr%LatLonGrid
+       call MAPL_GridGet(grid_, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+       allocate(field_latlon(counts(1),counts(2), lm))
+    else
+       grid_ = GigaTrajInternalPtr%CubedGrid
+       call MAPL_GridGet(grid_, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+    endif
+
+    allocate(haloField(counts(1)+2, counts(2)+2, lm), source = 0.0)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        call GigaTrajInternalPtr%cube2latlon%regrid(field_inter, Field_latlon, _RC)
