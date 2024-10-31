@@ -14,7 +14,7 @@ integer, parameter :: step_end = 9226         ! End timestep (adjusted for diffe
 logical :: is_coldstart = .True.              ! Logical flag for cold start
 integer, parameter :: ny = 33                 ! Number of years (33 years)
 
-real*8, parameter :: fac_kstr = 0.025D0       ! Factor for local stream scaling
+real*8, parameter :: fac_kstr = 0.01D0       ! Factor for local stream scaling
 real*8, parameter :: M = 0.45D0               ! Parameter in hydraulic geometry formula
 real*8, parameter :: mm = 0.35D0              ! Parameter in hydraulic geometry formula
 
