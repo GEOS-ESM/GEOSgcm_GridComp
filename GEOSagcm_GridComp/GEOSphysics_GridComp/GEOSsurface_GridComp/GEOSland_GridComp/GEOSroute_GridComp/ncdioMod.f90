@@ -13,7 +13,7 @@ module ncdio
 !
 ! !PUBLIC TYPES:
   implicit none
-  include 'netcdf.inc' !netcdf库文件
+  include 'netcdf.inc' !
   save
   public :: check_ret   ! checks return status of netcdf calls
   public :: check_var   ! determine if variable is on netcdf file
@@ -71,7 +71,6 @@ contains
 !
 ! !DESCRIPTION:
 ! Validity check on dimension
-! 判断nc文件中指定维数dimname的长度与指定值value相等
 ! !ARGUMENTS:
     implicit none
     integer, intent(in) :: ncid
@@ -86,8 +85,8 @@ contains
     integer :: dimid, dimlen    ! temporaries
 !-----------------------------------------------------------------------
 
-    call check_ret(nf_inq_dimid (ncid, trim(dimname), dimid), 'check_dim') !查询维数的代码
-    call check_ret(nf_inq_dimlen (ncid, dimid, dimlen), 'check_dim') !查询维数的大小
+    call check_ret(nf_inq_dimid (ncid, trim(dimname), dimid), 'check_dim') 
+    call check_ret(nf_inq_dimlen (ncid, dimid, dimlen), 'check_dim')
     if (dimlen /= value) then
        write (6,*) 'CHECK_DIM error: mismatch of input dimension ',dimlen, &
             ' with expected value ',value,' for variable ',trim(dimname)
@@ -103,7 +102,6 @@ contains
 !
 ! !INTERFACE:
   subroutine check_var(ncid, varname, varid, readvar)
-! 判断NC文件中是否含有名为varname的变量，如有则返回readvar=true且返回变量号varid，否则报错。
 ! !DESCRIPTION:
 ! Check if variable is on netcdf file
 !
@@ -139,7 +137,6 @@ contains
 !
 ! !INTERFACE:
   subroutine check_ret(ret, calling)
-! 返回NC文件操作是否正确
 ! !DESCRIPTION:
 ! Check return status from netcdf call
 !
@@ -153,7 +150,7 @@ contains
 !EOP
 !-----------------------------------------------------------------------
 
-    if (ret /= NF_NOERR) then !如果打开nc文件出错，则提示出错信息
+    if (ret /= NF_NOERR) then 
        write(6,*)'netcdf error from ',trim(calling)
        call endrun(nf_strerror(ret))
     end if
@@ -170,22 +167,6 @@ contains
        dim1name, dim2name, dim3name, dim4name, dim5name, &
        long_name, units, cell_method, missing_value, fill_value, &
        imissing_value, ifill_value)
-! 定义NC变量，
-! ncid--NC文件号
-! varname--变量名称
-! xtype--变量类型
-! dim1name--第一维的名称
-! dim2name--第二维的名称
-! dim3name--第三维的名称
-! dim4name--第四维的名称
-! dim5name--第五维的名称
-! long_name--属性-变量的完整名称
-! units--属性-变量的单位
-! cell_method--属性-值的来源说明
-! missing_value--属性-实型缺测值
-! fill_value--属性-实型的缺省值
-! imissing_value--属性-整型的缺测值
-! ifill_value--属性-整型的缺省值
 ! !DESCRIPTION:
 !  Define a netcdf variable
 !
@@ -292,20 +273,6 @@ contains
   subroutine ncd_iolocal_int_1d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部一维实型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 1d int field
 !
@@ -456,20 +423,6 @@ contains
   subroutine ncd_iolocal_real_1d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部一维实型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 1d int field
 !
@@ -619,20 +572,6 @@ contains
   subroutine ncd_iolocal_double_1d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部一维实型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 1d int field
 !
@@ -782,20 +721,6 @@ contains
   subroutine ncd_iolocal_int_2d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部二维整型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 2d real field
 !
@@ -945,20 +870,6 @@ contains
   subroutine ncd_iolocal_real_2d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部二维实型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 2d real field
 !
@@ -1109,20 +1020,6 @@ contains
   subroutine ncd_iolocal_double_2d(varname, data, flag, ncid, &
 		lb_lon, lb_lat, lb_lvl, lb_t, ub_lon, ub_lat, ub_lvl, ub_t, &
 		long_name, units, readvar)
-! 读/写局部二维实型变量:将一笔资料阵列写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! lb_lon--经向的起始号
-! lb_lat--纬向的起始号
-! lb_lvl--层次的起始号
-! lb_t--时间的起始号
-! ub_lon--经向的起始号
-! ub_lat--纬向的起始号
-! ub_lvl--层次的起始号
-! ub_t--时间的起始号
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O for 2d real field
 !
@@ -1271,13 +1168,6 @@ contains
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_int_var(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局零维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O of integer variable
 !
@@ -1347,13 +1237,6 @@ contains
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_real_var(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局零维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O of real variable
 !
@@ -1423,13 +1306,6 @@ contains
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_double_var(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局零维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! I/O of real variable
 !
@@ -1499,13 +1375,6 @@ contains
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_int_1d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局一维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! Master I/O for 1d integer data
 !
@@ -1575,13 +1444,6 @@ contains
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_real_1d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局一维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! Master I/O for 1d real data
 !
@@ -1652,13 +1514,6 @@ call check_ret(nf_put_var_real(ncid, varid, data), subname)
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_double_1d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局一维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! Master I/O for 1d real data
 !
@@ -1729,13 +1584,6 @@ call check_ret(nf_put_var_double(ncid, varid, data), subname)
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_int_2d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局二维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d integer array
 !
@@ -1807,13 +1655,6 @@ call check_ret(nf_put_var_double(ncid, varid, data), subname)
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_long_2d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局二维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d integer array
 !
@@ -1885,13 +1726,6 @@ call check_ret(nf_put_var_double(ncid, varid, data), subname)
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_byte_2d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局二维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d integer array
 !
@@ -1961,13 +1795,6 @@ call check_ret(nf_put_var_double(ncid, varid, data), subname)
 !
 ! !INTERFACE:
   subroutine ncd_ioglobal_short_2d(varname, data, flag, ncid, long_name, units, nt, readvar)
-! 读/写全局二维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d integer array
 !
@@ -2038,15 +1865,6 @@ call check_ret(nf_put_var_double(ncid, varid, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_real_2d(varname, data, flag, &
                                   ncid, long_name, units, nt, readvar)
-! 读/写全局二维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d real array
 !
@@ -2119,15 +1937,6 @@ call check_ret(nf_put_vara_real(ncid, varid, start, count, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_double_2d(varname, data, flag, &
                                   ncid, long_name, units, nt, readvar)
-! 读/写全局二维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 2d real array
 !
@@ -2199,15 +2008,6 @@ call check_ret(nf_put_vara_double(ncid, varid, start, count, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_short_3d(varname, data, flag, &
                                  ncid, long_name, units, nt, readvar)
-! 读/写全局三维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 3d integer array
 !
@@ -2287,15 +2087,6 @@ call check_ret(nf_put_vara_double(ncid, varid, start, count, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_int_3d(varname, data, flag, &
                                  ncid, long_name, units, nt, readvar)
-! 读/写全局三维整型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 3d integer array
 !
@@ -2376,15 +2167,6 @@ call check_ret(nf_put_vara_double(ncid, varid, start, count, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_real_3d(varname, data, flag, &
                                   ncid, long_name, units, nt, readvar)
-! 读/写全局三维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 3d real array
 !
@@ -2465,15 +2247,6 @@ call check_ret(nf_put_vara_double(ncid, varid, start, count, data), subname)
 ! !INTERFACE:
   subroutine ncd_ioglobal_double_3d(varname, data, flag, &
                                   ncid, long_name, units, nt, readvar)
-! 读/写全局三维实型变量:将所有的资料阵列均写入档案中
-! varname--变量名
-! data--变量存储数组
-! long_name--属性-变量全称
-! units--属性-变量单位
-! flag--读/写的标记
-! ncid--NC文件对应的文件号
-! nt--时间步
-! readvar--所读取的变量是否存在于该NC文件中
 ! !DESCRIPTION:
 ! netcdf I/O of global 3d real array
 !
