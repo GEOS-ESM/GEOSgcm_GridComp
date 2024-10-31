@@ -933,6 +933,8 @@ contains
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
 
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
@@ -940,16 +942,13 @@ contains
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    __Iam__('Record')
+    Iam = "Record"
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-
-    ! for some reason, this causes Iam growing with CICE6 prefix
-    ! disable it for now
-    ! Iam = trim(COMP_NAME)//'::'//Iam
+    Iam = trim(COMP_NAME)//'::'//Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -1006,26 +1005,24 @@ contains
   integer, optional,   intent(  OUT) :: RC     ! Error code
 
 !EOP
-
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
-
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
 ! Locals
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    __Iam__('Restore')
+    IAm = "Restore"
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-    ! for some reason, this causes Iam growing with CICE6 prefix
-    ! disable it for now
-    !Iam = trim(COMP_NAME)//'::'//Iam
+    Iam = trim(COMP_NAME)//'::'//Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
