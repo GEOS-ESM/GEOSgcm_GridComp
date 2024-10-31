@@ -94,7 +94,7 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_READRESTART,  Refresh,    _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, MAPL_METHOD_REFRESH,      Refresh,    _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -946,7 +946,10 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME)//'::'//Iam
+
+    ! for some reason, this causes Iam growing with CICE6 prefix
+    ! disable it for now
+    ! Iam = trim(COMP_NAME)//'::'//Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -1020,7 +1023,9 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, _RC)
-    Iam = trim(COMP_NAME)//'::'//Iam
+    ! for some reason, this causes Iam growing with CICE6 prefix
+    ! disable it for now
+    !Iam = trim(COMP_NAME)//'::'//Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
