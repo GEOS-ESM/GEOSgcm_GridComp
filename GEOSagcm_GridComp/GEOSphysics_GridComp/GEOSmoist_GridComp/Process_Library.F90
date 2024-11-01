@@ -36,8 +36,8 @@ module GEOSmoist_Process_Library
    real, parameter :: aT_ICE_ALL = 252.16
    real, parameter :: aT_ICE_MAX = 268.16
    real, parameter :: aICEFRPWR  = 2.0
-   ! Over snow/ice SRF_TYPE = 2 or 3
-   real, parameter :: iT_ICE_ALL = 238.66
+   ! Over snow/ice SRF_TYPE = 2
+   real, parameter :: iT_ICE_ALL = 236.16
    real, parameter :: iT_ICE_MAX = 261.16
    real, parameter :: iICEFRPWR  = 5.0
    ! Over Land     SRF_TYPE = 1
@@ -3396,59 +3396,57 @@ subroutine update_cld( &
 
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
-     ! local storage for cnv fraction of condensate/cloud
-      real :: FCN(size(CF,1),size(CF,2),size(CF,3))
-      real :: DQC(size(CF,1),size(CF,2),size(CF,3))
 
-     ! Redistribute liquid CN/LS portions based on prior fractions
-      ! FCN Needs to be calculated first
-      FCN = 0.0
-      WHERE (QLCN+QLLS > 0.0)
-         FCN = min(max(QLCN/(QLCN+QLLS), 0.0), 1.0)
-      END WHERE
       ! Liquid
-      DQC = QL - (QLCN+QLLS)
-      WHERE (DQC > 0.0)
-      ! put all new condensate into LS
-        QLLS = QLLS+DQC
-      ELSEWHERE            
-      ! any loss of condensate uses the FCN ratio
-        QLCN = QLCN + DQC*(    FCN)
-        QLLS = QLLS + DQC*(1.0-FCN)
+      QLLS = QLLS + (QL - (QLCN+QLLS))
+      WHERE (QLLS < 0.0)
+        QLCN = QLCN + QLLS
+        QLLS = 0.0
+      END WHERE            
+      WHERE (QLCN < 1.E-8)
+       ! QLCN is negative so the signs here -/+ are reversed
+        QV = QV - QLCN
+        TE = TE + (alhlbcp)*QLCN
+        QLCN = 0.0
       END WHERE
 
-     ! Redistribute ice CN/LS portions based on prior fractions
-      ! FCN Needs to be calculated first
-      FCN = 0.0
-      WHERE (QICN+QILS > 0.0)
-         FCN = min(max(QICN/(QICN+QILS), 0.0), 1.0)
-      END WHERE
       ! Ice
-      DQC = QI - (QICN+QILS)
-      WHERE (DQC > 0.0)
-      ! put all new condensate into LS
-        QILS = QILS+DQC
-      ELSEWHERE   
-      ! any loss of condensate uses the FCN ratio
-        QICN = QICN + DQC*(    FCN)
-        QILS = QILS + DQC*(1.0-FCN)
+      QILS = QILS + (QI - (QICN+QILS))
+      WHERE (QILS < 0.0)
+        QICN = QICN + QILS
+        QILS = 0.0
+      END WHERE
+      WHERE (QICN < 1.E-8)
+       ! QLCN is negative so the signs here -/+ are reversed
+        QV = QV - QICN
+        TE = TE + (alhsbcp)*QICN
+        QICN = 0.0
       END WHERE
 
-     ! Redistribute cloud-fraction CN/LS portions based on prior fractions
-      ! FCN Needs to be calculated first
-      FCN = 0.0
-      WHERE (CLCN+CLLS > 0.0)
-         FCN = min(max(CLCN/(CLCN+CLLS), 0.0), 1.0)
-      END WHERE
       ! Cloud
-      DQC = CF - (CLCN+CLLS)
-      WHERE (DQC > 0.0)
-      ! put all new condensate into LS
-        CLLS = CLLS+DQC
-      ELSEWHERE
-      ! any loss of condensate uses the FCN ratio
-        CLCN = CLCN + DQC*(    FCN)
-        CLLS = CLLS + DQC*(1.0-FCN)
+      CLLS = min(1.0,CLLS + (CF - (CLCN+CLLS)))
+      WHERE (CLLS < 0.0)
+        CLCN = min(1.0,CLCN + CLLS)
+        CLLS = 0.0
+      END WHERE
+      WHERE (CLCN < 1.E-8)
+        CLCN = 0.
+      END WHERE
+
+      ! Evaporate liquid/ice where clouds are gone
+      WHERE (CLLS < 1.E-8)
+        QV = QV + QLLS + QILS
+        TE = TE - (alhlbcp)*QLLS - (alhsbcp)*QILS
+        CLLS = 0.
+        QLLS = 0.
+        QILS = 0.
+      END WHERE
+      WHERE (CLCN < 1.E-8)
+        QV = QV + QLCN + QICN
+        TE = TE - (alhlbcp)*QLCN - (alhsbcp)*QICN
+        CLCN = 0.
+        QLCN = 0.
+        QICN = 0.
       END WHERE
 
    end subroutine REDISTRIBUTE_CLOUDS

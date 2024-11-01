@@ -263,8 +263,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, DBZ_LIQUID_SKIN , 'DBZ_LIQUID_SKIN:' , DEFAULT= 0     , RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, TURNRHCRIT_PARAM, 'TURNRHCRIT:'      , DEFAULT= -9999., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.90  , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.95  , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_UNSTABLE , 'MIN_RH_UNSTABLE:' , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, MIN_RH_STABLE   , 'MIN_RH_STABLE:'   , DEFAULT= 0.9125, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, PDFSHAPE        , 'PDFSHAPE:'        , DEFAULT= 1     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_LSC_VFALL_PARAM, 'ICE_LSC_VFALL_PARAM:',DEFAULT= 1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, ICE_CNV_VFALL_PARAM, 'ICE_CNV_VFALL_PARAM:',DEFAULT= 2, RC=STATUS); VERIFY_(STATUS)
@@ -286,8 +286,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CCI_EVAP_EFF, 'CCI_EVAP_EFF:', DEFAULT= CCI_EVAP_EFF, RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 3000.0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    2.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2500.0, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
 
 end subroutine GFDL_1M_Initialize
 
@@ -326,9 +326,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, allocatable, dimension(:,:,:) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
                                            DQSDTmic, DQGDTmic, DQADTmic, &
                                             DUDTmic,  DVDTmic,  DTDTmic
+    integer, allocatable, dimension(:,:):: KLCL
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: TMP2D
-    integer, allocatable, dimension(:,:) :: KLCL
     ! Exports
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
@@ -449,7 +449,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( KLCL         (IM,JM) )
     ALLOCATE ( TMP2D        (IM,JM) )
 
     ! Derived States
@@ -466,6 +465,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     iMASS    = 1.0/MASS
     U0       = U
     V0       = V
+    KLCL     = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
 
     ! Export and/or scratch Variable
     call MAPL_GetPointer(EXPORT, RAD_CF,   'FCLD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -513,20 +513,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, PTR2D,  'CN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     call MAPL_GetPointer(EXPORT, PTR2D,  'AN_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
     call MAPL_GetPointer(EXPORT, PTR2D,  'SC_SNR'    , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS); PTR2D=0.0
-    ! Lowe tropospheric stability and estimated inversion strength
+    ! Lower tropospheric stability and estimated inversion strength from MoistGC
     call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-    KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
-    call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
-    if (associated(PTR2D)) then
-      do J=1,JM
-         do I=1,IM
-           PTR2D(I,J) = ZL0(I,J,KLCL(I,J))
-         end do
-      end do
-    endif
-    TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
-    call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
     call MAPL_TimerOn(MAPL,"---CLDMACRO")
     call MAPL_GetPointer(EXPORT, DQVDT_macro, 'DQVDT_macro' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -565,7 +554,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           do J=1,JM
            do I=1,IM
            ! Send the condensates through the pdf after convection [0:1 , unstable:stable]
-             facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/15.0))**2
+             facEIS = MAX(0.0,MIN(1.0,EIS(I,J)/10.0))**2
            ! determine combined minrhcrit in unstable/stable regimes
              minrhcrit = MIN_RH_UNSTABLE*(1.0-facEIS) + MIN_RH_STABLE*facEIS
            ! include grid cell area scaling and limit RHcrit to > 70%
@@ -579,23 +568,23 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            ! Use Slingo-Ritter (1985) formulation for critical relative humidity
              RHCRIT = 1.0
              if (PLmb(i,j,l) .le. turnrhcrit) then
-                RHCRIT = minrhcrit
+               RHCRIT = minrhcrit
              else
-                if (L.eq.LM) then
-                   RHCRIT = 1.0
-                else
-                   RHCRIT = minrhcrit + (1.0-minrhcrit)/(19.) * &
-                           ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
-                           tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-                endif
+               if (L.eq.LM) then
+                 RHCRIT = 1.0
+               else
+                 RHCRIT = minrhcrit + (1.0-minrhcrit)/(19.) * &
+                         ((atan( (2.*(PLmb(i,j,l)-turnrhcrit)/(PLEmb(i,j,LM)-turnrhcrit)-1.) * &
+                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+               endif
              endif
            ! limit RHcrit to > 70%
              ALPHA = max(0.0,min(0.30, (1.0-RHCRIT)))
            ! fill RHCRIT export
              if (associated(RHCRIT3D)) RHCRIT3D(I,J,L) = 1.0-ALPHA
-           ! Put condensates in touch with the PDF
+             ! Put condensates in touch with the PDF
              if (.not. do_qa) then ! if not doing cloud pdf inside of GFDL-MP
-             call hystpdf( &
+               call hystpdf( &
                       DT_MOIST       , &
                       ALPHA          , &
                       PDFSHAPE       , &
@@ -628,8 +617,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       WQL(I,J,L)     , &
                       .false.        , &
                       USE_BERGERON)
-             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              endif
+             RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
              if (LMELTFRZ) then
            ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
@@ -638,12 +627,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
                             QICN(I,J,L) )
-             call MELTFRZ ( DT_MOIST     , &
-                            CNV_FRC(I,J) , &
-                            SRF_TYPE(I,J), &
-                            T(I,J,L)     , &
-                            QLLS(I,J,L)  , &
-                            QILS(I,J,L) )
              endif
            ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
@@ -666,7 +649,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              endif
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-             RHCRIT = 1.0-ALPHA
+             RHCRIT = 1.0
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
                   DT_MOIST      , &
@@ -833,7 +816,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                      RAD_QV(I,J,L), RAD_QL(I,J,L), RAD_QI(I,J,L), RAD_QR(I,J,L), RAD_QS(I,J,L), RAD_QG(I,J,L), RAD_CF(I,J,L), &
                      CLDREFFL(I,J,L), CLDREFFI(I,J,L), &
                      FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI)
-               if (do_qa) RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
             enddo
           enddo
          enddo

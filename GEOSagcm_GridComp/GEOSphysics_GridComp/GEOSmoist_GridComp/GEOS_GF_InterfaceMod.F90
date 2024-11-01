@@ -596,9 +596,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          ! PLE and PL are passed in Pa
          call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
                                  ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
-                                 ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
+                                 ,T, TH, Q, U, V, TMP3D, BYNCY, (QLCN+QLLS), (QICN+QILS), CNPCPRATE &
                                  ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
-                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN, CLLS     &
+                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, (CLCN+CLLS)    &
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, TMP2D, T2M           &

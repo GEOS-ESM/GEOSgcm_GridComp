@@ -114,12 +114,12 @@ subroutine UW_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, SHLWPARAMS%MIXSCALE,         'MIXSCALE:'        ,DEFAULT=3000.0, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%CRIQC,            'CRIQC:'           ,DEFAULT=0.9e-3, RC=STATUS) ; VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, SHLWPARAMS%THLSRC_FAC,       'THLSRC_FAC:'      ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 0.75,  RC=STATUS) ; VERIFY_(STATUS)
-      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 8.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKFRE,            'RKFRE:'           ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SHLWPARAMS%RKM,              'RKM:'             ,DEFAULT= 9.0,  RC=STATUS) ; VERIFY_(STATUS)
     endif
     call MAPL_GetResource(MAPL, SHLWPARAMS%FRC_RASN,         'FRC_RASN:'        ,DEFAULT= 0.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%RPEN,             'RPEN:'            ,DEFAULT= 3.0,   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 1.0,   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCLM_SHALLOW,                'SCLM_SHALLOW:'    ,DEFAULT= 2.0,   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%NITER_XC,         'NITER_XC:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'        ,DEFAULT=2,      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'      ,DEFAULT=1,      RC=STATUS) ; VERIFY_(STATUS)
@@ -162,7 +162,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real,    allocatable, dimension(:,:,:) :: ZLE0, ZL0
     real,    allocatable, dimension(:,:,:) :: PL, PK, PKE, DP
     real,    allocatable, dimension(:,:,:) :: MASS
-    real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE
+    real,    allocatable, dimension(:,:)   :: RKM2D, RKFRE, MIX2D
     real,    allocatable, dimension(:,:,:) :: TMP3D
     real,    allocatable, dimension(:,:)   :: TMP2D
 
@@ -277,6 +277,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      ! 2D Variables
     ALLOCATE ( RKFRE  (IM,JM) )
     ALLOCATE ( RKM2D  (IM,JM) )
+    ALLOCATE ( MIX2D  (IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
 
     ! Derived States
@@ -313,6 +314,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(EXPORT, SLFLX_SC,   'SLFLX_SC'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UFLX_SC,    'UFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VFLX_SC,    'VFLX_SC'   , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+
     if (JASON_UW) then
       RKFRE = SHLWPARAMS%RKFRE
       RKM2D = SHLWPARAMS%RKM
@@ -321,9 +323,12 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
       do J=1,JM
         do I=1,IM
-           SIG   = sigma(SQRT(PTR2D(i,j)))
-           RKFRE(i,j) = SHLWPARAMS%RKFRE*(SIG + 0.667*(1.0-SIG))
-           RKM2D(i,j) = SHLWPARAMS%RKM  *(SIG + 0.500*(1.0-SIG))
+           ! vary RKFRE by resolution
+           SIG   = sigma(SQRT(PTR2D(i,j)))                         ! Param -> Resolved
+           RKFRE(i,j) = SHLWPARAMS%RKFRE*(0.75*SIG + (1.0-SIG))    ! 0.75  -> 1.0
+           ! support for varying rkm/mix if needed
+           RKM2D(i,j) = SHLWPARAMS%RKM
+           MIX2D(i,j) = SHLWPARAMS%MIXSCALE
         enddo
       enddo 
     endif
@@ -339,7 +344,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call compute_uwshcu_inv(IM*JM, LM, UW_DT,           & ! IN
             PL, ZL0, PK, PLE, ZLE0, PKE, DP,              &
             U, V, Q, QLTOT, QITOT, T, TKE, RKFRE, KPBL_SC,&
-            SH, EVAP, CNPCPRATE, FRLAND, RKM2D,           &
+            SH, EVAP, CNPCPRATE, FRLAND, RKM2D, MIX2D,    &
             CUSH,                                         & ! INOUT
             UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
             DTDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,          &
