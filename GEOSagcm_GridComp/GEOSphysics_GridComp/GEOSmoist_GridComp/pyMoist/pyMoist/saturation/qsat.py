@@ -2,7 +2,13 @@ import copy
 from typing import Optional
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, floor, interval
+from gt4py.cartesian.gtscript import (
+    PARALLEL,
+    computation,
+    floor,
+    interval,
+    i32,
+)
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -58,7 +64,7 @@ def QSat_Float_Liquid(
             DDQ = 0.0
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
-        IT = int(TT)
+        IT = i32(TT)
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int
@@ -101,7 +107,7 @@ def QSat_Float_Ice(
             DDQ = 0.0
     else:
         TT = (TL - TMINTBL) * DEGSUBS + 1
-        IT = int(floor(TT))
+        IT = i32(floor(TT))
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int
@@ -155,7 +161,7 @@ def QSat_Float(
         TI = T
 
     TI = (TI - TMINTBL) * DEGSUBS + 1
-    IT = int(floor(TI))
+    IT = i32(floor(TI))
     IT_MINUS_1 = (
         IT - 1
     )  # dace backend does not allow for [IT - 1] indexing because of cast to int
@@ -215,7 +221,7 @@ def QSat_FloatField(
             TI = T
 
         TI = (TI - TMINTBL) * DEGSUBS + 1
-        IT = int(floor(TI))
+        IT = i32(floor(TI))
         IT_MINUS_1 = (
             IT - 1
         )  # dace backend does not allow for [IT - 1] indexing because of cast to int

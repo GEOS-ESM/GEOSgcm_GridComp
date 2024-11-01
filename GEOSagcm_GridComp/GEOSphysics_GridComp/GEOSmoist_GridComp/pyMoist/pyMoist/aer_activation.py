@@ -256,15 +256,15 @@ def aer_activation_stencil(
 
             smax = f64(1.0e00) / sqrt(smax)  # [1]
             n = 0
-            u = 0.0
+            u: f64 = f64(0.0)
             while n < constants.N_MODES:
-                sm = (2.0 / sqrt(bibar[0, 0, 0][n])) * (
+                sm = (f64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
-                ) ** 1.5  # [1]
+                ) ** f64(1.5)  # [1]
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
                 ac = rg[0, 0, 0][n] * (sm / smax) ** f64(0.66666666666666667)  # [um]
                 u = log(ac / rg[0, 0, 0][n]) / (SQRT2 * xlogsigm)  # [1]
-                fracactn = f64(0.5) * (1.0 - Erf(u))  # [1]
+                fracactn = f64(0.5) * (f64(1.0) - Erf(u))  # [1]
                 nact[0, 0, 0][n] = fracactn * ni[0, 0, 0][n]  # [#/m^3]
                 n += 1
 
