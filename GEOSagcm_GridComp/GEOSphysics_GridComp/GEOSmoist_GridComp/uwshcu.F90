@@ -1,4 +1,24 @@
+#define ACC_PREFIX !$acc
 module uwshcu
+
+#ifdef SERIALIZE
+USE m_serialize, ONLY: &
+  fs_create_savepoint
+USE utils_ppser, ONLY:  &
+  ppser_get_mode, &
+  ppser_savepoint, &
+  ppser_serializer, &
+  ppser_serializer_ref, &
+  ppser_intlength, &
+  ppser_reallength, &
+  ppser_realtype, &
+  ppser_zrperturb, &
+  ppser_get_mode
+USE savepoint_helpers
+USE utils_ppser_buffered
+USE utils_ppser_kbuff
+#endif
+
 
 !#define UWDIAG 1
 
@@ -181,6 +201,9 @@ contains
       real              :: zifc0(idim,0:k0)         !  Environmental height at the interfaces   [ m ]
       real              :: exnifc0(idim,0:k0)       !  Exner function on interfaces
       real              :: pmid0(idim,k0)           !  Environmental pressure at the layer mid-point [ Pa ]
+      real              :: pmid0_test(idim,k0)
+      real              :: thl0_test(idim,k0)
+      real              :: ssthl0_test(idim,k0)
       real              :: zmid0(idim,k0)           !  Environmental height at the layer mid-point [ m ]
       real              :: exnmid0(idim,k0)         !  Exner function on layer mid-point
       real              :: dp0(idim,k0)             !  Environmental layer pressure thickness [ Pa ] > 0.
@@ -295,21 +318,22 @@ contains
         if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
       end do
 
-      call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
-           exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
-           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
-           dcm, qvten, qlten, qiten, sten, uten, vten,      &
-           qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
-           qlsub, qisub, ndrop, nice,                       &
-           shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
-           qtflx, slflx, uflx, vflx,                        &
+     call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
+          exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
+          qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
+          dcm, qvten, qlten, qiten, sten, uten, vten,      &
+          qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
+          qlsub, qisub, ndrop, nice,                       &
+          shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
+          qtflx, slflx, uflx, vflx,                        &
 #ifdef UWDIAG
-           qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
-           cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
-           thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
-           thlu, thvu, uu, vu, xc, trten,                   & 
+          qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
+          cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
+          thlsrc, thvlsrc, tkeavg, cldtop, wu, qtu,        &
+          thlu, thvu, uu, vu, xc, trten,                   & 
 #endif
-           dotransport )
+          dotransport )
+  
 
       ! Reverse again
 
@@ -4567,6 +4591,15 @@ contains
 
      end do ! column i loop
 
+#ifdef SERIALIZE
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/uwshcu.F90.SER lineno: #4574
+    call fs_create_savepoint('Conden-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/uwshcu.F90.SER lineno: #4575
+    call fs_create_savepoint('Conden-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
      return
 
    end subroutine compute_uwshcu
@@ -5088,6 +5121,5 @@ contains
                  ( pbot/(r*thv0bot*exnerfn(pbot)) + ptop/(r*thv0top*exnerfn(ptop)) )
     return
   end function single_cin
-
 
 end module uwshcu
