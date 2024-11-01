@@ -1,5 +1,5 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import exp, log, f64
+from gt4py.cartesian.gtscript import exp, f64, log
 
 
 @gtscript.function
@@ -160,7 +160,7 @@ def Erf(x: f64) -> f64:
     """
     erf: f64 = f64(0.0)
     if x < f64(0.0e00):
-        erf = f64(-1.0) * GammP(f64(0.5), x**2)
+        erf = f64(-1.0) * GammP(f64(0.5), x ** 2)
     else:
-        erf = GammP(f64(0.5), x**2)
+        erf = GammP(f64(0.5), x ** 2)
     return erf

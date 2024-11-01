@@ -4,10 +4,10 @@ from gt4py.cartesian.gtscript import (
     PARALLEL,
     computation,
     exp,
+    f64,
     interval,
     log,
     sqrt,
-    f64,
 )
 
 import pyMoist.constants as constants
@@ -229,7 +229,9 @@ def aer_activation_stencil(
             )  # [1/m]
             gamma = (RGASJMOL * tk) / (wpe * WMOLMASS) + (
                 WMOLMASS * HEATVAP * HEATVAP
-            ) / (CPAIR * plo * AMOLMASS * tk)  # [m^3/kg]
+            ) / (
+                CPAIR * plo * AMOLMASS * tk
+            )  # [m^3/kg]
             dum = sqrt(alpha * wupdraft / g)  # [1/m]
             zeta = f64(2.0) * a * dum / f64(3.0)  # [1]
 
@@ -240,17 +242,19 @@ def aer_activation_stencil(
                 smax = f64(0.0)  # [1]
                 sm = (f64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
-                ) ** f64(1.5)  # [1]
-                eta = dum**3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
-                f1 = f64(0.5) * exp(2.50 * xlogsigm**2)  # [1]
+                ) ** f64(
+                    1.5
+                )  # [1]
+                eta = dum ** 3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
+                f1 = f64(0.5) * exp(2.50 * xlogsigm ** 2)  # [1]
                 f2 = f64(1.0) + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
                         f1 * (zeta / eta) ** f64(1.5)
-                        + f2 * (sm**2 / (eta + f64(3.0) * zeta)) ** f64(0.75)
+                        + f2 * (sm ** 2 / (eta + f64(3.0) * zeta)) ** f64(0.75)
                     )
-                    / sm**2
+                    / sm ** 2
                 )  # [1] - eq. (6)
                 n += 1
 
@@ -260,7 +264,9 @@ def aer_activation_stencil(
             while n < constants.N_MODES:
                 sm = (f64(2.0) / sqrt(bibar[0, 0, 0][n])) * (
                     a / (3.0 * rg[0, 0, 0][n])
-                ) ** f64(1.5)  # [1]
+                ) ** f64(
+                    1.5
+                )  # [1]
                 xlogsigm = log(sig0[0, 0, 0][n])  # [1]
                 ac = rg[0, 0, 0][n] * (sm / smax) ** f64(0.66666666666666667)  # [um]
                 u = log(ac / rg[0, 0, 0][n]) / (SQRT2 * xlogsigm)  # [1]

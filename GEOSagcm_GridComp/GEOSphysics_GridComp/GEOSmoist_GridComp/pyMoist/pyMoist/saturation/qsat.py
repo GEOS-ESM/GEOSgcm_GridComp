@@ -2,13 +2,7 @@ import copy
 from typing import Optional
 
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    floor,
-    interval,
-    i32,
-)
+from gt4py.cartesian.gtscript import PARALLEL, computation, floor, i32, interval
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
