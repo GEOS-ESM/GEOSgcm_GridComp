@@ -3163,12 +3163,12 @@ end if
      else
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,   RC=STATUS); VERIFY_(STATUS)
@@ -5067,8 +5067,6 @@ end if
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
-!    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
-
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
@@ -6177,8 +6175,6 @@ end subroutine RUN1
 
        if( name=='Q' .or. name=='QLLS'  .or. name=='QLCN'  .or. &
                           name=='QILS'  .or. name=='QICN' ) then
-!                          name=='QILS'  .or. name=='QICN'  .or. &
-!                          name=='QRAIN' .or. name=='QSNOW' .or. name=='QGRAUPEL') then
           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
        endif
 
