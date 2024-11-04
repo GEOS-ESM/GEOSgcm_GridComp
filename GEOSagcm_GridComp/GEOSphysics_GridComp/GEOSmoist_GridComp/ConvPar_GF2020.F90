@@ -194,6 +194,7 @@ CONTAINS
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                ,DTDTDYN,DQVDTDYN                                  &
                                ,REVSU, entr3d, entr_dp, entr_md, entr_sh, PRFIL   &
+                               ,SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH             &
                                ,TPWI,TPWI_star,LIGHTN_DENS                        &
                                ,CNV_TR)
 
@@ -237,6 +238,8 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp)       ,INTENT(OUT)  :: CNPCPRATE, LIGHTN_DENS
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: REVSU, entr3d, entr_dp, entr_md, entr_sh
+
+    REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(OUT)  :: SGS_VVEL_DP, SGS_VVEL_MD, SGS_VVEL_SH
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(OUT)  :: PRFIL
 
@@ -342,7 +345,8 @@ CONTAINS
               ,prdn5d                       &
               ,clwup5d                      &
               ,tup5d                        &
-              ,conv_cld_fr5d
+              ,conv_cld_fr5d                &
+              ,sgs_vvel_5d
 
     !-----------local var in GEOS-5 data structure
     REAL,  DIMENSION(mxp, myp, mzp) :: DZ, AIR_DEN
@@ -731,6 +735,7 @@ CONTAINS
                      ,tup5d        &
                      ,conv_cld_fr5d&
                      !-- for debug/diagnostic
+                     ,sgs_vvel_5d  &
                      ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
 
 
@@ -792,6 +797,10 @@ CONTAINS
 
       ENDIF
 
+      sgs_vvel_dp = MAPL_UNDEF
+      sgs_vvel_md = MAPL_UNDEF
+      sgs_vvel_sh = MAPL_UNDEF
+
       entr_dp = MAPL_UNDEF
       entr_md = MAPL_UNDEF
       entr_sh = MAPL_UNDEF
@@ -802,6 +811,11 @@ CONTAINS
             DO i=1,mxp
              if(ierr4d(i,j,IENS) .ne. 0) cycle
               DO k=mzp,flip(ktop4d(i,j,IENS))-1,-1
+   
+                !- Export sug-grid scale vertical velocities used by GF
+                if (IENS==DEEP) sgs_vvel_dp(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                if (IENS==MID ) sgs_vvel_md(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
+                if (IENS==SHAL) sgs_vvel_sh(i,j,k) = sgs_vvel_5d(i,flip(k),j,IENS)
 
                 !- Export entrainment rates used by GF
                 if (IENS==DEEP) entr_dp(i,j,k) = entr5d(i,flip(k),j,IENS)
@@ -1053,6 +1067,7 @@ CONTAINS
               ,tup5d                 &
               ,conv_cld_fr5d         &
               !-- for debug/diagnostic
+              ,sgs_vvel_5d           &
               ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC)
 
    IMPLICIT NONE
@@ -1155,7 +1170,8 @@ CONTAINS
               ,clwup5d                   &
               ,tup5d                     &
               ,conv_cld_fr5d
-!--for debug
+!--for diagnostics
+   REAL   ,DIMENSION(mxp,mzp,myp,maxiens), INTENT(INOUT) :: sgs_vvel_5d
    REAL   ,DIMENSION(mxp,myp)  ,INTENT(INOUT)  :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
 
 !----------------------------------------------------------------------
@@ -1167,8 +1183,6 @@ CONTAINS
 !
 
     REAL,   DIMENSION (kts:kte,its:ite,jts:jte)  :: Tpert_h,Tpert_v
-
-    REAL,   DIMENSION (its:ite,jts:jte) ::  rtgt
 
     REAL,   DIMENSION (its:ite,kts:kte) ::                                      &
                                zo,temp_old,qv_old,PO,US,VS,WS,rhoi,phil         &
@@ -1233,9 +1247,6 @@ CONTAINS
      JCOL = J
 
      !-- initialization
-     DO I= its,itf
-        rtgt(i,j)=1.0
-     ENDDO
      DO i= its,itf
         ztexec   (i) = 0.0
         zqexec   (i) = 0.0
@@ -1311,7 +1322,7 @@ CONTAINS
          kr=k   !+1   !<<<< only kr=k
 !
          !- heigths, current pressure, temp and water vapor mix ratio
-         zo      (i,k)  = zt(kr,i,j)*rtgt(i,j)+topt(i,j)
+         zo      (i,k)  = zt(kr,i,j)+topt(i,j)
          po      (i,k)  = press(kr,i,j)*1.e-2 !mbar
          temp_old(i,k)  = temp(kr,i,j)
 
@@ -1573,6 +1584,7 @@ CONTAINS
                   ,tup5d              (:,:,j,plume) &
                   ,conv_cld_fr5d      (:,:,j,plume) &
                   !-- for debug/diag
+                  ,sgs_vvel_5d        (:,:,j,plume) &
                   ,AA0(:,j),AA1(:,j),AA2(:,j),AA3(:,j),AA1_BL(:,j),AA1_CIN(:,j),TAU_BL(:,j),TAU_EC(:,j) &
                   !-- for diag
                   ,lightn_dens  (:,j)               &
@@ -1580,6 +1592,10 @@ CONTAINS
                   ,prfil_gf_2d                      &
                   ,Tpert_2d                         &
                   )
+        !--- accumulate precip for each plume
+        DO i=its,itf
+           CONPRR(i,j)= CONPRR(i,j)+cprr4d(i,j,plume)
+        ENDDO
         ! Save ierr from this plume
         ! if (plume /= SHAL) then
         ! DO i=its,itf
@@ -1625,14 +1641,11 @@ loop1:  do n=1,maxiens
                 endif
                 fixout_qv(i)=max(0.,min(fixout_qv(i),1.))
           endif
-     ENDDO
-     !------------ feedback
-     !-- deep convection
-     DO i=its,itf
-      if(do_this_column(i,j) == 0) CYCLE
-       CONPRR(i,j)= (cprr4d(i,j,deep) + cprr4d(i,j,mid) + cprr4d(i,j,shal)) * fixout_qv(i)
+          !--- apply to convective precip
+          CONPRR(i,j)= CONPRR(i,j) * fixout_qv(i)
      ENDDO
 
+     !------------ feedback
      !-- deep + shallow + mid convection
      DO i = its,itf
       if(do_this_column(i,j) == 0) CYCLE
@@ -1835,9 +1848,10 @@ loop1:  do n=1,maxiens
                      ,clfrac            &
                      !- for convective transport-end
                      !- for debug/diag
+                     ,SGS_VVEL_         &
                      ,AA0_,AA1_,AA2_,AA3_,AA1_BL_,AA1_CIN_,TAU_BL_,TAU_EC_   &
-                     ,lightn_dens        &
-                      ,revsu_gf          &
+                     ,lightn_dens       &
+                     ,revsu_gf          &
                      ,prfil_gf          &
                      ,Tpert             &
                      )
@@ -2107,6 +2121,7 @@ loop1:  do n=1,maxiens
              ,clfrac
     !----------------------------------------------------------------------
     !-- debug/diag
+     real,  dimension (its:ite,kts:kte),intent (inout)  :: SGS_VVEL_
      real,  dimension (its:ite)        ,intent (inout)  :: &
              aa0_,aa1_,aa2_,aa3_,aa1_bl_,aa1_cin_,tau_bl_,tau_ec_
      real,  dimension (its:ite,kts:kte) :: dtdt,dqdt
@@ -2201,11 +2216,11 @@ loop1:  do n=1,maxiens
              if (stochastic_sig(i) /= 1.0) then
                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,sig(i)))
              endif
-             sig(i)= max(0.1,min(sig(i),1.))
-             if(sig(i).le.0.1)then
-               ierr(i)=1
-               ierrc(i)='scale_dep renders convection insignificant'
-             endif
+             sig(i)= max(0.001,min(sig(i),1.))
+            !if(sig(i).le.0.1)then
+            !  ierr(i)=1
+            !  ierrc(i)='scale_dep renders convection insignificant'
+            !endif
              if(ierr(i) /= 0) cycle
             enddo
          endif
@@ -2305,7 +2320,13 @@ loop1:  do n=1,maxiens
           rho_hydr(i,:) = 0.0
           if(ierr(i) /= 0)cycle
           do k=kts,ktf
-             rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/(zo_cup(i,k+1)-zo_cup(i,k))/g
+             dz = zo_cup(i,k+1)-zo_cup(i,k)
+             if (dz == 0.0) then
+                print *,'WARNING: Better fix needed for rho_hydr'
+                rho_hydr(i,k) = rho(i,k)
+             else
+                rho_hydr(i,k)=100.*(po_cup(i,k)-po_cup(i,k+1))/dz/g
+             end if
              !print*,"rhohidr=",k,rho_hydr(i,k),po_cup(i,k+1),zo_cup(i,k+1)
           enddo
       enddo
@@ -2773,7 +2794,7 @@ loop0:       do k=kts,ktf
 
        call cup_up_vvel(vvel2d,vvel1d,zws,entr_rate,cd,zo,zo_cup,zuo,dbyo,GAMMAo_CUP,tn_cup &
                        ,tempco,qco,qrco,qo,klcl,kbcon,ktop,ierr,itf,ktf,its,ite, kts,kte       )
-
+       SGS_VVEL_ = vvel2d
      endif
 
 !
@@ -2890,6 +2911,7 @@ loop0:       do k=kts,ktf
     !
         call cup_up_vvel(vvel2d,vvel1d,zws,entr_rate,cd,zo,zo_cup,zuo,dbyo,GAMMAo_CUP,tn_cup &
                         ,tempco,qco,qrco,qo,klcl,kbcon,ktop,ierr,itf,ktf,its,ite, kts,kte)
+        SGS_VVEL_ = vvel2d
      endif
 
 !---- new rain
@@ -3082,20 +3104,17 @@ loop0:       do k=kts,ktf
       IF(SGS_W_TIMESCALE == 0) THEN
          DO i=its,itf
             if(ierr(i) /= 0) cycle
-            !- time-scale cape removal from Bechtold et al. 2008
-            dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
+            !- time-scale cape removal
+            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep * (1.0 + (1.0-sig(i)))
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid  * (1.0 + (1.0-sig(i)))
          ENDDO
       ELSE
          DO i=its,itf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal from Bechtold et al. 2008
-            dz = zo_cup(i,ktop(i))- zo_cup(i,kbcon(i))
-            tau_ecmwf(i)= tau_mid *(    sig(i)) + &
-                          tau_deep*(1.0-sig(i)) + &
-                          (dz / vvel1d(i))
-            tau_ecmwf(i)= max(dtime,tau_ecmwf(i))
+            dz = max(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i)),1.e-16) ! cloud depth (H)
+            tau_ecmwf(i)=(dz / vvel1d(i)) * (1.0 + sig(i)) ! resolution dependent scale factor
+            tau_ecmwf(i)= max(dtime,tau_ecmwf(i)*real(SGS_W_TIMESCALE))
          ENDDO
       ENDIF
       DO i=its,itf
@@ -8399,7 +8418,6 @@ loop0:  do k= kbcon(i),ktop(i)
             dz1m = dz1m + dz
            enddo
            vvel2d(i,k) = vs/(1.e-16+dz1m)
-           !if(k>ktop(i)-3)print*,"v2=",k,ktop(i),sqrt(vvel2d(i,k)),sqrt(vvel2d(i,ktop(i)))
          enddo
        enddo
       endif
@@ -8410,12 +8428,6 @@ loop0:  do k= kbcon(i),ktop(i)
          if(ierr(i) /= 0)cycle
          vvel2d(i,:)= sqrt(max(0.1,vvel2d(i,:)))
 
-         if(maxval(vvel2d(i,:)) < 1.0) then
-           ierr(i)=54
-         !  print*,"ierr=54",maxval(vvel2d(i,:))
-         endif
-
-
          !-- sanity check
          where(vvel2d(i,:) < 1. ) vvel2d(i,:) = 1.
          where(vvel2d(i,:) > 20.) vvel2d(i,:) = 20.
@@ -8425,7 +8437,6 @@ loop0:  do k= kbcon(i),ktop(i)
          do k= kbcon(i),ktop(i)
             dz=z_cup(i,k+1)-z_cup(i,k)
             vvel1d(i)=vvel1d(i)+vvel2d(i,k)*dz
-            !print*,"w=",k,z_cup(i,k),vvel2d(i,k)
          enddo
          vvel1d(i)=vvel1d(i)/(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i))+1.e-16)
          vvel1d(i)=max(1.,vvel1d(i))

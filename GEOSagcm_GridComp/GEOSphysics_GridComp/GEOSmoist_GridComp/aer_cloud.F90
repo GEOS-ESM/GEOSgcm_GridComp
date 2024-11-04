@@ -1,7 +1,6 @@
  MODULE aer_cloud
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
- use m_fpe, only: isnan
 
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
