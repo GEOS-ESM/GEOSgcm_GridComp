@@ -1205,11 +1205,11 @@ contains
           if (DOPROGQT2 /= 0) then
             wrk3 = QT2TUNE*1.5e-4 ! dissipation
             qt2(:,:,k) = (qt2(:,:,k)+DT*wrk1) / (1. + DT*wrk3)
-            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge(:,:,kd)+qt2_edge(:,:,ku))
+            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
           else
 !            qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1 + MFQT2(:,:,k)
             qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1
-            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
+            qt2diag(:,:,k) = 1.0*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
           end if
 
           hlqt(:,:,k) = onemmf*0.5*( hlqt_edge(:,:,kd) + hlqt_edge(:,:,ku) ) + MFHLQT(:,:,k)
@@ -1219,8 +1219,8 @@ contains
 
         end if
 
-        whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ MFWHL(:,:,k)
-        whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
+        whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) + MFWHL(:,:,k)
+        whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) + mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
         ! Restrict QT variance, 3-25% of total water.
         qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
@@ -1235,12 +1235,12 @@ contains
 
     end do
 
-  if (DOCANUTO==0) then
+!  if (DOCANUTO==0) then
 !    qt3 = ( qt3 + max(MFQT3+0.05*QT**3*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)),0.) ) / ( 1. + DT/QT3_TSCALE )
     qt3 = ( qt3 + max(MFQT3,0.) ) / ( 1. + DT/QT3_TSCALE )
     hl3 = MFHL3
     w3  = MFW3
-  else
+!  else
 
 ! pre-define adzl,
   do k=2,LM
@@ -1361,13 +1361,13 @@ contains
         w3can(i,j,LM) = w3can(i,j,LM-1)
       enddo
     enddo
-    w3 = w3can
+!    w3 = w3can
 
 !!   skew_w = w3 / w2**1.5
-   qt3 = 1.2*w3*(qt2/w2)**1.5
-   hl3 = w3 * (hl2 / w2)**1.5
+!   qt3 = 1.2*w3*(qt2/w2)**1.5
+!   hl3 = w3 * (hl2 / w2)**1.5
 
-  end if ! DOCANUTO conditional
+!  end if ! DOCANUTO conditional
 
  end subroutine update_moments
 
