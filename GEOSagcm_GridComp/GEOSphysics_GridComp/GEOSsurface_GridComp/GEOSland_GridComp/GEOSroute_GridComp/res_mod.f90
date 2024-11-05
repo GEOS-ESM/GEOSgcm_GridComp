@@ -10,8 +10,8 @@ public :: res_init, res_cal
 
 real*8, parameter  :: fac_elec_a = 0.30D0 ! Coefficient for hydropower calculation
 real*8, parameter  :: fac_elec_b = 2.00D0 ! Exponent for hydropower calculation
-real*8, parameter  :: fac_irr_a = 0.225D0 ! Coefficient for irrigation calculation (arid areas)
-real*8, parameter  :: fac_irr_b = 100.D0  ! Scaling factor for irrigation (arid areas)
+real*8, parameter  :: fac_irr_a = 0.01D0 ! Coefficient for irrigation calculation (arid areas)
+real*8, parameter  :: fac_irr_b = 3.00D0  ! Scaling factor for irrigation (arid areas)
 real*8, parameter  :: fac_sup_a = 0.03D0  ! Coefficient for water supply calculation
 real*8, parameter  :: fac_sup_b = 2.00D0  ! Exponent for water supply calculation
 real*8, parameter  :: fac_other_a = 0.20D0 ! Coefficient for other reservoir types
@@ -54,16 +54,14 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   ! Allocate memory for each array
   allocate(flag_grand(nres),catid_grand(nres),active_res(nc))
   allocate(Wr_res(nc),Q_res(nc))
-  allocate(elec_grand(nres),type_res(nc),cap_grand(nres),cap_res(nc),area_grand(nres),power_grand(nres))
+  allocate(elec_grand(nres),type_res(nc),cap_grand(nres),cap_res(nc),area_grand(nres))
   allocate(area_res(nc),area_max_res(nc))
-  allocate(Qavg_grand(nres),Qavg_res(nc))
-  allocate(ai_grand(nres),irrsup_grand(nres),ai_res(nc))
+  allocate(irrsup_grand(nres))
   allocate(fld_grand(nres),fld_res(nc),Qfld_thres(nc),supply_grand(nres))
-  allocate(irr_sea_frac(nres,12),irr_grand(nres))
+  allocate(irr_grand(nres))
   allocate(cat2res(nc))
   allocate(nav_grand(nres),rec_grand(nres))
   allocate(other_grand(nres))
-  allocate(Wres_tar(365,nres))
   allocate(wid_res(nc))
   allocate(realuse_grand(nres))
 
@@ -77,11 +75,11 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   cap_grand=cap_grand*1.D6*rho ! Convert capacity from million cubic meters (MCM) to kilograms (kg)
   open(77,file=trim(input_dir)//"/hydroelec_grand.txt")
   read(77,*)elec_grand
-  open(77,file=trim(input_dir)//"/Qavg_res_2016_2020_OL7000.txt")
-  read(77,*)Qavg_grand
-  Qavg_grand=Qavg_grand*rho ! Convert flow rate from cubic meters per second (m3/s) to kilograms per second (kg/s)
-  open(77,file=trim(input_dir)//"/ai_grand.txt")
-  read(77,*)ai_grand
+  !open(77,file=trim(input_dir)//"/Qavg_res_2016_2020_OL7000.txt")
+  !read(77,*)Qavg_grand
+  !Qavg_grand=Qavg_grand*rho ! Convert flow rate from cubic meters per second (m3/s) to kilograms per second (kg/s)
+  !open(77,file=trim(input_dir)//"/ai_grand.txt")
+  !read(77,*)ai_grand
   open(77,file=trim(input_dir)//"/irrmainsec_noelec_grand.txt")
   read(77,*)irrsup_grand
   open(77,file=trim(input_dir)//"/fldmainsec_grand.txt")
@@ -103,8 +101,8 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   open(77,file=trim(input_dir)//"/area_skm_grand.txt")
   read(77,*)area_grand
   area_grand=area_grand*1.D6 ! Convert area from square kilometers (km2) to square meters (m2)
-  open(77,file=trim(input_dir)//"/power_grand.txt")
-  read(77,*)power_grand
+  !open(77,file=trim(input_dir)//"/power_grand.txt")
+  !read(77,*)power_grand
 
   ! Set initial reservoir ID mapping
   cat2res=0
@@ -120,8 +118,8 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   area_res = 0.D0          ! Set reservoir area to zero
   area_max_res = 0.D0      ! Set max reservoir area to zero
   type_res = 0             ! Set reservoir type to zero
-  Qavg_res = 0.D0          ! Set average reservoir flow rate to zero
-  ai_res = 0.D0            ! Set irrigation index to zero
+  !Qavg_res = 0.D0          ! Set average reservoir flow rate to zero
+  !ai_res = 0.D0            ! Set irrigation index to zero
   fld_res = 0              ! Set flood status to zero
   active_res = 0           ! Set active reservoirs to zero
   realuse_grand = 0        ! Initialize real use for each reservoir to zero
@@ -132,7 +130,7 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
       cid = catid_grand(i)          ! Get the catchment ID for the reservoir
       cap_res(cid) = cap_res(cid) + cap_grand(i)  ! Sum up the capacities for reservoirs in the same catchment
       area_res(cid) = area_res(cid) + area_grand(i) ! Sum up the areas for reservoirs in the same catchment
-      Qavg_res(cid) = Qavg_grand(i)               ! Assign average flow rate to the catchment
+      !Qavg_res(cid) = Qavg_grand(i)               ! Assign average flow rate to the catchment
       if(fld_grand(i) == 1) fld_res(cid) = 1      ! Mark the catchment if it has flood control
     endif
   enddo
@@ -216,9 +214,9 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   do i = 1, nres
     if(flag_grand(i) == 1) then
       cid = catid_grand(i)
-      if(irrsup_grand(i) == 1 .and. ai_grand(i) <= ai_thres .and. area_grand(i) >= area_max_res(cid)) then
+      if(irrsup_grand(i) == 1 .and. area_grand(i) >= area_max_res(cid)) then
         type_res(cid) = 1            ! Assign type 1 for irrigation supply
-        ai_res(cid) = ai_grand(i)     ! Assign irrigation index to the catchment
+        !ai_res(cid) = ai_grand(i)     ! Assign irrigation index to the catchment
         cat2res(cid) = i
         area_max_res(cid) = area_grand(i)
       endif
@@ -255,10 +253,10 @@ subroutine res_init(input_dir,nres,nc,use_res,active_res,Wr_res,Q_res,type_res,c
   enddo
 
   ! Read irrigation and reservoir target data from NetCDF files
-  call read_ncfile_double2d(trim(input_dir)//"/irr_grand_frac.nc", "data", irr_sea_frac, nres, 12)
-  call read_ncfile_double2d(trim(input_dir)//"/Wr_tar_Dang.nc", "data", Wres_tar, 365, nres)
+  ! call read_ncfile_double2d(trim(input_dir)//"/irr_grand_frac.nc", "data", irr_sea_frac, nres, 12)
+  ! call read_ncfile_double2d(trim(input_dir)//"/Wr_tar_Dang.nc", "data", Wres_tar, 365, nres)
 
-  Wres_tar = Wres_tar * 1.D6 * rho  ! Convert from million cubic meters (MCM) to kilograms (kg)
+  ! Wres_tar = Wres_tar * 1.D6 * rho  ! Convert from million cubic meters (MCM) to kilograms (kg)
 
   ! Deactivate reservoirs if the use_res flag is set to False
   if(use_res == .False.) active_res = 0
@@ -267,9 +265,9 @@ end subroutine res_init
 
 !-----------------------
 ! Reservoir calculation subroutine
-subroutine res_cal(active_res,active_lake,Qout,Q_lake,type_res,ai_res,cat2res,irr_sea_frac,Q_res,Qavg_res,wid_res,fld_res,Wr_res,Qfld_thres,cap_res,B1,B2)
+subroutine res_cal(active_res,active_lake,Qout,Q_lake,type_res,cat2res,Q_res,wid_res,fld_res,Wr_res,Qfld_thres,cap_res,B1,B2)
   integer, intent(in) :: active_res, type_res, active_lake, cat2res, fld_res
-  real*8, intent(in) :: Qout, Q_lake, ai_res, irr_sea_frac, Qavg_res, wid_res, Qfld_thres, cap_res
+  real*8, intent(in) :: Qout, Q_lake, wid_res, Qfld_thres, cap_res
   real*8, intent(inout) :: Q_res, Wr_res, B1, B2
 
   integer :: rid  ! Reservoir ID
@@ -285,33 +283,15 @@ subroutine res_cal(active_res,active_lake,Qout,Q_lake,type_res,ai_res,cat2res,ir
       Qin_res = Q_lake  ! Inflow from lake
     endif
 
-    ! Irrigation reservoir in arid regions
-    if (type_res == 1) then 
-      if (ai_res <= 0.2D0) then
-        ! Calculate the coefficient for very arid regions
-        coe = fac_irr_a * log(fac_irr_b * ai_res)
-      else if (ai_res <= ai_thres) then
-        ! Calculate coefficient based on aridity index
-        rid = cat2res
-        irrfac = irr_sea_frac * 12.D0  ! Seasonal irrigation factor
-        coe = (fac_irr_a * log(fac_irr_b * 0.2D0) * (ai_thres - ai_res) + irrfac * (ai_res - 0.2D0)) / (ai_thres - 0.2D0)
-      else
-        coe = irrfac  ! Irrigation factor for higher aridity index
-      endif
-      coe = min(coe, 5.D0)  ! Limit maximum coefficient
-      coe = max(0.D0, coe)  ! Ensure coefficient is non-negative
-      Q_res = coe * Qavg_res  ! Calculate the reservoir outflow based on average flow
+    ! Irrigation reservoir 
+    if (type_res == 1 .or. type_res == 3) then 
+      alp_res = fac_irr_a * ((1.D0 / (wid_res / 1.D3)) ** fac_irr_b) / 3600.D0   ! irrigation coefficient
+      Q_res = alp_res * Wr_res  ! Outflow based on water storage
 
     ! Hydropower reservoir
     else if (type_res == 2) then 
       alp_res = fac_elec_a * ((1.D0 / (wid_res / 1.D3)) ** fac_elec_b) / 3600.D0  ! Hydropower coefficient
       Q_res = alp_res * Wr_res  ! Outflow based on water storage
-
-    ! Irrigation reservoir
-    else if (type_res == 3) then 
-      rid = cat2res
-      irrfac = irr_sea_frac * 12.D0  ! Seasonal irrigation factor
-      Q_res = irrfac * Qavg_res  ! Outflow based on irrigation factor and average flow
 
     ! Water supply reservoir
     else if (type_res == 4) then 

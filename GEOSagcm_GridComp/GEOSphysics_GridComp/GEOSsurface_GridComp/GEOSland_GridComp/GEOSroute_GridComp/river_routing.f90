@@ -229,8 +229,8 @@ DO iter=step_start,step_end
 
         ! Call lake and reservoir calculation subroutines
         call lake_cal(active_lake(i),area_lake(i),Q_lake(i),Wr_lake(i),Qout(i),B1(i),B2(i))
-        call res_cal(active_res(i),active_lake(i),Qout(i),Q_lake(i),type_res(i),ai_res(i),cat2res(i),&
-          irr_sea_frac(cat2res(i),mon_cur),Q_res(i),Qavg_res(i),wid_res(i),fld_res(i),Wr_res(i),Qfld_thres(i),cap_res(i),B1(i),B2(i))
+        call res_cal(active_res(i),active_lake(i),Qout(i),Q_lake(i),type_res(i),cat2res(i),&
+          Q_res(i),wid_res(i),fld_res(i),Wr_res(i),Qfld_thres(i),cap_res(i),B1(i),B2(i))
 
       endif
     enddo
