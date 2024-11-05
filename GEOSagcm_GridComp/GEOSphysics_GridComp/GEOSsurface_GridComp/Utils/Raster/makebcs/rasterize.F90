@@ -6,6 +6,7 @@ module LogRectRasterizeMod
   use rmTinyCatchParaMod, ONLY: SRTM_maxcat
   use MAPL_ExceptionHandling  
   use MAPL_Constants, only: PI=>MAPL_PI_R8
+  use MAPL
   implicit none
   private
 
@@ -23,6 +24,7 @@ module LogRectRasterizeMod
   public ReadRaster
   public WriteRaster
   public Writetiling
+  public WritetilingNC4
   public Sorttiling
   public Opentiling
   public Closetiling
@@ -33,7 +35,7 @@ module LogRectRasterizeMod
 
   integer, parameter :: NX           = 8640
   integer, parameter :: NY           = 4320
-
+  real(kind=8), parameter :: MPL_UNDEF= 1.0e15
 
   real(kind=8)   :: garea_
   integer :: ctg_
@@ -76,10 +78,6 @@ subroutine WriteRaster(File, Raster, Zip)
 
   return
 end subroutine WriteRaster
-
-
-
-
 
 subroutine ReadRaster(File, Raster, Zip)
   character*(*), intent(IN) :: File
@@ -196,10 +194,12 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   real(kind=8)   :: xc, yc, area
   real(kind=8)   :: garea, ctg(size(Gridname))
   real(kind=8)   :: sphere, error
-  integer :: status
+  integer :: status 
+  character(len=:), allocatable :: filenameNC4
 
   ip = size(iTable,2)
   ng = size(GridName)
+
 
   _ASSERT(IP==size(rTable,2),'needs informative message')
   _ASSERT(NG==size(IM),'needs informative message')
@@ -305,9 +305,192 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      close(UNIT)
   end if
 
-  return
+  k = index(trim(File), '.til')
+  filenameNC4 = File(1:k-1) //'.nc4'
+  call WriteTilingNC4(filenameNC4, GridName, im, jm, nx, ny, transpose(iTable), transpose(rTable),rc)
+
 end subroutine WriteTilingIR
 
+subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
+  character*(*),     intent(IN) :: File
+  character*(*),     intent(IN) :: GridName(:)
+  integer,           intent(IN) :: IM(:), JM(:)
+  integer,           intent(IN) :: nx,ny
+  integer,           intent(IN) :: iTable(:,0:)
+  real(kind=8),      intent(IN) :: rTable(:,:)
+  integer, optional, intent(out):: rc
+
+  integer :: k, l, ng, ip, status
+  character(len=:), allocatable :: attr
+  type (Variable) :: v
+  type (NetCDF4_FileFormatter) :: formatter
+  character(len=1) :: str_num
+  type (FileMetadata) :: metadata
+  integer, allocatable :: II(:), JJ(:), KK(:)
+  real(kind=8), allocatable :: fr(:)
+  logical :: EASE
+
+  ng  = size(GridName)
+  ip  = size(iTable,1)
+
+  EASE = .false.
+  if (index(GridName(1), 'EASE') /=0) EASE = .true.
+
+  call metadata%add_dimension('tile', ip)
+
+  do l = 1, ng
+    if (ng == 1) then
+      str_num = ''
+    else
+      write(str_num, '(i0)') l
+    endif
+
+    attr = 'Grid'//trim(str_num)//'_Name'
+    call metadata%add_attribute( attr, trim(GridName(l)))
+    attr = 'IM'//trim(str_num)
+    call metadata%add_attribute( attr, IM(l))
+    attr = 'JM'//trim(str_num)
+    call metadata%add_attribute( attr, JM(l))
+  enddo
+
+  attr = 'raster_nx'
+  call metadata%add_attribute( attr, nx)
+  attr = 'raster_ny'
+  call metadata%add_attribute( attr, ny)
+  attr = 'SRTM_maxcat'
+  call metadata%add_attribute( attr, SRTM_maxcat)
+
+  v = Variable(type=PFIO_INT32, dimensions='tile')
+  call v%add_attribute('units', '1')
+  call v%add_attribute('long_name', 'tile_type')
+  call metadata%add_variable('typ', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'km2')
+  call v%add_attribute('long_name', 'tile_pfaf')
+  call v%add_attribute("missing_value", MPL_UNDEF)
+  call v%add_attribute("_FillValue", MPL_UNDEF)
+  call metadata%add_variable('area', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'center_of_mass_longitude')
+  call v%add_attribute("missing_value", MPL_UNDEF)
+  call v%add_attribute("_FillValue", MPL_UNDEF)
+  call metadata%add_variable('com_lon', v)
+  
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'center_of_mass_latitude')
+  call v%add_attribute("missing_value", MPL_UNDEF)
+  call v%add_attribute("_FillValue", MPL_UNDEF)
+  call metadata%add_variable('com_lat', v)
+ 
+  do l = 1, ng
+     if (ng == 1) then
+        str_num = ''
+     else
+        write(str_num, '(i0)') l
+     endif
+     v = Variable(type=PFIO_INT32, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_i_indg')
+     call metadata%add_variable('i_indg'//trim(str_num), v)
+     v = Variable(type=PFIO_INT32, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_j_indg')
+     call metadata%add_variable('j_indg'//trim(str_num), v)
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_fraction_of_cell')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call v%add_attribute("_FillValue", MPL_UNDEF)
+     call metadata%add_variable('frac_cell'//trim(str_num), v)
+     v = Variable(type=PFIO_INT32, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'pfaf index')
+     call metadata%add_variable('pfaf_index'//trim(str_num), v)
+  enddo
+
+  if (EASE) then
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'minimum_lon')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call metadata%add_variable('min_lon', v)
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'maximum_lon')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call metadata%add_variable('max_lon', v)
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'minimum_lat')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call metadata%add_variable('min_lat', v)
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'maximum_lat')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call metadata%add_variable('max_lat', v)
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'elevation')
+     call v%add_attribute("missing_value", MPL_UNDEF)
+     call metadata%add_variable('elev', v)
+  endif
+
+  call formatter%create(File, mode=PFIO_NOCLOBBER, rc=status)
+  call formatter%write(metadata, rc=status)
+  call formatter%put_var('typ',     iTable(:,0), rc=status)
+  call formatter%put_var('area',    rTable(:,3), rc=status)
+  call formatter%put_var('com_lon', rTable(:,1), rc=status)
+  call formatter%put_var('com_lat', rTable(:,2), rc=status)
+
+  allocate(fr(ip))
+  fr = MPL_UNDEF
+  do l = 0, ng-1
+     if (ng == 1) then
+        if( EASE) then
+           kk = iTable(:,4)
+        else
+           kk =[(k, k=1,ip)]
+        endif
+     else
+        kk = iTable(:,6+l)
+     endif
+
+     II = iTable(:,2+L*2)
+     JJ = iTable(:,3+L*2)
+
+     where( rTable(:,4+l) /=0.0)
+        fr = rTable(:,3)/rTable(:,4+L)
+     endwhere
+
+     if (ng == 1) then
+       str_num=''
+     else
+       write(str_num, '(i0)') l+1
+     endif
+     call formatter%put_var('i_indg'//trim(str_num), II, rc=status)
+     call formatter%put_var('j_indg'//trim(str_num), JJ, rc=status)
+     call formatter%put_var('frac_cell'//trim(str_num), fr, rc=status)
+     call formatter%put_var('pfaf_index'//trim(str_num), kk, rc=status)
+  enddo
+
+  if (EASE) then
+     call formatter%put_var('min_lon', rTable(:,6), rc=status)
+     call formatter%put_var('max_lon', rTable(:,7), rc=status)
+     call formatter%put_var('min_lat', rTable(:,8), rc=status)
+     call formatter%put_var('max_lat', rTable(:,9), rc=status)
+     call formatter%put_var('elev',    rTable(:,10), rc=status)
+  endif
+
+  call formatter%close(rc=status)
+
+  if (present(rc)) rc = status
+
+end subroutine WriteTilingNC4
 
 subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
   integer,           intent(OUT) :: Unit
@@ -509,9 +692,6 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
 
   return
 end subroutine CloseTiling
-
-
-
 
 
 end module LogRectRasterizeMod
