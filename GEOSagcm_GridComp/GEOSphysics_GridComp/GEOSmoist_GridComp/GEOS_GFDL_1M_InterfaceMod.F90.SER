@@ -680,11 +680,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
             endif
-            !$ser savepoint meltfrz-In
-            !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
-            !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
-            !$ser data_buffered Dx=1 DT_MOIST=DT_MOIST
             if (LMELTFRZ) then
+             !$ser savepoint Meltfrz-In
+             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
+             !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
+             !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST
              ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
@@ -692,6 +692,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
                             QICN(I,J,L) )
+             !$ser savepoint Meltfrz-Out
+             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
+             ! evaporation for CN
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
                             SRF_TYPE(I,J), &
@@ -699,10 +702,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                             QLLS(I,J,L)  , &
                             QILS(I,J,L) )
              endif
-             !$ser savepoint meltfrz-Out
-             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
-             ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
+             !$ser savepoint EVAP-In
+             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L) NACTI=NACTI(I,J,L) QST3=QST3(I,J,L)
+             !$ser data_buffered Dx=0 CCW_EVAP_EFF_s=CCW_EVAP_EFF DT_MOIST_s=DT_MOIST 
              RHCRIT = 1.0
              EVAPC(I,J,L) = Q(I,J,L)
              call EVAP3 (         &
@@ -719,10 +722,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              EVAPC(I,J,L) = ( Q(I,J,L) - EVAPC(I,J,L) ) / DT_MOIST
-             endif
+             !$ser savepoint EVAP-Out
+             !$ser data_buffered Dx=3 EVAPC=EVAPC(I,J,L)
+            endif
            ! sublimation for CN
              if (CCI_EVAP_EFF > 0.0) then ! else subl done inside GFDL
-             RHCRIT = 1.0
+             !$ser savepoint SUBLC-In
+             !$ser data_buffered Dx=3 PLmb=PLmb(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L) NACTL=NACTL(I,J,L) NACTI=NACTI(I,J,L) QST3=QST3(I,J,L)
+             !$ser data_buffered Dx=0 DT_MOIST_s=DT_MOIST CCI_EVAP_EFF_s=CCI_EVAP_EFF
+              RHCRIT = 1.0
              SUBLC(I,J,L) = Q(I,J,L)
              call SUBL3 (        &
                   DT_MOIST      , &
@@ -738,7 +746,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                   NACTI(I,J,L)  , &
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
-             endif
+             !$ser savepoint SUBLC-Out
+             !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L)
+            endif
            ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
            end do ! IM loop
