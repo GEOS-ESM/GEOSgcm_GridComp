@@ -1075,7 +1075,7 @@ end subroutine RUN
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    if (DO_CICE_THERMO /= 0) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
+    if (DO_CICE_THERMO == 1) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
