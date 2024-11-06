@@ -1,21 +1,14 @@
-from ndsl import Namelist, Quantity, StencilFactory
-from ndsl.dsl.typing import FloatField, Float
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation import QSat
+from gt4py.cartesian.gtscript import computation, PARALLEL, interval
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, PARALLEL, interval, exp, FORWARD, sqrt
-import gt4py.cartesian.gtscript as gtscript
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import (
-    FloatFieldIJ,
     Float,
     FloatField,
     IntField,
     Int,
 )
-from ndsl import StencilFactory, QuantityFactory
-from pyMoist.UW.roots import roots,sign
+from pyMoist.UW.roots import roots
 
 def harness_stencil(
     aquad: FloatField,
@@ -47,7 +40,7 @@ class TranslateRoots(TranslateFortranData2Py):
         self.out_vars = {
             "xc1": (),
             "xc2": (),
-            #"status": (),
+            "status": (),
         }
 
     def compute(self, inputs):
@@ -72,5 +65,6 @@ class TranslateRoots(TranslateFortranData2Py):
         stencil(aquad, bquad, cquad, xc1 ,xc2, status)
 
         return {"xc1": xc1[0, 0, :],
-                "xc2": xc2[0, 0, :]}
-                #"status": status[0, 0, :]}
+                "xc2": xc2[0, 0, :],
+                "status": status[0, 0, :]
+            }

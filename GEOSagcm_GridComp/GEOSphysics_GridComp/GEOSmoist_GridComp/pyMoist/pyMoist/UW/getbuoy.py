@@ -1,11 +1,8 @@
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, log
 import pyMoist.constants as constants
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import (
     Float,
 )
-from ndsl import StencilFactory, QuantityFactory
 from pyMoist.UW.compute_uwshcu import exnerfn
 
 

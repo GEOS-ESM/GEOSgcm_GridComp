@@ -1,7 +1,5 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.saturation import QSat
-import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, PARALLEL, interval
 import gt4py.cartesian.gtscript as gtscript
 import pyMoist.constants as constants
@@ -10,7 +8,6 @@ from ndsl.dsl.typing import (
     FloatField,
 )
 from pyMoist.UW.single_cin import single_cin
-from pyMoist.UW.compute_uwshcu import exnerfn
 
 
 def harness_stencil(
@@ -57,27 +54,27 @@ class TranslateSingleCin(TranslateFortranData2Py):
         self.stencil = stencil_factory.from_origin_domain(
             func=harness_stencil,
             origin=(0, 0, 0),
-            domain=(1, 1, 54),
+            domain=(1, 1, 169),
         )
 
     def compute(self, inputs):
-        pbot = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        pbot = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         pbot[0, 0, :] = inputs["pifc0_bot"]
-        thv0bot = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        thv0bot = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         thv0bot[0, 0, :] = inputs["thv0bot"]
-        ptop = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        ptop = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         ptop[0, 0, :] = inputs["pifc0_top"]
-        thv0top = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        thv0top = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         thv0top[0, 0, :] = inputs["thv0top"]
-        thvubot = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        thvubot = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         thvubot[0, 0, :] = inputs["thvubot"]
-        thvutop = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        thvutop = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         thvutop[0, 0, :] = inputs["thvutop"]
-        cin1 = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        cin1 = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
         cin1[0, 0, :] = inputs["cin1"]
 
 
-        cin2 = self.quantity_factory._numpy.empty((1, 1, 54), dtype=Float)
+        cin2 = self.quantity_factory._numpy.empty((1, 1, 169), dtype=Float)
 
         self.stencil(pbot, thv0bot, ptop, thv0top, thvubot, thvutop, cin1, cin2)
 

@@ -1,7 +1,5 @@
 from ndsl import Namelist,StencilFactory
-from ndsl.dsl.typing import FloatField, Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import computation, PARALLEL, interval
 import gt4py.cartesian.gtscript as gtscript
 from ndsl.dsl.typing import (

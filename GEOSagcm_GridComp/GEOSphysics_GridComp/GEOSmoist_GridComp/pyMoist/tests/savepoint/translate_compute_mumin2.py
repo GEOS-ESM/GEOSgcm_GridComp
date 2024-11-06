@@ -1,13 +1,13 @@
 from ndsl import Namelist,StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from gt4py.cartesian.gtscript import computation, PARALLEL, interval, exp, sqrt
+from gt4py.cartesian.gtscript import computation, PARALLEL, interval
 import gt4py.cartesian.gtscript as gtscript
 from ndsl.dsl.typing import (
     Float,
     FloatField
 )
 import pyMoist.constants as constants
-from pyMoist.UW.compute_mumin2 import compute_mumin2, erfc
+from pyMoist.UW.compute_mumin2 import compute_mumin2
 
 def harness_stencil(
     mulcl: FloatField,
@@ -45,18 +45,18 @@ class TranslateComputeMumin2(TranslateFortranData2Py):
         self.stencil = stencil_factory.from_origin_domain(
             func=harness_stencil,
             origin=(0, 0, 0),
-            domain=(1, 1, 2),
+            domain=(1, 1, 10),
         )
 
     def compute(self, inputs):
-        mulcl = self.quantity_factory._numpy.empty((1, 1, 2), dtype=Float)
+        mulcl = self.quantity_factory._numpy.empty((1, 1, 10), dtype=Float)
         mulcl[0, 0, :] = inputs["mulcl"]
-        rmaxfrax = self.quantity_factory._numpy.empty((1, 1, 2), dtype=Float)
+        rmaxfrax = self.quantity_factory._numpy.empty((1, 1, 10), dtype=Float)
         rmaxfrax[0, 0, :] = inputs["rmaxfrax"]
-        mulow = self.quantity_factory._numpy.empty((1, 1, 2), dtype=Float)
+        mulow = self.quantity_factory._numpy.empty((1, 1, 10), dtype=Float)
         mulow[0, 0, :] = inputs["mu"]
 
-        mumin2 = self.quantity_factory._numpy.empty((1, 1, 2), dtype=Float)
+        mumin2 = self.quantity_factory._numpy.empty((1, 1, 10), dtype=Float)
 
         self.stencil(mulcl, rmaxfrax, mulow, mumin2)
 
