@@ -4257,6 +4257,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: ldas_ens_id, ldas_first_ens_id
         integer                       :: NUM_LDAS_ENSEMBLE
 
+
+        !--------------------------------------------------------------------------
+        ! variables needed for reading MODIS white sky albedo
+        !--------------------------------------------------------------------------
+
+        integer, save :: FIRST_YY, FIRST_MM
+        character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
+        character(len=400) :: modis_wsa_vis_file, modis_wsa_nir_file, modis_wsa_path
+        logical :: forecast_mode = .false.                  ! .true. = read albedo for previous month
+                                                            ! .false. = read albedo for current month
+        real, allocatable, dimension(:), save  :: modis_wsa_vis ! MODIS white sky albedo in visible range
+        real, allocatable, dimension(:), save  :: modis_wsa_nir ! MODIS white sky albedo in near-infrared range
+        real, allocatable, dimension(:)  :: modis_wsa_vis_tmp, modis_wsa_nir_tmp
+        integer :: modis_wsa_vis_fid, modis_wsa_vis_varid
+        integer :: modis_wsa_nir_fid, modis_wsa_nir_varid
+        logical, save  :: first_modis_wsa = .true.
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4716,6 +4732,89 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            print *,' start time of clock '
            CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
         endif
+
+        !----------------------------------------------------------------------------------
+        ! On first of every month read MODIS white sky albedo from file
+        !----------------------------------------------------------------------------------
+
+        if ((first_modis_wsa))  then
+
+           call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY, MM = FIRST_MM,  rc=status )
+           VERIFY_(STATUS)
+
+           call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_LocStreamGet(LOCSTREAM, NT_GLOBAL=NT_GLOBAL, TILEGRID=TILEGRID, RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
+           VERIFY_(STATUS)
+
+           ! if in forecast mode, read MODIS albedo for previous month
+           ! otherwise use current month
+           if (forecast_mode) then
+              if (FIRST_MM == 1) then
+                 FIRST_YY = FIRST_YY-1
+                 FIRST_MM = 12
+              else
+                 FIRST_MM = FIRST_MM-1
+              endif
+           endif
+
+           write (FIRST_YY_str,'(i4.4)') FIRST_YY
+           write (FIRST_MM_str,'(i2.2)') FIRST_MM
+
+           modis_wsa_path = '/discover/nobackup/elee15/analysis/offline/MODIS_S2S/MODIS_albedo_9km_CONUS_mthly/'
+           modis_wsa_vis_file = trim(modis_wsa_path) // 'WSA_vis_9km_tile_CONUS_' // trim(FIRST_YY_str) // '_M' // trim(FIRST_MM_str) // '.nc4'
+           modis_wsa_nir_file = trim(modis_wsa_path) // 'WSA_nir_9km_tile_CONUS_' // trim(FIRST_YY_str) // '_M' // trim(FIRST_MM_str) // '.nc4'
+
+           ! read MODIS visible white sky albedo
+           STATUS = NF_OPEN (trim(modis_wsa_vis_file), NF_NOWRITE, modis_wsa_vis_fid)
+           VERIFY_(status)
+
+           STATUS = NF_INQ_VARID (modis_wsa_vis_fid, trim('WSAvis'), modis_wsa_vis_varid)
+           VERIFY_(status)
+
+           allocate(modis_wsa_vis (NTILES))
+           allocate(modis_wsa_vis_tmp (NT_GLOBAL))
+
+           if (MAPL_AM_I_Root(VM)) then
+              STATUS = NF_GET_VARA_REAL(modis_wsa_vis_fid, modis_wsa_vis_varid, (/1, 1/), (/NT_GLOBAL, 1/), modis_wsa_vis_tmp)
+              VERIFY_(STATUS)
+           endif  
+
+           call ArrayScatter(modis_wsa_vis, modis_wsa_vis_tmp, tilegrid, mask=mask, rc=status)
+           VERIFY_(STATUS)
+
+           status = NF_CLOSE (modis_wsa_vis_fid)
+           VERIFY_(status)
+
+
+           ! read MODIS near_infrared white sky albedo
+           STATUS = NF_OPEN (trim(modis_wsa_nir_file), NF_NOWRITE, modis_wsa_nir_fid)
+           VERIFY_(status)
+
+           STATUS = NF_INQ_VARID (modis_wsa_nir_fid, trim('WSAnir'), modis_wsa_nir_varid)
+           VERIFY_(status)
+
+           allocate(modis_wsa_nir (NTILES))
+           allocate(modis_wsa_nir_tmp (NT_GLOBAL))
+
+           if (MAPL_AM_I_Root(VM)) then
+              STATUS = NF_GET_VARA_REAL(modis_wsa_nir_fid, modis_wsa_nir_varid, (/1, 1/), (/NT_GLOBAL, 1/), modis_wsa_nir_tmp)
+              VERIFY_(STATUS)
+           endif
+
+           call ArrayScatter(modis_wsa_nir, modis_wsa_nir_tmp, tilegrid, mask=mask, rc=status)
+           VERIFY_(STATUS)
+
+           status = NF_CLOSE (modis_wsa_nir_fid)
+           VERIFY_(status)
+
+           first_modis_wsa = .false.
+           deallocate(modis_wsa_vis_tmp)
+           deallocate(modis_wsa_nir_tmp)
+
+        endif ! first_modis_wsa
         
         ! --------------------------------------------------------------------------
         ! Offline land spinup.
@@ -5033,6 +5132,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
                        ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+
+        ! replace computed albedos with MODIS white sky albedos from file
+
+        ALBVR = modis_wsa_vis
+        ALBNR = modis_wsa_nir
+        ALBVF = modis_wsa_vis
+        ALBNF = modis_wsa_nir
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
