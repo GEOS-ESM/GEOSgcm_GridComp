@@ -231,6 +231,7 @@ contains
      grc%dayl(nc)                          = dayl(nc)
      water_inst%wateratm2lndbulk_inst%forc_rh_grc(nc) = rhm(nc)
      atm2lnd_inst%forc_wind_grc(nc)        = windm(nc)
+     atm2lnd_inst%forc_ndep_grc(nc)        = ndep(nc)
 
      cn2clm_inst%forc_hdm_cn2clm(nc)  = hdm(nc)
      cn2clm_inst%forc_lnfm_cn2clm(nc) = lnfm(nc) 
