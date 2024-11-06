@@ -34,6 +34,11 @@ class TranslateSUBLC(TranslateFortranData2Py):
 
         # FloatField Outputs
         self.out_vars = {
+            "T": self.grid.compute_dict(),
+            "Q": self.grid.compute_dict(),
+            "QLCN": self.grid.compute_dict(),
+            "QICN": self.grid.compute_dict(),
+            "CLCN": self.grid.compute_dict(),
             "SUBLC": self.grid.compute_dict(),
         }
 
