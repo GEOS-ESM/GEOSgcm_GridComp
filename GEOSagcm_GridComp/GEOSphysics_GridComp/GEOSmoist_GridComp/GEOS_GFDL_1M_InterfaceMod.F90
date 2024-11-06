@@ -15,9 +15,9 @@ module GEOS_GFDL_1M_InterfaceMod
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
   fs_read_field, &
-  fs_create_savepoint, &
   fs_write_field, &
-  fs_add_savepoint_metainfo
+  fs_add_savepoint_metainfo, &
+  fs_create_savepoint
 USE utils_ppser, ONLY:  &
   ppser_get_mode, &
   ppser_savepoint, &
@@ -810,20 +810,20 @@ call ser_set_indices(I, J, L, 1)
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
             endif
+            if (LMELTFRZ) then
 #ifdef SERIALIZE
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #683
-call fs_create_savepoint('meltfrz-In', ppser_savepoint)
 ! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #684
+call fs_create_savepoint('Meltfrz-In', ppser_savepoint)
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #685
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "T", T(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QLCN", QLCN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QICN", QICN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #685
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #686
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "CNV_FRC", CNV_FRC(I,J), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "SRF_TYPE", SRF_TYPE(I,J), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #686
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #687
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 0, "DT_MOIST", DT_MOIST, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
 #endif
-            if (LMELTFRZ) then
              ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
@@ -831,6 +831,15 @@ call fs_create_savepoint('meltfrz-In', ppser_savepoint)
                             T(I,J,L)     , &
                             QLCN(I,J,L)  , &
                             QICN(I,J,L) )
+#ifdef SERIALIZE
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #695
+call fs_create_savepoint('Meltfrz-Out', ppser_savepoint)
+! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #696
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "T", T(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QLCN", QLCN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QICN", QICN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+#endif
+             ! evaporation for CN
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
                             SRF_TYPE(I,J), &
@@ -838,15 +847,6 @@ call fs_create_savepoint('meltfrz-In', ppser_savepoint)
                             QLLS(I,J,L)  , &
                             QILS(I,J,L) )
              endif
-#ifdef SERIALIZE
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #702
-call fs_create_savepoint('meltfrz-Out', ppser_savepoint)
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #703
-    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "T", T(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
-    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QLCN", QLCN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
-    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QICN", QICN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
-#endif
-             ! evaporation for CN
              if (CCW_EVAP_EFF > 0.0) then ! else evap done inside GFDL
 #ifdef SERIALIZE
 ! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #706
@@ -928,6 +928,11 @@ call fs_create_savepoint('SUBLC-In', ppser_savepoint)
 call fs_create_savepoint('SUBLC-Out', ppser_savepoint)
 ! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/GEOS_GFDL_1M_InterfaceMod.F90.SER lineno: #750
     call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "SUBLC", SUBLC(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "T", T(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "Q", Q(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QLCN", QLCN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "QICN", QICN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "CLCN", CLCN(I,J,L), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
 #endif
             endif
            ! cleanup clouds

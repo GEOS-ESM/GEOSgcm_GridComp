@@ -747,7 +747,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                    QST3(I,J,L)  )
              SUBLC(I,J,L) = ( Q(I,J,L) - SUBLC(I,J,L) ) / DT_MOIST
              !$ser savepoint SUBLC-Out
-             !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L)
+             !$ser data_buffered Dx=3 SUBLC=SUBLC(I,J,L) T=T(I,J,L) Q=Q(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L) CLCN=CLCN(I,J,L)
             endif
            ! cleanup clouds
              call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
