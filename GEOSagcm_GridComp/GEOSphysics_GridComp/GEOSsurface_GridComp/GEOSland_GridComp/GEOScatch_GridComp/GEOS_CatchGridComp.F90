@@ -64,6 +64,8 @@ module GEOS_CatchGridCompMod
 implicit none
 private
 
+ include "netcdf.inc"
+
 ! !PUBLIC MEMBER FUNCTIONS:
 
 public SetServices
