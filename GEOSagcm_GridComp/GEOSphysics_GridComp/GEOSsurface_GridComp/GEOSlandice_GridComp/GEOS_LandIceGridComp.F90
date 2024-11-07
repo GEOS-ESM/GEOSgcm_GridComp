@@ -596,7 +596,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_broadband_albedo',   &
+    LONG_NAME          = 'snow_broadband_reflectivity',   &
     UNITS              = '1'                ,&
     SHORT_NAME         = 'SNOWALB'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -605,7 +605,7 @@ module GEOS_LandiceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'aggregated_snow_ice_broadband_albedo',   &
+    LONG_NAME          = 'aggregated_snow_ice_broadband_reflectivity',   &
     UNITS              = '1'                ,&
     SHORT_NAME         = 'SNICEALB'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
