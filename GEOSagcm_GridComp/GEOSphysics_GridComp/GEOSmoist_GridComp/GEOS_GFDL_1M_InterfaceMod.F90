@@ -17,6 +17,9 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
+#ifdef PYMOIST_INTEGRATION
+  use pymoist_interface_mod
+#endif
 
   implicit none
 
@@ -58,8 +61,12 @@ module GEOS_GFDL_1M_InterfaceMod
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
+#ifdef PYMOIST_INTEGRATION
+  integer :: C_LMELTFRZ
+  logical :: USE_PYMOIST_GFDL1M = .FALSE. ! Replace Aer Activation with pyMoist port
+#endif
 
-  public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
+public :: GFDL_1M_Setup, GFDL_1M_Initialize, GFDL_1M_Run
 
 contains
 
@@ -230,6 +237,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+    ! Deal with logical via int
+    C_LMELTFRZ = LMELTFRZ
+#endif
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -284,6 +295,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
+#endif
 
 end subroutine GFDL_1M_Initialize
 
@@ -577,6 +591,19 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         endif
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+      IF (USE_PYMOIST_GFDL1M) THEN
+        call pymoist_interface_f_run_GFDL1M( &
+          dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM, &
+          DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF, &
+          C_LMELTFRZ, &
+          AREA, CNV_FRC, SRF_TYPE, &
+          KLCL, &
+          EIS, PLmb, PLEmb, NACTL, NACTI, QST3, &
+          T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN, &
+          SUBLC, EVAPC, RHX)
+      ELSE
+#endif
         do L=1,LM
           do J=1,JM
            do I=1,IM
@@ -720,6 +747,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
+
+#ifdef PYMOIST_INTEGRATION
+      endif
+#endif
 
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
