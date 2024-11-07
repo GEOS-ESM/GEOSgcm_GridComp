@@ -31,7 +31,7 @@ class TranslateQsInvert(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             "qtsrc": {},
             "thlsrc": {},
-            "pifc0": {},
+            "pifc0_in": {},
         }
       
         # Float/Int Inputs
@@ -48,7 +48,7 @@ class TranslateQsInvert(TranslateFortranData2Py):
         i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
         reshaped_inputs = {}
         for key, array in inputs.items():
-            reshaped_inputs[key] = np.reshape(array[:,1,0,0], (i, j)).astype(np.float32)
+            reshaped_inputs[key] = np.reshape(array[:,0,0,0], (i, j)).astype(np.float32)
       
         return reshaped_inputs
 
@@ -79,12 +79,11 @@ class TranslateQsInvert(TranslateFortranData2Py):
         # Inputs
         qtsrc = self.make_ij_field(inputs_reshaped["qtsrc"], dtype=FloatFieldIJ)
         thlsrc = self.make_ij_field(inputs_reshaped["thlsrc"], dtype=FloatFieldIJ)
-        pifc0 = self.make_ij_field(inputs_reshaped["pifc0"], dtype=FloatFieldIJ)
+        pifc0 = self.make_ij_field(inputs_reshaped["pifc0_in"], dtype=FloatFieldIJ)
 
         # Outputs
-        plcl = self.make_ij_field(inputs_reshaped["pifc0"], dtype=FloatFieldIJ)
+        plcl = self.make_ij_field(inputs_reshaped["pifc0_in"], dtype=FloatFieldIJ)
 
-        
         qsinvert(
             qtsrc=qtsrc,
             thlsrc=thlsrc,
@@ -98,8 +97,8 @@ class TranslateQsInvert(TranslateFortranData2Py):
         plcl_out = self.reshape_after(plcl.view[:,:])
         print("Reshaped outputs back to original shape...")
 
-        plcl_4D = inputs["pifc0"]
-        plcl_4D[:,1,0,0] = plcl_out
+        plcl_4D = inputs["pifc0_in"]
+        plcl_4D[:,0,0,0] = plcl_out
 
         return {"plcl": plcl_4D
             }
