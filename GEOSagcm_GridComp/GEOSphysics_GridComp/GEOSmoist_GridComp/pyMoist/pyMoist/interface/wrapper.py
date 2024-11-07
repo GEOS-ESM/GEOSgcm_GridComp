@@ -156,7 +156,10 @@ class GEOSPyMoistWrapper:
             config=stencil_config, grid_indexing=self._grid_indexing
         )
 
-        with StencilBackendCompilerOverride(MPI.COMM_WORLD, stencil_config.dace_config):
+        with StencilBackendCompilerOverride(
+            MPI.COMM_WORLD,
+            stencil_config.dace_config,
+        ):
             self.aer_activation = AerActivation(
                 stencil_factory=stencil_factory,
                 quantity_factory=quantity_factory,
