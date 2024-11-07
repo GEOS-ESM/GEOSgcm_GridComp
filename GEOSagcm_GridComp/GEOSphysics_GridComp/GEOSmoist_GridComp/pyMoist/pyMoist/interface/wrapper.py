@@ -167,7 +167,8 @@ class GEOSPyMoistWrapper:
                 USE_AERSOL_NN=True,
             )
             print(
-                "[PYMOIST] Defaulted to SaturationFormulation.Staars for QSat in GFDL_1M"
+                "[PYMOIST] Defaulted to SaturationFormulation.Staars"
+                "for QSat in GFDL_1M"
             )
             self.gfdl_1M = GFDL_1M(
                 stencil_factory=stencil_factory,
