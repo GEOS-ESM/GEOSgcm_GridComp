@@ -5,16 +5,16 @@
 ### uwshcu.F90
 - The code contains 3 larger subroutines: UW_Run, compute_uwshcu_inv, and compute_uwshcu.
 
-- 'compute_uwshcu' contains several smaller functions and subroutines, including slope and conden. 
+- 'compute_uwshcu' contains several smaller functions and subroutines, including slope, conden, roots, fluxbelowinv, etc. 
 
-- However, many of the smaller functions in compute_uwshcu are not actually triggered in the Fortran. Errors are raised in the event that this code is triggered under a different configuration. 
+- However, many of the smaller functions in compute_uwshcu are not always triggered in the Fortran. Errors should be raised in the event that this code is triggered under a different configuration. 
 
-- Currently, 'slope' and 'conden' have been ported and verified as gt4py functions. Small errors still exist when testing 'conden'.
+- Currently, slope, conden, roots, compute_alpha, compute_mumin2, compute_ppen, getbuoy, single_cin, fluxbelowinv, positive_moisture_single have been ported and verified. To do still: qsinvert
 
 - 10/7/24 compute_uwshcu has been ported and passes for all but 3 variables linked to the conden function. These variables are defined as real*8 (64-bit) in uwshcu.F90. This causes mixed precision and will lead to problems. For now, we plan to write something into the translate test to 'PASS' and we will move on.
 
 ## Other notes
-- The main calculations in uwshcu.F90 are very long and involve loops along the i and k dimensions. To serialize the data within loops, a workaround has been implemented in the .SER file. This workaround involves defining test variables outside of the loop, creating a savepoint before the loop, and saving the data after the loop has finished.
+- The main calculations in uwshcu.F90 are very long and involve loops along the i and k dimensions. To serialize the data within loops, data_buffered and data_append can be used.
 
 - In the Fortran, 'slope' and 'conden' use 2D input variables. These variables can be serialized as 2D arrays, however, they need to be reshaped to shape(i,j,k) prior to the stencil computation. This workaround has been implemented in translate_slope.py and translate_conden.py
 
@@ -33,7 +33,8 @@ UW original port : cfc8a721829fdaad245715def3aa8721b89b1d09
 
 
 ## Next steps
-- Clean up compute_uwshcu (add variable descriptions and function descriptions)
+- Finish porting smaller functions/stencils in uwshcu
+- Port and test compute_uwshcu
 - Port and test compute_uwshcu_inv
 - Port and test UW_Run
 
