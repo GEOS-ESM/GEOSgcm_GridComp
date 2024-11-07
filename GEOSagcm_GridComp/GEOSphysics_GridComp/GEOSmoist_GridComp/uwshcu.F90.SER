@@ -1139,9 +1139,9 @@ contains
       !========================
       !   Start column loop
       !========================
-
+      !$ser verbatim call ser_set_Dx(idim, iter_cin, k0+1, 1)
       do i = 1, idim
-
+         !$ser verbatim call ser_set_indices(i, 1 ,1 ,1)
          id_exit = .false.
 
          frc_rasn        = shlwparams%frc_rasn
@@ -1374,7 +1374,7 @@ contains
            ! It is not clear whether I should locate below two lines within or  out !
            ! of the iterative cin loop.                                             !
            ! ---------------------------------------------------------------------- !
-
+           !$ser verbatim call ser_set_indices(i, iter, 1, 1)
            tscaleh = cush                        
            cush    = -1.
            tkeavg   = 0.
@@ -1559,8 +1559,11 @@ contains
            id_exit = .true.
            go to 333
         end if
-
+         !$ser savepoint Qsinvert-In
+         !$ser data_buffered Dx=2 qtsrc=qtsrc thlsrc=thlsrc pifc0_in=pifc0(0)
          plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
+         !$ser savepoint Qsinvert-Out
+         !$ser data_buffered Dx=2 plcl=plcl
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -1652,7 +1655,12 @@ contains
                if( k .lt. klcl ) then
                    thvubot = thvlsrc
                    thvutop = thvlsrc  
+                   !$ser savepoint SingleCIN-In
+                   !$ser data_append pifc0_bot=pifc0(k-1) thv0bot=thv0bot(k)  pifc0_top=pifc0(k)
+                   !$ser data_append thv0top=thv0top(k) thvubot=thvubot thvutop=thvutop cin1=cin
                    cin     = cin + single_cin(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop)
+                   !$ser savepoint SingleCIN-Out
+                   !$ser data_append cin2=cin
                elseif( k .eq. klcl ) then
                    !----- Bottom to LCL
                    thvubot = thvlsrc
@@ -1670,7 +1678,13 @@ contains
                        go to 333
                    end if
                    thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
+                   !$ser savepoint Getbuoy-In
+                   !$ser data_append pifc0_below=plcl thv0bot_buoy=thv0lcl pifc0_above=pifc0(k)
+                   !$ser data_append thv0top_buoy=thv0top(k) thvubot_buoy=thvubot thvutop_buoy=thvutop
+                   !$ser data_append plfc_in=plfc cin_in=cin
                    call getbuoy(plcl,thv0lcl,pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+                   !$ser savepoint Getbuoy-Out
+                   !$ser data_append plfc_out=plfc cin_out=cin
                    if( plfc .gt. 0. ) then 
                        klfc = k 
                        go to 35
@@ -1811,8 +1825,11 @@ contains
                ! 'ufrclcl' after calculating 'winv' & 'ufrcinv'  at the PBL top !
                ! interface later, after calculating 'cbmf'.                     !
                ! -------------------------------------------------------------- !
-         
-               alpha = compute_alpha( del_CIN, ke ) 
+               !$ser savepoint ComputeAlpha-In
+               !$ser data_append del_CIN=del_CIN ke=ke
+               alpha = compute_alpha( del_CIN, ke )
+               !$ser savepoint ComputeAlpha-Out
+               !$ser data_append alpha=alpha
                cin   = cin_i + alpha * del_CIN
                if( use_CINcin ) then
                    cinlcl = cinlcl_i                 
@@ -2184,7 +2201,11 @@ contains
          mulcl = sqrt(2.*cinlcl*rbuoy)/1.4142/sigmaw
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
+            !$ser savepoint ComputeMumin2-In
+            !$ser data_append mulcl=mulcl rmaxfrax=rmaxfrac mu=mu
             mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
+            !$ser savepoint ComputeMumin2-Out
+            !$ser data_append mumin2=mumin2
             if( mu .gt. mumin2 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
@@ -2625,7 +2646,11 @@ contains
                    cquad =  2.*rbuoy*g*cridis*(thv_x0 -  thv0j)/thv0j +    wue**2;
                    if( kk .eq. 1 ) then
                        if( ( bquad**2-4.*aquad*cquad ) .ge. 0. ) then
+                             !$ser savepoint Roots-In
+                             !$ser data_append aquad=aquad bquad=bquad cquad=cquad
                              call roots(aquad,bquad,cquad,xs1,xs2,status)
+                             !$ser savepoint Roots-Out
+                             !$ser data_append xc1=xc1 xc2=xc2 status=status
                              x_cu = min(1.,max(0.,min(xsat,min(xs1,xs2))))
                        else
                              x_cu = xsat;
@@ -3034,7 +3059,12 @@ contains
                end if
            endif       
          else 
+           !$ser savepoint ComputePpen-In
+           !$ser data_append wtwb=wtwb drage=drage bogbot=bogbot bogtop=bogtop
+           !$ser data_append rhomid0j=rhomid0j dp0=dp0(kpen)
            ppen = compute_ppen(wtwb,drage,bogbot,bogtop,rhomid0j,dp0(kpen))
+           !$ser savepoint ComputePpen-Out
+           !$ser data_append ppen=ppen
          endif
          if( ppen .eq. -dp0(kpen) .or. ppen .eq. 0. ) limit_ppen(i) = 1.
 
@@ -3406,8 +3436,21 @@ contains
          xsrc  = qtsrc
          xmean = qt0(kinv)
          xtop  = qt0(kinv+1) + ssqt0(kinv+1) * ( pifc0(kinv)   - pmid0(kinv+1) )
-         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )        
+         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )    
+         !$ser savepoint FluxBelowInv-In
+         !$ser data_append k0=k0 
+         !$ser verbatim do k = 0, k0
+         !$ser verbatim call ser_set_indices(i, iter, k+1, 1)
+         !$ser data_buffered Dx=3 ps0=pifc0(k) xflx=xflx(k)
+         !$ser verbatim enddo
+         !$ser data_buffered Dx=2 cbmf=cbmf dt=dt xsrc=xsrc xmean=xmean xtop=xtop xbot=xbot
+         !$ser data_buffered Dx=2 kinv_in=kinv
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
+         !$ser savepoint FluxBelowInv-Out
+         !$ser verbatim do k = 0, k0
+         !$ser verbatim call ser_set_indices(i, iter, k+1, 1)
+         !$ser data_buffered Dx=3 xflx_out=xflx(k)
+         !$ser verbatim enddo
          qtflx(0:kinv-1) = xflx(0:kinv-1)
 
          xsrc  = thlsrc
@@ -4006,8 +4049,25 @@ contains
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
          s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
+         !$ser savepoint PositiveMoistureSingle-In
+         !$ser data_append mkx=k0 
+         !$ser data_buffered Dx=2 xlv=xlv xls=xls dt=dt qvmin=qmin(1) 
+         !$ser data_buffered Dx=2 qlmin=qmin(ixcldliq) qimin=qmin(ixcldice)
+         !$ser verbatim do k = 1, k0
+         !$ser verbatim call ser_set_indices(i, iter, k, 1)
+         !$ser data_buffered Dx=3 dp0_in=dp0(k)
+         !$ser data_buffered Dx=3 qv0_star=qv0_star(k) ql0_star=ql0_star(k)
+         !$ser data_buffered Dx=3 qi0_star=qi0_star(k) s0_star=s0_star(k) qvten=qvten(k)
+         !$ser data_buffered Dx=3 qlten=qlten(k) qiten=qiten(k) sten=sten(k)
+         !$ser verbatim enddo
          call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
+         !$ser savepoint PositiveMoistureSingle-Out
+         !$ser verbatim do k = 1, k0
+         !$ser verbatim call ser_set_indices(i, iter, k, 1)
+         !$ser data_buffered Dx=3 ql0_star=ql0_star(k) qi0_star=qi0_star(k) s0_star=s0_star(k) qvten=qvten(k)
+         !$ser data_buffered Dx=3 qv0_star=qv0_star(k) qlten=qlten(k) qiten=qiten(k) sten=sten(k)
+         !$ser verbatim enddo
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
 
@@ -4571,8 +4631,32 @@ contains
 
      end do ! column i loop
 
-     !$ser flush_savepoint Conden-In
-     !$ser flush_savepoint Conden-Out
+     !$ser flush_savepoint SingleCIN-In
+     !$ser flush_savepoint SingleCIN-Out
+
+     !$ser flush_savepoint Getbuoy-In
+     !$ser flush_savepoint Getbuoy-Out
+
+     !$ser flush_savepoint Qsinvert-In
+     !$ser flush_savepoint Qsinvert-Out
+
+     !$ser flush_savepoint ComputeAlpha-In
+     !$ser flush_savepoint ComputeAlpha-Out
+
+     !$ser flush_savepoint ComputeMumin2-In
+     !$ser flush_savepoint ComputeMumin2-Out
+
+     !$ser flush_savepoint Roots-In
+     !$ser flush_savepoint Roots-Out
+
+     !$ser flush_savepoint ComputePpen-In
+     !$ser flush_savepoint ComputePpen-Out
+
+     !$ser flush_savepoint FluxBelowInv-In
+     !$ser flush_savepoint FluxBelowInv-Out
+
+     !$ser flush_savepoint PositiveMoistureSingle-In
+     !$ser flush_savepoint PositiveMoistureSingle-Out
 
      return
 
