@@ -4264,7 +4264,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! variables needed for reading MODIS white sky albedo
         !--------------------------------------------------------------------------
 
-        integer, save :: FIRST_YY, FIRST_MM
+        integer, save :: FIRST_YY, FIRST_MM, FIRST_DD
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
         character(len=400) :: modis_wsa_vis_file, modis_wsa_nir_file, modis_wsa_path
         logical :: forecast_mode = .false.                  ! .true. = read albedo for previous month
@@ -4739,10 +4739,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! On first of every month read MODIS white sky albedo from file
         !----------------------------------------------------------------------------------
 
-        if ((first_modis_wsa))  then
+        call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, DD = FIRST_DD  rc=status )
+        VERIFY_(STATUS)
 
-           call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY, MM = FIRST_MM,  rc=status )
-           VERIFY_(STATUS)
+        if (FIRST_DD == 1) then
+           first_modis_wsa = .true.
+        end if
+
+        if ((first_modis_wsa))  then
 
            call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
            VERIFY_(STATUS)
