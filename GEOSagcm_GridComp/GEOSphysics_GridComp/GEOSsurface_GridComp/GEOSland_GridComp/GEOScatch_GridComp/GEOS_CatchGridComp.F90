@@ -4743,7 +4743,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
         VERIFY_(STATUS)
 
-        if (FIRST_DD == FIRST_MM_OLD) then
+        if (FIRST_MM .ne. FIRST_MM_OLD) then
            first_modis_wsa = .true.
         end if
 
