@@ -35,7 +35,7 @@ module LogRectRasterizeMod
 
   integer, parameter :: NX           = 8640
   integer, parameter :: NY           = 4320
-  real(kind=8), parameter :: MPL_UNDEF= 1.0e15
+  real(kind=8), parameter :: MPL_UNDEF = MAPL_UNDEF
 
   real(kind=8)   :: garea_
   integer :: ctg_
