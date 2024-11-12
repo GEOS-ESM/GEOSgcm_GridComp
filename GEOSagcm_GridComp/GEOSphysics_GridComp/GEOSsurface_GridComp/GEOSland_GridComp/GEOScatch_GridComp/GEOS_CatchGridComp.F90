@@ -4129,6 +4129,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !--------------------------------------------
 
         integer, save :: FIRST_YY, FIRST_MM
+        integer, save :: FIRST_MM_OLD = 1000
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
         character(len=400) :: cn_rcuns_file, cn_rcuns_path
         logical :: s2s_forecast_mode = .false.
@@ -4589,10 +4590,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Read Catchment-CN unstressed stomatal conductance from file
         !----------------------------------------------------------------------------------
 
+        call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
+        VERIFY_(STATUS)
+
+        if (FIRST_MM .ne. FIRST_MM_OLD) then
+           first_rcuns = .true.
+        end if
+
         if ((first_rcuns))  then
 
-           call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY, MM = FIRST_MM,  rc=status )
-           VERIFY_(STATUS)
+           FIRST_MM_OLD = FIRST_MM
+
+           if (allocated(cn_cond)) deallocate(cn_cond)
 
            call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
            VERIFY_(STATUS)
