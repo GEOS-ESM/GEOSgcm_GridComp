@@ -4129,6 +4129,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !--------------------------------------------
 
         integer, save :: FIRST_YY, FIRST_MM
+        integer, save :: CURR_YY, CURR_MM
         integer, save :: FIRST_MM_OLD = 1000
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
         character(len=400) :: cn_rcuns_file, cn_rcuns_path
@@ -4590,14 +4591,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Read Catchment-CN unstressed stomatal conductance from file
         !----------------------------------------------------------------------------------
 
-        call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
+        call ESMF_TimeGet ( CURRENT_TIME, YY = CURR_YY, MM = CURR_MM, rc=status )
         VERIFY_(STATUS)
 
-        if (FIRST_MM .ne. FIRST_MM_OLD) then
+        if (CURR_MM .ne. FIRST_MM_OLD) then
            first_rcuns = .true.
         end if
 
         if ((first_rcuns))  then
+
+           call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
+           VERIFY_(STATUS)
 
            FIRST_MM_OLD = FIRST_MM
 
