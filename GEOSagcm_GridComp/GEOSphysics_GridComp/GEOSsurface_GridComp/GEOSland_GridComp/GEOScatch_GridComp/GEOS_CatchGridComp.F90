@@ -4265,6 +4265,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         !--------------------------------------------------------------------------
 
         integer, save :: FIRST_YY, FIRST_MM
+        integer, save :: CURR_YY, CURR_MM
         integer, save :: FIRST_MM_OLD = 1000
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
         character(len=400) :: modis_wsa_vis_file, modis_wsa_nir_file, modis_wsa_path
@@ -4740,17 +4741,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! On first of every month read MODIS white sky albedo from file
         !----------------------------------------------------------------------------------
 
-        call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
+        call ESMF_TimeGet ( CURRENT_TIME, YY = CURR_YY, MM = CURR_MM, rc=status )
         VERIFY_(STATUS)
 
-        if (FIRST_MM .ne. FIRST_MM_OLD) then
+        if (CURR_MM .ne. FIRST_MM_OLD) then
            first_modis_wsa = .true.
         end if
 
         if ((first_modis_wsa))  then
-
+     
            if (allocated(modis_wsa_vis)) deallocate(modis_wsa_vis)
            if (allocated(modis_wsa_nir)) deallocate(modis_wsa_nir)
+
+           call ESMF_TimeGet ( CURRENT_TIME, YY = FIRST_YY, MM = FIRST_MM, rc=status )
+           VERIFY_(STATUS)
+
+           FIRST_MM_OLD = FIRST_MM
 
            call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
            VERIFY_(STATUS)
