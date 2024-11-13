@@ -115,7 +115,7 @@ contains
     use CropType                          , only: crop_type
     use CNNDynamicsMod                    , only: CNNDeposition,CNNFixation, CNNFert, CNSoyfix,CNFreeLivingFixation
     use CNMRespMod                        , only: CNMResp
-   ! use CNFUNMod                          , only: CNFUNInit  !, CNFUN 
+    use CNFUNMod                          , only: CNFUNInit  !, CNFUN 
     use CNPhenologyMod                    , only: CNPhenology
     use CNGRespMod                        , only: CNGResp
     use FireMethodType                    , only: fire_method_type
@@ -386,9 +386,9 @@ contains
             phase=1)
        call t_stopf('CNPhenology_phase1')
 
-!     call t_startf('CNFUNInit')
-!       call CNFUNInit(bounds,cnveg_state_inst,cnveg_carbonstate_inst,cnveg_nitrogenstate_inst)
-!       call t_stopf('CNFUNInit')
+       call t_startf('CNFUNInit')
+       call CNFUNInit(bounds,cnveg_state_inst,cnveg_carbonstate_inst,cnveg_nitrogenstate_inst)
+       call t_stopf('CNFUNInit')
 
      end if
 
