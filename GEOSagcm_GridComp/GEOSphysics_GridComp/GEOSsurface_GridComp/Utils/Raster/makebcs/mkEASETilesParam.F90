@@ -38,13 +38,15 @@ PROGRAM mkEASETilesParam
   use MAPL_SortMod
   use MAPL_ConstantsMod
   use MAPL_ExceptionHandling
+  use MAPL
   use netcdf
   
   implicit none
   
-  integer, parameter :: nc_esa = 129600       ! number of cols in 10-arcsec ESA mask file
-  integer, parameter :: nr_esa =  64800       ! number of rows in 10-arcsec ESA mask file
-  real(kind=8), parameter :: MPL_UNDEF = 1.0e15
+  integer,      parameter :: nc_esa        = 129600      ! number of cols in 10-arcsec ESA mask file
+  integer,      parameter :: nr_esa        =  64800      ! number of rows in 10-arcsec ESA mask file
+  real(kind=8), parameter :: MAPL_UNDEF_R8 = MAPL_UNDEF
+
   ! define tile types used for processing here (values may be from ESA mask?) 
   
   integer, parameter :: OceanType  =  0  
@@ -848,8 +850,8 @@ PROGRAM mkEASETilesParam
   
   dx_ease = 180./real(nc_ease)
 
-  allocate(iTable(n_landlakelandice,0:4))
-  allocate(rTable(n_landlakelandice,10), source = MPL_UNDEF)
+  allocate(iTable(n_landlakelandice,0:4))                           ! 0-based index inherited from elsewhere in make_bcs
+  allocate(rTable(n_landlakelandice,10), source = MAPL_UNDEF_R8)
   
   do nn=1,n_landlakelandice
      
@@ -935,7 +937,7 @@ PROGRAM mkEASETilesParam
      rTable(nn,4) = ease_grid_area((jg-1)*nc_ease+ig)
      rTable(nn,5) = SRTM_catid_r8(pfaf_index)
 
-     iTable(nn,0) = typ
+     iTable(nn,0) = typ                          ! 0-based index inherited from elsewhere in make_bcs
      iTable(nn,2) = ig -1
      iTable(nn,3) = jg -1
      iTable(nn,4) = pfaf_index
