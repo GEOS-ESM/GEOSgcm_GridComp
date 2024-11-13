@@ -367,21 +367,21 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'km2')
-  call v%add_attribute('long_name', 'tile_pfaf')
+  call v%add_attribute('long_name', 'tile_area')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
   call metadata%add_variable('area', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
-  call v%add_attribute('long_name', 'center_of_mass_longitude')
+  call v%add_attribute('long_name', 'tile_center_of_mass_longitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
   call metadata%add_variable('com_lon', v)
   
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
-  call v%add_attribute('long_name', 'center_of_mass_latitude')
+  call v%add_attribute('long_name', 'tile_center_of_mass_latitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
   call metadata%add_variable('com_lat', v)
@@ -392,52 +392,62 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
      else
         write(str_num, '(i0)') ll
      endif
+
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_i_indg')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_i_index_of_tile_in_global_grid')
      call metadata%add_variable('i_indg'//trim(str_num), v)
+
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_j_indg')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_j_index_of_tile_in_global_grid')
      call metadata%add_variable('j_indg'//trim(str_num), v)
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_fraction_of_cell')
+     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_area_fraction_of_tile_in_grid_cell')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call v%add_attribute("_FillValue",    MAPL_UNDEF_R8)
      call metadata%add_variable('frac_cell'//trim(str_num), v)
+
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'pfaf index')
+     call v%add_attribute('long_name', 'Pfafstetter_index')
      call metadata%add_variable('pfaf_index'//trim(str_num), v)
   enddo
 
   if (EASE) then
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'minimum_lon')
+     call v%add_attribute('units', 'degree')
+     call v%add_attribute('long_name', 'tile_minimum_longitude')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call metadata%add_variable('min_lon', v)
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'maximum_lon')
+     call v%add_attribute('units', 'degree')
+     call v%add_attribute('long_name', 'tile_maximum_longitude')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call metadata%add_variable('max_lon', v)
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'minimum_lat')
+     call v%add_attribute('units', 'degree')
+     call v%add_attribute('long_name', 'tile_minimum_latitude')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call metadata%add_variable('min_lat', v)
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'maximum_lat')
+     call v%add_attribute('units', 'degree')
+     call v%add_attribute('long_name', 'tile_maximum_latitude')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call metadata%add_variable('max_lat', v)
+
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'elevation')
+     call v%add_attribute('units', 'm')
+     call v%add_attribute('long_name', 'tile_mean_elevation')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call metadata%add_variable('elev', v)
+
   endif
 
   call formatter%create(File, mode=PFIO_NOCLOBBER, rc=status)
