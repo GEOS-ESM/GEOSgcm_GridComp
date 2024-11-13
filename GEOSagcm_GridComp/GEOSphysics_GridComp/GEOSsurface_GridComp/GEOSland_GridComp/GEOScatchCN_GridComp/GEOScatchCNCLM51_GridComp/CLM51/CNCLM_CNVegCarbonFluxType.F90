@@ -28,6 +28,8 @@ module CNVegCarbonFluxType
   use MAPL_ExceptionHandling
   use abortutils       , only : endrun
   use shr_log_mod                        , only : errMsg => shr_log_errMsg
+!  use SPMMod                             , only : sparse_matrix_type, diag_matrix_type, vector_type
+
 
   ! !PUBLIC TYPES:
   implicit none
@@ -467,6 +469,15 @@ module CNVegCarbonFluxType
      integer,pointer :: list_aphc          (:)        ! Indices of non-diagnoal entries in full sparse matrix Aph for C cycle
      integer,pointer :: list_agmc          (:)        ! Indices of non-diagnoal entries in full sparse matrix Agm for C cycle
      integer,pointer :: list_afic          (:)        ! Indices of non-diagnoal entries in full sparse matrix Afi for C cycle
+
+!     type(sparse_matrix_type)      :: AKphvegc        ! Aph*Kph for C cycle in sparse matrix format
+!     type(sparse_matrix_type)      :: AKgmvegc        ! Agm*Kgm for C cycle in sparse matrix format
+!     type(sparse_matrix_type)      :: AKfivegc        ! Afi*Kfi for C cycle in sparse matrix format
+!     type(sparse_matrix_type)      :: AKallvegc       ! Aph*Kph + Agm*Kgm + Afi*Kfi for C cycle in sparse matrix format 
+!
+!     type(vector_type)             :: Xvegc           ! Vegetation C of each compartment in a vector format
+!     type(vector_type)             :: Xveg13c         ! Vegetation C13 of each compartment in a vector format
+!     type(vector_type)             :: Xveg14c         ! Vegetation C14 of each compartment in a vector format
 
      ! Objects that help convert once-per-year dynamic land cover changes into fluxes
      ! that are dribbled throughout the year

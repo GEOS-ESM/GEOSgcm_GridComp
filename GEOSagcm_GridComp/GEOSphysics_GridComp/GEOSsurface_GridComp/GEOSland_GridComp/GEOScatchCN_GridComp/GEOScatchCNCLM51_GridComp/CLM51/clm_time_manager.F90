@@ -41,8 +41,10 @@ module clm_time_manager
 
       is_end_curr_day,          &! return true on last timestep in current day
       is_beg_curr_year,         &! return true on first timestep in current year
+      is_end_curr_year,         &! return true on last timestep in current year
       is_restart,               &! return true if this is a restart run
       is_first_step,            &! dummy function here, because it is loaded, but not used
+      is_first_step_of_this_run_segment, &! return true on first step of any run segment (initial, restart or branch run)
       is_near_local_noon,       &! return true if near local noon
       update_rad_dtime          ! track radiation interval via nstep
 
@@ -521,6 +523,41 @@ end function is_restart
     get_prev_yearfrac = get_curr_yearfrac(offset = -dtime)
 
   end function get_prev_yearfrac
+
+  !-----------------------------------------------------------------------
+  logical function is_end_curr_year()
+    !   
+    ! !DESCRIPTION:
+    ! Return true if current timestep is last timestep in current year.
+    !
+    ! !LOCAL VARIABLES:
+    integer ::&
+         yr,    &! year
+         mon,   &! month
+         day,   &! day of month
+         tod     ! time of day (seconds past 0Z)
+
+    character(len=*), parameter :: subname = 'is_end_curr_year'
+    !-----------------------------------------------------------------------
+
+    call get_curr_date(yr, mon, day, tod)
+    is_end_curr_year = (mon == 1 .and. day == 1 .and. tod == 0)
+
+  end function is_end_curr_year
+
+  !=========================================================================================
+        
+  logical function is_first_step_of_this_run_segment()
+
+    ! Return true if this is the first step of this run segment. This will be true for
+    ! the first step of a startup, restart or branch run.
+    character(len=*), parameter :: sub = 'clm::is_first_step_of_this_run_segment'
+
+    !if ( .not. check_timemgr_initialized(sub) ) return
+    
+    is_first_step_of_this_run_segment = (is_first_step())
+   
+  end function is_first_step_of_this_run_segment
 
   !=========================================================================================
 

@@ -69,6 +69,12 @@ module clm_varctl
   !----------------------------------------------------------  
   logical, public :: use_matrixcn = .false. !.false.              ! true => use cn matrix
   logical, public :: use_soil_matrixcn = .false.! true => use cn matrix
+  logical, public :: isspinup = .false.  !.false.              ! true => use acc spinup
+  logical, public :: is_outmatrix = .false.!.false.              ! true => use acc spinup
+  integer, public :: nyr_forcing  = 10   ! length of forcing years for the spin up. eg. if DATM_CLMNCEP_YR_START=1901;DATM_CLMNCEP_YR_END=1920, then nyr_forcing = 20
+  integer, public :: nyr_SASU     = 1    ! length of each semi-analytic solution. eg. nyr_SASU=5, analytic solutions will be calculated every five years.
+                                         ! nyr_SASU=1: the fastest SASU, but inaccurate; nyr_SASU=nyr_forcing(eg. 20): the lowest SASU but accurate
+  integer, public :: iloop_avg    = -999 ! The restart file will be based on the average of all analytic solutions within the iloop_avg^th loop. 
 
   real(r8), public :: nfix_timeconst = -1.2345_r8
 
