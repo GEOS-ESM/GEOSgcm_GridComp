@@ -48,6 +48,10 @@ module clm_varcon
   real(r8), public, parameter ::  secsphr = 3600._r8        ! Seconds in an hour
   real(r8), public, parameter ::  spval = 1.e36_r8          ! special value for real data
   integer , public, parameter ::  ispval = -9999            ! special value for int data
+  integer, public, parameter  ::  fun_period  = 1            ! A FUN parameter, and probably needs to be changed for testing
+  real(r8),public, parameter  ::  smallValue  = 1.e-12_r8    ! A small values used by FUN
+
+
 
   !------------------------------------------------------------------
   ! Soil depths

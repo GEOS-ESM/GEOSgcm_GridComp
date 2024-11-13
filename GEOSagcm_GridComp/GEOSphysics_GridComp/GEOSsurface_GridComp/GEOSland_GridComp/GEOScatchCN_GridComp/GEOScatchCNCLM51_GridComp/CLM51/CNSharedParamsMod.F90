@@ -28,7 +28,7 @@ module CNSharedParamsMod
 
   type(CNParamsShareType), protected :: CNParamsShareInst
 
-  logical, public :: use_fun      = .false.             ! Use the FUN2.0 model
+  logical, public :: use_fun      = .true.             ! Use the FUN2.0 model
   integer, public :: nlev_soildecomp_standard = nlevgrnd
 
   character(len=*), parameter, private :: sourcefile = &

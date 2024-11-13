@@ -19,6 +19,10 @@ module CNVegNitrogenFluxType
   use clm_varcon       , only : spval, ispval, dzsoi_decomp
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_crop, use_matrixcn
   use PatchType        , only : patch
+  use CNSharedParamsMod , only : use_fun
+  use LandunitType      , only : lun
+  use landunit_varcon  , only : istsoil, istcrop
+
 
   ! !PUBLIC TYPES:
   implicit none
@@ -393,7 +397,7 @@ contains
     integer  :: begp, endp
     integer  :: begc, endc
     integer  :: begg, endg
-    integer  :: np, nc, nz, p, nv, n
+    integer  :: np, nc, nz, p, nv, n, l, j
     !--------------------------------
 
     allocate(this%matrix_nphtransfer_doner_patch(1:37)) 
@@ -990,6 +994,60 @@ contains
        end do ! p
      end do ! nz
   end do ! nc     
+
+    do p = begp,endp
+       l = patch%landunit(p)
+
+       if ( use_crop )then
+          this%fert_counter_patch(p)  = spval
+          this%fert_patch(p)          = 0._r8
+          this%soyfixn_patch(p)       = 0._r8
+       end if
+
+       if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
+          this%fert_counter_patch(p)  = 0._r8
+       end if
+       if ( use_fun ) then      !previously set to spval for special land units
+          if (lun%ifspecial(l)) then
+             this%plant_ndemand_patch(p)        = 0._r8
+             this%avail_retransn_patch(p)       = 0._r8
+             this%plant_nalloc_patch(p)         = 0._r8
+             this%Npassive_patch(p)             = 0._r8
+             this%Nactive_patch(p)              = 0._r8
+             this%Nnonmyc_patch(p)              = 0._r8
+             this%Nam_patch(p)                  = 0._r8
+             this%Necm_patch(p)                 = 0._r8
+             if (use_nitrif_denitrif) then
+                this%Nactive_no3_patch(p)       = 0._r8
+                this%Nactive_nh4_patch(p)       = 0._r8
+                this%Nnonmyc_no3_patch(p)       = 0._r8
+                this%Nnonmyc_nh4_patch(p)       = 0._r8
+                this%Nam_no3_patch(p)           = 0._r8
+                this%Nam_nh4_patch(p)           = 0._r8
+                this%Necm_no3_patch(p)          = 0._r8
+                this%Necm_nh4_patch(p)          = 0._r8
+             end if
+             this%Nfix_patch(p)                 = 0._r8
+             this%Nretrans_patch(p)             = 0._r8
+             this%Nretrans_org_patch(p)         = 0._r8
+             this%Nretrans_season_patch(p)      = 0._r8
+             this%Nretrans_stress_patch(p)      = 0._r8
+             this%Nuptake_patch(p)              = 0._r8
+             this%sminn_to_plant_fun_patch(p)   = 0._r8
+             this%cost_nfix_patch               = 0._r8
+             this%cost_nactive_patch            = 0._r8
+             this%cost_nretrans_patch           = 0._r8
+             this%nuptake_npp_fraction_patch    = 0._r8
+
+             do j = 1, nlevdecomp
+                this%sminn_to_plant_fun_vr_patch(p,j)       = 0._r8
+                this%sminn_to_plant_fun_no3_vr_patch(p,j)   = 0._r8
+                this%sminn_to_plant_fun_nh4_vr_patch(p,j)   = 0._r8
+             end do
+          end if
+       end if
+    end do
+
 
   end subroutine Init
 

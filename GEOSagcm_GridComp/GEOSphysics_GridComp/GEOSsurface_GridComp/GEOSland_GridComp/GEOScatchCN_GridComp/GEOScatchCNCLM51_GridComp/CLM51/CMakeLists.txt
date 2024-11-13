@@ -80,6 +80,7 @@ set (srcs
   CNFireLi2016Mod.F90
   CNFireLi2021Mod.F90
   CNFireNoFireMod.F90
+  CNFUNMod.F90
   CNGapMortalityMod.F90
   CNGRespMod.F90
   CN_init_mod.F90
@@ -93,6 +94,7 @@ set (srcs
   CNRootDynMod.F90
   CNSharedParamsMod.F90
   CNVegetationFacade.F90
+  CNVegMatrixMod.F90
   CNVegStructUpdateMod.F90
   column_varcon.F90
   fileutils.F90
@@ -100,6 +102,7 @@ set (srcs
   FireMethodType.F90
   initSubgridMod.F90
   landunit_varcon.F90
+  MatrixMod.F90
   ncdio_pio.F90
   NutrientCompetitionCLM45defaultMod.F90
   NutrientCompetitionFactoryMod.F90
@@ -132,6 +135,7 @@ set (srcs
   SoilBiogeochemVerticalProfileMod.F90
   SoilWaterRetentionCurveMod.F90
   spmdMod.F90
+  SPMMod.F90
   subgridAveMod.F90
   SurfaceAlbedoMod.F90
   SurfaceRadiationMod.F90
