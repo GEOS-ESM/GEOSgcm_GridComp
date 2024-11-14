@@ -40,7 +40,6 @@ module GEOS_GigatrajGridCompMod
     character(len=:), allocatable :: vAlias
     character(len=:), allocatable :: vTendency
 
-    type(VerticalData) :: vdata
     logical :: regrid_to_latlon
   end type
 
@@ -160,11 +159,10 @@ contains
     integer :: DIMS(3), counts(3), i, j, l
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
     type (GigatrajInternalWrap)   :: wrap
-    real :: dlat, dlon
+    real :: dlat, dlon, delt
     real, allocatable, target :: lats_center(:), lons_center(:), levs_center(:)
     real, allocatable, target :: cube_lats_center(:, :), cube_lons_center(:,:)
     real, allocatable  :: lats_2dcenter(:, :), lons_2dcenter(:,:)
-    real, pointer :: levs_ptr(:)
     type (ESMF_TIME) :: CurrentTime
     character(len=20), target :: ctime 
     type(ESMF_Alarm)  :: GigaTrajOutAlarm, GigaTrajRebalanceAlarm, GigaTrajIntegrateAlarm
@@ -272,7 +270,9 @@ contains
        _ASSERT(.false., "vertical coordinate is needed")
     end select    
 
-    npz = size(levs_center, 1)
+    npz = Dims(3)
+    delt = (log(100000.)-log(2.))/npz
+    levs_center=[(exp(log(100000.)-(i-1)*delt), i=1, npz)]
     GigaTrajInternalPtr%npz = npz
     GigaTrajInternalPtr%Integrate_DT = Integrate_DT
 
@@ -388,14 +388,6 @@ contains
        J2 = J2s(rank+1)
        GigaTrajInternalPtr%CellToRank(I1:I2,J1:J2) = rank
     enddo
-    ! WJiang notes: the vcoord should be consistent with the HISTORY.rc
-    levs_ptr=>levs_center
-    select case (GigaTrajInternalPtr%vCoord)
-    case ('PL')
-      GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'log(PL)', vscale = 1.0, vunit = 'Pa',_RC)
-    case ('TH')
-      GigaTrajInternalPtr%vdata = VerticalData(levs_ptr, vcoord = 'log(TH)', vscale = 1.0, vunit = 'K',_RC)
-    end select
 
     call MAPL_Grid_interior(Grid_,i1,i2,j1,j2)
     if (GigaTrajInternalPtr%regrid_to_latlon) then
@@ -543,7 +535,6 @@ contains
     type (GigatrajInternalWrap)   :: wrap
     real, dimension(:,:,:), pointer     :: U, V, W, P, PL0, PLE, TH
     real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
-    real, dimension(:,:,:), allocatable :: U_inter, V_inter, W_inter, P_inter
     real, dimension(:,:,:), allocatable, target  :: haloU, haloV, haloW, haloP
     integer :: counts(3), dims(3), d1,d2,km,lm, i1,i2,j1,j2
 
@@ -557,60 +548,46 @@ contains
     call MAPL_GetPointer(state, W, trim(GigaTrajInternalPtr%vTendency), _RC)
     call MAPL_GetPointer(state, P, trim(GigaTrajInternalPtr%vCoord), _RC)
 
-    call ESMF_StateGet(state, GigaTrajInternalPtr%vCoord , field=GigaTrajInternalPtr%vdata%interp_var, rc=status)
-    call GigaTrajInternalPtr%vdata%setup_eta_to_pressure(_RC)
-
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
     else
        call MAPL_GridGet(GigaTrajInternalPtr%CubedGrid,  localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
     endif
-   !#lm = counts(3)
-    lm = size(GigaTrajInternalPtr%vdata%levs)
 
+    lm =size(U,3)
     d1 =size(U,1)
     d2 =size(U,2)
 
-    allocate(U_latlon(counts(1),counts(2),lm))
-    allocate(V_latlon(counts(1),counts(2),lm))
-    allocate(W_latlon(counts(1),counts(2),lm))
-    allocate(P_latlon(counts(1),counts(2),lm))
-
-    allocate(U_inter(d1,d2,lm))
-    allocate(V_inter(d1,d2,lm))
-    allocate(W_inter(d1,d2,lm))
-    allocate(P_inter(d1,d2,lm))
 
     allocate(haloU(counts(1)+2, counts(2)+2,lm), source = 0.0)
     allocate(haloV(counts(1)+2, counts(2)+2,lm), source = 0.0)
     allocate(haloW(counts(1)+2, counts(2)+2,lm), source = 0.0)
     allocate(haloP(counts(1)+2, counts(2)+2,lm), source = 0.0)
 
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(U, U_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(V, V_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(W, W_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(P, P_inter,rc=status)
     if ( GigaTrajInternalPtr%regrid_to_latlon) then
-       call GigaTrajInternalPtr%cube2latlon%regrid(U_inter, V_inter, U_latlon, V_latlon, _RC)
-       call GigaTrajInternalPtr%cube2latlon%regrid(W_inter, W_latlon, _RC)
-       call GigaTrajInternalPtr%cube2latlon%regrid(P_inter, P_latlon, _RC)
+       allocate(U_latlon(counts(1),counts(2),lm))
+       allocate(V_latlon(counts(1),counts(2),lm))
+       allocate(W_latlon(counts(1),counts(2),lm))
+       allocate(P_latlon(counts(1),counts(2),lm))
+       call GigaTrajInternalPtr%cube2latlon%regrid(U, V, U_latlon, V_latlon, _RC)
+       call GigaTrajInternalPtr%cube2latlon%regrid(W, W_latlon, _RC)
+       call GigaTrajInternalPtr%cube2latlon%regrid(P, P_latlon, _RC)
 
        call esmf_halo(GigaTrajInternalPtr%LatLonGrid, U_Latlon, haloU, _RC)
        call esmf_halo(GigaTrajInternalPtr%LatLonGrid, V_Latlon, haloV, _RC)
        call esmf_halo(GigaTrajInternalPtr%LatLonGrid, W_Latlon, haloW, _RC)
        call esmf_halo(GigaTrajInternalPtr%LatLonGrid, P_Latlon, haloP, _RC)
+       deallocate(U_latlon, V_latlon, W_latlon, P_latlon)
     else
-       call esmf_halo(GigaTrajInternalPtr%CubedGrid, U_inter, haloU, _RC)
-       call esmf_halo(GigaTrajInternalPtr%CubedGrid, V_inter, haloV, _RC)
-       call esmf_halo(GigaTrajInternalPtr%CubedGrid, W_inter, haloW, _RC)
-       call esmf_halo(GigaTrajInternalPtr%CubedGrid, P_inter, haloP, _RC)
+       call esmf_halo(GigaTrajInternalPtr%CubedGrid, U, haloU, _RC)
+       call esmf_halo(GigaTrajInternalPtr%CubedGrid, V, haloV, _RC)
+       call esmf_halo(GigaTrajInternalPtr%CubedGrid, W, haloW, _RC)
+       call esmf_halo(GigaTrajInternalPtr%CubedGrid, P, haloP, _RC)
     endif
 
     call updateFields( GigaTrajInternalPtr%metSrc, c_loc(ctime), c_loc(haloU), c_loc(haloV), c_loc(haloW), c_loc(haloP))
 
     if(associated(PL0)) deallocate(PL0)
-    deallocate(U_latlon, V_latlon, W_latlon, P_latlon)
-    deallocate(U_inter,  V_inter,  W_inter,  P_inter)
     deallocate(haloU, haloV, haloW, haloP)
     RETURN_(ESMF_SUCCESS)
     
@@ -710,13 +687,9 @@ contains
     call MAPL_GetPointer(Import, W_cube, GigaTrajInternalPtr%vTendency, _RC)
     call MAPL_GetPointer(Import, P_cube, GigaTrajInternalPtr%vCoord, _RC)
 
-    lm = size(GigaTrajInternalPtr%vdata%levs)
+    lm = size(u_cube,3)
     d1 = size(u_cube,1)
     d2 = size(u_cube,2)
-    allocate(U_inter(d1, d2,lm), source = 0.0)
-    allocate(V_inter(d1, d2,lm), source = 0.0)
-    allocate(W_inter(d1, d2,lm), source = 0.0)
-    allocate(P_inter(d1, d2,lm), source = 0.0)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        grid_ = GigaTrajInternalPtr%LatLonGrid
@@ -738,34 +711,26 @@ contains
     allocate(haloW(counts(1)+2, counts(2)+2,lm), source = 0.0)
     allocate(haloP(counts(1)+2, counts(2)+2,lm), source = 0.0)
 
-    call ESMF_StateGet(import, GigaTrajInternalPtr%vCoord, field=GigaTrajInternalPtr%vdata%interp_var, _RC)
-    call GigaTrajInternalPtr%vdata%setup_eta_to_pressure(_RC)
-
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(U_cube, U_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(V_cube, V_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(W_cube, W_inter,rc=status)
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(P_cube, P_inter,rc=status)
-
-    if (GigaTrajInternalPtr%regrid_to_latlon) then
-       call GigaTrajInternalPtr%cube2latlon%regrid(U_inter,V_inter, U_latlon, V_latlon, _RC)
-       call GigaTrajInternalPtr%cube2latlon%regrid(W_inter, W_latlon, _RC)
-       call GigaTrajInternalPtr%cube2latlon%regrid(P_inter, P_latlon, _RC)
-    endif
-
 !---------------
 ! Step 2) Get halo
 !---------------
-
     if (GigaTrajInternalPtr%regrid_to_latlon) then
+
+      call GigaTrajInternalPtr%cube2latlon%regrid(U_cube,V_cube, U_latlon, V_latlon, _RC)
+      call GigaTrajInternalPtr%cube2latlon%regrid(W_cube, W_latlon, _RC)
+      call GigaTrajInternalPtr%cube2latlon%regrid(P_cube, P_latlon, _RC)
+
       call esmf_halo(grid_, U_Latlon, haloU, _RC)
       call esmf_halo(grid_, V_Latlon, haloV, _RC)
       call esmf_halo(grid_, W_Latlon, haloW, _RC)
       call esmf_halo(grid_, P_Latlon, haloP, _RC)
+
+      deallocate( U_Latlon, V_latlon, W_latlon, P_latlon) 
     else
-      call esmf_halo(grid_, U_inter, haloU, _RC)
-      call esmf_halo(grid_, V_inter, haloV, _RC)
-      call esmf_halo(grid_, W_inter, haloW, _RC)
-      call esmf_halo(grid_, P_inter, haloP, _RC)
+      call esmf_halo(grid_, U_cube, haloU, _RC)
+      call esmf_halo(grid_, V_cube, haloV, _RC)
+      call esmf_halo(grid_, W_cube, haloW, _RC)
+      call esmf_halo(grid_, P_cube, haloP, _RC)
     endif
 
 !---------------
@@ -782,7 +747,6 @@ contains
                        c_loc(GigaTrajInternalPtr%parcels%lats), &
                        c_loc(GigaTrajInternalPtr%parcels%zs))
    
-    if (allocated(U_Latlon)) deallocate( U_Latlon, V_latlon, W_latlon, P_latlon) 
     deallocate(haloU, haloV, haloW, haloP)
   
 !---------------
@@ -1462,7 +1426,7 @@ contains
     type (ESMF_GRID)                :: grid_
     type(ESMF_State)  :: leaf_export
     real, dimension(:,:,:), pointer     :: ptr3d
-    real, dimension(:,:,:), allocatable :: field_latlon, field_inter
+    real, dimension(:,:,:), allocatable :: field_latlon
 
     real, dimension(:,:,:), allocatable, target  :: haloField
     integer :: counts(3), dims(3), d1, d2, lm, count3
@@ -1489,13 +1453,9 @@ contains
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
 
-    lm = size(GigaTrajInternalPtr%vdata%levs)
+    lm = size(ptr3d,3)
     d1 = size(ptr3d,1)
     d2 = size(ptr3d,2)
-
-    allocate(field_inter(d1,d2,lm), source = 0.0)
-
-    call  GigaTrajInternalPtr%vdata%regrid_eta_to_pressure(ptr3d, field_inter,rc=status)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        grid_ = GigaTrajInternalPtr%LatLonGrid
@@ -1509,10 +1469,11 @@ contains
     allocate(haloField(counts(1)+2, counts(2)+2, lm), source = 0.0)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
-       call GigaTrajInternalPtr%cube2latlon%regrid(field_inter, Field_latlon, _RC)
+       call GigaTrajInternalPtr%cube2latlon%regrid(ptr3d, Field_latlon, _RC)
        call esmf_halo(grid_, Field_latlon, haloField, _RC)
+       deallocate(Field_latlon)
     else
-       call esmf_halo(grid_, field_inter, haloField, _RC)
+       call esmf_halo(grid_, ptr3d, haloField, _RC)
     endif
 
     field_ = trim(fieldname)//c_null_char
@@ -1524,7 +1485,7 @@ contains
               c_loc(GigaTrajInternalPtr%parcels%zs),           &
               c_loc(values))
 
-    deallocate(field_latlon, haloField, field_inter)
+    deallocate(haloField)
     RETURN_(ESMF_SUCCESS)
 
   end subroutine get_metsrc_data
