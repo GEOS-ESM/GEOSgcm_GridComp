@@ -359,15 +359,15 @@ contains
       allocate(this%enzs_z_patch    (begp:endp,1:nlevcan)) ; this%enzs_z_patch      (:,:) = 1._r8
     endif
 
-     this%rootstem_acc = .false.     ! jkolassa, Jun 2022: Default for CTSM5.1
-
-     this%light_inhibit = .true.     ! jkolassa, Feb 2022: This is the default value for CTSM5.1; we could in the future control this through resource files
-
-     this%leafresp_method = 2        ! jkolassa, Feb 2022: Default for CTSM5.1 if use_cn is true (2 corresponds to Atkin et al., 2015)
-
-     this%stomatalcond_mtd = 2       ! jkolassa, Feb 2022: Default for CTSM5.1, corresponds to Medlyn et al., 2011
-
-     this%modifyphoto_and_lmr_forcrop = .true. ! jkolassa, Feb 2022: Default for CLM50 and up
+!     this%rootstem_acc = .false.     ! jkolassa, Jun 2022: Default for CTSM5.1
+!
+!     this%light_inhibit = .true.     ! jkolassa, Feb 2022: This is the default value for CTSM5.1; we could in the future control this through resource files
+!
+!     this%leafresp_method = 2        ! jkolassa, Feb 2022: Default for CTSM5.1 if use_cn is true (2 corresponds to Atkin et al., 2015)
+!
+!     this%stomatalcond_mtd = 2       ! jkolassa, Feb 2022: Default for CTSM5.1, corresponds to Medlyn et al., 2011
+!
+!     this%modifyphoto_and_lmr_forcrop = .true. ! jkolassa, Feb 2022: Default for CLM50 and up
 
   ! initialize types from restart file or through cold start values
 

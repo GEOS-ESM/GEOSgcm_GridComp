@@ -253,6 +253,8 @@ module CN_initMod
     call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )
     call CNNDynamicsReadNML       ( NLFilename )
+    call photosyns_inst%ReadNML   ( NLFilename )
+    call canopystate_inst%ReadNML ( NLFilename )
 
     ! initialize states and fluxes
 
