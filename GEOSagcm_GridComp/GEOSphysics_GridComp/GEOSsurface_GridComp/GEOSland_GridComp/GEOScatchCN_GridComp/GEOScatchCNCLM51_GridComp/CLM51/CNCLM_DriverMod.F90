@@ -62,7 +62,7 @@ contains
 
 !---------------------------------
  subroutine CN_Driver(nch,ityp,fveg,ndep,tp1,tairm,psis,bee,dayl,btran_fire,car1m,&
-                      rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,gdp,&
+                      rzm,sfm,rhm,windm,rainfm,snowfm,prec10d,prec60d,et365d,gdp,&
                       abm,peatf,hdm,lnfm,poros,rh30,totwat,bflow,runsrf,sndzn,&
                       fsnow,tg10d,t2m5d,sndzn5d,water_inst,first, &
                       psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, wpwet,   &
@@ -97,6 +97,7 @@ contains
  real, dimension(nch), intent(in) :: snowfm    ! snowfall (kg/m2/s)  
  real, dimension(nch), intent(in) :: prec10d   ! 10-day running mean of total precipitation (mm H2O/s)
  real, dimension(nch), intent(in) :: prec60d   ! 60-day running mean of total precipitation (mm H2O/s)
+ real, dimension(nch), intent(in) :: et365d    ! 365-day running mean of total ET (EVPSOI + EVPINT + EVPVEG) (W m-2)
  real, dimension(nch), intent(in) :: gdp       ! Real GDP (K 1995US$/capita)
  real, dimension(nch), intent(in) :: abm       ! Peak month for agricultural fire, unitless
  real, dimension(nch), intent(in) :: peatf     ! Fraction of peatland, unitless (0-1)
@@ -264,6 +265,7 @@ contains
         water_inst%waterstatebulk_inst%h2osoi_liq_col(n,-nlevsno+1:nlevgrnd) = totwat(nc)
         water_inst%waterfluxbulk_inst%qflx_drain_col(n) = bflow(nc)
         water_inst%waterfluxbulk_inst%qflx_surf_col(n) = runsrf(nc)
+        water_inst%waterfluxbulk_inst%AnnET(n) = et365d(nc)*(0.0864*0.408/3600)     ! convert from W m-2 to mm/s
 
         ! compute column-level saturated area fraction (water table at surface)
         if(nz==1) then

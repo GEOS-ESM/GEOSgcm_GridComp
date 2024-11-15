@@ -1916,6 +1916,17 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = '365-day running mean of total ET',&
+       UNITS              = 'W m-2'                         ,&
+       SHORT_NAME         = 'ET365D'                  ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+
   call MAPL_AddInternalSpec(GC,                    &
        LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
        UNITS              = 'kg m-2 s-1'                ,&
@@ -4793,6 +4804,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: RH30D
         real, dimension(:),   pointer :: TPREC10D
         real, dimension(:),   pointer :: TPREC60D
+        real, dimension(:),   pointer :: ET365D
 
         ! -----------------------------------------------------
         ! EXPORT Pointers
@@ -5227,13 +5239,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: n10d               ! number of land model steps in a 10-day period
     integer, save :: n30d               ! number of land model steps in a 30-day period
     integer, save :: n60d               ! number of land model steps in a 60-day period    
+    integer, save :: n365d              ! number of land model steps in a 365-day period
 
     ! For accumulated fields
     ! NOTE: In CNPhenologyMod.F90, init_gdd20 is always set to .false. as well. For GEOS-5 runs, need to discard at least the first 2 years.
     ! This is not a problem for offline runs because we always spin up the model whenever we change meterology. fzeng, July 2017 
     ! -------------------------------------------------------------------------------------------------------------------------------------- 
     logical, parameter :: init_accum = .true.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
+    logical, parameter :: init_accum_365 = .true.! jkolassa May 2023: needs to be set to true if no CNCLM51 restart is available
     integer, save :: istep                    ! model time step index
+    integer, save :: istep_365                ! model time step index
     integer :: accper                         ! number of time steps accumulated in a period of XX days, increases from 1 to nXXd in the first XX days,
     ! and remains as nXXd thereafter
     integer, allocatable, dimension(:) :: ta_count
@@ -5484,6 +5499,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,RH30D      ,'RH30D'      ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC10D   ,'TPREC10D'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,TPREC60D   ,'TPREC60D'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,ET365D     ,'ET365D'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,RUNSURF    ,'RUNSURF'    ,RC=STATUS); VERIFY_(STATUS)
  
         if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
@@ -5689,6 +5705,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       n10d = 10*86400/dt
       n30d = 30*86400/dt
       n60d = 60*86400/dt
+      n365d = 365*86400/dt
       ! fzeng: this is done in such way to exclude istep in the restart file
       if(init_accum) then
         istep = 0                             ! set model time step index to 0 when begin to accumulate the cumulative variables, fzeng, 21 Apr 2017 
@@ -5696,6 +5713,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         istep = maxval((/n10d,n30d,n60d/)) ! otherwise, set model time step index to the maximum of these nXX
       end if           
       
+      ! jkolassa: implement this separately for 365-day running mean of ET
+      if(init_accum_365) then 
+        istep_365 = 0                             ! set model time step index to 0 when begin to accumulate the cumulative variables, fzeng, 21 Apr 2017 
+       else
+        istep_365 = maxval((/n10d,n30d,n60d,n365d/)) ! otherwise, set model time step index to the maximum of these nXX
+      end if
+
+
       ! variables used for summing CN inputs over multiple land model calls; not saved on restart 
       ! fzeng: run must end on a CN call step
       ! -----------------------------------------------------------------------------------------
@@ -6671,6 +6696,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! --------------------------------------------------------------------
 
     istep = istep + 1
+    istep_365 = istep_365 + 1
     TA_MIN(:) = 1000.
 
     ! running mean - reset accumulation period until greater than nstep
@@ -7080,7 +7106,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        asnowm  = asnowm  / cnsum
 
        call CN_Driver(ntiles,ityp,fveg,ndep,tpm,tairm,psis,bee,dayl,btran_fire,ar1m,&
-                      rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,gdp,&
+                      rzmm,sfmm,rhm,windm,rainfm,snowfm,TPREC10D,TPREC60D,ET365D,gdp,&
                       abm,peatf,hdm,lnfm,poros,RH30D,totwatm,bflowm,runsrfm,sndzm,&
                       asnowm,TG10D,T2MMIN5D,SNDZM5D,water_inst, first_cn, &
                       psnsunm, psnsham, lmrsunm, lmrsham, laisunm, laisham, wpwet, &
@@ -7668,6 +7694,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            TP6 = TP6 + MAPL_TICE
 
         end if
+
+        ! compute 365-day running mean of total ET (excluding sublimation from snow)
+        if(init_accum_365) then     
+           ! 365-day running mean of total ET (W m-2)
+           accper = min(istep_365,n365d)
+           ET365D = ((accper-1)*ET365D + EVPSOI + EVPINT + EVPVEG) / accper     
+        else            
+           ET365D = ((n365d-1)*ET365D + EVPSOI + EVPINT + EVPVEG) / n365d
+        endif 
 
         if (OFFLINE_MODE /=0) then
            TC(:,FSAT) = TC1_0
