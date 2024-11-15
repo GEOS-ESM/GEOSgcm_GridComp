@@ -195,7 +195,7 @@ module CNVegetationFacade
 contains
 
   !-----------------------------------------------------------------------
-  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
+  subroutine Init(this, bounds, NLFilename, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
  
    !
     ! !DESCRIPTION:
@@ -214,6 +214,7 @@ contains
     ! !ARGUMENTS:
     class(cn_vegetation_type), intent(inout) :: this 
     type(bounds_type), intent(in)    :: bounds
+    character(len=*) , intent(in)    :: NLFilename  ! namelist filename
     integer,                                      intent(in) :: nch ! number of tiles
     integer, dimension(nch,NUM_VEG,NUM_ZON),      intent(in) :: ityp ! PFT index
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
@@ -277,7 +278,7 @@ contains
        call this%dgvs_inst%Init(bounds)
     end if
 
-    call create_cnfire_method(this%cnfire_method)
+    call create_cnfire_method(NLFilename, this%cnfire_method)
     call this%cnfire_method%FireInit(bounds)
 
     call ncid%open(trim(paramfile),pFIO_READ, RC=status)

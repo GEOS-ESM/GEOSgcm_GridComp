@@ -98,6 +98,7 @@ contains
     use decompMod        , only : bounds_type
     !
     ! !ARGUMENTS:
+    character(len=*), intent(in) :: NLFilename ! Namelist filename
     class(fire_method_type), allocatable, intent(inout) :: cnfire_method
     !
     ! !LOCAL VARIABLES:
@@ -120,7 +121,7 @@ contains
        call endrun(msg=errMsg(sourcefile, __LINE__))
 
     end select
-    call cnfire_method%FireReadNML( fire_method )
+    call cnfire_method%FireReadNML( NLFilename )
 
   end subroutine create_cnfire_method
   !-----------------------------------------------------------------------

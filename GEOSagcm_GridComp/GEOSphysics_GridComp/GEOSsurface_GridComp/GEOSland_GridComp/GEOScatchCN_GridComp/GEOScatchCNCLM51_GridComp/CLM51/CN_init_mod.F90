@@ -60,7 +60,7 @@ module CN_initMod
   use WaterType         , only : water_type
   use CNBalanceCheckMod
 
-  use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc
+  use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc, DecompCascadeBGCreadNML
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
   use SoilBiogeochemDecompCascadeCNMod   , only : readSoilBiogeochemDecompCnParams       => readParams
   use NutrientCompetitionFactoryMod      , only : create_nutrient_competition_method
@@ -255,12 +255,14 @@ module CN_initMod
     call CNNDynamicsReadNML       ( NLFilename )
     call photosyns_inst%ReadNML   ( NLFilename )
     call canopystate_inst%ReadNML ( NLFilename )
+    call DecompCascadeBGCreadNML  ( NLFilename )
+
 
     ! initialize states and fluxes
 
     call pftcon%init_pftcon_type        ()
 
-    call bgc_vegetation_inst%Init(bounds, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
+    call bgc_vegetation_inst%Init(bounds, NLFilename, nch, ityp, fveg, cncol, cnpft, paramfile, cn5_cold_start)
 
     call atm2lnd_inst%Init              (bounds)
 
