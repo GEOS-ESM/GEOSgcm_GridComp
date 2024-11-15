@@ -78,7 +78,7 @@ contains
   end subroutine FireReadNML_interface
 
   !-----------------------------------------------------------------------
-  subroutine BaseFireInit( this, bounds )
+  subroutine BaseFireInit( this, bounds)
     !
     ! !DESCRIPTION:
     ! Initialize CN Fire module
@@ -88,6 +88,7 @@ contains
     ! !ARGUMENTS:
     class(fire_base_type) :: this
     type(bounds_type), intent(in) :: bounds
+    !character(len=*),  intent(in) :: NLFilename
     !-----------------------------------------------------------------------
 
     if ( this%need_lightning_and_popdens() ) then

@@ -52,7 +52,7 @@ module FireMethodType
      !   consistent between different implementations.
      !
      !---------------------------------------------------------------------------
-  subroutine FireInit_interface(this, bounds, NLFilename)
+  subroutine FireInit_interface(this, bounds)
     !
     ! !DESCRIPTION:
     ! Initialize Fire datasets

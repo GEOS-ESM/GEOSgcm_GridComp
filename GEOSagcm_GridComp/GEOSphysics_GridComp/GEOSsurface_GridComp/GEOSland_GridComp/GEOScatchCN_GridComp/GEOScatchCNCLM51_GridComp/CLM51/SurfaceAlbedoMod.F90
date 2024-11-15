@@ -32,7 +32,7 @@ module SurfaceAlbedoMod
   implicit none
   !
   ! !PUBLIC MEMBER FUNCTIONS:
- ! public :: SurfaceAlbedo_readnl
+  public :: SurfaceAlbedo_readnl
  ! public :: SurfaceAlbedoInitTimeConst
  ! public :: SurfaceAlbedo  ! Surface albedo and two-stream fluxes
   !
@@ -82,57 +82,57 @@ module SurfaceAlbedoMod
 contains
 
   !-----------------------------------------------------------------------
-!  subroutine SurfaceAlbedo_readnl( NLFilename )
-!    !
-!    ! !DESCRIPTION:
-!    ! Read the namelist for SurfaceAlbedo
-!    !
-!    ! !USES:
-!    use spmdMod       , only : masterproc, mpicom
-!    use fileutils     , only : getavu, relavu, opnfil
-!    use shr_nl_mod    , only : shr_nl_find_group_name
-!    use shr_mpi_mod   , only : shr_mpi_bcast
-!    !
-!    ! !ARGUMENTS:
-!    character(len=*), intent(in) :: NLFilename ! Namelist filename
-!    !
-!    ! !LOCAL VARIABLES:
-!    integer :: ierr                 ! error code
-!    integer :: unitn                ! unit for namelist file
-!    character(len=*), parameter :: nmlname = "surfacealbedo_inparm"
-!
-!    character(len=*), parameter :: subname = 'SurfaceAlbedo_readnl'
-!    !-----------------------------------------------------------------------
-!
-!    namelist /surfacealbedo_inparm/ snowveg_affects_radiation
-!
-!    if (masterproc) then
-!       unitn = getavu()
-!       write(iulog,*) 'Read in '//nmlname//'  namelist'
-!       call opnfil (NLFilename, unitn, 'F')
-!       call shr_nl_find_group_name(unitn, nmlname, status=ierr)
-!       if (ierr == 0) then
-!          read(unitn, nml=surfacealbedo_inparm, iostat=ierr)
-!          if (ierr /= 0) then
-!             call endrun(msg="ERROR reading "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
-!          end if
-!       else
-!          call endrun(msg="ERROR could NOT find "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
-!       end if
-!       call relavu( unitn )
-!    end if
-!
-!    call shr_mpi_bcast(snowveg_affects_radiation, mpicom)
-!
-!    if (masterproc) then
-!       write(iulog,*)
-!       write(iulog,*) nmlname, ' settings'
-!       write(iulog,nml=surfacealbedo_inparm)
-!       write(iulog,*)
-!    end if
-!
-!  end subroutine SurfaceAlbedo_readnl
-!
+  subroutine SurfaceAlbedo_readnl( NLFilename )
+    !
+    ! !DESCRIPTION:
+    ! Read the namelist for SurfaceAlbedo
+    !
+    ! !USES:
+    use spmdMod       , only : masterproc, mpicom
+    use fileutils     , only : getavu, relavu, opnfil
+    use shr_nl_mod    , only : shr_nl_find_group_name
+    use shr_mpi_mod   , only : shr_mpi_bcast
+    !
+    ! !ARGUMENTS:
+    character(len=*), intent(in) :: NLFilename ! Namelist filename
+    !
+    ! !LOCAL VARIABLES:
+    integer :: ierr                 ! error code
+    integer :: unitn                ! unit for namelist file
+    character(len=*), parameter :: nmlname = "surfacealbedo_inparm"
+
+    character(len=*), parameter :: subname = 'SurfaceAlbedo_readnl'
+    !-----------------------------------------------------------------------
+
+    namelist /surfacealbedo_inparm/ snowveg_affects_radiation
+
+    if (masterproc) then
+       unitn = getavu()
+       write(iulog,*) 'Read in '//nmlname//'  namelist'
+       call opnfil (NLFilename, unitn, 'F')
+       call shr_nl_find_group_name(unitn, nmlname, status=ierr)
+       if (ierr == 0) then
+          read(unitn, nml=surfacealbedo_inparm, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(msg="ERROR reading "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
+          end if
+       else
+          call endrun(msg="ERROR could NOT find "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
+       end if
+       call relavu( unitn )
+    end if
+
+    call shr_mpi_bcast(snowveg_affects_radiation, mpicom)
+
+    if (masterproc) then
+       write(iulog,*)
+       write(iulog,*) nmlname, ' settings'
+       write(iulog,nml=surfacealbedo_inparm)
+       write(iulog,*)
+    end if
+
+  end subroutine SurfaceAlbedo_readnl
+
 !
 !  !-----------------------------------------------------------------------
 !  subroutine SurfaceAlbedoInitTimeConst(bounds)

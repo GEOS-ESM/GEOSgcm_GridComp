@@ -243,7 +243,7 @@ contains
        ! Read in the general CN namelist
     !   call this%CNReadNML( NLFilename )    ! MUST be called first as passes down control information to others
 
-       call this%cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+       call this%cnveg_carbonstate_inst%Init    (bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
 
        if (use_c13) then
           call this%c13_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)

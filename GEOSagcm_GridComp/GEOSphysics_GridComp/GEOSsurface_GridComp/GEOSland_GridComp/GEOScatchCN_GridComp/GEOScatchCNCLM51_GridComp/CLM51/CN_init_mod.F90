@@ -42,7 +42,7 @@ module CN_initMod
   use CNDVType
   use LandunitType          , only : lun
   use RootBiophysMod
-  use CNMRespMod         , only : readCNMRespParams => readParams
+  use CNMRespMod         , only : readCNMRespParams => readParams, CNMRespReadNML
   use CNSharedParamsMod  , only : CNParamsReadShared
   use spmdMod
   use Wateratm2lndBulkType
@@ -79,7 +79,7 @@ module CN_initMod
   use CNGapMortalityMod                  , only : readCNGapMortalityParams               => readParams
   use CNFUNMod                           , only : readCNFUNParams                        => readParams
   use CNNDynamicsMod                     , only : CNNDynamicsReadNML
-
+  use SurfaceAlbedoMod                   , only: SurfaceAlbedo_readnl
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
  
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
@@ -206,7 +206,6 @@ module CN_initMod
   type(Netcdf4_fileformatter) :: ncid
   integer            :: rc, status, ndt
 
-  integer, parameter :: zeng_2001_root    = 0 !the zeng 2001 root profile function
   !-----------------------------------------
 
    paramfile = '/discover/nobackup/jkolassa/CLM/parameter_files/ctsm51_params.c210923.nc'
@@ -256,7 +255,8 @@ module CN_initMod
     call photosyns_inst%ReadNML   ( NLFilename )
     call canopystate_inst%ReadNML ( NLFilename )
     call DecompCascadeBGCreadNML  ( NLFilename )
-
+    call CNMRespReadNML           ( NLFilename )
+    call SurfaceAlbedo_readnl     ( NLFilename )
 
     ! initialize states and fluxes
 
@@ -312,12 +312,9 @@ module CN_initMod
 
     ! calls to original CTSM initialization routines
 
-    ! initialize rooting profile with default values
-    rooting_profile_method_water    = zeng_2001_root
-    rooting_profile_method_carbon   = zeng_2001_root
-    rooting_profile_varindex_water  = 1 
-    rooting_profile_varindex_carbon = 2 
+    ! initialize rooting profile parameters from namelist
 
+    call init_rootprof(NLFilename)
 
     ! initialize root fractions
     call init_vegrootfr(bounds, nlevsoi, nlevgrnd, &

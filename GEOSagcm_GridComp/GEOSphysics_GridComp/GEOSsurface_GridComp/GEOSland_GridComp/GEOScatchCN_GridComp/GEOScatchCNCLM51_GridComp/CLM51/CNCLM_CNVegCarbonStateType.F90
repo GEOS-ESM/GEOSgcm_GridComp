@@ -223,7 +223,7 @@ type(cnveg_carbonstate_type), public, target, save :: cnveg_carbonstate_inst
 contains
 
 !----------------------------------------------
-  subroutine Init(this, bounds, nch, ityp, fveg, cncol, cnpft)
+  subroutine Init(this, bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
 
 ! !DESCRIPTION:
 ! Initialize CTSM carbon states
@@ -235,6 +235,7 @@ contains
 
   ! INPUT
     type(bounds_type),                            intent(in) :: bounds
+    character(len=*) ,                            intent(in) :: NLFilename                 ! Namelist filename
     integer,                                      intent(in) :: nch ! number of tiles
     integer, dimension(nch,NUM_VEG,NUM_ZON),      intent(in) :: ityp ! PFT index
     real, dimension(nch,NUM_VEG,NUM_ZON),         intent(in) :: fveg    ! PFT fraction
@@ -527,7 +528,68 @@ contains
      end do ! nz
   end do ! nc                                                                                                         
 
+  call this%InitReadNML  ( NLFilename )
+
   end subroutine Init
+
+  !------------------------------------------------------------------------
+  subroutine InitReadNML(this, NLFilename)
+    !
+    ! !DESCRIPTION:
+    ! Read the namelist for CNVegCarbonState
+    !
+    !USES:
+    use fileutils      , only : getavu, relavu, opnfil
+    use shr_nl_mod     , only : shr_nl_find_group_name
+    use spmdMod        , only : masterproc, mpicom
+    use shr_mpi_mod    , only : shr_mpi_bcast
+    use clm_varctl     , only : iulog
+    !
+    ! !ARGUMENTS:
+    class(cnveg_carbonstate_type)                       :: this
+    character(len=*)             , intent(in)           :: NLFilename                 ! Namelist filename
+    !
+    ! !LOCAL VARIABLES:
+    integer :: ierr                 ! error code
+    integer :: unitn                ! unit for namelist file
+
+    character(len=*), parameter :: subname = 'InitReadNML'
+    character(len=*), parameter :: nmlname = 'cnvegcarbonstate'   ! MUST match what is in namelist below
+    !-----------------------------------------------------------------------
+    real(r8) :: initial_vegC
+    namelist /cnvegcarbonstate/ initial_vegC
+
+    initial_vegC = cnvegcstate_const%initial_vegC
+
+    if (masterproc) then
+       unitn = getavu()
+       write(iulog,*) 'Read in '//nmlname//'  namelist'
+       call opnfil (NLFilename, unitn, 'F')
+       call shr_nl_find_group_name(unitn, nmlname, status=ierr)
+       if (ierr == 0) then
+          read(unitn, nml=cnvegcarbonstate, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(msg="ERROR reading "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
+          end if
+       else
+          call endrun(msg="ERROR could NOT find "//nmlname//"namelist"//errmsg(sourcefile, __LINE__))
+       end if
+       call relavu( unitn )
+    end if
+
+    call shr_mpi_bcast (initial_vegC            , mpicom)
+
+    cnvegcstate_const%initial_vegC = initial_vegC
+
+    if (masterproc) then
+       write(iulog,*) ' '
+       write(iulog,*) nmlname//' settings:'
+       write(iulog,nml=cnvegcarbonstate)    ! Name here MUST be the same as in nmlname above!
+       write(iulog,*) ' '
+    end if
+
+    !-----------------------------------------------------------------------
+
 
   !-----------------------------------------------------------------------
   subroutine Summary_carbonstate(this, bounds, num_allc, filter_allc, &
