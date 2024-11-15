@@ -220,6 +220,7 @@ module  PhotosynthesisMod
      ! Public procedures
      procedure, public  :: Init
      procedure, public  :: ReadParams
+     procedure, public  :: ReadNML
      procedure, public  :: TimeStepInit
 
   end type photosyns_type
