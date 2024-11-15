@@ -78,6 +78,7 @@ module CN_initMod
   use SoilBiogeochemPotentialMod         , only : readSoilBiogeochemPotentialParams      => readParams
   use CNGapMortalityMod                  , only : readCNGapMortalityParams               => readParams
   use CNFUNMod                           , only : readCNFUNParams                        => readParams
+  use CNNDynamicsMod                     , only : CNNDynamicsReadNML
 
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
  
@@ -251,6 +252,7 @@ module CN_initMod
     call CNPhenologyReadNML       ( NLFilename )
     call dynSubgridControl_init   ( )
     call CNFireReadNML            ( NLFilename )
+    call CNNDynamicsReadNML       ( NLFilename )
 
     ! initialize states and fluxes
 
