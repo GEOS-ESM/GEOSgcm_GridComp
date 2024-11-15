@@ -61,6 +61,10 @@ module CanopyStateType
   end type canopystate_type
   type(canopystate_type), public, target, save :: canopystate_inst
 
+  character(len=*), parameter, private :: sourcefile = &
+       __FILE__
+
+
 contains
 
 !--------------------------------------------------------------
