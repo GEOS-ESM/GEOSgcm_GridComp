@@ -589,7 +589,7 @@ contains
     end if
 
     !-----------------------------------------------------------------------
-
+  end subroutine InitReadNML
 
   !-----------------------------------------------------------------------
   subroutine Summary_carbonstate(this, bounds, num_allc, filter_allc, &
