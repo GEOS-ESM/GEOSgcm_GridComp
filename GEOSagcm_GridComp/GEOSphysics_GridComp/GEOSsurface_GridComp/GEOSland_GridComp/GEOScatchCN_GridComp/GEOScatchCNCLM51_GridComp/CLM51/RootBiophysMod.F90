@@ -38,19 +38,19 @@ contains
 
     ! !USES:
     use abortutils      , only : endrun   
-    use fileutils       , only : getavu, relavu
+    use fileutils       , only : getavu, relavu, opnfil
     use spmdMod         , only : mpicom, masterproc
     use shr_mpi_mod     , only : shr_mpi_bcast
     use clm_varctl      , only : iulog
-    use clm_nlUtilsMod  , only : find_nlgroup_name
+    use shr_nl_mod      , only : shr_nl_find_group_name
 
     ! !ARGUMENTS:
     !------------------------------------------------------------------------------
     implicit none
     character(len=*), intent(in) :: NLFilename
 
-    integer            :: nu_nml                     ! unit for namelist file
-    integer            :: nml_error                  ! namelist i/o error flag
+    integer            :: unitn                     ! unit for namelist file
+    integer            :: ierr                      ! namelist i/o error flag
     character(*), parameter    :: subName = "('init_rootprof')"
 
     !-----------------------------------------------------------------------
@@ -68,19 +68,18 @@ contains
 
     ! Read rooting_profile namelist
     if (masterproc) then
-       nu_nml = getavu()
-       open( nu_nml, file=trim(NLFilename), status='old', iostat=nml_error )
-       call find_nlgroup_name(nu_nml, 'rooting_profile_inparm', status=nml_error)
-       if (nml_error == 0) then
-          read(nu_nml, nml=rooting_profile_inparm,iostat=nml_error)
-          if (nml_error /= 0) then
+       unitn = getavu()
+       call opnfil (NLFilename, unitn, 'F')
+       call shr_nl_find_group_name(unitn, 'rooting_profile_inparm', status=ierr)
+       if (ierr == 0) then
+          read(unitn, rooting_profile_inparm,iostat=ierr)
+          if (ierr /= 0) then
              call endrun(subname // ':: ERROR reading rooting_profile namelist')
           end if
        else
           call endrun(subname // ':: ERROR finding rooting_profile namelist')
        end if
-       close(nu_nml)
-       call relavu( nu_nml )
+       call relavu( unitn )
 
     endif
 
