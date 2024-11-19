@@ -303,8 +303,12 @@ contains
     ! Read the namelist for CNFire
     !
     ! !USES:
+    use fileutils      , only : getavu, relavu, opnfil
     use shr_nl_mod     , only : shr_nl_find_group_name
+    use spmdMod        , only : masterproc, mpicom
+    use shr_mpi_mod    , only : shr_mpi_bcast
     use clm_varctl     , only : iulog
+
     !
     ! !ARGUMENTS:
     class(cnfire_base_type) :: this

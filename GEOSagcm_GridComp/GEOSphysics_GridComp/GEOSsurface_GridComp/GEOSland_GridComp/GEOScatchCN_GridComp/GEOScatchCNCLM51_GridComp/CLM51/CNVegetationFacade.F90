@@ -246,10 +246,10 @@ contains
        call this%cnveg_carbonstate_inst%Init    (bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
 
        if (use_c13) then
-          call this%c13_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+          call this%c13_cnveg_carbonstate_inst%Init    (bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
        end if
        if (use_c14) then
-          call this%c14_cnveg_carbonstate_inst%Init    (bounds, nch, ityp, fveg, cncol, cnpft)
+          call this%c14_cnveg_carbonstate_inst%Init    (bounds, NLFilename, nch, ityp, fveg, cncol, cnpft)
        end if
        call this%cnveg_carbonflux_inst%Init     (bounds, nch, ityp, fveg, cncol, cnpft, 'c12', cn5_cold_start)
        if (use_c13) then

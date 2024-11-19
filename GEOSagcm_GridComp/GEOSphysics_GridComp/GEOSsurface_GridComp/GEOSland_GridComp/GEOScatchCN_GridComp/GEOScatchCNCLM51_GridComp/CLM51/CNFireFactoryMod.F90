@@ -82,7 +82,7 @@ contains
   !-----------------------------------------------------------------------
 
   !-----------------------------------------------------------------------
-  subroutine create_cnfire_method( cnfire_method )
+  subroutine create_cnfire_method( NLFilename, cnfire_method )
     !
     ! !DESCRIPTION:
     ! Create and return an object of fire_method_type. The particular type

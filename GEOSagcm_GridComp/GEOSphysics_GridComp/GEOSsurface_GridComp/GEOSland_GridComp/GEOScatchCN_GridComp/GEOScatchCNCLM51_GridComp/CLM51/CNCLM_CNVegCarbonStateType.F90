@@ -11,6 +11,8 @@ module CNVegCarbonStateType
   use decompMod        , only : bounds_type
   use pftconMod        , only : noveg, npcropmin, pftcon
   use PatchType        , only : patch
+  use abortutils       , only : endrun
+  use shr_log_mod      , only : errMsg => shr_log_errMsg
 
   ! !PUBLIC TYPES:
   implicit none
@@ -201,6 +203,7 @@ module CNVegCarbonStateType
      procedure , public  :: Summary => Summary_carbonstate
      procedure , public  :: ZeroDWT
      procedure , public  :: Init
+     procedure , private :: InitReadNML     ! Read in namelist
 
  end type cnveg_carbonstate_type
 
