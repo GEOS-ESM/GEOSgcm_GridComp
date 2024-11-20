@@ -11,6 +11,10 @@
   use clm_varctl       , only : use_nitrif_denitrif, use_vertsoilc, use_century_decomp, use_soil_matrixcn
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
+  use LandunitType                       , only : lun
+  use ColumnType                         , only : col
+  use landunit_varcon                    , only : istcrop, istsoil
+
 
   ! !PUBLIC TYPES:
   implicit none
@@ -94,7 +98,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer               :: begc,endc
-    integer               :: n, nc, nz, np
+    integer               :: n, nc, nz, np, l, c
     integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
     !-----------------------------------
 
@@ -165,6 +169,14 @@ contains
           this%sminn_vr_col  (n,1:nlevdecomp_full) = cncol(nc,nz,24)
           this%sminn_col  (n) = this%sminn_vr_col(n,1)
 
+          ! jkolassa Nov 2024: temporary initialization for NO3 and NH4; need to be
+          ! added as restart variables
+          this%smin_no3_col(n) = (1.25/2.25)*this%sminn_col(n)
+          this%smin_nh4_col(n) = this%sminn_col(n)/2.25
+          this%smin_no3_vr_col(n,1:nlevdecomp_full) = this%smin_no3_col(n)
+          this%smin_nh4_vr_col(n,1:nlevdecomp_full) = this%smin_nh4_col(n)
+
+
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM
              this%decomp_npools_col    (n,np) = cncol(nc,nz,decomp_npool_cncol_index(np))
@@ -174,6 +186,23 @@ contains
           end do !np
       end do !nz
    end do 
+
+    do c = begc, endc
+       l = col%landunit(c)
+
+       if (lun%itype(l) == istsoil .or. lun%itype(l) == istcrop) then
+
+          this%totlitn_col(c)    = 0._r8
+          this%totsomn_col(c)    = 0._r8
+          this%totlitn_1m_col(c) = 0._r8
+          this%totsomn_1m_col(c) = 0._r8
+          this%cwdn_col(c)       = 0._r8
+
+       end if
+    end do
+
+
+
 
  end subroutine Init
 
