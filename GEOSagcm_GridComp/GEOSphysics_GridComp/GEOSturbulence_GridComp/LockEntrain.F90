@@ -774,28 +774,12 @@ contains
                            (vsurf3 + vshear3)/zsml(i,j))/ &
                            (tmp1+tmp2) ) )
 
-            if (pertopt_sfc == 1) then
 !----------------------------------------
-! fudgey adjustment of entrainment to reduce it
+! AMM fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
-! deep ones
-            if ( zsml(i,j) .lt. 1600. ) then 
-               wentr_tmp = wentr_tmp * ( zsml(i,j) / 800. )
-            else
-               wentr_tmp = 2.*wentr_tmp
-            endif
+! deep ones. Linear from 0 to 1600m
+            wentr_tmp = wentr_tmp * MIN(2.0, zsml(i,j)/800.)
 !-----------------------------------------
-
-!!AMM106 !----------------------------------------
-!!AMM106 ! More fudgey adjustment of entrainment.
-!!AMM106 ! Zeroes entr if bulk shear in PBL > vbulk_scale
-!!AMM106 if ( vbulkshr .gt. vbulk_scale ) wentr_tmp = 0.0
-!!AMM106 if (    ( vbulkshr .gt. 0.5*vbulk_scale  )   &
-!!AMM106   .and. ( vbulkshr .le.     vbulk_scale  ) ) then 
-!!AMM106      wentr_tmp = wentr_tmp * ( vbulk_scale -  vbulkshr ) *2 &
-!!AMM106                                  / vbulk_scale
-!!AMM106 endif
-            endif
 
             k_entr_tmp = wentr_tmp*(zfull(i,j,ipbl-1)-zfull(i,j,ipbl))  
             k_entr_tmp = min ( k_entr_tmp, akmax )
@@ -1053,27 +1037,16 @@ contains
 
          wentr_brv = beta_rad*vbr3/zradml(i,j)/(tmp1+tmp2)
 
-         if (pertopt_sfc == 1) then
 !----------------------------------------
-! fudgey adjustment of entrainment to reduce it
+! AAM107 fudgey adjustment of entrainment to reduce it
 ! for shallow boundary layers, and increase for 
-! deep ones
-
-!!AMM107
-         if ( zradtop .lt. 500. ) then
-            wentr_rad = 0.00
-         endif
-         if (( zradtop .gt. 500.) .and. (zradtop .le. 800. )) then
-            wentr_rad = wentr_rad * ( zradtop-500.) / 300.
-         endif
-
-         if ( zradtop .lt. 2400. ) then 
-            wentr_rad = wentr_rad * ( zradtop / 800. )
+! deep ones: piecewise linear function 500-800m & 800-2400m 
+        if ( zradtop .le. 800. ) then
+            wentr_rad = wentr_rad * max(0.0,(zradtop-500.)/300.)
          else
-            wentr_rad = 3.*wentr_rad
+            wentr_rad = wentr_rad * min(3.0,(zradtop/800.))
          endif
 !-----------------------------------------
-         endif
 
          k_entr_tmp = min ( akmax, wentr_rad*(zfull(i,j,kcldtop-1)-zfull(i,j,kcldtop)) )
 

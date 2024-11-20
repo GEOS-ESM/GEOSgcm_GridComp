@@ -222,9 +222,9 @@ module gfdl2_cloud_microphys_mod
     real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
 
     ! critical autoconverion parameters
-    real :: qi0_crt = 1.8e-4 !< cloud ice to snow autoconversion threshold
-                             !! qi0_crt is highly dependent on horizontal resolution
-                             !! this sensitivity is handled with onemsig later in the code
+    real :: qi0_crt = 5.0e-4 !< cloud ice to snow autoconversion threshold
+                             !! qi0_crt can be dependent on horizontal resolution
+                             !! this sensitivity could be handled with onemsig later in the code
     real :: qs0_crt = 6.0e-4 !< snow to graupel density threshold (0.6e-3 in purdue lin scheme)
 
     real :: c_paut  = 1.00  !< autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
@@ -1609,21 +1609,15 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! -----------------------------------------------------------------------
                 ! similar to lfo 1983: eq. 21 solved implicitly
                 ! threshold from wsm6 scheme, hong et al 2004, eq (13)
-                ! slight increase in critical_qi_factor at colder temps
+                ! slight decrease in critical_qi_factor at warmer temps
                 ! -----------------------------------------------------------------------
 
-                qim = qi0_crt / den (k)
+                qim = qi0_crt * (0.5 + 0.5*ice_fraction(tzk(k),cnv_fraction,srf_type) ) / den (k)
 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
                 ! the mismatch computation following lin et al. 1994, mwr
                 ! -----------------------------------------------------------------------
-
-                if (const_vi) then
-                    tmp = fac_i2s
-                else
-                    tmp = fac_i2s * exp (0.025 * tc)
-                endif
 
                 di (k) = max (di (k), qcmin)
                 q_plus = qi + di (k)
@@ -1633,7 +1627,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     else
                         dq = qi - qim
                     endif
-                    psaut = tmp * dq
+                    psaut = fac_i2s * dq
                 else
                     psaut = 0.
                 endif

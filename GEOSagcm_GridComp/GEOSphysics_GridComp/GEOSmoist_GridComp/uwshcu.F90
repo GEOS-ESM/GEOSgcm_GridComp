@@ -1448,6 +1448,7 @@ contains
          dpsum    = 0.
          thvlmin  = 1000.
          thvlavg  = 0.
+         qtavg = 0.
          do k = 1,kinv ! max(kinv-1,1)    ! Here, 'k' is an interfacial layer index.  
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
@@ -1455,12 +1456,14 @@ contains
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
+            qtavg = qtavg + dpi*qt0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
+         qtavg   = qtavg/dpsum
 
         ! weighted average over lowest 20mb
 !         dpsum = 0.
@@ -1472,16 +1475,17 @@ contains
 !         qtavg   = qtavg/dpsum
  
        ! Interpolate qt to specified height
-         k = 1
-         do while (zmid0(k).lt.qtsrchgt)
-           k = k+1
-         end do
-         if (k.gt.1) then
-           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
-           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
-         else
-           qtavg = qt0(1)
-         end if
+!         k = 1
+!         do while (zmid0(k).lt.qtsrchgt)
+!         do while (zmid0(k).lt.0.5*zmid0(kinv))   ! use qt from half of inv height
+!           k = k+1
+!         end do
+!         if (k.gt.1) then
+!           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+!           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+!         else
+!           qtavg = qt0(1)
+!         end if
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !

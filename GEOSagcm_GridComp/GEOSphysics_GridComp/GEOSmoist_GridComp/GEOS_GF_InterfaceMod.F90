@@ -656,6 +656,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       if (associated(PTR3D)) PTR3D = fQi
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
+      call MAPL_GetPointer(EXPORT, PTR2D, 'CCWP', RC=STATUS); VERIFY_(STATUS)
+      if (associated(PTR2D)) PTR2D = SUM( CNV_QC*MASS , 3 )
 
     call MAPL_TimerOff (MAPL,"--GF")
 
