@@ -126,6 +126,7 @@ set (srcs
   SoilBiogeochemDecompCascadeCNMod.F90
   SoilBiogeochemDecompMod.F90
   SoilBiogeochemLittVertTranspMod.F90
+  SoilBiogeochemNitrifDenitrifMod.F90
   SoilBiogeochemNLeachingMod.F90
   SoilBiogeochemNStateUpdate1Mod.F90
   SoilBiogeochemPotentialMod.F90

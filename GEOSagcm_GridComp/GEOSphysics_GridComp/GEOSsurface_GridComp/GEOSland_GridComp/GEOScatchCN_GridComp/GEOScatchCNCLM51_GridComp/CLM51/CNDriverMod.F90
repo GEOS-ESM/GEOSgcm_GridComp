@@ -136,7 +136,7 @@ contains
     use SoilBiogeochemLittVertTranspMod   , only: SoilBiogeochemLittVertTransp
     use SoilBiogeochemPotentialMod        , only: SoilBiogeochemPotential 
     use SoilBiogeochemVerticalProfileMod  , only: SoilBiogeochemVerticalProfile
-  !  use SoilBiogeochemNitrifDenitrifMod   , only: SoilBiogeochemNitrifDenitrif
+    use SoilBiogeochemNitrifDenitrifMod   , only: SoilBiogeochemNitrifDenitrif
     use SoilBiogeochemNStateUpdate1Mod    , only: SoilBiogeochemNStateUpdate1
     use NutrientCompetitionMethodMod      , only: nutrient_competition_method_type
     use CNRootDynMod                      , only: CNRootDyn
@@ -349,9 +349,9 @@ contains
 
     ! calculate nitrification and denitrification rates (previously subroutine nitrif_denitrif called from CNDecompAlloc)
     if (use_nitrif_denitrif) then 
-!       call SoilBiogeochemNitrifDenitrif(bounds, num_soilc, filter_soilc, &
-!            soilstate_inst, waterstatebulk_inst, temperature_inst, ch4_inst, &
-!            soilbiogeochem_carbonflux_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
+       call SoilBiogeochemNitrifDenitrif(bounds, num_soilc, filter_soilc, &
+            soilstate_inst, waterstatebulk_inst, temperature_inst, ch4_inst, &
+            soilbiogeochem_carbonflux_inst, soilbiogeochem_nitrogenstate_inst, soilbiogeochem_nitrogenflux_inst)
     end if
     call t_stopf('SoilBiogeochem')
 

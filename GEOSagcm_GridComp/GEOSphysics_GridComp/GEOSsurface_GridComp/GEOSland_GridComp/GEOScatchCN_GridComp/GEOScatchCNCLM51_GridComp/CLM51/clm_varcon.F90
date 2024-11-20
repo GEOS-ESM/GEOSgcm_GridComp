@@ -17,7 +17,7 @@ module clm_varcon
                            SHR_CONST_RGAS,  &
                            SHR_CONST_PI,    &
                            SHR_CONST_PDB
-  use clm_varpar   , only: nlevgrnd, nlevdecomp_full, numrad
+  use clm_varpar   , only: nlevgrnd, nlevdecomp_full, numrad, ngases
 
 ! !PUBLIC TYPES:
   implicit none
@@ -107,6 +107,24 @@ module clm_varcon
   integer,  public, parameter :: isecspday= secspday        ! Integer seconds per day
 
   real(r8), public, parameter :: c_to_b = 2.0_r8         ! conversion between mass carbon and total biomass (g biomass /g C)
+
+  !------------------------------------------------------------------
+  ! (Non-tunable) Constants for the CH4 submodel (Tuneable constants in ch4varcon)
+  !------------------------------------------------------------------
+  ! Note some of these constants are also used in CNNitrifDenitrifMod
+
+  integer, private :: i  ! loop index
+
+  real(r8), public :: d_con_w(ngases,3)    ! water diffusivity constants (spp, #)  (mult. by 10^-4)
+  data (d_con_w(1,i),i=1,3) /0.9798_r8, 0.02986_r8, 0.0004381_r8/ ! CH4
+  data (d_con_w(2,i),i=1,3) /1.172_r8, 0.03443_r8, 0.0005048_r8/ ! O2
+  data (d_con_w(3,i),i=1,3) /0.939_r8, 0.02671_r8, 0.0004095_r8/ ! CO2
+
+  real(r8), public :: d_con_g(ngases,2)    ! gas diffusivity constants (spp, #) (cm^2/s) (mult. by 10^-9)
+  data (d_con_g(1,i),i=1,2) /0.1875_r8, 0.0013_r8/ ! CH4
+  data (d_con_g(2,i),i=1,2) /0.1759_r8, 0.00117_r8/ ! O2
+  data (d_con_g(3,i),i=1,2) /0.1325_r8, 0.0009_r8/ ! CO2
+
 
 ! !PUBLIC MEMBER FUNCTIONS:
   public clm_varcon_init          ! Initialze constants that need to be initialized

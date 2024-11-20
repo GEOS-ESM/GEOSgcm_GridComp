@@ -81,7 +81,8 @@ module CN_initMod
   use CNNDynamicsMod                     , only : CNNDynamicsReadNML
   use SurfaceAlbedoMod                   , only: SurfaceAlbedo_readnl
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
- 
+  use SoilBiogeochemNitrifDenitrifMod    , only : readSoilBiogeochemNitrifDenitrifParams => readParams 
+
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
@@ -344,6 +345,7 @@ module CN_initMod
    call readSoilBiogeochemPotentialParams(ncid)
    call readCNGapMortalityParams(ncid)
    call readCNFUNParams(ncid)
+   call readSoilBiogeochemNitrifDenitrifParams(ncid)
 
    call ncid%close(rc=status)
 
