@@ -49,6 +49,7 @@ module GEOS_MoistGridCompMod
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
+  logical :: MOVE_CN_TO_LS 
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -3643,8 +3644,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME ='CLLSX1',                                       &
+         LONG_NAME  ='final_large_scale_cloud_area_fraction',            &
+         UNITS      ='1',                                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                           &
          SHORT_NAME ='CLCNX0',                                       &
          LONG_NAME  ='convective_cloud_area_fraction',             &
+         UNITS      ='1',                                          &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                           &
+         SHORT_NAME ='CLCNX1',                                       &
+         LONG_NAME  ='final_convective_cloud_area_fraction',             &
          UNITS      ='1',                                          &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -4830,7 +4847,6 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='LTS',                                          &
          LONG_NAME ='Lower tropospheric stability', &
@@ -4839,7 +4855,7 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
      VERIFY_(STATUS)
 
-      call MAPL_AddExportSpec(GC,                                          &
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='EIS',                                          &
          LONG_NAME ='Estimated Inversion Strength', &
          UNITS     ='K',                                             &
@@ -5201,6 +5217,8 @@ contains
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
 
+    call MAPL_GetResource( MAPL, MOVE_CN_TO_LS, Label="MOVE_CN_TO_LS:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
     if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Initialize(MAPL,        RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
     if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Initialize(MAPL, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
@@ -5265,6 +5283,7 @@ contains
     real, allocatable, dimension(:,:,:) :: QST3, DQST3, MWFA
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: TMP2D
+    integer, allocatable,dimension(:,:) :: KLCL
     ! Internals
     real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
@@ -5288,6 +5307,7 @@ contains
     real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
     real, pointer, dimension(:,:,:) :: CFICE, CFLIQ
     real, pointer, dimension(:,:,:) :: NWFA
+    real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:,:) :: PTRDC, PTRSC
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
@@ -5394,6 +5414,7 @@ contains
        ALLOCATE ( MASS (IM,JM,LM  ) )
        ALLOCATE ( TMP3D(IM,JM,LM  ) )
        ALLOCATE ( TMP2D(IM,JM     ) )
+       ALLOCATE (  KLCL(IM,JM     ) )
 
        ! Save input winds
        call MAPL_GetPointer(EXPORT, PTR3D, 'UMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5416,6 +5437,21 @@ contains
        ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
        DZET     =     (ZLE0(:,:,0:LM-1) - ZLE0(:,:,1:LM) ) ! Layer thickness (m)
        DQST3    = GEOS_DQSAT(T, PLmb, QSAT=QST3)
+
+       ! Lower tropospheric stability and estimated inversion strength
+       call MAPL_GetPointer(EXPORT, LTS,   'LTS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, EIS,   'EIS'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       KLCL = FIND_KLCL( T, Q, PLmb, IM, JM, LM )
+       call MAPL_GetPointer(EXPORT, PTR2D, 'ZLCL', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR2D)) then
+         do J=1,JM
+            do I=1,IM
+              PTR2D(I,J) = ZL0(I,J,KLCL(I,J))
+            end do
+         end do
+       endif
+       TMP3D = (100.0*PLmb/MAPL_P00)**(MAPL_KAPPA)
+       call FIND_EIS(T/TMP3D, QST3, T, ZL0, PLEmb, KLCL, IM, JM, LM, LTS, EIS)
 
        ! Recording of import/internal vars into export if desired
        !---------------------------------------------------------
@@ -5580,6 +5616,26 @@ contains
                               PTR3D = 0.0
        if (associated(PTRDC)) PTR3D = PTR3D + PTRDC
        if (associated(PTRSC)) PTR3D = PTR3D + PTRSC
+
+       if (MOVE_CN_TO_LS) then
+         do L = 1, LM
+           do J = 1, JM
+             do I = 1, IM
+               if (0.5*(PTR3D(I,J,L)+PTR3D(I,J,L+1)) < 1.e-5) then
+                ! Move all QL,QI,CL to LS when cnv_mfc is 0.0
+                 QLLS(I,J,L) = QLLS(I,J,L)+QLCN(I,J,L)
+                 QLCN(I,J,L) = 0.0
+                 QILS(I,J,L) = QILS(I,J,L)+QICN(I,J,L)
+                 QICN(I,J,L) = 0.0
+                 CLLS(I,J,L) = CLLS(I,J,L)+CLCN(I,J,L)
+                 CLCN(I,J,L) = 0.0
+               endif
+              ! cleanup clouds
+               call FIX_UP_CLOUDS( Q(I,J,L), T(I,J,L), QLLS(I,J,L), QILS(I,J,L), CLLS(I,J,L), QLCN(I,J,L), QICN(I,J,L), CLCN(I,J,L) )
+            enddo
+          enddo
+         enddo
+       endif
 
        call MAPL_GetPointer(EXPORT, PTR3D,   'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, PTRDC,   'MFD_DC' ,               RC=STATUS); VERIFY_(STATUS)
@@ -6024,6 +6080,12 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'QICNX1', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR3D)) PTR3D = QICN
 
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CLLSX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLLS
+
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CLCNX1', RC=STATUS); VERIFY_(STATUS)
+       if (associated(PTR3D)) PTR3D = CLCN
+
        ! Fill wind, temperature & RH exports needed for SYNCTQ
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'UAFMOIST', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -6055,7 +6117,7 @@ contains
        call MAPL_GetPointer(EXPORT, PTR2D, 'CLWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
        call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS) *MASS , 3 )
+       if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS ) *MASS , 3 )
        call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS ) *MASS , 3 )
        call MAPL_GetPointer(EXPORT, PTR2D, 'TPW', RC=STATUS); VERIFY_(STATUS)

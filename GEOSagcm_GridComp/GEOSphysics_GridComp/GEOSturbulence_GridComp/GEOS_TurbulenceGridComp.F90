@@ -185,10 +185,6 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
-! Beljaars parameters
-    real, parameter ::      &
-        dxmin_ss =  3000.0, &        ! minimum grid length for Beljaars
-        dxmax_ss = 12000.0           ! maximum grid length for Beljaars
 contains
 
 !=============================================================================
@@ -3167,17 +3163,17 @@ end if
      else
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.3,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
@@ -4732,28 +4728,40 @@ end if
       KPBL = MAX(KPBL,float(KPBLMIN))
   
      ! Calc KPBL using surface turbulence, for use in shallow scheme
-      if(associated(KPBL_SC) .OR. associated(ZPBL_SC)) then
-       KPBL_SC = MAPL_UNDEF
-       do I = 1, IM
-         do J = 1, JM
+      if (associated(KPBL_SC)) then
+        KPBL_SC = MAPL_UNDEF
+        do I = 1, IM
+          do J = 1, JM
             if (DO_SHOC==0) then
-              temparray(1:LM+1) = KHSFC(I,J,0:LM)
+              if (JASON_TRB) then
+                temparray(1:LM+1) = KHSFC(I,J,0:LM)                    
+              else
+                do L=1,LM+1
+                  temparray(L) = max(KHSFC(I,J,L-1),KHLS(I,J,LM-1))
+                end do
+              endif
             else
               temparray(1:LM+1) = KH(I,J,0:LM)
-            end if
+            endif
             maxkh = maxval(temparray)
             do L=LM-1,2,-1
-               if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
-               .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
-                  KPBL_SC(I,J) = float(L)
-               end if
+              if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
+              .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
+                 KPBL_SC(I,J) = float(L)
+              end if
             end do
             if (  KPBL_SC(I,J) .eq. MAPL_UNDEF .or. (maxkh.lt.1.)) then
-               KPBL_SC(I,J) = float(LM)
+              KPBL_SC(I,J) = float(LM)
             endif
-            if (associated(ZPBL_SC)) ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
-         end do
-       end do
+          end do
+        end do
+      endif
+      if (associated(KPBL_SC) .and. associated(ZPBL_SC)) then
+        do I = 1, IM
+          do J = 1, JM
+             ZPBL_SC(I,J) = Z(I,J,KPBL_SC(I,J))
+          end do
+        end do
       endif
 
       if (associated(PPBL)) then
@@ -5070,8 +5078,6 @@ end if
     real, dimension(:,:),   pointer     :: SG, SF, SDF, CX, SRG
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
-
-!    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
@@ -6181,8 +6187,6 @@ end subroutine RUN1
 
        if( name=='Q' .or. name=='QLLS'  .or. name=='QLCN'  .or. &
                           name=='QILS'  .or. name=='QICN' ) then
-!                          name=='QILS'  .or. name=='QICN'  .or. &
-!                          name=='QRAIN' .or. name=='QSNOW' .or. name=='QGRAUPEL') then
           if(associated(QTFLXTRB).or.associated(QTX)) QT = QT + SX
        endif
 
@@ -6571,27 +6575,23 @@ end subroutine RUN1
       do L = LM, 1, -1
         do J = 1, JM
           do I = 1, IM
-           ! determine the resolution dependent tuning factor
-            CBl = 1.08371722e-7 * VARFLT(i,j) * &
-                  MAX(0.0,MIN(1.0,dxmax_ss*(1.-dxmin_ss/SQRT(AREA(i,j))/(dxmax_ss-dxmin_ss))))
+           ! determine the resolution dependent wsp amplification factor based on Arakawa sigma function
+            CBl = ABS(C_B) * MAX(1.e-9,MIN(1.0,1.0-0.9839*EXP(-0.09835*(SQRT(AREA(i,j))/1000.0))))
            ! determine the efolding height
            !Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B) ! From UFS
             Hefold = LAMBDA_B 
             FKV(I,J,L) = 0.0
-            if (CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
-                  wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                  if (ABS(C_B) > 1.0) then
-                     wsp  = SQRT(MIN(wsp0/ABS(C_B),1.0))*MAX(ABS(C_B),wsp0) ! enhance winds
-                  else
-                     wsp  = wsp0
-                  endif
-                  FKV_temp = Z(I,J,L)/Hefold
-                  FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                  FKV_temp = CBl*(FKV_temp/Hefold)*wsp
+           !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
+            if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
+                wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MAX(CBl,wsp0) ! enhance winds
+                FKV_temp = Z(I,J,L)/Hefold
+                FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
+                FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/Hefold) * wsp
 
-                  BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
-                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
-                  FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
+                BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
+                BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
+                FKV(I,J,L)  = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
             end if
           end do
         end do
