@@ -26,7 +26,7 @@ module clm_varpar_shared
   integer, parameter, PUBLIC :: VAR_PFT_40=74 ! number of CN PFT variables per column 
   integer, parameter, PUBLIC :: VAR_COL_45=35  ! number of CN column restart variables
   integer, parameter, PUBLIC :: VAR_PFT_45=75  ! number of CN PFT variables per column  
-  integer, parameter, PUBLIC :: VAR_COL_51=35  ! number of CN column restart variables
+  integer, parameter, PUBLIC :: VAR_COL_51=37  ! number of CN column restart variables
   integer, parameter, PUBLIC :: VAR_PFT_51=83  ! number of CN PFT restart variables  
 
 

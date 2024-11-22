@@ -100,6 +100,7 @@ contains
     integer               :: begc,endc
     integer               :: n, nc, nz, np, l, c
     integer, dimension(8) :: decomp_npool_cncol_index = (/ 18, 19, 20, 17,25, 26, 27, 28 /)
+    logical               :: no_cn51_rst = .false.
     !-----------------------------------
 
     begc = bounds%begc ; endc = bounds%endc
@@ -169,13 +170,16 @@ contains
           this%sminn_vr_col  (n,1:nlevdecomp_full) = cncol(nc,nz,24)
           this%sminn_col  (n) = this%sminn_vr_col(n,1)
 
-          ! jkolassa Nov 2024: temporary initialization for NO3 and NH4; need to be
-          ! added as restart variables
-          this%smin_no3_col(n) = (1.25/2.25)*this%sminn_col(n)
-          this%smin_nh4_col(n) = this%sminn_col(n)/2.25
+          if (no_cn51_rst) then ! jkolassa Nov 2024: when no CN51 restart file is available compute NO3 and NH4 from N
+             this%smin_no3_col(n) = (1.25/2.25)*this%sminn_col(n)
+             this%smin_nh4_col(n) = this%sminn_col(n)/2.25
+          else
+             this%smin_no3_col(n) = cncol(nc,nz,36);
+             this%smin_nh4_col(n) = cncol(nc,nz,37);
+          end if
+
           this%smin_no3_vr_col(n,1:nlevdecomp_full) = this%smin_no3_col(n)
           this%smin_nh4_vr_col(n,1:nlevdecomp_full) = this%smin_nh4_col(n)
-
 
           do np = 1,ndecomp_pools
              ! jkolassa May 2022: accounting for fact that pool order in CNCOL is different from CTSM

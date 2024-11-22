@@ -578,6 +578,9 @@ contains
       cncol(nc,nz,33) = bgc_vegetation_inst%cnveg_carbonflux_inst%annsum_npp_col             (n)
       cncol(nc,nz,34) = bgc_vegetation_inst%cnveg_state_inst%farea_burned_col                (n)
       cncol(nc,nz,35) = soilbiogeochem_state_inst%fpi_col                (n)
+      cncol(nc,nz,36) = soilbiogeochem_nitrogenstate_inst%smin_no3_col   (n)
+      cncol(nc,nz,37) = soilbiogeochem_nitrogenstate_inst%smin_nh4_col   (n)
+
 
       do p = 0,numpft  ! PFT index loop
         np = np + 1
