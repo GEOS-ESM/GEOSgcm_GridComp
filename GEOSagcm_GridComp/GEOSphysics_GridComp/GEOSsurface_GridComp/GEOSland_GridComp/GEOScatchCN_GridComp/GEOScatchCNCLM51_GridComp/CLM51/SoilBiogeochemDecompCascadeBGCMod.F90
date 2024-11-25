@@ -855,7 +855,7 @@ contains
          ! the following normalizes values in fr so that they
          ! sum to 1.0 across top nlevdecomp levels on a column
          frw(bounds%begc:bounds%endc) = 0._r8
-         nlev_soildecomp_standard=5
+         !nlev_soildecomp_standard=5
          allocate(fr(bounds%begc:bounds%endc,nlev_soildecomp_standard))
          do j=1,nlev_soildecomp_standard
             do fc = 1,num_soilc

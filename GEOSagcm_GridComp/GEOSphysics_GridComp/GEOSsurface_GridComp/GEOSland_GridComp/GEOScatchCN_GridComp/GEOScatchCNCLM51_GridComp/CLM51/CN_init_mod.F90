@@ -334,7 +334,7 @@ module CN_initMod
    call ncid%open(trim(paramfile),pFIO_READ, RC=status)
 
    call readCNMRespParams(ncid)
-   call CNParamsReadShared(ncid)  ! this is called CN params but really is for the soil biogeochem parameters
+   call CNParamsReadShared(ncid, NLFilename)  ! this is called CN params but really is for the soil biogeochem parameters
    call readSoilBiogeochemDecompCnParams(ncid) 
    call readSoilBiogeochemDecompBgcParams(ncid)
    call nutrient_competition_method%readParams(ncid)
