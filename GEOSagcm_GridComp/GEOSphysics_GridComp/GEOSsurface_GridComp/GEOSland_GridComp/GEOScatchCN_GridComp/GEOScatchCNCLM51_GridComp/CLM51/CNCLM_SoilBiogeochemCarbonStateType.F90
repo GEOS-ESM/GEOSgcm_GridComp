@@ -8,7 +8,7 @@ module SoilBiogeochemCarbonStateType
   use clm_varpar       , only : nlevdecomp_full, nlevdecomp, nlevsoi, &
                                 NUM_ZON, VAR_COL
   use clm_varcon       , only : spval, ispval, dzsoi_decomp, zisoi, zsoi, c3_r2
-  use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn
+  use clm_varctl       , only : iulog, use_vertsoilc, use_fates, use_soil_matrixcn, use_century_decomp
   use decompMod        , only : bounds_type
   use SoilBiogeochemDecompCascadeConType , only : decomp_cascade_con
 
@@ -160,8 +160,13 @@ contains
           end do !np
 
           ! sum soil carbon pools
-          this%totsomc_col  (n) = this%decomp_cpools_col(n,5) + this%decomp_cpools_col(n,6) &
-                                + this%decomp_cpools_col(n,7) + this%decomp_cpools_col(n,8)
+          if (use_century_decomp) then
+             this%totsomc_col  (n) = this%decomp_cpools_col(n,5) + this%decomp_cpools_col(n,6) &
+                                   + this%decomp_cpools_col(n,7)
+          else
+             this%totsomc_col  (n) = this%decomp_cpools_col(n,5) + this%decomp_cpools_col(n,6) &
+                                   + this%decomp_cpools_col(n,7) + this%decomp_cpools_col(n,8)
+          end if
       end do !nz
    end do ! nc
 

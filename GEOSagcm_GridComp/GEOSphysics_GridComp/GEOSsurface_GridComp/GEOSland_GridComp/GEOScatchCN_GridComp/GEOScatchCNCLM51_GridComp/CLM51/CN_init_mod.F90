@@ -61,6 +61,7 @@ module CN_initMod
   use CNBalanceCheckMod
 
   use SoilBiogeochemDecompCascadeBGCMod  , only : init_decompcascade_bgc, DecompCascadeBGCreadNML
+  use SoilBiogeochemDecompCascadeBGCMod  , only : readSoilBiogeochemDecompBgcParams      => readParams
   use SoilBiogeochemDecompCascadeCNMod   , only : init_decompcascade_cn
   use SoilBiogeochemDecompCascadeCNMod   , only : readSoilBiogeochemDecompCnParams       => readParams
   use NutrientCompetitionFactoryMod      , only : create_nutrient_competition_method
@@ -335,6 +336,7 @@ module CN_initMod
    call readCNMRespParams(ncid)
    call CNParamsReadShared(ncid)  ! this is called CN params but really is for the soil biogeochem parameters
    call readSoilBiogeochemDecompCnParams(ncid) 
+   call readSoilBiogeochemDecompBgcParams(ncid)
    call nutrient_competition_method%readParams(ncid)
    call readSoilBiogeochemDecompParams(ncid)
    call readCNPhenolParams(ncid)
