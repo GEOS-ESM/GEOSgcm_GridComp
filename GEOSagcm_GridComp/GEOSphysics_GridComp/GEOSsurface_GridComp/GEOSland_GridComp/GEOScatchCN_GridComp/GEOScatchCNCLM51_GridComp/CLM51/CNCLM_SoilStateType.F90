@@ -106,13 +106,10 @@ contains
 
     allocate(this%mss_frc_cly_vld_col  (begc:endc))                     ; this%mss_frc_cly_vld_col  (:)   = nan
     allocate(this%sandfrac_patch       (begp:endp))                     ; this%sandfrac_patch       (:)   = 0.5 ! jkolassa: temporary; replace with Catchment soil texture
-    allocate(this%clayfrac_patch       (begp:endp))                     ; this%clayfrac_patch       (:)   = 0.5 ! jkolassa:
- temporary; replace with Catchment soil texture
+    allocate(this%clayfrac_patch       (begp:endp))                     ; this%clayfrac_patch       (:)   = 0.5 ! jkolassa: temporary; replace with Catchment soil texture
     allocate(this%cellorg_col          (begc:endc,nlevsoi))             ; this%cellorg_col          (:,:) = nan
-    allocate(this%cellsand_col         (begc:endc,nlevsoi))             ; this%cellsand_col         (:,:) = 0.5*100. ! jkolassa:
- temporary; replace with Catchment soil texture
-    allocate(this%cellclay_col         (begc:endc,nlevsoi))             ; this%cellclay_col         (:,:) = 0.5*100. ! jkolassa:
- temporary; replace with Catchment soil texture
+    allocate(this%cellsand_col         (begc:endc,nlevsoi))             ; this%cellsand_col         (:,:) = 0.5*100. ! jkolassa: temporary; replace with Catchment soil texture
+    allocate(this%cellclay_col         (begc:endc,nlevsoi))             ; this%cellclay_col         (:,:) = 0.5*100. ! jkolassa: temporary; replace with Catchment soil texture
     allocate(this%bd_col               (begc:endc,nlevgrnd))            ; this%bd_col               (:,:) = nan
 
     allocate(this%hksat_col            (begc:endc,nlevgrnd))            ; this%hksat_col            (:,:) = spval
