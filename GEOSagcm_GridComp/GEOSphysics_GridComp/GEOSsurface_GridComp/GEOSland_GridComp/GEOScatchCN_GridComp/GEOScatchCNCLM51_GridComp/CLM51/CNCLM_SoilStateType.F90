@@ -109,9 +109,9 @@ contains
     allocate(this%clayfrac_patch       (begp:endp))                     ; this%clayfrac_patch       (:)   = 0.5 ! jkolassa:
  temporary; replace with Catchment soil texture
     allocate(this%cellorg_col          (begc:endc,nlevsoi))             ; this%cellorg_col          (:,:) = nan
-    allocate(this%cellsand_col         (begc:endc,nlevsoi))             ; this%cellsand_col         (:,:) = 0.5 ! jkolassa:
+    allocate(this%cellsand_col         (begc:endc,nlevsoi))             ; this%cellsand_col         (:,:) = 0.5*100. ! jkolassa:
  temporary; replace with Catchment soil texture
-    allocate(this%cellclay_col         (begc:endc,nlevsoi))             ; this%cellclay_col         (:,:) = 0.5 ! jkolassa:
+    allocate(this%cellclay_col         (begc:endc,nlevsoi))             ; this%cellclay_col         (:,:) = 0.5*100. ! jkolassa:
  temporary; replace with Catchment soil texture
     allocate(this%bd_col               (begc:endc,nlevgrnd))            ; this%bd_col               (:,:) = nan
 
