@@ -62,7 +62,7 @@ contains
     use shr_mpi_mod    , only : shr_mpi_bcast
     use shr_log_mod    , only : errMsg => shr_log_errMsg
     use fileutils      , only : getavu, relavu, opnfil
-    use clm_nlUtilsMod , only : find_nlgroup_name
+    use shr_nl_mod     , only : shr_nl_find_group_name
     use clm_varctl     , only : iulog
     use spmdMod        , only : mpicom, masterproc
     use abortUtils     , only : endrun    
@@ -89,7 +89,7 @@ contains
        unitn = getavu()
        write(iulog,*) 'Read in '//nl_name//' namelist'
        call opnfil (nlfilename, unitn, 'F')
-       call find_nlgroup_name(unitn, nl_name, status=ierr)
+       call shr_nl_find_group_name(unitn, nl_name, status=ierr)
        if (ierr == 0) then
           read(unit=unitn, nml=clm_soilstate_inparm, iostat=ierr)
           if (ierr /= 0) then
