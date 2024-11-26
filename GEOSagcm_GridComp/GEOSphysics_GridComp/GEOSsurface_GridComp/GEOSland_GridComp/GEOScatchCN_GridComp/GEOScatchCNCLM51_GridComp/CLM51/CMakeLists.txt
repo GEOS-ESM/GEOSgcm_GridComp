@@ -132,6 +132,7 @@ set (srcs
   SoilBiogeochemPotentialMod.F90
   SoilBiogeochemPrecisionControlMod.F90
   SoilBiogeochemVerticalProfileMod.F90
+  SoilStateInitTimeConstMod.F90
   SoilWaterRetentionCurveMod.F90
   spmdMod.F90
   subgridAveMod.F90

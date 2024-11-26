@@ -83,7 +83,8 @@ module CN_initMod
   use SurfaceAlbedoMod                   , only: SurfaceAlbedo_readnl
   use SoilBiogeochemPrecisionControlMod  , only: SoilBiogeochemPrecisionControlInit
   use SoilBiogeochemNitrifDenitrifMod    , only : readSoilBiogeochemNitrifDenitrifParams => readParams 
-
+  use SoilStateInitTimeConstMod          , only : readParams_SoilStateInitTimeConst      => readParams, &
+                                                  SoilStateInitTimeConst
   use clm_varpar       , only : numpft, num_zon, num_veg, var_pft, var_col, &
                                 nlevgrnd, nlevsoi
 
@@ -272,6 +273,8 @@ module CN_initMod
 
     call soilstate_inst%Init            (bounds)
 
+    call SoilStateInitTimeConst         (bounds, soilstate_inst, NLFilename) ! sets hydraulic and thermal soil properties
+
     call water_inst%Init                (bounds)
 
     call canopystate_inst%Init          (bounds, nch, ityp, fveg, cncol, cnpft, cn5_cold_start)
@@ -348,6 +351,7 @@ module CN_initMod
    call readCNGapMortalityParams(ncid)
    call readCNFUNParams(ncid)
    call readSoilBiogeochemNitrifDenitrifParams(ncid)
+   call readParams_SoilStateInitTimeConst(ncid)   
 
    call ncid%close(rc=status)
 
