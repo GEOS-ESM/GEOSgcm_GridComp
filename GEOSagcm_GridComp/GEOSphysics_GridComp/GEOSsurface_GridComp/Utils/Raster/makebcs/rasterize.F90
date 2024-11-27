@@ -194,12 +194,13 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   real(kind=8)   :: xc, yc, area
   real(kind=8)   :: garea, ctg(size(Gridname))
   real(kind=8)   :: sphere, error
-  integer        :: status 
-  character(len=:), allocatable :: filenameNC4
+  integer        :: status, tmp_in1, tmp_in2, ncat
+  character(len=:), allocatable :: filenameNC4, catch_file
+  real(kind=8), allocatable :: rTableT(:, :) ! extended and transpose of rTable
+  logical :: file_exists
 
   ip = size(iTable,2)
   ng = size(GridName)
-
 
   _ASSERT(IP==size(rTable,2),'needs informative message')
   _ASSERT(NG==size(IM),'needs informative message')
@@ -305,9 +306,24 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      close(UNIT)
   end if
 
+  allocate(rTableT(ip, 10))
+  rTableT = MAPL_UNDEF
+  rTableT(:,1:5) = transpose(rTable)
+  catch_file = 'clsm/catchment.def'
+  inquire(file=catch_file, exist=file_exists) 
+  if (file_exists) then
+    open (newunit=unit,file=catch_file,action='read', form='formatted',status='old')
+    read(unit, *) ncat
+    _ASSERT(ncat == ip, " ncat and ip should match")
+    do k = 1, ip
+       read (unit,*) tmp_in1, tmp_in2, rTableT(k,6), rTableT(k,7), rTableT(k,8), rTableT(k,9), rTableT(k,10)
+    enddo
+    close(unit)
+  endif
+
   k = index(trim(File), '.til')
   filenameNC4 = File(1:k-1) //'.nc4'
-  call WriteTilingNC4(filenameNC4, GridName, im, jm, nx, ny, transpose(iTable), transpose(rTable),rc)
+  call WriteTilingNC4(filenameNC4, GridName, im, jm, nx, ny, transpose(iTable), rTableT, _RC)
 
 end subroutine WriteTilingIR
 
@@ -364,14 +380,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
   call v%add_attribute('units', '1')
   call v%add_attribute('long_name', 'tile_type')
   call metadata%add_variable('typ', v)
-
-  v = Variable(type=PFIO_REAL64, dimensions='tile')
-  call v%add_attribute('units', 'km2')
-  call v%add_attribute('long_name', 'tile_area')
-  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-  call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
-  call metadata%add_variable('area', v)
-
+  if ( .not. EASE) then
+     v = Variable(type=PFIO_REAL64, dimensions='tile')
+     call v%add_attribute('units', 'km2')
+     call v%add_attribute('long_name', 'tile_area')
+     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+     call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
+     call metadata%add_variable('area', v)
+  endif
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_center_of_mass_longitude')
@@ -416,85 +432,88 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
      call metadata%add_variable('pfaf_index'//trim(str_num), v)
   enddo
 
-  if (EASE) then
-
+  if ( .not. EASE ) then
      v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'degree')
-     call v%add_attribute('long_name', 'tile_minimum_longitude')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call metadata%add_variable('min_lon', v)
-
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'degree')
-     call v%add_attribute('long_name', 'tile_maximum_longitude')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call metadata%add_variable('max_lon', v)
-
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'degree')
-     call v%add_attribute('long_name', 'tile_minimum_latitude')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call metadata%add_variable('min_lat', v)
-
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'degree')
-     call v%add_attribute('long_name', 'tile_maximum_latitude')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call metadata%add_variable('max_lat', v)
-
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'm')
-     call v%add_attribute('long_name', 'tile_mean_elevation')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call metadata%add_variable('elev', v)
-
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'fraction_of_Pfafstetter')
+     call metadata%add_variable('frac_pfaf', v)
   endif
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'tile_minimum_longitude')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call metadata%add_variable('min_lon', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'tile_maximum_longitude')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call metadata%add_variable('max_lon', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'tile_minimum_latitude')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call metadata%add_variable('min_lat', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'degree')
+  call v%add_attribute('long_name', 'tile_maximum_latitude')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call metadata%add_variable('max_lat', v)
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'm')
+  call v%add_attribute('long_name', 'tile_mean_elevation')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call metadata%add_variable('elev', v)
 
   call formatter%create(File, mode=PFIO_NOCLOBBER, rc=status)
   call formatter%write(metadata,                   rc=status)
   call formatter%put_var('typ',     iTable(:,0),   rc=status)
-  call formatter%put_var('area',    rTable(:,3),   rc=status)
+  if (.not. EASE) call formatter%put_var('area',    rTable(:,3),   rc=status)
   call formatter%put_var('com_lon', rTable(:,1),   rc=status)
   call formatter%put_var('com_lat', rTable(:,2),   rc=status)
 
   allocate(fr(ip))
   fr = MAPL_UNDEF_R8
-  do ll = 0, ng-1
+
+  do ll = 1, ng
      if (ng == 1) then
-        if( EASE) then
+        if (EASE) then
            KK = iTable(:,4)
         else
            KK =[(k, k=1,ip)]
         endif
      else
-        KK = iTable(:,6+ll)
+        KK = iTable(:,5+ll)
      endif
 
-     II = iTable(:,2+ll*2)
-     JJ = iTable(:,3+ll*2)
+     II = iTable(:,ll*2    )
+     JJ = iTable(:,ll*2 + 1)
 
-     where( rTable(:,4+ll) /=0.0)
-        fr = rTable(:,3)/rTable(:,4+ll)
+     where( rTable(:,3+ll) /=0.0)
+        fr = rTable(:,3)/rTable(:,3+ll)
      endwhere
 
      if (ng == 1) then
        str_num=''
      else
-       write(str_num, '(i0)') ll+1
+       write(str_num, '(i0)') ll
      endif
+
      call formatter%put_var('i_indg'    //trim(str_num), II, rc=status)
      call formatter%put_var('j_indg'    //trim(str_num), JJ, rc=status)
      call formatter%put_var('frac_cell' //trim(str_num), fr, rc=status)
      call formatter%put_var('pfaf_index'//trim(str_num), KK, rc=status)
   enddo
 
-  if (EASE) then
-     call formatter%put_var('min_lon', rTable(:, 6), rc=status)
-     call formatter%put_var('max_lon', rTable(:, 7), rc=status)
-     call formatter%put_var('min_lat', rTable(:, 8), rc=status)
-     call formatter%put_var('max_lat', rTable(:, 9), rc=status)
-     call formatter%put_var('elev',    rTable(:,10), rc=status)
-  endif
+  call formatter%put_var('min_lon', rTable(:, 6), rc=status)
+  call formatter%put_var('max_lon', rTable(:, 7), rc=status)
+  call formatter%put_var('min_lat', rTable(:, 8), rc=status)
+  call formatter%put_var('max_lat', rTable(:, 9), rc=status)
+  call formatter%put_var('elev',    rTable(:,10), rc=status)
 
   call formatter%close(rc=status)
 
