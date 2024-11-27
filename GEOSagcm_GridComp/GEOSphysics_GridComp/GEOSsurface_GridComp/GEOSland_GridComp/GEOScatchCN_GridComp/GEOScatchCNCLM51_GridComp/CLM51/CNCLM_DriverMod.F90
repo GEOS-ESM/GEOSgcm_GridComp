@@ -220,7 +220,6 @@ contains
  real :: pwtgcell
  logical, save :: doalb = .true.         ! assume surface albedo calculation time step; jkolassa: following setting from previous CNCLM versions
  integer  :: n, p, nc, nz, np, nv
- real(r8) :: pd = 2700.                  ! Particle density of soil (kg/m3
 
  !-------------------------------
 
@@ -252,7 +251,7 @@ contains
         soilstate_inst%soilpsi_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*rzm(nc,nz)**(-bee(nc)) ! jkolassa: only one soil layer at this point
         soilstate_inst%psiwilt_col(n,1:nlevgrnd) = 1.e-6*psis(nc)*grav*denh2o*wpwet(nc)**(-bee(nc)) ! jkolassa: soil water potential at wilting point (not a CLM variable, but added to use instead of constant threshold to determine water stress)
         soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd)   = poros(nc) 
-        soilstate_inst%bd_col(n,1:nlevmaxurbgrnd)        = (1._r8 - soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd))*pd
+        soilstate_inst%bd_col(n,1:nlevmaxurbgrnd)       = (1. - soilstate_inst%watsat_col(n,1:nlevmaxurbgrnd))*2700.
         atm2lnd_inst%forc_t_downscaled_col(n)  = tairm(nc)
         water_inst%wateratm2lndbulk_inst%forc_rain_downscaled_col(n) = rainfm(nc)
         water_inst%wateratm2lndbulk_inst%forc_snow_downscaled_col(n) = snowfm(nc)
