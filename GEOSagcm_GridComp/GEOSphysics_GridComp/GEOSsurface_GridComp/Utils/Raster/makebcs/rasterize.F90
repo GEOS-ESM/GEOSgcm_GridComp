@@ -327,16 +327,18 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
 end subroutine WriteTilingIR
 
-subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
+subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat, rc)
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: IM(:), JM(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(:,0:)
   real(kind=8),      intent(IN) :: rTable(:,:)
+  integer, optional, intent(out):: maxcat
   integer, optional, intent(out):: rc
 
-  integer                       :: k, ll, ng, ip, status
+  integer                       :: k, ll, ng, ip, status, maxcat_
+
   character(len=:), allocatable :: attr
   type (Variable)               :: v
   type (NetCDF4_FileFormatter)  :: formatter
@@ -351,6 +353,9 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
 
   EASE = .false.
   if (index(GridName(1), 'EASE') /=0) EASE = .true.
+
+  maxcat_ = SRTM_maxcat
+  if (present(maxcat)) maxcat_ = maxcat
 
   call metadata%add_dimension('tile', ip)
 
@@ -374,20 +379,20 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
   attr = 'raster_ny'
   call metadata%add_attribute( attr, ny)
   attr = 'SRTM_maxcat'
-  call metadata%add_attribute( attr, SRTM_maxcat)
+  call metadata%add_attribute( attr, maxcat_)
 
   v = Variable(type=PFIO_INT32, dimensions='tile')
   call v%add_attribute('units', '1')
   call v%add_attribute('long_name', 'tile_type')
   call metadata%add_variable('typ', v)
-  if ( .not. EASE) then
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', 'km2')
-     call v%add_attribute('long_name', 'tile_area')
-     call v%add_attribute("missing_value", MAPL_UNDEF_R8)
-     call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
-     call metadata%add_variable('area', v)
-  endif
+
+  v = Variable(type=PFIO_REAL64, dimensions='tile')
+  call v%add_attribute('units', 'km2')
+  call v%add_attribute('long_name', 'tile_area')
+  call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
+  call metadata%add_variable('area', v)
+
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_center_of_mass_longitude')
@@ -472,7 +477,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, rc)
   call formatter%create(File, mode=PFIO_NOCLOBBER, rc=status)
   call formatter%write(metadata,                   rc=status)
   call formatter%put_var('typ',     iTable(:,0),   rc=status)
-  if (.not. EASE) call formatter%put_var('area',    rTable(:,3),   rc=status)
+  call formatter%put_var('area',    rTable(:,3),   rc=status)
   call formatter%put_var('com_lon', rTable(:,1),   rc=status)
   call formatter%put_var('com_lat', rTable(:,2),   rc=status)
 

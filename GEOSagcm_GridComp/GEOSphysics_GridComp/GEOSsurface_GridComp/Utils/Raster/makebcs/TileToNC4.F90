@@ -5,6 +5,7 @@
 program TileToNC4
    use MAPL
    use LogRectRasterizeMod
+   use EASE_conv, only: ease_extent
    implicit none
    character(512) :: arg
    integer :: i, unit, unit2
@@ -18,9 +19,9 @@ program TileToNC4
 
    character(:), allocatable :: array(:)
    character(len=:), allocatable :: filenameNC4
-
+   real :: cell_area
    integer :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
-   integer :: n_lon2, n_lat2, nx, ny, num, ll
+   integer :: n_lon2, n_lat2, nx, ny, num, ll, maxcat
  
    CALL get_command_argument(1, arg)
    tile_file  = trim(arg)
@@ -38,7 +39,13 @@ program TileToNC4
    read(array(1), *) n_tile
    num = size(array)
    ll = 0
-   if (num == 4) ll = 1
+   if (num == 4) then
+      ll = 1
+      read(array(2), *) maxcat
+   else
+      maxcat = -1
+   endif
+
    read(array(2+ll), *) nx
    read(array(3+ll), *) ny
 
@@ -55,7 +62,9 @@ program TileToNC4
      read (unit,*) n_lat2
      read (unit,*) tmpline
    endif
-
+   if ( index(gName1, 'EASE') /=0) then
+     call ease_extent(gName1, tmp_in1, tmp_in2, cell_area=cell_area)
+   endif
    ! At this point, the first line is already in tmpline  
    allocate(iTable(N_tile,0:5))
    allocate(rTable(N_tile,10))
@@ -67,11 +76,12 @@ program TileToNC4
       do i = 2, N_tile
         read (unit,*) tmpline
         read(tmpline,*) iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2), &
-                        iTable(i,2), iTable(i,3), rTable(i,3)
+                        iTable(i,2), iTable(i,3), rTable(i,4)
       enddo
-      ! rTable(:,3) is fr now ( it should be area)
-      ! so set rTable(:,4) to 1, so it is consistent with WritetilingNC4
-      rTable(:,4) = 1 
+      rTable(:,3) = rTable(:,4)*cell_area
+      ! rTable(:,4) is fr, now set to area
+      ! The fr will be got back in WriteTilingNC4
+      rTable(:,4) = cell_area 
    else
       i = 1
       read(tmpline,*)   iTable(i,0), rTable(i,3), rTable(i,1), rTable(i,2), &
@@ -103,9 +113,9 @@ program TileToNC4
   ll = index(tile_file, '.til')
   filenameNC4 = tile_file(1:ll)//'nc4'
   if (N_grid == 1) then
-     call WriteTilingNC4(filenameNc4, [gName1], [n_lon1],[n_lat1], nx, ny, iTable, rTable) 
+     call WriteTilingNC4(filenameNc4, [gName1], [n_lon1],[n_lat1], nx, ny, iTable, rTable, maxcat = maxcat) 
   else
-     call WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2],[n_lat1, n_lat2], nx, ny, iTable, rTable) 
+     call WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2],[n_lat1, n_lat2], nx, ny, iTable, rTable, maxcat=maxcat) 
   endif
 
 contains
