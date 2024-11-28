@@ -7,6 +7,7 @@ module pymoist_interface_mod
    private
    public :: pymoist_interface_f_init
    public :: pymoist_interface_f_run_AerActivation
+   public :: pymoist_interface_f_run_GFDL1M
    public :: pymoist_interface_f_finalize
    public :: make_moist_flags_C_interop
    public :: moist_flags_interface_type
@@ -80,6 +81,39 @@ module pymoist_interface_mod
          real(kind=c_float), dimension(*), intent(in) :: nact
 
       end subroutine pymoist_interface_f_run_AerActivation
+
+      subroutine pymoist_interface_f_run_GFDL1M( &
+         dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM, &
+         DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF, &
+         LMELTFRZ, &
+         AREA, CNV_FRC, SRF_TYPE, &
+         KLCL, &
+         EIS, PLmb, PLEmb, NACTL, NACTI, QST,&
+         T, Q, QLCN, QICN, QLLS, QILS, CLLS, CLCN, &
+         SUBLC, EVAPC, RHX )  bind(c, name='pymoist_interface_c_run_GFDL1M')
+
+         import c_int, c_float, c_bool
+
+         implicit none
+
+         ! Input
+
+         ! All parameters should be in `init`
+         real(kind=c_float), value, intent(in) :: dw_land, dw_ocean ! Namelist flags
+         real(kind=c_float), value, intent(in) :: TURNRHCRIT_PARAM, DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF
+         integer(kind=c_int), value, intent(in) :: PDFSHAPE, LMELTFRZ
+
+
+         real(kind=c_float), dimension(*), intent(in) :: AREA, CNV_FRC, SRF_TYPE, EIS, PLmb, PLEmb, NACTL, NACTI, QST
+         integer(kind=c_int), dimension(*), intent(in) :: KLCL
+
+         ! InOut
+         real(kind=c_float), dimension(*), intent(inout) :: T, Q, QLCN, QICN, QLLS, QILS, CLCN, CLLS
+
+         ! Output
+         real(kind=c_float), dimension(*), intent(out) :: SUBLC, EVAPC, RHX
+
+      end subroutine pymoist_interface_f_run_GFDL1M
 
       subroutine pymoist_interface_f_finalize() bind(c, name='pymoist_interface_c_finalize')
       end subroutine pymoist_interface_f_finalize

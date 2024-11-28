@@ -40,6 +40,9 @@ USE utils_ppser_kbuff
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
+#ifdef PYMOIST_INTEGRATION
+  use pymoist_interface_mod
+#endif
 
   implicit none
 
@@ -81,6 +84,10 @@ USE utils_ppser_kbuff
   logical :: LHYDROSTATIC
   logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
+#ifdef PYMOIST_INTEGRATION
+  integer :: C_LMELTFRZ
+  logical :: USE_PYMOIST_GFDL1M = .FALSE. ! Replace Aer Activation with pyMoist port
+#endif
 
   integer, save :: timestep = 0
 
@@ -255,6 +262,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+    ! Deal with logical via int
+    C_LMELTFRZ = LMELTFRZ
+#endif
 
     call MAPL_Get ( MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
@@ -309,6 +320,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS); VERIFY_(STATUS)
+#ifdef PYMOIST_INTEGRATION
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS);
+#endif
 
 end subroutine GFDL_1M_Initialize
 
@@ -982,6 +996,10 @@ SELECT CASE ( ppser_get_mode() )
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'EVAPC', EVAPC, ppser_zrperturb)
     call fs_read_field(ppser_serializer_ref, ppser_savepoint, 'SUBLC', SUBLC, ppser_zrperturb)
 END SELECT
+#endif
+
+#ifdef PYMOIST_INTEGRATION
+      endif
 #endif
 
     ! Update macrophysics tendencies
