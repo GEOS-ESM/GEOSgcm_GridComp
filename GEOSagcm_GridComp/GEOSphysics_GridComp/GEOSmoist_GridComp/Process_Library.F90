@@ -11,17 +11,17 @@ module GEOSmoist_Process_Library
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
-  fs_add_savepoint_metainfo, &
+  fs_create_savepoint, &
   fs_write_field, &
-  fs_create_savepoint
+  fs_add_savepoint_metainfo
 USE utils_ppser, ONLY:  &
   ppser_get_mode, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
   ppser_intlength, &
   ppser_reallength, &
   ppser_realtype, &
+  ppser_savepoint, &
+  ppser_serializer, &
+  ppser_serializer_ref, &
   ppser_zrperturb, &
   ppser_get_mode
 USE savepoint_helpers
@@ -3697,9 +3697,7 @@ subroutine update_cld( &
 
 #ifdef SERIALIZE
 subroutine serialize_process_libraries_constants()
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90.SER lineno: #3675
 call fs_create_savepoint('Constants.ProcessLibrary-In', ppser_savepoint)
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90.SER lineno: #3676
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'aT_ICE_ALL', aT_ICE_ALL)
@@ -3740,7 +3738,6 @@ SELECT CASE ( ppser_get_mode() )
     call fs_write_field(ppser_serializer, ppser_savepoint, 'ALHFBCP', alhfbcp)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'ALHSBCP', alhsbcp)
 END SELECT
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/Process_Library.F90.SER lineno: #3677
 SELECT CASE ( ppser_get_mode() )
   CASE(0)
     call fs_write_field(ppser_serializer, ppser_savepoint, 'LIQ_RADII_PARAM', LIQ_RADII_PARAM)

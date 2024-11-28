@@ -3,15 +3,16 @@ module uwshcu
 
 #ifdef SERIALIZE
 USE m_serialize, ONLY: &
-  fs_create_savepoint
+  fs_create_savepoint, &
+  fs_add_savepoint_metainfo
 USE utils_ppser, ONLY:  &
   ppser_get_mode, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
   ppser_intlength, &
   ppser_reallength, &
   ppser_realtype, &
+  ppser_savepoint, &
+  ppser_serializer, &
+  ppser_serializer_ref, &
   ppser_zrperturb, &
   ppser_get_mode
 USE savepoint_helpers
@@ -112,9 +113,17 @@ contains
 
 
       integer, intent(in)   :: idim                     ! Number of columns
+#ifdef SERIALIZE
+      integer   :: k0                       ! Number of levels  
+#else
       integer, intent(in)   :: k0                       ! Number of levels  
+#endif
       integer, intent(in)   :: dotransport              ! Transport tracers [1 true]
+#ifdef SERIALIZE
+      real      :: dt                       ! moist heartbeat [s]
+#else
       real   , intent(in)   :: dt                       ! moist heartbeat [s]
+#endif
 
       real,   intent(in)    :: pifc0_inv(idim,k0+1)     !  Environmental pressure at the interfaces [ Pa ]
       real,   intent(in)    :: zifc0_inv(idim,k0+1)     !  Environmental height at the interfaces   [ m ]
@@ -458,10 +467,18 @@ contains
     ! ------------------------------------------------------------ !
 
       integer, intent(in)  :: idim               ! Number of columns
+#ifdef SERIALIZE
+      integer  :: k0                 ! Number of vertical levels
+#else
       integer, intent(in)  :: k0                 ! Number of vertical levels
+#endif
       integer, intent(in)  :: ncnst              ! Number of tracers
       integer, intent(in)  :: dotransport        ! Transport tracers [1 true]
+#ifdef SERIALIZE
+      real  :: dt                 ! Timestep [s]
+#else
       real,    intent(in)  :: dt                 ! Timestep [s]
+#endif
 
       real, intent(in)    :: pifc0_in(   idim,0:k0 )  ! Environmental pressure at interfaces [Pa]
       real, intent(in)    :: zifc0_in(   idim,0:k0 )  ! Environmental height at interfaces [m]
@@ -1159,9 +1176,13 @@ contains
       !========================
       !   Start column loop
       !========================
-
+#ifdef SERIALIZE
+call ser_set_Dx(idim, iter_cin, k0+1, 1)
+#endif
       do i = 1, idim
-
+#ifdef SERIALIZE
+call ser_set_indices(i, 1 ,1 ,1)
+#endif
          id_exit = .false.
 
          frc_rasn        = shlwparams%frc_rasn
@@ -1394,7 +1415,9 @@ contains
            ! It is not clear whether I should locate below two lines within or  out !
            ! of the iterative cin loop.                                             !
            ! ---------------------------------------------------------------------- !
-
+#ifdef SERIALIZE
+call ser_set_indices(i, iter, 1, 1)
+#endif
            tscaleh = cush                        
            cush    = -1.
            tkeavg   = 0.
@@ -1579,8 +1602,17 @@ contains
            id_exit = .true.
            go to 333
         end if
-
+#ifdef SERIALIZE
+call fs_create_savepoint('Qsinvert-In', ppser_savepoint)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "qtsrc", qtsrc, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "thlsrc", thlsrc, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "pifc0_in", pifc0(0), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+#endif
          plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
+#ifdef SERIALIZE
+call fs_create_savepoint('Qsinvert-Out', ppser_savepoint)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "plcl", plcl, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+#endif
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -1672,7 +1704,21 @@ contains
                if( k .lt. klcl ) then
                    thvubot = thvlsrc
                    thvutop = thvlsrc  
+#ifdef SERIALIZE
+call fs_create_savepoint('SingleCIN-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "pifc0_bot", pifc0(k-1))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thv0bot", thv0bot(k))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "pifc0_top", pifc0(k))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thv0top", thv0top(k))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thvubot", thvubot)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thvutop", thvutop)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "cin1", cin)
+#endif
                    cin     = cin + single_cin(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop)
+#ifdef SERIALIZE
+call fs_create_savepoint('SingleCIN-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "cin2", cin)
+#endif
                elseif( k .eq. klcl ) then
                    !----- Bottom to LCL
                    thvubot = thvlsrc
@@ -1690,7 +1736,23 @@ contains
                        go to 333
                    end if
                    thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
+#ifdef SERIALIZE
+call fs_create_savepoint('Getbuoy-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "pifc0_below", plcl)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thv0bot_buoy", thv0lcl)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "pifc0_above", pifc0(k))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thv0top_buoy", thv0top(k))
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thvubot_buoy", thvubot)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "thvutop_buoy", thvutop)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "plfc_in", plfc)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "cin_in", cin)
+#endif
                    call getbuoy(plcl,thv0lcl,pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+#ifdef SERIALIZE
+call fs_create_savepoint('Getbuoy-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "plfc_out", plfc)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "cin_out", cin)
+#endif
                    if( plfc .gt. 0. ) then 
                        klfc = k 
                        go to 35
@@ -1831,8 +1893,16 @@ contains
                ! 'ufrclcl' after calculating 'winv' & 'ufrcinv'  at the PBL top !
                ! interface later, after calculating 'cbmf'.                     !
                ! -------------------------------------------------------------- !
-         
-               alpha = compute_alpha( del_CIN, ke ) 
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeAlpha-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "del_CIN", del_CIN)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "ke", ke)
+#endif
+               alpha = compute_alpha( del_CIN, ke )
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeAlpha-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "alpha", alpha)
+#endif
                cin   = cin_i + alpha * del_CIN
                if( use_CINcin ) then
                    cinlcl = cinlcl_i                 
@@ -2204,7 +2274,17 @@ contains
          mulcl = sqrt(2.*cinlcl*rbuoy)/1.4142/sigmaw
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeMumin2-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "mulcl", mulcl)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "rmaxfrax", rmaxfrac)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "mu", mu)
+#endif
             mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputeMumin2-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "mumin2", mumin2)
+#endif
             if( mu .gt. mumin2 ) then
                  call write_parallel('Critical error in mu calculation in UW_ShCu')
 !                call endrun
@@ -2645,7 +2725,19 @@ contains
                    cquad =  2.*rbuoy*g*cridis*(thv_x0 -  thv0j)/thv0j +    wue**2;
                    if( kk .eq. 1 ) then
                        if( ( bquad**2-4.*aquad*cquad ) .ge. 0. ) then
+#ifdef SERIALIZE
+call fs_create_savepoint('Roots-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "aquad", aquad)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "bquad", bquad)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "cquad", cquad)
+#endif
                              call roots(aquad,bquad,cquad,xs1,xs2,status)
+#ifdef SERIALIZE
+call fs_create_savepoint('Roots-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "xc1", xc1)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "xc2", xc2)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "status", status)
+#endif
                              x_cu = min(1.,max(0.,min(xsat,min(xs1,xs2))))
                        else
                              x_cu = xsat;
@@ -3054,7 +3146,20 @@ contains
                end if
            endif       
          else 
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputePpen-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "wtwb", wtwb)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "drage", drage)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "bogbot", bogbot)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "bogtop", bogtop)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "rhomid0j", rhomid0j)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "dp0", dp0(kpen))
+#endif
            ppen = compute_ppen(wtwb,drage,bogbot,bogtop,rhomid0j,dp0(kpen))
+#ifdef SERIALIZE
+call fs_create_savepoint('ComputePpen-Out', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "ppen", ppen)
+#endif
          endif
          if( ppen .eq. -dp0(kpen) .or. ppen .eq. 0. ) limit_ppen(i) = 1.
 
@@ -3426,8 +3531,31 @@ contains
          xsrc  = qtsrc
          xmean = qt0(kinv)
          xtop  = qt0(kinv+1) + ssqt0(kinv+1) * ( pifc0(kinv)   - pmid0(kinv+1) )
-         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )        
+         xbot  = qt0(kinv-1) + ssqt0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )    
+#ifdef SERIALIZE
+call fs_create_savepoint('FluxBelowInv-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "k0", k0)
+do k = 0, k0
+call ser_set_indices(i, iter, k+1, 1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "ps0", pifc0(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "xflx", xflx(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "cbmf", cbmf, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "dt", dt, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xsrc", xsrc, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xmean", xmean, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xtop", xtop, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xbot", xbot, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "kinv_in", kinv, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+#endif
          call fluxbelowinv( cbmf, pifc0(0:k0), k0, kinv, dt, xsrc, xmean, xtop, xbot, xflx )
+#ifdef SERIALIZE
+call fs_create_savepoint('FluxBelowInv-Out', ppser_savepoint)
+do k = 0, k0
+call ser_set_indices(i, iter, k+1, 1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "xflx_out", xflx(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+#endif
          qtflx(0:kinv-1) = xflx(0:kinv-1)
 
          xsrc  = thlsrc
@@ -4026,8 +4154,44 @@ contains
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
          s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
+#ifdef SERIALIZE
+call fs_create_savepoint('PositiveMoistureSingle-In', ppser_savepoint)
+    call fs_write_scalar(ppser_serializer, ppser_savepoint, "mkx", k0)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xlv", xlv, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "xls", xls, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "dt", dt, idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "qvmin", qmin(1), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "qlmin", qmin(ixcldliq), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 2, "qimin", qmin(ixcldice), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+do k = 1, k0
+call ser_set_indices(i, iter, k, 1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "dp0_in", dp0(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qv0_star", qv0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "ql0_star", ql0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qi0_star", qi0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "s0_star", s0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qvten", qvten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qlten", qlten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qiten", qiten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "sten", sten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+#endif
          call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
+#ifdef SERIALIZE
+call fs_create_savepoint('PositiveMoistureSingle-Out', ppser_savepoint)
+do k = 1, k0
+call ser_set_indices(i, iter, k, 1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "ql0_star", ql0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qi0_star", qi0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "s0_star", s0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qvten", qvten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qv0_star", qv0_star(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qlten", qlten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qiten", qiten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "sten", sten(k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+#endif
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
 
@@ -4592,11 +4756,65 @@ contains
      end do ! column i loop
 
 #ifdef SERIALIZE
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/uwshcu.F90.SER lineno: #4574
-    call fs_create_savepoint('Conden-In', ppser_savepoint)
+    call fs_create_savepoint('SingleCIN-In', ppser_savepoint)
     call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
-! file: /home/fgdeconi/work/git/fp/geos/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/uwshcu.F90.SER lineno: #4575
-    call fs_create_savepoint('Conden-Out', ppser_savepoint)
+    call fs_create_savepoint('SingleCIN-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('Getbuoy-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('Getbuoy-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('Qsinvert-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('Qsinvert-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('ComputeAlpha-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('ComputeAlpha-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('ComputeMumin2-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('ComputeMumin2-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('Roots-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('Roots-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('ComputePpen-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('ComputePpen-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('FluxBelowInv-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('FluxBelowInv-Out', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+#endif
+
+#ifdef SERIALIZE
+    call fs_create_savepoint('PositiveMoistureSingle-In', ppser_savepoint)
+    call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
+    call fs_create_savepoint('PositiveMoistureSingle-Out', ppser_savepoint)
     call fs_flush_savepoint(ppser_serializer, ppser_savepoint)
 #endif
 
@@ -4607,7 +4825,11 @@ contains
 
    function slope(k0,field,p0)
 
+#ifdef SERIALIZE
+      integer:: k0
+#else
       integer, intent(in):: k0
+#endif
       real             :: slope(k0)
       real, intent(in) :: field(k0)
       real, intent(in) :: p0(k0)
@@ -4848,12 +5070,24 @@ contains
   ! of thermodynamic variables in 'kinv' layer  to come back to normal values !
   ! at the next step.                                                         !
   ! ------------------------------------------------------------------------- !            
+#ifdef SERIALIZE
+    integer                     :: mkx, kinv 
+#else
     integer,  intent(in)                     :: mkx, kinv 
+#endif
+#ifdef SERIALIZE
+    real                     :: cbmf, xsrc, xmean, xtopin, xbotin
+#else
     real, intent(in)                     :: cbmf, xsrc, xmean, xtopin, xbotin
+#endif
     real, intent(in),  dimension(0:mkx)  :: ps0
     real, intent(out), dimension(0:mkx)  :: xflx  
     integer k
+#ifdef SERIALIZE
+    real ::  dt
+#else
     real, intent(in) ::  dt
+#endif
     real rcbmf, rpeff, dp, rr, pinv_eff, xtop, xbot, pinv, xtop_ori, xbot_ori
 
     xflx(0:mkx) = 0.
@@ -4913,10 +5147,18 @@ contains
   ! ------------------------------------------------------------------------------- !
     implicit none
     integer,  intent(in)     :: mkx
+#ifdef SERIALIZE
+    real     :: xlv, xls
+#else
     real, intent(in)     :: xlv, xls
+#endif
     real, intent(in)     :: qvmin, qlmin, qimin
     real, intent(in)     :: dp(mkx)
+#ifdef SERIALIZE
+    real       :: dt
+#else
     real, intent(in)       :: dt
+#endif
     real, intent(inout)  :: qv(mkx), ql(mkx), qi(mkx), s(mkx)
     real, intent(inout)  :: qvten(mkx), qlten(mkx), qiten(mkx), sten(mkx)
     integer   k
