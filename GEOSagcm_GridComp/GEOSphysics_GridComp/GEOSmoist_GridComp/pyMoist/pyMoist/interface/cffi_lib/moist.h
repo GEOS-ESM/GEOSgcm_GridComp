@@ -42,4 +42,14 @@ extern int pymoist_interface_py_run_AerActivation(
 	// output
 	float *nacti, float *nwfa, float *nactl);
 
+extern int pymoist_interface_py_run_GFDL1M(
+	float dw_land, float dw_ocean, int PDFSHAPE, float TURNRHCRIT_PARAM,
+	float DT_MOIST, float CCW_EVAP_EFF, float CCI_EVAP_EFF,
+	int LMELTFRZ,
+	float *AREA, float *CNV_FRC, float *SRF_TYPE, // 2D..
+	int *KLCL,
+	float *EIS, float *PLmb, float *PLEmb, float *NACTL, float *NACTI, float *QST, // 3D..
+	float *T, float *Q, float *QLCN, float *QICN, float *QLLS, float *QILS, float *CLLS, float *CLCN,
+	float *SUBLC, float *EVAPC, float *RHX);
+
 extern int pymoist_interface_py_finalize();

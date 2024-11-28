@@ -23,7 +23,6 @@ from ndsl import (
     StencilFactory,
     SubtileGridSizer,
     TilePartitioner,
-    orchestrate,
 )
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.dace.build import set_distributed_caches
@@ -32,6 +31,7 @@ from ndsl.dsl.typing import floating_point_precision
 from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
+from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.interface.flags import MoistFlags
 
 
@@ -147,12 +147,7 @@ class GEOSPyMoistWrapper:
         )
         self._is_orchestrated = stencil_config.dace_config.is_dace_orchestrated()
 
-        # Orchestrate all code called from this function
-        orchestrate(
-            obj=self,
-            config=stencil_config.dace_config,
-            method_to_orchestrate="_critical_path",
-        )
+        # TODO: Orchestrate all code called from this function
 
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
             sizer=sizer, comm=self.communicator
@@ -161,12 +156,23 @@ class GEOSPyMoistWrapper:
             config=stencil_config, grid_indexing=self._grid_indexing
         )
 
-        with StencilBackendCompilerOverride(MPI.COMM_WORLD, stencil_config.dace_config):
+        with StencilBackendCompilerOverride(
+            MPI.COMM_WORLD,
+            stencil_config.dace_config,
+        ):
             self.aer_activation = AerActivation(
                 stencil_factory=stencil_factory,
                 quantity_factory=quantity_factory,
                 n_modes=flags.n_modes,
                 USE_AERSOL_NN=True,
+            )
+            print(
+                "[PYMOIST] Defaulted to SaturationFormulation.Staars"
+                "for QSat in GFDL_1M"
+            )
+            self.gfdl_1M = GFDL_1M(
+                stencil_factory=stencil_factory,
+                quantity_factory=quantity_factory,
             )
 
         self._fortran_mem_space = fortran_mem_space
