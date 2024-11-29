@@ -47,6 +47,7 @@ def QSat_Float_Liquid(
     PL: Float = -999.0,
     DQ_trigger: bool = False,
 ):
+    DQ = 0.0
     # qsatlqu.code with UTBL = True
     if TL <= TMINLQU:
         QS = estlqu
@@ -90,6 +91,7 @@ def QSat_Float_Ice(
     PL: Float = -999.0,
     DQ_trigger: bool = False,
 ):
+    DQ = 0.0
     # qsatice.code with UTBL = True
     if TL <= TMINTBL:
         QS = ese[0][0]  # type: ignore
@@ -137,6 +139,7 @@ def QSat_Float(
     RAMP_trigger: bool = False,
     DQSAT_trigger: bool = False,
 ):
+    DQ = 0.0
     if RAMP_trigger:
         URAMP = -abs(RAMP)
     else:

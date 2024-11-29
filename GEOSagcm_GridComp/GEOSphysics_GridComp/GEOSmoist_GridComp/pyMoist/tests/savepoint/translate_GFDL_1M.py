@@ -40,7 +40,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "dw_land",
             "dw_ocean",
             "TURNRHCRIT_PARAM",
-            "DT_MOIST_Float",
+            "DT_MOIST",
             "CCW_EVAP_EFF",
             "CCI_EVAP_EFF",
             "PDFSHAPE",
@@ -102,7 +102,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         dw_land = Float(inputs["dw_land"])
         dw_ocean = Float(inputs["dw_ocean"])
         TURNRHCRIT_PARAM = Float(inputs["TURNRHCRIT_PARAM"])
-        DT_MOIST = Float(inputs["DT_MOIST_Float"])
+        DT_MOIST = Float(inputs["DT_MOIST"])
         CCW_EVAP_EFF = Float(inputs["CCW_EVAP_EFF"])
         CCI_EVAP_EFF = Float(inputs["CCI_EVAP_EFF"])
         PDFSHAPE = Float(inputs["PDFSHAPE"])
