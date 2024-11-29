@@ -998,10 +998,6 @@ SELECT CASE ( ppser_get_mode() )
 END SELECT
 #endif
 
-#ifdef PYMOIST_INTEGRATION
-      endif
-#endif
-
     ! Update macrophysics tendencies
      DUDT_macro=( U         - DUDT_macro)/DT_MOIST
      DVDT_macro=( V         - DVDT_macro)/DT_MOIST
