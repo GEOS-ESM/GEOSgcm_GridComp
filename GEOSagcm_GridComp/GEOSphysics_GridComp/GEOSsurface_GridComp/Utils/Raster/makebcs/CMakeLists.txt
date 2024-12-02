@@ -54,6 +54,7 @@ install(PROGRAMS clsm_plots.pro create_README.csh  DESTINATION bin)
 file(GLOB MAKE_BCS_PYTHON CONFIGURE_DEPENDS "./make_bcs*.py")
 list(FILTER MAKE_BCS_PYTHON EXCLUDE REGEX "make_bcs_shared.py")
 install(PROGRAMS  ${MAKE_BCS_PYTHON} DESTINATION bin)
+install(PROGRAMS convert_tile_to_nc4.py DESTINATION bin)
 
 set(file ./make_bcs_shared.py)
 configure_file(${file} ${file} @ONLY)

@@ -22,6 +22,7 @@ program TileToNC4
    real :: cell_area
    integer :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
    integer :: n_lon2, n_lat2, nx, ny, num, ll, maxcat
+   logical :: file_exists
  
    CALL get_command_argument(1, arg)
    tile_file  = trim(arg)
@@ -68,7 +69,7 @@ program TileToNC4
    ! At this point, the first line is already in tmpline  
    allocate(iTable(N_tile,0:5))
    allocate(rTable(N_tile,10))
-
+   rTable = MAPL_UNDEF
    if ( index(gName1, 'EASE') /=0 ) then
       i = 1
       read(tmpline,*)   iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2), &
@@ -97,18 +98,21 @@ program TileToNC4
    endif
    close(unit)
 
-   open (newunit=unit, file=trim(catch_file), form='formatted', action='read')
-   read(unit, *) n_cat
-   do i = 1, n_cat
-      read(unit, *)  tmp_in1,      & 
+   inquire(file= trim(catch_file), exist=file_exists)
+   if (file_exists) then
+      open (newunit=unit, file=trim(catch_file), form='formatted', action='read')
+      read(unit, *) n_cat
+      do i = 1, n_cat
+         read(unit, *)  tmp_in1,      & 
                      tmp_in2,      &
                      rTable(i, 6), &
                      rTable(i, 7), &
                      rTable(i, 8), &
                      rTable(i, 9), &
                      rTable(i, 10)
-   enddo
-   close(unit)   
+      enddo
+      close(unit)   
+  endif
 
   ll = index(tile_file, '.til')
   filenameNC4 = tile_file(1:ll)//'nc4'
