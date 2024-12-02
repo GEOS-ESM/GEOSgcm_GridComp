@@ -31,7 +31,7 @@ module GEOS_LandGridCompMod
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
   use GEOS_IgniGridCompMod,    only : IgniSetServices     => SetServices
-!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
+  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
   private
@@ -195,19 +195,21 @@ contains
        
     END SELECT
 
-!    IF(RUN_ROUTE == 1) THEN
-!       if (NUM_CATCH == 1) then
-!          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
-!          VERIFY_(STATUS)
-!       else
-!          do I = 1, NUM_CATCH
-!             WRITE(TMP,'(I3.3)') I
-!             GCName  = 'ens' // trim(TMP) // ':ROUTE'
-!             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
-!             VERIFY_(STATUS)
-!          end do
-!       end if
-!    ENDIF
+    allocate (ROUTE(NUM_CATCH), stat=status)
+    VERIFY_(STATUS)
+    IF(RUN_ROUTE == 1) THEN
+       if (NUM_CATCH == 1) then
+          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          do I = 1, NUM_CATCH
+             WRITE(TMP,'(I3.3)') I
+             GCName  = 'ens' // trim(TMP) // ':ROUTE'
+             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
+             VERIFY_(STATUS)
+          end do
+       end if
+    ENDIF
    
     if (DO_FIRE_DANGER) then
         IGNI = MAPL_AddChild(GC, NAME='IGNI'//trim(tmp), SS=IgniSetServices, RC=STATUS)
@@ -1453,16 +1455,16 @@ contains
               VERIFY_(STATUS)
           end if
 
-!          IF(RUN_ROUTE == 1) THEN
-!             call MAPL_AddConnectivity (                              &
-!                  GC                                                 ,&
-!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
-!                  SRC_ID =  CATCH(I)                                 ,&
-!                  DST_ID =  ROUTE(I)                                 ,&
-!                  
-!                  RC=STATUS )
-!             VERIFY_(STATUS)            
-!          ENDIF
+          IF(RUN_ROUTE == 1) THEN
+             call MAPL_AddConnectivity (                              &
+                  GC                                                 ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SRC_ID =  CATCH(I)                                 ,&
+                  DST_ID =  ROUTE(I)                                 ,&
+                  
+                  RC=STATUS )
+             VERIFY_(STATUS)            
+          ENDIF
 
        CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
@@ -1486,16 +1488,16 @@ contains
               VERIFY_(STATUS)
           end if
 
-!          IF(RUN_ROUTE == 1) THEN
-!             call MAPL_AddConnectivity (                              &
-!                  GC                                                 ,&
-!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
-!                  SRC_ID =  CATCHCN(I)                               ,&
-!                  DST_ID =  ROUTE(I)                                 ,&
-!                  
-!                  RC=STATUS )
-!             VERIFY_(STATUS)            
-!          ENDIF
+          IF(RUN_ROUTE == 1) THEN
+             call MAPL_AddConnectivity (                              &
+                  GC                                                 ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SRC_ID =  CATCHCN(I)                               ,&
+                  DST_ID =  ROUTE(I)                                 ,&
+                  
+                  RC=STATUS )
+             VERIFY_(STATUS)            
+          ENDIF
        END SELECT
     END DO
 
@@ -1669,6 +1671,7 @@ contains
 !--------------------------------
 
     DO I = 1, size(GCS)
+       if (trim(GCnames(i)) == "ROUTE") cycle
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
                              CLOCK=CLOCK, PHASE=1, userRC=STATUS)
