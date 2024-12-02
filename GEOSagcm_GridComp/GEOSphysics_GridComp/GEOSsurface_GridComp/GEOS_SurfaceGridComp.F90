@@ -6052,6 +6052,7 @@ module GEOS_SurfaceGridCompMod
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
+    logical :: allocateRunoff
 
 !=============================================================================
 
@@ -7366,12 +7367,19 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(LWNDSRF ,LWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWNDSRF ,SWNDSRFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
 
+    allocateRunoff = .false.
+    if (associated(RUNOFF)) allocateRunoff = .true.
+
     if (associated(SURF_INTERNAL_STATE%RoutingType) .or. DO_DATA_ATM4OCN) then ! routing file exists or we run DataAtm
        allocate(DISCHARGETILE(NT),stat=STATUS); VERIFY_(STATUS)
        DISCHARGETILE=MAPL_Undef
-       allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
-       RUNOFFTILE=MAPL_Undef
+       allocateRunoff = .true.
     end if
+    if (allocateRunoff) then
+       allocate(RUNOFFTILE(NT),stat=STATUS); VERIFY_(STATUS)
+       RUNOFFTILE = 0.0
+    end if
+
     call MKTILE(RUNSURF ,RUNSURFTILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(BASEFLOW,BASEFLOWTILE,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(ACCUM   ,ACCUMTILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -7513,8 +7521,6 @@ module GEOS_SurfaceGridCompMod
 
 !  Cycle through all continental children (skip ocean),
 !   collecting RUNOFFTILE exports.
-
-    if (associated(RUNOFFTILE)) RUNOFFTILE       = 0.0
 
     do I = 1, NUM_CHILDREN
        if (I == OCEAN) cycle
