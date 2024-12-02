@@ -111,7 +111,7 @@ program TileFile_ASCII_to_nc4
 
      i = 1
      read(tmpline,*)   iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2),   &
-          iTable(i,2), iTable(i,3), rTable(i,3)
+          iTable(i,2), iTable(i,3), rTable(i,4)
      do i = 2, N_tile
         read (unit,*) tmpline
         read(tmpline,*) iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2),  &
