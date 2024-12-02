@@ -29,7 +29,7 @@ if __name__ == "__main__":
          catch_file = til.replace('geometry', 'land')
          fname = os.path.basename(til)
          catch_file = catch_file.replace(fname, 'clsm/catchment.def')
-         result = sp.run["./TileToNC4.x", til, catch_file, capture_output=True, text=True)
+         result = sp.run["./TileFile_ASCII_to_nc4.x", til, catch_file, capture_output=True, text=True)
          print(result.stdout)
 
    os.chdir(PWD)
