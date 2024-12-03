@@ -1008,7 +1008,7 @@ contains
                              QT,       &  ! in
                              HL,       &  ! in
                              MFFRC,    &  ! in
-                             CNV_MFC,  &  ! in
+!                             CNV_MFC,  &  ! in
                              MFQT3,    &  ! in
                              MFHL3,    &  ! in
                              MFW2,     &  ! in
@@ -1053,7 +1053,7 @@ contains
     real,    intent(in   ) :: QT   (IM,JM,LM)  ! total water
     real,    intent(in   ) :: HL   (IM,JM,LM)  ! liquid water static energy
     real,    intent(in   ) :: MFFRC(IM,JM,LM)  ! mass flux area fraction
-    real,    intent(in   ) :: CNV_MFC(IM,JM,0:LM) 
+!    real,    intent(in   ) :: CNV_MFC(IM,JM,0:LM) 
     real,    intent(in   ) :: MFQT3(IM,JM,LM)  !
     real,    intent(in   ) :: MFHL3(IM,JM,LM)  !
     real,    intent(in   ) :: MFW2 (IM,JM,LM)  !

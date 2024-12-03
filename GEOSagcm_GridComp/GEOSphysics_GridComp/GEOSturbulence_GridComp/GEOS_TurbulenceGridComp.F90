@@ -329,15 +329,15 @@ contains
       VERIFY_(STATUS)
 
 
-      call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'CNV_MFC',                                        &
-         LONG_NAME  = 'mass_flux',                          &
-         UNITS      = 'K',                                        &
-         DIMS       = MAPL_DimsHorzVert,                          &
-         VLOCATION  = MAPL_VLocationEdge,                         &
-         RESTART    = MAPL_RestartSkip,                           &
-                                                        RC=STATUS  )
-      VERIFY_(STATUS)
+!      call MAPL_AddImportSpec(GC,                                 &
+!         SHORT_NAME = 'CNV_MFC',                                        &
+!         LONG_NAME  = 'mass_flux',                          &
+!         UNITS      = 'K',                                        &
+!         DIMS       = MAPL_DimsHorzVert,                          &
+!         VLOCATION  = MAPL_VLocationEdge,                         &
+!         RESTART    = MAPL_RestartSkip,                           &
+!                                                        RC=STATUS  )
+!      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'TH',                                        &
@@ -2992,7 +2992,7 @@ end if
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
      real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, FCLD
-     real, dimension(:,:,:), pointer     :: ALH, CNV_MFC
+     real, dimension(:,:,:), pointer     :: ALH!, CNV_MFC
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
@@ -3181,8 +3181,8 @@ end if
 
 ! Get Sounding from the import state
 !-----------------------------------
-     call MAPL_GetPointer(IMPORT,  CNV_MFC,   'CNV_MFC',     RC=STATUS)
-     VERIFY_(STATUS)
+!     call MAPL_GetPointer(IMPORT,  CNV_MFC,   'CNV_MFC',     RC=STATUS)
+!     VERIFY_(STATUS)
 
      call MAPL_GetPointer(IMPORT,     T,       'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,     Q,      'QV', RC=STATUS); VERIFY_(STATUS)
@@ -4521,7 +4521,7 @@ end if
                           QT,             &
                           SL,             &
                           EDMF_FRC,       &
-                          CNV_MFC,        &
+!                          CNV_MFC,        &
 !                          edmf_mf(:,:,1:LM)/rhoe(:,:,1:LM),   &
 !                          MFQT2,          &
                           MFQT3,          &
