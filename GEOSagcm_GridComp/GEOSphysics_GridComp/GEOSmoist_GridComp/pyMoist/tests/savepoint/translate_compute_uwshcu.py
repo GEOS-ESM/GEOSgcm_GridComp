@@ -13,6 +13,7 @@ from ndsl.dsl.typing import (
     FloatFieldIJ,
     BoolField,
 )
+import xarray as xr
 
 
 class TranslateComputeUwshcu(TranslateFortranData2Py):
@@ -35,9 +36,13 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # FloatField Inputs
         self.in_vars["data_vars"] = {
             "pifc0_in": {},
+            "zifc0_in": {},
             "pmid0_in": {},
+            "zmid0_in": {},
             "kpbl_in": {},
             "exnmid0_in": {},
+            "exnifc0_in": {},
+            "dp0_in": {},
             "u0_in": {},
             "v0_in": {},
             "qv0_in": {},
@@ -45,6 +50,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "qi0_in": {},
             "th0_in": {},
             "tr0_inout": {},
+            "frland_in": {},
+            "tke_in": {},
+            "rkfre": {},
+            "cush_inout": {},
+            "shfx": {},
+            "evap": {},
         }
 
         # Float/Int Inputs
@@ -52,23 +63,44 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "dotransport",
             "ncnst",
             "k0",
+            "windsrcavg",
+            "qtsrchgt",
+            "qtsrc_fac",
+            "thlsrc_fac",
+            "frc_rasn",
+            "rbuoy",
+            "epsvarw",
+            "use_CINcin",
+            "mumin1",
+            "rmaxfrac",
+            "PGFc",
+            "dt",
         ]
 
         # FloatField Outputs
         self.out_vars = {
+            "ssthl0": self.grid.compute_dict(),
+            "ssqt0": self.grid.compute_dict(),
+            "ssu0": self.grid.compute_dict(),
+            "ssv0": self.grid.compute_dict(),
+            "sstr0": self.grid.compute_dict(),
+            "tr0": self.grid.compute_dict(),
+            "thj": self.grid.compute_dict(),
+            "qlj": self.grid.compute_dict(),
+            "qij": self.grid.compute_dict(),
+            "qvj": self.grid.compute_dict(),
+            "qse": self.grid.compute_dict(),
+            "id_check": self.grid.compute_dict(),
+            "thv0top": self.grid.compute_dict(),
+            "thvl0top": self.grid.compute_dict(),
+            "tr0_o": self.grid.compute_dict(),
+            "sstr0_o": self.grid.compute_dict(),
+            "trflx": self.grid.compute_dict(),
+            "trten": self.grid.compute_dict(),
+            "tru": self.grid.compute_dict(),
+            "tru_emf": self.grid.compute_dict(),
+            "kinv": self.grid.compute_dict(),
             "umf_out": self.grid.compute_dict(),
-            "tr0_test": self.grid.compute_dict(),
-            "ssthl0_test": self.grid.compute_dict(),
-            "ssqt0_test": self.grid.compute_dict(),
-            "ssu0_test": self.grid.compute_dict(),
-            "ssv0_test": self.grid.compute_dict(),
-            "sstr0_test": self.grid.compute_dict(),
-            "thj_test": self.grid.compute_dict(),
-            "qvj_test": self.grid.compute_dict(),
-            "qlj_test": self.grid.compute_dict(),
-            "qij_test": self.grid.compute_dict(),
-            "qse_test": self.grid.compute_dict(),
-            "id_check_test": self.grid.compute_dict(),
             "dcm_out": self.grid.compute_dict(),
             "qvten_out": self.grid.compute_dict(),
             "qlten_out": self.grid.compute_dict(),
@@ -79,20 +111,19 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "qrten_out": self.grid.compute_dict(),
             "qsten_out": self.grid.compute_dict(),
             "cufrc_out": self.grid.compute_dict(),
-            "fer_out": self.grid.compute_dict(),
-            "fdr_out": self.grid.compute_dict(),
-            "qldet_out": self.grid.compute_dict(),
-            "qidet_out": self.grid.compute_dict(),
-            "qlsub_out": self.grid.compute_dict(),
-            "qisub_out": self.grid.compute_dict(),
-            "ndrop_out": self.grid.compute_dict(),
-            "nice_out": self.grid.compute_dict(),
-            "tpert_out": self.grid.compute_dict(),
-            "qpert_out": self.grid.compute_dict(),
+            "cushinout": self.grid.compute_dict(),
             "qtflx_out": self.grid.compute_dict(),
             "slflx_out": self.grid.compute_dict(),
             "uflx_out": self.grid.compute_dict(),
             "vflx_out": self.grid.compute_dict(),
+            "fer_out": self.grid.compute_dict(),
+            "fdr_out": self.grid.compute_dict(),
+            "thvlavg": self.grid.compute_dict(),
+            "tkeavg": self.grid.compute_dict(),
+            "uavg": self.grid.compute_dict(),
+            "vavg": self.grid.compute_dict(),
+            "thvlmin": self.grid.compute_dict(),
+            "qtavg": self.grid.compute_dict(),
         }
 
     def reshape_before(self, inputs):
@@ -187,6 +218,14 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
         return qty
 
+    def make_ntracers_zdim_field(self, data) -> Quantity:
+        qty = self.ntracers_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_INTERFACE_DIM, "ntracers"],
+            "n/a",
+        )
+        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
+
     # Perform stencil computation
     def compute(self, inputs):
         compute_uwshcu = ComputeUwshcu(
@@ -198,14 +237,32 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         inputs_reshaped = self.reshape_before(inputs)
         print("Reshaped inputs")
 
-        # Inputs
+        # Float/Int Inputs
         dotransport = inputs_reshaped["dotransport"]
         ncnst = np.int64(inputs_reshaped["ncnst"])
         k0 = np.int64(inputs_reshaped["k0"])
-        kpbl_in = self.make_ij_field(inputs_reshaped["kpbl_in"], dtype=IntFieldIJ)
+        windsrcavg = np.int64(inputs_reshaped["windsrcavg"])
+        qtsrchgt = inputs_reshaped["qtsrchgt"]
+        qtsrc_fac = inputs_reshaped["qtsrc_fac"]
+        thlsrc_fac = inputs_reshaped["thlsrc_fac"]
+        frc_rasn = inputs_reshaped["frc_rasn"]
+        rbuoy = inputs_reshaped["rbuoy"]
+        epsvarw = inputs_reshaped["epsvarw"]
+        use_CINcin = np.int64(inputs_reshaped["use_CINcin"])
+        mumin1 = inputs_reshaped["mumin1"]
+        rmaxfrac = inputs_reshaped["rmaxfrac"]
+        PGFc = inputs_reshaped["PGFc"]
+        dt = inputs_reshaped["dt"]
+
+        # Field inputs
         pifc0_in = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
+        zifc0_in = self.make_zinterface_field(inputs_reshaped["zifc0_in"])
         pmid0_in = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        zmid0_in = self.make_ijk_field(inputs_reshaped["zmid0_in"])
+        kpbl_in = self.make_ij_field(inputs_reshaped["kpbl_in"], dtype=IntFieldIJ)
         exnmid0_in = self.make_ijk_field(inputs_reshaped["exnmid0_in"])
+        exnifc0_in = self.make_zinterface_field(inputs_reshaped["exnifc0_in"])
+        dp0_in = self.make_ijk_field(inputs_reshaped["dp0_in"])
         u0_in = self.make_ijk_field(inputs_reshaped["u0_in"])
         v0_in = self.make_ijk_field(inputs_reshaped["v0_in"])
         qv0_in = self.make_ijk_field(inputs_reshaped["qv0_in"])
@@ -213,54 +270,86 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qi0_in = self.make_ijk_field(inputs_reshaped["qi0_in"])
         th0_in = self.make_ijk_field(inputs_reshaped["th0_in"])
         tr0_inout = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        frland_in = self.make_ij_field(inputs_reshaped["frland_in"])
+        tke_in = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        rkfre = self.make_ij_field(inputs_reshaped["rkfre"])
+        cush_inout = self.make_ij_field(inputs_reshaped["cush_inout"])
+        shfx = self.make_ij_field(inputs_reshaped["shfx"])
+        evap = self.make_ij_field(inputs_reshaped["evap"])
 
         # Outputs
-        umf_out = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
-        dcm_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qvten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qlten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qiten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        sten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        uten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        vten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qrten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qsten_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        cufrc_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        fer_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        fdr_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qldet_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qidet_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qlsub_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        qisub_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        ndrop_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        nice_out = self.make_ijk_field(inputs_reshaped["v0_in"])
-        tpert_out = self.make_ij_field(inputs_reshaped["kpbl_in"], dtype=FloatFieldIJ)
-        qpert_out = self.make_ij_field(inputs_reshaped["kpbl_in"], dtype=FloatFieldIJ)
-        qtflx_out = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
-        slflx_out = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
-        uflx_out = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
-        vflx_out = self.make_zinterface_field(inputs_reshaped["pifc0_in"])
-        tr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
-        ssthl0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        ssqt0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        ssu0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        ssv0_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        sstr0_test = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
-        thj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qvj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qlj_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qij_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qse_test = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        id_check_test = self.make_ijk_field(inputs_reshaped["pmid0_in"], dtype=Int)
+        ssthl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssqt0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssu0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        ssv0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        sstr0 = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        tr0 = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        thj = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qlj = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qij = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qvj = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qse = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        id_check = self.make_ijk_field(inputs_reshaped["pmid0_in"], dtype=Int)
+        thv0top = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvl0top = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        tr0_o = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        sstr0_o = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        trflx = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
+        trten = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
+        tru = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
+        tru_emf = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
+        kinv = self.make_ij_field(inputs_reshaped["frland_in"], dtype=Int)
+        umf_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        dcm_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qvten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qlten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qiten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        sten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        uten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        vten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qrten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qsten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        cufrc_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        cush_inout = self.make_ij_field(inputs_reshaped["cush_inout"])
+        qtflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        slflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        uflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        vflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
+        fer_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        fdr_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvlavg = self.make_ij_field(inputs_reshaped["cush_inout"])
+        tkeavg = self.make_ij_field(inputs_reshaped["cush_inout"])
+        uavg = self.make_ij_field(inputs_reshaped["cush_inout"])
+        vavg = self.make_ij_field(inputs_reshaped["cush_inout"])
+        thvlmin = self.make_ij_field(inputs_reshaped["cush_inout"])
+        qtavg = self.make_ij_field(inputs_reshaped["cush_inout"])
+        zmid0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qt0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvl0bot = self.make_ijk_field(inputs_reshaped["pmid0_in"])
 
         compute_uwshcu(
-            dotransport=dotransport,
-            ncnst=ncnst,
+            windsrcavg=windsrcavg,
+            qtsrchgt=qtsrchgt,
+            qtsrc_fac=qtsrc_fac,
+            thlsrc_fac=thlsrc_fac,
+            frc_rasn=frc_rasn,
+            rbuoy=rbuoy,
+            epsvarw=epsvarw,
+            use_CINcin=use_CINcin,
+            mumin1=mumin1,
+            rmaxfrac=rmaxfrac,
+            PGFc=PGFc,
             k0=k0,
-            kpbl_in=kpbl_in,
+            dt=dt,
+            ncnst=ncnst,
             pifc0_in=pifc0_in,
+            zifc0_in=zifc0_in,
+            exnifc0_in=exnifc0_in,
             pmid0_in=pmid0_in,
+            zmid0_in=zmid0_in,
             exnmid0_in=exnmid0_in,
+            dp0_in=dp0_in,
             u0_in=u0_in,
             v0_in=v0_in,
             qv0_in=qv0_in,
@@ -268,6 +357,14 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             qi0_in=qi0_in,
             th0_in=th0_in,
             tr0_inout=tr0_inout,
+            kpbl_in=kpbl_in,
+            frland_in=frland_in,
+            tke_in=tke_in,
+            rkfre=rkfre,
+            cush_inout=cush_inout,
+            shfx=shfx,
+            evap=evap,
+            dotransport=dotransport,
             umf_out=umf_out,
             dcm_out=dcm_out,
             qvten_out=qvten_out,
@@ -279,111 +376,100 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             qrten_out=qrten_out,
             qsten_out=qsten_out,
             cufrc_out=cufrc_out,
-            fer_out=fer_out,
-            fdr_out=fdr_out,
-            qldet_out=qldet_out,
-            qidet_out=qidet_out,
-            qlsub_out=qlsub_out,
-            qisub_out=qisub_out,
-            ndrop_out=ndrop_out,
-            nice_out=nice_out,
-            tpert_out=tpert_out,
-            qpert_out=qpert_out,
             qtflx_out=qtflx_out,
             slflx_out=slflx_out,
             uflx_out=uflx_out,
             vflx_out=vflx_out,
-            tr0_test=tr0_test,
-            ssthl0_test=ssthl0_test,
-            ssqt0_test=ssqt0_test,
-            ssu0_test=ssu0_test,
-            ssv0_test=ssv0_test,
-            sstr0_test=sstr0_test,
-            thj_test=thj_test,
-            qvj_test=qvj_test,
-            qlj_test=qlj_test,
-            qij_test=qij_test,
-            qse_test=qse_test,
-            id_check_test=id_check_test,
+            fer_out=fer_out,
+            fdr_out=fdr_out,
+            zmid0=zmid0,
+            qt0=qt0,
+            thvl0=thvl0,
+            thvl0bot=thvl0bot,
+            # Outputs for testing
+            ssthl0=ssthl0,
+            ssqt0=ssqt0,
+            ssu0=ssu0,
+            ssv0=ssv0,
+            sstr0=sstr0,
+            tr0=tr0,
+            thj=thj,
+            qij=qij,
+            qlj=qlj,
+            qse=qse,
+            qvj=qvj,
+            id_check=id_check,
+            thv0top=thv0top,
+            thvl0top=thvl0top,
+            tr0_o=tr0_o,
+            sstr0_o=sstr0_o,
+            trflx=trflx,
+            trten=trten,
+            tru=tru,
+            tru_emf=tru_emf,
+            kinv=kinv,
+            thvlavg=thvlavg,
+            tkeavg=tkeavg,
+            uavg=uavg,
+            vavg=vavg,
+            thvlmin=thvlmin,
+            qtavg=qtavg,
         )
         print("Performed compute_uwshcu on reshaped inputs")
 
-        # Reshape output variables back to original shape
-        umf_out_2D = self.reshape_after(umf_out.view[:, :, :])
-        dcm_out_2D = self.reshape_after(dcm_out.view[:, :, :])
-        qvten_out_2D = self.reshape_after(qvten_out.view[:, :, :])
-        qlten_out_2D = self.reshape_after(qlten_out.view[:, :, :])
-        qiten_out_2D = self.reshape_after(qiten_out.view[:, :, :])
-        sten_out_2D = self.reshape_after(sten_out.view[:, :, :])
-        uten_out_2D = self.reshape_after(uten_out.view[:, :, :])
-        vten_out_2D = self.reshape_after(vten_out.view[:, :, :])
-        qrten_out_2D = self.reshape_after(qrten_out.view[:, :, :])
-        qsten_out_2D = self.reshape_after(qsten_out.view[:, :, :])
-        cufrc_out_2D = self.reshape_after(cufrc_out.view[:, :, :])
-        fer_out_2D = self.reshape_after(fer_out.view[:, :, :])
-        fdr_out_2D = self.reshape_after(fdr_out.view[:, :, :])
-        qldet_out_2D = self.reshape_after(qldet_out.view[:, :, :])
-        qidet_out_2D = self.reshape_after(qidet_out.view[:, :, :])
-        qlsub_out_2D = self.reshape_after(qlsub_out.view[:, :, :])
-        qisub_out_2D = self.reshape_after(qisub_out.view[:, :, :])
-        ndrop_out_2D = self.reshape_after(ndrop_out.view[:, :, :])
-        nice_out_2D = self.reshape_after(nice_out.view[:, :, :])
-        tpert_out_2D = self.reshape_after(tpert_out.view[:, :])
-        qpert_out_2D = self.reshape_after(qpert_out.view[:, :])
-        qtflx_out_2D = self.reshape_after(qtflx_out.view[:, :, :])
-        slflx_out_2D = self.reshape_after(slflx_out.view[:, :, :])
-        uflx_out_2D = self.reshape_after(uflx_out.view[:, :, :])
-        vflx_out_2D = self.reshape_after(vflx_out.view[:, :, :])
-        tr0_test_3D = self.reshape_after(tr0_test.view[:, :, :, :])
-        ssthl0_test_2D = self.reshape_after(ssthl0_test.view[:, :, :])
-        ssqt0_test_2D = self.reshape_after(ssqt0_test.view[:, :, :])
-        ssu0_test_2D = self.reshape_after(ssu0_test.view[:, :, :])
-        ssv0_test_2D = self.reshape_after(ssv0_test.view[:, :, :])
-        sstr0_test_3D = self.reshape_after(sstr0_test.view[:, :, :, :])
-        thj_test_3D = self.reshape_after(thj_test.view[:, :, :])
-        qvj_test_3D = self.reshape_after(qvj_test.view[:, :, :])
-        qlj_test_3D = self.reshape_after(qlj_test.view[:, :, :])
-        qij_test_3D = self.reshape_after(qij_test.view[:, :, :])
-        qse_test_3D = self.reshape_after(qse_test.view[:, :, :])
-        id_check_test_3D = self.reshape_after(id_check_test.view[:, :, :])
-        print("Reshaped outputs back to original shape")
+        # print("Reshaped outputs back to original shape")
 
-        return {
-            "umf_out": umf_out_2D,
-            "dcm_out": dcm_out_2D,
-            "qvten_out": qvten_out_2D,
-            "qlten_out": qlten_out_2D,
-            "qiten_out": qiten_out_2D,
-            "sten_out": sten_out_2D,
-            "uten_out": uten_out_2D,
-            "vten_out": vten_out_2D,
-            "qrten_out": qrten_out_2D,
-            "qsten_out": qsten_out_2D,
-            "cufrc_out": cufrc_out_2D,
-            "fer_out": fer_out_2D,
-            "fdr_out": fdr_out_2D,
-            "qldet_out": qldet_out_2D,
-            "qidet_out": qidet_out_2D,
-            "qlsub_out": qlsub_out_2D,
-            "qisub_out": qisub_out_2D,
-            "ndrop_out": ndrop_out_2D,
-            "nice_out": nice_out_2D,
-            "tpert_out": tpert_out_2D,
-            "qpert_out": qpert_out_2D,
-            "qtflx_out": qtflx_out_2D,
-            "slflx_out": slflx_out_2D,
-            "uflx_out": uflx_out_2D,
-            "vflx_out": vflx_out_2D,
-            "tr0_test": tr0_test_3D,
-            "ssthl0_test": ssthl0_test_2D,
-            "ssqt0_test": ssqt0_test_2D,
-            "ssu0_test": ssu0_test_2D,
-            "ssv0_test": ssv0_test_2D,
-            "sstr0_test": sstr0_test_3D,
-            "thj_test": thj_test_3D,
-            "qvj_test": qvj_test_3D,
-            "qlj_test": qlj_test_3D,
-            "qij_test": qij_test_3D,
-            "qse_test": qse_test_3D,
-            "id_check_test": id_check_test_3D,
-        }
+        with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
+            # Load in netcdf test var
+            testvar = "thvlavg"
+            var = thvlavg
+            testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 0, 0]
+            # Replace nans with zero
+            testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
+            # Reshape and make testvar quantity
+            i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
+            testvar_reshaped = np.reshape(testvar_zeros, (i, j)).astype(np.float32)
+            # testvar_out = self.make_zinterface_field(testvar_reshaped)
+            testvar_out = self.make_ij_field(testvar_reshaped)
+            # testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
+            # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
+
+        # Run translate test by hand
+        print("TESTING: " + testvar)
+        tot_indicies = 0
+        failed_indicies = 0
+        testing_variable = var
+        reference_variable = testvar_out
+
+        for i in range(testing_variable.view[:].shape[0]):
+            for j in range(testing_variable.view[:].shape[1]):
+                # for k in range(testing_variable.view[:].shape[2]):
+                diff = testing_variable.view[i, j] - reference_variable.view[i, j]
+
+                tot_indicies = tot_indicies + 1
+                if testing_variable.view[i, j] != reference_variable.view[i, j]:
+                    failed_indicies = failed_indicies + 1
+                    print(
+                        "DIFF: ",
+                        i,
+                        j,
+                        "computed: ",
+                        testing_variable.view[i, j],
+                        "reference: ",
+                        reference_variable.view[i, j],
+                        "difference: ",
+                        testing_variable.view[i, j] - reference_variable.view[i, j],
+                    )
+        print(
+            "failures: ",
+            failed_indicies,
+            "/",
+            tot_indicies,
+            "(",
+            (failed_indicies / tot_indicies) * 100,
+            "%)",
+        )
+
+        # return {
+        #     "ssthl0": ssthl0_2D,
+        # }
