@@ -588,7 +588,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         !$ser data EIS=EIS CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE T=T Q=Q NACTL=NACTL NACTI=NACTI
         !$ser data QLCN=QLCN QICN=QICN QILS=QILS QLLS=QLLS CLLS=CLLS CLCN=CLCN KLCL=KLCL
         !$ser data PLmb=PLmb PLEmb=PLEmb(:,:,1:72) AREA=AREA QST=QST3
-        !$ser data DT_MOIST_Float=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
+        !$ser data DT_MOIST=DT_MOIST PDFSHAPE=PDFSHAPE CCW_EVAP_EFF=CCW_EVAP_EFF CCI_EVAP_EFF=CCI_EVAP_EFF
         !$ser data TURNRHCRIT_PARAM=TURNRHCRIT_PARAM dw_land=dw_land dw_ocean=dw_ocean
        ! evap/subl/pdf
         call MAPL_GetPointer(EXPORT, RHCRIT3D,  'RHCRIT', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -680,11 +680,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                       USE_BERGERON)
              RHX(I,J,L) = Q(I,J,L)/GEOS_QSAT( T(I,J,L), PLmb(I,J,L) )
             endif
+            !$ser savepoint meltfrz-In
+            !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
+            !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
+            !$ser data_buffered Dx=1 DT_MOIST_ARRAY=DT_MOIST
             if (LMELTFRZ) then
-             !$ser savepoint Meltfrz-In
-             !$ser data_buffered Dx=3 T=T(I,J,L) QLCN=QLCN(I,J,L) QICN=QICN(I,J,L)
-             !$ser data_buffered Dx=2 CNV_FRC=CNV_FRC(I,J) SRF_TYPE=SRF_TYPE(I,J)
-             !$ser data_buffered Dx=0 DT_MOIST=DT_MOIST
              ! meltfrz new condensates
              call MELTFRZ ( DT_MOIST     , &
                             CNV_FRC(I,J) , &
@@ -754,6 +754,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
            end do ! IM loop
          end do ! JM loop
        end do ! LM loop
+       !$ser flush_savepoint meltfrz-In
+       !$ser flush_savepoint meltfrz-Out
        !$ser savepoint GFDL_1M-Out
        !$ser data T=T Q=Q QLLS=QLLS QILS=QILS QLCN=QLCN QICN=QICN CLLS=CLLS CLCN=CLCN RHX=RHX EVAPC=EVAPC SUBLC=SUBLC
 
@@ -826,6 +828,32 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! GRAUPEL
          RAD_QG = QGRAUPEL
         ! Run the driver
+         !$ser savepoint GFDL_1M_driver-In
+         !$ser data RAD_QV=RAD_QV RAD_QL=RAD_QL RAD_QR=RAD_QR RAD_QI=RAD_QI RAD_QS=RAD_QS RAD_QG=RAD_QG RAD_CF=RAD_CF NACTLI=(NACTL+NACTI)
+         !$ser data DQVDTmic=DQVDTmic DQLDTmic=DQLDTmic DQRDTmic=DQRDTmic DQIDTmic=DQIDTmic
+         !$ser data DQSDTmic=DQSDTmic DQGDTmic=DQGDTmic DQADTmic=DQADTmic DTDTmic=DTDTmic
+         !$ser data T=T W=W U=U V=V DUDTmic=DUDTmic DVDTmic=DVDTmic DZ=DZ DP=DP
+         !$ser data AREA=AREA DT_MOIST=DT_MOIST FRLAND=FRLAND CNV_FRC=CNV_FRC SRF_TYPE=SRF_TYPE EIS=EIS
+         !$ser data RHCRIT3D=RHCRIT3D ANV_ICEFALL=ANV_ICEFALL LS_ICEFALL=LS_ICEFALL
+         !$ser data REV_LS=REV_LS RSU_LS=RSU_LS
+         !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
+         !$ser data PFL_LS=PFL_LS(:,:,1:LM) PFI_LS=PFI_LS(:,:,1:LM)
+         !$ser data LHYDROSTATIC=LHYDROSTATIC LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC
+         !$ser data_writeonly KTOP=1 KBOT=LM
+         !!!!! namelist variables, must be serialize to check if ported code path is available and adjust constants
+         !$ser data mp_time=mp_time t_min=t_min t_sub=t_sub tau_r2g=tau_r2g tau_smlt=tau_smlt tau_g2r=tau_g2r dw_land=dw_land dw_ocean=dw_ocean
+         !$ser data vi_fac=vi_fac vr_fac=vr_fac vs_fac=vs_fac vg_fac=vg_fac ql_mlt=ql_mlt do_qa=do_qa fix_negative=fix_negative vi_max=vi_max
+         !$ser data vs_max=vs_max vg_max=vg_max vr_max=vr_max qs_mlt=qs_mlt qs0_crt=qs0_crt qi_gen=qi_gen ql0_max=ql0_max qi0_max=qi0_max
+         !$ser data qi0_crt=qi0_crt qr0_crt=qr0_crt fast_sat_adj=fast_sat_adj rh_inc=rh_inc rh_ins=rh_ins rh_inr=rh_inr const_vi=const_vi
+         !$ser data const_vs=const_vs const_vg=const_vg const_vr=const_vr use_ccn=use_ccn rthreshu=rthreshu rthreshs=rthreshs ccn_l=ccn_l ccn_o=ccn_o qc_crt=qc_crt
+         !$ser data tau_g2v=tau_g2v tau_v2g=tau_v2g tau_s2v=tau_s2v tau_v2s=tau_v2s
+         !$ser data tau_revp=tau_revp tau_frz=tau_frz do_bigg=do_bigg do_evap=do_evap do_subl=do_subl
+         !$ser data sat_adj0=sat_adj0 c_piacr=c_piacr tau_imlt=tau_imlt tau_v2l=tau_v2l tau_l2v=tau_l2v tau_i2v=tau_i2v
+         !$ser data tau_i2s=tau_i2s tau_l2r=tau_l2r qi_lim=qi_lim ql_gen=ql_gen c_paut=c_paut c_psaci=c_psaci c_pgacs=c_pgacs c_pgaci=c_pgaci
+         !$ser data z_slope_liq=z_slope_liq z_slope_ice=z_slope_ice prog_ccn=prog_ccn c_cracw=c_cracw alin=alin clin=clin
+         !$ser data preciprad=preciprad cld_min=cld_min use_ppm=use_ppm mono_prof=mono_prof
+         !$ser data do_sedi_heat=do_sedi_heat sedi_transport=sedi_transport do_sedi_w=do_sedi_w de_ice=de_ice icloud_f=icloud_f irain_f=irain_f mp_print=mp_print
+         !$ser verbatim call ser_set_Dx(IM, JM, LM, 1)
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
@@ -846,6 +874,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, 1, LM)
+         !$ser savepoint GFDL_1M_driver-Out
+         !$ser data RAD_QI=RAD_QI RAD_QS=RAD_QS
+         !$ser data DQADTmic=DQADTmic DTDTmic=DTDTmic DUDTmic=DUDTmic DVDTmic=DVDTmic W=W
+         !$ser data DQVDTmic=DQVDTmic DQLDTmic=DQLDTmic DQRDTmic=DQRDTmic
+         !$ser data DQIDTmic=DQIDTmic DQSDTmic=DQSDTmic DQGDTmic=DQGDTmic
+         !$ser data PRCP_RAIN=PRCP_RAIN PRCP_SNOW=PRCP_SNOW PRCP_ICE=PRCP_ICE PRCP_GRAUPEL=PRCP_GRAUPEL
+         !$ser data PFL_LS=PFL_LS(:,:,1:LM) PFI_LS=PFI_LS(:,:,1:LM)
+         !$ser data REV_LS=REV_LS
+         !$ser data RSU_LS=RSU_LS
      ! Apply tendencies
          T = T + DTDTmic * DT_MOIST
          U = U + DUDTmic * DT_MOIST
