@@ -920,12 +920,13 @@ contains
 
            ! Enforce minimum and maximum length scales
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
-           if (zl(i,j,k) .lt. 5000.) then
+           if (zl(i,j,k) .lt. 2000.) then
              smixt(i,j,k) = max(wrk, smixt(i,j,k))
-           else if (zl(i,j,k) .lt. 9500) then    ! Between 5-10 km the max length scale reduces with height
-             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
-           else
-             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*0.1,smixt(i,j,k)))
+           else if (zl(i,j,k).gt.zpbl(i,j)) then ! if above 2 km and dry CBL top, cap length scale
+!           else if (zl(i,j,k) .lt. 9500) then    ! Between 5-10 km the max length scale reduces with height
+!             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
+!           else
+             smixt(i,j,k) = max(wrk, min(100.,smixt(i,j,k)))
            end if
         end do
       end do
@@ -1034,8 +1035,8 @@ contains
                            hl2tune,    &
                            qt2tune,    &
                            hlqt2tune,  &
-                           qt3_tscale, &
-                           afrc_tscale,&
+                           skew_tgen,  &
+                           skew_tdis,  &
                            docanuto )
 
 
@@ -1079,8 +1080,8 @@ contains
     real,    intent(in   ) :: HL2TUNE,     &   ! tuning parameters
                               HLQT2TUNE,   &
                               QT2TUNE,     &
-                              QT3_TSCALE,  &
-                              AFRC_TSCALE
+                              SKEW_TGEN,   &
+                              SKEW_TDIS
 
     integer, intent(in   ) :: DOPROGQT2,   &   ! prognostic QT2 switch
                               DOCANUTO
@@ -1159,17 +1160,6 @@ contains
     qtgrad(:,:,0)     = qtgrad(:,:,1)
 
 
-    ! Update PDF_A
-    if (AFRC_TSCALE.gt.0.) then
-!      pdf_a = (pdf_a+mffrc+2.*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
-      pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
-    else
-      pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
-    end if
-    where (mffrc.gt.pdf_a)
-      pdf_a = mffrc
-    end where
-    pdf_a = min(0.5,max(0.,pdf_a))
 
 
     do k=1,LM
@@ -1222,7 +1212,7 @@ contains
         whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) + MFWHL(:,:,k)
         whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) + mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
-        ! Restrict QT variance, 3-25% of total water.
+        ! Restrict QT variance, 2-25% of total water.
         qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
         qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
 
@@ -1235,9 +1225,21 @@ contains
 
     end do
 
+    ! Update PDF_A
+    if (SKEW_TDIS.gt.0.) then
+!      pdf_a = (pdf_a+mffrc+2.*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
+      pdf_a = (pdf_a+mffrc*DT/SKEW_TGEN)/(1.+DT/SKEW_TDIS)
+    else
+      pdf_a = pdf_a/(1.-DT/SKEW_TDIS)
+    end if
+    where (mffrc.gt.pdf_a)
+      pdf_a = mffrc
+    end where
+    pdf_a = min(0.5,max(0.,pdf_a))
+
 !  if (DOCANUTO==0) then
 !    qt3 = ( qt3 + max(MFQT3+0.05*QT**3*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)),0.) ) / ( 1. + DT/QT3_TSCALE )
-    qt3 = ( qt3 + max(MFQT3,0.) ) / ( 1. + DT/QT3_TSCALE )
+    qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
     hl3 = MFHL3
     w3  = MFW3
 !  else
@@ -1277,10 +1279,6 @@ contains
 
 !          brunt = (bet(i,j,k)/thedz)*(thv(i,j,kc)-thv(i,j,kb))
 
-!          if (abs(thedz).le.1e-10) thedz = sign(1e-10,thedz)
-!          if (abs(thedz).eq.1e-10) print *,'thedz'
-!          if (abs(thedz2).le.1e-10) thedz2 = sign(1e-10,thedz2)
-!          if (abs(thedz2).eq.1e-10) print *,'thedz2'
           thedz     = 1. / thedz
           thedz2    = 1. / thedz2
 
@@ -1292,8 +1290,8 @@ contains
 
           avew = 0.5*(0.667*TKE(i,j,k)+0.667*TKE(i,j,kb))
           if (abs(avew).ge.1e10) avew = sign(1e10,avew)
-!          if (abs(avew).eq.1e10) print *,'avew'
-          cond = 1.2*sqrt(max(1.0e-16,2.*avew*avew*avew))
+
+          cond = 1.2*sqrt(max(1.0e-20,2.*avew*avew*avew))
           wrk1b = bet2*iso
           wrk2b = thedz2*wrk1b*wrk1b*iso
           wrk3b = hl2diag(i,j,kc) - hl2diag(i,j,kb)
@@ -1317,20 +1315,20 @@ contains
 
 ! Compute the "omega" terms, see Eq. 6 in C01 (B.6 in Pete's dissertation)
           dum = 1.-a5*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-a5*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           omega0 = a4 / dum
           omega1 = omega0 / (c+c)
           omega2 = omega1*f3+(5./4.)*omega0*f4
 
 ! Compute the X0, Y0, X1, Y1 terms,  see Eq. 5 a-b in C01  (B.5 in Pete's dissertation)
           dum = 1.-(a1+a3)*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-(a1+a3)*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           wrk1b = 1.0 / dum
           dum = 1.-a3*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-a3*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           wrk2b = 1.0 / dum
           X0   = wrk1b * (a2*buoy_sgs2*(1.-a3*buoy_sgs2))
           Y0   = wrk2b * (2.*a2*buoy_sgs2*X0)
@@ -1346,8 +1344,8 @@ contains
 ! than the estimate - limit w3.
 
            dum = c-1.2*X0+AA0
-           if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!           if (abs(dum).eq.1e-16) print *,'c-1.2*X0+AA0=',dum
+           if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
            w3can(i,j,k) = max(-cond, min(cond, (AA1-1.2*X1-1.5*f5)/dum))
 ! Implemetation of the C01 approach in this subroutine is nearly complete
 ! (the missing part are Eqs. 5c and 5e which are very simple)
