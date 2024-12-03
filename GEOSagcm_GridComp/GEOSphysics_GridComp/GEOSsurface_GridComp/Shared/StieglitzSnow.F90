@@ -1293,8 +1293,8 @@ contains
     call StieglitzSnow_calc_tpsnow(N_snow, htsnn, wesn, tpsn, fices, rc=rc_tmp)
 
     if (present(rc_calc_tpsn)) rc_calc_tpsn = rc_tmp
-
-    if (conserve_ice10_tzero) then
+    ! PR#1025 
+    if (conserve_ice10_tzero_tmp) then
        
        !**** Check that (ice10,tzero) conditions are conserved through
        !**** relayering process (or at least that (fices,tpsn) conditions don't 
