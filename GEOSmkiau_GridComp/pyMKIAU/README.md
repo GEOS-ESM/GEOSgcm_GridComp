@@ -31,7 +31,8 @@ The interface is based on CFFI which is reponsible for the heavy lifting of
 
 ## Running python
 
-The last trick is to make sure your package is callable by the `interface.py`. Basically your code has to be accessible by the interpreter, be via virtual env, conda env or PYTHONPATH. The easy way to know is that you need to be able to get into your environment and run in a python terminal
+The last trick is to make sure your package is callable by the `interface.py`. Basically your code has to be accessible by the interpreter, be via virtual env, conda env or PYTHONPATH.
+The easy way to know is that you need to be able to get into your environment and run in a python terminal:
 
 ```python
 from pyMKIAU.core import pyMKIAU_init
