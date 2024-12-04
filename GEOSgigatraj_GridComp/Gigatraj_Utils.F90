@@ -88,17 +88,21 @@ contains
         tmp = fields_line(k:endl)
 
         j = index(tmp, '%%')
-        if (j == 0) print*, "Wrong format of the comp%%field"
-        Compnames(num_) = trim(adjustl(tmp(1:j-1)))
-        tmp_bnf  = trim(adjustl(tmp(j+2:)))
-
-       l = index(tmp_bnf, '%')
-        if (l /=0) then
-           BundleNames(num_) = tmp_bnf(1:l-1)
-           tmp_f  = tmp_bnf(l+1:)
+        if (j /= 0) then ! there is bundle
+           Compnames(num_) = trim(adjustl(tmp(1:j-1)))
+           tmp_bnf  = trim(adjustl(tmp(j+2:)))
+           l = index(tmp_bnf, '%')
+           if (l /=0) then
+              BundleNames(num_) = tmp_bnf(1:l-1)
+              tmp_f  = tmp_bnf(l+1:)
+           else
+              print*, "%field is a must"
+           endif
         else
            BundleNames(num_) = 'NONE'
-           tmp_f  = tmp_bnf
+           j = index(tmp, '%')
+           Compnames(num_) = trim(adjustl(tmp(1:j-1)))
+           tmp_f  = tmp(j+1:)
         endif
 
         ! Aliasing....., Hard coded here
