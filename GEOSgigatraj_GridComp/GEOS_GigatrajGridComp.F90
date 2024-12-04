@@ -128,29 +128,19 @@ contains
     integer :: I1, I2, J1, J2, comm, npes, my_rank, rank, ierror, NX, NY, NPZ
     type(ESMF_Grid) :: CubedGrid
     integer, allocatable :: I1s(:), J1s(:), I2s(:),J2s(:)
-    integer :: DIMS(3), counts(3), i, j, l
+    integer :: DIMS(3)
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr 
     type (GigatrajInternalWrap)   :: wrap
-    real :: dlat, dlon, delt
-    real, allocatable, target :: lats_center(:), lons_center(:), levs_center(:)
-    real, allocatable, target :: cube_lats_center(:, :), cube_lons_center(:,:)
-    real, allocatable  :: lats_2dcenter(:, :), lons_2dcenter(:,:)
     type (ESMF_TIME) :: CurrentTime
-    character(len=20), target :: ctime 
     type(ESMF_Alarm)  :: GigaTrajOutAlarm, GigaTrajRebalanceAlarm, GigaTrajIntegrateAlarm
     type(ESMF_TimeInterval)      :: parcelsOut_DT, Rebalance_DT, Integrate_DT
     type(ESMF_TimeInterval)      :: ModelTimeStep
-    integer :: imc, jmc, HH, MM, SS
+    integer :: HH, MM, SS
     integer :: integrate_time, r_time, o_time
     character(len=ESMF_MAXSTR) :: parcels_file
     character(len=ESMF_MAXSTR) :: grid_name, vCoord
     character(len=ESMF_MAXSTR) :: regrid_to_latlon
     character(len=ESMF_MAXSTR), allocatable  :: cName(:), bName(:), fName(:), aName(:)
-    real(ESMF_KIND_R8), pointer     :: centerX(:,:)
-    real(ESMF_KIND_R8), pointer     :: centerY(:,:)
-    real(ESMF_KIND_R8), pointer     :: ptr(:,:)
-    type(ESMF_Field)   :: field
-    type(ESMF_RouteHandle) :: rh
     type(ESMF_Grid) :: grid_
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, _RC )
@@ -238,8 +228,6 @@ contains
     end select    
 
     npz = Dims(3)
-    delt = (log(100000.)-log(2.))/npz
-    levs_center=[(exp(log(100000.)-(i-1)*delt), i=1, npz)]
     GigaTrajInternalPtr%npz = npz
     GigaTrajInternalPtr%Integrate_DT = Integrate_DT
 
@@ -271,72 +259,7 @@ contains
         grid_  = CubedGrid
     endif
  
-    call MAPL_GridGet(grid_, localCellCountPerDim=counts, _RC)
     call MAPL_Grid_interior(grid_, i1,i2,j1,j2)
-    imc = i2-i1 + 1
-    jmc = j2-j1 + 1
-    allocate(lats_2dcenter(imc+2, jmc+2))
-    allocate(lons_2dcenter(imc+2, jmc+2))
-
-    field = ESMF_FieldCreate(grid_, ESMF_TYPEKIND_R8, name='halo', staggerLoc=ESMF_STAGGERLOC_CENTER,totalLWidth=[1,1],totalUWidth=[1,1],rc=status)
-    _VERIFY(status)
-
-    call ESMF_FieldGet(field,farrayPtr=ptr,rc=status)
-    ptr = 0.0d0
-    call ESMF_FieldHaloStore(field,rh,rc=status)
-    _VERIFY(status)
-
-    call ESMF_GridGetCoord(grid_ , coordDim=1, localDE=0, &
-              staggerloc=ESMF_STAGGERLOC_CENTER, &
-              farrayPtr=centerX, rc=status)
-    _VERIFY(STATUS)
-
-    ptr(1:imc,1:jmc)=centerX
-    call ESMF_FieldHalo(field,rh,rc=status)
-    _VERIFY(status)
-    lons_2dcenter = ptr
-
-    call ESMF_GridGetCoord(grid_ , coordDim=2, localDE=0, &
-              staggerloc=ESMF_STAGGERLOC_CENTER, &
-              farrayPtr=centerY, rc=status)
-    VERIFY_(STATUS)
-    ptr = 0.0d0
-    ptr(1:imc,1:jmc)=centerY
-    call ESMF_FieldHalo(field,rh,rc=status)
-     _VERIFY(status)
-    lats_2dcenter = ptr
-
-    call ESMF_FieldDestroy(field,rc=status)
-    _VERIFY(status)
-    call ESMF_FieldHaloRelease(rh,rc=status)
-    _VERIFY(status)
-
-    if ( GigaTrajInternalPtr%regrid_to_latlon ) then
-       !lons_center  =  lons_2dcenter(:,1)/MAPL_PI*180.0
-       !lats_center  =  lats_2dcenter(1,:)/MAPL_PI*180.0
-       dlon = 360.0/dims(1)
-       ! DE
-       !lons_center = [(dlon*(i-1)+dlon/2., i= i1-1, i2+1)]
-       ! DC   
-       lons_center = [(dlon*(i-1) - 180.0 , i= i1-1, i2+1)] 
-       !PE
-      !dlat = 180.0/dims(2) 
-      !lats_center = [(-dlat/2. + dlat*j-90.0, j= j1-1, j2+1)] 
-      !PC
-       dlat = 180.0/(dims(2)-1)  ! PC
-       lats_center = [(-90.0 + (j-1)*dlat, j= j1-1, j2+1)] 
-       where(lats_center <-90.) lats_center = -90.
-       where(lats_center >90. ) lats_center =  90.
-
-    else
-       cube_lons_center = lons_2dcenter/MAPL_PI*180.0
-       cube_lats_center = lats_2dcenter/MAPL_PI*180.0
-       where (cube_lons_center < -180.) cube_lons_center = cube_lons_center + 360.
-       where (cube_lons_center >  180.) cube_lons_center = cube_lons_center - 360.
-    endif
-
-    call ESMF_TimeGet(CurrentTime, timeStringISOFrac=ctime)
-    ctime(20:20) = c_null_char
 
     allocate(I1s(npes),J1s(npes))
     allocate(I2s(npes),J2s(npes))
@@ -530,12 +453,6 @@ contains
 
     delt = (log(High)-log(low))/dims(3)
     levs_center=[(exp(log(High)-(i-1)*delt), i=1, dims(3))]
-
-    if (MAPL_AM_I_ROOT()) then
-      do i = 1, dims(3)
-        print*, levs_center(i)
-      enddo
-    endif
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
        call get_latlon_centers(gc, lons_center, lats_center, _RC)
