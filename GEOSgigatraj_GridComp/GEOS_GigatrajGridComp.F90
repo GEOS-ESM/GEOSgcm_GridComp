@@ -68,11 +68,18 @@ contains
          VLOCATION  = MAPL_VLocationCenter,  _RC)
 
     call MAPL_AddInternalSpec ( gc,                                &
-         SHORT_NAME = 'PLE',                                       &
-         LONG_NAME  = 'edge_pressure',                             &
-         UNITS      = 'Pa',                                        &
+         SHORT_NAME = 'ZL',                                        &
+         LONG_NAME  = 'mid_layer_heights',                         &
+         UNITS      = 'm',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationEdge,    _RC)
+         VLOCATION  = MAPL_VLocationCenter, _RC)
+
+    call MAPL_AddInternalSpec ( gc,                                  &
+         SHORT_NAME = 'W',                                         &
+         LONG_NAME  = 'vertical_velocity',                         &
+         UNITS      = 'm s-1',                                     & 
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter, _RC)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'TH',                                        &
