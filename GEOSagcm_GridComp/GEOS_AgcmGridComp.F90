@@ -792,12 +792,12 @@ contains
 
 #ifdef HAS_GIGATRAJ
     call MAPL_AddExportSpec(GC, &
-         SHORT_NAME = 'OMEGA', &
+         SHORT_NAME = 'PL', &
          CHILD_ID = SDYN, &
          RC = STATUS)
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC, &
-         SHORT_NAME = 'PL', &
+         SHORT_NAME = 'OMEGA', &
          CHILD_ID = SDYN, &
          RC = STATUS)
     VERIFY_(STATUS)
@@ -808,6 +808,11 @@ contains
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,  &
          SHORT_NAME = 'DTDTDYN', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,  &
+         SHORT_NAME = 'ZL', &
          CHILD_ID = SDYN, &
          RC = STATUS)
     VERIFY_(STATUS)

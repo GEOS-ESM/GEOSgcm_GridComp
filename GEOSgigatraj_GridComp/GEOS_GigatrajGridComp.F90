@@ -13,41 +13,6 @@ module GEOS_GigatrajGridCompMod
 
   public :: SetServices
 
-  private
-  type horde
-    integer :: num_parcels
-    integer, allocatable :: IDS(:)
-    real, allocatable    :: lats(:), lons(:), zs(:)
-  end type
-
-  type GigaTrajInternal
-    integer :: npes
-    integer :: npz ! number of pressure levels
-    type (ESMF_Grid) :: LatLonGrid
-    type (ESMF_Grid) :: CubedGrid
-    class (AbstractRegridder), pointer :: cube2latlon => null()
-    integer, allocatable :: CellToRank(:,:)
-    type(horde) :: parcels
-    type(c_ptr) :: metSrc
-    type(ESMF_Time) :: startTime
-    type(ESMF_TimeInterval)  :: Integrate_DT
-    character(len=ESMF_MAXSTR), allocatable :: ExtraFieldNames(:)
-    character(len=ESMF_MAXSTR), allocatable :: ExtraCompNames(:)
-    character(len=ESMF_MAXSTR), allocatable :: ExtrabundleNames(:)
-    character(len=ESMF_MAXSTR), allocatable :: ExtraAliasNames(:)
-
-    character(len=:), allocatable :: vCoord
-    character(len=:), allocatable :: vAlias
-    character(len=:), allocatable :: vTendency
-
-    logical :: regrid_to_latlon
-  end type
-
-  type GigatrajInternalWrap
-    type (GigaTrajInternal), pointer :: PTR
-  end type
-
-
 contains
 
   subroutine SetServices ( GC, RC )
@@ -256,16 +221,11 @@ contains
     GigaTrajInternalPtr%vAlias = trim(aName(1))
     select case(GigaTrajInternalPtr%vCoord)
     case ('PL')
-       levs_center = [1000.,  975.,  950.,  925.,  900., 875., 850., 825., 800., 775., 750., 725.,700., 650., 600., 550., 500., &
-                   450., 400., 350., 300., 250., 200., 150., 100.,  70.,  50.,  40.,  30., 20., 10., 7., 5., 4., 3., 2., &
-                   1., 0.7, 0.5, 0.4,  0.3, 0.2, 0.1, 0.07, 0.05, 0.04, 0.03, 0.02]*100
        GigaTrajInternalPtr%vTendency = 'OMEGA'
     case('TH')
-       levs_center = [4999., 4708., 4434., 4175., 3932., 3703., 3487., 3284., 3092., 2912., 2742., 2582., 2432., 2290., 2157., &    
-                      2031., 1912., 1801., 1696., 1597., 1504., 1416., 1334., 1256., 1183., 1114., 1049., 988. , 930. , 876.,  &
-                      825. , 777. ,  731.,  689.,  649.,  611.,  575.,  542.,  510.,  480.,  452.,  426.,  401. , 378. , 356. , &
-                      335. , 315. ,  297.,  279.]    
        GigaTrajInternalPtr%vTendency = 'DTDTDYN'
+    case('ZL')
+       GigaTrajInternalPtr%vTendency = 'W'
     case default
        _ASSERT(.false., "vertical coordinate is needed")
     end select    
@@ -388,21 +348,6 @@ contains
        J2 = J2s(rank+1)
        GigaTrajInternalPtr%CellToRank(I1:I2,J1:J2) = rank
     enddo
-
-    call MAPL_Grid_interior(Grid_,i1,i2,j1,j2)
-    if (GigaTrajInternalPtr%regrid_to_latlon) then
-      GigaTrajInternalPtr%metSrc = initMetGEOSDistributedLatLonData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1), DIMS(2),   &
-                                   npz, counts(1)+2, counts(2)+2, npz, &
-                                   c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), c_loc(ctime))
-      deallocate(lons_center, lats_center,levs_center)
-    else
-      GigaTrajInternalPtr%metSrc = initMetGEOSDistributedCubedData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1),   &
-                                   npz, i1, i2, j1, j2, npz, &
-                                   c_loc(cube_lons_center), c_loc(cube_lats_center), c_loc(levs_center), c_loc(ctime))
-
-      deallocate(cube_lons_center, cube_lats_center,levs_center)
-
-    endif
 
     call read_parcels(GC, GigaTrajInternalPtr, _RC)
 
@@ -536,10 +481,18 @@ contains
     real, dimension(:,:,:), pointer     :: U, V, W, P, PL0, PLE, TH
     real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
     real, dimension(:,:,:), allocatable, target  :: haloU, haloV, haloW, haloP
-    integer :: counts(3), dims(3), d1,d2,km,lm, i1,i2,j1,j2
+    integer :: counts(3), dims(3), d1,d2,km,lm, i1,i2,j1,j2,i
+    real, allocatable, target :: lats_center(:), lons_center(:), levs_center(:)
+    real, allocatable, target :: cube_lats_center(:, :), cube_lons_center(:,:)
+    integer :: comm
+    real :: delt, High, low
+    type(ESMF_VM) :: vm
+    type(ESMF_Grid) :: grid_
 
     Iam = "init_metsrc_field0"
 
+    call ESMF_VMGetCurrent(vm, _RC)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, _RC)
     call ESMF_UserCompGetInternalState(GC, 'GigaTrajInternal', wrap, _RC)
     GigaTrajInternalPtr => wrap%ptr
 
@@ -549,26 +502,66 @@ contains
     call MAPL_GetPointer(state, P, trim(GigaTrajInternalPtr%vCoord), _RC)
 
     if (GigaTrajInternalPtr%regrid_to_latlon) then
-       call MAPL_GridGet(GigaTrajInternalPtr%LatLonGrid, localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+       grid_ = GigaTrajInternalPtr%LatLonGrid
     else
-       call MAPL_GridGet(GigaTrajInternalPtr%CubedGrid,  localCellCountPerDim=counts,globalCellCountPerDim=DIMS,  _RC)
+       grid_ = GigaTrajInternalPtr%CubedGrid
     endif
 
-    lm =size(U,3)
-    d1 =size(U,1)
-    d2 =size(U,2)
+    call MAPL_GridGet( grid_, localCellCountPerDim=counts, globalCellCountPerDim=dims, _RC)
 
+    select case ( trim(GigaTrajInternalPtr%vCoord))
+    case ("PL")
+       High = 100000.
+       Low  = 2.
+    case ("TH")
+       High = 5000.
+       Low  = 200.
+    case ("ZL")
+       High = 78000.
+       Low  = 1.
+    end select
 
-    allocate(haloU(counts(1)+2, counts(2)+2,lm), source = 0.0)
-    allocate(haloV(counts(1)+2, counts(2)+2,lm), source = 0.0)
-    allocate(haloW(counts(1)+2, counts(2)+2,lm), source = 0.0)
-    allocate(haloP(counts(1)+2, counts(2)+2,lm), source = 0.0)
+    delt = (log(High)-log(low))/dims(3)
+    levs_center=[(exp(log(High)-(i-1)*delt), i=1, dims(3))]
+
+    if (MAPL_AM_I_ROOT()) then
+      do i = 1, dims(3)
+        print*, levs_center(i)
+      enddo
+    endif
+
+    if (GigaTrajInternalPtr%regrid_to_latlon) then
+       call get_latlon_centers(gc, lons_center, lats_center, _RC)
+       GigaTrajInternalPtr%metSrc = initMetGEOSDistributedLatLonData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1), DIMS(2),   &
+                                   dims(3), counts(1)+2, counts(2)+2, dims(3), &
+                                   c_loc(lons_center), c_loc(lats_center), c_loc(levs_center), c_loc(ctime))
+       deallocate(lons_center, lats_center)
+    else
+       call MAPL_Grid_interior(grid_, i1, i2, j1, j2)
+       call get_cube_centers(gc, cube_lons_center, cube_lats_center, _RC)
+       GigaTrajInternalPtr%metSrc = initMetGEOSDistributedCubedData(comm, c_loc(GigaTrajInternalPtr%CellToRank), DIMS(1),   &
+                                   dims(3), i1, i2, j1, j2, dims(3), &
+                                   c_loc(cube_lons_center), c_loc(cube_lats_center), c_loc(levs_center), c_loc(ctime))
+
+       deallocate(cube_lons_center, cube_lats_center)
+
+    endif
+    deallocate(levs_center)
+
+    lm = dims(3)
+    d1 = counts(1)
+    d2 = counts(2)
+
+    allocate(haloU(d1+2, d2+2,lm), source = 0.0)
+    allocate(haloV(d1+2, d2+2,lm), source = 0.0)
+    allocate(haloW(d1+2, d2+2,lm), source = 0.0)
+    allocate(haloP(d1+2, d2+2,lm), source = 0.0)
 
     if ( GigaTrajInternalPtr%regrid_to_latlon) then
-       allocate(U_latlon(counts(1),counts(2),lm))
-       allocate(V_latlon(counts(1),counts(2),lm))
-       allocate(W_latlon(counts(1),counts(2),lm))
-       allocate(P_latlon(counts(1),counts(2),lm))
+       allocate(U_latlon(d1,d2,lm))
+       allocate(V_latlon(d1,d2,lm))
+       allocate(W_latlon(d1,d2,lm))
+       allocate(P_latlon(d1,d2,lm))
        call GigaTrajInternalPtr%cube2latlon%regrid(U, V, U_latlon, V_latlon, _RC)
        call GigaTrajInternalPtr%cube2latlon%regrid(W, W_latlon, _RC)
        call GigaTrajInternalPtr%cube2latlon%regrid(P, P_latlon, _RC)
@@ -623,6 +616,7 @@ contains
   
     real, dimension(:,:,:), pointer     :: U_cube, V_cube, W_cube, P_cube, PLE_Cube, with_halo
     real, dimension(:,:,:), pointer     :: internal_field, model_field
+    real, dimension(:,:,:), pointer     :: tmp_ptr
 
     real, dimension(:,:,:), allocatable :: U_latlon, V_latlon, W_latlon, P_latlon
     real, dimension(:,:,:), allocatable :: U_inter, V_inter, W_inter, P_inter
