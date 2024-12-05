@@ -22,4 +22,4 @@ for path in pathlib.Path(moist_comp).rglob("*.SER"):
     cmd = ["python", ppser_script]
     cmd.extend(ppser_args)
     cmd.extend(["-o", str(path.absolute())[:-4], str(path.absolute())])
-    subprocess.run(cmd)
+    subprocess.run(cmd, check=True)
