@@ -754,6 +754,7 @@ def implicit_cin_closure(
     vavg: FloatFieldIJ,
     thvlmin: FloatFieldIJ,
     qtavg: FloatFieldIJ,
+    dpi: FloatFieldIJ,
 ):
     """
     This 'iteration' loop is for implicit CIN closure
@@ -831,33 +832,34 @@ def implicit_cin_closure(
                 fdr_out = constants.MAPL_UNDEF
                 # print('------- UW ShCu: Exit, kinv<=1')
 
-            if kinv >= i64(k0 / 4):
-                id_exit = True
+            if id_exit == False:
+                if kinv >= i64(k0 / 4):
+                    id_exit = True
 
-                umf_out[0, 0, 1] = 0.0
-                dcm_out = 0.0
-                qvten_out = 0.0
-                qlten_out = 0.0
-                qiten_out = 0.0
-                sten_out = 0.0
-                uten_out = 0.0
-                vten_out = 0.0
-                qrten_out = 0.0
-                qsten_out = 0.0
-                cufrc_out = 0.0
-                cush_inout = -1.0
-                qldet_out = 0.0
-                qidet_out = 0.0
-                qtflx_out[0, 0, 1] = 0.0
-                slflx_out[0, 0, 1] = 0.0
-                uflx_out[0, 0, 1] = 0.0
-                vflx_out[0, 0, 1] = 0.0
-                fer_out = constants.MAPL_UNDEF
-                fdr_out = constants.MAPL_UNDEF
-                # print('------- UW ShCu: Exit, kinv>k0/4')
+                    umf_out[0, 0, 1] = 0.0
+                    dcm_out = 0.0
+                    qvten_out = 0.0
+                    qlten_out = 0.0
+                    qiten_out = 0.0
+                    sten_out = 0.0
+                    uten_out = 0.0
+                    vten_out = 0.0
+                    qrten_out = 0.0
+                    qsten_out = 0.0
+                    cufrc_out = 0.0
+                    cush_inout = -1.0
+                    qldet_out = 0.0
+                    qidet_out = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
+                    fer_out = constants.MAPL_UNDEF
+                    fdr_out = constants.MAPL_UNDEF
+                    # print('------- UW ShCu: Exit, kinv>k0/4')
 
-            # kinv = min(kinv,7)
-            # From here, it must be '7 >= kinv >= 2'.
+                # kinv = min(kinv,7)
+                # From here, it must be '7 >= kinv >= 2'.
 
     with computation(FORWARD), interval(...):
 
@@ -878,17 +880,18 @@ def implicit_cin_closure(
             thvlmin = 1000.0
             thvlavg = 0.0
 
-            if THIS_K > 0 and THIS_K <= kinv:
-                kbelow = THIS_K - 1
-                # dpi = pifc0.at(K=kbelow) - pifc0
-                dpi = pifc0
+            lev = 0
+            while lev < kinv:
+                kbelow = lev - 1
+                dpi = pifc0.at(K=kbelow) - pifc0.at(K=lev)
                 dpsum = dpsum + dpi
-                tkeavg = tkeavg + dpi * tke
-                uavg = uavg + dpi * u0
-                vavg = vavg + dpi * v0
-                thvlavg = thvlavg + dpi * thvl0
-                if THIS_K != kinv:
-                    thvlmin = min(thvlmin, min(thvl0bot, thvl0top))
+                tkeavg = tkeavg + dpi * tke.at(K=lev)
+                uavg = uavg + dpi * u0.at(K=lev)
+                vavg = vavg + dpi * v0.at(K=lev)
+                thvlavg = thvlavg + dpi * thvl0.at(K=lev)
+                if lev != kinv:
+                    thvlmin = min(thvlmin, min(thvl0bot.at(K=lev), thvl0top.at(K=lev)))
+                lev += 1
 
             tkeavg = tkeavg / dpsum
             uavg = uavg / dpsum
@@ -904,103 +907,163 @@ def implicit_cin_closure(
             # qtavg   = qtavg/dpsum
 
             # Interpolate qt to specified height
-            k = 1
-            # while zmid0.at(K=k) < qtsrchgt:
-            #    k = k + 1
-            if k > 1:
-                kbelow = k - 1
-                # qtavg = qt0.at(K=kbelow) * (zmid0.at(K=k) - qtsrchgt) + qt0.at(K=k) * (
-                #    qtsrchgt - zmid0.at(K=kbelow)
-                # )
-                qtavg = qt0  # Delete
-                qtavg = qtavg  # / (zmid0.at(K=k) - zmid0.at(K=kbelow))
+            lev = 0
+            while zmid0.at(K=lev) < qtsrchgt:
+                lev += 1
+            if lev > 1:
+                kbelow = lev - 1
+                qtavg = qt0.at(K=kbelow) * (zmid0.at(K=lev) - qtsrchgt) + qt0.at(
+                    K=lev
+                ) * (qtsrchgt - zmid0.at(K=kbelow))
+                qtavg = qtavg / (zmid0.at(K=lev) - zmid0.at(K=kbelow))
             else:
-                # qtavg = qt0.at(K=1)
-                qtavg = qt0
+                qtavg = qt0.at(K=0)
 
 
 '''
-        """
-        Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc 
-        Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.      
-        'qtsrc' is defined as the lowest layer mid-point value;   'thlsrc' 
-        is from 'qtsrc' and 'thvlmin=thvlsrc'; 'usrc' & 'vsrc' are defined 
-        as the values just below the PBL top interface. 
-        """
-        if windsrcavg == 1:
-            zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=1) * (1.0 + 0.608 * qv0.at(K=1))))
-            buoyflx = (
-                -shfx / constants.MAPL_CP - 0.608 * t0(1) * evap
-            ) / zrho  # K m s-1
-            # delzg = (zifc0.at(K=1)-zifc0.at(K=0))*constants.MAPL_GRAV
-            delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
-            wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=1))  # m3 s-3
-            qpert_out = 0.0
-            tpert_out = 0.0
-            if wstar > 0.001:
-                wstar = 1.0 * wstar**0.3333
-                tpert_out = thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)  # K
-                qpert_out = qtsrc_fac * evap / (zrho * wstar)  # kg kg-1
-                qpert_out = max(
-                    min(qpert_out, 0.02 * qt0.at(K=1)), 0.0
-                )  # limit to 1% of QT
-                tpert_out = 0.1 + max(min(tpert_out, 1.0), 0.0)  # limit to 1K
-                qtsrc = qtavg + qpert_out
-                # qtsrc   = qt0.at(K=1) + qpert_out
-                # thvlsrc = thvlavg + tpert_out*(1.0+zvir*qtsrc) #/exnmid0.at(K=1)
-                thvlsrc = thvlmin + tpert_out * (1.0 + zvir * qtsrc)  # /exnmid0(1)
-                thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
-                usrc = uavg
-                vsrc = vavg
-            else:
-                qtsrc = qt0.at(K=1)
-                thvlsrc = thvlmin
-                thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
-                kbelow = kinv - 1
-                usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (
-                    pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
+            """
+            Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc 
+            Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.      
+            'qtsrc' is defined as the lowest layer mid-point value;   'thlsrc' 
+            is from 'qtsrc' and 'thvlmin=thvlsrc'; 'usrc' & 'vsrc' are defined 
+            as the values just below the PBL top interface. 
+            """
+            if windsrcavg == 1:
+                zrho = pifc0.at(K=0) / (
+                    287.04 * (t0.at(K=1) * (1.0 + 0.608 * qv0.at(K=1)))
                 )
-                vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (
-                    pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
-                )
+                buoyflx = (
+                    -shfx / constants.MAPL_CP - 0.608 * t0(1) * evap
+                ) / zrho  # K m s-1
+                # delzg = (zifc0.at(K=1)-zifc0.at(K=0))*constants.MAPL_GRAV
+                delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
+                wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=1))  # m3 s-3
+                qpert_out = 0.0
+                tpert_out = 0.0
+                if wstar > 0.001:
+                    wstar = 1.0 * wstar**0.3333
+                    tpert_out = (
+                        thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)
+                    )  # K
+                    qpert_out = qtsrc_fac * evap / (zrho * wstar)  # kg kg-1
+                    qpert_out = max(
+                        min(qpert_out, 0.02 * qt0.at(K=1)), 0.0
+                    )  # limit to 1% of QT
+                    tpert_out = 0.1 + max(min(tpert_out, 1.0), 0.0)  # limit to 1K
+                    qtsrc = qtavg + qpert_out
+                    # qtsrc   = qt0.at(K=1) + qpert_out
+                    # thvlsrc = thvlavg + tpert_out*(1.0+zvir*qtsrc) #/exnmid0.at(K=1)
+                    thvlsrc = thvlmin + tpert_out * (1.0 + zvir * qtsrc)  # /exnmid0(1)
+                    thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
+                    usrc = uavg
+                    vsrc = vavg
+                else:
+                    qtsrc = qt0.at(K=1)
+                    thvlsrc = thvlmin
+                    thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
+                    kbelow = kinv - 1
+                    usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (
+                        pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
+                    )
+                    vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (
+                        pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
+                    )
 
+            if dotransport == 1.0:
+                n = 0
+                while n < ncnst:
+                    trsrc[0, 0, 0][n] = tr0.at(K=1, ddim=[n])
+                    n += 1
 
-        if dotransport == 1.0:
-            n = 0
-            while n < ncnst:
-                trsrc[0, 0, 0][n] = tr0.at(K=1, ddim=[n])
-                n += 1
+            """
+            Find LCL of the source air and a layer index containing LCL (klcl) 
+            When the LCL is exactly at the interface, 'klcl' is a layer index   
+            having 'plcl' as the lower interface similar to the 'kinv' case.   
+            In the previous code, I assumed that if LCL is located within the  
+            lowest model layer ( 1 ) or the top model layer ( k0 ), then  no  
+            convective adjustment is performed and just exited.   However, in  
+            the revised code, I relaxed the first constraint and  even though  
+            LCL is at the lowest model layer, I allowed cumulus convection to  
+            be initiated. For this case, cumulus convection should be started  
+            from the PBL top height, as shown in the following code.           
+            When source air is already saturated even at the surface, klcl is  
+            set to 1. 
+            """
+            if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
+                id_exit = True
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
-        """
-        Find LCL of the source air and a layer index containing LCL (klcl) 
-        When the LCL is exactly at the interface, 'klcl' is a layer index   
-        having 'plcl' as the lower interface similar to the 'kinv' case.   
-        In the previous code, I assumed that if LCL is located within the  
-        lowest model layer ( 1 ) or the top model layer ( k0 ), then  no  
-        convective adjustment is performed and just exited.   However, in  
-        the revised code, I relaxed the first constraint and  even though  
-        LCL is at the lowest model layer, I allowed cumulus convection to  
-        be initiated. For this case, cumulus convection should be started  
-        from the PBL top height, as shown in the following code.           
-        When source air is already saturated even at the surface, klcl is  
-        set to 1. 
-        """
-        if pifc0.at(K=0) < 70000 or pifc0.at(K=0) > 115000.0:
-            # print("pifc(0) outside valid range! pifc=",pifc0.at(K=0))
-            id_exit = True
-            # go to 333
-        if qtsrc > 0.1 or qtsrc < 1e-8:
-            # print("qtsrc outside valid range! qtsrc=",qtsrc)
-            id_exit = True
-            # go to 333
-        if thlsrc > 400.0 or thlsrc < 100.0:
-            # print("thlsrc outside valid range! thlsrc=",thlsrc)
-            # print()"pifc0(0)=",pifc0(0))
-            id_exit = True
-            # go to 333
+            if id_exit == False:
+                if qtsrc > 0.1 or qtsrc < 1e-8:
+                    id_exit = True
+                    umf_out[0, 0, 1] = 0.0
+                    dcm_out = 0.0
+                    qvten_out = 0.0
+                    qlten_out = 0.0
+                    qiten_out = 0.0
+                    sten_out = 0.0
+                    uten_out = 0.0
+                    vten_out = 0.0
+                    qrten_out = 0.0
+                    qsten_out = 0.0
+                    cufrc_out = 0.0
+                    cush_inout = -1.0
+                    qldet_out = 0.0
+                    qidet_out = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
+                    fer_out = constants.MAPL_UNDEF
+                    fdr_out = constants.MAPL_UNDEF
 
-        plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), ese, esx)
+            if id_exit == False:
+                if thlsrc > 400.0 or thlsrc < 100.0:
+                    id_exit = True
+                    umf_out[0, 0, 1] = 0.0
+                    dcm_out = 0.0
+                    qvten_out = 0.0
+                    qlten_out = 0.0
+                    qiten_out = 0.0
+                    sten_out = 0.0
+                    uten_out = 0.0
+                    vten_out = 0.0
+                    qrten_out = 0.0
+                    qsten_out = 0.0
+                    cufrc_out = 0.0
+                    cush_inout = -1.0
+                    qldet_out = 0.0
+                    qidet_out = 0.0
+                    qtflx_out[0, 0, 1] = 0.0
+                    slflx_out[0, 0, 1] = 0.0
+                    uflx_out[0, 0, 1] = 0.0
+                    vflx_out[0, 0, 1] = 0.0
+                    fer_out = constants.MAPL_UNDEF
+                    fdr_out = constants.MAPL_UNDEF
 
+            if id_exit == False:
+                plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), ese, esx)
+
+    
     with computation(FORWARD), interval(...):
         k = 0
         while k <= k0:
@@ -1924,6 +1987,7 @@ class ComputeUwshcu:
         vavg: FloatFieldIJ,
         thvlmin: FloatFieldIJ,
         qtavg: FloatFieldIJ,
+        dpi: FloatFieldIJ,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         self.qsat = QSat(
@@ -2158,6 +2222,7 @@ class ComputeUwshcu:
                 vavg=vavg,
                 thvlmin=thvlmin,
                 qtavg=qtavg,
+                dpi=dpi,
             )
 
             # if (self.id_exit.view[:, :, :] == True).any():

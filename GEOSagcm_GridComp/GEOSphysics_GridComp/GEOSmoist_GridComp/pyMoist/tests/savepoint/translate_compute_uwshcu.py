@@ -124,6 +124,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "vavg": self.grid.compute_dict(),
             "thvlmin": self.grid.compute_dict(),
             "qtavg": self.grid.compute_dict(),
+            "dpi": self.grid.compute_dict(),
         }
 
     def reshape_before(self, inputs):
@@ -327,6 +328,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qt0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         thvl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         thvl0bot = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        dpi = self.make_ij_field(inputs_reshaped["cush_inout"])
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -414,15 +416,16 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             vavg=vavg,
             thvlmin=thvlmin,
             qtavg=qtavg,
+            dpi=dpi,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-
+        print(qtavg.view[:])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "thvlavg"
-            var = thvlavg
+            testvar = "qtavg"
+            var = qtavg
             testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 0, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
@@ -440,6 +443,8 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         failed_indicies = 0
         testing_variable = var
         reference_variable = testvar_out
+        # print(testing_variable.shape)
+        # print(reference_variable.shape)
 
         for i in range(testing_variable.view[:].shape[0]):
             for j in range(testing_variable.view[:].shape[1]):
