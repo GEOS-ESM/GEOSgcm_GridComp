@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache
+*.egg-info/
+test_data/
+.gt_cache_*
+.translate-*/
+.vscode
+test_data/
+sandbox/
+*.mod
