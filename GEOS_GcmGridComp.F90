@@ -1321,15 +1321,17 @@ contains
          result=GCM_INTERNAL_STATE%SURF_IMP, rc=status)
     VERIFY_(STATUS)
 
-    !select TURBULENCE export
-    call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
-    VERIFY_(STATUS)
+    if(.not. DO_DATA_ATM4OCN) then
+      !select TURBULENCE export
+      call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
+           result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
+      VERIFY_(STATUS)
 
-    !select SURFACE import 
-    call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
-    VERIFY_(STATUS)
+      !select TURBULENCE import 
+      call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
+           result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
+      VERIFY_(STATUS)
+    endif
 
     !select OCEAN export
     call MAPL_ExportStateGet(GEX, name='OCEAN', &

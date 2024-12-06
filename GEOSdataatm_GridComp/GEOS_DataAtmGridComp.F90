@@ -270,7 +270,12 @@ module GEOS_DataAtmGridCompMod
 
     ! This call is needed only when we use ReadForcing.
     ! If we switch to use ExtData, next line has be commented out
-    call MAPL_TerminateImport    ( GC, ALL=.true., __RC__ )
+    if (DO_CICE_THERMO == 2) then
+       call MAPL_TerminateImport    ( GC, SHORT_NAMES=['SURFSTATE'],    &
+                                      CHILD_IDS=[SURF],  __RC__  )
+    else
+       call MAPL_TerminateImport    ( GC, ALL=.true., __RC__ )
+    endif
 
     call MAPL_GenericSetServices    ( GC, __RC__)
 
@@ -590,7 +595,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     SPEED = SQRT(Uair**2 + Vair**2)
 
     IM = size(Uair, 1)
-    JM = size(Uair, 1)
+    JM = size(Uair, 2)
     allocate(Uskin(IM,JM), Vskin(IM,JM), Qskin(IM,JM), swrad(IM,JM), __STAT__)
 
     call MAPL_GetPointer(SurfImport, DZ, 'DZ', __RC__)
@@ -1070,7 +1075,7 @@ end subroutine RUN
     call MAPL_TimerOn(MAPL,"TOTAL"   )
     call MAPL_TimerOn(MAPL,"FINALIZE")
 
-    if (DO_CICE_THERMO /= 0) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
+    if (DO_CICE_THERMO == 1) call dealloc_column_physics( MAPL_AM_I_Root(), Iam )
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )

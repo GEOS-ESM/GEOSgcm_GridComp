@@ -101,7 +101,7 @@ endforeach()
 
 esma_add_library (${this}
    SRCS ${WW3ESMF_F90}
-   DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran
+   DEPENDENCIES MAPL ESMF::ESMF NetCDF::NetCDF_Fortran
   )
 
 target_include_directories (${this} PRIVATE
