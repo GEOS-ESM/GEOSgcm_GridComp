@@ -106,9 +106,9 @@ def compute_thermodynamic_variables(
     # thvl0top: FloatField,
     zmid0: FloatField,
     qt0: FloatField,
-    # t0: FloatField,
-    # qv0: FloatField,
-    # pmid0: FloatField,
+    t0: FloatField,
+    qv0: FloatField,
+    pmid0: FloatField,
     # zvir: Float,
     tr0: FloatField_NTracers,
     ssu0: FloatField,
@@ -116,7 +116,7 @@ def compute_thermodynamic_variables(
     ssthl0: FloatField,
     ssqt0: FloatField,
     sstr0: FloatField_NTracers,
-    # thl0: FloatField,
+    thl0: FloatField,
     # qv0_o: FloatField,
     # ql0_o: FloatField,
     # qi0_o: FloatField,
@@ -685,12 +685,12 @@ def implicit_cin_closure(
     thvl0top: FloatField,
     zmid0: FloatField,
     qt0: FloatField,
-    # t0: FloatField,
-    # qv0: FloatField,
+    t0: FloatField,
+    qv0: FloatField,
     shfx: FloatFieldIJ,
     evap: FloatFieldIJ,
-    # pmid0: FloatField,
-    dotransport: Int,
+    pmid0: FloatField,
+    dotransport: Float,
     ncnst: Int,
     zvir: Float,
     tr0: FloatField_NTracers,
@@ -699,7 +699,7 @@ def implicit_cin_closure(
     ssthl0: FloatField,
     ssqt0: FloatField,
     # sstr0: FloatField_NTracers,
-    # thl0: FloatField,
+    thl0: FloatField,
     # thv0bot: FloatField,
     # thv0top: FloatField,
     # qv0_o: FloatField,
@@ -747,7 +747,7 @@ def implicit_cin_closure(
     fdr_out: FloatField,
     id_exit: BoolField,
     # Outputs for testing:
-    kinv: IntFieldIJ,
+    kinv: IntField,
     thvlavg: FloatFieldIJ,
     tkeavg: FloatFieldIJ,
     uavg: FloatFieldIJ,
@@ -755,6 +755,12 @@ def implicit_cin_closure(
     thvlmin: FloatFieldIJ,
     qtavg: FloatFieldIJ,
     dpi: FloatFieldIJ,
+    thlsrc: FloatFieldIJ,
+    usrc: FloatFieldIJ,
+    vsrc: FloatFieldIJ,
+    trsrc: FloatField_NTracers,
+    plcl: FloatFieldIJ,
+    klcl: IntField,
 ):
     """
     This 'iteration' loop is for implicit CIN closure
@@ -882,14 +888,14 @@ def implicit_cin_closure(
 
             lev = 0
             while lev < kinv:
-                kbelow = lev - 1
-                dpi = pifc0.at(K=kbelow) - pifc0.at(K=lev)
+                kabove = lev + 1
+                dpi = pifc0.at(K=lev) - pifc0.at(K=kabove)
                 dpsum = dpsum + dpi
-                tkeavg = tkeavg + dpi * tke.at(K=lev)
+                tkeavg: f32 = tkeavg + dpi * tke.at(K=kabove)
                 uavg = uavg + dpi * u0.at(K=lev)
                 vavg = vavg + dpi * v0.at(K=lev)
                 thvlavg = thvlavg + dpi * thvl0.at(K=lev)
-                if lev != kinv:
+                if lev != kinv - 1:
                     thvlmin = min(thvlmin, min(thvl0bot.at(K=lev), thvl0top.at(K=lev)))
                 lev += 1
 
@@ -910,7 +916,7 @@ def implicit_cin_closure(
             lev = 0
             while zmid0.at(K=lev) < qtsrchgt:
                 lev += 1
-            if lev > 1:
+            if lev > 0:
                 kbelow = lev - 1
                 qtavg = qt0.at(K=kbelow) * (zmid0.at(K=lev) - qtsrchgt) + qt0.at(
                     K=lev
@@ -919,8 +925,6 @@ def implicit_cin_closure(
             else:
                 qtavg = qt0.at(K=0)
 
-
-'''
             """
             Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc 
             Note that 'thlsrc' was concocted using 'thvlsrc' and 'qtsrc'.      
@@ -930,14 +934,14 @@ def implicit_cin_closure(
             """
             if windsrcavg == 1:
                 zrho = pifc0.at(K=0) / (
-                    287.04 * (t0.at(K=1) * (1.0 + 0.608 * qv0.at(K=1)))
+                    287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0)))
                 )
                 buoyflx = (
-                    -shfx / constants.MAPL_CP - 0.608 * t0(1) * evap
+                    -shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap
                 ) / zrho  # K m s-1
                 # delzg = (zifc0.at(K=1)-zifc0.at(K=0))*constants.MAPL_GRAV
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
-                wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=1))  # m3 s-3
+                wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
                 qpert_out = 0.0
                 tpert_out = 0.0
                 if wstar > 0.001:
@@ -947,7 +951,7 @@ def implicit_cin_closure(
                     )  # K
                     qpert_out = qtsrc_fac * evap / (zrho * wstar)  # kg kg-1
                     qpert_out = max(
-                        min(qpert_out, 0.02 * qt0.at(K=1)), 0.0
+                        min(qpert_out, 0.02 * qt0.at(K=0)), 0.0
                     )  # limit to 1% of QT
                     tpert_out = 0.1 + max(min(tpert_out, 1.0), 0.0)  # limit to 1K
                     qtsrc = qtavg + qpert_out
@@ -957,22 +961,23 @@ def implicit_cin_closure(
                     thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
                     usrc = uavg
                     vsrc = vavg
-                else:
-                    qtsrc = qt0.at(K=1)
-                    thvlsrc = thvlmin
-                    thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
-                    kbelow = kinv - 1
-                    usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (
-                        pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
-                    )
-                    vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (
-                        pifc0.at(K=kbelow) - pmid0.at(K=kbelow)
-                    )
+            else:
+                qtsrc = qt0.at(K=0)
+                thvlsrc = thvlmin
+                thlsrc = thvlsrc / (1.0 + zvir * qtsrc)
+                kbelow = kinv - 2
+                kbelow_zdim = kinv - 1
+                usrc = u0.at(K=kbelow) + ssu0.at(K=kbelow) * (
+                    pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
+                )
+                vsrc = v0.at(K=kbelow) + ssv0.at(K=kbelow) * (
+                    pifc0.at(K=kbelow_zdim) - pmid0.at(K=kbelow)
+                )
 
             if dotransport == 1.0:
                 n = 0
                 while n < ncnst:
-                    trsrc[0, 0, 0][n] = tr0.at(K=1, ddim=[n])
+                    trsrc[0, 0, 0][n] = tr0.at(K=0, ddim=[n])
                     n += 1
 
             """
@@ -1063,39 +1068,85 @@ def implicit_cin_closure(
             if id_exit == False:
                 plcl = qsinvert(qtsrc, thlsrc, pifc0.at(K=0), ese, esx)
 
-    
     with computation(FORWARD), interval(...):
-        k = 0
-        while k <= k0:
-            if pifc0.at(K=k) < plcl:
-                klcl = k
-                k = k0 + 1  # Break out of loop
-            else:
+        if id_exit == False:
+            lev = 0
+            klcl_flag = 0.0
+            while lev < k0 + 1:
+                kidx = lev
+                if pifc0.at(K=kidx) < plcl:
+                    klcl = k0 - lev
+                    klcl_flag = 1.0
+                    lev = 74  # Break out of loop
+                lev += 1
+
+            if klcl_flag == 0.0:
                 klcl = k0
-            k += 1
 
-        klcl = max(1, klcl)
+            klcl = max(1, klcl)
 
-        if plcl < 60000.0:
-            id_exit = True
-            # go to 333
 
-        """ 
-        Calculate environmental virtual potential temperature at LCL, 
-        'thv0lcl' which is solely used in the 'cin' calculation. Note  
-        that 'thv0lcl' is calculated first by calculating  'thl0lcl'  
-        and 'qt0lcl' at the LCL, and performing 'conden' afterward,   
-        in fully consistent with the other parts of the code. 
-        """
+'''
+            if plcl < 60000.0:
+                id_exit = True
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
 
-        thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-        qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
-        thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, ese, esx)
-        if id_check == 1:
-            id_exit = True
-            # go to 333
-        thv0lcl = thj * (1.0 + zvir * qvj - qlj - qij)
+        if id_exit == False:
+            """
+            Calculate environmental virtual potential temperature at LCL,
+            'thv0lcl' which is solely used in the 'cin' calculation. Note
+            that 'thv0lcl' is calculated first by calculating  'thl0lcl'
+            and 'qt0lcl' at the LCL, and performing 'conden' afterward,
+            in fully consistent with the other parts of the code.
+            """
+            thl0lcl = thl0.at(K=klcl) + ssthl0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
+            qt0lcl = qt0.at(K=klcl) + ssqt0.at(K=klcl) * (plcl - pmid0.at(K=klcl))
+            thj, qvj, qlj, qij, qse, id_check = conden(plcl, thl0lcl, qt0lcl, ese, esx)
 
+            if id_check == 1:
+                id_exit = True
+                umf_out[0, 0, 1] = 0.0
+                dcm_out = 0.0
+                qvten_out = 0.0
+                qlten_out = 0.0
+                qiten_out = 0.0
+                sten_out = 0.0
+                uten_out = 0.0
+                vten_out = 0.0
+                qrten_out = 0.0
+                qsten_out = 0.0
+                cufrc_out = 0.0
+                cush_inout = -1.0
+                qldet_out = 0.0
+                qidet_out = 0.0
+                qtflx_out[0, 0, 1] = 0.0
+                slflx_out[0, 0, 1] = 0.0
+                uflx_out[0, 0, 1] = 0.0
+                vflx_out[0, 0, 1] = 0.0
+                fer_out = constants.MAPL_UNDEF
+                fdr_out = constants.MAPL_UNDEF
+
+        if id_exit == False:
+            thv0lcl = thj * (1.0 + zvir * qvj - qlj - qij)
 
     with computation(PARALLEL), interval(...):
         """
@@ -1980,7 +2031,7 @@ class ComputeUwshcu:
         trten: FloatField_NTracers,
         tru: FloatField_NTracers,
         tru_emf: FloatField_NTracers,
-        kinv: IntFieldIJ,
+        kinv: IntField,
         thvlavg: FloatFieldIJ,
         tkeavg: FloatFieldIJ,
         uavg: FloatFieldIJ,
@@ -1988,6 +2039,16 @@ class ComputeUwshcu:
         thvlmin: FloatFieldIJ,
         qtavg: FloatFieldIJ,
         dpi: FloatFieldIJ,
+        t0: FloatField,
+        qv0: FloatField,
+        pmid0: FloatField,
+        thl0: FloatField,
+        thlsrc: FloatFieldIJ,
+        usrc: FloatFieldIJ,
+        vsrc: FloatFieldIJ,
+        trsrc: FloatField_NTracers,
+        plcl: FloatFieldIJ,
+        klcl: IntField,
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ):
         self.qsat = QSat(
@@ -2061,9 +2122,9 @@ class ComputeUwshcu:
             # thvl0top=thvl0top,
             zmid0=zmid0,
             qt0=qt0,
-            # t0=t0,
-            # qv0=qv0,
-            # pmid0=pmid0,
+            t0=t0,
+            qv0=qv0,
+            pmid0=pmid0,
             # zvir=zvir,
             tr0=tr0,
             ssu0=ssu0,
@@ -2071,7 +2132,7 @@ class ComputeUwshcu:
             ssthl0=ssthl0,
             ssqt0=ssqt0,
             sstr0=sstr0,
-            # thl0=thl0,
+            thl0=thl0,
             # qv0_o=qv0_o,
             # ql0_o=ql0_o,
             # qi0_o=qi0_o,
@@ -2153,11 +2214,11 @@ class ComputeUwshcu:
                 thvl0top=thvl0top,
                 zmid0=zmid0,
                 qt0=qt0,
-                # t0=t0,
-                # qv0=qv0,
+                t0=t0,
+                qv0=qv0,
                 shfx=shfx,
                 evap=evap,
-                # pmid0=pmid0,
+                pmid0=pmid0,
                 dotransport=dotransport,
                 ncnst=ncnst,
                 zvir=zvir,
@@ -2167,7 +2228,7 @@ class ComputeUwshcu:
                 ssthl0=ssthl0,
                 ssqt0=ssqt0,
                 # sstr0=sstr0,
-                # thl0=thl0,
+                thl0=thl0,
                 # thv0bot=thv0bot,
                 # thv0top=thv0top,
                 # qv0_o=qv0_o,
@@ -2223,6 +2284,12 @@ class ComputeUwshcu:
                 thvlmin=thvlmin,
                 qtavg=qtavg,
                 dpi=dpi,
+                thlsrc=thlsrc,
+                usrc=usrc,
+                vsrc=vsrc,
+                trsrc=trsrc,
+                plcl=plcl,
+                klcl=klcl,
             )
 
             # if (self.id_exit.view[:, :, :] == True).any():

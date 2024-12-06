@@ -125,6 +125,11 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "thvlmin": self.grid.compute_dict(),
             "qtavg": self.grid.compute_dict(),
             "dpi": self.grid.compute_dict(),
+            "thlsrc": self.grid.compute_dict(),
+            "usrc": self.grid.compute_dict(),
+            "vsrc": self.grid.compute_dict(),
+            "plcl": self.grid.compute_dict(),
+            "klcl": self.grid.compute_dict(),
         }
 
     def reshape_before(self, inputs):
@@ -299,7 +304,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         trten = self.make_ntracers_ijk_field(inputs_reshaped["tr0_inout"])
         tru = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
         tru_emf = self.make_ntracers_zdim_field(np.zeros(shape=[24, 24, 73, 23]))
-        kinv = self.make_ij_field(inputs_reshaped["frland_in"], dtype=Int)
+        kinv = self.make_ijk_field(inputs_reshaped["pmid0_in"], dtype=Int)
         umf_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
         dcm_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         qvten_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
@@ -318,17 +323,27 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         vflx_out = self.make_zinterface_field(inputs_reshaped["tke_in"])
         fer_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         fdr_out = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        thvlavg = self.make_ij_field(inputs_reshaped["cush_inout"])
-        tkeavg = self.make_ij_field(inputs_reshaped["cush_inout"])
-        uavg = self.make_ij_field(inputs_reshaped["cush_inout"])
-        vavg = self.make_ij_field(inputs_reshaped["cush_inout"])
-        thvlmin = self.make_ij_field(inputs_reshaped["cush_inout"])
-        qtavg = self.make_ij_field(inputs_reshaped["cush_inout"])
-        zmid0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        qt0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thvlavg = self.make_ij_field(np.zeros(shape=[24, 24]))
+        tkeavg = self.make_ij_field(np.zeros(shape=[24, 24]))
+        uavg = self.make_ij_field(np.zeros(shape=[24, 24]))
+        vavg = self.make_ij_field(np.zeros(shape=[24, 24]))
+        thvlmin = self.make_ij_field(np.zeros(shape=[24, 24]))
+        qtavg = self.make_ij_field(np.zeros(shape=[24, 24]))
+        zmid0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qt0 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
         thvl0bot = self.make_ijk_field(inputs_reshaped["pmid0_in"])
-        dpi = self.make_ij_field(inputs_reshaped["cush_inout"])
+        dpi = self.make_ij_field(np.zeros(shape=[24, 24]))
+        t0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        qv0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        pmid0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thl0 = self.make_ijk_field(inputs_reshaped["pmid0_in"])
+        thlsrc = self.make_ij_field(np.zeros(shape=[24, 24]))
+        usrc = self.make_ij_field(np.zeros(shape=[24, 24]))
+        vsrc = self.make_ij_field(np.zeros(shape=[24, 24]))
+        trsrc = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        plcl = self.make_ij_field(np.zeros(shape=[24, 24]))
+        klcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -417,18 +432,29 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             thvlmin=thvlmin,
             qtavg=qtavg,
             dpi=dpi,
+            t0=t0,
+            qv0=qv0,
+            pmid0=pmid0,
+            thl0=thl0,
+            thlsrc=thlsrc,
+            usrc=usrc,
+            vsrc=vsrc,
+            trsrc=trsrc,
+            plcl=plcl,
+            klcl=klcl,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(qtavg.view[:])
+
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "qtavg"
-            var = qtavg
+            testvar = "klcl"
+            var = klcl
             testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 0, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
+
             # Reshape and make testvar quantity
             i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
             testvar_reshaped = np.reshape(testvar_zeros, (i, j)).astype(np.float32)
@@ -449,21 +475,21 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         for i in range(testing_variable.view[:].shape[0]):
             for j in range(testing_variable.view[:].shape[1]):
                 # for k in range(testing_variable.view[:].shape[2]):
-                diff = testing_variable.view[i, j] - reference_variable.view[i, j]
+                diff = testing_variable.view[i, j, 0] - reference_variable.view[i, j]
 
                 tot_indicies = tot_indicies + 1
-                if testing_variable.view[i, j] != reference_variable.view[i, j]:
+                if testing_variable.view[i, j, 0] != reference_variable.view[i, j]:
                     failed_indicies = failed_indicies + 1
                     print(
                         "DIFF: ",
                         i,
                         j,
                         "computed: ",
-                        testing_variable.view[i, j],
+                        testing_variable.view[i, j, 0],
                         "reference: ",
                         reference_variable.view[i, j],
                         "difference: ",
-                        testing_variable.view[i, j] - reference_variable.view[i, j],
+                        testing_variable.view[i, j, 0] - reference_variable.view[i, j],
                     )
         print(
             "failures: ",
@@ -476,5 +502,5 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         )
 
         # return {
-        #     "ssthl0": ssthl0_2D,
+        #     "thvlavg": tkeavg_4D,
         # }
