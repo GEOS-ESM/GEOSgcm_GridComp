@@ -34,16 +34,19 @@ PROGRAM mkEASETilesParam
   use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
   use rmTinyCatchParaMod, only : RegridRasterReal                  
   use process_hres_data,  only : histogram
+  use LogRectRasterizeMod
   use MAPL_SortMod
   use MAPL_ConstantsMod
   use MAPL_ExceptionHandling
+  use MAPL
   use netcdf
   
   implicit none
   
-  integer, parameter :: nc_esa = 129600       ! number of cols in 10-arcsec ESA mask file
-  integer, parameter :: nr_esa =  64800       ! number of rows in 10-arcsec ESA mask file
-  
+  integer,      parameter :: nc_esa        = 129600      ! number of cols in 10-arcsec ESA mask file
+  integer,      parameter :: nr_esa        =  64800      ! number of rows in 10-arcsec ESA mask file
+  real(kind=8), parameter :: MAPL_UNDEF_R8 = MAPL_UNDEF
+
   ! define tile types used for processing here (values may be from ESA mask?) 
   
   integer, parameter :: OceanType  =  0  
@@ -82,7 +85,8 @@ PROGRAM mkEASETilesParam
   integer*1,   allocatable, dimension(:,:)           :: veg                      
   real*4,      allocatable, dimension(:,:)           :: q0, raster
   REAL,        allocatable, dimension(:)             :: tile_elev
-  
+  integer,     allocatable, dimension(:,:)           :: iTable
+  real(kind=8),  allocatable, dimension(:,:)         :: rTable
   !INTEGER*8    :: PFAF_CODE  
   
   integer      :: l, l_index, i_index, w_index, typ, pfaf_index
@@ -845,6 +849,9 @@ PROGRAM mkEASETilesParam
   !     write (10,*) -9999      
   
   dx_ease = 180./real(nc_ease)
+
+  allocate(iTable(n_landlakelandice,0:4))                           ! 0-based index inherited from elsewhere in make_bcs
+  allocate(rTable(n_landlakelandice,10), source = MAPL_UNDEF_R8)
   
   do nn=1,n_landlakelandice
      
@@ -907,7 +914,11 @@ PROGRAM mkEASETilesParam
         ! write tile properties into catchment.def file
         
         write (11,'(i10,i8,5(2x,f9.4), i4)') nn, pfaf_index, mnx, mxx, mny, mxy, tile_elev(nn)
-        
+        rTable(nn,6) =  mnx
+        rTable(nn,7) =  mxx
+        rTable(nn,8) =  mny
+        rTable(nn,9) =  mxy
+        rTable(nn,10) = tile_elev(nn)
      endif
      
      ! get area fraction of tile within EASE grid cell
@@ -920,6 +931,17 @@ PROGRAM mkEASETilesParam
      
      fr_gcm = tile_area(nn) / ease_grid_area((jg-1)*nc_ease+ig)
      
+     rTable(nn,1) = clon
+     rTable(nn,2) = clat
+     rTable(nn,3) = tile_area(nn)
+     rTable(nn,4) = ease_grid_area((jg-1)*nc_ease+ig)
+     rTable(nn,5) = SRTM_catid_r8(pfaf_index)
+
+     iTable(nn,0) = typ                          ! 0-based index inherited from elsewhere in make_bcs
+     iTable(nn,2) = ig -1
+     iTable(nn,3) = jg -1
+     iTable(nn,4) = pfaf_index
+
      ! write tile properties into *.til file
      
      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
@@ -948,8 +970,11 @@ PROGRAM mkEASETilesParam
   end do
   
   close(10,status='keep')      
-  close(11,status='keep')          
-  
+  close(11,status='keep')
+
+  call WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
+                    nc, nr, iTable, rTable)
+
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
       
