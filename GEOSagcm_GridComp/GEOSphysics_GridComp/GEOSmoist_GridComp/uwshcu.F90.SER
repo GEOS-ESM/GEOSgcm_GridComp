@@ -1159,7 +1159,7 @@ contains
       !========================
       !   Start column loop
       !========================
-      !$ser verbatim call ser_set_Dx(idim, k0+1, ncnst, 1)
+      !$ser verbatim call ser_set_Dx(idim, k0+1, 73, 1)
       do i = 1, idim
          !$ser verbatim call ser_set_indices(i, 1 ,1 ,1)
          id_exit = .false.
@@ -1510,9 +1510,10 @@ contains
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
 
-  
-         !$ser data_buffered Dx=2 thvlavg=thvlavg tkeavg=tkeavg 
+ 
+         !$ser data_buffered Dx=2 thvlavg=thvlavg tkeavg=tkeavg dpi=dpi
          !$ser data_buffered Dx=2 uavg=uavg vavg=vavg thvlmin=thvlmin
+        
 
         ! weighted average over lowest 20mb
 !         dpsum = 0.
@@ -1536,6 +1537,7 @@ contains
          end if
 
          !$ser data_buffered Dx=2 qtavg=qtavg
+
 
 
        ! ------------------------------------------------------------------ !
@@ -1574,6 +1576,8 @@ contains
             usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
             vsrc    = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
          endif
+
+         !$ser data_buffered Dx=2 thlsrc=thlsrc usrc=usrc vsrc=vsrc
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
@@ -1617,6 +1621,7 @@ contains
            go to 333
         end if
          plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
+         !$ser data_buffered Dx=2 plcl=plcl
          do k = 0, k0
             if( pifc0(k) .lt. plcl ) then
                 klcl = k
@@ -1626,6 +1631,9 @@ contains
          klcl = k0
 25       continue
          klcl = max(1,klcl)
+
+         !$ser data_buffered Dx=2 klcl=klcl
+
          
      
          if( plcl .lt. 60000. ) then               
@@ -1654,6 +1662,8 @@ contains
             go to 333
          end if
          thv0lcl = thj * ( 1. + zvir * qvj - qlj - qij )
+
+         !$ser data_buffered Dx=2 thl0lcl=thl0lcl qt0lcl=qt0lcl thv0lcl=thv0lcl
 
        ! ------------------------------------------------------------------------
        !
