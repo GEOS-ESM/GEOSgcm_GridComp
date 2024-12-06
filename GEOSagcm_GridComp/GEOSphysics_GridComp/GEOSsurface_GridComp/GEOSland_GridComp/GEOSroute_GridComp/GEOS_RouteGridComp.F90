@@ -35,7 +35,7 @@ module GEOS_RouteGridCompMod
   implicit none
   integer, parameter :: N_CatG = 291284
   integer,parameter :: upmax=34
-  character(len=500) :: inputdir="/umbc/xfs1/yujinz/users/yujinz/GEOSldas/river_input/"
+  character(len=500) :: inputdir="/discover/nobackup/yzeng3/data/river_input/"
   integer,save :: nmax 
 
   private
