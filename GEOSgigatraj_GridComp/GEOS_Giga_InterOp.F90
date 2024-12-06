@@ -1,3 +1,6 @@
+! This module define the interface bewteen GEOS and gigatraj
+! The functions are defined in gigatraj
+
 module GEOS_Giga_InterOpMod
    use, intrinsic :: iso_c_binding, only : c_double, c_int, c_ptr, c_null_char, c_associated
    use, intrinsic :: iso_c_binding, only : c_loc, c_null_ptr
