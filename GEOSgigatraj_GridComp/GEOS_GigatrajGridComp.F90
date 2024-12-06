@@ -534,7 +534,7 @@ contains
     type (GigaTrajInternal), pointer :: GigaTrajInternalPtr
     type (GigatrajInternalWrap)   :: wrap
   
-    integer :: lm, d1, d2, k
+    integer :: lm, d1, d2, k, itemCount
     integer ::counts(3), DIMS(3), comm, ierror
     type (ESMF_VM)   :: vm
   
@@ -554,6 +554,7 @@ contains
     type(ESMF_Alarm)  :: GigaTrajIntegrateAlarm
     type(MAPL_VarSpec ), pointer:: internal_specs(:)
     character(len=ESMF_MAXSTR)  :: SHORT_NAME
+    character(len=ESMF_MAXSTR), allocatable  :: item_names(:)
 
 !---------------
 !  Update internal 
@@ -563,13 +564,17 @@ contains
     call MAPL_GetObjectFromGC ( GC, MPL, _RC)
     call MAPL_Get (MPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
 
-    call MAPL_GridCompGetVarSpecs(GC, INTERNAL=internal_specs, _RC)
-    do K=1,size(internal_specs)
-       call MAPL_VarSpecGet(internal_specs(k), SHORT_NAME=SHORT_NAME, _RC)
-       call MAPL_GetPointer(Import, model_field, trim(short_name), _RC)
-       call MAPL_GetPointer(INTERNAL, internal_field, trim(short_name), _RC)
+    call ESMF_StateGet(INTERNAL, itemCount=itemCount, _RC)
+    allocate(item_names(itemCount))
+    call ESMF_StateGet(INTERNAL, itemNameList=item_names, _RC)
+
+    do k=1, ItemCount
+       print*, "wjiang: shortname:",trim(item_names(k))
+       call MAPL_GetPointer(Import, model_field, trim(item_names(k)), _RC)
+       call MAPL_GetPointer(INTERNAL, internal_field, trim(item_names(k)), _RC)
        internal_field(:,:,:) = model_field(:,:,:)
     enddo
+    deallocate(item_names)
 
     call ESMF_ClockGetAlarm(clock, 'GigatrajIntegrate', GigaTrajIntegrateAlarm, _RC)
 
