@@ -1159,6 +1159,8 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
     integer :: k
 
     revap(:) = 0.
+    TOT_PREC_LS = 0.
+    AREA_LS_PRC = 0.
 
     do k = ktop, kbot
 
