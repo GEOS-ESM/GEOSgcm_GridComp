@@ -8,7 +8,7 @@ set (alldirs
   GEOSwgcm_GridComp
   )
 
-option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" ON)
+option(BUILD_WITH_GIGATRAJ "Build GEOSgcm with Gigatraj" OFF)
 
 if (BUILD_WITH_GIGATRAJ)
   add_definitions (-DHAS_GIGATRAJ)
