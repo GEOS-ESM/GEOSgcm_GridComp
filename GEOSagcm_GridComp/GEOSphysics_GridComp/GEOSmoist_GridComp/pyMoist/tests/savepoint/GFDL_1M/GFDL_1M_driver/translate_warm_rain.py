@@ -3,7 +3,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
-from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain_stencil import warm_rain_stencil
+from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain_stencil
 
 
 class Translatewarm_rain(TranslateFortranData2Py):
@@ -76,8 +76,8 @@ class Translatewarm_rain(TranslateFortranData2Py):
             "evap1_warm_rain": self.grid.compute_dict(),
             "m1_rain_warm_rain": self.grid.compute_dict(),
             "r1_warm_rain": self.grid.compute_dict(),
-            "qsat_warm_rain": self.grid.compute_dict(),
-            "dqsdt_warm_rain": self.grid.compute_dict(),
+            # "qsat_warm_rain": self.grid.compute_dict(),
+            # "dqsdt_warm_rain": self.grid.compute_dict(),
         }
 
         self.sat_tables = get_tables()
@@ -297,6 +297,6 @@ class Translatewarm_rain(TranslateFortranData2Py):
             "evap1_warm_rain": self.evap1.view[:],
             "m1_rain_warm_rain": m1_rain_warm_rain.view[:],
             "r1_warm_rain": self.rain.view[:],
-            "qsat_warm_rain": self.TESTVAR_1.view[:],
-            "dqsdt_warm_rain": self.TESTVAR_2.view[:],
+            # "qsat_warm_rain": self.TESTVAR_1.view[:],
+            # "dqsdt_warm_rain": self.TESTVAR_2.view[:],
         }

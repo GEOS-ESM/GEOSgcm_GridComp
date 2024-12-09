@@ -245,36 +245,36 @@ def terminal_fall_stencil(
                 while m < k_end and stop_melting == False:
                     mplus1 = m + 1  # TODO remove this
                     # only opterate on previously iterated k-levels
-                    if melting_mask_2 == True:
-                        if zt[0, 0, 1] >= ze.at(K=m):
-                            stop_melting = (
-                                True  # if true exit early for ONLY this k level
-                            )
-                        if stop_melting == False:
-                            dtime = min(
-                                1.0,
-                                (ze.at(K=m) - ze.at(K=mplus1))
-                                / (max(driver_constants.vr_min, vti) * tau_imlt),
-                            )
-                            sink = min(
-                                qi1 * dp1 / dp1.at(K=m),
-                                dtime
-                                * (t1.at(K=m) - driver_constants.tice)
-                                / icpk.at(K=m),
-                            )
-                        if ql_mlt - ql1.at(K=m) > 0:
-                            ans = ql_mlt - ql1.at(K=m)
-                        else:
-                            ans = 0
-                        tmp = min(sink, ans)
-                        offset = i32(m - current_k_level)
-                        hold_ql1 = ql1.at(K=m)
-                        ql1[0, 0, offset] = hold_ql1 + tmp
-                        hold_qr1 = qr1.at(K=m)
-                        qr1[0, 0, offset] = hold_qr1 - tmp + sink
-                        hold_t1 = t1.at(K=m)
-                        t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
-                        qi1 = qi1 - sink * dp1.at(K=m) / dp1
+                    # if melting_mask_2 == True:
+                    #     if zt[0, 0, 1] >= ze.at(K=m):
+                    #         stop_melting = (
+                    #             True  # if true exit early for ONLY this k level
+                    #         )
+                    #     if stop_melting == False:
+                    #         dtime = min(
+                    #             1.0,
+                    #             (ze.at(K=m) - ze.at(K=mplus1))
+                    #             / (max(driver_constants.vr_min, vti) * tau_imlt),
+                    #         )
+                    #         sink = min(
+                    #             qi1 * dp1 / dp1.at(K=m),
+                    #             dtime
+                    #             * (t1.at(K=m) - driver_constants.tice)
+                    #             / icpk.at(K=m),
+                    #         )
+                    #     if ql_mlt - ql1.at(K=m) > 0:
+                    #         ans = ql_mlt - ql1.at(K=m)
+                    #     else:
+                    #         ans = 0
+                    #     tmp = min(sink, ans)
+                    #     offset = i32(m - current_k_level)
+                    #     hold_ql1 = ql1.at(K=m)
+                    #     ql1[0, 0, offset] = hold_ql1 + tmp
+                    #     hold_qr1 = qr1.at(K=m)
+                    #     qr1[0, 0, offset] = hold_qr1 - tmp + sink
+                    #     hold_t1 = t1.at(K=m)
+                    #     t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
+                    #     qi1 = qi1 - sink * dp1.at(K=m) / dp1
                     m = m + 1
             # set current layer as iterated layer
             melting_mask_2 = True
@@ -287,12 +287,19 @@ def terminal_fall_stencil(
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     # this code computes the time-implicit monotonic scheme
     # Fortran author: Shian-Jiann Lin, 2016
+    # set up inputs to the "function"
+    with computation(PARALLEL), interval(...):
+        if vi_fac >= 1.0e-5 and precip_fall == 1:
+            if use_ppm == False:
+                q_implicit_fall = qi1
+                vt_implicit_fall = vti
+
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
                 hold_data = ze - ze[0, 0, 1]
-                dd = dts * vti
-                qi1 = qi1 * dp1
+                dd = dts * vt_implicit_fall
+                q_implicit_fall = q_implicit_fall * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
@@ -300,12 +307,12 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                qm = qi1 / (hold_data + dd)
+                qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                qm = (qi1 + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
+                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
@@ -321,17 +328,17 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                m1_sol = qi1 - qm
+                m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                m1_sol = m1_sol[0, 0, -1] + qi1 - qm
+                m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                precip_ice = m1_sol
+                precip = m1
 
     # -----------------------------------------------------------------------
     # update:
@@ -339,7 +346,21 @@ def terminal_fall_stencil(
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if use_ppm == False:
-                qi1 = qm / dp1
+                q_implicit_fall = qm / dp1
+
+    # update "outputs" after "function"
+    with computation(PARALLEL), interval(...):
+        if vi_fac >= 1.0e-5 and precip_fall == 1:
+            if use_ppm == False:
+                qi1 = q_implicit_fall
+                m1_sol = (
+                    m1_sol + m1
+                )  # NOTE: setting this to just m1_sol = m1 gives WILD values (1e31)
+
+    with computation(FORWARD), interval(-1, None):
+        if vi_fac >= 1.0e-5 and precip_fall == 1:
+            if use_ppm == False:
+                precip_ice = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
     with computation(FORWARD), interval(0, 1):
@@ -361,6 +382,7 @@ def terminal_fall_stencil(
     with computation(PARALLEL), interval(...):
         melting_mask_1 = False
         melting_mask_2 = False
+        m1 = 0.0
 
     # -----------------------------------------------------------------------
     # -----------------------------------------------------------------------
@@ -420,43 +442,43 @@ def terminal_fall_stencil(
                 while m < k_end and stop_melting == False:
                     mplus1 = m + 1  # TODO remove this
                     # only opterate on previously iterated k-levels
-                    if melting_mask_2 == True:
-                        if zt[0, 0, 1] >= ze.at(K=m):
-                            stop_melting = (
-                                True  # if true exit early for ONLY this k level
-                            )
-                        if stop_melting == False:
-                            dtime = min(
-                                dts,
-                                (ze.at(K=m) - ze.at(K=mplus1))
-                                / (driver_constants.vr_min + vts),
-                            )
-                            if (
-                                zt < ze.at(K=mplus1)
-                                and t1.at(K=m) > driver_constants.tice
-                            ):
-                                dtime = min(1.0, dtime / tau_smlt)
-                                sink = min(
-                                    qs1 * dp1 / dp1.at(K=m),
-                                    dtime
-                                    * (t1.at(K=m) - driver_constants.tice)
-                                    / icpk.at(K=m),
-                                )
-                                offset = i32(m - current_k_level)
-                                hold_t1 = t1.at(K=m)
-                                t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
-                                qs1 = qs1 - sink * dp1.at(K=m) / dp1
-                                if zt < 0:
-                                    precip_rain = precip_rain + sink * dp1.at(
-                                        K=m
-                                    )  # precip as rain
-                                else:
-                                    # qr source here will fall next time step (therefore, can evap)
-                                    hold_qr1 = qr1.at(K=m)
-                                    qr1[0, 0, offset] = hold_qr1 + sink
-                        if stop_melting == False:
-                            if qs1 < driver_constants.qpmin:
-                                stop_melting = True
+                    # if melting_mask_2 == True:
+                    #     if zt[0, 0, 1] >= ze.at(K=m):
+                    #         stop_melting = (
+                    #             True  # if true exit early for ONLY this k level
+                    #         )
+                    #     if stop_melting == False:
+                    #         dtime = min(
+                    #             dts,
+                    #             (ze.at(K=m) - ze.at(K=mplus1))
+                    #             / (driver_constants.vr_min + vts),
+                    #         )
+                    #         if (
+                    #             zt < ze.at(K=mplus1)
+                    #             and t1.at(K=m) > driver_constants.tice
+                    #         ):
+                    #             dtime = min(1.0, dtime / tau_smlt)
+                    #             sink = min(
+                    #                 qs1 * dp1 / dp1.at(K=m),
+                    #                 dtime
+                    #                 * (t1.at(K=m) - driver_constants.tice)
+                    #                 / icpk.at(K=m),
+                    #             )
+                    #             offset = i32(m - current_k_level)
+                    #             hold_t1 = t1.at(K=m)
+                    #             t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
+                    #             qs1 = qs1 - sink * dp1.at(K=m) / dp1
+                    #             if zt < 0:
+                    #                 precip_rain = precip_rain + sink * dp1.at(
+                    #                     K=m
+                    #                 )  # precip as rain
+                    #             else:
+                    #                 # qr source here will fall next time step (therefore, can evap)
+                    #                 hold_qr1 = qr1.at(K=m)
+                    #                 qr1[0, 0, offset] = hold_qr1 + sink
+                    #     if stop_melting == False:
+                    #         if qs1 < driver_constants.qpmin:
+                    #             stop_melting = True
                     m = m + 1
             # set current layer as iterated layer
             melting_mask_2 = True
@@ -469,12 +491,19 @@ def terminal_fall_stencil(
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     # this code computes the time-implicit monotonic scheme
     # Fortran author: Shian-Jiann Lin, 2016
+    # set up inputs to the "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                q_implicit_fall = qs1
+                vt_implicit_fall = vts
+
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
                 hold_data = ze - ze[0, 0, 1]
-                dd = dts * vts
-                qs1 = qs1 * dp1
+                dd = dts * vt_implicit_fall
+                q_implicit_fall = q_implicit_fall * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
@@ -482,12 +511,12 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = qs1 / (hold_data + dd)
+                qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = (qs1 + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
+                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
@@ -503,17 +532,17 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                m1 = qs1 - qm
+                m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                m1 = m1[0, 0, -1] + qs1 - qm
+                m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                precip_snow = m1
+                precip = m1
 
     # -----------------------------------------------------------------------
     # update:
@@ -521,7 +550,21 @@ def terminal_fall_stencil(
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
-                qs1 = qm / dp1
+                q_implicit_fall = qm / dp1
+
+    # update "outputs" after "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                qs1 = q_implicit_fall
+                m1_sol = (
+                    m1_sol + m1
+                )  # NOTE: setting this to just m1_sol = m1 gives WILD values (1e31)
+
+    with computation(FORWARD), interval(-1, None):
+        if precip_fall == 1:
+            if use_ppm == False:
+                precip_snow = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
     with computation(FORWARD), interval(0, 1):
@@ -536,9 +579,6 @@ def terminal_fall_stencil(
                     dm + m1[0, 0, -1] - m1
                 )
 
-    with computation(PARALLEL), interval(...):
-        m1_sol = m1_sol + m1
-
     # reset masks and temporaries
     with computation(FORWARD), interval(0, 1):
         precip_fall = 0
@@ -548,7 +588,7 @@ def terminal_fall_stencil(
         melting_mask_2 = False
         # must be reset to zero everywhere in case there is no graupel
         # in a column and no calculations are performed
-        m1 = 0
+        m1 = 0.0
 
     # -----------------------------------------------------------------------
     # -----------------------------------------------------------------------
@@ -608,39 +648,39 @@ def terminal_fall_stencil(
                 while m < k_end and stop_melting == False:
                     mplus1 = m + 1  # TODO remove this
                     # only opterate on previously iterated k-levels
-                    if melting_mask_2 == True:
-                        if zt[0, 0, 1] >= ze.at(K=m):
-                            stop_melting = (
-                                True  # if true exit early for ONLY this k level
-                            )
-                        if stop_melting == False:
-                            dtime = min(dts, (ze.at(K=m) - ze.at(K=mplus1)) / vtg)
-                            if (
-                                zt < ze.at(K=mplus1)
-                                and t1.at(K=m) > driver_constants.tice
-                            ):
-                                dtime = min(1.0, dtime / tau_g2r)
-                                sink = min(
-                                    qg1 * dp1 / dp1.at(K=m),
-                                    dtime
-                                    * (t1.at(K=m) - driver_constants.tice)
-                                    / icpk.at(K=m),
-                                )
-                                offset = i32(m - current_k_level)
-                                hold_t1 = t1.at(K=m)
-                                t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
-                                qg1 = qg1 - sink * dp1.at(K=m) / dp1
-                                if zt < 0:
-                                    precip_rain = precip_rain + sink * dp1.at(
-                                        K=m
-                                    )  # precip as rain
-                                else:
-                                    # qr source here will fall next time step (therefore, can evap)
-                                    hold_qr1 = qr1.at(K=m)
-                                    qr1[0, 0, offset] = hold_qr1 + sink
-                        if stop_melting == False:
-                            if qg1 < driver_constants.qpmin:
-                                stop_melting = True
+                    # if melting_mask_2 == True:
+                    #     if zt[0, 0, 1] >= ze.at(K=m):
+                    #         stop_melting = (
+                    #             True  # if true exit early for ONLY this k level
+                    #         )
+                    #     if stop_melting == False:
+                    #         dtime = min(dts, (ze.at(K=m) - ze.at(K=mplus1)) / vtg)
+                    #         if (
+                    #             zt < ze.at(K=mplus1)
+                    #             and t1.at(K=m) > driver_constants.tice
+                    #         ):
+                    #             dtime = min(1.0, dtime / tau_g2r)
+                    #             sink = min(
+                    #                 qg1 * dp1 / dp1.at(K=m),
+                    #                 dtime
+                    #                 * (t1.at(K=m) - driver_constants.tice)
+                    #                 / icpk.at(K=m),
+                    #             )
+                    #             offset = i32(m - current_k_level)
+                    #             hold_t1 = t1.at(K=m)
+                    #             t1[0, 0, offset] = hold_t1 - sink * icpk.at(K=m)
+                    #             qg1 = qg1 - sink * dp1.at(K=m) / dp1
+                    #             if zt < 0:
+                    #                 precip_rain = precip_rain + sink * dp1.at(
+                    #                     K=m
+                    #                 )  # precip as rain
+                    #             else:
+                    #                 # qr source here will fall next time step (therefore, can evap)
+                    #                 hold_qr1 = qr1.at(K=m)
+                    #                 qr1[0, 0, offset] = hold_qr1 + sink
+                    #     if stop_melting == False:
+                    #         if qg1 < driver_constants.qpmin:
+                    #             stop_melting = True
                     m = m + 1
             # set current layer as iterated layer
             melting_mask_2 = True
@@ -653,12 +693,19 @@ def terminal_fall_stencil(
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     # this code computes the time-implicit monotonic scheme
     # Fortran author: Shian-Jiann Lin, 2016
+    # set up inputs to the "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                q_implicit_fall = qg1
+                vt_implicit_fall = vtg
+
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
                 hold_data = ze - ze[0, 0, 1]
-                dd = dts * vtg
-                qg1 = qg1 * dp1
+                dd = dts * vt_implicit_fall
+                q_implicit_fall = q_implicit_fall * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
@@ -666,12 +713,12 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = qg1 / (hold_data + dd)
+                qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = (qg1 + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
+                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
@@ -687,17 +734,17 @@ def terminal_fall_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                m1 = qg1 - qm
+                m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                m1 = m1[0, 0, -1] + qg1 - qm
+                m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                precip_graupel = m1
+                precip = m1
 
     # -----------------------------------------------------------------------
     # update:
@@ -705,7 +752,21 @@ def terminal_fall_stencil(
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
-                qg1 = qm / dp1
+                q_implicit_fall = qm / dp1
+
+    # update "outputs" after "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                qg1 = q_implicit_fall
+                m1_sol = (
+                    m1_sol + m1
+                )  # NOTE: setting this to just m1_sol = m1 gives WILD values (1e31)
+
+    with computation(FORWARD), interval(-1, None):
+        if precip_fall == 1:
+            if use_ppm == False:
+                precip_graupel = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
     with computation(FORWARD), interval(0, 1):
@@ -719,8 +780,5 @@ def terminal_fall_stencil(
                 w1 = (dm * w1 - m1[0, 0, -1] * vtg[0, 0, -1] + m1 * vtg) / (
                     dm + m1[0, 0, -1] - m1
                 )
-
-    with computation(PARALLEL), interval(...):
-        m1_sol = m1_sol + m1
 
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall

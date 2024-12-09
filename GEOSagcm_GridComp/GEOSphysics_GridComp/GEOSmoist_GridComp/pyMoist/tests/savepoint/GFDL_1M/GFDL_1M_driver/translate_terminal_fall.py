@@ -4,7 +4,7 @@ from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
 import xarray as xr
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall_stencil import terminal_fall_stencil
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall import terminal_fall_stencil
 from gt4py.cartesian.gtscript import (
     PARALLEL,
     computation,
@@ -67,7 +67,7 @@ class Translateterminal_fall(TranslateFortranData2Py):
             "g1_terminal_fall": self.grid.compute_dict(),
             "s1_terminal_fall": self.grid.compute_dict(),
             "i1_terminal_fall": self.grid.compute_dict(),
-            "precip_fall_graupel": self.grid.compute_dict(),
+            # "precip_fall_snow": self.grid.compute_dict(),
         }
 
     def make_ij_field(self, data) -> Quantity:
@@ -162,6 +162,7 @@ class Translateterminal_fall(TranslateFortranData2Py):
 
         # make temporaries
         self.TESTVAR = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.m1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.ze = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
         self.zt = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
 
@@ -237,5 +238,5 @@ class Translateterminal_fall(TranslateFortranData2Py):
             "g1_terminal_fall": self.graupel.view[:],
             "s1_terminal_fall": self.snow.view[:],
             "i1_terminal_fall": self.ice.view[:],
-            "precip_fall_graupel": self.precip_fall.view[:],
+            # "precip_fall_snow": self.precip_fall.view[:],
         }

@@ -1,0 +1,713 @@
+from ndsl import Namelist, Quantity, StencilFactory, orchestrate
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.typing import Float, Int
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
+import numpy as np
+from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
+import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
+
+
+class Translateicloud(TranslateFortranData2Py):
+    def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
+        super().__init__(grid, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+        self._grid = grid
+
+        # FloatField Inputs
+        self.in_vars["data_vars"] = {
+            "t1_icloud": {},
+            "p1_icloud": {},
+            "dp1_icloud": {},
+            "qv_icloud": {},
+            "ql_icloud": {},
+            "qr_icloud": {},
+            "qg_icloud": {},
+            "qs_icloud": {},
+            "qi_icloud": {},
+            "qa_icloud": {},
+            "den1_icloud": {},
+            "denfac_icloud": {},
+            "vtg_icloud": {},
+            "vts_icloud": {},
+            "vtr_icloud": {},
+            "ccn_icloud": {},
+            "rh_limited_icloud": {},
+            "cnv_frc_icloud": {},
+            "srf_type_icloud": {},
+            "mp_time_icloud": {},
+            "t_min_icloud": {},
+            "t_sub_icloud": {},
+            "tau_r2g_icloud": {},
+            "tau_smlt_icloud": {},
+            "tau_g2r_icloud": {},
+            "dw_land_icloud": {},
+            "dw_ocean_icloud": {},
+            "vi_fac_icloud": {},
+            "vr_fac_icloud": {},
+            "vs_fac_icloud": {},
+            "vg_fac_icloud": {},
+            "ql_mlt_icloud": {},
+            "do_qa_icloud": {},
+            "fix_negative_icloud": {},
+            "vi_max_icloud": {},
+            "vs_max_icloud": {},
+            "vg_max_icloud": {},
+            "vr_max_icloud": {},
+            "qs_mlt_icloud": {},
+            "qs0_crt_icloud": {},
+            "qi_gen_icloud": {},
+            "ql0_max_icloud": {},
+            "qi0_max_icloud": {},
+            "qi0_crt_icloud": {},
+            "qr0_crt_icloud": {},
+            "fast_sat_adj_icloud": {},
+            "rh_inc_icloud": {},
+            "rh_ins_icloud": {},
+            "rh_inr_icloud": {},
+            "const_vi_icloud": {},
+            "const_vs_icloud": {},
+            "const_vg_icloud": {},
+            "const_vr_icloud": {},
+            "use_ccn_icloud": {},
+            "rthreshu_icloud": {},
+            "rthreshs_icloud": {},
+            "ccn_l_icloud": {},
+            "ccn_o_icloud": {},
+            "qc_crt_icloud": {},
+            "tau_g2v_icloud": {},
+            "tau_v2g_icloud": {},
+            "tau_s2v_icloud": {},
+            "tau_v2s_icloud": {},
+            "tau_revp_icloud": {},
+            "tau_frz_icloud": {},
+            "do_bigg_icloud": {},
+            "do_evap_icloud": {},
+            "do_subl_icloud": {},
+            "sat_adj0_icloud": {},
+            "c_piacr_icloud": {},
+            "tau_imlt_icloud": {},
+            "tau_v2l_icloud": {},
+            "tau_l2v_icloud": {},
+            "tau_i2v_icloud": {},
+            "tau_i2s_icloud": {},
+            "tau_l2r_icloud": {},
+            "qi_lim_icloud": {},
+            "ql_gen_icloud": {},
+            "c_paut_icloud": {},
+            "c_psaci_icloud": {},
+            "c_pgacs_icloud": {},
+            "c_pgaci_icloud": {},
+            "z_slope_liq_icloud": {},
+            "z_slope_ice_icloud": {},
+            "prog_ccn_icloud": {},
+            "c_cracw_icloud": {},
+            "alin_icloud": {},
+            "clin_icloud": {},
+            "preciprad_icloud": {},
+            "cld_min_icloud": {},
+            "use_ppm_icloud": {},
+            "mono_prof_icloud": {},
+            "do_sedi_heat_icloud": {},
+            "sedi_transport_icloud": {},
+            "do_sedi_w_icloud": {},
+            "de_ice_icloud": {},
+            "icloud_f_icloud": {},
+            "irain_f_icloud": {},
+            "mp_print_icloud": {},
+            "hydrostatic_icloud": {},
+            "dts_icloud": {},
+        }
+
+        # FloatField Outputs
+        self.out_vars = {
+            "t1_icloud": self.grid.compute_dict(),
+            "qv_icloud": self.grid.compute_dict(),
+            "ql_icloud": self.grid.compute_dict(),
+            "qr_icloud": self.grid.compute_dict(),
+            "qg_icloud": self.grid.compute_dict(),
+            "qs_icloud": self.grid.compute_dict(),
+            "qi_icloud": self.grid.compute_dict(),
+            "qa_icloud": self.grid.compute_dict(),
+            "subl1_icloud": self.grid.compute_dict(),
+            "csaci_icloud": self.grid.compute_dict(),
+            "csacw_icloud": self.grid.compute_dict(),
+            "c_psaci_icloud": self.grid.compute_dict(),
+        }
+
+    def make_ij_field(self, data) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM],
+            "n/a",
+        )
+        qty.view[:, :] = qty.np.asarray(data[:, :])
+        return qty
+
+    def make_ijk_field(self, data) -> Quantity:
+        qty = self.quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM],
+            "n/a",
+        )
+        qty.view[:, :, :] = qty.np.asarray(data[:, :, :])
+        return qty
+
+    def compute(self, inputs):
+        # FloatField Variables
+        t1_icloud = self.make_ijk_field(inputs["t1_icloud"])
+        p1_icloud = self.make_ijk_field(inputs["p1_icloud"])
+        dp1_icloud = self.make_ijk_field(inputs["dp1_icloud"])
+        qv_icloud = self.make_ijk_field(inputs["qv_icloud"])
+        ql_icloud = self.make_ijk_field(inputs["ql_icloud"])
+        qr_icloud = self.make_ijk_field(inputs["qr_icloud"])
+        qg_icloud = self.make_ijk_field(inputs["qg_icloud"])
+        qs_icloud = self.make_ijk_field(inputs["qs_icloud"])
+        qi_icloud = self.make_ijk_field(inputs["qi_icloud"])
+        qa_icloud = self.make_ijk_field(inputs["qa_icloud"])
+        den1_icloud = self.make_ijk_field(inputs["den1_icloud"])
+        denfac_icloud = self.make_ijk_field(inputs["denfac_icloud"])
+        vtg_icloud = self.make_ijk_field(inputs["vtg_icloud"])
+        vts_icloud = self.make_ijk_field(inputs["vts_icloud"])
+        vtr_icloud = self.make_ijk_field(inputs["vtr_icloud"])
+        ccn_icloud = self.make_ijk_field(inputs["ccn_icloud"])
+        rh_limited_icloud = self.make_ijk_field(inputs["rh_limited_icloud"])
+        cnv_frc_icloud = self.make_ij_field(inputs["cnv_frc_icloud"])
+        srf_type_icloud = self.make_ij_field(inputs["srf_type_icloud"])
+
+        # Float Variables
+        # Namelist options
+        mp_time = Float(inputs["mp_time_icloud"][0])
+        t_min = Float(inputs["t_min_icloud"][0])
+        t_sub = Float(inputs["t_sub_icloud"][0])
+        tau_r2g = Float(inputs["tau_r2g_icloud"][0])
+        tau_smlt = Float(inputs["tau_smlt_icloud"][0])
+        tau_g2r = Float(inputs["tau_g2r_icloud"][0])
+        dw_land = Float(inputs["dw_land_icloud"][0])
+        dw_ocean = Float(inputs["dw_ocean_icloud"][0])
+        vi_fac = Float(inputs["vi_fac_icloud"][0])
+        vr_fac = Float(inputs["vr_fac_icloud"][0])
+        vs_fac = Float(inputs["vs_fac_icloud"][0])
+        vg_fac = Float(inputs["vg_fac_icloud"][0])
+        ql_mlt = Float(inputs["ql_mlt_icloud"][0])
+        do_qa = Float(inputs["do_qa_icloud"][0])
+        fix_negative = Float(inputs["fix_negative_icloud"][0])
+        vi_max = Float(inputs["vi_max_icloud"][0])
+        vs_max = Float(inputs["vs_max_icloud"][0])
+        vg_max = Float(inputs["vg_max_icloud"][0])
+        vr_max = Float(inputs["vr_max_icloud"][0])
+        qs_mlt = Float(inputs["qs_mlt_icloud"][0])
+        qs0_crt = Float(inputs["qs0_crt_icloud"][0])
+        qi_gen = Float(inputs["qi_gen_icloud"][0])
+        ql0_max = Float(inputs["ql0_max_icloud"][0])
+        qi0_max = Float(inputs["qi0_max_icloud"][0])
+        qi0_crt = Float(inputs["qi0_crt_icloud"][0])
+        qr0_crt = Float(inputs["qr0_crt_icloud"][0])
+        fast_sat_adj = Float(inputs["fast_sat_adj_icloud"][0])
+        rh_inc = Float(inputs["rh_inc_icloud"][0])
+        rh_ins = Float(inputs["rh_ins_icloud"][0])
+        rh_inr = Float(inputs["rh_inr_icloud"][0])
+        const_vi = Float(inputs["const_vi_icloud"][0])
+        const_vs = Float(inputs["const_vs_icloud"][0])
+        const_vg = Float(inputs["const_vg_icloud"][0])
+        const_vr = Float(inputs["const_vr_icloud"][0])
+        use_ccn = Float(inputs["use_ccn_icloud"][0])
+        rthreshu = Float(inputs["rthreshu_icloud"][0])
+        rthreshs = Float(inputs["rthreshs_icloud"][0])
+        ccn_l = Float(inputs["ccn_l_icloud"][0])
+        ccn_o = Float(inputs["ccn_o_icloud"][0])
+        qc_crt = Float(inputs["qc_crt_icloud"][0])
+        tau_g2v = Float(inputs["tau_g2v_icloud"][0])
+        tau_v2g = Float(inputs["tau_v2g_icloud"][0])
+        tau_s2v = Float(inputs["tau_s2v_icloud"][0])
+        tau_v2s = Float(inputs["tau_v2s_icloud"][0])
+        tau_revp = Float(inputs["tau_revp_icloud"][0])
+        tau_frz = Float(inputs["tau_frz_icloud"][0])
+        do_bigg = Float(inputs["do_bigg_icloud"][0])
+        do_evap = Float(inputs["do_evap_icloud"][0])
+        do_subl = Float(inputs["do_subl_icloud"][0])
+        sat_adj0 = Float(inputs["sat_adj0_icloud"][0])
+        c_piacr = Float(inputs["c_piacr_icloud"][0])
+        tau_imlt = Float(inputs["tau_imlt_icloud"][0])
+        tau_v2l = Float(inputs["tau_v2l_icloud"][0])
+        tau_l2v = Float(inputs["tau_l2v_icloud"][0])
+        tau_i2v = Float(inputs["tau_i2v_icloud"][0])
+        tau_i2s = Float(inputs["tau_i2s_icloud"][0])
+        tau_l2r = Float(inputs["tau_l2r_icloud"][0])
+        qi_lim = Float(inputs["qi_lim_icloud"][0])
+        ql_gen = Float(inputs["ql_gen_icloud"][0])
+        c_paut = Float(inputs["c_paut_icloud"][0])
+        c_psaci = Float(inputs["c_psaci_icloud"][0])
+        c_pgacs = Float(inputs["c_pgacs_icloud"][0])
+        c_pgaci = Float(inputs["c_pgaci_icloud"][0])
+        z_slope_liq = Float(inputs["z_slope_liq_icloud"][0])
+        z_slope_ice = Float(inputs["z_slope_ice_icloud"][0])
+        prog_ccn = Float(inputs["prog_ccn_icloud"][0])
+        c_cracw = Float(inputs["c_cracw_icloud"][0])
+        alin = Float(inputs["alin_icloud"][0])
+        clin = Float(inputs["clin_icloud"][0])
+        preciprad = Float(inputs["preciprad_icloud"][0])
+        cld_min = Float(inputs["cld_min_icloud"][0])
+        use_ppm = Float(inputs["use_ppm_icloud"][0])
+        mono_prof = Float(inputs["mono_prof_icloud"][0])
+        do_sedi_heat = Float(inputs["do_sedi_heat_icloud"][0])
+        sedi_transport = Float(inputs["sedi_transport_icloud"][0])
+        do_sedi_w = Float(inputs["do_sedi_w_icloud"][0])
+        de_ice = Float(inputs["de_ice_icloud"][0])
+        icloud_f = Float(inputs["icloud_f_icloud"][0])
+        irain_f = Float(inputs["irain_f_icloud"][0])
+        mp_print = Float(inputs["mp_print_icloud"][0])
+        hydrostatic = Float(inputs["hydrostatic_icloud"][0])
+        dts = Float(inputs["dts_icloud"][0])
+
+        # Revert to boolean
+        if hydrostatic == 1:
+            hydrostatic = True
+        else:
+            hydrostatic == False
+        if fix_negative == 1:
+            fix_negative = True
+        else:
+            fix_negative = False
+        if sedi_transport == 1:
+            sedi_transport = True
+        else:
+            sedi_transport = False
+        if const_vi == 1:
+            const_vi = True
+        else:
+            const_vi = False
+        if const_vs == 1:
+            const_vs = True
+        else:
+            const_vs = False
+        if const_vg == 1:
+            const_vg = True
+        else:
+            const_vg = False
+        if use_ppm == 1:
+            use_ppm = True
+        else:
+            use_ppm = False
+        if do_qa == 1:
+            do_qa = True
+        else:
+            do_qa = False
+        if fast_sat_adj == 1:
+            fast_sat_adj = True
+        else:
+            fast_sat_adj = False
+
+        # Calculate additional constants
+        # -----------------------------------------------------------------------
+        # define heat capacity of dry air and water vapor based on hydrostatical property
+        # -----------------------------------------------------------------------
+
+        phys_hydrostatic = (
+            True  # not about to try to serialize this, it should always be true
+        )
+        if phys_hydrostatic or hydrostatic:
+            c_air = driver_constants.cp_air
+            c_vap = driver_constants.cp_vap
+            p_nonhydro = False
+        else:
+            c_air = driver_constants.cv_air
+            c_vap = driver_constants.cv_vap
+            p_nonhydro = True
+        d0_vap = c_vap - driver_constants.c_liq
+        lv00 = driver_constants.hlv0 - d0_vap * driver_constants.t_ice
+
+        if hydrostatic:
+            do_sedi_w = False
+
+        # -----------------------------------------------------------------------
+        # define latent heat coefficient used in wet bulb and bigg mechanism
+        # -----------------------------------------------------------------------
+
+        latv = driver_constants.hlv
+        lati = driver_constants.hlf
+        lats = latv + lati
+        lat2 = lats * lats
+
+        lcp = latv / driver_constants.cp_air
+        icp = lati / driver_constants.cp_air
+        tcp = (latv + lati) / driver_constants.cp_air
+
+        # -----------------------------------------------------------------------
+        # calculate cloud condensation nuclei (ccn)
+        # the following is based on klein eq. 15
+        # -----------------------------------------------------------------------
+
+        cpaut = c_paut * 0.104 * driver_constants.grav / 1.717e-5
+
+        # -----------------------------------------------------------------------
+        # define conversion scalar / factor for icloud
+        # -----------------------------------------------------------------------
+        rdts = 1.0 / dts
+        fac_imlt = 1.0 - np.exp(-dts / tau_imlt)
+        fac_i2s = 1.0 - np.exp(-dts / tau_i2s)
+        fac_v2l = 1.0 - np.exp(-dts / tau_v2l)
+        fac_l2v = 1.0 - np.exp(-dts / tau_l2v)
+        fac_i2v = 1.0 - np.exp(-dts / tau_i2v)
+        fac_s2v = 1.0 - np.exp(-dts / tau_s2v)
+        fac_v2s = 1.0 - np.exp(-dts / tau_v2s)
+        fac_g2v = 1.0 - np.exp(-dts / tau_g2v)
+        fac_v2g = 1.0 - np.exp(-dts / tau_v2g)
+        fac_frz = 1.0 - np.exp(-dts / tau_frz)
+
+        # -----------------------------------------------------------------------
+        # constatns from setupm
+        # -----------------------------------------------------------------------
+
+        cgacs = (
+            driver_constants.pisq
+            * driver_constants.rnzg
+            * driver_constants.rnzs
+            * driver_constants.rhos
+        )
+        cgacs = cgacs * c_pgacs
+
+        csacw = (
+            driver_constants.pie
+            * driver_constants.rnzs
+            * clin
+            * driver_constants.gam325
+            / (4.0 * driver_constants.act[0] ** 0.8125)
+        )
+        # decreasing csacw to reduce cloud water --- > snow
+
+        craci = (
+            driver_constants.pie
+            * driver_constants.rnzr
+            * alin
+            * driver_constants.gam380
+            / (4.0 * driver_constants.act[1] ** 0.95)
+        )
+        csaci = csacw * c_psaci
+
+        cgacw = (
+            driver_constants.pie
+            * driver_constants.rnzg
+            * driver_constants.gam350
+            * driver_constants.gcon
+            / (4.0 * driver_constants.act[5] ** 0.875)
+        )
+
+        cgaci = cgacw * c_pgaci
+
+        cracw = craci  # cracw = 3.27206196043822
+        cracw = c_cracw * cracw
+
+        cssub = np.zeros(5)
+        cgsub = np.zeros(5)
+        crevp = np.zeros(5)
+
+        cssub[0] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.vdifu
+            * driver_constants.tcond
+            * driver_constants.rvgas
+            * driver_constants.rnzs
+        )
+        cgsub[0] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.vdifu
+            * driver_constants.tcond
+            * driver_constants.rvgas
+            * driver_constants.rnzg
+        )
+        crevp[0] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.vdifu
+            * driver_constants.tcond
+            * driver_constants.rvgas
+            * driver_constants.rnzr
+        )
+        cssub[1] = 0.78 / np.sqrt(driver_constants.act[0])
+        cgsub[1] = 0.78 / np.sqrt(driver_constants.act[5])
+        crevp[1] = 0.78 / np.sqrt(driver_constants.act[1])
+        cssub[2] = (
+            0.31
+            * driver_constants.scm3
+            * driver_constants.gam263
+            * np.sqrt(clin / driver_constants.visk)
+            / driver_constants.act[0] ** 0.65625
+        )
+        cgsub[2] = (
+            0.31
+            * driver_constants.scm3
+            * driver_constants.gam275
+            * np.sqrt(driver_constants.gcon / driver_constants.visk)
+            / driver_constants.act[5] ** 0.6875
+        )
+        crevp[2] = (
+            0.31
+            * driver_constants.scm3
+            * driver_constants.gam290
+            * np.sqrt(alin / driver_constants.visk)
+            / driver_constants.act[1] ** 0.725
+        )
+        cssub[3] = driver_constants.tcond * driver_constants.rvgas
+        cssub[4] = driver_constants.hlts**2 * driver_constants.vdifu
+        cgsub[3] = cssub[3]
+        crevp[3] = cssub[3]
+        cgsub[4] = cssub[4]
+        crevp[4] = driver_constants.hltc**2 * driver_constants.vdifu
+
+        cgfr_0 = (
+            20.0e2
+            * driver_constants.pisq
+            * driver_constants.rnzr
+            * driver_constants.rhor
+            / driver_constants.act[1] ** 1.75
+        )
+        cgfr_1 = 0.66
+
+        cssub_0 = cssub[0]
+        cssub_1 = cssub[1]
+        cssub_2 = cssub[2]
+        cssub_3 = cssub[3]
+        cssub_4 = cssub[4]
+
+        cgsub_0 = cgsub[0]
+        cgsub_1 = cgsub[1]
+        cgsub_2 = cgsub[2]
+        cgsub_3 = cgsub[3]
+        cgsub_4 = cgsub[4]
+
+        crevp_0 = crevp[0]
+        crevp_1 = crevp[1]
+        crevp_2 = crevp[2]
+        crevp_3 = crevp[3]
+        crevp_4 = crevp[4]
+
+        # smlt: five constants (lin et al. 1983)
+
+        csmlt = np.zeros(5)
+        csmlt[0] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.tcond
+            * driver_constants.rnzs
+            / driver_constants.hltf
+        )
+        csmlt[1] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.vdifu
+            * driver_constants.rnzs
+            * driver_constants.hltc
+            / driver_constants.hltf
+        )
+        csmlt[2] = cssub[1]
+        csmlt[3] = cssub[2]
+        csmlt[4] = driver_constants.ch2o / driver_constants.hltf
+
+        csmlt_0 = csmlt[0]
+        csmlt_1 = csmlt[1]
+        csmlt_2 = csmlt[2]
+        csmlt_3 = csmlt[3]
+        csmlt_4 = csmlt[4]
+
+        # gmlt: five constants
+
+        cgmlt = np.zeros(5)
+        cgmlt[0] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.tcond
+            * driver_constants.rnzg
+            / driver_constants.hltf
+        )
+        cgmlt[1] = (
+            2.0
+            * driver_constants.pie
+            * driver_constants.vdifu
+            * driver_constants.rnzg
+            * driver_constants.hltc
+            / driver_constants.hltf
+        )
+        cgmlt[2] = cgsub[1]
+        cgmlt[3] = cgsub[2]
+        cgmlt[4] = driver_constants.ch2o / driver_constants.hltf
+
+        cgmlt_0 = cgmlt[0]
+        cgmlt_1 = cgmlt[1]
+        cgmlt_2 = cgmlt[2]
+        cgmlt_3 = cgmlt[3]
+        cgmlt_4 = cgmlt[4]
+
+        es0 = 6.107799961e2  # ~6.1 mb
+        ces0 = driver_constants.eps * es0
+
+        # make temporaries
+        self.TESTVAR_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_2 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.csaci = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.csaci.view[:] = csaci
+        self.csacw = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.csacw.view[:] = csacw
+        self.c_psaci = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.c_psaci.view[:] = c_psaci
+
+        # make outputs
+        self.subl1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+
+        orchestrate(obj=self, config=self.stencil_factory.config.dace_config)
+        self._stencil = self.stencil_factory.from_dims_halo(
+            func=icloud,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            externals={
+                "c_air": c_air,
+                "c_vap": c_vap,
+                "p_nonhydro": p_nonhydro,
+                "d0_vap": d0_vap,
+                "lv00": lv00,
+                "latv": latv,
+                "lati": lati,
+                "lats": lats,
+                "lat2": lat2,
+                "lcp": lcp,
+                "icp": icp,
+                "tcp": tcp,
+                "dts": dts,
+                "rdts": rdts,
+                "do_sedi_w": do_sedi_w,
+                "cpaut": cpaut,
+                "hydrostatic": hydrostatic,
+                "phys_hydrostatic": phys_hydrostatic,
+                "fix_negative": fix_negative,
+                "sedi_transport": sedi_transport,
+                "const_vi": const_vi,
+                "const_vs": const_vs,
+                "const_vg": const_vg,
+                "use_ppm": use_ppm,
+                "fac_imlt": fac_imlt,
+                "fac_i2s": fac_i2s,
+                "fac_v2l": fac_v2l,
+                "fac_l2v": fac_l2v,
+                "fac_i2v": fac_i2v,
+                "fac_s2v": fac_s2v,
+                "fac_v2s": fac_v2s,
+                "fac_g2v": fac_g2v,
+                "fac_v2g": fac_v2g,
+                "fac_frz": fac_frz,
+                "ql_mlt": ql_mlt,
+                "qi0_crt": qi0_crt,
+                "vi_fac": vi_fac,
+                "vi_max": vi_max,
+                "vs_fac": vs_fac,
+                "vs_max": vs_max,
+                "vg_fac": vg_fac,
+                "vg_max": vg_max,
+                "cgacs": cgacs,
+                "csacw": csacw,
+                "craci": craci,
+                "csaci": csaci,
+                "cgacw": cgacw,
+                "cgaci": cgaci,
+                "cracw": cracw,
+                "cgfr_0": cgfr_0,
+                "cgfr_1": cgfr_1,
+                "cssub_0": cssub_0,
+                "cssub_1": cssub_1,
+                "cssub_2": cssub_2,
+                "cssub_3": cssub_3,
+                "cssub_4": cssub_4,
+                "cgsub_0": cgsub_0,
+                "cgsub_1": cgsub_1,
+                "cgsub_2": cgsub_2,
+                "cgsub_3": cgsub_3,
+                "cgsub_4": cgsub_4,
+                "crevp_0": crevp_0,
+                "crevp_1": crevp_1,
+                "crevp_2": crevp_2,
+                "crevp_3": crevp_3,
+                "crevp_4": crevp_4,
+                "csmlt_0": csmlt_0,
+                "csmlt_1": csmlt_1,
+                "csmlt_2": csmlt_2,
+                "csmlt_3": csmlt_3,
+                "csmlt_4": csmlt_4,
+                "cgmlt_0": cgmlt_0,
+                "cgmlt_1": cgmlt_1,
+                "cgmlt_2": cgmlt_2,
+                "cgmlt_3": cgmlt_3,
+                "cgmlt_4": cgmlt_4,
+                "tau_imlt": tau_imlt,
+                "z_slope_ice": z_slope_ice,
+                "do_qa": do_qa,
+                "do_evap": do_evap,
+                "do_bigg": do_bigg,
+                "do_subl": do_subl,
+                "ces0": ces0,
+                "qc_crt": qc_crt,
+                "qi0_crt": qi0_crt,
+                "qs0_crt": qs0_crt,
+                "qr0_crt": qr0_crt,
+                "qi_gen": qi_gen,
+                "ql_gen": ql_gen,
+                "qi_lim": qi_lim,
+                "qi0_max": qi0_max,
+                "ql0_max": ql0_max,
+                "ql_mlt": ql_mlt,
+                "qs_mlt": qs_mlt,
+                "rh_inc": rh_inc,
+                "rh_ins": rh_ins,
+                "rh_inr": rh_inr,
+                "t_min": t_min,
+                "t_sub": t_sub,
+                "preciprad": preciprad,
+                "icloud_f": icloud_f,
+            },
+        )
+
+        self.sat_tables = get_tables()
+
+        self._stencil(
+            t1_icloud,
+            p1_icloud,
+            dp1_icloud,
+            qv_icloud,
+            ql_icloud,
+            qr_icloud,
+            qi_icloud,
+            qs_icloud,
+            qg_icloud,
+            qa_icloud,
+            den1_icloud,
+            denfac_icloud,
+            vts_icloud,
+            vtg_icloud,
+            vtr_icloud,
+            self.subl1,
+            rh_limited_icloud,
+            ccn_icloud,
+            cnv_frc_icloud,
+            srf_type_icloud,
+            self.sat_tables.table1,
+            self.sat_tables.table2,
+            self.sat_tables.table3,
+            self.sat_tables.table4,
+            self.sat_tables.des1,
+            self.sat_tables.des2,
+            self.sat_tables.des3,
+            self.sat_tables.des4,
+        )
+
+        return {
+            "t1_icloud": t1_icloud.view[:],
+            "qv_icloud": qv_icloud.view[:],
+            "ql_icloud": ql_icloud.view[:],
+            "qr_icloud": qr_icloud.view[:],
+            "qi_icloud": qi_icloud.view[:],
+            "qs_icloud": qs_icloud.view[:],
+            "qg_icloud": qg_icloud.view[:],
+            "qa_icloud": qa_icloud.view[:],
+            "subl1_icloud": self.subl1.view[:],
+            "csaci_icloud": csaci,
+            "csacw_icloud": csacw,
+            "c_psaci_icloud": c_psaci,
+        }

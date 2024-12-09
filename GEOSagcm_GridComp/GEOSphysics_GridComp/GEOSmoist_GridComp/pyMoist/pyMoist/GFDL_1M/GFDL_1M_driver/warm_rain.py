@@ -490,12 +490,19 @@ def warm_rain_stencil(
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
     # this code computes the time-implicit monotonic scheme
     # Fortran author: Shian-Jiann Lin, 2016
+    # set up inputs to the "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                q_implicit_fall = qr1
+                vt_implicit_fall = vtr
+
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
                 hold_data = ze - ze[0, 0, 1]
-                dd = dts * vtr
-                qr1 = qr1 * dp1
+                dd = dts * vt_implicit_fall
+                q_implicit_fall = q_implicit_fall * dp1
 
     # -----------------------------------------------------------------------
     # sedimentation: non - vectorizable loop
@@ -503,12 +510,12 @@ def warm_rain_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = qr1 / (hold_data + dd)
+                qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                qm = (qr1 + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
+                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
@@ -524,17 +531,17 @@ def warm_rain_stencil(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:
-                m1_rain = qr1 - qm
+                m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                m1_rain = m1_rain[0, 0, -1] + qr1 - qm
+                m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
             if use_ppm == False:
-                precip_rain = m1_rain
+                precip = m1
 
     # -----------------------------------------------------------------------
     # update:
@@ -542,64 +549,79 @@ def warm_rain_stencil(
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:
-                qr1 = qm / dp1
+                q_implicit_fall = qm / dp1
+
+    # update "outputs" after "function"
+    with computation(PARALLEL), interval(...):
+        if precip_fall == 1:
+            if use_ppm == False:
+                qr1 = q_implicit_fall
+                m1_rain = (
+                    m1_rain + m1
+                )  # NOTE: setting this to just m1_rain = m1 gives WILD values (1e31)
+
+    with computation(FORWARD), interval(-1, None):
+        if precip_fall == 1:
+            if use_ppm == False:
+                precip_rain = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
-    # # -----------------------------------------------------------------------
-    # # vertical velocity transportation during sedimentation
-    # # -----------------------------------------------------------------------
-    # with computation(FORWARD), interval(0, 1):
-    #     if do_sedi_w == True:
-    #         w1 = (dm * w1 + m1_rain * vtr) / (dm - m1_rain)
+    # -----------------------------------------------------------------------
+    # vertical velocity transportation during sedimentation
+    # -----------------------------------------------------------------------
+    with computation(FORWARD), interval(0, 1):
+        if do_sedi_w == True:
+            w1 = (dm * w1 + m1_rain * vtr) / (dm - m1_rain)
 
-    # with computation(FORWARD), interval(1, None):
-    #     w1 = (dm * w1 - m1_rain[0, 0, -1] * vtr[0, 0, -1] + m1_rain * vtr) / (
-    #         dm + m1_rain[0, 0, -1] - m1_rain
-    #     )
+    with computation(FORWARD), interval(1, None):
+        if do_sedi_w == True:
+            w1 = (dm * w1 - m1_rain[0, 0, -1] * vtr[0, 0, -1] + m1_rain * vtr) / (
+                dm + m1_rain[0, 0, -1] - m1_rain
+            )
 
     # -----------------------------------------------------------------------
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
-    # with computation(PARALLEL), interval(...):
-    #     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
-    #     # evaporation of rain
-    #     (
-    #         t1,
-    #         qv1,
-    #         qr1,
-    #         ql1,
-    #         qi1,
-    #         qs1,
-    #         qg1,
-    #         qa1,
-    #         revap,
-    #         prec_ls,
-    #         area_ls_prc,
-    #         TESTVAR_1,
-    #         TESTVAR_2,
-    #     ) = revap_racc(
-    #         half_dt,
-    #         t1,
-    #         qv1,
-    #         ql1,
-    #         qr1,
-    #         qi1,
-    #         qs1,
-    #         qg1,
-    #         qa1,
-    #         den1,
-    #         denfac,
-    #         rh_limited,
-    #         table1,
-    #         table2,
-    #         table3,
-    #         table4,
-    #         des1,
-    #         des2,
-    #         des3,
-    #         des4,
-    #     )
+    with computation(PARALLEL), interval(...):
+        # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
+        # evaporation of rain
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+            prec_ls,
+            area_ls_prc,
+            TESTVAR_1,
+            TESTVAR_2,
+        ) = revap_racc(
+            half_dt,
+            t1,
+            qv1,
+            ql1,
+            qr1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            den1,
+            denfac,
+            rh_limited,
+            table1,
+            table2,
+            table3,
+            table4,
+            des1,
+            des2,
+            des3,
+            des4,
+        )
 
-    #     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
+        # end reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
 
-    #     evap1 = evap1 + revap
+        evap1 = evap1 + revap
