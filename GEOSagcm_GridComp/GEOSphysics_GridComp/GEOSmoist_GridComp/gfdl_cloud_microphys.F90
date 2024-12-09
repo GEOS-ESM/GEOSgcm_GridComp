@@ -1183,26 +1183,28 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
             q_sol (k) = qi (k) + qs (k) + qg (k)
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             lcpk (k) = lhl (k) / cvm (k)
-
             tin = tz (k) - lcpk (k) * ql (k) ! presence of clouds suppresses the rain evap
-            qpz = qv (k) + ql (k)
-            qsat = wqs2 (tin, den (k), dqsdt)
-            dqh = max (ql (k), h_var(k) * max (qpz, qcmin))
-            dqh = min (dqh, 0.2 * qpz) ! new limiter
-            dqv = qsat - qv (k) ! use this to prevent super - sat the grid box
-            q_minus = qpz - dqh
-            q_plus = qpz + dqh
 
-            ! -----------------------------------------------------------------------
-            ! qsat must be > q_minus to activate evaporation
-            ! qsat must be < q_plus to activate accretion
-            ! -----------------------------------------------------------------------
+            if (ql (k) > qcmin) then
+            
+              qpz = qv (k) + ql (k)
+              qsat = wqs2 (tin, den (k), dqsdt)
+              dqh = max (ql (k), h_var(k) * max (qpz, qcmin))
+              dqh = min (dqh, 0.2 * qpz) ! new limiter
+              dqv = qsat - qv (k) ! use this to prevent super - sat the grid box
+              q_minus = qpz - dqh
+              q_plus = qpz + dqh
 
-            ! -----------------------------------------------------------------------
-            ! rain evaporation
-            ! -----------------------------------------------------------------------
+              ! -----------------------------------------------------------------------
+              ! qsat must be > q_minus to activate evaporation
+              ! qsat must be < q_plus to activate accretion
+              ! -----------------------------------------------------------------------
 
-            if (dqv > qvmin .and. qsat > q_minus) then
+              ! -----------------------------------------------------------------------
+              ! rain evaporation
+              ! -----------------------------------------------------------------------
+
+              if (dqv > qvmin .and. qsat > q_minus) then
                 if (qsat > q_plus) then
                     dq = qsat - qpz
                 else
@@ -1223,13 +1225,13 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
                 cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
                 tz (k) = tz (k) - evap * lhl (k) / cvm (k)
                 revap(k) = evap / dt
-            endif
+              endif
 
-            ! -----------------------------------------------------------------------
-            ! accretion: pracc
-            ! -----------------------------------------------------------------------
+              ! -----------------------------------------------------------------------
+              ! accretion: pracc
+              ! -----------------------------------------------------------------------
             
-            if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
+              if (qr (k) > qpmin .and. ql (k) > qcmin .and. qsat < q_minus) then
                 sink = dt * denfac (k) * cracw * exp (0.95 * log (qr (k) * den (k)))
                 sink = sink / (1. + sink) * ql (k)
 
@@ -1239,6 +1241,10 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
                 ql (k) = ql (k) - sink
                 qr (k) = qr (k) + sink
+              endif
+
+            else
+                revap(k) = 0.0
             endif
 
         endif ! warm - rain
@@ -1941,14 +1947,12 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
               ! instant evap of all liquid
               if (rh < rh_adj) evap = ql(k)
            else
-              if ( tz (k) > es_table_tmin) then
-                ! partial evap of liquid
-                qsw = wqs2 (tz (k), den (k), dwsdt)
-                dq0 = qsw - qv (k)
-                if (dq0 > qvmin) then
-                  factor = min (1., fac_l2v * (10. * dq0 / qsw))
-                  evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
-                endif
+              ! partial evap of liquid
+              qsw = wqs2 (tz (k), den (k), dwsdt)
+              dq0 = qsw - qv (k)
+              if (dq0 > qvmin) then
+                factor = min (1., fac_l2v * (10. * dq0 / qsw))
+                evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
               endif
            endif
            evap = evap*onemsig ! resolution dependent evap 0:1 coarse:fine
@@ -2020,7 +2024,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! sublimation / deposition of LS ice
         ! -----------------------------------------------------------------------
 
-        if ( (tz (k) > es_table_tmin) .and. (tz (k) < tice) ) then
+        if (tz (k) < tice) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             dq = (qv (k) - qsi)
             sink = min(qi(k), dq / (1. + tcpk (k) * dqsdt))
@@ -2074,7 +2078,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! this process happens for all temp rage
         ! -----------------------------------------------------------------------
         
-        if ( (tz (k) > es_table_tmin) .and. (qs (k) > qpmin) ) then
+        if (qs (k) > qpmin) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             qden = qs (k) * den (k)
             tmp = exp (0.65625 * log (qden))
@@ -2114,7 +2118,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! simplified 2 - way grapuel sublimation - deposition mechanism
         ! -----------------------------------------------------------------------
 
-        if ( (tz (k) > es_table_tmin) .and. (qg (k) > qpmin) ) then
+        if (qg (k) > qpmin) then
             qsi = iqs2 (tz (k), den (k), dqsdt)
             dq = (qv (k) - qsi) / (1. + tcpk (k) * dqsdt)
             pgsub = (qv (k) / qsi - 1.) * qg (k)
@@ -2147,7 +2151,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, tz, qv, &
         ! * minimum evap of rain in dry environmental air
         ! -----------------------------------------------------------------------
 
-        if ( (tz (k) > es_table_tmin) .and. (qr (k) > qpmin) ) then 
+        if (qr (k) > qpmin) then 
             qsw = wqs2 (tz (k), den (k), dqsdt)
             sink = min (qr (k), dim (rh_rain * qsw, qv (k)) / (1. + lcpk (k) * dqsdt))
             qv (k) = qv (k) + sink
@@ -3504,7 +3508,7 @@ real function wqs1 (ta, den)
 
     integer :: it, ap1
 
-    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = rdelt * max(0.0,dim (ta, es_table_tmin)) + 1.
     ap1 = min(es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
@@ -3537,7 +3541,7 @@ real function wqs2 (ta, den, dqdt)
 
     if (.not. tables_are_initialized) call qsmith_init
 
-    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = rdelt * max(0.0,dim (ta, es_table_tmin)) + 1.
     ap1 = min (es_table_length, ap1)
     it = ap1
     es = tablew (it) + (ap1 - it) * desw (it)
@@ -3566,7 +3570,7 @@ real function iqs1 (ta, den)
 
     integer :: it, ap1
 
-    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = rdelt * max(0.0,dim (ta, es_table_tmin))+ 1.
     ap1 = min (es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
@@ -3594,7 +3598,7 @@ real function iqs2 (ta, den, dqdt)
 
     integer :: it, ap1
 
-    ap1 = rdelt * dim (ta, es_table_tmin) + 1.
+    ap1 = rdelt * max(0.0,dim (ta, es_table_tmin)) + 1.
     ap1 = min(es_table_length, ap1)
     it = ap1
     es = table2 (it) + (ap1 - it) * des2 (it)
@@ -3757,7 +3761,7 @@ real function qs_blend (t, p, q)
 
     integer :: it, ap1
 
-    ap1 = rdelt * dim (t, es_table_tmin) + 1.
+    ap1 = rdelt * max(0.0,dim (t, es_table_tmin)) + 1.
     ap1 = min (es_table_length, ap1)
     it = ap1
     es = table (it) + (ap1 - it) * des (it)
@@ -3860,7 +3864,7 @@ subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
 
     do k = ks, km
         do i = 1, im
-            ap1 = rdelt * dim (t (i, k), es_table_tmin) + 1.
+            ap1 = rdelt * max(0.0,dim (t (i, k), es_table_tmin)) + 1.
             ap1 = min (es_table_length, ap1)
             it = ap1
             es (i, k) = table (it) + (ap1 - it) * des (it)
@@ -3871,7 +3875,7 @@ subroutine qsmith (im, km, ks, t, p, q, qs, dqdt)
     if (present (dqdt)) then
         do k = ks, km
             do i = 1, im
-                ap1 = rdelt * dim (t (i, k), es_table_tmin) + 1.
+                ap1 = rdelt * max(0.0,dim (t (i, k), es_table_tmin)) + 1. 
                 ap1 = min (es_table_length, ap1) - 0.5
                 it = ap1
                 dqdt (i, k) = eps10 * (des (it) + (ap1 - it) * (des (it + 1) - des (it))) * (1. + zvir * q (i, k)) / p (i, k)
