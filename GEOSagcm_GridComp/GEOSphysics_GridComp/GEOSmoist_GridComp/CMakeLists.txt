@@ -36,6 +36,12 @@ esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base ESMF::ESMF)
 
+# We need to add_dependencies for fms_r4 because CMake doesn't know we
+# need it for include purposes. In R4R8, we only ever link against
+# fms_r4, so it doesn't know we need to build it.
+# NOTE NOTE NOTE: This should *not* be included in GEOSgcm v12
+#     because FMS is pre-built library in that case.
+add_dependencies (${this} fms_r4)
 get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
