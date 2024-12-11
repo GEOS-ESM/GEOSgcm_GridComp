@@ -1345,7 +1345,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
     real :: tc, tsq, dqs0, qden, qim, qsm
-    real :: factor, sink
+    real :: factor, sink, qi_crt
     real :: tmp, qsw, qsi, dqsdt, dq
     real :: dtmp, qc, q_plus, q_minus
     real :: qadum
@@ -1421,7 +1421,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            tmp = fac_frz * min (frez, dim (qi_gen/qadum/den(k), qi))
+            qi_crt = ice_fraction(tzk(k),cnv_fraction,srf_type) * qi_gen
+            tmp = fac_frz * min (frez, dim (qi_crt/qadum/den(k), qi))
 
             ! new total condensate / old condensate
             qak(k) = max(0.0,min(1.,qak(k) * max(qi+ql-frez+tmp,0.0  ) / &
