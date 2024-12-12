@@ -534,7 +534,7 @@ module GEOSmoist_Process_Library
 
       if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
          EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
-         EVAP = MIN( EVAP , QL  )
+         EVAP = MAX(0.0, MIN( EVAP , QL  ))
       else
          EVAP = 0.0
       end if
@@ -613,7 +613,7 @@ module GEOSmoist_Process_Library
 
       if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
          SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
-         SUBL = MIN( SUBL , QI  )
+         SUBL = MAX(0.0, MIN( SUBL , QI  ))
       else
          SUBL = 0.0
       end if
