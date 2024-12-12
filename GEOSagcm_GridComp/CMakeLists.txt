@@ -20,6 +20,8 @@ elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_AgcmGridComp.F90)
     SUBCOMPONENTS ${alldirs}
     DEPENDENCIES MAPL GEOS_Shared Chem_Shared ESMF::ESMF)
 
+  target_compile_definitions (${this} PRIVATE $<$<BOOL:${BUILD_WITH_GIGATRAJ}>:HAS_GIGATRAJ>)
+
 else ()
 
   esma_add_subdirectories (${alldirs})
