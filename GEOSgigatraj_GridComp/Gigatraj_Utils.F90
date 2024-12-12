@@ -164,24 +164,19 @@ contains
      call ESMF_VMgetCurrent(vm)
      call ESMF_VMGet(vm, mpiCommunicator = comm, rc = status)
      positive = P(1,1,1) < P(1,1,2)      
-     print*, "wjiang:positive", positive
      if (positive) then
         local_min_val = maxval(P(:,:,1))
-        print*, "local_min_val:", local_max_val
         call MPI_Allreduce(lev01, local_min_val,1, MPI_FLOAT, MPI_MIN, comm, status)
         temp = P(:,:,lm)
         where(temp >= MAPL_UNDEF) temp = -MAPL_UNDEF
         local_max_val = maxval(temp)
-        print*, "local_max_val:", local_max_val
         call MPI_Allreduce(levLm, local_max_val,1, MPI_FLOAT, MPI_MAX, comm, status)
      else
         local_min_val = minval(P(:,:,lm))
-        print*, "local_min_val:", local_max_val
         call MPI_Allreduce(levLm, local_min_val,1, MPI_FLOAT, MPI_MIN, comm, status)
         temp = P(:,:,1)
         where(temp >= MAPL_UNDEF) temp = -MAPL_UNDEF
         local_max_val = maxval(temp)
-        print*, "local_max_val:", local_max_val
         call MPI_Allreduce(lev01, local_max_val,1, MPI_FLOAT, MPI_MAX, comm, status)
      endif
 

@@ -569,7 +569,6 @@ contains
     call ESMF_StateGet(INTERNAL, itemNameList=item_names, _RC)
 
     do k=1, ItemCount
-       print*, "wjiang: shortname:",trim(item_names(k))
        call MAPL_GetPointer(Import, model_field, trim(item_names(k)), _RC)
        call MAPL_GetPointer(INTERNAL, internal_field, trim(item_names(k)), _RC)
        internal_field(:,:,:) = model_field(:,:,:)
