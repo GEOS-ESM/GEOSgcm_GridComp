@@ -38,7 +38,7 @@ esma_add_library (${this}
 
 # We need to add_dependencies for fms_r4 because CMake doesn't know we
 # need it for include purposes. In R4R8, we only ever link against
-# fms_r4, so it doesn't know we need to build it.
+# fms_r8, so it doesn't know to build the target fms_r4
 # NOTE NOTE NOTE: This should *not* be included in GEOSgcm v12
 #     because FMS is pre-built library in that case.
 add_dependencies (${this} fms_r4)
