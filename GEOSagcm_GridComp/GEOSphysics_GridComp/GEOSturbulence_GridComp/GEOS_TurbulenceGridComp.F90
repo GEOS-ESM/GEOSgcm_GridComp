@@ -5368,11 +5368,11 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        end if
 
        if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
-          if (NAME == 'S') then
+          if (trim(name) == 'S') then
              SF = SF + SH_SPRAY
           end if
 
-          if (NAME == 'Q') then 
+          if (trim(name) == 'Q') then 
              SF = SF + LH_SPRAY/MAPL_ALHL
           end if
        end if
@@ -5389,16 +5389,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        end if
 
        if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
-          if (NAME == 'S') then
+          if (trim(name) == 'S') then
              SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
           end if
 
-          if (NAME == 'Q') then
+          if (trim(name) == 'Q') then
              SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
           end if
        end if
 
-       if( NAME=='S' ) then
+       if( trim(name)=='S' ) then
           SINC = ( (SX - S)/DT )
        end if
 
@@ -5410,16 +5410,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        end if
 
 ! Fill exports of U,V and S after diffusion
-      if( TYPE=='U' ) then
+      if( trim(name) == 'U' ) then
           if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
        endif
-      if( TYPE=='V' ) then
+      if( trim(name) == 'V' ) then
           if(associated(VAFDIFFUSE)) VAFDIFFUSE = SX
        endif
-       if( TYPE=='S' ) then 
+       if( trim(name) == 'S' ) then 
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
        endif
-       if( TYPE=='Q' ) then
+       if( trim(name) == 'Q' ) then
           if(associated(QAFDIFFUSE)) QAFDIFFUSE = SX
        endif
 
