@@ -115,6 +115,7 @@ contains
     integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
     real                                    :: SYNCTQ
+    logical                                 :: DEBUG_SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
     character(len=ESMF_MAXSTR)              :: SURFRC
@@ -189,6 +190,9 @@ contains
 ! ---------------------------------------------------------------------------
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
+    VERIFY_(STATUS)
+
 !BOS
 
 ! !INTERNAL STATE
@@ -1278,8 +1282,8 @@ contains
         VERIFY_(STATUS)
      ENDIF
 
-     IF (DO_OBIO /= 0) THEN
-        call MAPL_AddConnectivity ( GC,                               &
+     IF (DO_OBIO /= 0) THEN 
+     call MAPL_AddConnectivity ( GC,                               &
              SHORT_NAME  = (/'DROBIO', 'DFOBIO'/),                    &
              SRC_ID      = RAD,                                       &
          DST_ID      = SURF,                                       &
@@ -1535,7 +1539,7 @@ contains
           CHILD      = TURBL,                           &
           RC=STATUS  )
        VERIFY_(STATUS)
-     endif
+     endif 
 
      call MAPL_TerminateImport    ( GC,        &
           SHORT_NAME = (/'TR ','TRG','DTG' /), &
@@ -2085,10 +2089,10 @@ contains
 ! The original 3D increments:
 
     call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
-
+  
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)                           
 
     call WRITE_PARALLEL ( trim(Iam)//": MTRI - Convective Transport and Scavenging 3D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
@@ -2100,7 +2104,7 @@ contains
 
 #ifdef PRINT_STATES
     call ESMF_StateGet(EXPORT, 'MCHEMTRI', iBUNDLE, rc=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)                           
 
     call WRITE_PARALLEL ( trim(Iam)//": MCHEMTRI - Convective Transport and Scavenging 2D Tendency Bundle" )
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( iBUNDLE, rc=STATUS )
@@ -2170,6 +2174,7 @@ contains
    logical                             :: NEED_STN
    logical                             :: DPEDT_PHYS
    real                                :: DT
+   logical                             :: DEBUG_SYNCTQ
    real                                :: SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
 
@@ -2367,6 +2372,8 @@ contains
 ! Get Global PHYSICS Parameters
 ! -----------------------------
     call MAPL_GetResource(STATE, SYNCTQ,    'SYNCTQ:',    DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
@@ -2650,10 +2657,10 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        UFORSURF = UAFMOIST(:,:,LM)
        VFORSURF = VAFMOIST(:,:,LM)
@@ -2680,6 +2687,15 @@ contains
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
       SFORTURB =  SAFMOIST
+
+     if (DEBUG_SYNCTQ) then
+     call MAPL_MaxMin('SYNCTQ: TAFMOIST ', TFORTURB)
+     call MAPL_MaxMin('SYNCTQ: TFORSURF ', TFORSURF)
+     call MAPL_MaxMin('SYNCTQ: UFORSURF ', UFORSURF)
+     call MAPL_MaxMin('SYNCTQ: VFORSURF ', VFORSURF)
+     call MAPL_MaxMin('SYNCTQ: QFORSURF ', QFORSURF)
+     endif
+
     endif
 
 ! Surface Stage 1
@@ -2749,10 +2765,10 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, status); VERIFY_(STATUS)
+       call VertInterp(TFORSURF,TFORTURB  ,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        TFORSURF =   TFORTURB(:,:,LM)
        UFORSURF = UAFDIFFUSE(:,:,LM)
@@ -2761,6 +2777,15 @@ contains
      endif
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+
+     if (DEBUG_SYNCTQ) then
+     call MAPL_MaxMin('SYNCTQ: TFORSURF ', TFORSURF)
+     call MAPL_MaxMin('SYNCTQ: UFORSURF ', UFORSURF)
+     call MAPL_MaxMin('SYNCTQ: VFORSURF ', VFORSURF)
+     call MAPL_MaxMin('SYNCTQ: QFORSURF ', QFORSURF)
+     call MAPL_MaxMin('SYNCTQ: TFORTURB ', TFORTURB)
+     endif
+
     endif
 
 ! Surface Stage 2
@@ -2805,6 +2830,11 @@ contains
         TFORCHEM = TFORRAD
        THFORCHEM = TFORRAD/PK
      endif
+
+     if (DEBUG_SYNCTQ) then
+     call MAPL_MaxMin('SYNCTQ: TFORRAD ', TFORRAD)
+     endif
+
     endif
 
 ! Boundary Layer Tendencies for GF
@@ -3452,12 +3482,13 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  subroutine VertInterp(v2,v3,ple,pp,rc)
+  subroutine VertInterp(v2,v3,ple,pp,positive_definite,rc)
 
     real    , intent(OUT) :: v2(:,:)
     real    , intent(IN ) :: v3(:,:,:)
     real    , intent(IN ) :: ple(:,:,:)
     real    , intent(IN ) :: pp
+    logical, optional, intent(IN ) :: positive_definite
     integer, optional, intent(OUT) :: rc
 
     real, dimension(size(v2,1),size(v2,2)) :: al,PT,PB
@@ -3501,6 +3532,14 @@ contains
              v2 = v3(:,:,km)
           end where
     end if
+
+    if (present(positive_definite)) then
+       if (positive_definite) then
+          where (v2 < tiny(0.0))
+             v2 = 0.0
+          endwhere
+       endif
+    endif
 
     RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp

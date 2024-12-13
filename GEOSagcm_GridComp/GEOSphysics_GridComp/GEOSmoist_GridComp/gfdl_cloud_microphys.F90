@@ -1162,9 +1162,6 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
     TOT_PREC_LS = 0.
     AREA_LS_PRC = 0.
 
-    TOT_PREC_LS = 0.0
-    AREA_LS_PRC = 0.0
-
     do k = ktop, kbot
 
         TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )

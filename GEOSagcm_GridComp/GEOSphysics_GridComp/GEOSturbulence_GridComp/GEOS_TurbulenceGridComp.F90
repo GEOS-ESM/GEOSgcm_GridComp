@@ -5267,10 +5267,10 @@ end if
 
        ! Add presribed fluxes
        if ( SCM_SL /= 0 .and. (SCM_SL_FLUX /= 1 .and. SCM_SL_FLUX /= 2) ) then
-          if ( trim(name) == 'S' ) then
+          if ( name == 'S' ) then
              SG => ssurf_scm
           end if
-          if ( trim(name) == 'Q' ) then
+          if ( name == 'Q' ) then
              SG => qsurf_scm
           end if
        end if
@@ -5278,9 +5278,9 @@ end if
 ! Pick the right exchange coefficients
 !-------------------------------------
 
-if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
-     (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
-     (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
+if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
+     (name /= 'QLLS') .and. (name /= 'QILS') .and. &
+     (name /= 'U'   ) .and. (name /= 'V'   )) then
     
 
        if     ( TYPE=='U' ) then ! Momentum
@@ -5304,32 +5304,32 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        
        SX = S
 
- elseif (trim(name) =='S') then
+ elseif (name =='S') then
           CX => CT
           DX => DKSS
           AK => AKSS; BK => BKSS; CK => CKSS
           SX=S+YS      
- elseif (trim(name)=='Q') then
+ elseif (name=='Q') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQV
- elseif (trim(name)=='QLLS') then
+ elseif (name=='QLLS') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
- elseif (trim(name)=='QILS') then
+ elseif (name=='QILS') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
- elseif (trim(name)=='U') then       
+ elseif (name=='U') then       
          CX => CU
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YU
- elseif (trim(name)=='V') then       
+ elseif (name=='V') then       
          CX => CU
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
@@ -5347,15 +5347,15 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
 
        if(associated(SF)) then
           if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
-             if ( trim(name) == 'S' ) then
+             if ( name == 'S' ) then
                 SF(:,:) = scm_sh
-             elseif ( trim(name) == 'Q' ) then
+             elseif ( name == 'Q' ) then
                 SF(:,:) = scm_evap/mapl_alhl
              end if
           else if ( SCM_SL /= 0 .and. SCM_SL_FLUX ==2 ) then
-             if ( trim(name) == 'S' ) then
+             if ( name == 'S' ) then
                 SF(:,:) = SHOBS 
-             elseif ( trim(name) == 'Q' ) then
+             elseif ( name == 'Q' ) then
                 SF(:,:) = LHOBS/MAPL_ALHL 
              end if
           else
@@ -5410,16 +5410,16 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
        end if
 
 ! Fill exports of U,V and S after diffusion
-      if( TYPE=='U' ) then
+      if( name == 'U' ) then
           if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
        endif
-      if( TYPE=='V' ) then
+      if( name == 'V' ) then
           if(associated(VAFDIFFUSE)) VAFDIFFUSE = SX
        endif
-       if( TYPE=='S' ) then 
+       if( name == 'S' ) then 
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
        endif
-       if( TYPE=='Q' ) then
+       if( name == 'Q' ) then
           if(associated(QAFDIFFUSE)) QAFDIFFUSE = SX
        endif
 
@@ -5966,13 +5966,13 @@ end subroutine RUN1
          else
             RETURN_(ESMF_FAILURE)
          end if
-         if( trim(NAME)=='QV' ) then
+         if( NAME=='QV' ) then
             DKX => DKQQ
          end if
-         if( trim(NAME)=='S') then
+         if( NAME=='S') then
             DKX => DKSS
          end if
-         if( trim(NAME)=='U' .or. trim(NAME)=='V' ) then
+         if( NAME=='U' .or. NAME=='V' ) then
             DKX => DKUU
          end if
 
