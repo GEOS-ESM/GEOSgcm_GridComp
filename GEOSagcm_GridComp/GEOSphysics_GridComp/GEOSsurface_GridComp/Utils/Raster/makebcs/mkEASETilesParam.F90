@@ -86,7 +86,8 @@ PROGRAM mkEASETilesParam
   real*4,      allocatable, dimension(:,:)           :: q0, raster
   REAL,        allocatable, dimension(:)             :: tile_elev
   integer,     allocatable, dimension(:,:)           :: iTable
-  real(kind=8),  allocatable, dimension(:,:)         :: rTable
+  real(kind=8),allocatable, dimension(:,:)           :: rTable
+
   !INTEGER*8    :: PFAF_CODE  
   
   integer      :: l, l_index, i_index, w_index, typ, pfaf_index
@@ -616,7 +617,7 @@ PROGRAM mkEASETilesParam
   allocate(my_land       (1:n_landlakelandice))
   allocate(all_id        (1:n_landlakelandice))
   
-  allocate(tile_elev     (1:n_land))      
+  allocate(tile_elev     (1:n_landlakelandice))      
   
   ! ===========================================================================
   !
@@ -712,13 +713,6 @@ PROGRAM mkEASETilesParam
                  
                  tileid_index(i,j) = land_id(kkE)
                  
-                 ! sum up area and (area-weighted) elevation (only over raster grid cells of type land!)
-                 
-                 tile_elev(     tileid_index(i,j)) = tile_elev(     tileid_index(i,j)) + q0(i,j) * pix_area  ! q0 = elevation
-                 
-                 ! tile_area_land should be obsolete because identical to tile_area(1:n_land)
-                 !tile_area_land(tileid_index(i,j)) = tile_area_land(tileid_index(i,j)) +           pix_area
-                 
               case default
                  
                  print *,'ERROR: unknown tile type value in veg(i,j): ', veg(i,j), '   STOPPING.'
@@ -729,6 +723,12 @@ PROGRAM mkEASETilesParam
               ! sum up area of raster grid cells contributing to each tile (land or lake or landice)
               
               tile_area(tileid_index(i,j)) = tile_area(tileid_index(i,j)) + pix_area     
+              
+              ! sum up (area-weighted) elevation 
+                 
+              tile_elev(tileid_index(i,j)) = tile_elev(tileid_index(i,j)) + q0(i,j) * pix_area  ! q0 = elevation on 30-arcsec raster
+
+              ! record 1-dim indices w.r.t. EASE grid cell and raster grid cell
               
               my_land(tileid_index(i,j)) = kkE    ! for this tile, store 1-dim index for EASE grid cells
               all_id( tileid_index(i,j)) = kkR    ! for this tile, store 1-dim index for raster grid cells - last in prevails!
@@ -774,7 +774,7 @@ PROGRAM mkEASETilesParam
   deallocate(water_id)
   deallocate(ice_id  )
   
-  tile_elev = tile_elev/tile_area(1:n_land)   ! finalize tile elevation
+  tile_elev = tile_elev/tile_area(1:n_landlakelandice)   ! finalize tile elevation
   
 
   ! ---------------------------------------------------------------------------------
@@ -797,7 +797,7 @@ PROGRAM mkEASETilesParam
 
      print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
 
-     tile_elev = tile_elev*(Target_mean_land_elev/mean_land_elev)				  	
+     tile_elev(1:n_land) = tile_elev(1:n_land)*(Target_mean_land_elev/mean_land_elev)				  	
 
      ! print adjusted elevation to log file
      mean_land_elev=0.
@@ -882,6 +882,26 @@ PROGRAM mkEASETilesParam
      i = kkR - nc*(j-1)           ! (1-based)
      
      pfaf_index = catid_index(i,j)
+
+     ! get min/max lat/lon of EASE grid cell
+     ! BUG: This is *not* the desired min/max lat/lon of the land tile!!!
+     
+     call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon ) 
+     
+     mnx = clon - dx_ease
+     mxx = clon + dx_ease
+     
+     jgv = real(jg-1) + 0.5
+     
+     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
+     
+     mny = clat
+     
+     jgv = real(jg-1) - 0.5
+     
+     call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
+     
+     mxy = clat 
      
      if ((nn>n_land) .and. (nn<=n_landlake)) typ = 19     ! Lake tile
      
@@ -891,34 +911,10 @@ PROGRAM mkEASETilesParam
         
         typ = 100                                         ! Land tile
         
-        ! get min/max lat/lon of EASE grid cell
-        ! BUG: This is *not* the desired min/max lat/lon of the land tile!!!
-        
-        call EASE_inverse( EASELabel, real(ig-1), real(jg-1), clat, clon ) 
-        
-        mnx = clon - dx_ease
-        mxx = clon + dx_ease
-        
-        jgv = real(jg-1) + 0.5
-        
-        call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
-        
-        mny = clat
-        
-        jgv = real(jg-1) - 0.5
-        
-        call EASE_inverse( EASELabel, real(ig-1), jgv, clat, clon ) 
-
-        mxy = clat 
-        
-        ! write tile properties into catchment.def file
+        ! write tile properties into (ASCII-formatted) catchment.def file
         
         write (11,'(i10,i8,5(2x,f9.4), i4)') nn, pfaf_index, mnx, mxx, mny, mxy, tile_elev(nn)
-        rTable(nn,6) =  mnx
-        rTable(nn,7) =  mxx
-        rTable(nn,8) =  mny
-        rTable(nn,9) =  mxy
-        rTable(nn,10) = tile_elev(nn)
+
      endif
      
      ! get area fraction of tile within EASE grid cell
@@ -931,18 +927,25 @@ PROGRAM mkEASETilesParam
      
      fr_gcm = tile_area(nn) / ease_grid_area((jg-1)*nc_ease+ig)
      
-     rTable(nn,1) = clon
-     rTable(nn,2) = clat
-     rTable(nn,3) = tile_area(nn)
-     rTable(nn,4) = ease_grid_area((jg-1)*nc_ease+ig)
-     rTable(nn,5) = SRTM_catid_r8(pfaf_index)
+     ! add info into array used for writing nc4-formatted tile file
 
-     iTable(nn,0) = typ                          ! 0-based index inherited from elsewhere in make_bcs
-     iTable(nn,2) = ig -1
-     iTable(nn,3) = jg -1
-     iTable(nn,4) = pfaf_index
+     rTable(nn, 1) = clon
+     rTable(nn, 2) = clat
+     rTable(nn, 3) = tile_area(nn)
+     rTable(nn, 4) = ease_grid_area((jg-1)*nc_ease+ig)
+     rTable(nn, 5) = SRTM_catid_r8(pfaf_index)
+     rTable(nn, 6) = mnx
+     rTable(nn, 7) = mxx
+     rTable(nn, 8) = mny
+     rTable(nn, 9) = mxy
+     rTable(nn,10) = tile_elev(nn)
+     
+     iTable(nn, 0) = typ                          ! 0-based index inherited from elsewhere in make_bcs
+     iTable(nn, 2) = ig -1
+     iTable(nn, 3) = jg -1
+     iTable(nn, 4) = pfaf_index
 
-     ! write tile properties into *.til file
+     ! write tile properties into ASCII-formatted tile file (*.til) 
      
      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
         
@@ -964,31 +967,33 @@ PROGRAM mkEASETilesParam
         stop
         !
         !            write(10,'(i10,i9,2f10.4,2i5,f19.12,i10,e13.4,i8)') &
-!                 typ,pfaf,clon,clat,ig-1,jg-1,fr_gcm ,cindex 
+        !                 typ,pfaf,clon,clat,ig-1,jg-1,fr_gcm ,cindex 
      endif
      
   end do
   
   close(10,status='keep')      
   close(11,status='keep')
+  
+  ! write nc4-formatted tile file
 
   call WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
-                    nc, nr, iTable, rTable)
-
+       nc, nr, iTable, rTable)
+  
   deallocate( tileid_index, catid_index,veg )
   deallocate( tile_area, ease_grid_area, tile_elev, my_land, all_id )
       
   ! Commented out "empty" if-block. -rreichle, 15 Jun 2023
-!
-!      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
-!
-!         print *,'Creating SMAP-Catch_TransferData.nc files.'
-!
-!         !---------------------------------------------------
-!
-!         deallocate (SRTM_CatchArea, SRTM_catid, SRTM_catid_r8)
-!         
-!      endif
+  !
+  !      if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
+  !
+  !         print *,'Creating SMAP-Catch_TransferData.nc files.'
+  !
+  !         !---------------------------------------------------
+  !
+  !         deallocate (SRTM_CatchArea, SRTM_catid, SRTM_catid_r8)
+  !         
+  !      endif
       
   ! create Grid2Catch transfer file
   ! -------------------------------

@@ -195,16 +195,17 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   real(kind=8)   :: garea, ctg(size(Gridname))
   real(kind=8)   :: sphere, error
   integer        :: status, tmp_in1, tmp_in2, ncat
+  logical        :: file_exists
+
   character(len=:), allocatable :: filenameNC4, catch_file
-  real(kind=8), allocatable :: rTableT(:, :) ! extended and transpose of rTable
-  logical :: file_exists
+  real(kind=8),     allocatable :: rTableT(:, :)               ! extended and transpose of rTable
 
   ip = size(iTable,2)
   ng = size(GridName)
 
   _ASSERT(IP==size(rTable,2),'needs informative message')
-  _ASSERT(NG==size(IM),'needs informative message')
-  _ASSERT(NG==size(JM),'needs informative message')
+  _ASSERT(NG==size(IM),      'needs informative message')
+  _ASSERT(NG==size(JM),      'needs informative message')
 
   if(present(Zip)) then
      DoZip = Zip
@@ -306,9 +307,13 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      close(UNIT)
   end if
 
+  ! collect min/max lat/lon and elevation from catchment.def file
+
   allocate(rTableT(ip, 10))
-  rTableT = MAPL_UNDEF
+
+  rTableT        = MAPL_UNDEF
   rTableT(:,1:5) = transpose(rTable)
+
   catch_file = 'clsm/catchment.def'
   inquire(file=catch_file, exist=file_exists) 
   if (file_exists) then
@@ -320,6 +325,8 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
     enddo
     close(unit)
   endif
+
+  ! write nc4-formatted tile file
 
   k = index(trim(File), '.til')
   filenameNC4 = File(1:k-1) //'.nc4'

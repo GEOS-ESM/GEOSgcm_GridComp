@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 #
 # source install/bin/g5_modules
+#
+# script to create nc4-formatted tile files from ASCII files for *existing* bcs;
+# *not* used by make_bcs
 
 import os
 import glob
