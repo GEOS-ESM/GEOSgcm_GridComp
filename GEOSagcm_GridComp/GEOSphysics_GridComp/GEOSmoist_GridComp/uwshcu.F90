@@ -2163,11 +2163,11 @@ contains
        ! ---------------------------------------------------------------------------
  
          if( use_CINcin ) then       
-            wcrit = sqrt( 2. * cin * rbuoy )      
+            wcrit = sqrt(max(0.0, 2. * cin * rbuoy) )
          else
-            wcrit = sqrt( 2. * cinlcl * rbuoy )   
+            wcrit = sqrt(max(0.0, 2. * cinlcl * rbuoy) )
          endif
-         sigmaw = sqrt( rkfre(i) * tkeavg + epsvarw )
+         sigmaw = sqrt(max(0.0, rkfre(i) * tkeavg + epsvarw) )
          mu = wcrit/sigmaw/1.4142                  
          if( mu .ge. 3. ) then
             if (scverbose) then
@@ -2182,12 +2182,12 @@ contains
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
          mumin0 = 0.
-!ALT         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(-log(2.5066*cbmflimit/rho0inv/sigmaw))
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
+         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(max(0.0,-log(max(tiny(0.0),2.5066*cbmflimit/rho0inv/sigmaw))))
+! ALT ?? if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
          ! 3. 'ufrclcl' constraint      
-         mulcl = sqrt(2.*cinlcl*rbuoy)/1.4142/sigmaw
+         mulcl = sqrt(max(0.0,2.*cinlcl*rbuoy))/1.4142/sigmaw
          mulclstar = sqrt(max(0.,2.*(exp(-mu**2)/2.5066)**2*(1./erfc(mu)**2-0.25/rmaxfrac**2)))
          if( mulcl .gt. 1.e-8 .and. mulcl .gt. mulclstar ) then
             mumin2 = compute_mumin2(mulcl,rmaxfrac,mu)
@@ -2232,7 +2232,7 @@ contains
             id_exit = .true.
             go to 333
          endif
-         wlcl = sqrt(wtw)
+         wlcl = sqrt(wtw) ! protected from NaN above
          ufrclcl = cbmf/wlcl/rho0inv
          wrel = wlcl
          if( ufrclcl .le. 0.0001 ) then
@@ -2675,7 +2675,7 @@ contains
               rei(k) = ( 0.5 * rkm2d(i) / zmid0(k) / g /rhomid0j ) ! Jason-2_0 version
             end if
 
-            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(dp0(k)/g/dt/umf(km1) + 1.)/dpe/(2.*xc-1.))
+            if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(max(tiny(0.0),dp0(k)/g/dt/umf(km1) + 1.))/dpe/(2.*xc-1.))
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
@@ -2914,7 +2914,7 @@ contains
               go to 45
             end if
 
-            wu(k) = sqrt(wtw)
+            wu(k) = sqrt(wtw) ! Protected from NaN above
             if( wu(k) .gt. 100. ) then
               exit_wu(i) = 1.
               id_exit = .true.
@@ -2950,7 +2950,7 @@ contains
               limit_ufrc(i) = 1. 
               ufrc(k) = rmaxfrac
               umf(k)  = rmaxfrac * rhoifc0j * wu(k)
-              fdr(k)  = fer(k) - log( umf(k) / umf(km1) ) / dpe
+              fdr(k)  = fer(k) - log(max(tiny(0.0), umf(k) / umf(km1)) ) / dpe
           endif
 
           ! ------------------------------------------------------------ !
@@ -4652,7 +4652,7 @@ contains
         return
      end if
 
-!     print *,'Ti,Rhi,thl=',Ti,rhi,thl
+!     print *,'Ti,Rhi,thl=',Ti,rhi,thl       ! WMP log(rhi) protected from NaN above
      TLCL     =  55._r8 + 1._r8/(1._r8/(Ti-55._r8)-log(rhi)/2840._r8) ! Bolton's formula. MWR.1980.Eq.(22)
      PiLCL    =  TLCL/thl
      ps       =  p00*(PiLCL)**(1._r8/rovcp)
@@ -5034,14 +5034,14 @@ contains
             if( a*c .gt. 0. ) then                  ! Failure: x**2 = -c/a < 0
                 status = 2  
             else                                       ! x**2 = -c/a 
-                r1 = sqrt(-c/a)
+                r1 = sqrt(-c/a)  ! protected from NaN above
             endif
             r2 = -r1
        else                                            ! Form a*x**2 + b*x + c = 0
             if( (b**2 - 4.*a*c) .lt. 0. ) then   ! Failure, no real roots
                  status = 3
             else
-                 q  = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c))
+                 q  = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c)) ! protected from NaN above
                  r1 =  q/a
                  r2 =  c/q
 !                 r1 = -0.5*(b + sign(1.0,b)*sqrt(b**2 - 4.*a*c))/a
