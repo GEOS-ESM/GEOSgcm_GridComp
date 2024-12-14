@@ -1333,7 +1333,7 @@ contains
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
                          'CNV_MFC ',  'CNV_MFD ', 'CNV_CVW ', 'CNV_FRC ', &
-                         'LFR_GCC ',  'RH2     ', 'CN_PRCP ',             &
+                         'LFR_GCC ',  'RH2     ',                         &
                          'BYNCY   ',  'CAPE    ', 'INHB    ' /),          &
         DST_ID      = CHEM,                                               &
         SRC_ID      = MOIST,                                              &
@@ -2694,6 +2694,20 @@ contains
      call MAPL_MaxMin('SYNCTQ: UFORSURF ', UFORSURF)
      call MAPL_MaxMin('SYNCTQ: VFORSURF ', VFORSURF)
      call MAPL_MaxMin('SYNCTQ: QFORSURF ', QFORSURF)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: TPREC    ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: CN_PRCP  ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PCU      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PLS      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: SNO      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: ICE      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: FRZR     ', PTR2D)
      endif
 
     endif
@@ -2784,6 +2798,20 @@ contains
      call MAPL_MaxMin('SYNCTQ: VFORSURF ', VFORSURF)
      call MAPL_MaxMin('SYNCTQ: QFORSURF ', QFORSURF)
      call MAPL_MaxMin('SYNCTQ: TFORTURB ', TFORTURB)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: TPREC    ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: CN_PRCP  ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PCU      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: PLS      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: SNO      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: ICE      ', PTR2D)
+     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_MaxMin('SYNCTQ: FRZR     ', PTR2D)
      endif
 
     endif

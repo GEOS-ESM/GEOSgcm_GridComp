@@ -5953,6 +5953,7 @@ contains
           if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'CN_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) CN_PRCP = CN_PRCP + PTR2D
+          CN_PRCP = MAX(CN_PRCP, 0.0)
        endif
 
        ! all large-scale precip (rain+snow)
@@ -5964,6 +5965,7 @@ contains
           if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
           call MAPL_GetPointer(EXPORT, PTR2D, 'FRZR'     , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) LS_PRCP = LS_PRCP + PTR2D
+          LS_PRCP = MAX(LS_PRCP, 0.0)
        endif
 
        ! all anvil precip (rain+snow)
@@ -5978,6 +5980,7 @@ contains
        if (associated(SC_PRCP)) then
           call MAPL_GetPointer(EXPORT, PTR2D, 'SC_SNR'    , RC=STATUS); VERIFY_(STATUS)
           if (associated(PTR2D)) SC_PRCP = SC_PRCP + PTR2D
+          SC_PRCP = MAX(SC_PRCP, 0.0)
        endif
 
        ! Total - all precip (rain+snow)
@@ -6006,8 +6009,8 @@ contains
              if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
              call MAPL_GetPointer(EXPORT, PTR2D, 'AN_PRCP'   , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) PREC_STRAT = PREC_STRAT + PTR2D
-             PREC_STRAT = MAX(PREC_STRAT, 0.0)
           endif
+          PREC_STRAT = MAX(PREC_STRAT, 0.0)
        endif
 
        ! diagnosed convective precip (rain+snow)
@@ -6021,8 +6024,8 @@ contains
              if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
              call MAPL_GetPointer(EXPORT, PTR2D, 'SC_PRCP'   , RC=STATUS); VERIFY_(STATUS)
              if (associated(PTR2D)) PREC_CONV = PREC_CONV + PTR2D
-             PREC_CONV = MAX(PREC_CONV, 0.0)
           endif
+          PREC_CONV = MAX(PREC_CONV, 0.0)
        endif
 
      ! Diagnostic precip types:
@@ -6033,6 +6036,8 @@ contains
           call DIAGNOSE_PRECIP_TYPE(IM, JM, LM, TPREC, PLS, PCU, RAIN, SNOW, ICE, FRZR, &
                                     PTYPE, PLE, T/PK, PK, PKE, ZL0, LUPDATE_PRECIP_TYPE)
        endif
+       ICE = MAX(ICE, 0.0)
+       FRZR = MAX(FRZR, 0.0)
      ! Get Kuchera snow:rain ratios
        do I = 1,IM
           do J = 1,JM

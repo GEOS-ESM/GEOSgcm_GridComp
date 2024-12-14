@@ -369,7 +369,6 @@ CONTAINS
    CNV_CVW = 0.0
    CNV_QC = 0.0
    ENTLAM = 0.0
-   CNPCPRATE = 0.0
    LIGHTN_DENS = 0.0
    REVSU = 0.0
    PRFIL = 0.0
