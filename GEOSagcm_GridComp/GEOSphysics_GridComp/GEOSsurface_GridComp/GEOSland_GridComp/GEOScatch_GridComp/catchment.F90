@@ -143,7 +143,7 @@
                      BF1, BF2, BF3,VGWMAX,                                     &
                      CDCR1,CDCR2, psis, bee, poros, wpwet, cond, gnu,          &
                      ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,ARW3,ARW4,   &
-                     tsa1,tsa2,tsb1,tsb2,atau,btau,cn_cond,BUG,                &
+                     tsa1,tsa2,tsb1,tsb2,atau,btau,cn_cond_scale_factor,BUG,                &
                      TC1, TC2, TC4, QA1, QA2, QA4, CAPAC,                      &
                      CATDEF, RZEXC, srfexc, GHTCNT, TSURF,                     &
                      WESNN, HTSNNN, SNDZN,                                     &
@@ -186,7 +186,7 @@
                      BF1, BF2, BF3,VGWMAX,                                     &
                      CDCR1,CDCR2, psis, bee, poros, wpwet, cond, gnu,          &
                      ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,ARW3,ARW4,   &
-                     tsa1,tsa2,tsb1,tsb2,atau,btau,cn_cond
+                     tsa1,tsa2,tsb1,tsb2,atau,btau,cn_cond_scale_factor
       
       REAL,    INTENT(IN), DIMENSION(NCH)                      :: LONS, LATS
 
@@ -743,9 +743,9 @@
          WRITE(*,*) 'RCUNST OK'
       ENDIF
 
-! Modification: Overwrite rcun with CatchmentCN conductance values:
+! Modification: Scale Catchment rcun with CatchmentCN scaling factors computed as SCUNS_m/SCUNS_clim_m:
       do n=1,nch
-        rcun(n)=1./cn_cond(n)
+        rcun(n)=1./cn_cond_scale_factor(n)
         enddo
 
 

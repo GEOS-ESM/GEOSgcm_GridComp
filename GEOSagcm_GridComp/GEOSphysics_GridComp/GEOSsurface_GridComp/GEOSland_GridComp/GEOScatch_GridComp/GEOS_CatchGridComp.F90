@@ -4134,8 +4134,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=ESMF_MAXSTR) :: FIRST_YY_str, FIRST_MM_str
         character(len=400) :: cn_rcuns_file, cn_rcuns_path
         logical :: s2s_forecast_mode = .false.
-        real, allocatable, dimension(:), save  :: cn_cond
-        real, allocatable, dimension(:)  :: cn_cond_tmp
+        real, allocatable, dimension(:), save  :: cn_cond_scale_factor
+        real, allocatable, dimension(:)  :: cn_cond_scale_factor_tmp
         integer :: cn_rcuns_fid, rcuns_varid
         logical, save  :: first_rcuns = .true.
 
@@ -4605,7 +4605,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            FIRST_MM_OLD = FIRST_MM
 
-           if (allocated(cn_cond)) deallocate(cn_cond)
+           if (allocated(cn_cond_scale_factor)) deallocate(cn_cond_scale_factor)
 
            call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
            VERIFY_(STATUS)
@@ -4629,7 +4629,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            write (FIRST_MM_str,'(i2.2)') FIRST_MM
 
            cn_rcuns_path = '/discover/nobackup/projects/geoscm/fzeng/Catchment-CN40_9km/GEOSldas_1981_present/GEOSldas_CNCLM40_9km/output/SMAP_EASEv2_M09_GLOBAL/cat/ens0000/'
-           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.SCUNS.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
+           cn_rcuns_file = trim(cn_rcuns_path) // 'Y' // trim(FIRST_YY_str) // '/M' // trim(FIRST_MM_str) // '/GEOSldas_CNCLM40_9km.SCUNS_scaled.monthly.' // trim(FIRST_YY_str) // trim(FIRST_MM_str) // '.nc4'
 
            STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
            VERIFY_(status)
@@ -4637,21 +4637,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            STATUS = NF_INQ_VARID (cn_rcuns_fid, trim('SCUNS'), rcuns_varid)
            VERIFY_(status)
 
-           allocate(cn_cond (NTILES))
-           allocate(cn_cond_tmp (NT_GLOBAL))
+           allocate(cn_cond_scale_factor (NTILES))
+           allocate(cn_cond_scale_factor_tmp (NT_GLOBAL))
 
            if (MAPL_AM_I_Root(VM)) then
-              STATUS = NF_GET_VARA_REAL(cn_rcuns_fid, rcuns_varid, (/1, 1/), (/NT_GLOBAL, 1/), cn_cond_tmp)
+              STATUS = NF_GET_VARA_REAL(cn_rcuns_fid, rcuns_varid, (/1, 1/), (/NT_GLOBAL, 1/), cn_cond_scale_factor_tmp)
               VERIFY_(STATUS)
            endif  
 
-           call ArrayScatter(cn_cond, cn_cond_tmp, tilegrid, mask=mask, rc=status)
+           call ArrayScatter(cn_cond_scale_factor, cn_cond_scale_factor_tmp, tilegrid, mask=mask, rc=status)
            VERIFY_(STATUS)
 
            status = NF_CLOSE (cn_rcuns_fid)
            VERIFY_(status)
            first_rcuns = .false.
-           deallocate(cn_cond_tmp)
+           deallocate(cn_cond_scale_factor_tmp)
 
         endif ! first_rcuns
 
@@ -5589,7 +5589,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              BEE, POROS, WPWET, COND, GNU	                  ,&
              ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4	          ,&
              ARW1, ARW2, ARW3, ARW4, TSA1, TSA2, TSB1, TSB2	  ,&
-             ATAU, BTAU, cn_cond, .false.			          ,&
+             ATAU, BTAU, cn_cond_scale_factor, .false.			          ,&
 
              TC(:,FSAT), TC(:,FTRN), TC(:,FWLT)		          ,& 
              QC(:,FSAT), QC(:,FTRN), QC(:,FWLT)		          ,&
