@@ -149,7 +149,7 @@ module GEOSmoist_Process_Library
   public :: SH_MD_DP, DBZ_LIQUID_SKIN, LIQ_RADII_PARAM, ICE_RADII_PARAM
   public :: update_cld, meltfrz_inst2M
   public :: FIX_NEGATIVE_PRECIP
-
+  public :: FIND_KLID
   public :: sigma
 
   contains
@@ -534,7 +534,7 @@ module GEOSmoist_Process_Library
 
       if ( (RHx < RHCR ) .and. (RADIUS > 0.0) ) then
          EVAP = A_EFF*QL*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
-         EVAP = MIN( EVAP , QL  )
+         EVAP = MAX(0.0, MIN( EVAP , QL  ))
       else
          EVAP = 0.0
       end if
@@ -613,7 +613,7 @@ module GEOSmoist_Process_Library
 
       if ( (RHx < RHCR) .and.(RADIUS > 0.0) ) then
          SUBL = A_EFF*QI*DT*(RHCR - RHx) / ((K1+K2)*RADIUS**2)
-         SUBL = MIN( SUBL , QI  )
+         SUBL = MAX(0.0, MIN( SUBL , QI  ))
       else
          SUBL = 0.0
       end if
@@ -666,7 +666,7 @@ module GEOSmoist_Process_Library
           !- radius in meters
           if (ICE_RADII_PARAM == 1) then
             !------ice cloud effective radius ----- [klaus wyser, 1998]
-            if(TE>MAPL_TICE .or. QC <=0.) then
+            if(TE>MAPL_TICE .or. QC < 1.e-9) then
               BB = -2.
             else
               BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
@@ -1047,10 +1047,30 @@ module GEOSmoist_Process_Library
          CF, &
          QLA,&
          QIA,&
-         AF  )
+         AF ,&
+         REMOVE_CLOUDS )
 
       real, intent(inout) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA
+      logical, optional, intent(IN) :: REMOVE_CLOUDS
       real :: FCLD
+      logical :: RM_CLDS
+
+                                  RM_CLDS = .false.
+      if (present(REMOVE_CLOUDS)) RM_CLDS = REMOVE_CLOUDS
+
+      if (RM_CLDS) then
+
+      ! Remove ALL cloud quants above the klid
+         QV = QV + QLA + QIA + QLC + QIC
+         TE = TE - (alhlbcp)*(QLA+QLC) - (alhsbcp)*(QIA+QIC)
+         AF  = 0.
+         QLA = 0.
+         QIA = 0.
+         CF  = 0.
+         QLC = 0.
+         QIC = 0.
+
+      else
 
       ! Ensure total cloud fraction <= 1.0
       FCLD = CF + AF
@@ -1118,6 +1138,8 @@ module GEOSmoist_Process_Library
          CF  = 0.
          QLC = 0.
          QIC = 0.
+      end if
+
       end if
 
    end subroutine FIX_UP_CLOUDS
@@ -3572,6 +3594,67 @@ subroutine update_cld( &
 
  end subroutine cs_prof
 
+   integer function FIND_KLID (plid, ple, rc)  RESULT(klid)
+
+! !USES:
+   implicit NONE
+
+! !INPUT PARAMETERS:
+   real, intent(in)     :: plid ! pressure lid [hPa]
+   real, dimension(:,:,:), intent(in) :: ple  ! air pressure [Pa]
+
+! !OUTPUT PARAMETERS:
+   integer, intent(out) :: rc ! return code; 0 - all is good
+!                                            1 - bad
+
+! !DESCRIPTION: Finds corresponding vertical index for defined pressure lid
+!
+! !REVISION HISTORY:
+!
+! 25Aug2020 E.Sherman - Written 
+!
+! !Local Variables
+   integer :: k, j, i
+   real :: plid_, diff, refDiff
+   real, allocatable, dimension(:) :: pres  ! pressure at each model level [Pa]
+
+!EOP
+!----------------------------------------------------------------------------------
+!  Begin...
+   klid = 1
+   rc = 0
+
+!  convert from hPa to Pa
+   plid_ = plid*100.0
+
+   allocate(pres(ubound(ple,3)))
+
+!  find pressure at each model level
+   do k = 1, ubound(ple,3)
+      pres(k) = ple(1,1,k)
+   end do
+
+!  find smallest absolute difference between plid and average pressure at each model level
+   refDiff = 150000.0
+   do k = 1, ubound(ple,3)
+      diff = abs(pres(k) - plid_)
+      if (diff < refDiff) then
+         klid = k
+         refDiff = diff
+      end if
+   end do
+
+!  Check to make sure that all pressures at (i,j) were the same
+   do j = 1, ubound(ple,2)
+      do i = 1, ubound(ple,1)
+         if (pres(klid) /= ple(i,j,klid)) then
+            rc = 1
+            return
+         end if
+      end do
+   end do
+
+   end function FIND_KLID
 
 
 end module GEOSmoist_Process_Library

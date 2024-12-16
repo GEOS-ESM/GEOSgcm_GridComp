@@ -2182,7 +2182,8 @@ contains
          ! 1. 'cbmf' constraint
          cbmflimit = 0.9*dp0(kinv-1)/g/dt
          mumin0 = 0.
-         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(-log(2.5066*cbmflimit/rho0inv/sigmaw))
+!ALT     if( cbmf .gt. cbmflimit ) mumin0 = sqrt(-log(2.5066*cbmflimit/rho0inv/sigmaw))
+         if( cbmf .gt. cbmflimit ) mumin0 = sqrt(mu**2-log(cbmflimit/cbmf))
          ! 2. 'ufrcinv' constraint
          mu = max(max(mu,mumin0),mumin1)
          ! 3. 'ufrclcl' constraint      
