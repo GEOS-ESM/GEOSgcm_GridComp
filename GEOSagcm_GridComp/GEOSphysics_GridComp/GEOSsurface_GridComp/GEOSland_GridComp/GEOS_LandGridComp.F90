@@ -202,7 +202,7 @@ contains
           end do
        end if
        
-    END SELECT
+    END SELECT  ! LSM_CHOICE
 
     if(RUN_IRRIG==1) then
        allocate (IRRIGATION(NUM_CATCH), stat=status)
@@ -1381,7 +1381,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        endif
 
-    END SELECT
+    END SELECT   ! LSM_CHOICE (Catch, CatchCN)
     
     if (RUN_IRRIG == 1) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPRINKLERRATE', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
