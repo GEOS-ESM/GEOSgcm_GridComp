@@ -442,16 +442,13 @@ contains
       do j=1,ny
         do i=1,nx
           ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
-          if (brunt_edge(i,j,k) <= bruntmin) then
+          if (brunt_edge(i,j,k) <= 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))))
           else
             wrk = 0.5*(tscale1(i,j,k)+tscale1(i,j,k-1))
             isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*brunt_edge(i,j,k)*wrk*wrk)))
 !            isotropy(i,j,k) = max(30.,min(max_eddy_dissipation_time_scale,wrk/(1.0+lambda*0.5*(brunt(i,j,k)+brunt(i,j,k-1))*wrk*wrk)))
           endif
-!          if (k.ge.cldbasek(i,j)) then
-!            isotropy(i,j,k) = min(200.+(0.5+0.5*tanh(0.3*(lts(i,j)-19.)))*(max_eddy_dissipation_time_scale-200.),isotropy(i,j,k))
-!          end if
           if (tke(i,j,k).lt.2e-4) isotropy(i,j,k) = 30.
 
           wrk1 = ck / prnum(i,j,k)
@@ -806,10 +803,10 @@ contains
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use.
 
-            if (brunt(i,j,k) >= bruntmin) then
-              brunt2(i,j,k) = brunt(i,j,k)
-            else
+            if (brunt(i,j,k) < 1e-5 .or. zl(i,j,k).lt.0.7*zpbl(i,j)) then
               brunt2(i,j,k) = bruntmin
+            else
+              brunt2(i,j,k) = brunt(i,j,K)
             endif
 
           end do
@@ -889,11 +886,10 @@ contains
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
 
                  ! Turbulent length scale
-                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*(shocparams%LENFAC2)
+                 smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
 
                  ! Stability length scale
-                 smixt3(i,j,k) = max(0.1,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
-
+                 smixt3(i,j,k) = max(0.05,tkes)*shocparams%LENFAC3/(sqrt(brunt2(i,j,k)))
 
                  !=== Combine component length scales ===
                  if (shocparams%LENOPT .eq. 1) then  ! JPL blending approach (w/SHOC length scales)
@@ -920,12 +916,13 @@ contains
 
            ! Enforce minimum and maximum length scales
            wrk = 0.1*min(200.,adzl(i,j,k))     ! Minimum 0.1 of local dz (up to 200 m)
-           if (zl(i,j,k) .lt. 5000.) then
+           if (zl(i,j,k) .lt. 2000.) then
              smixt(i,j,k) = max(wrk, smixt(i,j,k))
-           else if (zl(i,j,k) .lt. 9500) then    ! Between 5-10 km the max length scale reduces with height
-             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
-           else
-             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*0.1,smixt(i,j,k)))
+           else if (zl(i,j,k).gt.zpbl(i,j)) then ! if above 2 km and dry CBL top, cap length scale
+!           else if (zl(i,j,k) .lt. 9500) then    ! Between 5-10 km the max length scale reduces with height
+!             smixt(i,j,k) = max(wrk, min(max_eddy_length_scale*(1e4-zl(i,j,k))/5e3,smixt(i,j,k)))
+!           else
+             smixt(i,j,k) = max(wrk, min(100.,smixt(i,j,k)))
            end if
         end do
       end do
@@ -1033,8 +1030,8 @@ contains
                            hl2tune,    &
                            qt2tune,    &
                            hlqt2tune,  &
-                           qt3_tscale, &
-                           afrc_tscale,&
+                           skew_tgen,  &
+                           skew_tdis,  &
                            docanuto )
 
 
@@ -1077,8 +1074,8 @@ contains
     real,    intent(in   ) :: HL2TUNE,     &   ! tuning parameters
                               HLQT2TUNE,   &
                               QT2TUNE,     &
-                              QT3_TSCALE,  &
-                              AFRC_TSCALE
+                              SKEW_TGEN,   &
+                              SKEW_TDIS
 
     integer, intent(in   ) :: DOPROGQT2,   &   ! prognostic QT2 switch
                               DOCANUTO
@@ -1138,7 +1135,7 @@ contains
 
         ! Second moment of total water mixing ratio.  Eq 3 in BK13
         qtgrad(:,:,k)   = wrk2 / (ZL(:,:,k)-ZL(:,:,k+1))
-        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
+        qt2_edge(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k)-MFWQT(:,:,k)-0.*WQT_DC(:,:,k))*qtgrad(:,:,k)  ! gradient production
         qt2_edge_nomf(:,:,k) = (KH(:,:,k)*qtgrad(:,:,k))*qtgrad(:,:,k)  ! gradient production
 
         ! Covariance of total water mixing ratio and liquid/ice water static energy.  Eq 5 in BK13
@@ -1157,16 +1154,6 @@ contains
     qtgrad(:,:,0)     = qtgrad(:,:,1)
 
 
-    ! Update PDF_A
-    if (AFRC_TSCALE.gt.0.) then
-      pdf_a = (pdf_a+mffrc)/(1.+DT/AFRC_TSCALE)
-    else
-      pdf_a = pdf_a/(1.-DT/AFRC_TSCALE)
-    end if
-    where (mffrc.gt.pdf_a)
-      pdf_a = mffrc
-    end where
-    pdf_a = min(0.5,max(0.,pdf_a))
 
 
     do k=1,LM
@@ -1192,7 +1179,7 @@ contains
         else
           onemmf = 1.0 - MFFRC(:,:,k)
 
-          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) + MFW2(:,:,k)
+          w2(:,:,k) = onemmf*0.667*TKE(:,:,k) !+ MFW2(:,:,k)
 
 !          hl2(:,:,k) = onemmf*0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )  !+ MFHL2(:,:,k)
           hl2(:,:,k) = 0.5*( hl2_edge(:,:,kd) + hl2_edge(:,:,ku) )
@@ -1202,11 +1189,11 @@ contains
           if (DOPROGQT2 /= 0) then
             wrk3 = QT2TUNE*1.5e-4 ! dissipation
             qt2(:,:,k) = (qt2(:,:,k)+DT*wrk1) / (1. + DT*wrk3)
-            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge(:,:,kd)+qt2_edge(:,:,ku))
+            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
           else
 !            qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1 + MFQT2(:,:,k)
             qt2(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*wrk1
-            qt2diag(:,:,k) = QT2TUNE*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
+            qt2diag(:,:,k) = 1.0*ISOTROPY(:,:,k)*0.5*(qt2_edge_nomf(:,:,kd)+qt2_edge_nomf(:,:,ku))
           end if
 
           hlqt(:,:,k) = onemmf*0.5*( hlqt_edge(:,:,kd) + hlqt_edge(:,:,ku) ) + MFHLQT(:,:,k)
@@ -1216,12 +1203,12 @@ contains
 
         end if
 
-        whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ MFWHL(:,:,k)
-        whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) !+ mfwhl(:,:,kd) + mfwhl(:,:,ku))
+        whl(:,:,k)  = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) ) + MFWHL(:,:,k)
+        whl_can(:,:,k) = onemmf*0.5*( whl_edge(:,:,kd) + whl_edge(:,:,ku) + mfwhl(:,:,kd) + mfwhl(:,:,ku))
 
-        ! Restrict QT variance, 3-25% of total water.
-        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
-        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.03*QT(:,:,k))**2)
+        ! Restrict QT variance, 2-25% of total water.
+        qt2(:,:,k) = max(min(qt2(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
+        qt2diag(:,:,k) = max(min(qt2diag(:,:,k),(0.25*QT(:,:,k))**2),(0.02*QT(:,:,k))**2)
 
         hl2(:,:,k) = max(min(hl2(:,:,k),HL2MAX),HL2MIN)
         hl2diag(:,:,k) = max(min(hl2diag(:,:,k),HL2MAX),HL2MIN)
@@ -1232,8 +1219,20 @@ contains
 
     end do
 
+    ! Update PDF_A
+    if (SKEW_TDIS.gt.0.) then
+!      pdf_a = (pdf_a+mffrc+2.*0.5*(cnv_mfc(:,:,1:LM)+cnv_mfc(:,:,0:LM-1)))/(1.+DT/AFRC_TSCALE)
+      pdf_a = (pdf_a+mffrc*DT/SKEW_TGEN)/(1.+DT/SKEW_TDIS)
+    else
+      pdf_a = pdf_a/(1.-DT/SKEW_TDIS)
+    end if
+    where (mffrc.gt.pdf_a)
+      pdf_a = mffrc
+    end where
+    pdf_a = min(0.5,max(0.,pdf_a))
+
   if (DOCANUTO==0) then
-    qt3 = ( qt3 + max(MFQT3,0.) ) / ( 1. + DT/QT3_TSCALE )
+    qt3 = ( qt3 + max(MFQT3,0.)*DT/SKEW_TGEN ) / ( 1. + DT/SKEW_TDIS )
     hl3 = MFHL3
     w3  = MFW3
   else
@@ -1273,10 +1272,6 @@ contains
 
 !          brunt = (bet(i,j,k)/thedz)*(thv(i,j,kc)-thv(i,j,kb))
 
-!          if (abs(thedz).le.1e-10) thedz = sign(1e-10,thedz)
-!          if (abs(thedz).eq.1e-10) print *,'thedz'
-!          if (abs(thedz2).le.1e-10) thedz2 = sign(1e-10,thedz2)
-!          if (abs(thedz2).eq.1e-10) print *,'thedz2'
           thedz     = 1. / thedz
           thedz2    = 1. / thedz2
 
@@ -1288,8 +1283,8 @@ contains
 
           avew = 0.5*(0.667*TKE(i,j,k)+0.667*TKE(i,j,kb))
           if (abs(avew).ge.1e10) avew = sign(1e10,avew)
-!          if (abs(avew).eq.1e10) print *,'avew'
-          cond = 1.2*sqrt(max(1.0e-16,2.*avew*avew*avew))
+
+          cond = 1.2*sqrt(max(1.0e-20,2.*avew*avew*avew))
           wrk1b = bet2*iso
           wrk2b = thedz2*wrk1b*wrk1b*iso
           wrk3b = hl2diag(i,j,kc) - hl2diag(i,j,kb)
@@ -1313,20 +1308,20 @@ contains
 
 ! Compute the "omega" terms, see Eq. 6 in C01 (B.6 in Pete's dissertation)
           dum = 1.-a5*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-a5*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           omega0 = a4 / dum
           omega1 = omega0 / (c+c)
           omega2 = omega1*f3+(5./4.)*omega0*f4
 
 ! Compute the X0, Y0, X1, Y1 terms,  see Eq. 5 a-b in C01  (B.5 in Pete's dissertation)
           dum = 1.-(a1+a3)*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-(a1+a3)*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           wrk1b = 1.0 / dum
           dum = 1.-a3*buoy_sgs2
-          if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!          if (abs(dum).eq.1e-16) print *,'1.-a3*buoy_sgs2'
+          if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
           wrk2b = 1.0 / dum
           X0   = wrk1b * (a2*buoy_sgs2*(1.-a3*buoy_sgs2))
           Y0   = wrk2b * (2.*a2*buoy_sgs2*X0)
@@ -1342,8 +1337,8 @@ contains
 ! than the estimate - limit w3.
 
            dum = c-1.2*X0+AA0
-           if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
-!           if (abs(dum).eq.1e-16) print *,'c-1.2*X0+AA0=',dum
+           if (abs(dum).le.1e-20) dum = sign(1e-20,dum)
+
            w3can(i,j,k) = max(-cond, min(cond, (AA1-1.2*X1-1.5*f5)/dum))
 ! Implemetation of the C01 approach in this subroutine is nearly complete
 ! (the missing part are Eqs. 5c and 5e which are very simple)
@@ -1357,11 +1352,11 @@ contains
         w3can(i,j,LM) = w3can(i,j,LM-1)
       enddo
     enddo
-    w3 = w3can
+!    w3 = w3can
 
 !!   skew_w = w3 / w2**1.5
-   qt3 = 1.2*w3*(qt2/w2)**1.5
-   hl3 = w3 * (hl2 / w2)**1.5
+!   qt3 = 1.2*w3*(qt2/w2)**1.5
+!   hl3 = w3 * (hl2 / w2)**1.5
 
   end if ! DOCANUTO conditional
 
