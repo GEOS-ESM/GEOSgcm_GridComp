@@ -3640,7 +3640,6 @@ end if
       call MAPL_GetResource (MAPL, MFPARAMS%IMPLICIT,  "EDMF_IMPLICIT:",      default=1,     RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PRCPCRIT,  "EDMF_PRCPCRIT:",      default=-1.,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%UPABUOYDEP,"EDMF_UPABUOYDEP:",    default=1,     RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
 
       ! Future options
 !      call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
@@ -3652,6 +3651,9 @@ end if
 !      call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0.,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
+    else
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=0.,    RC=STATUS)
     end if
 
     call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
@@ -5399,13 +5401,13 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
-          OPT = .FALSE.
+!          OPT = .FALSE.
  elseif (trim(name)=='QILS') then
           CX => CQ
           DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
-          OPT = .FALSE.
+!          OPT = .FALSE.
  elseif (trim(name)=='U') then       
          CX => CU
          DX => DKV
