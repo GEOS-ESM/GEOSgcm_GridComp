@@ -4634,7 +4634,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            STATUS = NF_OPEN (trim(cn_rcuns_file), NF_NOWRITE, cn_rcuns_fid)
            VERIFY_(status)
 
-           STATUS = NF_INQ_VARID (cn_rcuns_fid, trim('SCUNS'), rcuns_varid)
+           STATUS = NF_INQ_VARID (cn_rcuns_fid, trim('SCUNS_sc'), rcuns_varid)
            VERIFY_(status)
 
            allocate(cn_cond_scale_factor (NTILES))
