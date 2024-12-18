@@ -6004,7 +6004,7 @@ end subroutine RUN1
                do L=1,LM
                   do J=1,JM
                      do I=1,IM
-                        INTDIS(I,J,L) = SIGN(max(10.0/3600.0,ABS(INTDIS(I,J,L))*DP(I,J,L))/DP(I,J,L),INTDIS(I,J,L))
+                        INTDIS(I,J,L) = SIGN(min(10.0/3600.0,ABS(INTDIS(I,J,L))*DP(I,J,L))/DP(I,J,L),INTDIS(I,J,L))
                      end do
                   end do
                end do
