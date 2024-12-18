@@ -100,7 +100,7 @@ program TileFile_ASCII_to_nc4
 
   ! At this point, the info for the first tile is already in tmpline
 
-  allocate(iTable(N_tile,0:5))
+  allocate(iTable(N_tile,0:7))
   allocate(rTable(N_tile,10))
 
   rTable = MAPL_UNDEF  
@@ -137,7 +137,14 @@ program TileFile_ASCII_to_nc4
              iTable(i,2), iTable(i,3), rTable(i,4), iTable(i,6),             &
              iTable(i,4), iTable(i,5), rTable(i,5), iTable(i,7)
      enddo
-
+     ! re-define rTable(:,4) and rTable(:,5).
+     ! fr will be re-created in WriteTilingNC4
+     where (rTable(:,4) /=0.0)
+       rTable(:,4) = rTable(:,3)/rTable(:,4)
+     endwhere
+     where (rTable(:,5) /=0.0)
+       rTable(:,5) = rTable(:,3)/rTable(:,5)
+     endwhere
   endif
 
   close(unit)

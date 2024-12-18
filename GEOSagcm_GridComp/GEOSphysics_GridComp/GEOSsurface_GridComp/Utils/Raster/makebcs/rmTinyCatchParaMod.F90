@@ -2008,21 +2008,21 @@ integer :: n_threads=1
     implicit none
 
     INTEGER, allocatable, dimension(:) :: CATID  
-    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib
+    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib, status
     INTEGER, allocatable, dimension (:) :: id,I_INDEX,J_INDEX 
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: typ,pfs,ig,jg,j_dum,i_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath
     character*200 :: gtopo30
     character (*) :: gfilet,gfiler
     character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent, gName(2)
+    CHARACTER*20 :: version,resoln,continent
     REAL, ALLOCATABLE :: limits(:,:)
     REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,sum2,dx_gcm,dy_gcm
     REAL, dimension (:), allocatable :: tile_ele, tile_area,tile_area_land  
-    integer :: nx,ny,status, IM(2), JM(2)
+    integer :: nx,ny,IM(2), JM(2)
     logical :: regrid
     real, pointer :: Raster(:,:)
 
@@ -2030,6 +2030,7 @@ integer :: n_threads=1
     real*4, allocatable , target :: q0 (:,:)
     real(kind=8),      allocatable :: rTable(:,:)
     integer,           allocatable :: iTable(:,:)
+    character(len=128)             :: gName(2)
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
@@ -2083,14 +2084,14 @@ integer :: n_threads=1
 !    dx_gcm = 360./float(nc_gcm)
 !    dy_gcm = 180./float(nr_gcm)    
 
-    allocate(iTable(ip,0:5))
+    allocate(iTable(ip,0:7))
     allocate(rTable(ip,10))    
     rTable = MAPL_UNDEF
 
     do n = 1,ip
  
       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
 	    tile_area(n) = tarea
             id(n)=pfs
 	    i_index(n) = ig 
@@ -2098,18 +2099,18 @@ integer :: n_threads=1
 
        if (typ == 100) ip2 = n
        if(ierr /= 0)write (*,*)'Problem reading'
-       iTable(i,0) = typ
-       rTable(i,3) = tarea
-       rTable(i,1) = lon
-       rTable(i,2) = lat
-       iTable(i,2) = ig
-       iTable(i,3) = jg
-       rTable(i,4) = fr_gcm
-       iTable(i,6) = indx_dum
-       iTable(i,4) = pfs
-       iTable(i,5) = j_dum
-       rTable(i,5) = fr_cat
-       iTable(i,7) = j_dum           
+       iTable(n,0) = typ
+       rTable(n,3) = tarea
+       rTable(n,1) = lon
+       rTable(n,2) = lat
+       iTable(n,2) = ig
+       iTable(n,3) = jg
+       rTable(n,4) = fr_gcm
+       iTable(n,6) = indx_dum
+       iTable(n,4) = pfs
+       iTable(n,5) = i_dum
+       rTable(n,5) = fr_cat
+       iTable(n,7) = j_dum           
     end do
     close (10,status='keep')
 
@@ -2233,14 +2234,23 @@ integer :: n_threads=1
 
     rTable(1:maxcat,6:9) = limits
     rTable(1:maxcat, 10) = tile_ele(1:maxcat)
- 
+    ! re-define rTable(:,4) and rTable(:,5).
+    ! fr will be re-created in WriteTilingNC4
+    where (rTable(:,4) /=0.0)
+       rTable(:,4) = rTable(:,3)/rTable(:,4)
+    endwhere
+    where (rTable(:,5) /=0.0)
+       rTable(:,5) = rTable(:,3)/rTable(:,5)
+    endwhere
+
     fname=trim(gfilet)//'.nc4'
     if (im(2) == 0) then ! one grid
       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, maxcat=SRTM_maxcat)
     else ! two grids
-      call WriteTilingNC4(fname, gName, im, jm, nx, ny, iTable, rTable, maxcat=SRTM_maxcat)
+      call WriteTilingNC4(fname, gName, im, jm, nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
     endif
 
+    deallocate (rTable, iTable)
     deallocate (limits)
     deallocate (catid)
     deallocate (q0)
