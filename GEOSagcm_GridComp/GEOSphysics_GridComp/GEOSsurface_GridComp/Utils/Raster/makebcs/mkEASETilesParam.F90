@@ -31,7 +31,7 @@ PROGRAM mkEASETilesParam
   ! - white-space changes for improved readability
   
   use EASE_conv,          only : EASE_extent, EASE_convert, EASE_inverse
-  use rmTinyCatchParaMod, only : i_raster, j_raster, SRTM_maxcat 
+  use rmTinyCatchParaMod, only : i_raster, j_raster 
   use rmTinyCatchParaMod, only : RegridRasterReal                  
   use process_hres_data,  only : histogram
   use LogRectRasterizeMod

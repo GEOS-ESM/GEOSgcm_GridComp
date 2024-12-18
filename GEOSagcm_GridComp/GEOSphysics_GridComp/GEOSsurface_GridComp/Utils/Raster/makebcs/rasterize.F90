@@ -3,7 +3,6 @@
 module LogRectRasterizeMod
 
   use MAPL_SORTMOD
-  use rmTinyCatchParaMod,      ONLY: SRTM_maxcat
   use MAPL_ExceptionHandling  
   use MAPL_Constants,          only: PI=>MAPL_PI_R8
   use MAPL                                          
@@ -39,7 +38,8 @@ module LogRectRasterizeMod
 
   real(kind=8)            :: garea_
   integer                 :: ctg_
-  
+  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284 
+ 
   interface LRRasterize
      module procedure LRRasterize2File
      module procedure LRRasterize2File0
@@ -197,9 +197,6 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   integer        :: status, tmp_in1, tmp_in2, ncat
   logical        :: file_exists
 
-  character(len=:), allocatable :: filenameNC4, catch_file
-  real(kind=8),     allocatable :: rTableT(:, :)               ! extended and transpose of rTable
-
   ip = size(iTable,2)
   ng = size(GridName)
 
@@ -307,31 +304,6 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      close(UNIT)
   end if
 
-  ! collect min/max lat/lon and elevation from catchment.def file
-
-  allocate(rTableT(ip, 10))
-
-  rTableT        = MAPL_UNDEF
-  rTableT(:,1:5) = transpose(rTable)
-
-  catch_file = 'clsm/catchment.def'
-  inquire(file=catch_file, exist=file_exists) 
-  if (file_exists) then
-    open (newunit=unit,file=catch_file,action='read', form='formatted',status='old')
-    read(unit, *) ncat
-    _ASSERT(ncat == ip, " ncat and ip should match")
-    do k = 1, ip
-       read (unit,*) tmp_in1, tmp_in2, rTableT(k,6), rTableT(k,7), rTableT(k,8), rTableT(k,9), rTableT(k,10)
-    enddo
-    close(unit)
-  endif
-
-  ! write nc4-formatted tile file
-
-  k = index(trim(File), '.til')
-  filenameNC4 = File(1:k-1) //'.nc4'
-  call WriteTilingNC4(filenameNC4, GridName, im, jm, nx, ny, transpose(iTable), rTableT, _RC)
-
 end subroutine WriteTilingIR
 
 subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat, rc)
@@ -341,7 +313,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(:,0:)
   real(kind=8),      intent(IN) :: rTable(:,:)
-  integer, optional, intent(out):: maxcat
+  integer, optional, intent(in) :: maxcat
   integer, optional, intent(out):: rc
 
   integer                       :: k, ll, ng, ip, status, maxcat_

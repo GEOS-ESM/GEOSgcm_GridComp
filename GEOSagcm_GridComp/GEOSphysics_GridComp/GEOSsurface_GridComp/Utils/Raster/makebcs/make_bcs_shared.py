@@ -34,6 +34,7 @@ if( ! -d bin ) then
 endif
 
 source bin/g5_modules
+module load nco
 setenv MASKFILE {MASKFILE}
 setenv MAKE_BCS_INPUT_DIR {MAKE_BCS_INPUT_DIR}
 limit stacksize unlimited
@@ -61,15 +62,19 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
+ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{RS}.nc4
 endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
-s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
 s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
+s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
+ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid2_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
 endif
 if( {LATLON_OCEAN} == True ) then
 cat > sedfile << EOF
@@ -79,6 +84,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
+ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 endif
 cd ../../
 
@@ -95,6 +102,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
+ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 cd ../../
 
 """
@@ -107,6 +116,7 @@ def get_script_mv(grid_type):
 mkdir -p geometry/{GRIDNAME}
 /bin/mv {GRIDNAME}.j geometry/{GRIDNAME}/.
 /bin/cp til/{GRIDNAME}{RS}.til geometry/{GRIDNAME}/.
+/bin/cp til/{GRIDNAME}{RS}.nc4 geometry/{GRIDNAME}/.
 if( {TRIPOL_OCEAN} == True ) /bin/cp til/{GRIDNAME}{RS}.TRN geometry/{GRIDNAME}/.
 
 /bin/mv rst til geometry/{GRIDNAME}/.

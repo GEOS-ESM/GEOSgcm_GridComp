@@ -8,7 +8,7 @@ Program MakeLandRaster
   use MAPL_HashMod
   use process_hres_data
   use MAPL_SortMod
-  use rmTinyCatchParaMod, ONLY: SRTM_maxcat, RegridRaster
+  use rmTinyCatchParaMod, ONLY: RegridRaster
   use MAPL_Constants, only: PI=>MAPL_PI_R8
   
   ! Program to create a surface raster file that has

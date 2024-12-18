@@ -11,6 +11,9 @@ module rmTinyCatchParaMod
   use MAPL_ConstantsMod
   use MAPL_Base,    ONLY: MAPL_UNDEF
   use lsm_routines, ONLY: sibalb
+  use LogRectRasterizeMod, only: SRTM_maxcat
+  use LogRectRasterizeMod, only: WritetilingNC4 
+ 
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -40,8 +43,6 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
-
-  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
@@ -2017,16 +2018,18 @@ integer :: n_threads=1
     character*200 :: gtopo30
     character (*) :: gfilet,gfiler
     character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent
+    CHARACTER*20 :: version,resoln,continent, gName(2)
     REAL, ALLOCATABLE :: limits(:,:)
     REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,sum2,dx_gcm,dy_gcm
     REAL, dimension (:), allocatable :: tile_ele, tile_area,tile_area_land  
-    integer :: nx,ny,status
+    integer :: nx,ny,status, IM(2), JM(2)
     logical :: regrid
     real, pointer :: Raster(:,:)
 
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
+    real(kind=8),      allocatable :: rTable(:,:)
+    integer,           allocatable :: iTable(:,:)
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
@@ -2065,15 +2068,24 @@ integer :: n_threads=1
     allocate(tile_area(ip))  
     id=0
     read (10,*)j_dum
-
+    IM = 0
+    JM = 0
+    gName = ['','']
     do n = 1, j_dum
        read (10,'(a)')version
        read (10,*)nc_gcm
        read (10,*)nr_gcm
+       gName(n) = version
+       IM(n)    = nc_gcm
+       JM(n)    = nr_gcm
     end do
     
 !    dx_gcm = 360./float(nc_gcm)
 !    dy_gcm = 180./float(nr_gcm)    
+
+    allocate(iTable(ip,0:5))
+    allocate(rTable(ip,10))    
+    rTable = MAPL_UNDEF
 
     do n = 1,ip
  
@@ -2086,6 +2098,18 @@ integer :: n_threads=1
 
        if (typ == 100) ip2 = n
        if(ierr /= 0)write (*,*)'Problem reading'
+       iTable(i,0) = typ
+       rTable(i,3) = tarea
+       rTable(i,1) = lon
+       rTable(i,2) = lat
+       iTable(i,2) = ig
+       iTable(i,3) = jg
+       rTable(i,4) = fr_gcm
+       iTable(i,6) = indx_dum
+       iTable(i,4) = pfs
+       iTable(i,5) = j_dum
+       rTable(i,5) = fr_cat
+       iTable(i,7) = j_dum           
     end do
     close (10,status='keep')
 
@@ -2206,6 +2230,16 @@ integer :: n_threads=1
        write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
+
+    rTable(1:maxcat,6:9) = limits
+    rTable(1:maxcat, 10) = tile_ele(1:maxcat)
+ 
+    fname=trim(gfilet)//'.nc4'
+    if (im(2) == 0) then ! one grid
+      call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, maxcat=SRTM_maxcat)
+    else ! two grids
+      call WriteTilingNC4(fname, gName, im, jm, nx, ny, iTable, rTable, maxcat=SRTM_maxcat)
+    endif
 
     deallocate (limits)
     deallocate (catid)
