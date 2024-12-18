@@ -313,7 +313,7 @@ subroutine res_cal(active_res,active_lake,Qout,Q_lake,type_res,cat2res,Q_res,wid
 
     ! If the storage exceeds capacity, adjust outflow and storage
     if (Wr_res > cap_res) then
-      if (type_res /= 1) Q_res = Q_res + (Wr_res - cap_res) / dt  ! Adjust outflow for overflow
+      Q_res = Q_res + (Wr_res - cap_res) / dt  ! Adjust outflow for overflow
       Wr_res = cap_res  ! Limit storage to reservoir capacity
     endif
 
