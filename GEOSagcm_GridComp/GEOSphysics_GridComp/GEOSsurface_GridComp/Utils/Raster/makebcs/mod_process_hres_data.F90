@@ -29,6 +29,7 @@ MODULE process_hres_data
   
   use rmTinyCatchParaMod
   use lsm_routines,           ONLY: sibalb
+  use LogRectRasterizeMod,    ONLY: SRTM_maxcat
 
 #if defined USE_EXTERNAL_FINDLOC
   use findloc_mod,            only: findloc
