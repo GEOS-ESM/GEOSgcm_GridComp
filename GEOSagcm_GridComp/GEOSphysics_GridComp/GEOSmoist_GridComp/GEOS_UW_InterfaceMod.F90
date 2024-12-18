@@ -439,8 +439,8 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
   ! Apply tendencies
   !--------------------------------------------------------------
-  Q  = Q  + DQVDT_SC * MOIST_DT    ! note this adds to the convective
-  T  = T  +  DTDT_SC * MOIST_DT    !  tendencies calculated below
+  Q  = Q  + DQVDT_SC * MOIST_DT
+  T  = T  +  DTDT_SC * MOIST_DT
   U  = U  +  DUDT_SC * MOIST_DT
   V  = V  +  DVDT_SC * MOIST_DT
   ! Tiedtke-style cloud fraction !!

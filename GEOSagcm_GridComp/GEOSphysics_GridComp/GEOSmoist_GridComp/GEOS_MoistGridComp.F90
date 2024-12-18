@@ -42,7 +42,7 @@ module GEOS_MoistGridCompMod
 
   private
 
-  logical :: DEBUG = .false.
+  logical :: DEBUG_MST
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
   logical :: LHYDROSTATIC
@@ -193,6 +193,8 @@ contains
     else
        gfEnvRestartSkip = MAPL_RestartSkip
     endif
+
+    call MAPL_GetResource( CF, DEBUG_MST, Label="DEBUG_MST:",  default=.false., RC=STATUS) ; VERIFY_(STATUS)
 
     ! NOTE: Binary restarts expect Q to be the first field in the moist_internal_rst. Thus,
     !       the first MAPL_AddInternalSpec call must be from the microphysics
@@ -5600,12 +5602,44 @@ contains
 
        if (SH_MD_DP) then
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(SHALLOW_OPTION)=="UW"     ) then
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
+           call MAPL_MaxMin('MST: T_AF_UW  ', T)
+           call MAPL_MaxMin('MST: U_AF_UW  ', U)
+           call MAPL_MaxMin('MST: V_AF_UW  ', V)
+           endif
+         endif
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(CONVPAR_OPTION)=="GF"     ) then
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
+           call MAPL_MaxMin('MST: T_AF_GF  ', T)
+           call MAPL_MaxMin('MST: U_AF_GF  ', U)
+           call MAPL_MaxMin('MST: V_AF_GF  ', V)
+           endif
+         endif
        else
          if (adjustl(CONVPAR_OPTION)=="RAS"    ) call     RAS_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
          if (adjustl(CONVPAR_OPTION)=="GF"     ) call      GF_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(CONVPAR_OPTION)=="GF"     ) then
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_GF  ', Q)
+           call MAPL_MaxMin('MST: T_AF_GF  ', T)
+           call MAPL_MaxMin('MST: U_AF_GF  ', U)
+           call MAPL_MaxMin('MST: V_AF_GF  ', V)
+           endif
+         endif
          if (adjustl(SHALLOW_OPTION)=="UW"     ) call      UW_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+         if (adjustl(SHALLOW_OPTION)=="UW"     ) then
+           if (DEBUG_MST) then
+           call MAPL_MaxMin('MST: Q_AF_UW  ', Q)
+           call MAPL_MaxMin('MST: T_AF_UW  ', T)
+           call MAPL_MaxMin('MST: U_AF_UW  ', U)
+           call MAPL_MaxMin('MST: V_AF_UW  ', V)
+           endif
+         endif
        endif
 
        ! Mass fluxes
@@ -5648,6 +5682,15 @@ contains
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
+
+       if (adjustl(CLDMICR_OPTION)=="GFDL_1M") then  
+          if (DEBUG_MST) then
+          call MAPL_MaxMin('MST: Q_AF_MP  ', Q)      
+          call MAPL_MaxMin('MST: T_AF_MP  ', T)
+          call MAPL_MaxMin('MST: U_AF_MP  ', U)
+          call MAPL_MaxMin('MST: V_AF_MP  ', V)
+          endif
+       endif
 
        ! Exports
          ! Cloud fraction exports

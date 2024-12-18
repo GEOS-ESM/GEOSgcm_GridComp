@@ -62,6 +62,10 @@ module uwshcu
    real, parameter :: p00   = 1e5                   ! Reference pressure
    real, parameter :: rovcp = MAPL_RGAS/MAPL_CP     ! Gas constant over specific heat
 
+   real, parameter :: qpmin = 1.e-8  !< min value for suspended rain/snow/liquid/ice precip
+   real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
+   real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
+
    real, parameter :: mintracer = tiny(1.)
 contains
 
@@ -959,7 +963,7 @@ contains
     real :: frc_rasn
 
 !!! TEMPORARY:  should be ncnst array of minimum values for all constituents
-    real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
+!!! real, parameter,dimension(4) :: qmin = [0.,0.,0.,0.]
 
 
     ! ---------------------------------------- !
@@ -4012,7 +4016,7 @@ contains
          ql0_star(:k0) = ql0(:k0) + qlten(:k0) * dt
          qi0_star(:k0) = qi0(:k0) + qiten(:k0) * dt
          s0_star(:k0)  =  s0(:k0) +  sten(:k0) * dt
-         call positive_moisture_single( xlv, xls, k0, dt, qmin(1), qmin(ixcldliq), qmin(ixcldice), &
+         call positive_moisture_single( xlv, xls, k0, dt, &
               dp0, qv0_star, ql0_star, qi0_star, s0_star, qvten, qlten, qiten, sten )
          qtten(:k0)    = qvten(:k0) + qlten(:k0) + qiten(:k0)
          slten(:k0)    = sten(:k0)  - xlv * qlten(:k0) - xls * qiten(:k0)
@@ -4026,7 +4030,7 @@ contains
 
 !         if( m .ne. ixnumliq .and. m .ne. ixnumice ) then
 
-           trmin = 0. !qmin(m)
+           trmin = qcmin
 !#ifdef MODAL_AERO
 !           do mm = 1, ntot_amode
 !             if( m .eq. numptr_amode(mm) ) then
@@ -4877,7 +4881,7 @@ contains
   end subroutine fluxbelowinv
 
 
-  subroutine positive_moisture_single( xlv, xls, mkx, dt, qvmin, qlmin, qimin, dp, qv, ql, qi, s, qvten, qlten, qiten, sten )
+  subroutine positive_moisture_single( xlv, xls, mkx, dt, dp, qv, ql, qi, s, qvten, qlten, qiten, sten )
   ! ------------------------------------------------------------------------------- !
   ! If any 'ql < qlmin, qi < qimin, qv < qvmin' are developed in any layer,         !
   ! force them to be larger than minimum value by (1) condensating water vapor      !
@@ -4891,48 +4895,47 @@ contains
     implicit none
     integer,  intent(in)     :: mkx
     real, intent(in)     :: xlv, xls
-    real, intent(in)     :: qvmin, qlmin, qimin
     real, intent(in)     :: dp(mkx)
     real, intent(in)       :: dt
     real, intent(inout)  :: qv(mkx), ql(mkx), qi(mkx), s(mkx)
     real, intent(inout)  :: qvten(mkx), qlten(mkx), qiten(mkx), sten(mkx)
     integer   k
-    real*8 dql, dqi, dqv, sum, aa, dum 
+    real dql, dqi, dqv, sum, aa, dum 
 
     do k = mkx, 1, -1        ! From the top to the 1st (lowest) layer from the surface
-       dql = max(0._r8,1._r8*qlmin-ql(k))
-       dqi = max(0._r8,1._r8*qimin-qi(k))
+       dql = max(0.0, (qcmin-ql(k)))
+       dqi = max(0.0, (qcmin-qi(k)))
        qlten(k) = qlten(k) +  dql/dt
        qiten(k) = qiten(k) +  dqi/dt
-       qvten(k) = qvten(k) - (dql+dqi)/dt
        sten(k)  = sten(k)  + xlv * (dql/dt) + xls * (dqi/dt)
        ql(k)    = ql(k) +  dql
        qi(k)    = qi(k) +  dqi
-       qv(k)    = qv(k) -  dql - dqi
        s(k)     = s(k)  +  xlv * dql + xls * dqi
-       dqv      = max(0.,1.*qvmin-qv(k))
+
+       qv(k) = qv(k) - dql - dqi
+       dqv  = max(0.0, (qvmin-qv(k)))
        qvten(k) = qvten(k) + dqv/dt
-       qv(k)    = qv(k)   + dqv
+       qv(k)    = qv(k)    + dqv
        if( k .ne. 1 ) then 
            qv(k-1)    = qv(k-1)    - dqv*dp(k)/dp(k-1)
            qvten(k-1) = qvten(k-1) - dqv*dp(k)/dp(k-1)/dt
        endif
        qv(k) = max(qv(k),qvmin)
-       ql(k) = max(ql(k),qlmin)
-       qi(k) = max(qi(k),qimin)
+       ql(k) = max(ql(k),qcmin)
+       qi(k) = max(qi(k),qcmin)
     end do
     ! Extra moisture used to satisfy 'qv(i,1)=qvmin' is proportionally 
     ! extracted from all the layers that has 'qv > 2*qvmin'. This fully
     ! preserves column moisture. 
-    if( dqv .gt. 1.e-20_r8 ) then
+    if( dqv .gt. qvmin ) then
         sum = 0.
         do k = 1, mkx
-           if( qv(k) .gt. 2._r8*qvmin ) sum = sum + qv(k)*dp(k)
+           if( qv(k) .gt. 2.0*qvmin ) sum = sum + qv(k)*dp(k)
         enddo
-        aa = dqv*dp(1)/max(1.e-20_r8,sum)
-        if( aa .lt. 0.5_r8 ) then
+        aa = dqv*dp(1)/max(qvmin,sum)
+        if( aa .lt. 0.5 ) then
             do k = 1, mkx
-               if( qv(k) .gt. 2._r8*qvmin ) then
+               if( qv(k) .gt. 2.0*qvmin ) then
                    dum      = aa*qv(k)
                    qv(k)    = qv(k) - dum
                    qvten(k) = qvten(k) - dum/dt

@@ -77,7 +77,7 @@ module GEOS_GwdGridCompMod
      type (GEOS_GwdGridComp), pointer     :: PTR
   end type wrap_
 
-  !logical, save      :: FIRST_RUN = .true.
+  logical :: DEBUG_GWD
 
 contains
 
@@ -941,6 +941,8 @@ contains
           end do
       endif
 
+      call MAPL_GetResource( MAPL, DEBUG_GWD,   Label="DEBUG_GWD:", default=.FALSE., _RC)
+
       allocate(self%alpha(LM+1), _STAT)
       call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
       call gw_newtonian_set(LM, PREF, self%alpha)
@@ -1480,6 +1482,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated( PREF_EXP )) PREF_EXP = PREF
     if(associated(  SGH_EXP ))  SGH_EXP = SGH
     if(associated(  PLE_EXP ))  PLE_EXP = PLE
+
+    if (DEBUG_GWD) then
+       if(associated( T_EXP )) call MAPL_MaxMin('GWD: T_AF_GWD ', T_EXP)
+       if(associated( U_EXP )) call MAPL_MaxMin('GWD: U_AF_GWD ', U_EXP)
+       if(associated( V_EXP )) call MAPL_MaxMin('GWD: V_AF_GWD ', V_EXP)
+    endif
 
     if (allocated(scratch_ridge)) deallocate(scratch_ridge)
 

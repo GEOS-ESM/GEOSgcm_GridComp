@@ -2240,7 +2240,7 @@ contains
    real, pointer, dimension(:,:,:)     ::  UFORCHEM, VFORCHEM, TFORCHEM, THFORCHEM
    real, pointer, dimension(:,:,:)     ::  UFORTURB, VFORTURB, TFORTURB, THFORTURB, SFORTURB
    real, pointer, dimension(:,:,:)     ::                      TFORRAD
-   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, QAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
+   real, pointer, dimension(:,:,:)     :: UAFDIFFUSE, VAFDIFFUSE, SAFDIFFUSE, SAFUPDATE
 
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
@@ -2393,11 +2393,6 @@ contains
     call MAPL_GetPointer(IMPORT,  PLE,     'PLE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  AREA,    'AREA'   , RC=STATUS); VERIFY_(STATUS)
 
-    allocate( TDPOLD(IM,JM,LM),stat=STATUS )
-    VERIFY_(STATUS)
-
-    TDPOLD = T(:,:,1:LM) * (PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
-
     allocate(DM(IM,JM,LM),stat=STATUS)
     VERIFY_(STATUS)
     DM = (PLE(:,:,1:LM)-PLE(:,:,0:LM-1))*(1.0/MAPL_GRAV)
@@ -2405,6 +2400,10 @@ contains
     allocate(DPI(IM,JM,LM),stat=STATUS)
     VERIFY_(STATUS)
     DPI = 1./(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
+
+    allocate( TDPOLD(IM,JM,LM),stat=STATUS )
+    VERIFY_(STATUS)
+    TDPOLD = T(:,:,1:LM) * DPI
 
    ! Create Old Dry Mass Variables
    ! -----------------------------
@@ -2689,7 +2688,8 @@ contains
       SFORTURB =  SAFMOIST
 
      if (DEBUG_SYNCTQ) then
-     call MAPL_MaxMin('SYNCTQ: TAFMOIST ', TFORTURB)
+     call MAPL_MaxMin('SYNCTQ: TAFMOIST ', TAFMOIST)
+     call MAPL_MaxMin('SYNCTQ: QAFMOIST ', QAFMOIST)
      call MAPL_MaxMin('SYNCTQ: TFORSURF ', TFORSURF)
      call MAPL_MaxMin('SYNCTQ: UFORSURF ', UFORSURF)
      call MAPL_MaxMin('SYNCTQ: VFORSURF ', VFORSURF)
@@ -2759,7 +2759,6 @@ contains
      call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(TURBL), QAFDIFFUSE, 'QAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
     ! For TURBL
      call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
      call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
@@ -2782,12 +2781,12 @@ contains
        call VertInterp(TFORSURF,TFORTURB  ,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
        call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
        call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFDIFFUSE,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QV        ,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        TFORSURF =   TFORTURB(:,:,LM)
        UFORSURF = UAFDIFFUSE(:,:,LM)
        VFORSURF = VAFDIFFUSE(:,:,LM)
-       QFORSURF = QAFDIFFUSE(:,:,LM)
+       QFORSURF =         QV(:,:,LM)
      endif
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
@@ -2845,13 +2844,13 @@ contains
     call MAPL_TimerOff(STATE,GCNames(I))
 
     if ( SYNCTQ.ge.1. ) then
+     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T',  RC=STATUS); VERIFY_(STATUS)
      ! From TURBL Stage 2
      call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE', RC=STATUS); VERIFY_(STATUS)
      ! For RAD
-     call MAPL_GetPointer ( GIM(RAD), TFORRAD, 'T', RC=STATUS); VERIFY_(STATUS)
-     ! For Stage 2 - Changes in S from TURBL assumed to be all in T
+      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
       TFORRAD = TFORTURB + (SAFUPDATE-SAFDIFFUSE)/MAPL_CP
-     ! For CHEM use the same T as CHEM
+     ! For CHEM use the same T as RAD
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS); VERIFY_(STATUS)
@@ -2860,6 +2859,7 @@ contains
      endif
 
      if (DEBUG_SYNCTQ) then
+     call MAPL_MaxMin('SYNCTQ: QFORRAD ', QV)
      call MAPL_MaxMin('SYNCTQ: TFORRAD ', TFORRAD)
      endif
 
@@ -2899,6 +2899,10 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1                                          
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+    if (DEBUG_SYNCTQ) then
+      call MAPL_MaxMin('SYNCTQ: TAFRAD ', TFORRAD + DT*TIR*DPI)
+    endif
 
 ! Clean up SYNTQ things
     if ( SYNCTQ.ge.1. ) then
@@ -2953,7 +2957,7 @@ contains
     if(NEED_FRI) then
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
-       FRI         = INTDIS + TOPDIS
+       FRI = INTDIS + TOPDIS
     end if
 
     if(NEED_STN) then
@@ -3039,6 +3043,33 @@ contains
               + TIG   &  ! Mass-Weighted Temperature Tendency due to GWD
               + TICU     ! Mass-Weighted Temperature Tendency due to Cumulus Friction
        end if
+
+      if (DEBUG_SYNCTQ) then
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLW', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LW  ', TDPOLD/DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWC', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWC ', TDPOLD/DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWNA', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWNA  ', TDPOLD/DPI + DT*PTR3D)
+
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSW', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SW  ', TDPOLD/DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWC', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWC ', TDPOLD/DPI + DT*PTR3D)
+        call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWNA', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWNA  ', TDPOLD/DPI + DT*PTR3D)
+
+        call MAPL_MaxMin('FRI: INT ', TDPOLD/DPI + DT*INTDIS*DPI)
+        call MAPL_MaxMin('FRI: TOP ', TDPOLD/DPI + DT*TOPDIS*DPI)
+
+        call MAPL_MaxMin('PHYINC: OLD ', TDPOLD/DPI)
+        call MAPL_MaxMin('PHYINC: TIR ', TDPOLD/DPI + DT*TIR *DPI)
+        call MAPL_MaxMin('PHYINC: STN ', TDPOLD/DPI + DT*STN *DPI)
+        call MAPL_MaxMin('PHYINC: TTN ', TDPOLD/DPI + DT*TTN *DPI)
+        call MAPL_MaxMin('PHYINC: FRI ', TDPOLD/DPI + DT*FRI *DPI)
+        call MAPL_MaxMin('PHYINC: TIG ', TDPOLD/DPI + DT*TIG *DPI)
+        call MAPL_MaxMin('PHYINC: TICU', TDPOLD/DPI + DT*TICU*DPI)
+      endif
 
        IF(DO_SPPT) THEN
           allocate(TFORQS(IM,JM,LM))
@@ -3197,7 +3228,7 @@ contains
     do L=1,LM
        TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
     enddo
-       DTDT = ( TDPNEW - TDPOLD )/DT
+!!!!!  DTDT = ( TDPNEW - TDPOLD )/DT
     deallocate( TDPNEW )
     deallocate( TDPOLD )
 
@@ -3483,8 +3514,8 @@ contains
       DQDT_BL = DQVDTTRB
       DTDT_BL = 0.
       !- for SCM setup, TIT/TIF are not associated
-      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF
-      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT
+      if( associated(TIF)) DTDT_BL = DTDT_BL + TIF/DPI
+      if( associated(TIT)) DTDT_BL = DTDT_BL + TIT/DPI
     endif
 
     if(associated(DM )) deallocate(DM )
