@@ -91,9 +91,7 @@ Exports:
    PCU:
      - {starting: "1958-01-01T00:00:00", collection: prra_1_5_0, regrid: CONSERVE, sample:  flux_conserve_sample, variable: prra}
      - {starting: "2020-01-01T00:00:00", collection: prra_1_5_0_1, regrid: CONSERVE, sample: flux_conserve_sample, variable: prra}
-   PLS:
-     - {starting: "1958-01-01T00:00:00", collection: prra_1_5_0, regrid: CONSERVE, sample: flux_conserve_sample, variable: prra}
-     - {starting: "2020-01-01T00:00:00", collection: prra_1_5_0_1, regrid: CONSERVE, sample: flux_conserve_sample, variable: prra}
+   PLS: {collection: /dev/null}
    SNO:
      - {starting: "1958-01-01T00:00:00", collection: prsn_1_5_0, regrid: CONSERVE, sample: flux_conserve_sample, variable: prsn}
      - {starting: "2020-01-01T00:00:00", collection: prsn_1_5_0_1, regrid: CONSERVE, sample: flux_conserve_sample, variable: prsn}
