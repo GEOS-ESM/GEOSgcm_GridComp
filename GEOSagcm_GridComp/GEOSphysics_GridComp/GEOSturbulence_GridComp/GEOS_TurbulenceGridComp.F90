@@ -5998,15 +5998,29 @@ end subroutine RUN1
             if(associated(INTDIS)) then
                DF = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
                INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF(:,:,1:LM-1)
-               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF(:,:,1:LM-1)
-              ! limit INTDIS to 10-deg/hour
-              !do L=1,LM
-              !   do J=1,JM
-              !      do I=1,IM
-              !         INTDIS(I,J,L) = SIGN(min(10.0/3600.0,ABS(INTDIS(I,J,L))*DP(I,J,L))/DP(I,J,L),INTDIS(I,J,L))
-              !      end do
-              !   end do
-              !end do
+               INTDIS(:,:,2:LM-1) = INTDIS(:,:,2:LM-1) + DF(:,:,1:LM-2)
+               ! Add surface dissipation to lower 200m
+               do J=1,JM
+                  do I=1,IM
+                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
+                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
+                  end do
+               end do
+               do J=1,JM
+                  do I=1,IM
+                     do L=L200(I,J),LM
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
+                     end do 
+                  end do
+               end do
+              ! limit INTDIS to 5-deg/hour
+               do L=1,LM
+                  do J=1,JM
+                     do I=1,IM
+                        INTDIS(I,J,L) = SIGN(min(5.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
+                     end do
+                  end do
+               end do
                if(associated(KETRB)) then
                   do L=1,LM
                      KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
