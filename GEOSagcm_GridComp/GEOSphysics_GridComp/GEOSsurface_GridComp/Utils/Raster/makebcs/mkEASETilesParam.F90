@@ -975,7 +975,7 @@ PROGRAM mkEASETilesParam
   close(10,status='keep')      
   close(11,status='keep')
   
-  ! write nc4-formatted tile file
+  ! write nc4-formatted tile file (including supplemental tile attributes ["catchment.def"])
 
   call WriteTilingNC4('til/'//trim(gfile)//'.nc4', [EASELabel],[nc_ease],[nr_ease], &
        nc, nr, iTable, rTable)

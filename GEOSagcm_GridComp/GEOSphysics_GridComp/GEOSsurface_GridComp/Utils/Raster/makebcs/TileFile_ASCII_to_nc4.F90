@@ -93,58 +93,55 @@ program TileFile_ASCII_to_nc4
      read (unit,*) tmpline     ! read info for first tile (to accommodate legacy EASE grid issues above)
 
   endif
-  
-  if ( index(gName1, 'EASE') /=0) then
-     call ease_extent(gName1, tmp_in1, tmp_in2, cell_area=cell_area)
-  endif
-
-  ! At this point, the info for the first tile is already in tmpline
 
   allocate(iTable(N_tile,0:7))
   allocate(rTable(N_tile,10))
-
+  
   rTable = MAPL_UNDEF  
 
-  if ( index(gName1, 'EASE') /=0 ) then
+  ! read ASCII tile file (NOTE: Info for first tile is already in tmpline!)
+  
+  if ( index(gName1, 'EASE') /=0 ) then  ! EASE grid tile space
      
-     ! EASE grid tile space
+     read (tmpline,*) iTable(1,0), iTable(1,4), rTable(1,1), rTable(1,2),   &
+                      iTable(1,2), iTable(1,3), rTable(1,4)
 
-     i = 1
-     read(tmpline,*)   iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2),   &
-          iTable(i,2), iTable(i,3), rTable(i,4)
      do i = 2, N_tile
-        read(unit,*) iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2),  &
-             iTable(i,2), iTable(i,3), rTable(i,4)
+        read (unit,*) iTable(i,0), iTable(i,4), rTable(i,1), rTable(i,2),   &
+                      iTable(i,2), iTable(i,3), rTable(i,4)
      enddo
 
      ! rTable(:,4) is tile area fraction within grid cell (fr), convert to area;
      ! get fr back in WriteTilingNC4
 
+     call ease_extent(gName1, tmp_in1, tmp_in2, cell_area=cell_area)  ! get EASE grid cell area
+     
      rTable(:,3) = rTable(:,4)*cell_area
      rTable(:,4) = cell_area 
-
-  else
-
-     ! lat/lon or cube-sphere tile space
-
-     i = 1
-     read(tmpline,*)   iTable(i,0), rTable(i,3), rTable(i,1), rTable(i,2),   &
-          iTable(i,2), iTable(i,3), rTable(i,4), iTable(i,6),                &
-          iTable(i,4), iTable(i,5), rTable(i,5), iTable(i,7)
+     
+  else  ! lat/lon or cube-sphere tile space
+     
+     read (tmpline,*) iTable(1,0), rTable(1,3), rTable(1,1), rTable(1,2),   &
+                      iTable(1,2), iTable(1,3), rTable(1,4), iTable(1,6),   &
+                      iTable(1,4), iTable(1,5), rTable(1,5), iTable(1,7)
      
      do i = 2, N_tile
-        read(unit,*) iTable(i,0), rTable(i,3), rTable(i,1), rTable(i,2),  &
-             iTable(i,2), iTable(i,3), rTable(i,4), iTable(i,6),             &
-             iTable(i,4), iTable(i,5), rTable(i,5), iTable(i,7)
+        read (unit,*) iTable(i,0), rTable(i,3), rTable(i,1), rTable(i,2),   &
+                      iTable(i,2), iTable(i,3), rTable(i,4), iTable(i,6),   &
+                      iTable(i,4), iTable(i,5), rTable(i,5), iTable(i,7)
      enddo
+
      ! re-define rTable(:,4) and rTable(:,5).
      ! fr will be re-created in WriteTilingNC4
+
      where (rTable(:,4) /=0.0)
        rTable(:,4) = rTable(:,3)/rTable(:,4)
      endwhere
+
      where (rTable(:,5) /=0.0)
        rTable(:,5) = rTable(:,3)/rTable(:,5)
      endwhere
+
   endif
 
   close(unit)
@@ -152,7 +149,9 @@ program TileFile_ASCII_to_nc4
   ! ----------------------------------------------------------------------
   !
   ! open and read catchment.def ASCII file
+
   inquire( file= trim(catchmentdef_file), exist=file_exists)
+
   if (file_exists) then
 
      open (newunit=unit, file=trim(catchmentdef_file), form='formatted', action='read')
@@ -167,7 +166,7 @@ program TileFile_ASCII_to_nc4
           rTable(i, 7), &
           rTable(i, 8), &
           rTable(i, 9), &
-          rTable(i, 10)
+          rTable(i,10)
      enddo
 
      close(unit)

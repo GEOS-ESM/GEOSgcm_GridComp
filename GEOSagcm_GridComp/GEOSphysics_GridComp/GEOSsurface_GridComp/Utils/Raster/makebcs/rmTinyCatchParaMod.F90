@@ -34,7 +34,7 @@ module rmTinyCatchParaMod
   private
 
   public remove_tiny_tiles,modis_alb_on_tiles
-  public catchment_def,soil_para_high
+  public supplemental_tile_attributes,soil_para_high
   public create_soil_types_files,compute_mosaic_veg_types
   public cti_stat_file, create_model_para_woesten
   public create_model_para, modis_lai,regridraster,regridrasterreal
@@ -2003,7 +2003,11 @@ integer :: n_threads=1
 ! 
 !----------------------------------------------------------------------
 
-  SUBROUTINE catchment_def (nx,ny,regrid,dateline,gfilet,gfiler)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,gfilet,gfiler)
+
+    ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
+    !    incl. min/max lat/lon of each tile and tile elevation
+    ! 2) write nc4-formatted til file (incl. supplemental tile attributes)
 
     implicit none
 
@@ -2257,7 +2261,7 @@ integer :: n_threads=1
     if(regrid) then
        deallocate(raster)
     endif 
-  END SUBROUTINE catchment_def
+  END SUBROUTINE supplemental_tile_attributes
  
 !----------------------------------------------------------------------
   
