@@ -11,6 +11,9 @@ module rmTinyCatchParaMod
   use MAPL_ConstantsMod
   use MAPL_Base,    ONLY: MAPL_UNDEF
   use lsm_routines, ONLY: sibalb
+  use LogRectRasterizeMod, only: SRTM_maxcat
+  use LogRectRasterizeMod, only: WritetilingNC4 
+ 
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -31,7 +34,7 @@ module rmTinyCatchParaMod
   private
 
   public remove_tiny_tiles,modis_alb_on_tiles
-  public catchment_def,soil_para_high
+  public supplemental_tile_attributes,soil_para_high
   public create_soil_types_files,compute_mosaic_veg_types
   public cti_stat_file, create_model_para_woesten
   public create_model_para, modis_lai,regridraster,regridrasterreal
@@ -40,8 +43,6 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
-
-  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
@@ -2002,16 +2003,20 @@ integer :: n_threads=1
 ! 
 !----------------------------------------------------------------------
 
-  SUBROUTINE catchment_def (nx,ny,regrid,dateline,gfilet,gfiler)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,gfilet,gfiler)
+
+    ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
+    !    incl. min/max lat/lon of each tile and tile elevation
+    ! 2) write nc4-formatted til file (incl. supplemental tile attributes)
 
     implicit none
 
     INTEGER, allocatable, dimension(:) :: CATID  
-    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib
+    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib, status
     INTEGER, allocatable, dimension (:) :: id,I_INDEX,J_INDEX 
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: typ,pfs,ig,jg,j_dum,i_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath
     character*200 :: gtopo30
@@ -2021,12 +2026,15 @@ integer :: n_threads=1
     REAL, ALLOCATABLE :: limits(:,:)
     REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,sum2,dx_gcm,dy_gcm
     REAL, dimension (:), allocatable :: tile_ele, tile_area,tile_area_land  
-    integer :: nx,ny,status
+    integer :: nx,ny,IM(2), JM(2)
     logical :: regrid
     real, pointer :: Raster(:,:)
 
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
+    real(kind=8),      allocatable :: rTable(:,:)
+    integer,           allocatable :: iTable(:,:)
+    character(len=128)             :: gName(2)
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
@@ -2065,20 +2073,29 @@ integer :: n_threads=1
     allocate(tile_area(ip))  
     id=0
     read (10,*)j_dum
-
+    IM = 0
+    JM = 0
+    gName = ['','']
     do n = 1, j_dum
        read (10,'(a)')version
        read (10,*)nc_gcm
        read (10,*)nr_gcm
+       gName(n) = version
+       IM(n)    = nc_gcm
+       JM(n)    = nr_gcm
     end do
     
 !    dx_gcm = 360./float(nc_gcm)
 !    dy_gcm = 180./float(nr_gcm)    
 
+    allocate(iTable(ip,0:7))
+    allocate(rTable(ip,10))    
+    rTable = MAPL_UNDEF
+
     do n = 1,ip
  
       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
+            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
 	    tile_area(n) = tarea
             id(n)=pfs
 	    i_index(n) = ig 
@@ -2086,6 +2103,18 @@ integer :: n_threads=1
 
        if (typ == 100) ip2 = n
        if(ierr /= 0)write (*,*)'Problem reading'
+       iTable(n,0) = typ
+       rTable(n,3) = tarea
+       rTable(n,1) = lon
+       rTable(n,2) = lat
+       iTable(n,2) = ig
+       iTable(n,3) = jg
+       rTable(n,4) = fr_gcm
+       iTable(n,6) = indx_dum
+       iTable(n,4) = pfs
+       iTable(n,5) = i_dum
+       rTable(n,5) = fr_cat
+       iTable(n,7) = j_dum           
     end do
     close (10,status='keep')
 
@@ -2207,13 +2236,32 @@ integer :: n_threads=1
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
 
+    rTable(1:maxcat,6:9) = limits
+    rTable(1:maxcat, 10) = tile_ele(1:maxcat)
+    ! re-define rTable(:,4) and rTable(:,5).
+    ! fr will be re-created in WriteTilingNC4
+    where (rTable(:,4) /=0.0)
+       rTable(:,4) = rTable(:,3)/rTable(:,4)
+    endwhere
+    where (rTable(:,5) /=0.0)
+       rTable(:,5) = rTable(:,3)/rTable(:,5)
+    endwhere
+
+    fname=trim(gfilet)//'.nc4'
+    if (im(2) == 0) then ! one grid
+      call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, maxcat=SRTM_maxcat)
+    else ! two grids
+      call WriteTilingNC4(fname, gName, im, jm, nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
+    endif
+
+    deallocate (rTable, iTable)
     deallocate (limits)
     deallocate (catid)
     deallocate (q0)
     if(regrid) then
        deallocate(raster)
     endif 
-  END SUBROUTINE catchment_def
+  END SUBROUTINE supplemental_tile_attributes
  
 !----------------------------------------------------------------------
   
