@@ -1772,7 +1772,7 @@ integer :: n_threads=1
 
        print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
 
-       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev 
+       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev) 
        
        ! verify adjustment
        
