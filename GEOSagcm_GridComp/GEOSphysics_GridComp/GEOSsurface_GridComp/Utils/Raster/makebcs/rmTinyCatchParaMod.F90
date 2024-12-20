@@ -1390,24 +1390,17 @@ integer :: n_threads=1
     write (20,*)nr_ocean
     
     do n = 1,ip
-       
-     read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_old,pfs,i_dum,fr_cat,j_dum
 
-       if(n <= ip2)then
-          if (rev_indx(n)>0) then
+      if (rev_indx(n)>0) then
+        if(n <= ip2) fr_cat = total_area(rev_indx(n))/pfaf(i_dum)
              
-             write(20,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr) &
-                  typ,tile_area(rev_indx(n)),lon_c(rev_indx(n)),lat_c(rev_indx(n)),ig,jg,   &
-                  tile_frac(n),indx_old,pfs,i_dum,total_area(rev_indx(n))/pfaf(i_dum),rev_indx(n)
-
-          endif
-       else
-          if (rev_indx(n)>0)write(20,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr) &
+        write(20,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr) &
             typ,tile_area(rev_indx(n)),lon_c(rev_indx(n)),lat_c(rev_indx(n)),ig,jg,   &
             tile_frac(n),indx_old,pfs,i_dum,fr_cat,rev_indx(n)
 
-       endif
+      endif
     end do
 
     write(*,*)'Surface Area of the Earth',sum(tile_area)
@@ -2035,6 +2028,7 @@ integer :: n_threads=1
     real(kind=8),      allocatable :: rTable(:,:)
     integer,           allocatable :: iTable(:,:)
     character(len=128)             :: gName(2)
+    logical, allocatable           :: IsOcean(:)
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
@@ -2092,17 +2086,24 @@ integer :: n_threads=1
     allocate(rTable(ip,10))    
     rTable = MAPL_UNDEF
 
+    allocate(IsOcean(ip))
+    IsOcean = .false.
+
     do n = 1,ip
  
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
-	    tile_area(n) = tarea
-            id(n)=pfs
-	    i_index(n) = ig 
-	    j_index(n) = jg 
+
+       if(ierr /= 0)write (*,*)'Problem reading'
+
+       tile_area(n) = tarea
+       id(n)        = pfs
+       i_index(n)   = ig 
+       j_index(n)   = jg 
 
        if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading'
+       if (typ == 0  ) IsOcean(n) = .true.
+
        iTable(n,0) = typ
        rTable(n,3) = tarea
        rTable(n,1) = lon
@@ -2121,8 +2122,8 @@ integer :: n_threads=1
     maxcat=ip2-ip1
 
 ! Tile elevation
-    allocate(tile_ele(1:maxcat))
-    allocate(tile_area_land(1:maxcat))
+    allocate(tile_ele(1:ip))
+    allocate(tile_area_land(1:ip))
     tile_ele = 0.
     tile_area_land = 0.
 
@@ -2135,39 +2136,37 @@ integer :: n_threads=1
        read (10)(catid(i),i=1,i_sib)
 
        do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
-	        tile_ele(catid(i)-ip1) = tile_ele(catid(i)-ip1) + raster(i,j)*   &	
-			(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
-		tile_area_land(catid(i)-ip1) = tile_area_land(catid(i)-ip1) +  &	
-			(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)		 
-	     endif
-	enddo	
+          if (.not. IsOcean(catid(i)-ip1)) then
+            tile_ele(catid(i)-ip1) = tile_ele(catid(i)-ip1) + raster(i,j)*   &
+                                     (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+            tile_area_land(catid(i)-ip1) = tile_area_land(catid(i)-ip1) +  &
+                                           (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+         endif
+       enddo
     enddo
-    tile_ele = tile_ele/tile_area_land
+    where ( .not. IsOcean)  tile_ele = tile_ele/tile_area_land
     close (10, status='keep')  
 
     ! adjustment Global Mean Topography to 614.649 (615.662 GTOPO 30) m
     ! --------------------------------------------
     sum1=0.
     sum2=0. 
-    do j=1,maxcat	 
-         sum1 = sum1 + tile_ele(j)*tile_area(j)
+    do j=1,maxcat
+       sum1 = sum1 + tile_ele(j)*tile_area(j)
     enddo
     if(sum1/sum(tile_area(1:maxcat)).ne. 614.649D0 ) then
-!	print *,sum1/sum(tile_area(1:maxcat))
-	tile_ele =tile_ele*(614.649D0 / (sum1/sum(tile_area(1:maxcat))))				  	
-	sum1=0.
-	sum2=0. 
-	do j=1,maxcat	 
-	   sum1 = sum1 + tile_ele(j)*tile_area(j)
-	enddo
-!	print *,sum1/sum(tile_area(1:maxcat))
+       tile_ele(1:maxcat) =tile_ele(1:maxcat)*(614.649D0 / (sum1/sum(tile_area(1:maxcat))))
+       sum1=0.
+       sum2=0. 
+       do j=1,maxcat
+         sum1 = sum1 + tile_ele(j)*tile_area(j)
+       enddo
     endif
     
 
 ! catchment def file
 ! ------------------
-    allocate(limits(1:maxcat,1:4))
+    allocate(limits(1:ip,1:4))
     limits(:,1)=360.
     limits(:,2)=-360.
     limits(:,3)=90.
@@ -2183,7 +2182,7 @@ integer :: n_threads=1
        if (index(dateline,'DE')/=0) then
           
           do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
+             if( .not. IsOcean(catid(i)- ip1))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
                 mxx =-180. + float(i)  *360./float(i_sib)
                 if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2194,7 +2193,7 @@ integer :: n_threads=1
           end do
        else
          do i=1,i_sib- i_sib/nc_gcm/2         
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then
+            if( .not. IsOcean(catid(i) - ip1)) then
                mnx =-180. + float(i-1)*360./float(i_sib)
                mxx =-180. + float(i)  *360./float(i_sib)
                if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2204,7 +2203,7 @@ integer :: n_threads=1
             endif
          end do
          do i=i_sib- i_sib/nc_gcm/2  +1,i_sib       
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then               
+            if( .not. IsOcean(catid(i) - ip1)) then
                mnx =-360. -180. + float(i-1)*360./float(i_sib)
                mxx =-360. -180. + float(i)  *360./float(i_sib)
                if(mnx < -180. ) mnx = mnx + 360.
@@ -2225,9 +2224,14 @@ integer :: n_threads=1
          form='formatted',status='unknown')
     write (10,*)maxcat
 
+    where (limits(:,1).lt.-180.) limits(:,1) = limits(:,1) + 360.0
+    where (limits(:,2).le.-180.) limits(:,2) = limits(:,2) + 360.0
+
+    where (IsOcean)
+       limits(:,2) = -360.0
+    endwhere
+
     do j=1,maxcat
-       if(limits(j,1).lt.-180.) limits(j,1)= limits(j,1)+360.
-       if(limits(j,2).le.-180.) limits(j,2)= limits(j,2)+360.  
  !      if(trim(dateline)=='DC')then
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
@@ -2235,9 +2239,10 @@ integer :: n_threads=1
        write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
+    close(10,status='keep')
 
-    rTable(1:maxcat,6:9) = limits
-    rTable(1:maxcat, 10) = tile_ele(1:maxcat)
+    rTable(1:ip,6:9) = limits
+    rTable(1:ip, 10) = tile_ele(1:ip)
     ! re-define rTable(:,4) and rTable(:,5).
     ! fr will be re-created in WriteTilingNC4
     where (rTable(:,4) /=0.0)
@@ -2623,7 +2628,7 @@ integer :: n_threads=1
     
     do n = 1,ip
       if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+        read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
       else
       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
