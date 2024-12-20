@@ -32,7 +32,8 @@ PROGRAM mkEASETilesParam
   
   use EASE_conv,          only : EASE_extent, EASE_convert, EASE_inverse
   use rmTinyCatchParaMod, only : i_raster, j_raster 
-  use rmTinyCatchParaMod, only : RegridRasterReal                  
+  use rmTinyCatchParaMod, only : RegridRasterReal     
+  use rmTinyCatchParaMod, only : Target_mean_land_elev
   use process_hres_data,  only : histogram
   use LogRectRasterizeMod
   use MAPL_SortMod
@@ -53,8 +54,6 @@ PROGRAM mkEASETilesParam
   integer, parameter :: LandType   =  1 ! land    type used for processing here; in GEOS, land    tiles are type=100
   integer, parameter :: LakeType   = 10 ! lake    type used for processing here; in GEOS, lake    tiles are type= 19
   integer, parameter :: IceType    = 11 ! landice type used for processing here; in GEOS, landice tiles are type= 20
-  
-  real*8,  parameter :: Target_mean_land_elev = 614.649D0     
   
   ! ------------------------------------------------------------
   
