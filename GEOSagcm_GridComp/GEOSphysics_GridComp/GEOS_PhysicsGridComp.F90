@@ -3223,13 +3223,15 @@ contains
         enddo
     endif
 
-    allocate( TDPNEW(IM,JM,LM),stat=STATUS )
-    VERIFY_(STATUS)
-    do L=1,LM
-       TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
-    enddo
-!!!!!  DTDT = ( TDPNEW - TDPOLD )/DT
-    deallocate( TDPNEW )
+! WMP: is handled inside of FV3 ADD_INCS
+!
+!   allocate( TDPNEW(IM,JM,LM),stat=STATUS )
+!   VERIFY_(STATUS)
+!   do L=1,LM
+!      TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
+!   enddo
+!   DTDT = ( TDPNEW - TDPOLD )/DT
+!   deallocate( TDPNEW )
     deallocate( TDPOLD )
 
     if(associated(FTU)) then
