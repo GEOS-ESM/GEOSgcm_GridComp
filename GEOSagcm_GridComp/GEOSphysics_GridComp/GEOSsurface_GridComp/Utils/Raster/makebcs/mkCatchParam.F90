@@ -233,14 +233,14 @@ integer :: n_threads=1
        ! Creating catchment.def 
        ! ----------------------
        
-       tmpstring = 'Step 01: Supplemental catchment definitions'
+       tmpstring = 'Step 01: Supplemental tile attributes and nc4-formatted tile file'
        fname_tmp = 'clsm/catchment.def'
        write (log_file,'(a,a,a,a)') trim(tmpstring), ' (', trim(fname_tmp), ')'
        if(.not.ease_grid) then  
           inquire(file=trim(fname_tmp), exist=file_exists)
           if (.not.file_exists) then
              write (log_file,'(a)')'         Creating file...'
-             call catchment_def (nc,nr,regrid,dl,fnameTil,fnameRst) 
+             call supplemental_tile_attributes(nc,nr,regrid,dl,fnameTil,fnameRst) 
              write (log_file,'(a)')'         Done.'
           else
              write (log_file,'(a)')'         Using existing file.'
@@ -250,10 +250,10 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
-        open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-              action =  'read')
-        read (10, *) N_tile
-        close (10, status = 'keep')
+       open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
+             action =  'read')
+       read (10, *) N_tile
+       close (10, status = 'keep')
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
        if (.not.file_exists) CALL open_landparam_nc4_files(N_tile,process_snow_albedo)  

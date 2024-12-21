@@ -11,6 +11,9 @@ module rmTinyCatchParaMod
   use MAPL_ConstantsMod
   use MAPL_Base,    ONLY: MAPL_UNDEF
   use lsm_routines, ONLY: sibalb
+  use LogRectRasterizeMod, only: SRTM_maxcat
+  use LogRectRasterizeMod, only: WritetilingNC4 
+ 
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -28,10 +31,13 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
 
+  real*8,  parameter :: Target_mean_land_elev = 614.649D0  ! *8 not used, but keep to avoid non-0-diff changes, reichle, 20 Dec 2024
+  
   private
 
-  public remove_tiny_tiles,modis_alb_on_tiles
-  public catchment_def,soil_para_high
+  public Target_mean_land_elev
+  public modis_alb_on_tiles
+  public supplemental_tile_attributes,soil_para_high
   public create_soil_types_files,compute_mosaic_veg_types
   public cti_stat_file, create_model_para_woesten
   public create_model_para, modis_lai,regridraster,regridrasterreal
@@ -40,8 +46,6 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
-
-  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
 
   ! The following variables define the details of the BCS version (data sources).
   ! Initialize to dummy values here and set to desired values in init_bcs_config().
@@ -993,430 +997,13 @@ integer :: n_threads=1
 !
 ! ====================================================================
 !
-  SUBROUTINE remove_tiny_tiles (                         &
-       dateline,poles,gout) 
-
-    IMPLICIT NONE
-    INTEGER :: ip,ip2,nc_gcm,nr_gcm,nc_ocean,nr_ocean,pick_val,k,nc,nr
-    INTEGER :: typ,pfs,ig,jg,indx,indx_old,j_dum,ierr,n,count,count_remain,i_dum
-    REAL :: lat,lon,mx_frac,da,tarea
-    REAL(KIND=8) :: fr_gcm,fr_ocean,fr_cat,lats,dx,dy,d2r
-    INTEGER :: im,jm,i,j,jk,ik,jx
-    INTEGER :: l,imn,imx,jmn,jmx
-    CHARACTER*30 :: version
-    CHARACTER*128 :: fname,gname,gout,gpath
-    character*300 :: string1, string2
-    integer(kind=4), allocatable, dimension(:,:) :: grid
-    integer(kind=4), allocatable, dimension(:,:) :: grida
-    REAL (kind=8), PARAMETER :: threshold=0.01,RADIUS=MAPL_RADIUS,pi= MAPL_PI 
-    real(kind=8), allocatable, dimension(:) :: tile_frac,total_area,pfaf,tile_area(:),lon_c(:),lat_c(:),int_c(:)
-    character*2 :: dateline,poles
-    integer, allocatable, dimension(:) :: rev_indx
-    real, allocatable, dimension(:,:):: tile_frac_2d
-    integer(kind=4),allocatable :: GRIDX(:,:)
-    !
-    nc=i_raster 
-    nr=j_raster
-    dx  = 360._8/nc
-    dy  = 180._8/nr
-    d2r = PI/180._8
-
-    print *,'Revised tile space..:','clsm/'//trim(gout)//'-Pfaf.notiny'
-    
-    gname='til/'//trim(gout)//'-Pfafstetter'
-    fname=  trim(gname)//'.til'
-
-    print *,'Any tile whose geographic area is <',threshold
-    print *,'of the AGCM grid box will be dissolved and'
-    print *,'the largest geographic neighbor will annex it!'
-    print *,'----------------------------------------------'
-
-    open (10,file=trim(fname),status='old',action='read',form='formatted')
-    read (10,*)ip
-    read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
- 
-    count=0
-
-    do n = 1,ip
-
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_old,pfs,j_dum,fr_cat,j_dum
- 
-       if (typ == 100) ip2 = n
-       if ((typ == 100).and.(fr_gcm < threshold)) count =count +1 
-       if(ierr /= 0)write (*,*)'Problem reading',fname
-
-    end do
-    
-    write (*,*)'# of small catchments to be removed  ', count
-    if (count < ip2/100) then 
-
-    print *,'Too few tiny tiles, thus exiting .............'
-    print *,'CLSM parameters will be generated for ........'
-    print *,trim(gname)
-    string1 ='til/'//trim(gout)//'-Pfafstetter.til'//' '//&
-    'clsm/'//trim(gout)//'-Pfaf.notiny.til'
-    call execute_command_line ('cp '//trim(string1))
-    string1 ='rst/'//trim(gout)//'-Pfafstetter.rst'//' '//&
-    'clsm/'//trim(gout)//'-Pfaf.notiny.rst'
-    call execute_command_line ('cp '//trim(string1))
-    print *,'and, copied those those files to clsm/.'
-
-    stop
-    endif
-
-    !
-    IM = nc/nc_gcm      ! i-Pixels in GCM box
-    JM = nr/(nr_gcm-1)  ! j-Pixels in interior GCM box. Pole boxes have half as many.
-    if (index(poles,'PE')/=0) JM = nr/(nr_gcm)  ! pole edge case
-    allocate(GRID (nc,jm)) ! Enough space for all pixels in non-pole GCM latitude
-    allocate(GRIDA (nc,jm)) ! Enough space for all pixels in non-pole GCM latitude
-    allocate(tile_frac(ip))
-    grid=0
-    grida=0
-    
-    fname='rst/'//trim(gout)//'-Pfafstetter.rst'
-    open (10,file=trim(fname),status='old',action='read',form='unformatted',convert='little_endian')
-    fname='clsm/'//trim(gout)//'-catchs_nosmall_rst'
-    open (11,file=trim(fname),status='unknown',action='write',form='unformatted',convert='little_endian')
-    
-    do j=1,nr_gcm !  loop over GCM latitudes
-       if(j==1.or.j==nr_gcm) then
-          jx=jm/2  !  pole latitudes are half as large 
-          if (index(poles,'PE')/=0) jx=jm 
-       else
-          jx=jm
-       endif
-       
-       allocate(tile_frac_2d(im,jx))
-       do jk=1,jx  ! Read raster data for one row of atmos grid points
-          if (index(dateline,'DE')/=0) then
-             read (10) grid(:,jk)
-          else
-             read (10) grid(im/2+1:,jk),grid(1:im/2,jk)
-          endif
-          if(maxval(grid(:,jk)).gt.ip) print *,'MAX EXCEED',maxval(grid(:,jk)),ip,jk
-       enddo
-
-       grida=grid
-       
-       do i=1,nc_gcm   !  loop over GCM longitudes
-          tile_frac = 0
-          tile_frac_2d = 0
-          
-          allocate(gridx(im,jx))
-          gridx(1:im,1:jx)= grid(1+(I-1)*IM:I*IM,1:JX)
-          !
-          ! We don't touch ocean, ice and lakes pixels
-          do jk=1,jx
-             do ik = 1,im
-                if(gridx(ik,jk) > ip2)gridx(ik,jk)=0
-             end do
-          end do
-          
-          !         We don't have to process 100% ocean, lake or ice pixels
-          if (sum(gridx) /= 0) then
-             !
-             do jk=1,jx
-                !             do ik=1+(I-1)*IM,I*IM
-                do ik = 1,im 
-                   if(gridx(ik,jk) /= 0) then
-                      tile_frac(gridx(ik,jk)) = tile_frac(gridx(ik,jk)) + &
-                           1./FLOAT(im*jx) 
-                   endif
-                end do
-             end do
-             !
-             do n= 1,ip2
-                if (tile_frac(n) > threshold) then
-                   do jk=1,jx
-                      do ik = 1,im
-                         if(gridx(ik,jk) == n)then   
-                            tile_frac_2d(ik,jk) = tile_frac(n) 
-                         endif
-                      end do
-                   end do
-                end if
-             end do
-             !
-             if(sum(tile_frac_2d)>0.)then
-                do n= 1,ip2
-                   if ((tile_frac(n) > 0.).and.(tile_frac(n) <threshold ))then
-                      do jk=1,jx
-                         do ik = 1,im
-                            
-                            if (gridx(ik,jk) == n) then
-                               mx_frac=0.
-                               pick_val=0
-                               l=1
-                               do 
-                                  imx=ik+l
-                                  imn=ik-l
-                                  jmn=jk-l
-                                  jmx=jk+l
-                                  imn=MAX(imn,1)
-                                  jmn=MAX(jmn,1)
-                                  imx=MIN(imx,im)
-                                  jmx=MIN(jmx,jx) 
-                                  !
-                                  do k=imn,imx
-                                     if(tile_frac_2d(k,jmn) > mx_frac) then
-                                        mx_frac = tile_frac_2d(k,jmn)
-                                        pick_val = gridx(k,jmn)
-                                     endif
-                                  end do
-                                  !
-                                  do k=imn,imx
-                                     if(tile_frac_2d(k,jmx) > mx_frac) then
-                                        mx_frac = tile_frac_2d(k,jmx)
-                                        pick_val = gridx(k,jmx)
-                                     endif
-                                  end do
-                                  !
-                                  do k=jmn,jmx
-                                     if(tile_frac_2d(imn,k) > mx_frac) then
-                                        mx_frac = tile_frac_2d(imn,k)
-                                        pick_val = gridx(imn,k)
-                                     endif
-                                  end do
-                                  !
-                                  do k=jmn,jmx
-                                     if(tile_frac_2d(imx,k) > mx_frac) then
-                                        mx_frac = tile_frac_2d(imx,k)
-                                        pick_val = gridx(imx,k)
-                                     endif
-                                  end do
-                                  !
-                                  if(pick_val >0) grida ((I-1)*IM+ik ,jk) = &
-                                       pick_val
-                                  if(pick_val >0) exit
-                                  l =l+1
-                               end do
-                            endif
-                         end do
-                      end do
-                   endif
-                end do
-             endif
-          endif !         We don't have to process 100% ocean, lake or ice pixels  
-          
-          deallocate(gridx)
-       end do           !  loop over GCM longitudes
-       deallocate(tile_frac_2d)
-
- !      print *,maxval(grid),minval(grid)
- !      print *,maxval(grida(:,1:jx)),minval(grida(:,1:jx)),jx       
-
-       do jk=1,jx  ! Read raster data for one row of atmos grid points
-          write (11) grida(:,jk)
-       enddo
-    end do              !  loop over GCM latitudes
-    !
-    close (10,status='keep')
-    close (11,status='keep')
-
-    open (11,file=trim(fname),status='unknown',action='read',form='unformatted',convert='little_endian')
-    tile_frac=0.
-
-    do j=1,nr_gcm !  loop over GCM latitudes
-       grid=0
-       
-       if(j==1.or.j==nr_gcm) then
-          jx=jm/2  !  pole latitudes are half as large 
-          if (index(poles,'PE')/=0) jx=jm 
-       else
-          jx=jm
-       endif
-       
-       do jk=1,jx  ! Read raster data for one row of atmos grid points
-          read (11) grid(:,jk)
-       enddo
-
-       do i=1,nc_gcm   !  loop over GCM longitudes
-          do jk=1,jx
-             do ik=1+(I-1)*IM,I*IM
-
-                tile_frac(grid(ik,jk)) = tile_frac(grid(ik,jk)) + 1./FLOAT(im*jx)
-
-             end do
-          enddo
-       end do
-    enddo
-    !
-    close (11,status='keep')
-    !     
-    count=0
-    count_remain=0
-    allocate(rev_indx(ip))
-    rev_indx=0
-    do n=1,ip
-       if(tile_frac(n) > 0.) then
-          count = count + 1
-          rev_indx(n) = count
-          if((n > ip1).and.(n <= ip2))then
-             if ( tile_frac(n) < threshold) count_remain =count_remain + 1
-          endif
-       end if
-    end do
-    !
-    write(*,*)'# of small catchments after merging',count_remain
-    write(*,*)'# of tiles in the before removing tiny tiles :',ip
-    write(*,*)'# of tiles in the after removing tiny tiles  :',count
-    open (11,file=trim(fname),status='unknown',action='read',form='unformatted',convert='little_endian')
-    fname='clsm/'//trim(gout)//'-Pfaf.notiny.rst'
-    open (12,file=trim(fname),status='unknown',action='write',form='unformatted',convert='little_endian')
-    
-    deallocate (grid,grida)
-    allocate(GRID (nc,1)) ! Enough space for all pixels in non-pole GCM latitude
-    allocate(GRIDA (nc,1)) ! Enough space for all pixels in non-pole GCM latitude
-    
-    grid=0
-    grida=0
-    
-    allocate(total_area(ip))
-    allocate(tile_area(ip))
-    allocate(lon_c(ip))
-    allocate(lat_c(ip))
-    allocate(int_c(ip))
-    
-    lon_c=0.
-    lat_c=0.
-    int_c=0.
-    tile_area=0.
-    total_area=0.
-    da = radius*radius*pi*pi/24./24./180./180./1000000.
-    
-    do jk =1,nr
-       lats = -90._8 + (jk - 0.5_8)*dy
-       read (11) grid(:,1)
-       do ik = 1,nc
-          grida(ik,1)=rev_indx(grid(ik,1))
-          total_area(rev_indx(grid(ik,1)))=total_area(rev_indx(grid(ik,1))) +1.
-          tile_area(rev_indx(grid(ik,1)))=tile_area(rev_indx(grid(ik,1))) + &  
-               (sin(d2r*(lats+0.5*dy)) - &
-               sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
-
-!               da*cos((-90.+float(jk)/24. -1./48.)*pi/180.)
-               
-          lat_c(rev_indx(grid(ik,1)))=lat_c(rev_indx(grid(ik,1))) +&
-               (-90.+float(jk)/24. -1./48.)
-          
-          if (index(dateline,'DE')/=0) then
-             lon_c(rev_indx(grid(ik,1)))=lon_c(rev_indx(grid(ik,1))) + &
-                  (-180.+float(ik)/24. -1./48.)
-          else
-             if(ik.le.im/2)then
-
-                lon_c(rev_indx(grid(ik,1)))=lon_c(rev_indx(grid(ik,1))) +&
-                     (-360.-180.+float(nc-im/2+ik)/24. -1./48.)
-             else
-                lon_c(rev_indx(grid(ik,1)))=lon_c(rev_indx(grid(ik,1))) + &
-                     (-180.+float(ik-im/2)/24. -1./48.)
-             endif
-          endif
-          int_c(rev_indx(grid(ik,1)))=int_c(rev_indx(grid(ik,1))) + 1.
-       end do
-       if (index(dateline,'DE')/=0) then
-          write (12) grida(:,1)   
-       else
-          write (12) grida(im/2+1:,1),grida(1:im/2,1)    
-       endif
-    end do
-    close (11,status='delete')
-    close (12,status='keep')
-    
-    do n=1,ip
-       if(rev_indx(n)>0)then
-          lat_c(rev_indx(n))=lat_c(rev_indx(n))/int_c(rev_indx(n))
-          lon_c(rev_indx(n))=lon_c(rev_indx(n))/int_c(rev_indx(n))
-          if(lon_c(rev_indx(n)).lt.-180.)lon_c(rev_indx(n))=lon_c(rev_indx(n))+360.
-       endif
-    enddo
-    !
-    gname='til/'//trim(gout)//'-Pfafstetter'
-    fname=  trim(gname)//'.til'
-    !
-    open (10,file=trim(fname),status='old',action='read',form='formatted')
-    read (10,*)ip
-    read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
-
-    allocate(pfaf(36716))
-    pfaf=0.
-
-    do n = 1,ip
-
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,j_dum,pfs,indx_old,fr_cat,j_dum
-
-       if(n <= ip2) then
-          if (rev_indx(n)>0)pfaf(indx_old)=pfaf(indx_old) +&
-               total_area(rev_indx(n))
-       endif
-    end do
-    close (10,status='keep')
-    fname=  trim(gname)//'.til'    
-    !
-    open (10,file=trim(fname),status='old',action='read',form='formatted')
-    fname='clsm/'//trim(gout)//'-Pfaf.notiny.til'
-    open (20,file=trim(fname),status='unknown',action='write',form='formatted')
-    read (10,*)ip
-    write (20,*)COUNT, 8640,4320
-    read (10,*)j_dum
-    write (20,*)j_dum
-    read (10,'(a)')version
-    write(20,'(a)')version
-    read (10,*)nc_gcm
-    write (20,*)nc_gcm
-    read (10,*)nr_gcm
-    write (20,*)nr_gcm
-    read (10,'(a)')version
-    write (20,'(a)')version
-    read (10,*)nc_ocean
-    write (20,*)nc_ocean
-    read (10,*)nr_ocean
-    write (20,*)nr_ocean
-    
-    do n = 1,ip
-       
-     read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_old,pfs,i_dum,fr_cat,j_dum
-
-       if(n <= ip2)then
-          if (rev_indx(n)>0) then
-             
-             write(20,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr) &
-                  typ,tile_area(rev_indx(n)),lon_c(rev_indx(n)),lat_c(rev_indx(n)),ig,jg,   &
-                  tile_frac(n),indx_old,pfs,i_dum,total_area(rev_indx(n))/pfaf(i_dum),rev_indx(n)
-
-          endif
-       else
-          if (rev_indx(n)>0)write(20,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr) &
-            typ,tile_area(rev_indx(n)),lon_c(rev_indx(n)),lat_c(rev_indx(n)),ig,jg,   &
-            tile_frac(n),indx_old,pfs,i_dum,fr_cat,rev_indx(n)
-
-       endif
-    end do
-
-    write(*,*)'Surface Area of the Earth',sum(tile_area)
-    write(*,*)'Land area of the Earth',sum(tile_area(rev_indx(ip1+1):rev_indx(ip2)))
-    close (10,status='keep')
-    close (20,status='keep')
-    
-  END SUBROUTINE remove_tiny_tiles
-
-
+!  SUBROUTINE remove_tiny_tiles (                         &
+!       dateline,poles,gout) 
+!
+!  ***** subroutine not used as of Dec 2024; removed by rreichle, 20 Dec 2024 *****
+!
+!  END SUBROUTINE remove_tiny_tiles
+!
 ! ---------------------------------------------------------------------
 ! ---------------------------------------------------------------------
 ! ---------------------------------------------------------------------
@@ -2002,16 +1589,20 @@ integer :: n_threads=1
 ! 
 !----------------------------------------------------------------------
 
-  SUBROUTINE catchment_def (nx,ny,regrid,dateline,gfilet,gfiler)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,gfilet,gfiler)
+
+    ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
+    !    incl. min/max lat/lon of each tile and tile elevation
+    ! 2) write nc4-formatted til file (incl. supplemental tile attributes)
 
     implicit none
 
     INTEGER, allocatable, dimension(:) :: CATID  
-    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib
+    integer :: n,ip,maxcat,count,k1,i1,i,j,i_sib,j_sib, status
     INTEGER, allocatable, dimension (:) :: id,I_INDEX,J_INDEX 
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: typ,pfs,ig,jg,j_dum,i_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath
     character*200 :: gtopo30
@@ -2019,14 +1610,23 @@ integer :: n_threads=1
     character*10 :: dline
     CHARACTER*20 :: version,resoln,continent
     REAL, ALLOCATABLE :: limits(:,:)
-    REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,sum2,dx_gcm,dy_gcm
+    REAL :: mnx,mxx,mny,mxy,dx,dy,d2r,lats,sum1,dx_gcm,dy_gcm
     REAL, dimension (:), allocatable :: tile_ele, tile_area,tile_area_land  
-    integer :: nx,ny,status
+    integer :: nx,ny,IM(2), JM(2)
     logical :: regrid
     real, pointer :: Raster(:,:)
+    real    :: mean_land_elev
 
     character*2 :: dateline
     real*4, allocatable , target :: q0 (:,:)
+    real(kind=8),      allocatable :: rTable(:,:)
+    integer,           allocatable :: iTable(:,:)
+    character(len=128)             :: gName(2)
+    logical, allocatable           :: IsOcean(:)
+
+    ! -----------------------------------------------------
+    !
+    ! get elevation (q0) from "gtopo30" raster file ("srtm30_withKMS_2.5x2.5min.data")
 
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     gtopo30   = trim(MAKE_BCS_INPUT_DIR)//'/land/topo/v1/srtm30_withKMS_2.5x2.5min.data'
@@ -2053,6 +1653,14 @@ integer :: n_threads=1
        call RegridRasterReal(q0,raster)
     endif
 
+    ! -----------------------------------------------------------
+    !
+    ! read ASCII-formatted tile file (*.til)
+    !
+    ! ip  = number of tiles in global domain (all types, incl. land, landice, lake, & ocean)
+    ! ip1 = 0 = index offset for land tiles in *.til files ==> assumes land tiles first in *.til file
+    ! ip2 = maxcat + ip1 = number of land tiles in global *.til file
+    
     allocate (catid(1:i_sib))
     catid=0
     fname=trim(gfilet)//'.til'
@@ -2065,37 +1673,75 @@ integer :: n_threads=1
     allocate(tile_area(ip))  
     id=0
     read (10,*)j_dum
-
+    IM = 0
+    JM = 0
+    gName = ['','']
     do n = 1, j_dum
        read (10,'(a)')version
        read (10,*)nc_gcm
        read (10,*)nr_gcm
+       gName(n) = version
+       IM(n)    = nc_gcm
+       JM(n)    = nr_gcm
     end do
     
 !    dx_gcm = 360./float(nc_gcm)
 !    dy_gcm = 180./float(nr_gcm)    
 
+    allocate(iTable(ip,0:7))
+    allocate(rTable(ip,10))    
+    rTable = MAPL_UNDEF
+
+    allocate(IsOcean(ip))
+    IsOcean = .false.
+
     do n = 1,ip
  
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
-	    tile_area(n) = tarea
-            id(n)=pfs
-	    i_index(n) = ig 
-	    j_index(n) = jg 
+       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
+            typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
+
+       if(ierr /= 0) write (*,*)'Problem reading ' // trim(fname)
+
+       tile_area(n) = tarea
+       id(n)        = pfs
+       i_index(n)   = ig 
+       j_index(n)   = jg 
 
        if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading'
+       if (typ == 0  ) IsOcean(n) = .true.
+
+       iTable(n,0) = typ
+       rTable(n,3) = tarea
+       rTable(n,1) = lon
+       rTable(n,2) = lat
+       iTable(n,2) = ig
+       iTable(n,3) = jg
+       rTable(n,4) = fr_gcm
+       iTable(n,6) = indx_dum
+       iTable(n,4) = pfs
+       iTable(n,5) = i_dum
+       rTable(n,5) = fr_cat
+       iTable(n,7) = j_dum           
     end do
     close (10,status='keep')
-
-    maxcat=ip2-ip1
-
-! Tile elevation
-    allocate(tile_ele(1:maxcat))
-    allocate(tile_area_land(1:maxcat))
+    
+    maxcat=ip2-ip1                 ! = number of land tiles
+    
+    ! ---------------------------------------------------------------
+    !
+    ! compute mean elevation of each tile
+    
+    allocate(tile_ele(1:ip))
+    allocate(tile_area_land(1:ip))
     tile_ele = 0.
     tile_area_land = 0.
+    
+    allocate(limits(1:ip,1:4))
+    limits(:,1)= 360.
+    limits(:,2)=-360.
+    limits(:,3)=  90.
+    limits(:,4)= -90.
+    ! read raster file with tile IDs
 
     fname=trim(gfiler)//'.rst'    
     open (10,file=fname,status='old',action='read',form='unformatted',convert='little_endian')
@@ -2106,55 +1752,20 @@ integer :: n_threads=1
        read (10)(catid(i),i=1,i_sib)
 
        do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
-	        tile_ele(catid(i)-ip1) = tile_ele(catid(i)-ip1) + raster(i,j)*   &	
-			(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
-		tile_area_land(catid(i)-ip1) = tile_area_land(catid(i)-ip1) +  &	
-			(sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)		 
-	     endif
-	enddo	
-    enddo
-    tile_ele = tile_ele/tile_area_land
-    close (10, status='keep')  
+          if (.not. IsOcean(catid(i)-ip1)) then
+            tile_ele(catid(i)-ip1) = tile_ele(catid(i)-ip1) + raster(i,j)*   &
+                                     (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+            tile_area_land(catid(i)-ip1) = tile_area_land(catid(i)-ip1) +  &
+                                           (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+         endif
+       enddo
 
-    ! adjustment Global Mean Topography to 614.649 (615.662 GTOPO 30) m
-    ! --------------------------------------------
-    sum1=0.
-    sum2=0. 
-    do j=1,maxcat	 
-         sum1 = sum1 + tile_ele(j)*tile_area(j)
-    enddo
-    if(sum1/sum(tile_area(1:maxcat)).ne. 614.649D0 ) then
-!	print *,sum1/sum(tile_area(1:maxcat))
-	tile_ele =tile_ele*(614.649D0 / (sum1/sum(tile_area(1:maxcat))))				  	
-	sum1=0.
-	sum2=0. 
-	do j=1,maxcat	 
-	   sum1 = sum1 + tile_ele(j)*tile_area(j)
-	enddo
-!	print *,sum1/sum(tile_area(1:maxcat))
-    endif
-    
-
-! catchment def file
-! ------------------
-    allocate(limits(1:maxcat,1:4))
-    limits(:,1)=360.
-    limits(:,2)=-360.
-    limits(:,3)=90.
-    limits(:,4)=-90.
-
-    fname=trim(gfiler)//'.rst'    
-    open (10,file=fname,status='old',action='read',form='unformatted',convert='little_endian')
-    
-    do j=1,j_sib
        mny=-90. + float(j-1)*180./float(j_sib)
        mxy=-90. + float(j)  *180./float(j_sib)
-       read (10)(catid(i),i=1,i_sib)       
+
        if (index(dateline,'DE')/=0) then
-          
           do i=1,i_sib          
-             if((catid(i) > ip1).and.(catid(i) <= ip2))then
+             if( .not. IsOcean(catid(i)- ip1))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
                 mxx =-180. + float(i)  *360./float(i_sib)
                 if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2165,7 +1776,7 @@ integer :: n_threads=1
           end do
        else
          do i=1,i_sib- i_sib/nc_gcm/2         
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then
+            if( .not. IsOcean(catid(i) - ip1)) then
                mnx =-180. + float(i-1)*360./float(i_sib)
                mxx =-180. + float(i)  *360./float(i_sib)
                if(mnx .lt.limits(catid(i)-ip1,1))limits(catid(i)-ip1,1)=mnx 
@@ -2175,7 +1786,7 @@ integer :: n_threads=1
             endif
          end do
          do i=i_sib- i_sib/nc_gcm/2  +1,i_sib       
-            if((catid(i) > ip1).and.(catid(i) <= ip2))then               
+            if( .not. IsOcean(catid(i) - ip1)) then
                mnx =-360. -180. + float(i-1)*360./float(i_sib)
                mxx =-360. -180. + float(i)  *360./float(i_sib)
                if(mnx < -180. ) mnx = mnx + 360.
@@ -2186,19 +1797,56 @@ integer :: n_threads=1
                if(mxy .gt.limits(catid(i)-ip1,4))limits(catid(i)-ip1,4)=mxy 
             endif
          end do
- 
-      endif
+       endif
+    enddo
+    close (10, status='keep')  
 
-    end do
-    close(10,status='keep')
+    where ( .not. IsOcean)  tile_ele = tile_ele/tile_area_land
+
+    where (limits(:,1).lt.-180.) limits(:,1) = limits(:,1) + 360.0
+    where (limits(:,2).le.-180.) limits(:,2) = limits(:,2) + 360.0
+
+    where (IsOcean)
+       limits(:,2) = -360.0
+    endwhere
+
+    ! adjust global mean (land) topography to 614.649 (615.662 GTOPO 30) m
+ 
+    sum1=0.
+
+    do j=1,maxcat
+       sum1 = sum1 + tile_ele(j)*tile_area(j)
+    enddo
+
+    mean_land_elev = sum1/sum(tile_area(1:maxcat))
+
+    if ( mean_land_elev .ne. Target_mean_land_elev ) then
+
+       print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
+
+       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev) 
+       
+       ! verify adjustment
+       
+       sum1=0.
+
+       do j=1,maxcat
+         sum1 = sum1 + tile_ele(j)*tile_area(j)
+       enddo
+
+       print *, 'Global mean land elevation after scaling to SRTM [m]: ', sum1/sum(tile_area(1:maxcat))
+
+    endif
     
+    ! --------------------------------------------------------------------------
+    !
+    ! write (ASCII) catchment.def file (land tiles only!)
+
     open (10,file='clsm//catchment.def',  &
          form='formatted',status='unknown')
     write (10,*)maxcat
 
     do j=1,maxcat
-       if(limits(j,1).lt.-180.) limits(j,1)= limits(j,1)+360.
-       if(limits(j,2).le.-180.) limits(j,2)= limits(j,2)+360.  
  !      if(trim(dateline)=='DC')then
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
@@ -2206,14 +1854,39 @@ integer :: n_threads=1
        write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
+    close(10,status='keep')
 
+    ! --------------------------------------------------------------------------
+    !
+    ! write nc4-formatted tile file (all tile types)
+
+    rTable(1:ip,6:9) = limits
+    rTable(1:ip, 10) = tile_ele(1:ip)
+    ! re-define rTable(:,4) and rTable(:,5).
+    ! fr will be re-created in WriteTilingNC4
+    where (rTable(:,4) /=0.0)
+       rTable(:,4) = rTable(:,3)/rTable(:,4)
+    endwhere
+    where (rTable(:,5) /=0.0)
+       rTable(:,5) = rTable(:,3)/rTable(:,5)
+    endwhere
+
+    fname=trim(gfilet)//'.nc4'
+    if (im(2) == 0) then  ! one grid
+       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
+    else                  ! two grids
+       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
+    endif
+
+    deallocate (rTable, iTable)
     deallocate (limits)
     deallocate (catid)
     deallocate (q0)
     if(regrid) then
        deallocate(raster)
     endif 
-  END SUBROUTINE catchment_def
+
+  END SUBROUTINE supplemental_tile_attributes
  
 !----------------------------------------------------------------------
   
@@ -2575,7 +2248,7 @@ integer :: n_threads=1
     
     do n = 1,ip
       if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
+        read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
       else
       read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
