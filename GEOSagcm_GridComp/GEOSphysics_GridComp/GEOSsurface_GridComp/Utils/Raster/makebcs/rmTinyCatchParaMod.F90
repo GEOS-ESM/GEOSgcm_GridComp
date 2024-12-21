@@ -1736,6 +1736,11 @@ integer :: n_threads=1
     tile_ele = 0.
     tile_area_land = 0.
     
+    allocate(limits(1:ip,1:4))
+    limits(:,1)= 360.
+    limits(:,2)=-360.
+    limits(:,3)=  90.
+    limits(:,4)= -90.
     ! read raster file with tile IDs
 
     fname=trim(gfiler)//'.rst'    
@@ -1754,59 +1759,11 @@ integer :: n_threads=1
                                            (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
          endif
        enddo
-    enddo
-    where ( .not. IsOcean)  tile_ele = tile_ele/tile_area_land
-    close (10, status='keep')  
 
-    ! adjust global mean (land) topography to 614.649 (615.662 GTOPO 30) m
- 
-    sum1=0.
-
-    do j=1,maxcat
-       sum1 = sum1 + tile_ele(j)*tile_area(j)
-    enddo
-
-    mean_land_elev = sum1/sum(tile_area(1:maxcat))
-
-    if ( mean_land_elev .ne. Target_mean_land_elev ) then
-
-       print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
-
-       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev) 
-       
-       ! verify adjustment
-       
-       sum1=0.
-
-       do j=1,maxcat
-         sum1 = sum1 + tile_ele(j)*tile_area(j)
-       enddo
-
-       print *, 'Global mean land elevation after scaling to SRTM [m]: ', sum1/sum(tile_area(1:maxcat))
-
-    endif
-    
-    ! ---------------------------------------------
-    !
-    ! get min/max lat/lon of each tile
-
-    allocate(limits(1:ip,1:4))
-    limits(:,1)= 360.
-    limits(:,2)=-360.
-    limits(:,3)=  90.
-    limits(:,4)= -90.
-
-    ! read raster file with tile IDs
-
-    fname=trim(gfiler)//'.rst'    
-    open (10,file=fname,status='old',action='read',form='unformatted',convert='little_endian')
-    
-    do j=1,j_sib
        mny=-90. + float(j-1)*180./float(j_sib)
        mxy=-90. + float(j)  *180./float(j_sib)
-       read (10)(catid(i),i=1,i_sib)       
+
        if (index(dateline,'DE')/=0) then
-          
           do i=1,i_sib          
              if( .not. IsOcean(catid(i)- ip1))then
                 mnx =-180. + float(i-1)*360./float(i_sib)
@@ -1840,12 +1797,12 @@ integer :: n_threads=1
                if(mxy .gt.limits(catid(i)-ip1,4))limits(catid(i)-ip1,4)=mxy 
             endif
          end do
- 
-      endif
+       endif
+    enddo
+    close (10, status='keep')  
 
-    end do
-    close(10,status='keep')
-    
+    where ( .not. IsOcean)  tile_ele = tile_ele/tile_area_land
+
     where (limits(:,1).lt.-180.) limits(:,1) = limits(:,1) + 360.0
     where (limits(:,2).le.-180.) limits(:,2) = limits(:,2) + 360.0
 
@@ -1853,6 +1810,34 @@ integer :: n_threads=1
        limits(:,2) = -360.0
     endwhere
 
+    ! adjust global mean (land) topography to 614.649 (615.662 GTOPO 30) m
+ 
+    sum1=0.
+
+    do j=1,maxcat
+       sum1 = sum1 + tile_ele(j)*tile_area(j)
+    enddo
+
+    mean_land_elev = sum1/sum(tile_area(1:maxcat))
+
+    if ( mean_land_elev .ne. Target_mean_land_elev ) then
+
+       print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
+
+       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev) 
+       
+       ! verify adjustment
+       
+       sum1=0.
+
+       do j=1,maxcat
+         sum1 = sum1 + tile_ele(j)*tile_area(j)
+       enddo
+
+       print *, 'Global mean land elevation after scaling to SRTM [m]: ', sum1/sum(tile_area(1:maxcat))
+
+    endif
+    
     ! --------------------------------------------------------------------------
     !
     ! write (ASCII) catchment.def file (land tiles only!)
