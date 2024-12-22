@@ -820,7 +820,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             !$ser data_buffered Dx=3 t_GFDL_1M_driver_preloop=tz(k) dp_GFDL_1M_driver_preloop=dp1(k) qv_GFDL_1M_driver_preloop=qvz(k) ql_GFDL_1M_driver_preloop=qlz(k) qr_GFDL_1M_driver_preloop=qrz(k) qi_GFDL_1M_driver_preloop=qiz(k) qs_GFDL_1M_driver_preloop=qsz(k) qg_GFDL_1M_driver_preloop=qgz(k) c_praut_GFDL_1M_driver_preloop=c_praut(k)
         !$ser verbatim enddo
 
-        do n = 1, 1 !ntimes
+        do n = 1, ntimes
 
             ! -----------------------------------------------------------------------
             ! dry air density
