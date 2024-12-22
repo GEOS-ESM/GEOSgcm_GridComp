@@ -694,13 +694,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     do i = is, ie
 
         do k = ktop, kbot
-            !$ser savepoint GFDL_driver_preloop-In
+            !$ser savepoint GFDL_1M_driver_preloop-In
             !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 u_GFDL_driver_preloop=uin(i,j,k) v_GFDL_driver_preloop=vin(i,j,k) w_GFDL_driver_preloop=w(i,j,k) t_GFDL_driver_preloop=pt(i,j,k) dp_GFDL_driver_preloop=delp(i,j,k)
-            !$ser data_buffered Dx=3 rhcrit_GFDL_driver_preloop=rhcrit(i,j,k) dz_GFDL_driver_preloop=dz(i,j,k)
-            !$ser data_buffered Dx=3 qv_GFDL_driver_preloop=qv(i,j,k) ql_GFDL_driver_preloop=ql(i,j,k) qi_GFDL_driver_preloop=qi(i,j,k) qr_GFDL_driver_preloop=qr(i,j,k)
-            !$ser data_buffered Dx=3 qs_GFDL_driver_preloop=qs(i,j,k) qg_GFDL_driver_preloop=qg(i,j,k) qa_GFDL_driver_preloop=qa(i,j,k) qn_GFDL_driver_preloop=qn(i,j,k)
-            !$ser data_buffered Dx=2 area_GFDL_driver_preloop=area1(i)
+            !$ser data_buffered Dx=3 u_GFDL_1M_driver_preloop=uin(i,j,k) v_GFDL_1M_driver_preloop=vin(i,j,k) w_GFDL_1M_driver_preloop=w(i,j,k) t_GFDL_1M_driver_preloop=pt(i,j,k) dp_GFDL_1M_driver_preloop=delp(i,j,k)
+            !$ser data_buffered Dx=3 rhcrit_GFDL_1M_driver_preloop=rhcrit(i,j,k) dz_GFDL_1M_driver_preloop=dz(i,j,k)
+            !$ser data_buffered Dx=3 qv_GFDL_1M_driver_preloop=qv(i,j,k) ql_GFDL_1M_driver_preloop=ql(i,j,k) qi_GFDL_1M_driver_preloop=qi(i,j,k) qr_GFDL_1M_driver_preloop=qr(i,j,k)
+            !$ser data_buffered Dx=3 qs_GFDL_1M_driver_preloop=qs(i,j,k) qg_GFDL_1M_driver_preloop=qg(i,j,k) qa_GFDL_1M_driver_preloop=qa(i,j,k) qn_GFDL_1M_driver_preloop=qn(i,j,k)
+            !$ser data_buffered Dx=2 area_GFDL_1M_driver_preloop=area1(i)
 
             t0 (k) = pt (i, j, k)
             tz (k) = t0 (k)
@@ -765,9 +765,9 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             u1 (k) = u0 (k)
             v1 (k) = v0 (k)
 
-            !$ser savepoint GFDL_driver_preloop-Out
+            !$ser savepoint GFDL_1M_driver_preloop-Out
             !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 omq_GFDL_driver_preloop=omq den_GFDL_driver_preloop=den0(k) p_dry_GFDL_driver_preloop=p1(k)
+            !$ser data_buffered Dx=3 omq_GFDL_1M_driver_preloop=omq den_GFDL_1M_driver_preloop=den0(k) p_dry_GFDL_1M_driver_preloop=p1(k)
 
         enddo
 
@@ -817,7 +817,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
         !$ser verbatim do k = ktop, kbot
             !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 t_GFDL_driver_preloop=tz(k) dp_GFDL_driver_preloop=dp1(k) qv_GFDL_driver_preloop=qvz(k) ql_GFDL_driver_preloop=qlz(k) qr_GFDL_driver_preloop=qrz(k) qi_GFDL_driver_preloop=qiz(k) qs_GFDL_driver_preloop=qsz(k) qg_GFDL_driver_preloop=qgz(k) c_praut_GFDL_driver_preloop=c_praut(k)
+            !$ser data_buffered Dx=3 t_GFDL_1M_driver_preloop=tz(k) dp_GFDL_1M_driver_preloop=dp1(k) qv_GFDL_1M_driver_preloop=qvz(k) ql_GFDL_1M_driver_preloop=qlz(k) qr_GFDL_1M_driver_preloop=qrz(k) qi_GFDL_1M_driver_preloop=qiz(k) qs_GFDL_1M_driver_preloop=qsz(k) qg_GFDL_1M_driver_preloop=qgz(k) c_praut_GFDL_1M_driver_preloop=c_praut(k)
         !$ser verbatim enddo
 
         do n = 1, 1 !ntimes
@@ -1558,12 +1558,8 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
     TOT_PREC_LS = 0.
     AREA_LS_PRC = 0.
-
     do k = ktop, kbot
         
-        qsat = 999.0
-        dqsdt = 999.0
-
         TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )
         AREA_LS_PRC = AREA_LS_PRC  + ( qa (k) * ( qr (k) + qs (k) + qg (k) ) * den (k) )
 
@@ -1638,8 +1634,6 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
             endif
 
         endif ! warm - rain
-        !$ser verbatim call ser_set_idx_d3(k)
-        !$ser data_buffered Dx=3 qsat_warm_rain=qsat dqsdt_warm_rain=dqsdt
     enddo
 
 end subroutine revap_racc
