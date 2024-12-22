@@ -5424,6 +5424,18 @@ contains
        call MAPL_GetPointer(EXPORT, PTR3D, 'VMST0', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
        PTR3D = V
 
+       ! pre-fill default condensate radii
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RL', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) PTR3D = 14.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RI', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) PTR3D = 36.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RR', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) PTR3D = 50.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RS', RC=STATUS); VERIFY_(STATUS)
+       if(associated(PTR3D)) PTR3D = 50.e-6
+       call MAPL_GetPointer(EXPORT, PTR3D, 'RG', RC=STATUS); VERIFY_(STATUS) 
+       if(associated(PTR3D)) PTR3D = 50.e-6   
+
        ! Derived States
        MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
        call FILLQ2ZERO(Q, MASS, TMP2D)
