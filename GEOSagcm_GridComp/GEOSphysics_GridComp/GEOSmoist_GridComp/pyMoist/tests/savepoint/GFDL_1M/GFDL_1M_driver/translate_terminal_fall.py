@@ -4,7 +4,7 @@ from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
 import xarray as xr
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall import terminal_fall_stencil
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall import terminal_fall
 from gt4py.cartesian.gtscript import (
     PARALLEL,
     computation,
@@ -161,7 +161,6 @@ class Translateterminal_fall(TranslateFortranData2Py):
             self.current_k_level.view[:, :, k] = k
 
         # make temporaries
-        self.TESTVAR = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.m1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.ze = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
         self.zt = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
@@ -174,7 +173,7 @@ class Translateterminal_fall(TranslateFortranData2Py):
 
         orchestrate(obj=self, config=self.stencil_factory.config.dace_config)
         self._stencil = self.stencil_factory.from_dims_halo(
-            func=terminal_fall_stencil,
+            func=terminal_fall,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": dts,
@@ -219,7 +218,6 @@ class Translateterminal_fall(TranslateFortranData2Py):
             self.melting_mask_1,
             self.melting_mask_2,
             self.current_k_level,
-            self.TESTVAR,
         )
 
         return {

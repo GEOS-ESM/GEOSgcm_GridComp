@@ -229,12 +229,14 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         PFL_LS = self.make_ijk_field(inputs["PFL_LS"])
         PFI_LS = self.make_ijk_field(inputs["PFI_LS"])
 
-        # Float Variables
+        # Point Variables
         DT_MOIST = Float(inputs["DT_MOIST"])
         ANV_ICEFALL = Float(inputs["ANV_ICEFALL"])
         LS_ICEFALL = Float(inputs["LS_ICEFALL"])
-        LHYDROSTATIC = Float(inputs["LHYDROSTATIC"])
-        LPHYS_HYDROSTATIC = Float(inputs["LPHYS_HYDROSTATIC"])
+        LHYDROSTATIC = bool(inputs["LHYDROSTATIC"])
+        LPHYS_HYDROSTATIC = bool(inputs["LPHYS_HYDROSTATIC"])
+        KBOT = Int(inputs["KBOT"])
+        KTOP = Int(inputs["KTOP"])
         # Namelist options
         mp_time = Float(inputs["mp_time"])
         t_min = Float(inputs["t_min"])
@@ -249,8 +251,8 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         vs_fac = Float(inputs["vs_fac"])
         vg_fac = Float(inputs["vg_fac"])
         ql_mlt = Float(inputs["ql_mlt"])
-        do_qa = Float(inputs["do_qa"])
-        fix_negative = Float(inputs["fix_negative"])
+        do_qa = bool(inputs["do_qa"])
+        fix_negative = bool(inputs["fix_negative"])
         vi_max = Float(inputs["vi_max"])
         vs_max = Float(inputs["vs_max"])
         vg_max = Float(inputs["vg_max"])
@@ -262,14 +264,14 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         qi0_max = Float(inputs["qi0_max"])
         qi0_crt = Float(inputs["qi0_crt"])
         qr0_crt = Float(inputs["qr0_crt"])
-        fast_sat_adj = Float(inputs["fast_sat_adj"])
+        fast_sat_adj = bool(inputs["fast_sat_adj"])
         rh_inc = Float(inputs["rh_inc"])
         rh_ins = Float(inputs["rh_ins"])
         rh_inr = Float(inputs["rh_inr"])
-        const_vi = Float(inputs["const_vi"])
-        const_vs = Float(inputs["const_vs"])
-        const_vg = Float(inputs["const_vg"])
-        const_vr = Float(inputs["const_vr"])
+        const_vi = bool(inputs["const_vi"])
+        const_vs = bool(inputs["const_vs"])
+        const_vg = bool(inputs["const_vg"])
+        const_vr = bool(inputs["const_vr"])
         use_ccn = Float(inputs["use_ccn"])
         rthreshu = Float(inputs["rthreshu"])
         rthreshs = Float(inputs["rthreshs"])
@@ -307,125 +309,15 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         clin = Float(inputs["clin"])
         preciprad = Float(inputs["preciprad"])
         cld_min = Float(inputs["cld_min"])
-        use_ppm = Float(inputs["use_ppm"])
+        use_ppm = bool(inputs["use_ppm"])
         mono_prof = Float(inputs["mono_prof"])
         do_sedi_heat = Float(inputs["do_sedi_heat"])
-        sedi_transport = Float(inputs["sedi_transport"])
-        do_sedi_w = Float(inputs["do_sedi_w"])
+        sedi_transport = bool(inputs["sedi_transport"])
+        do_sedi_w = bool(inputs["do_sedi_w"])
         de_ice = Float(inputs["de_ice"])
         icloud_f = Float(inputs["icloud_f"])
         irain_f = Float(inputs["irain_f"])
         mp_print = Float(inputs["mp_print"])
-
-        # Int Variables
-        KBOT = Int(inputs["KBOT"])
-        KTOP = Int(inputs["KTOP"])
-
-        # Changing Floats back the bools
-        if LHYDROSTATIC == 1:
-            LHYDROSTATIC = True
-        else:
-            LHYDROSTATIC = False
-
-        if LPHYS_HYDROSTATIC == 1:
-            LPHYS_HYDROSTATIC = True
-        else:
-            LPHYS_HYDROSTATIC = False
-
-        if fix_negative == 1:
-            fix_negative = True
-        else:
-            fix_negative = False
-
-        if sedi_transport == 1:
-            sedi_transport = True
-        else:
-            sedi_transport = False
-
-        if const_vi == 1:
-            const_vi = True
-        else:
-            const_vi = False
-
-        if const_vs == 1:
-            const_vs = True
-        else:
-            const_vs = False
-
-        if const_vg == 1:
-            const_vg = True
-        else:
-            const_vg = False
-
-        if use_ppm == 1:
-            use_ppm = True
-        else:
-            use_ppm = False
-
-        if do_qa == 1:
-            do_qa = True
-        else:
-            do_qa = False
-
-        if fast_sat_adj == 1:
-            fast_sat_adj = True
-        else:
-            fast_sat_adj = False
-
-        # Read in extra variables
-        with xr.open_dataset("/Users/ckropiew/netcdfs/precip_fall.nc") as ds:
-            precip_fall_ice = self.make_ij_field(
-                ds.variables["precip_fall_ice"].data[0, 0, :, :, 0, 0]
-            )
-            precip_fall_snow = self.make_ij_field(
-                ds.variables["precip_fall_snow"].data[0, 0, :, :, 0, 0]
-            )
-            precip_fall_graupel = self.make_ij_field(
-                ds.variables["precip_fall_graupel"].data[0, 0, :, :, 0, 0]
-            )
-
-        with xr.open_dataset("/Users/ckropiew/netcdfs/fall_speed-Out.nc") as ds:
-            vti = self.make_ijk_field(
-                ds.variables["vti_fall_speed"].data[0, 0, :, :, :]
-            )
-            vts = self.make_ijk_field(
-                ds.variables["vts_fall_speed"].data[0, 0, :, :, :]
-            )
-            vtg = self.make_ijk_field(
-                ds.variables["vtg_fall_speed"].data[0, 0, :, :, :]
-            )
-
-        with xr.open_dataset("/Users/ckropiew/netcdfs/terminal_fall-Out.nc") as ds:
-            t_terminal_fall = self.make_ijk_field(
-                ds.variables["t_terminal_fall"].data[0, 0, :, :, :]
-            )
-            qv_terminal_fall = self.make_ijk_field(
-                ds.variables["qv_terminal_fall"].data[0, 0, :, :, :]
-            )
-            ql_terminal_fall = self.make_ijk_field(
-                ds.variables["ql_terminal_fall"].data[0, 0, :, :, :]
-            )
-            qr_terminal_fall = self.make_ijk_field(
-                ds.variables["qr_terminal_fall"].data[0, 0, :, :, :]
-            )
-            qg_terminal_fall = self.make_ijk_field(
-                ds.variables["qg_terminal_fall"].data[0, 0, :, :, :]
-            )
-            qs_terminal_fall = self.make_ijk_field(
-                ds.variables["qs_terminal_fall"].data[0, 0, :, :, :]
-            )
-            qi_terminal_fall = self.make_ijk_field(
-                ds.variables["qi_terminal_fall"].data[0, 0, :, :, :]
-            )
-            dz1_terminal_fall = self.make_ijk_field(
-                ds.variables["dz1_terminal_fall"].data[0, 0, :, :, :]
-            )
-            dp1_terminal_fall = self.make_ijk_field(
-                ds.variables["dp1_terminal_fall"].data[0, 0, :, :, :]
-            )
-            den1_terminal_fall = self.make_ijk_field(
-                ds.variables["den1_terminal_fall"].data[0, 0, :, :, :]
-            )
 
         stencil = GFDL_1M_driver(
             self.stencil_factory,

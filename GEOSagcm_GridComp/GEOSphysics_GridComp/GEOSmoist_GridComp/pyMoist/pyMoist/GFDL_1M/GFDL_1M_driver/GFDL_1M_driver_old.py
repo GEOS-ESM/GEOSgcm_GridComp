@@ -7,17 +7,11 @@ import numpy as np
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
     gfdl_1m_driver_preloop,
-    gfdl_1m_driver_loop_1,
-    gfdl_1m_driver_loop_2,
-    gfdl_1m_driver_loop_3,
-    gfdl_1m_driver_loop_4,
+    gfdl_1m_driver_loop,
     gfdl_1m_driver_postloop,
     create_temporaries,
 )
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
-from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall import terminal_fall
-from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
 
 
 class GFDL_1M_driver:
@@ -111,6 +105,31 @@ class GFDL_1M_driver:
     ):
         """Wrapper for the GFDL_1M driver"""
 
+        self.check_flags(
+            phys_hydrostatic,
+            hydrostatic,
+            const_vi,
+            const_vs,
+            const_vg,
+            const_vr,
+            use_ppm,
+            use_ccn,
+            do_qa,
+            fast_sat_adj,
+            do_bigg,
+            do_evap,
+            do_subl,
+            z_slope_liq,
+            z_slope_ice,
+            prog_ccn,
+            preciprad,
+            mono_prof,
+            do_sedi_heat,
+            sedi_transport,
+            do_sedi_w,
+            de_ice,
+            mp_print,
+        )
         # -----------------------------------------------------------------------
         # define heat capacity of dry air and water vapor based on hydrostatical property
         # -----------------------------------------------------------------------
@@ -383,34 +402,6 @@ class GFDL_1M_driver:
         es0 = 6.107799961e2  # ~6.1 mb
         ces0 = driver_constants.eps * es0
 
-        # Check values for untested code paths
-        self.check_flags(
-            phys_hydrostatic,
-            hydrostatic,
-            const_vi,
-            const_vs,
-            const_vg,
-            const_vr,
-            use_ppm,
-            use_ccn,
-            do_qa,
-            fast_sat_adj,
-            do_bigg,
-            do_evap,
-            do_subl,
-            z_slope_liq,
-            z_slope_ice,
-            prog_ccn,
-            preciprad,
-            mono_prof,
-            do_sedi_heat,
-            sedi_transport,
-            do_sedi_w,
-            de_ice,
-            mp_print,
-            dts,
-        )
-
         # -----------------------------------------------------------------------
         # initialize temporaries
         # -----------------------------------------------------------------------
@@ -428,13 +419,11 @@ class GFDL_1M_driver:
         self.dz1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.den = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.den1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.denfac = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.p_dry = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.m1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.u1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.v1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.w1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.onemsig = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
         self.ccn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.c_praut = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.rh_limited = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -442,38 +431,9 @@ class GFDL_1M_driver:
         self.zt = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
         self.lhi = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.icpk = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.is_frozen = quantity_factory.ones([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.precip_fall = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.hold_data = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vti = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vts = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vtg = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vtr = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m1_sol = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m1_rain = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.rain1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.graupel1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.snow1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.ice1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.evap1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.subl1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-        # -----------------------------------------------------------------------
-        # initialize masks
-        # -----------------------------------------------------------------------
-        self.is_frozen = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.precip_fall = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.melting_mask_1 = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.melting_mask_2 = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.current_k_level = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=Int
-        )
-        for k in range(self.current_k_level.view[:].shape[2]):
-            self.current_k_level.view[:, :, k] = k
 
         # -----------------------------------------------------------------------
         # generate saturation specific humidity tables
@@ -493,7 +453,6 @@ class GFDL_1M_driver:
                 "cpaut": cpaut,
             },
         )
-
         self._gfdl_1m_driver_preloop = stencil_factory.from_dims_halo(
             func=gfdl_1m_driver_preloop,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -526,106 +485,79 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_1 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_1,
+        self._gfdl_1m_driver_loop = stencil_factory.from_dims_halo(
+            func=gfdl_1m_driver_loop,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
+                "c_air": c_air,
+                "c_vap": c_vap,
                 "p_nonhydro": p_nonhydro,
+                "d0_vap": d0_vap,
+                "lv00": lv00,
+                "latv": latv,
+                "lati": lati,
+                "lats": lats,
+                "lat2": lat2,
+                "lcp": lcp,
+                "icp": icp,
+                "tcp": tcp,
+                "mpdt": mpdt,
+                "rdt": rdt,
+                "ntimes": ntimes,
+                "dts": dts,
+                "rdts": rdts,
+                "do_sedi_w": do_sedi_w,
+                "cpaut": cpaut,
+                "hydrostatic": hydrostatic,
+                "phys_hydrostatic": phys_hydrostatic,
+                "fix_negative": fix_negative,
+                "sedi_transport": sedi_transport,
                 "const_vi": const_vi,
                 "const_vs": const_vs,
                 "const_vg": const_vg,
+                "use_ppm": use_ppm,
+                "fac_imlt": fac_imlt,
+                "fac_i2s": fac_i2s,
+                "fac_v2l": fac_v2l,
+                "fac_l2v": fac_l2v,
+                "fac_i2v": fac_i2v,
+                "fac_s2v": fac_s2v,
+                "fac_v2s": fac_v2s,
+                "fac_g2v": fac_g2v,
+                "fac_v2g": fac_v2g,
+                "fac_frz": fac_frz,
+                "ql_mlt": ql_mlt,
+                "qi0_crt": qi0_crt,
                 "vi_fac": vi_fac,
                 "vi_max": vi_max,
                 "vs_fac": vs_fac,
                 "vs_max": vs_max,
                 "vg_fac": vg_fac,
                 "vg_max": vg_max,
-            },
-        )
-
-        self._terminal_fall = stencil_factory.from_dims_halo(
-            func=terminal_fall,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "dts": dts,
-                "tau_imlt": tau_imlt,
-                "ql_mlt": ql_mlt,
-                "vi_fac": vi_fac,
-                "do_sedi_w": do_sedi_w,
-                "use_ppm": use_ppm,
-                "tau_smlt": tau_smlt,
-                "tau_g2r": tau_g2r,
-                "c_air": c_air,
-                "c_vap": c_vap,
-                "d0_vap": d0_vap,
-                "lv00": lv00,
-            },
-        )
-
-        self._gfdl_1m_driver_loop_2 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_2,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        self._warm_rain = stencil_factory.from_dims_halo(
-            func=warm_rain,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "dts": dts,
-                "do_qa": do_qa,
-                "rthreshs": rthreshs,
-                "rthreshu": rthreshu,
-                "irain_f": irain_f,
-                "ql0_max": ql0_max,
-                "z_slope_liq": z_slope_liq,
-                "vr_fac": vr_fac,
-                "const_vr": const_vr,
-                "vr_max": vr_max,
-                "tau_revp": tau_revp,
-                "lv00": lv00,
-                "d0_vap": d0_vap,
-                "c_air": c_air,
-                "c_vap": c_vap,
+                "cgacs": cgacs,
+                "csacw": csacw,
+                "craci": craci,
+                "csaci": csaci,
+                "cgacw": cgacw,
+                "cgaci": cgaci,
+                "cracw": cracw,
+                "cgfr_0": cgfr_0,
+                "cgfr_1": cgfr_1,
+                "cssub_0": cssub_0,
+                "cssub_1": cssub_1,
+                "cssub_2": cssub_2,
+                "cssub_3": cssub_3,
+                "cssub_4": cssub_4,
+                "cgsub_0": cgsub_0,
+                "cgsub_1": cgsub_1,
+                "cgsub_2": cgsub_2,
+                "cgsub_3": cgsub_3,
+                "cgsub_4": cgsub_4,
                 "crevp_0": crevp_0,
                 "crevp_1": crevp_1,
                 "crevp_2": crevp_2,
                 "crevp_3": crevp_3,
                 "crevp_4": crevp_4,
-                "cracw": cracw,
-                "do_sedi_w": do_sedi_w,
-                "use_ppm": use_ppm,
-            },
-        )
-
-        self._gfdl_1m_driver_loop_3 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_3,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        self._icloud = stencil_factory.from_dims_halo(
-            func=icloud,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "c_air": c_air,
-                "c_vap": c_vap,
-                "dts": dts,
-                "rdts": rdts,
-                "const_vi": const_vi,
-                "fac_g2v": fac_g2v,
-                "fac_i2s": fac_i2s,
-                "fac_imlt": fac_imlt,
-                "fac_frz": fac_frz,
-                "fac_l2v": fac_l2v,
-                "fac_s2v": fac_s2v,
-                "fac_v2s": fac_v2s,
-                "fac_v2g": fac_v2g,
-                "cgacs": cgacs,
-                "csacw": csacw,
-                "csaci": csaci,
-                "cgacw": cgacw,
-                "cgaci": cgaci,
-                "cgfr_0": cgfr_0,
-                "cgfr_1": cgfr_1,
                 "csmlt_0": csmlt_0,
                 "csmlt_1": csmlt_1,
                 "csmlt_2": csmlt_2,
@@ -636,25 +568,26 @@ class GFDL_1M_driver:
                 "cgmlt_2": cgmlt_2,
                 "cgmlt_3": cgmlt_3,
                 "cgmlt_4": cgmlt_4,
-                "cssub_0": cssub_0,
-                "cssub_1": cssub_1,
-                "cssub_2": cssub_2,
-                "cssub_3": cssub_3,
-                "cssub_4": cssub_4,
-                "qi0_crt": qi0_crt,
-                "qs0_crt": qs0_crt,
-                "qs_mlt": qs_mlt,
-                "ql_mlt": ql_mlt,
+                "tau_imlt": tau_imlt,
                 "z_slope_ice": z_slope_ice,
-                "lv00": lv00,
-                "d0_vap": d0_vap,
-                "lat2": lat2,
                 "do_qa": do_qa,
                 "do_evap": do_evap,
                 "do_bigg": do_bigg,
+                "do_subl": do_subl,
+                "ces0": ces0,
                 "qc_crt": qc_crt,
+                "qi0_crt": qi0_crt,
+                "qs0_crt": qs0_crt,
+                "qr0_crt": qr0_crt,
+                "qi_gen": qi_gen,
+                "ql_gen": ql_gen,
                 "qi_lim": qi_lim,
+                "qi0_max": qi0_max,
+                "ql0_max": ql0_max,
+                "ql_mlt": ql_mlt,
+                "qs_mlt": qs_mlt,
                 "rh_inc": rh_inc,
+                "rh_ins": rh_ins,
                 "rh_inr": rh_inr,
                 "t_min": t_min,
                 "t_sub": t_sub,
@@ -663,23 +596,40 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_4 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_4,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
         self._gfdl_1m_driver_postloop = stencil_factory.from_dims_halo(
             func=gfdl_1m_driver_postloop,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "c_air": c_air,
                 "c_vap": c_vap,
+                "p_nonhydro": p_nonhydro,
+                "d0_vap": d0_vap,
+                "lv00": lv00,
+                "latv": latv,
+                "lati": lati,
+                "lats": lats,
+                "lat2": lat2,
+                "lcp": lcp,
+                "icp": icp,
+                "tcp": tcp,
+                "mpdt": mpdt,
                 "rdt": rdt,
+                "ntimes": ntimes,
+                "dts": dts,
                 "do_sedi_w": do_sedi_w,
+                "cpaut": cpaut,
+                "hydrostatic": hydrostatic,
+                "phys_hydrostatic": phys_hydrostatic,
+                "fix_negative": fix_negative,
                 "sedi_transport": sedi_transport,
-                "do_qa": do_qa,
+                "const_vi": const_vi,
+                "const_vs": const_vs,
+                "const_vg": const_vg,
             },
         )
+
+        self.TESTVAR_1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.TESTVAR_2 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
     def __call__(
         self,
@@ -760,7 +710,6 @@ class GFDL_1M_driver:
             self.u1,
             self.v1,
             self.w1,
-            self.onemsig,
             self.ccn,
             self.c_praut,
             self.rh_limited,
@@ -778,136 +727,63 @@ class GFDL_1M_driver:
         )
 
         for n in range(1):  # range(self.ntimes):
-            self._gfdl_1m_driver_loop_1(
+            self._gfdl_1m_driver_loop(
+                self.qv1,
                 self.ql1,
+                self.qr1,
                 self.qi1,
                 self.qs1,
                 self.qg1,
+                self.qa1,
+                qn,
+                qv_dt,
+                ql_dt,
+                qr_dt,
+                qi_dt,
+                qs_dt,
+                qg_dt,
+                qa_dt,
+                t_dt,
                 t,
                 self.t1,
+                w,
+                self.w1,
+                uin,
+                self.u1,
+                vin,
+                self.v1,
+                udt,
+                vdt,
                 dz,
                 self.dz1,
+                dp,
+                self.dp1,
                 self.den,
                 self.den1,
-                self.denfac,
                 self.p_dry,
-                self.vti,
-                self.vts,
-                self.vtg,
-                cnv_frc,
-                anv_icefall,
-                ls_icefall,
-            )
-
-            self._terminal_fall(
-                self.t1,
-                self.qv1,
-                self.ql1,
-                self.qr1,
-                self.qg1,
-                self.qs1,
-                self.qi1,
-                self.dz1,
-                self.dp1,
-                self.den1,
-                self.vtg,
-                self.vts,
-                self.vti,
-                self.rain1,
-                self.graupel1,
-                self.snow1,
-                self.ice1,
-                self.m1_sol,
-                self.w1,
-                self.ze,
-                self.zt,
-                self.is_frozen,
-                self.precip_fall,
-                self.melting_mask_1,
-                self.melting_mask_2,
-                self.current_k_level,
-            )
-
-            self._gfdl_1m_driver_loop_2(
-                self.rain,
-                self.graupel,
-                self.snow,
-                self.ice,
-                self.rain1,
-                self.graupel1,
-                self.snow1,
-                self.ice1,
-            )
-
-            self._warm_rain(
-                self.dp1,
-                self.dz1,
-                self.t1,
-                self.qv1,
-                self.ql1,
-                self.qr1,
-                self.qi1,
-                self.qs1,
-                self.qg1,
-                self.qa1,
-                self.ccn,
-                self.den,
-                self.denfac,
-                self.c_praut,
-                self.vtr,
-                self.evap1,
-                self.m1_rain,
-                self.w1,
-                self.rh_limited,
-                eis,
-                self.onemsig,
-                self.rain1,
-                self.ze,
-                self.zt,
-                self.precip_fall,
-                self.sat_tables.table1,
-                self.sat_tables.table2,
-                self.sat_tables.table3,
-                self.sat_tables.table4,
-                self.sat_tables.des1,
-                self.sat_tables.des2,
-                self.sat_tables.des3,
-                self.sat_tables.des4,
-            )
-
-            self._gfdl_1m_driver_loop_3(
-                self.rain,
-                self.rain1,
-                self.evap1,
-                self.revap,
-                self.m1_rain,
-                self.m2_rain,
-                self.m1_sol,
-                self.m2_sol,
-                self.m1,
-            )
-
-            self._icloud(
-                self.t1,
-                self.p_dry,
-                self.dp1,
-                self.qv1,
-                self.ql1,
-                self.qr1,
-                self.qi1,
-                self.qs1,
-                self.qg1,
-                self.qa1,
-                self.den1,
-                self.denfac,
-                self.vts,
-                self.vtg,
-                self.vtr,
-                self.subl1,
-                self.rh_limited,
-                self.ccn,
+                area,
+                dt_moist,
+                fr_land,
                 cnv_frc,
                 srf_type,
+                eis,
+                self.rh_limited,
+                anv_icefall,
+                ls_icefall,
+                self.revap,
+                self.isubl,
+                self.rain,
+                self.snow,
+                self.ice,
+                self.graupel,
+                self.m2_rain,
+                self.m2_sol,
+                self.ze,
+                self.zt,
+                self.lhi,
+                self.icpk,
+                self.is_frozen,
+                self.precip_fall,
                 self.sat_tables.table1,
                 self.sat_tables.table2,
                 self.sat_tables.table3,
@@ -916,21 +792,14 @@ class GFDL_1M_driver:
                 self.sat_tables.des2,
                 self.sat_tables.des3,
                 self.sat_tables.des4,
-            )
-
-            self._gfdl_1m_driver_loop_4(
-                self.isubl,
-                self.subl1,
+                self.hold_data,
+                kmin,
+                kmax,
+                self.TESTVAR_1,
+                self.TESTVAR_2,
             )
 
         self._gfdl_1m_driver_postloop(
-            qv,
-            ql,
-            qr,
-            qi,
-            qs,
-            qg,
-            qa,
             self.qv1,
             self.ql1,
             self.qr1,
@@ -946,19 +815,15 @@ class GFDL_1M_driver:
             qs_dt,
             qg_dt,
             qa_dt,
+            t_dt,
             t,
             self.t1,
-            t_dt,
-            w,
             self.w1,
-            uin,
             self.u1,
-            udt,
-            vin,
             self.v1,
+            udt,
             vdt,
             dz,
-            dp,
             self.dp1,
             self.den,
             self.p_dry,
@@ -969,7 +834,6 @@ class GFDL_1M_driver:
             srf_type,
             eis,
             self.rh_limited,
-            self.m1,
             anv_icefall,
             ls_icefall,
             self.revap,
@@ -980,7 +844,13 @@ class GFDL_1M_driver:
             self.graupel,
             self.m2_rain,
             self.m2_sol,
+            self.TESTVAR_1,
+            self.TESTVAR_2,
         )
+
+        # print("TESTVAR_1: ", self.TESTVAR_1.view[:])
+        # print("TESTVAR_2: ", self.TESTVAR_2.view[:])
+        # print(self.snow.view[:])
 
     def check_flags(
         self,
@@ -1007,7 +877,6 @@ class GFDL_1M_driver:
         do_sedi_w: bool,
         de_ice: bool,
         mp_print: bool,
-        dts: Float,
     ):
         if not phys_hydrostatic:
             raise ValueError(
@@ -1100,10 +969,4 @@ class GFDL_1M_driver:
         if mp_print:
             raise NotImplementedError(
                 "mp_print option not implemented, contact dev team for further assistance."
-            )
-        if dts >= 300:
-            raise NotImplementedError(
-                "Hey there friend. It looks like your value for dts is less than 300. \
-                    The code for this option does not exist yet. This will cause problems in \
-                    the terminal_fall stencil"
             )

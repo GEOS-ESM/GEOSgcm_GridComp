@@ -96,8 +96,6 @@ def revap_racc(
     area_ls_prc = qa1 * (qr1 + qs1 + qg1) * den1
     # DEV/TESTING STUFF REMOVE ME
     revap = 0.0
-    qsat = -999.0
-    dqsdt = -999.0
 
     if t1 > driver_constants.t_wfr and qr1 > driver_constants.qpmin:
         # area and timescale efficiency on revap
@@ -193,12 +191,10 @@ def revap_racc(
         revap,
         prec_ls,
         area_ls_prc,
-        qsat,
-        dqsdt,
     )
 
 
-def warm_rain_stencil(
+def warm_rain(
     dp1: FloatField,
     dz1: FloatField,
     t1: FloatField,
@@ -232,8 +228,6 @@ def warm_rain_stencil(
     des2: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
-    TESTVAR_1: FloatField,
-    TESTVAR_2: FloatField,
 ):
     from __externals__ import (
         k_end,
@@ -247,10 +241,20 @@ def warm_rain_stencil(
         vr_fac,
         const_vr,
         vr_max,
-        vr_min,
         do_sedi_w,
         use_ppm,
-    )
+        tau_revp,
+        lv00,
+        d0_vap,
+        c_air,
+        c_vap,
+        crevp_0,
+        crevp_1,
+        crevp_2,
+        crevp_3,
+        crevp_4,
+        cracw,
+    )  # comprehensive list of externals needed for stencil and sub functions
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine warm_rain
 
@@ -412,7 +416,7 @@ def warm_rain_stencil(
                     * sqrt(min(10.0, driver_constants.sfcrho / den1))
                     * exp(0.2 * log(qden / driver_constants.normr))
                 )
-                vtr = min(vr_max, max(vr_min, vtr))
+                vtr = min(vr_max, max(driver_constants.vr_min, vtr))
 
     with computation(FORWARD), interval(-1, None):
         ze[0, 0, 1] = driver_constants.zs
@@ -438,8 +442,6 @@ def warm_rain_stencil(
             revap,
             prec_ls,
             area_ls_prc,
-            TESTVAR_1,
-            TESTVAR_2,
         ) = revap_racc(
             half_dt,
             t1,
@@ -597,8 +599,6 @@ def warm_rain_stencil(
             revap,
             prec_ls,
             area_ls_prc,
-            TESTVAR_1,
-            TESTVAR_2,
         ) = revap_racc(
             half_dt,
             t1,

@@ -3,7 +3,7 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
-from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain_stencil
+from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
 
 
 class Translatewarm_rain(TranslateFortranData2Py):
@@ -154,7 +154,6 @@ class Translatewarm_rain(TranslateFortranData2Py):
         vr_fac = Float(inputs["vr_fac_warm_rain"][0])
         const_vr = Float(inputs["const_vr_warm_rain"][0])
         vr_max = Float(inputs["vr_max_warm_rain"][0])
-        vr_min = Float(inputs["vr_min_warm_rain"][0])
         tau_revp = Float(inputs["tau_revp_warm_rain"][0])
         lv00 = Float(inputs["lv00_warm_rain"][0])
         d0_vap = Float(inputs["d0_vap_warm_rain"][0])
@@ -216,7 +215,7 @@ class Translatewarm_rain(TranslateFortranData2Py):
 
         orchestrate(obj=self, config=self.stencil_factory.config.dace_config)
         self._stencil = self.stencil_factory.from_dims_halo(
-            func=warm_rain_stencil,
+            func=warm_rain,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": dts,
@@ -229,7 +228,6 @@ class Translatewarm_rain(TranslateFortranData2Py):
                 "vr_fac": vr_fac,
                 "const_vr": const_vr,
                 "vr_max": vr_max,
-                "vr_min": vr_min,
                 "tau_revp": tau_revp,
                 "lv00": lv00,
                 "d0_vap": d0_vap,
@@ -280,8 +278,6 @@ class Translatewarm_rain(TranslateFortranData2Py):
             self.sat_tables.des2,
             self.sat_tables.des3,
             self.sat_tables.des4,
-            self.TESTVAR_1,
-            self.TESTVAR_2,
         )
 
         return {

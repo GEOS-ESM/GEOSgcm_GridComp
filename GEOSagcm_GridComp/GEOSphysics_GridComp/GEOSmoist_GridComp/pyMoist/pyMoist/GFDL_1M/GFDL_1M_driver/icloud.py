@@ -47,8 +47,6 @@ def icloud_component_1(
     from __externals__ import (
         c_air,
         c_vap,
-        fac_i2s,
-        fac_g2v,
         fac_imlt,
         fac_frz,
         ql_mlt,
@@ -543,19 +541,19 @@ def icloud_component_2(
             qi2 = qi2 - sink
             qs2 = qs2 + sink
 
-            # -----------------------------------------------------------------------
-            # pgaci: accretion of cloud ice by graupel
-            # -----------------------------------------------------------------------
+            #     # -----------------------------------------------------------------------
+            #     # pgaci: accretion of cloud ice by graupel
+            #     # -----------------------------------------------------------------------
 
-            # if qg2 > driver_constants.qpmin:
-            #     # -----------------------------------------------------------------------
-            #     # factor = dts * cgaci / sqrt (den (k)) * exp (0.05 * tc + 0.875 * log (qg * den (k)))
-            #     # simplified form: remove temp dependency & set the exponent "0.875" -- > 1
-            #     # -----------------------------------------------------------------------
-            #     factor = dts * cgaci * sqrt(den1) * qg2
-            #     pgaci = factor / (1.0 + factor) * qi2
-            #     qi2 = qi2 - pgaci
-            #     qg2 = qg2 + pgaci
+            if qg2 > driver_constants.qpmin:
+                # -----------------------------------------------------------------------
+                # factor = dts * cgaci / sqrt (den (k)) * exp (0.05 * tc + 0.875 * log (qg * den (k)))
+                # simplified form: remove temp dependency & set the exponent "0.875" -- > 1
+                # -----------------------------------------------------------------------
+                factor = dts * cgaci * sqrt(den1) * qg2
+                pgaci = factor / (1.0 + factor) * qi2
+                qi2 = qi2 - pgaci
+                qg2 = qg2 + pgaci
 
         # -----------------------------------------------------------------------
         # cold - rain proc:
@@ -565,175 +563,175 @@ def icloud_component_2(
         # rain to ice, snow, graupel processes:
         # -----------------------------------------------------------------------
 
-        # tc = t2 - driver_constants.tice
+        tc = t2 - driver_constants.tice
 
-        # if qr2 > driver_constants.qpmin and tc < 0.0:
+        if qr2 > driver_constants.qpmin and tc < 0.0:
 
-        #     # -----------------------------------------------------------------------
-        #     # * sink * terms to qr: psacr + pgfr
-        #     # source terms to qs: psacr
-        #     # source terms to qg: pgfr
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # * sink * terms to qr: psacr + pgfr
+            # source terms to qs: psacr
+            # source terms to qg: pgfr
+            # -----------------------------------------------------------------------
 
-        #     # -----------------------------------------------------------------------
-        #     # psacr accretion of rain by snow
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # psacr accretion of rain by snow
+            # -----------------------------------------------------------------------
 
-        #     if qs2 > driver_constants.qpmin:  # if snow exists
-        #         psacr = dts * acr3d(
-        #             vts,
-        #             vtr,
-        #             qr2,
-        #             qs2,
-        #             driver_constants.csacr,
-        #             driver_constants.acco_01,
-        #             driver_constants.acco_11,
-        #             driver_constants.acco_21,
-        #             den1,
-        #         )
-        #     else:
-        #         psacr = 0.0
+            if qs2 > driver_constants.qpmin:  # if snow exists
+                psacr = dts * acr3d(
+                    vts,
+                    vtr,
+                    qr2,
+                    qs2,
+                    driver_constants.csacr,
+                    driver_constants.acco_01,
+                    driver_constants.acco_11,
+                    driver_constants.acco_21,
+                    den1,
+                )
+            else:
+                psacr = 0.0
 
-        #     # -----------------------------------------------------------------------
-        #     # pgfr: rain freezing -- > graupel
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # pgfr: rain freezing -- > graupel
+            # -----------------------------------------------------------------------
 
-        #     pgfr = (
-        #         dts
-        #         * cgfr_0
-        #         / den1
-        #         * (exp(-cgfr_1 * tc) - 1.0)
-        #         * exp(1.75 * log(qr2 * den1))
-        #     )
+            pgfr = (
+                dts
+                * cgfr_0
+                / den1
+                * (exp(-cgfr_1 * tc) - 1.0)
+                * exp(1.75 * log(qr2 * den1))
+            )
 
-        #     # -----------------------------------------------------------------------
-        #     # total sink to qr
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # total sink to qr
+            # -----------------------------------------------------------------------
 
-        #     sink = psacr + pgfr
-        #     factor = min(sink, min(qr2, -tc / icpk)) / max(sink, driver_constants.qpmin)
+            sink = psacr + pgfr
+            factor = min(sink, min(qr2, -tc / icpk)) / max(sink, driver_constants.qpmin)
 
-        #     psacr = factor * psacr
-        #     pgfr = factor * pgfr
+            psacr = factor * psacr
+            pgfr = factor * pgfr
 
-        #     sink = psacr + pgfr
-        #     qr2 = qr2 - sink
-        #     qs2 = qs2 + psacr
-        #     qg2 = qg2 + pgfr
-        #     q_liq = q_liq - sink
-        #     q_sol = q_sol + sink
-        #     cvm = (
-        #         c_air
-        #         + qv2 * c_vap
-        #         + q_liq * driver_constants.c_liq
-        #         + q_sol * driver_constants.c_ice
-        #     )
-        #     t2 = t2 + sink * lhi / cvm
+            sink = psacr + pgfr
+            qr2 = qr2 - sink
+            qs2 = qs2 + psacr
+            qg2 = qg2 + pgfr
+            q_liq = q_liq - sink
+            q_sol = q_sol + sink
+            cvm = (
+                c_air
+                + qv2 * c_vap
+                + q_liq * driver_constants.c_liq
+                + q_sol * driver_constants.c_ice
+            )
+            t2 = t2 + sink * lhi / cvm
 
         # # -----------------------------------------------------------------------
         # # update capacity heat and latent heat coefficient
         # # -----------------------------------------------------------------------
 
-        # lhi = driver_constants.li00 + driver_constants.dc_ice * t2
-        # icpk = lhi / cvm
+        lhi = driver_constants.li00 + driver_constants.dc_ice * t2
+        icpk = lhi / cvm
 
         # # -----------------------------------------------------------------------
         # # graupel production terms:
         # # -----------------------------------------------------------------------
 
-        # if qs2 > driver_constants.qpmin:
+        if qs2 > driver_constants.qpmin:
 
-        #     # -----------------------------------------------------------------------
-        #     # accretion: snow -- > graupel
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # accretion: snow -- > graupel
+            # -----------------------------------------------------------------------
 
-        #     if qg2 > driver_constants.qpmin:
-        #         sink = dts * acr3d(
-        #             vtg,
-        #             vts,
-        #             qs2,
-        #             qs2,
-        #             cgacs,
-        #             driver_constants.acco_03,
-        #             driver_constants.acco_13,
-        #             driver_constants.acco_23,
-        #             den1,
-        #         )
-        #     else:
-        #         sink = 0.0
+            if qg2 > driver_constants.qpmin:
+                sink = dts * acr3d(
+                    vtg,
+                    vts,
+                    qs2,
+                    qs2,
+                    cgacs,
+                    driver_constants.acco_03,
+                    driver_constants.acco_13,
+                    driver_constants.acco_23,
+                    den1,
+                )
+            else:
+                sink = 0.0
 
-        #     # -----------------------------------------------------------------------
-        #     # autoconversion snow -- > graupel
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # autoconversion snow -- > graupel
+            # -----------------------------------------------------------------------
 
-        #     qsm = qs0_crt / den1
-        #     if qs2 > qsm:
-        #         factor = dts * 1.0e-3 * exp(0.09 * (t2 - driver_constants.tice))
-        #         sink = sink + factor / (1.0 + factor) * (qs2 - qsm)
-        #     sink = min(qs2, sink)
-        #     qs2 = qs2 - sink
-        #     qg2 = qg2 + sink
+            qsm = qs0_crt / den1
+            if qs2 > qsm:
+                factor = dts * 1.0e-3 * exp(0.09 * (t2 - driver_constants.tice))
+                sink = sink + factor / (1.0 + factor) * (qs2 - qsm)
+            sink = min(qs2, sink)
 
-        #     # snow existed
+            # snow existed
+            qs2 = qs2 - sink
+            qg2 = qg2 + sink
 
-        # if qg2 > driver_constants.qpmin and t2 < (driver_constants.tice - 0.01):
+        if qg2 > driver_constants.qpmin and t2 < (driver_constants.tice - 0.01):
 
-        #     # -----------------------------------------------------------------------
-        #     # pgacw: accretion of cloud water by graupel
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # pgacw: accretion of cloud water by graupel
+            # -----------------------------------------------------------------------
 
-        #     if ql2 > driver_constants.qcmin:
-        #         qden = qg2 * den1
-        #         factor = dts * cgacw * qden / sqrt(den1 * sqrt(sqrt(qden)))
-        #         pgacw = factor / (1.0 + factor) * ql2
-        #     else:
-        #         pgacw = 0.0
+            if ql2 > driver_constants.qcmin:
+                qden = qg2 * den1
+                factor = dts * cgacw * qden / sqrt(den1 * sqrt(sqrt(qden)))
+                pgacw = factor / (1.0 + factor) * ql2
+            else:
+                pgacw = 0.0
 
-        #     # -----------------------------------------------------------------------
-        #     # pgacr: accretion of rain by graupel
-        #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # pgacr: accretion of rain by graupel
+            # -----------------------------------------------------------------------
 
-        #     if qr2 > driver_constants.qpmin:
-        #         pgacr = min(
-        #             dts
-        #             * acr3d(
-        #                 vtg,
-        #                 vtr,
-        #                 qr2,
-        #                 qg2,
-        #                 driver_constants.cgacr,
-        #                 driver_constants.acco_02,
-        #                 driver_constants.acco_12,
-        #                 driver_constants.acco_22,
-        #                 den1,
-        #             ),
-        #             qr2,
-        #         )
-        #     else:
-        #         pgacr = 0.0
+            if qr2 > driver_constants.qpmin:
+                pgacr = min(
+                    dts
+                    * acr3d(
+                        vtg,
+                        vtr,
+                        qr2,
+                        qg2,
+                        driver_constants.cgacr,
+                        driver_constants.acco_02,
+                        driver_constants.acco_12,
+                        driver_constants.acco_22,
+                        den1,
+                    ),
+                    qr2,
+                )
+            else:
+                pgacr = 0.0
 
-        #     sink = pgacr + pgacw
-        #     if driver_constants.tice - t2 > 0:
-        #         ans = driver_constants.tice - t2
-        #     else:
-        #         ans = 0
-        #     factor = min(sink, ans / icpk) / max(sink, driver_constants.qpmin)
-        #     pgacr = factor * pgacr
-        #     pgacw = factor * pgacw
+            sink = pgacr + pgacw
+            if driver_constants.tice - t2 > 0:
+                ans = driver_constants.tice - t2
+            else:
+                ans = 0
+            factor = min(sink, ans / icpk) / max(sink, driver_constants.qpmin)
+            pgacr = factor * pgacr
+            pgacw = factor * pgacw
 
-        #     sink = pgacr + pgacw
-        #     qg2 = qg2 + sink
-        #     qr2 = qr2 - pgacr
-        #     ql2 = ql2 - pgacw
-        #     q_liq = q_liq - sink
-        #     q_sol = q_sol + sink
-        #     cvm = (
-        #         c_air
-        #         + qv2 * c_vap
-        #         + q_liq * driver_constants.c_liq
-        #         + q_sol * driver_constants.c_ice
-        #     )
-        #     t2 = t2 + sink * lhi / cvm
+            sink = pgacr + pgacw
+            qg2 = qg2 + sink
+            qr2 = qr2 - pgacr
+            ql2 = ql2 - pgacw
+            q_liq = q_liq - sink
+            q_sol = q_sol + sink
+            cvm = (
+                c_air
+                + qv2 * c_vap
+                + q_liq * driver_constants.c_liq
+                + q_sol * driver_constants.c_ice
+            )
+            t2 = t2 + sink * lhi / cvm
 
     t1 = t2
     qv1 = qv2
@@ -899,100 +897,27 @@ def subgrid_z_proc(
     from __externals__ import (
         c_air,
         c_vap,
-        p_nonhydro,
         d0_vap,
         lv00,
-        latv,
-        lati,
-        lats,
         lat2,
-        lcp,
-        icp,
-        tcp,
         dts,
-        rdts,
-        do_sedi_w,
-        cpaut,
-        hydrostatic,
-        phys_hydrostatic,
-        fix_negative,
-        sedi_transport,
-        const_vi,
-        const_vs,
-        const_vg,
-        use_ppm,
-        fac_imlt,
-        fac_i2s,
-        fac_v2l,
         fac_l2v,
-        fac_i2v,
         fac_s2v,
         fac_v2s,
         fac_g2v,
         fac_v2g,
         fac_frz,
-        ql_mlt,
-        qi0_crt,
-        vi_fac,
-        vi_max,
-        vs_fac,
-        vs_max,
-        vg_fac,
-        vg_max,
-        cgacs,
-        csacw,
-        craci,
-        csaci,
-        cgacw,
-        cgaci,
-        cracw,
-        cgfr_0,
-        cgfr_1,
         cssub_0,
         cssub_1,
         cssub_2,
         cssub_3,
         cssub_4,
-        cgsub_0,
-        cgsub_1,
-        cgsub_2,
-        cgsub_3,
-        cgsub_4,
-        crevp_0,
-        crevp_1,
-        crevp_2,
-        crevp_3,
-        crevp_4,
-        csmlt_0,
-        csmlt_1,
-        csmlt_2,
-        csmlt_3,
-        csmlt_4,
-        cgmlt_0,
-        cgmlt_1,
-        cgmlt_2,
-        cgmlt_3,
-        cgmlt_4,
-        tau_imlt,
-        z_slope_ice,
         do_qa,
         do_evap,
         do_bigg,
-        do_subl,
-        ces0,
         qc_crt,
-        qi0_crt,
-        qs0_crt,
-        qr0_crt,
-        qi_gen,
-        ql_gen,
         qi_lim,
-        qi0_max,
-        ql0_max,
-        ql_mlt,
-        qs_mlt,
         rh_inc,
-        rh_ins,
         rh_inr,
         t_min,
         t_sub,
@@ -1500,16 +1425,59 @@ def icloud(
     from __externals__ import (
         c_air,
         c_vap,
-        fac_i2s,
+        dts,
+        rdts,
+        const_vi,
         fac_g2v,
+        fac_i2s,
         fac_imlt,
         fac_frz,
-        ql_mlt,
+        fac_l2v,
+        fac_s2v,
+        fac_v2s,
+        fac_v2g,
+        cgacs,
+        csacw,
+        csaci,
+        cgacw,
+        cgaci,
+        cgfr_0,
+        cgfr_1,
+        csmlt_0,
+        csmlt_1,
+        csmlt_2,
+        csmlt_3,
+        csmlt_4,
+        cgmlt_0,
+        cgmlt_1,
+        cgmlt_2,
+        cgmlt_3,
+        cgmlt_4,
+        cssub_0,
+        cssub_1,
+        cssub_2,
+        cssub_3,
+        cssub_4,
         qi0_crt,
+        qs0_crt,
+        qs_mlt,
+        ql_mlt,
         z_slope_ice,
         lv00,
         d0_vap,
-    )
+        lat2,
+        do_qa,
+        do_evap,
+        do_bigg,
+        qc_crt,
+        qi_lim,
+        rh_inc,
+        rh_inr,
+        t_min,
+        t_sub,
+        preciprad,
+        icloud_f,
+    )  # comprehensive list of externals needed for stencil and sub functions
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     with computation(FORWARD), interval(0, 1):
@@ -1532,38 +1500,60 @@ def icloud(
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine linear_prof
     # still within reference Fortran gfdl_cloud_microphys.F90: subroutine icloud
+    # set up inputs to "function"
+    with computation(PARALLEL), interval(...):
+        if z_slope_ice == True:
+            q_linear_prof = qi1
+            h_var_linear_prof = rh_limited
+            dm_linear_prof = (
+                q_linear_prof  # initalized here to ensure it is created as a 3d field
+            )
+
     with computation(FORWARD), interval(1, None):
         if z_slope_ice == True:
-            dqi = 0.5 * (qi1 - qi1[0, 0, -1])
+            dq_linear_prof = 0.5 * (q_linear_prof - q_linear_prof[0, 0, -1])
 
     # -----------------------------------------------------------------------
     # use twice the strength of the positive definiteness limiter (lin et al 1994)
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if z_slope_ice == True:
-            di = 0
+            dm_linear_prof = 0
 
     with computation(FORWARD), interval(1, -1):
         if z_slope_ice == True:
-            di = 0.5 * min(abs(dqi + dqi[0, 0, 1]), 0.5 * qi1)
-            if dqi * dqi[0, 0, 1] <= 0.0:
-                if dqi > 0.0:  # local max
-                    di = min(di, min(dqi, -dqi[0, 0, 1]))
+            dm_linear_prof = 0.5 * min(
+                abs(dq_linear_prof + dq_linear_prof[0, 0, 1]), 0.5 * q_linear_prof
+            )
+            if dq_linear_prof * dq_linear_prof[0, 0, 1] <= 0.0:
+                if dq_linear_prof > 0.0:  # local max
+                    dm_linear_prof = min(
+                        dm_linear_prof, min(dq_linear_prof, -dq_linear_prof[0, 0, 1])
+                    )
                 else:
-                    di = 0.0
+                    dm_linear_prof = 0.0
 
     with computation(FORWARD), interval(-1, None):
         if z_slope_ice == True:
-            di = 0
+            dm_linear_prof = 0
 
     # -----------------------------------------------------------------------
     # impose a presumed background horizontal variability that is proportional to the value itself
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if z_slope_ice == True:
-            di = max(di, max(driver_constants.qvmin, rh_limited * qi1))
+            dm_linear_prof = max(
+                dm_linear_prof,
+                max(driver_constants.qvmin, h_var_linear_prof * q_linear_prof),
+            )
         if z_slope_ice == False:
-            di = max(driver_constants.qvmin, rh_limited * qi1)
+            dm_linear_prof = max(
+                driver_constants.qvmin, h_var_linear_prof * q_linear_prof
+            )
+
+    # handle outputs of "function"
+    with computation(PARALLEL), interval(...):
+        di = dm_linear_prof
 
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine linear_prof
 
@@ -1630,29 +1620,29 @@ def icloud(
                 srf_type,
             )
 
-        # t1, qv1, ql1, qr1, qi1, qs1, qg1, qa1, subl1 = subgrid_z_proc(
-        #     p_dry,
-        #     den1,
-        #     denfac,
-        #     t1,
-        #     qv1,
-        #     ql1,
-        #     qr1,
-        #     qi1,
-        #     qs1,
-        #     qg1,
-        #     qa1,
-        #     rh_limited,
-        #     ccn,
-        #     cnv_frc,
-        #     srf_type,
-        #     table1,
-        #     table2,
-        #     table3,
-        #     table4,
-        #     des1,
-        #     des2,
-        #     des3,
-        #     des4,
-        # )
+        t1, qv1, ql1, qr1, qi1, qs1, qg1, qa1, subl1 = subgrid_z_proc(
+            p_dry,
+            den1,
+            denfac,
+            t1,
+            qv1,
+            ql1,
+            qr1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            rh_limited,
+            ccn,
+            cnv_frc,
+            srf_type,
+            table1,
+            table2,
+            table3,
+            table4,
+            des1,
+            des2,
+            des3,
+            des4,
+        )
         # end reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud

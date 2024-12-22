@@ -81,7 +81,7 @@ def terminal_fall_speed_component(
     return t, ql, qr, qi, cvm, lhi, icpk, m1_sol
 
 
-def terminal_fall_stencil(
+def terminal_fall(
     t1: FloatField,
     qv1: FloatField,
     ql1: FloatField,
@@ -108,7 +108,6 @@ def terminal_fall_stencil(
     melting_mask_1: BoolField,
     melting_mask_2: BoolField,
     current_k_level: IntField,
-    TESTVAR: FloatField,
 ):
     from __externals__ import (
         dts,
@@ -117,10 +116,14 @@ def terminal_fall_stencil(
         vi_fac,
         do_sedi_w,
         use_ppm,
-        k_end,
         tau_smlt,
         tau_g2r,
-    )
+        c_air,
+        c_vap,
+        d0_vap,
+        lv00,
+        k_end,
+    )  # comprehensive list of externals needed for stencil and sub functions
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
 
@@ -243,7 +246,9 @@ def terminal_fall_stencil(
                 stop_melting = False
                 m = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = m + 1  # TODO remove this
+                    mplus1 = (
+                        m + 1
+                    )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
                     # if melting_mask_2 == True:
                     #     if zt[0, 0, 1] >= ze.at(K=m):
@@ -440,7 +445,9 @@ def terminal_fall_stencil(
                 stop_melting = False
                 m = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = m + 1  # TODO remove this
+                    mplus1 = (
+                        m + 1
+                    )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
                     # if melting_mask_2 == True:
                     #     if zt[0, 0, 1] >= ze.at(K=m):
@@ -646,7 +653,9 @@ def terminal_fall_stencil(
                 stop_melting = False
                 m = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = m + 1  # TODO remove this
+                    mplus1 = (
+                        m + 1
+                    )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
                     # if melting_mask_2 == True:
                     #     if zt[0, 0, 1] >= ze.at(K=m):

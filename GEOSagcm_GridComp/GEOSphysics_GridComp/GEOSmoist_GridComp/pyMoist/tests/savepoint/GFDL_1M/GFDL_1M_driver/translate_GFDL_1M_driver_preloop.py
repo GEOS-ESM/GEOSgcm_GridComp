@@ -1,22 +1,14 @@
 from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
-import xarray as xr
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
     gfdl_1m_driver_preloop,
     create_temporaries,
 )
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    interval,
-)
 
 
-class TranslateGFDL_driver_preloop(TranslateFortranData2Py):
+class TranslateGFDL_1M_driver_preloop(TranslateFortranData2Py):
     def __init__(self, grid, namelist: Namelist, stencil_factory: StencilFactory):
         super().__init__(grid, stencil_factory)
         self.stencil_factory = stencil_factory
@@ -25,38 +17,38 @@ class TranslateGFDL_driver_preloop(TranslateFortranData2Py):
 
         # FloatField Inputs
         self.in_vars["data_vars"] = {
-            "u_GFDL_driver_preloop": {},
-            "v_GFDL_driver_preloop": {},
-            "w_GFDL_driver_preloop": {},
-            "area_GFDL_driver_preloop": {},
-            "qs_GFDL_driver_preloop": {},
-            "qi_GFDL_driver_preloop": {},
-            "qg_GFDL_driver_preloop": {},
-            "ql_GFDL_driver_preloop": {},
-            "qr_GFDL_driver_preloop": {},
-            "qa_GFDL_driver_preloop": {},
-            "qn_GFDL_driver_preloop": {},
-            "qv_GFDL_driver_preloop": {},
-            "t_GFDL_driver_preloop": {},
-            "dp_GFDL_driver_preloop": {},
-            "dz_GFDL_driver_preloop": {},
-            "rhcrit_GFDL_driver_preloop": {},
+            "u_GFDL_1M_driver_preloop": {},
+            "v_GFDL_1M_driver_preloop": {},
+            "w_GFDL_1M_driver_preloop": {},
+            "area_GFDL_1M_driver_preloop": {},
+            "qs_GFDL_1M_driver_preloop": {},
+            "qi_GFDL_1M_driver_preloop": {},
+            "qg_GFDL_1M_driver_preloop": {},
+            "ql_GFDL_1M_driver_preloop": {},
+            "qr_GFDL_1M_driver_preloop": {},
+            "qa_GFDL_1M_driver_preloop": {},
+            "qn_GFDL_1M_driver_preloop": {},
+            "qv_GFDL_1M_driver_preloop": {},
+            "t_GFDL_1M_driver_preloop": {},
+            "dp_GFDL_1M_driver_preloop": {},
+            "dz_GFDL_1M_driver_preloop": {},
+            "rhcrit_GFDL_1M_driver_preloop": {},
         }
 
         # FloatField Outputs
         self.out_vars = {
-            "t_GFDL_driver_preloop": self.grid.compute_dict(),
-            "p_dry_GFDL_driver_preloop": self.grid.compute_dict(),
-            "ql_GFDL_driver_preloop": self.grid.compute_dict(),
-            "qs_GFDL_driver_preloop": self.grid.compute_dict(),
-            "qg_GFDL_driver_preloop": self.grid.compute_dict(),
-            "qi_GFDL_driver_preloop": self.grid.compute_dict(),
-            "qr_GFDL_driver_preloop": self.grid.compute_dict(),
-            "qv_GFDL_driver_preloop": self.grid.compute_dict(),
-            "dp_GFDL_driver_preloop": self.grid.compute_dict(),
-            "den_GFDL_driver_preloop": self.grid.compute_dict(),
-            "c_praut_GFDL_driver_preloop": self.grid.compute_dict(),
-            "omq_GFDL_driver_preloop": self.grid.compute_dict(),
+            "t_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "p_dry_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "ql_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "qs_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "qg_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "qi_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "qr_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "qv_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "dp_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "den_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "c_praut_GFDL_1M_driver_preloop": self.grid.compute_dict(),
+            "omq_GFDL_1M_driver_preloop": self.grid.compute_dict(),
         }
 
         # initialize temporaries
@@ -135,27 +127,28 @@ class TranslateGFDL_driver_preloop(TranslateFortranData2Py):
 
     def compute(self, inputs):
         # FloatField Variables
-        u = self.make_ijk_field(inputs["u_GFDL_driver_preloop"])
-        v = self.make_ijk_field(inputs["v_GFDL_driver_preloop"])
-        w = self.make_ijk_field(inputs["w_GFDL_driver_preloop"])
-        area = self.make_ij_field(inputs["area_GFDL_driver_preloop"])
-        qs = self.make_ijk_field(inputs["qs_GFDL_driver_preloop"])
-        qi = self.make_ijk_field(inputs["qi_GFDL_driver_preloop"])
-        qg = self.make_ijk_field(inputs["qg_GFDL_driver_preloop"])
-        ql = self.make_ijk_field(inputs["ql_GFDL_driver_preloop"])
-        qr = self.make_ijk_field(inputs["qr_GFDL_driver_preloop"])
-        qa = self.make_ijk_field(inputs["qa_GFDL_driver_preloop"])
-        qn = self.make_ijk_field(inputs["qn_GFDL_driver_preloop"])
-        qv = self.make_ijk_field(inputs["qv_GFDL_driver_preloop"])
-        t = self.make_ijk_field(inputs["t_GFDL_driver_preloop"])
-        dp = self.make_ijk_field(inputs["dp_GFDL_driver_preloop"])
-        dz = self.make_ijk_field(inputs["dz_GFDL_driver_preloop"])
-        rhcrit = self.make_ijk_field(inputs["rhcrit_GFDL_driver_preloop"])
+        u = self.make_ijk_field(inputs["u_GFDL_1M_driver_preloop"])
+        v = self.make_ijk_field(inputs["v_GFDL_1M_driver_preloop"])
+        w = self.make_ijk_field(inputs["w_GFDL_1M_driver_preloop"])
+        area = self.make_ij_field(inputs["area_GFDL_1M_driver_preloop"])
+        qs = self.make_ijk_field(inputs["qs_GFDL_1M_driver_preloop"])
+        qi = self.make_ijk_field(inputs["qi_GFDL_1M_driver_preloop"])
+        qg = self.make_ijk_field(inputs["qg_GFDL_1M_driver_preloop"])
+        ql = self.make_ijk_field(inputs["ql_GFDL_1M_driver_preloop"])
+        qr = self.make_ijk_field(inputs["qr_GFDL_1M_driver_preloop"])
+        qa = self.make_ijk_field(inputs["qa_GFDL_1M_driver_preloop"])
+        qn = self.make_ijk_field(inputs["qn_GFDL_1M_driver_preloop"])
+        qv = self.make_ijk_field(inputs["qv_GFDL_1M_driver_preloop"])
+        t = self.make_ijk_field(inputs["t_GFDL_1M_driver_preloop"])
+        dp = self.make_ijk_field(inputs["dp_GFDL_1M_driver_preloop"])
+        dz = self.make_ijk_field(inputs["dz_GFDL_1M_driver_preloop"])
+        rhcrit = self.make_ijk_field(inputs["rhcrit_GFDL_1M_driver_preloop"])
 
         # make outputs
         self.vti = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.vts = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.vtg = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.onemsig = self.quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
 
         self._create_temporaries(
             t,
@@ -190,6 +183,7 @@ class TranslateGFDL_driver_preloop(TranslateFortranData2Py):
             self.u1,
             self.v1,
             self.w1,
+            self.onemsig,
             self.ccn,
             self.c_praut,
             self.rh_limited,
@@ -207,16 +201,16 @@ class TranslateGFDL_driver_preloop(TranslateFortranData2Py):
         )
 
         return {
-            "t_GFDL_driver_preloop": self.t1.view[:],
-            "p_dry_GFDL_driver_preloop": self.p_dry.view[:],
-            "ql_GFDL_driver_preloop": self.ql1.view[:],
-            "qs_GFDL_driver_preloop": self.qs1.view[:],
-            "qg_GFDL_driver_preloop": self.qg1.view[:],
-            "qi_GFDL_driver_preloop": self.qi1.view[:],
-            "qr_GFDL_driver_preloop": self.qr1.view[:],
-            "qv_GFDL_driver_preloop": self.qv1.view[:],
-            "dp_GFDL_driver_preloop": self.dp1.view[:],
-            "den_GFDL_driver_preloop": self.den.view[:],
-            "c_praut_GFDL_driver_preloop": self.c_praut.view[:],
-            "omq_GFDL_driver_preloop": self.omq.view[:],
+            "t_GFDL_1M_driver_preloop": self.t1.view[:],
+            "p_dry_GFDL_1M_driver_preloop": self.p_dry.view[:],
+            "ql_GFDL_1M_driver_preloop": self.ql1.view[:],
+            "qs_GFDL_1M_driver_preloop": self.qs1.view[:],
+            "qg_GFDL_1M_driver_preloop": self.qg1.view[:],
+            "qi_GFDL_1M_driver_preloop": self.qi1.view[:],
+            "qr_GFDL_1M_driver_preloop": self.qr1.view[:],
+            "qv_GFDL_1M_driver_preloop": self.qv1.view[:],
+            "dp_GFDL_1M_driver_preloop": self.dp1.view[:],
+            "den_GFDL_1M_driver_preloop": self.den.view[:],
+            "c_praut_GFDL_1M_driver_preloop": self.c_praut.view[:],
+            "omq_GFDL_1M_driver_preloop": self.omq.view[:],
         }
