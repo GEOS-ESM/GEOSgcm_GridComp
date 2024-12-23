@@ -29,6 +29,12 @@ Collections:
   vas_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/vas/vas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
      valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+  uvas_1_5_0: 
+     template: ExtData/JRA55-DO/v1-5-0/uvas/uvas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
+  uvas_1_5_0_1: 
+     template: ExtData/JRA55-DO/v1-5-0-1/uvas/uvas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   friver_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/friver/friver_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y40101-%y41231.nc
      valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
@@ -79,12 +85,9 @@ Exports:
    QA:
      - {starting: "1958-01-01T00:00:00", collection: huss_1_5_0, sample: interannual_sample, variable: huss}
      - {starting: "2020-01-01T00:00:00", collection: huss_1_5_0_1, sample: interannual_sample, variable: huss}
-   UA:
-     - {starting: "1958-01-01T00:00:00", collection: uas_1_5_0, regrid: PATCH, sample: interannual_sample, variable: uas}
-     - {starting: "2020-01-01T00:00:00", collection: uas_1_5_0_1, regrid: PATCH, sample: interannual_sample, variable: uas}
-   VA:
-     - {starting: "1958-01-01T00:00:00", collection: vas_1_5_0, regrid: PATCH, sample: interannual_sample, variable: vas}
-     - {starting: "2020-01-01T00:00:00", collection: vas_1_5_0_1, regrid: PATCH, sample: interannual_sample, variable: vas}
+   UA;VA: 
+     - {starting: "1958-01-01T00:00:00", collection: uvas_1_5_0, sample: interannual_sample, variable: uas;vas}
+     - {starting: "2020-01-01T00:00:00", collection: uvas_1_5_0_1, sample: interannual_sample, variable: uas;vas}
    RUNOFF:
      - {starting: "1958-01-01T00:00:00", collection: friver_1_5_0, regrid: CONSERVE, sample: river_conserve_sample, variable: friver}
      - {starting: "2020-01-01T00:00:00", collection: friver_1_5_0_1, regrid: CONSERVE, sample: river_conserve_sample, variable: friver}
