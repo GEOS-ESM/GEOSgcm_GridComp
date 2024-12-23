@@ -1,34 +1,34 @@
 Collections:
   psl_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/psl/psl_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   psl_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/psl/psl_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   tas_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/tas/tas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   tas_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/tas/tas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   huss_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/huss/huss_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   huss_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/huss/huss_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   uas_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/uas/uas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   uas_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/uas/uas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   vas_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/vas/vas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   vas_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/vas/vas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010000-%y412312100.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   uvas_1_5_0: 
      template: ExtData/JRA55-DO/v1-5-0/uvas/uvas_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010000-%y412312100.nc
      valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
@@ -37,34 +37,34 @@ Collections:
      valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   friver_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/friver/friver_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y40101-%y41231.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   friver_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/friver/friver_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y40101-%y41231.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   prra_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/prra/prra_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010130-%y412312230.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   prra_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/prra/prra_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010130-%y412312230.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   prsn_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/prsn/prsn_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010130-%y412312230.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   prsn_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/prsn/prsn_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010130-%y412312230.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   rlds_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/rlds/rlds_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010130-%y412312230.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   rlds_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/rlds/rlds_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010130-%y412312230.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
   rsds_1_5_0:  
      template: ExtData/JRA55-DO/v1-5-0/rsds/rsds_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0_gr_%y401010130-%y412312230.nc
-     valid_range: "1958-01-01T00:00:00/2020-07-15T21:00:00"
+     valid_range: "1958-01-01T00:00:00/2020-01-01T00:00:00"
   rsds_1_5_0_1:  
      template: ExtData/JRA55-DO/v1-5-0-1/rsds/rsds_input4MIPs_atmosphericState_OMIP_MRI-JRA55-do-1-5-0-1_gr_%y401010130-%y412312230.nc
-     valid_range: "2020-01-01T00:00:00/2024-02-01T21:00:00"
+     valid_range: "2020-01-01T00:00:00/2024-02-02T00:00:00"
 
 Samplings:
   interannual_sample:
