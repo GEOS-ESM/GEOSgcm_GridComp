@@ -487,7 +487,7 @@ class GFDL_1M_driver:
         # generate saturation specific humidity tables
         # -----------------------------------------------------------------------
 
-        self.sat_tables = get_tables()
+        self.sat_tables = get_tables(stencil_factory.backend)
 
         # -----------------------------------------------------------------------
         # initialize stencils
@@ -732,11 +732,6 @@ class GFDL_1M_driver:
         sedi_transport: bool,
     ):
 
-        qa.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qa-original.nc")
-        qv.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qv-original.nc")
-        ql.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/ql-original.nc")
-        qi.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qi-original.nc")
-
         # The driver modifies a number of variables (t, p, qX) but does not pass the changes back
         # to the rest of the model. To replicate this behavior, temporary copies of these variables
         # are used throughout the driver.
@@ -797,7 +792,7 @@ class GFDL_1M_driver:
             self.dp1,
         )
 
-        for n in range(1):  # range(self.ntimes):
+        for n in range(self.ntimes):
             self._gfdl_1m_driver_loop_1(
                 self.ql1,
                 self.qi1,
@@ -1002,12 +997,6 @@ class GFDL_1M_driver:
             self.m2_sol,
         )
 
-        self.qa0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qa0.nc")
-        self.qv0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qv0.nc")
-        self.ql0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/ql0.nc")
-        self.qi0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qi0.nc")
-        print("done")
-
     def check_flags(
         self,
         phys_hydrostatic: bool,
@@ -1035,101 +1024,58 @@ class GFDL_1M_driver:
         mp_print: bool,
         dts: Float,
     ):
+        failed_keywords = []
         if not phys_hydrostatic:
-            raise ValueError(
-                "Untested phys_hydrostatic option, disable this error manually to proceed."
-            )
+            failed_keywords.append("phys_hydrostatic")
         if hydrostatic:
-            raise ValueError(
-                "Untested hydrostatic option, disable this error manually to proceed."
-            )
+            failed_keywords.append("hydrostatic")
         if const_vi:
-            raise ValueError(
-                "Untested const_vi option, disable this error manually to proceed."
-            )
+            failed_keywords.append("const_vi")
         if const_vs:
-            raise ValueError(
-                "Untested const_vs option, disable this error manually to proceed."
-            )
+            failed_keywords.append("const_vs")
         if const_vg:
-            raise ValueError(
-                "Untested const_vg option, disable this error manually to proceed."
-            )
+            failed_keywords.append("const_vg")
         if const_vr:
-            raise ValueError(
-                "const_vr option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("const_vr")
         if use_ppm:
-            raise NotImplementedError(
-                "use_ppm option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("use_ppm")
         if not use_ccn:
-            raise NotImplementedError(
-                "use_ccn option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("use_ccn")
         if do_qa:
-            raise NotImplementedError(
-                "do_qa option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_qa")
         if fast_set_adj:
-            raise NotImplementedError(
-                "fast_set_adj option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("fast_set_adj")
         if do_bigg:
-            raise NotImplementedError(
-                "do_bigg option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_bigg")
         if do_evap:
-            raise NotImplementedError(
-                "do_evap option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_evap")
         if do_subl:
-            raise NotImplementedError(
-                "do_subl option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_subl")
         if not z_slope_liq:
-            raise NotImplementedError(
-                "z_slope_liq option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("z_slope_liq")
         if not z_slope_ice:
-            raise NotImplementedError(
-                "z_slope_ice option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("z_slope_ice")
         if not prog_ccn:
-            raise NotImplementedError(
-                "prog_ccn option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("prog_ccn")
         if not preciprad:
-            raise NotImplementedError(
-                "preciprad option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("preciprad")
         if not mono_prof:
-            raise NotImplementedError(
-                "mono_prof option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("mono_prof")
         if do_sedi_heat:
-            raise NotImplementedError(
-                "do_sedi_heat option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_sedi_heat")
         if not sedi_transport:
-            raise NotImplementedError(
-                "sedi_transport option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("sedi_transport")
         if do_sedi_w:
-            raise NotImplementedError(
-                "do_sedi_w option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("do_sedi_w")
         if de_ice:
-            raise NotImplementedError(
-                "de_ice option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("de_ice")
         if mp_print:
-            raise NotImplementedError(
-                "mp_print option not implemented, contact dev team for further assistance."
-            )
+            failed_keywords.append("mp_print")
         if dts >= 300:
-            raise NotImplementedError(
-                "Hey there friend. It looks like your value for dts is less than 300. \
-                    The code for this option does not exist yet. This will cause problems in \
-                    the terminal_fall stencil"
+            failed_keywords.append("dts")
+
+        if len(failed_keywords) > 0:
+            raise ValueError(
+                "One or more namelist parameters do not meet expected values. Failing parameters: ",
+                failed_keywords,
             )

@@ -80,7 +80,7 @@ class Translatewarm_rain(TranslateFortranData2Py):
             # "dqsdt_warm_rain": self.grid.compute_dict(),
         }
 
-        self.sat_tables = get_tables()
+        self.sat_tables = get_tables(self.stencil_factory.backend)
 
     def make_ij_field(self, data) -> Quantity:
         qty = self.quantity_factory.empty(

@@ -12,7 +12,6 @@ from gt4py.cartesian.gtscript import (
     log10,
     exp,
     trunc,
-    i32,
 )
 from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int, BoolField
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants

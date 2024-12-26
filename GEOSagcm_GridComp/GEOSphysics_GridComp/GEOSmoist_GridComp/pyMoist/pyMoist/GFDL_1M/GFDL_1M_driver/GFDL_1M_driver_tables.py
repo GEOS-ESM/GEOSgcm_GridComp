@@ -254,14 +254,14 @@ class GFDL_driver_tables:
     Reference Fortran: gfdl_cloud_microphys.F90: qsmith_init.py
     """
 
-    def __init__(self):
+    def __init__(self, backend):
         # NOTE: add backend as an input to make sure the same backend is always being used,
         # and a warning that explains why we are using gt:cpu_ifirst for now
 
         qsat_domain = (1, 1, 1)
 
         stencil_factory, quantity_factory_data_dim = get_factories_single_tile(
-            qsat_domain[0], qsat_domain[1], qsat_domain[2], 0, backend="gt:cpu_ifirst"
+            qsat_domain[0], qsat_domain[1], qsat_domain[2], 0, backend=backend
         )
         quantity_factory_data_dim.set_extra_dim_lengths(
             **{
@@ -404,8 +404,8 @@ _cached_table = {
 }
 
 
-def get_tables():
+def get_tables(backend):
     if _cached_table["driver_qsat"] is None:
-        _cached_table["driver_qsat"] = GFDL_driver_tables()
+        _cached_table["driver_qsat"] = GFDL_driver_tables(backend)
 
     return _cached_table["driver_qsat"]

@@ -614,7 +614,7 @@ class Translateicloud(TranslateFortranData2Py):
             },
         )
 
-        self.sat_tables = get_tables()
+        self.sat_tables = get_tables(self.stencil_factory.backend)
 
         self._stencil(
             t1_icloud,

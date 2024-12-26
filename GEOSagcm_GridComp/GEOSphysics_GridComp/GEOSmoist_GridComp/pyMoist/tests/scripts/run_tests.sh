@@ -5,6 +5,7 @@ rm -rf ./.translate-*
 export GT4PY_LITERAL_PRECISION=32
 export FV3_DACEMODE=Python
 export PACE_FLOAT_PRECISION=32
+export PACE_TEST_N_THRESHOLD_SAMPLES=0
 python -m pytest -s \
     --data_path=/Users/ckropiew/netcdfs \
     --backend=debug \
