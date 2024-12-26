@@ -11,6 +11,7 @@ from gt4py.cartesian.gtscript import (
     interval,
     sqrt,
     tan,
+    i32,
 )
 
 import pyMoist.constants as constants
@@ -26,7 +27,7 @@ from pyMoist.shared_incloud_processes import (
 
 @gtscript.function
 def pdffrac(
-    pdfshape: Int,
+    pdfshape: i32,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
@@ -51,7 +52,7 @@ def pdffrac(
 
 @gtscript.function
 def pdfcondensate(
-    pdfshape: Int,
+    pdfshape: i32,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,

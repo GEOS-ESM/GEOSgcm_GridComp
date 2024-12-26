@@ -244,9 +244,9 @@ def terminal_fall(
             if melting_mask_1 == True and qi1 > driver_constants.qcmin:
                 # initalize exit trigger
                 stop_melting = False
-                m = 0
+                m: i32 = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = (
+                    mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
@@ -443,9 +443,9 @@ def terminal_fall(
             if melting_mask_1 == True and qs1 > driver_constants.qpmin:
                 # initalize exit trigger
                 stop_melting = False
-                m = 0
+                m: i32 = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = (
+                    mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
@@ -651,9 +651,9 @@ def terminal_fall(
             if melting_mask_1 == True and qg1 > driver_constants.qpmin:
                 # initalize exit trigger
                 stop_melting = False
-                m = 0
+                m: i32 = 0
                 while m < k_end and stop_melting == False:
-                    mplus1 = (
+                    mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels

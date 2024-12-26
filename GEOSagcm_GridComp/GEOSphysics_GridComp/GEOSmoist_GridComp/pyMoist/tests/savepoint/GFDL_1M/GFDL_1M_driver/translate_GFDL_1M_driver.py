@@ -149,8 +149,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
 
         # FloatField Outputs
         self.out_vars = {
-            "RAD_QI": self.grid.compute_dict(),
-            "RAD_QS": self.grid.compute_dict(),
             "DQADTmic": self.grid.compute_dict(),
             "DTDTmic": self.grid.compute_dict(),
             "DUDTmic": self.grid.compute_dict(),
@@ -451,8 +449,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         )
 
         return {
-            "RAD_QI": RAD_QI.view[:],
-            "RAD_QS": RAD_QS.view[:],
             "DQADTmic": DQADTmic.view[:],
             "DTDTmic": DTDTmic.view[:],
             "DUDTmic": DUDTmic.view[:],

@@ -1,5 +1,6 @@
 """GFDL_1M driver"""
 
+from gt4py.cartesian.gtscript import i32
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
@@ -149,15 +150,15 @@ class GFDL_1M_driver:
         # -----------------------------------------------------------------------
 
         mpdt = min(dt_moist, mp_time)
-        rdt = 1.0 / dt_moist
-        ntimes = int(
+        rdt = Float(1.0) / dt_moist
+        ntimes = i32(
             dt_moist / mpdt
         )  # need to implement a round function here. for now int does it, but this is temporary\
         self.ntimes = ntimes  # save so that this can be referenced from within __call__
 
         # small time step:
-        dts = (
-            dt_moist / ntimes
+        dts = dt_moist / Float(
+            ntimes
         )  # make sure dts is a Float, if not, need to cast ntimes to float before calcualtion
 
         # -----------------------------------------------------------------------
@@ -165,22 +166,22 @@ class GFDL_1M_driver:
         # the following is based on klein eq. 15
         # -----------------------------------------------------------------------
 
-        cpaut = c_paut * 0.104 * driver_constants.grav / 1.717e-5
+        cpaut = c_paut * Float(0.104) * driver_constants.grav / Float(1.717e-5)
 
         # -----------------------------------------------------------------------
         # define conversion scalar / factor for icloud
         # -----------------------------------------------------------------------
-        rdts = 1.0 / dts
-        fac_imlt = 1.0 - np.exp(-dts / tau_imlt)
-        fac_i2s = 1.0 - np.exp(-dts / tau_i2s)
-        fac_v2l = 1.0 - np.exp(-dts / tau_v2l)
-        fac_l2v = 1.0 - np.exp(-dts / tau_l2v)
-        fac_i2v = 1.0 - np.exp(-dts / tau_i2v)
-        fac_s2v = 1.0 - np.exp(-dts / tau_s2v)
-        fac_v2s = 1.0 - np.exp(-dts / tau_v2s)
-        fac_g2v = 1.0 - np.exp(-dts / tau_g2v)
-        fac_v2g = 1.0 - np.exp(-dts / tau_v2g)
-        fac_frz = 1.0 - np.exp(-dts / tau_frz)
+        rdts = Float(1.0) / dts
+        fac_imlt = Float(1.0) - np.exp(-dts / tau_imlt, dtype=Float)
+        fac_i2s = Float(1.0) - np.exp(-dts / tau_i2s, dtype=Float)
+        fac_v2l = Float(1.0) - np.exp(-dts / tau_v2l, dtype=Float)
+        fac_l2v = Float(1.0) - np.exp(-dts / tau_l2v, dtype=Float)
+        fac_i2v = Float(1.0) - np.exp(-dts / tau_i2v, dtype=Float)
+        fac_s2v = Float(1.0) - np.exp(-dts / tau_s2v, dtype=Float)
+        fac_v2s = Float(1.0) - np.exp(-dts / tau_v2s, dtype=Float)
+        fac_g2v = Float(1.0) - np.exp(-dts / tau_g2v, dtype=Float)
+        fac_v2g = Float(1.0) - np.exp(-dts / tau_v2g, dtype=Float)
+        fac_frz = Float(1.0) - np.exp(-dts / tau_frz, dtype=Float)
 
         # -----------------------------------------------------------------------
         # initialize precipitation outputs
@@ -212,7 +213,7 @@ class GFDL_1M_driver:
             * driver_constants.rnzs
             * clin
             * driver_constants.gam325
-            / (4.0 * driver_constants.act[0] ** 0.8125)
+            / (Float(4.0) * np.power(driver_constants.act[0], 0.8125, dtype=Float))
         )
         # decreasing csacw to reduce cloud water --- > snow
 
@@ -221,7 +222,7 @@ class GFDL_1M_driver:
             * driver_constants.rnzr
             * alin
             * driver_constants.gam380
-            / (4.0 * driver_constants.act[1] ** 0.95)
+            / (Float(4.0) * np.power(driver_constants.act[1], 0.95, dtype=Float))
         )
         csaci = csacw * c_psaci
 
@@ -230,7 +231,7 @@ class GFDL_1M_driver:
             * driver_constants.rnzg
             * driver_constants.gam350
             * driver_constants.gcon
-            / (4.0 * driver_constants.act[5] ** 0.875)
+            / (Float(4.0) * np.power(driver_constants.act[5], 0.875, dtype=Float))
         )
 
         cgaci = cgacw * c_pgaci
@@ -243,7 +244,7 @@ class GFDL_1M_driver:
         crevp = np.zeros(5)
 
         cssub[0] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.vdifu
             * driver_constants.tcond
@@ -251,7 +252,7 @@ class GFDL_1M_driver:
             * driver_constants.rnzs
         )
         cgsub[0] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.vdifu
             * driver_constants.tcond
@@ -259,36 +260,36 @@ class GFDL_1M_driver:
             * driver_constants.rnzg
         )
         crevp[0] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.vdifu
             * driver_constants.tcond
             * driver_constants.rvgas
             * driver_constants.rnzr
         )
-        cssub[1] = 0.78 / np.sqrt(driver_constants.act[0])
-        cgsub[1] = 0.78 / np.sqrt(driver_constants.act[5])
-        crevp[1] = 0.78 / np.sqrt(driver_constants.act[1])
+        cssub[1] = Float(0.78) / np.sqrt(driver_constants.act[0], dtype=Float)
+        cgsub[1] = Float(0.78) / np.sqrt(driver_constants.act[5], dtype=Float)
+        crevp[1] = Float(0.78) / np.sqrt(driver_constants.act[1], dtype=Float)
         cssub[2] = (
-            0.31
+            Float(0.31)
             * driver_constants.scm3
             * driver_constants.gam263
             * np.sqrt(clin / driver_constants.visk)
-            / driver_constants.act[0] ** 0.65625
+            / driver_constants.act[0] ** Float(0.65625)
         )
         cgsub[2] = (
-            0.31
+            Float(0.31)
             * driver_constants.scm3
             * driver_constants.gam275
             * np.sqrt(driver_constants.gcon / driver_constants.visk)
-            / driver_constants.act[5] ** 0.6875
+            / driver_constants.act[5] ** Float(0.6875)
         )
         crevp[2] = (
-            0.31
+            Float(0.31)
             * driver_constants.scm3
             * driver_constants.gam290
             * np.sqrt(alin / driver_constants.visk)
-            / driver_constants.act[1] ** 0.725
+            / driver_constants.act[1] ** Float(0.725)
         )
         cssub[3] = driver_constants.tcond * driver_constants.rvgas
         cssub[4] = driver_constants.hlts**2 * driver_constants.vdifu
@@ -298,13 +299,13 @@ class GFDL_1M_driver:
         crevp[4] = driver_constants.hltc**2 * driver_constants.vdifu
 
         cgfr_0 = (
-            20.0e2
+            Float(20.0e2)
             * driver_constants.pisq
             * driver_constants.rnzr
             * driver_constants.rhor
-            / driver_constants.act[1] ** 1.75
+            / driver_constants.act[1] ** Float(1.75)
         )
-        cgfr_1 = 0.66
+        cgfr_1 = Float(0.66)
 
         cssub_0 = cssub[0]
         cssub_1 = cssub[1]
@@ -328,14 +329,14 @@ class GFDL_1M_driver:
 
         csmlt = np.zeros(5)
         csmlt[0] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.tcond
             * driver_constants.rnzs
             / driver_constants.hltf
         )
         csmlt[1] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.vdifu
             * driver_constants.rnzs
@@ -356,14 +357,14 @@ class GFDL_1M_driver:
 
         cgmlt = np.zeros(5)
         cgmlt[0] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.tcond
             * driver_constants.rnzg
             / driver_constants.hltf
         )
         cgmlt[1] = (
-            2.0
+            Float(2.0)
             * driver_constants.pie
             * driver_constants.vdifu
             * driver_constants.rnzg
@@ -380,7 +381,7 @@ class GFDL_1M_driver:
         cgmlt_3 = cgmlt[3]
         cgmlt_4 = cgmlt[4]
 
-        es0 = 6.107799961e2  # ~6.1 mb
+        es0 = Float(6.107799961e2)  # ~6.1 mb
         ces0 = driver_constants.eps * es0
 
         # Check values for untested code paths
@@ -418,6 +419,13 @@ class GFDL_1M_driver:
         self.t1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.dp1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.omq = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qv0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.ql0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qr0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qi0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qs0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qg0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.qa0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.qv1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.ql1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.qr1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -724,6 +732,11 @@ class GFDL_1M_driver:
         sedi_transport: bool,
     ):
 
+        qa.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qa-original.nc")
+        qv.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qv-original.nc")
+        ql.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/ql-original.nc")
+        qi.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qi-original.nc")
+
         # The driver modifies a number of variables (t, p, qX) but does not pass the changes back
         # to the rest of the model. To replicate this behavior, temporary copies of these variables
         # are used throughout the driver.
@@ -739,6 +752,20 @@ class GFDL_1M_driver:
             qg,
             qa,
             qn,
+            self.qv0,
+            self.ql0,
+            self.qr0,
+            self.qi0,
+            self.qs0,
+            self.qg0,
+            self.qa0,
+            self.qv1,
+            self.ql1,
+            self.qr1,
+            self.qi1,
+            self.qs1,
+            self.qg1,
+            self.qa1,
             dz,
             uin,
             vin,
@@ -747,13 +774,6 @@ class GFDL_1M_driver:
             self.t1,
             self.dp1,
             self.omq,
-            self.qv1,
-            self.ql1,
-            self.qr1,
-            self.qi1,
-            self.qs1,
-            self.qg1,
-            self.qa1,
             self.den,
             self.p_dry,
             self.m1,
@@ -924,13 +944,13 @@ class GFDL_1M_driver:
             )
 
         self._gfdl_1m_driver_postloop(
-            qv,
-            ql,
-            qr,
-            qi,
-            qs,
-            qg,
-            qa,
+            self.qv0,
+            self.ql0,
+            self.qr0,
+            self.qi0,
+            self.qs0,
+            self.qg0,
+            self.qa0,
             self.qv1,
             self.ql1,
             self.qr1,
@@ -981,6 +1001,12 @@ class GFDL_1M_driver:
             self.m2_rain,
             self.m2_sol,
         )
+
+        self.qa0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qa0.nc")
+        self.qv0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qv0.nc")
+        self.ql0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/ql0.nc")
+        self.qi0.data_array.to_netcdf("/Users/ckropiew/temporary_ncfiles/qi0.nc")
+        print("done")
 
     def check_flags(
         self,

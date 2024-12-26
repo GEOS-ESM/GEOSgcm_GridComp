@@ -35,6 +35,20 @@ def create_temporaries(
     qg: FloatField,
     qa: FloatField,
     qn: FloatField,
+    qv0: FloatField,
+    ql0: FloatField,
+    qr0: FloatField,
+    qi0: FloatField,
+    qs0: FloatField,
+    qg0: FloatField,
+    qa0: FloatField,
+    qv1: FloatField,
+    ql1: FloatField,
+    qr1: FloatField,
+    qi1: FloatField,
+    qs1: FloatField,
+    qg1: FloatField,
+    qa1: FloatField,
     dz: FloatField,
     uin: FloatField,
     vin: FloatField,
@@ -43,13 +57,6 @@ def create_temporaries(
     t1: FloatField,
     dp1: FloatField,
     omq: FloatField,
-    qv1: FloatField,
-    ql1: FloatField,
-    qr1: FloatField,
-    qi1: FloatField,
-    qs1: FloatField,
-    qg1: FloatField,
-    qa1: FloatField,
     den: FloatField,
     p_dry: FloatField,
     m1: FloatField,
@@ -83,23 +90,24 @@ def create_temporaries(
         # convert moist mixing ratios to dry mixing ratios
         # -----------------------------------------------------------------------
 
-        qv1 = qv
-        ql1 = ql
-        qi1 = qi
-        qr1 = qr
-        qs1 = qs
-        qg1 = qg
-
-        dp1 = dp1 * (1.0 - qv1)  # gfs
+        dp1 = dp1 * (1.0 - qv)  # gfs
         omq = dp / dp1
 
-        qv1 = qv1 * omq
-        ql1 = ql1 * omq
-        qr1 = qr1 * omq
-        qi1 = qi1 * omq
-        qs1 = qs1 * omq
-        qg1 = qg1 * omq
+        qv0 = qv * omq
+        ql0 = ql * omq
+        qr0 = qr * omq
+        qi0 = qi * omq
+        qs0 = qs * omq
+        qg0 = qg * omq
 
+        qv1 = qv0
+        ql1 = ql0
+        qr1 = qr0
+        qi1 = qi0
+        qs1 = qs0
+        qg1 = qg0
+
+        qa0 = qa
         qa1 = qa
 
         den = -dp1 / (driver_constants.grav * dz)  # density of dry air
@@ -440,13 +448,13 @@ def gfdl_1m_driver_loop_4(
 
 
 def gfdl_1m_driver_postloop(
-    qv: FloatField,
-    ql: FloatField,
-    qr: FloatField,
-    qi: FloatField,
-    qs: FloatField,
-    qg: FloatField,
-    qa: FloatField,
+    qv0: FloatField,
+    ql0: FloatField,
+    qr0: FloatField,
+    qi0: FloatField,
+    qs0: FloatField,
+    qg0: FloatField,
+    qa0: FloatField,
     qv1: FloatField,
     ql1: FloatField,
     qr1: FloatField,
@@ -529,12 +537,12 @@ def gfdl_1m_driver_postloop(
 
     with computation(PARALLEL), interval(...):
         omq = dp1 / dp
-        qv_dt = qv_dt + rdt * (qv1 - qv) * omq
-        ql_dt = ql_dt + rdt * (ql1 - ql) * omq
-        qr_dt = qr_dt + rdt * (qr1 - qr) * omq
-        qi_dt = qi_dt + rdt * (qi1 - qi) * omq
-        qs_dt = qs_dt + rdt * (qs1 - qs) * omq
-        qg_dt = qg_dt + rdt * (qg1 - qg) * omq
+        qv_dt = qv_dt + rdt * (qv1 - qv0) * omq
+        ql_dt = ql_dt + rdt * (ql1 - ql0) * omq
+        qr_dt = qr_dt + rdt * (qr1 - qr0) * omq
+        qi_dt = qi_dt + rdt * (qi1 - qi0) * omq
+        qs_dt = qs_dt + rdt * (qs1 - qs0) * omq
+        qg_dt = qg_dt + rdt * (qg1 - qg0) * omq
         cvm = (
             c_air
             + qv1 * c_vap
@@ -548,7 +556,7 @@ def gfdl_1m_driver_postloop(
         # -----------------------------------------------------------------------
         if do_qa == False:
             qa_dt = qa_dt + rdt * (
-                qa * sqrt((qi1 + ql1) / max(qi + ql, driver_constants.qcmin)) - qa
+                qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.qcmin)) - qa0
             )  # New Cloud - Old CloudCloud
 
     with computation(FORWARD), interval(0, 1):

@@ -1,6 +1,14 @@
 import copy
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import computation, interval, PARALLEL, exp, log, log10
+from gt4py.cartesian.gtscript import (
+    computation,
+    interval,
+    PARALLEL,
+    exp,
+    log,
+    log10,
+    i32,
+)
 from ndsl import QuantityFactory, StencilFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -9,12 +17,12 @@ import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constan
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
-length = 2621
+length = i32(2621)
 _FloatField_data_dim = gtscript.Field[gtscript.IJK, (Float, (int(length)))]
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
 
 
-def qs_table_1(length: Int, table1: _FloatField_data_dim, esupc: _FloatField_data_dim):
+def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_data_dim):
     """
     compute saturation water vapor pressure table 1
     three phase table
@@ -75,7 +83,7 @@ def qs_table_1(length: Int, table1: _FloatField_data_dim, esupc: _FloatField_dat
             i = i + 1
 
 
-def qs_table_2(length: Int, table2: _FloatField_data_dim):
+def qs_table_2(length: i32, table2: _FloatField_data_dim):
     """
     compute saturation water vapor pressure table 2
     one phase table
@@ -98,7 +106,7 @@ def qs_table_2(length: Int, table2: _FloatField_data_dim):
             i = i + 1
 
 
-def qs_table_3(length: Int, table3: _FloatField_data_dim, table1: _FloatField_data_dim):
+def qs_table_3(length: i32, table3: _FloatField_data_dim, table1: _FloatField_data_dim):
     """
     compute saturation water vapor pressure table 3
     two phase table
@@ -152,7 +160,7 @@ def qs_table_3(length: Int, table3: _FloatField_data_dim, table1: _FloatField_da
         table3[0, 0, 0][i1] = tem1
 
 
-def qs_table_4(length: Int, table4: _FloatField_data_dim, table1: _FloatField_data_dim):
+def qs_table_4(length: i32, table4: _FloatField_data_dim, table1: _FloatField_data_dim):
     """
     compute saturation water vapor pressure table 4
     two phase table with " - 2 c" as the transition point
@@ -213,7 +221,7 @@ def qs_table_4(length: Int, table4: _FloatField_data_dim, table1: _FloatField_da
 
 
 def des_tables(
-    length: Int,
+    length: i32,
     des1: _FloatField_data_dim,
     des2: _FloatField_data_dim,
     des3: _FloatField_data_dim,
