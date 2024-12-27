@@ -2299,10 +2299,8 @@ contains
     call MAPL_GetResource(STATE, SCM_NO_RAD, Label="SCM_NO_RAD:", default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
+    call MAPL_GetResource(STATE, DPEDT_PHYS, Label="DPEDT_PHYS:", default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
-         DUMMY = ESMF_UtilStringUpperCase(DUMMY)
-    DPEDT_PHYS = TRIM(DUMMY).eq.'YES'
 
 ! Get the children`s states from the generic state
 !-------------------------------------------------
@@ -2403,7 +2401,7 @@ contains
 
     allocate( TDPOLD(IM,JM,LM),stat=STATUS )
     VERIFY_(STATUS)
-    TDPOLD = T(:,:,1:LM) * DPI
+    TDPOLD = T(:,:,1:LM) / DPI
 
    ! Create Old Dry Mass Variables
    ! -----------------------------
@@ -3046,29 +3044,29 @@ contains
 
       if (DEBUG_SYNCTQ) then
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLW', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LW  ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LW  ', TDPOLD*DPI + DT*PTR3D)
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWC', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWC ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWC ', TDPOLD*DPI + DT*PTR3D)
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADLWNA', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWNA  ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: LWNA', TDPOLD*DPI + DT*PTR3D)
 
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSW', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SW  ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SW  ', TDPOLD*DPI + DT*PTR3D)
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWC', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWC ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWC ', TDPOLD*DPI + DT*PTR3D)
         call MAPL_GetPointer ( GEX(RAD), PTR3D, 'RADSWNA', RC=STATUS); VERIFY_(STATUS)
-        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWNA  ', TDPOLD/DPI + DT*PTR3D)
+        if (associated(PTR3D)) call MAPL_MaxMin('RAD: SWNA', TDPOLD*DPI + DT*PTR3D)
 
-        call MAPL_MaxMin('FRI: INT ', TDPOLD/DPI + DT*INTDIS*DPI)
-        call MAPL_MaxMin('FRI: TOP ', TDPOLD/DPI + DT*TOPDIS*DPI)
+        call MAPL_MaxMin('FRI: INT ', (TDPOLD + DT*INTDIS)*DPI)
+        call MAPL_MaxMin('FRI: TOP ', (TDPOLD + DT*TOPDIS)*DPI)
 
-        call MAPL_MaxMin('PHYINC: OLD ', TDPOLD/DPI)
-        call MAPL_MaxMin('PHYINC: TIR ', TDPOLD/DPI + DT*TIR *DPI)
-        call MAPL_MaxMin('PHYINC: STN ', TDPOLD/DPI + DT*STN *DPI)
-        call MAPL_MaxMin('PHYINC: TTN ', TDPOLD/DPI + DT*TTN *DPI)
-        call MAPL_MaxMin('PHYINC: FRI ', TDPOLD/DPI + DT*FRI *DPI)
-        call MAPL_MaxMin('PHYINC: TIG ', TDPOLD/DPI + DT*TIG *DPI)
-        call MAPL_MaxMin('PHYINC: TICU', TDPOLD/DPI + DT*TICU*DPI)
+        call MAPL_MaxMin('PHYINC: OLD ', (TDPOLD          )*DPI)
+        call MAPL_MaxMin('PHYINC: TIR ', (TDPOLD + DT*TIR )*DPI)
+        call MAPL_MaxMin('PHYINC: STN ', (TDPOLD + DT*STN )*DPI)
+        call MAPL_MaxMin('PHYINC: TTN ', (TDPOLD + DT*TTN )*DPI)
+        call MAPL_MaxMin('PHYINC: FRI ', (TDPOLD + DT*FRI )*DPI)
+        call MAPL_MaxMin('PHYINC: TIG ', (TDPOLD + DT*TIG )*DPI)
+        call MAPL_MaxMin('PHYINC: TICU', (TDPOLD + DT*TICU)*DPI)
       endif
 
        IF(DO_SPPT) THEN
@@ -3223,16 +3221,16 @@ contains
         enddo
     endif
 
-! WMP: is handled inside of FV3 ADD_INCS
-!
-!   allocate( TDPNEW(IM,JM,LM),stat=STATUS )
-!   VERIFY_(STATUS)
-!   do L=1,LM
-!      TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
-!   enddo
-!   DTDT = ( TDPNEW - TDPOLD )/DT
-!   deallocate( TDPNEW )
-    deallocate( TDPOLD )
+    if( DPEDT_PHYS ) then
+      allocate( TDPNEW(IM,JM,LM),stat=STATUS )
+      VERIFY_(STATUS)
+      do L=1,LM
+         TDPNEW(:,:,L) = ( T(:,:,L) + DT*DTDT(:,:,L)*DPI(:,:,L) ) * ( PLE(:,:,L)-PLE(:,:,L-1) + DT*(DPDT(:,:,L)-DPDT(:,:,L-1)) )
+      enddo
+         DTDT = ( TDPNEW - TDPOLD )/DT
+      deallocate( TDPNEW )
+      deallocate( TDPOLD )
+    endif
 
     if(associated(FTU)) then
        FTU(:,:,0) = 0.0
