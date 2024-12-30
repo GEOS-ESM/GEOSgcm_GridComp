@@ -52,4 +52,16 @@ extern int pymoist_interface_py_run_GFDL1M(
 	float *T, float *Q, float *QLCN, float *QICN, float *QLLS, float *QILS, float *CLLS, float *CLCN,
 	float *SUBLC, float *EVAPC, float *RHX);
 
+extern int pymoist_interface_py_run_GFDL1M_driver(
+	float *RAD_QV, float *RAD_QL, float *RAD_QR, float *RAD_QI, float *RAD_QS, float *RAD_QG, float *RAD_CF, float *NACTAll,
+	float *DQVDTmic, float *DQLDTmic, float *DQRDTmic, float *DQIDTmic,
+	float *DQSDTmic, float *DQGDTmic, float *DQADTmic, float *DTDTmic,
+	float *T, float *W, float *U, float *V, float *DUDTmic, float *DVDTmic, float *DZ, float *DP,
+	float *AREA, float *FRLAND, float *CNV_FRC, float *SRF_TYPE, float *EIS, float *RHCRIT3D,
+	float DT_MOIST, float ANV_ICEFALL, float LS_ICEFALL,
+	float *REV_LS, float *RSU_LS,
+	float *PRCP_RAIN, float *PRCP_SNOW, float *PRCP_ICE, float *PRCP_GRAUPEL,
+	float *PFL_LS, float *PFI_LS,
+	bool LHYDROSTATIC, bool LPHYS_HYDROSTATIC);
+
 extern int pymoist_interface_py_finalize();

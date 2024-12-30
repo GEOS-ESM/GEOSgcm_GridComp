@@ -1,9 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
-
-if TYPE_CHECKING:
-    import cffi
+import cffi
 
 
 @dataclass
@@ -22,7 +21,7 @@ class MoistFlags:
 
 def _generic_config_bridge(
     py_flags: MoistFlags,
-    fv_flags: "cffi.FFI.CData",
+    fv_flags: cffi.FFI.CData,
 ):
     keys = list(filter(lambda k: not k.startswith("__"), dir(type(py_flags))))
     for k in keys:
@@ -31,7 +30,7 @@ def _generic_config_bridge(
 
 
 def flags_fv_to_python(
-    fv_flags: "cffi.FFI.CData",
+    fv_flags: cffi.FFI.CData,
 ) -> MoistFlags:
     if fv_flags.mn_123456789 != 123456789:
         raise RuntimeError(
