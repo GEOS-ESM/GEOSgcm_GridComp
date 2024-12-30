@@ -683,6 +683,9 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     integer :: i, k, n
 
     !$ser verbatim integer :: hold_0, hold_1, hold_2, hold_3, hold_4, hold_5, hold_6, hold_7, hold_8, hold_9, hold_10, hold_11, hold_12, hold_13, hold_14, hold_15, hold_16, hold_17, hold_18, hold_19, hold_20, hold_21, hold_22, hold_23, hold_24, hold_25, hold_26, hold_27, hold_28, hold_29, hold_30, hold_31, hold_32, hold_33, hold_34
+    !$ser verbatim logical :: serialize_all
+    !$ser verbatim integer :: serialize_index
+    !$ser verbatim serialize_all = .true.
 
     dts = dt_in / real (ntimes)
     rdt = 1. / dt_in
@@ -695,7 +698,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
 
         do k = ktop, kbot
             !$ser savepoint GFDL_1M_driver_preloop-In
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
+            !$ser verbatim call ser_set_indices(i, j, k ,1)
             !$ser data_buffered Dx=3 u_GFDL_1M_driver_preloop=uin(i,j,k) v_GFDL_1M_driver_preloop=vin(i,j,k) w_GFDL_1M_driver_preloop=w(i,j,k) t_GFDL_1M_driver_preloop=pt(i,j,k) dp_GFDL_1M_driver_preloop=delp(i,j,k)
             !$ser data_buffered Dx=3 rhcrit_GFDL_1M_driver_preloop=rhcrit(i,j,k) dz_GFDL_1M_driver_preloop=dz(i,j,k)
             !$ser data_buffered Dx=3 qv_GFDL_1M_driver_preloop=qv(i,j,k) ql_GFDL_1M_driver_preloop=ql(i,j,k) qi_GFDL_1M_driver_preloop=qi(i,j,k) qr_GFDL_1M_driver_preloop=qr(i,j,k)
@@ -766,7 +769,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             v1 (k) = v0 (k)
 
             !$ser savepoint GFDL_1M_driver_preloop-Out
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
+            !$ser verbatim call ser_set_indices(i, j, k ,1)
             !$ser data_buffered Dx=3 omq_GFDL_1M_driver_preloop=omq den_GFDL_1M_driver_preloop=den0(k) p_dry_GFDL_1M_driver_preloop=p1(k)
 
         enddo
@@ -816,11 +819,16 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         isubl (i, j, :) = 0.
 
         !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
             !$ser data_buffered Dx=3 t_GFDL_1M_driver_preloop=tz(k) dp_GFDL_1M_driver_preloop=dp1(k) qv_GFDL_1M_driver_preloop=qvz(k) ql_GFDL_1M_driver_preloop=qlz(k) qr_GFDL_1M_driver_preloop=qrz(k) qi_GFDL_1M_driver_preloop=qiz(k) qs_GFDL_1M_driver_preloop=qsz(k) qg_GFDL_1M_driver_preloop=qgz(k) c_praut_GFDL_1M_driver_preloop=c_praut(k)
         !$ser verbatim enddo
 
         do n = 1, ntimes
+            !$ser verbatim if (serialize_all .eqv. .true.) then
+                !$ser verbatim serialize_index = n
+            !$ser verbatim else
+                !$ser verbatim serialize_index = ntimes
+            !$ser verbatim endif
 
             ! -----------------------------------------------------------------------
             ! dry air density
@@ -843,7 +851,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             ! sedimentation of cloud ice, snow, and graupel
             ! -----------------------------------------------------------------------
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser savepoint fall_speed-In
                 !$ser verbatim if (const_vi) then
                 !$ser verbatim     hold_0 = 1
@@ -870,7 +878,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             !$ser verbatim endif
             call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
                              den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser savepoint fall_speed-Out
                 !$ser verbatim do k = ktop, kbot
                     !$ser verbatim call ser_set_indices(i, j ,k ,1)
@@ -902,7 +910,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             !$ser verbatim endif
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                 dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser verbatim call ser_set_D3(hold_6)
                 !$ser verbatim do k = ktop, kbot
                     !$ser verbatim call ser_set_indices(i, j ,k ,1)
@@ -928,8 +936,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             ! warm rain processes
             ! -----------------------------------------------------------------------
-            
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser savepoint warm_rain-In
                 !$ser verbatim if (do_qa) then
                 !$ser verbatim     hold_7 = 1
@@ -978,7 +985,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
                 qgz, qaz, eis(i), onemsig, den, denfac, ccn, c_praut, vtrz,   &
                 r1, evap1, m1_rain, w1, h_var1d)
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser verbatim do k = ktop, kbot
                     !$ser verbatim call ser_set_indices(i, j ,k ,1)
                     !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
@@ -1002,7 +1009,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! ice - phase microphysics
             ! -----------------------------------------------------------------------
 
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser savepoint icloud-In
                 !$ser verbatim if (do_qa) then
                 !$ser verbatim     hold_12 = 1
@@ -1148,7 +1155,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                 denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                 ccn, cnv_fraction(i), srf_type(i))
-            !$ser verbatim if (n == ntimes) then
+            !$ser verbatim if (serialize_index == n) then
                 !$ser savepoint icloud-Out
                 !$ser verbatim do k = ktop, kbot
                     !$ser verbatim call ser_set_indices(i, j, k, 1)
@@ -1417,10 +1424,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! with subgrid variability
         ! -----------------------------------------------------------------------
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-        !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_idx_d3(k)
-            !$ser data_buffered Dx=3 dl_warm_rain=dl(k)
-        !$ser verbatim enddo
 
         do k = ktop, kbot
             if (qadum(k) > onemsig) then
