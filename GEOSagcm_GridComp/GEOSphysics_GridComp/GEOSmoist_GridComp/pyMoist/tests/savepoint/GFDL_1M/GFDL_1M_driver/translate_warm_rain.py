@@ -76,8 +76,6 @@ class Translatewarm_rain(TranslateFortranData2Py):
             "evap1_warm_rain": self.grid.compute_dict(),
             "m1_rain_warm_rain": self.grid.compute_dict(),
             "r1_warm_rain": self.grid.compute_dict(),
-            # "qsat_warm_rain": self.grid.compute_dict(),
-            # "dqsdt_warm_rain": self.grid.compute_dict(),
         }
 
         self.sat_tables = get_tables(self.stencil_factory.backend)
@@ -293,6 +291,4 @@ class Translatewarm_rain(TranslateFortranData2Py):
             "evap1_warm_rain": self.evap1.view[:],
             "m1_rain_warm_rain": m1_rain_warm_rain.view[:],
             "r1_warm_rain": self.rain.view[:],
-            # "qsat_warm_rain": self.TESTVAR_1.view[:],
-            # "dqsdt_warm_rain": self.TESTVAR_2.view[:],
         }
