@@ -2,21 +2,20 @@
 
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    PARALLEL,
     FORWARD,
-    BACKWARD,
+    PARALLEL,
     computation,
+    exp,
     interval,
-    sqrt,
     log,
     log10,
-    exp,
-    trunc,
+    sqrt,
 )
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int, BoolField
+
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_generic_math import sigma
-from pyMoist.shared_incloud_processes import ice_fraction
+
 
 length = 2621
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
@@ -121,15 +120,13 @@ def create_temporaries(
         v1 = vin
         w1 = w
 
-        # # 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr
-        # onemsig = 1.0 - sigma(sqrt(area))
-
         # ccn needs units #/m^3
         ccn = qn
         c_praut = cpaut * (ccn * driver_constants.rhor) ** (-1.0 / 3.0)
 
     with computation(FORWARD), interval(0, 1):
-        # 1 minus sigma used to control minimum cloud fraction needed to autoconvert ql->qr
+        # 1 minus sigma used to control minimum cloud
+        # fraction needed to autoconvert ql->qr
         onemsig = 1.0 - sigma(sqrt(area))
 
 
@@ -210,12 +207,7 @@ def gfdl_1m_driver_preloop(
     qg: FloatField,
     dp: FloatField,
 ):
-    from __externals__ import (
-        c_air,
-        c_vap,
-        d0_vap,
-        lv00,
-    )
+    from __externals__ import c_air, c_vap, d0_vap, lv00
 
     # -----------------------------------------------------------------------
     # fix all negative water species
@@ -259,19 +251,19 @@ def fall_speed(
     Reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
     """
     from __externals__ import (
+        const_vg,
         const_vi,
         const_vs,
-        const_vg,
+        vg_fac,
+        vg_max,
         vi_fac,
         vi_max,
         vs_fac,
         vs_max,
-        vg_fac,
-        vg_max,
     )
 
     rhof = sqrt(min(10.0, driver_constants.sfcrho / den))
-    if const_vi == True:
+    if const_vi == True:  # noqa
         vti = vi_fac
     else:
         if qi < driver_constants.thi:
@@ -317,7 +309,7 @@ def fall_speed(
     # snow:
     # -----------------------------------------------------------------------
 
-    if const_vs == True:
+    if const_vs == True:  # noqa
         vts = vs_fac  # 1. ifs_2016
     else:
         if qs < driver_constants.ths:
@@ -335,7 +327,7 @@ def fall_speed(
     # graupel:
     # -----------------------------------------------------------------------
 
-    if const_vg == True:
+    if const_vg == True:  # noqa
         vtg = vg_fac  # 2.
     else:
         if qg < driver_constants.thg:
@@ -372,18 +364,7 @@ def gfdl_1m_driver_loop_1(
     anv_icefall: Float,
     lsc_icefall: Float,
 ):
-    from __externals__ import (
-        p_nonhydro,
-        const_vi,
-        const_vs,
-        const_vg,
-        vi_fac,
-        vi_max,
-        vs_fac,
-        vs_max,
-        vg_fac,
-        vg_max,
-    )
+    from __externals__ import p_nonhydro
 
     with computation(PARALLEL), interval(...):
         if p_nonhydro:
@@ -504,14 +485,7 @@ def gfdl_1m_driver_postloop(
     m2_rain: FloatField,  # strict output
     m2_sol: FloatField,  # strict output
 ):
-    from __externals__ import (
-        c_air,
-        c_vap,
-        rdt,
-        do_sedi_w,
-        sedi_transport,
-        do_qa,
-    )
+    from __externals__ import c_air, c_vap, do_qa, do_sedi_w, rdt, sedi_transport
 
     # -----------------------------------------------------------------------
     # momentum transportation during sedimentation
@@ -519,7 +493,7 @@ def gfdl_1m_driver_postloop(
     # -----------------------------------------------------------------------
 
     with computation(PARALLEL), interval(1, None):
-        if sedi_transport == True:
+        if sedi_transport == True:  # noqa
             u1 = (dp * u1 + m1[0, 0, -1] * u1[0, 0, -1]) / (dp + m1[0, 0, -1])
             v1 = (dp * v1 + m1[0, 0, -1] * v1[0, 0, -1]) / (dp + m1[0, 0, -1])
             udt = udt + (u1 - uin) * rdt
@@ -553,7 +527,7 @@ def gfdl_1m_driver_postloop(
         # -----------------------------------------------------------------------
         # update cloud fraction tendency
         # -----------------------------------------------------------------------
-        if do_qa == False:
+        if do_qa == False:  # noqa
             qa_dt = qa_dt + rdt * (
                 qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.qcmin)) - qa0
             )  # New Cloud - Old CloudCloud

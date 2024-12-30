@@ -1,23 +1,21 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    FORWARD,
     BACKWARD,
+    FORWARD,
+    PARALLEL,
     computation,
-    interval,
-    sqrt,
-    log,
-    log10,
     exp,
-    trunc,
-    max,
     i32,
-    f32,
+    interval,
+    log,
+    max,
+    sqrt,
+    trunc,
 )
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int, IntField, BoolField
+
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
-from pyMoist.shared_generic_math import sigma
-from pyMoist.shared_incloud_processes import ice_fraction
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+
 
 length = 2621
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
@@ -79,17 +77,17 @@ def revap_racc(
     des4: GlobalTable_driver_qsat,
 ):
     from __externals__ import (
-        tau_revp,
-        lv00,
-        d0_vap,
         c_air,
         c_vap,
+        cracw,
         crevp_0,
         crevp_1,
         crevp_2,
         crevp_3,
         crevp_4,
-        cracw,
+        d0_vap,
+        lv00,
+        tau_revp,
     )
 
     prec_ls = (qr1 + qs1 + qg1) * den1
@@ -230,34 +228,22 @@ def warm_rain(
     des4: GlobalTable_driver_qsat,
 ):
     from __externals__ import (
-        k_end,
-        dts,
+        const_vr,
         do_qa,
+        do_sedi_w,
+        dts,
+        irain_f,
+        k_end,
+        ql0_max,
         rthreshs,
         rthreshu,
-        irain_f,
-        ql0_max,
-        z_slope_liq,
-        vr_fac,
-        const_vr,
-        vr_max,
-        do_sedi_w,
         use_ppm,
-        tau_revp,
-        lv00,
-        d0_vap,
-        c_air,
-        c_vap,
-        crevp_0,
-        crevp_1,
-        crevp_2,
-        crevp_3,
-        crevp_4,
-        cracw,
-    )  # comprehensive list of externals needed for stencil and sub functions
+        vr_fac,
+        vr_max,
+        z_slope_liq,
+    )
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine warm_rain
-
     # warm rain cloud microphysics
     with computation(PARALLEL), interval(...):
         half_dt = 0.5 * dts
@@ -284,7 +270,7 @@ def warm_rain(
 
     with computation(PARALLEL), interval(...):
         # Use In-Cloud condensates
-        if do_qa == False:
+        if do_qa == False:  # noqa
             qadum = max(qa1, driver_constants.qcmin)
         else:
             qadum = 1.0
@@ -327,7 +313,7 @@ def warm_rain(
             # used for cloud ice and cloud water autoconversion
             # qi -- > ql & ql -- > qr
             # edges: qe == qbar + / - dm
-            if z_slope_liq == True:
+            if z_slope_liq == True:  # noqa
                 dql = 0.5 * (ql1 - ql1[0, 0, -1])
 
     # -----------------------------------------------------------------------
@@ -336,7 +322,7 @@ def warm_rain(
 
     with computation(FORWARD), interval(1, -1):
         if irain_f == 0:
-            if z_slope_liq == True:
+            if z_slope_liq == True:  # noqa
                 dl = 0.5 * min(abs(dql + dql[0, 0, 1]), 0.5 * ql1)
                 if dql * dql[0, 0, 1] <= 0.0:
                     if dql > 0.0:  # local max
@@ -346,22 +332,23 @@ def warm_rain(
 
     with computation(FORWARD), interval(0, 1):
         if irain_f == 0:
-            if z_slope_liq == True:
+            if z_slope_liq == True:  # noqa
                 dl = 0
 
     with computation(FORWARD), interval(-1, None):
         if irain_f == 0:
-            if z_slope_liq == True:
+            if z_slope_liq == True:  # noqa
                 dl = 0
 
     # -----------------------------------------------------------------------
-    # impose a presumed background horizontal variability that is proportional to the value itself
+    # impose a presumed background horizontal variability
+    # that is proportional to the value itself
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if irain_f == 0:
-            if z_slope_liq == True:
+            if z_slope_liq == True:  # noqa
                 dl = max(dl, max(driver_constants.qvmin, rh_limited * ql1))
-            if z_slope_liq == False:
+            if z_slope_liq == False:  # noqa
                 dl = max(driver_constants.qvmin, rh_limited * ql1)
 
             # end reference Fortran: gfdl_cloud_microphys.F90: subroutine linear_prof
@@ -380,7 +367,8 @@ def warm_rain(
                     # --------------------------------------------------------------------
                     if dq > 0.0:  # q_plus > qc
                         # --------------------------------------------------------------------
-                        # revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
+                        # revised continuous form: linearly decays
+                        # (with subgrid dl) to zero at qc == ql + dl
                         # --------------------------------------------------------------------
                         sink = (
                             min(1.0, dq / dl)
@@ -403,7 +391,7 @@ def warm_rain(
 
         if precip_fall == 0:
             vtr = driver_constants.vf_min
-        elif const_vr == True:
+        elif const_vr == True:  # noqa
             vtr = vr_fac  # ifs_2016: 4.0
         else:
             qden = qr1 * den1
@@ -478,7 +466,7 @@ def warm_rain(
         total_area_ls_prc = area_ls_prc.at(K=k_end)
 
     with computation(PARALLEL), interval(...):
-        if do_sedi_w == True:
+        if do_sedi_w == True:  # noqa
             dm = dp1 * (1.0 + qv1 + ql1 + qr1 + qi1 + qs1 + qg1)
 
     # -----------------------------------------------------------------------
@@ -495,13 +483,13 @@ def warm_rain(
     # set up inputs to the "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qr1
                 vt_implicit_fall = vtr
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 hold_data = ze - ze[0, 0, 1]
                 dd = dts * vt_implicit_fall
                 q_implicit_fall = q_implicit_fall * dp1
@@ -511,12 +499,12 @@ def warm_rain(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
@@ -524,7 +512,7 @@ def warm_rain(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = qm * hold_data
 
     # -----------------------------------------------------------------------
@@ -532,17 +520,17 @@ def warm_rain(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip = m1
 
     # -----------------------------------------------------------------------
@@ -550,13 +538,13 @@ def warm_rain(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qm / dp1
 
     # update "outputs" after "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qr1 = q_implicit_fall
                 m1_rain = (
                     m1_rain + m1
@@ -564,7 +552,7 @@ def warm_rain(
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip_rain = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
@@ -572,11 +560,11 @@ def warm_rain(
     # vertical velocity transportation during sedimentation
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
-        if do_sedi_w == True:
+        if do_sedi_w == True:  # noqa
             w1 = (dm * w1 + m1_rain * vtr) / (dm - m1_rain)
 
     with computation(FORWARD), interval(1, None):
-        if do_sedi_w == True:
+        if do_sedi_w == True:  # noqa
             w1 = (dm * w1 - m1_rain[0, 0, -1] * vtr[0, 0, -1] + m1_rain * vtr) / (
                 dm + m1_rain[0, 0, -1] - m1_rain
             )

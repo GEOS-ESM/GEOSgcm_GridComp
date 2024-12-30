@@ -1,17 +1,16 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    FORWARD,
     BACKWARD,
+    FORWARD,
+    PARALLEL,
     computation,
-    interval,
     exp,
-    max,
     i32,
-    f32,
+    interval,
 )
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, IntField, BoolField
+
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ, IntField
 
 
 @gtscript.function
@@ -26,12 +25,13 @@ def terminal_fall_speed_component(
     m1_sol: Float,
     is_frozen: bool,
 ):
-    from __externals__ import tau_imlt, ql_mlt
+    from __externals__ import ql_mlt, tau_imlt
 
     """
-    Component of the reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
+    Component of the reference Fortran:
+    gfdl_cloud_microphys.F90: subroutine terminal_fall
     """
-    from __externals__ import c_air, c_vap, d0_vap, lv00, dts
+    from __externals__ import c_air, c_vap, d0_vap, dts, lv00
 
     fac_imlt = 1.0 - exp(-dts / tau_imlt)
 
@@ -58,7 +58,7 @@ def terminal_fall_speed_component(
     # -----------------------------------------------------------------------
 
     tc = t - driver_constants.tice
-    if is_frozen == False and (qi > driver_constants.qcmin and tc > 0.0):
+    if is_frozen == False and (qi > driver_constants.qcmin and tc > 0.0):  # noqa
         sink = min(qi, fac_imlt * tc / icpk)
         if ql_mlt - ql > 0:
             ans = ql_mlt - ql
@@ -109,24 +109,9 @@ def terminal_fall(
     melting_mask_2: BoolField,
     current_k_level: IntField,
 ):
-    from __externals__ import (
-        dts,
-        tau_imlt,
-        ql_mlt,
-        vi_fac,
-        do_sedi_w,
-        use_ppm,
-        tau_smlt,
-        tau_g2r,
-        c_air,
-        c_vap,
-        d0_vap,
-        lv00,
-        k_end,
-    )  # comprehensive list of externals needed for stencil and sub functions
+    from __externals__ import do_sedi_w, dts, k_end, use_ppm, vi_fac
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
-
     # determine frozen levels
     # later operations will only be executed if frozen/melted
     # initalized to is_frozen = False, True = frozen, False = melted
@@ -136,7 +121,7 @@ def terminal_fall(
 
     # we only want the melting layer closest to the surface
     with computation(BACKWARD), interval(0, -1):
-        if is_frozen[0, 0, 1] == True and is_frozen[0, 0, 0] == False:
+        if is_frozen[0, 0, 1] == True and is_frozen[0, 0, 0] == False:  # noqa
             is_frozen = True
 
     # force surface to "melt" for later calculations
@@ -182,7 +167,7 @@ def terminal_fall(
     # -----------------------------------------------------------------------
 
     with computation(PARALLEL), interval(...):
-        if is_frozen == False:
+        if is_frozen == False:  # noqa
             lhi = driver_constants.li00 + driver_constants.dc_ice * t1
             icpk = lhi / cvm
 
@@ -223,39 +208,39 @@ def terminal_fall(
                 zt[0, 0, 1] = zt - driver_constants.dz_min
 
     with computation(PARALLEL), interval(...):
-        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:
+        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:  # noqa
             # copy frozen mask to make modifyable version
             melting_mask_1 = is_frozen
             # flip logic for clarity
-            if melting_mask_1 == True:
+            if melting_mask_1 == True:  # noqa
                 melting_mask_1 = False
             else:
                 melting_mask_1 = True
 
     with computation(BACKWARD), interval(-1, None):
-        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:
+        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:  # noqa
             # ensure no operations are performed on the surface
             melting_mask_1 = False
 
     with computation(BACKWARD), interval(...):
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
-        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:
+        if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qi1 > driver_constants.qcmin:
+            if melting_mask_1 == True and qi1 > driver_constants.qcmin:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0
-                while m < k_end and stop_melting == False:
+                while m < k_end and stop_melting == False:  # noqa
                     mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
-                    # if melting_mask_2 == True:
+                    # if melting_mask_2 == True: #noqa
                     #     if zt[0, 0, 1] >= ze.at(K=m):
                     #         stop_melting = (
                     #             True  # if true exit early for ONLY this k level
                     #         )
-                    #     if stop_melting == False:
+                    #     if stop_melting == False: #noqa
                     #         dtime = min(
                     #             1.0,
                     #             (ze.at(K=m) - ze.at(K=mplus1))
@@ -286,7 +271,7 @@ def terminal_fall(
 
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if do_sedi_w == True:
+            if do_sedi_w == True:  # noqa
                 dm = dp1 * (1.0 + qv1 + ql1 + qr1 + qi1 + qs1 + qg1)
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
@@ -295,13 +280,13 @@ def terminal_fall(
     # set up inputs to the "function"
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qi1
                 vt_implicit_fall = vti
 
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 hold_data = ze - ze[0, 0, 1]
                 dd = dts * vt_implicit_fall
                 q_implicit_fall = q_implicit_fall * dp1
@@ -311,12 +296,12 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
@@ -324,7 +309,7 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = qm * hold_data
 
     # -----------------------------------------------------------------------
@@ -332,17 +317,17 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip = m1
 
     # -----------------------------------------------------------------------
@@ -350,13 +335,13 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qm / dp1
 
     # update "outputs" after "function"
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qi1 = q_implicit_fall
                 m1_sol = (
                     m1_sol + m1
@@ -364,7 +349,7 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip_ice = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
@@ -422,39 +407,39 @@ def terminal_fall(
                 zt[0, 0, 1] = zt - driver_constants.dz_min
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # copy frozen mask to make modifyable version
             melting_mask_1 = is_frozen
             # flip logic for clarity
-            if melting_mask_1 == True:
+            if melting_mask_1 == True:  # noqa
                 melting_mask_1 = False
             else:
                 melting_mask_1 = True
 
     with computation(BACKWARD), interval(-1, None):
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # ensure no operations are performed on the surface
             melting_mask_1 = False
 
     with computation(BACKWARD), interval(...):
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qs1 > driver_constants.qpmin:
+            if melting_mask_1 == True and qs1 > driver_constants.qpmin:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0
-                while m < k_end and stop_melting == False:
+                while m < k_end and stop_melting == False:  # noqa
                     mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
-                    # if melting_mask_2 == True:
+                    # if melting_mask_2 == True: #noqa
                     #     if zt[0, 0, 1] >= ze.at(K=m):
                     #         stop_melting = (
                     #             True  # if true exit early for ONLY this k level
                     #         )
-                    #     if stop_melting == False:
+                    #     if stop_melting == False: #noqa
                     #         dtime = min(
                     #             dts,
                     #             (ze.at(K=m) - ze.at(K=mplus1))
@@ -480,10 +465,11 @@ def terminal_fall(
                     #                     K=m
                     #                 )  # precip as rain
                     #             else:
-                    #                 # qr source here will fall next time step (therefore, can evap)
+                    #                 # qr source here will fall next time step
+                    #                 # (therefore, can evap)
                     #                 hold_qr1 = qr1.at(K=m)
                     #                 qr1[0, 0, offset] = hold_qr1 + sink
-                    #     if stop_melting == False:
+                    #     if stop_melting == False: #noqa
                     #         if qs1 < driver_constants.qpmin:
                     #             stop_melting = True
                     m = m + 1
@@ -492,7 +478,7 @@ def terminal_fall(
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if do_sedi_w == True:
+            if do_sedi_w == True:  # noqa
                 dm = dp1 * (1.0 + qv1 + ql1 + qr1 + qi1 + qs1 + qg1)
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
@@ -501,13 +487,13 @@ def terminal_fall(
     # set up inputs to the "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qs1
                 vt_implicit_fall = vts
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 hold_data = ze - ze[0, 0, 1]
                 dd = dts * vt_implicit_fall
                 q_implicit_fall = q_implicit_fall * dp1
@@ -517,12 +503,12 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
@@ -530,7 +516,7 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = qm * hold_data
 
     # -----------------------------------------------------------------------
@@ -538,17 +524,17 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip = m1
 
     # -----------------------------------------------------------------------
@@ -556,13 +542,13 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qm / dp1
 
     # update "outputs" after "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qs1 = q_implicit_fall
                 m1_sol = (
                     m1_sol + m1
@@ -570,7 +556,7 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip_snow = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 
@@ -630,39 +616,39 @@ def terminal_fall(
                 zt[0, 0, 1] = zt - driver_constants.dz_min
 
     with computation(PARALLEL), interval(...):
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # copy frozen mask to make modifyable version
             melting_mask_1 = is_frozen
             # flip logic for clarity
-            if melting_mask_1 == True:
+            if melting_mask_1 == True:  # noqa
                 melting_mask_1 = False
             else:
                 melting_mask_1 = True
 
     with computation(BACKWARD), interval(-1, None):
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # ensure no operations are performed on the surface
             melting_mask_1 = False
 
     with computation(BACKWARD), interval(...):
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
-        if precip_fall == 1 and disable_melt == False:
+        if precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qg1 > driver_constants.qpmin:
+            if melting_mask_1 == True and qg1 > driver_constants.qpmin:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0
-                while m < k_end and stop_melting == False:
+                while m < k_end and stop_melting == False:  # noqa
                     mplus1: i32 = (
                         m + 1
                     )  # TODO remove this line only, replace with better solution
                     # only opterate on previously iterated k-levels
-                    # if melting_mask_2 == True:
+                    # if melting_mask_2 == True: #noqa
                     #     if zt[0, 0, 1] >= ze.at(K=m):
                     #         stop_melting = (
                     #             True  # if true exit early for ONLY this k level
                     #         )
-                    #     if stop_melting == False:
+                    #     if stop_melting == False: #noqa
                     #         dtime = min(dts, (ze.at(K=m) - ze.at(K=mplus1)) / vtg)
                     #         if (
                     #             zt < ze.at(K=mplus1)
@@ -684,10 +670,11 @@ def terminal_fall(
                     #                     K=m
                     #                 )  # precip as rain
                     #             else:
-                    #                 # qr source here will fall next time step (therefore, can evap)
+                    #                 # qr source here will fall next time step
+                    #                 # (therefore, can evap)
                     #                 hold_qr1 = qr1.at(K=m)
                     #                 qr1[0, 0, offset] = hold_qr1 + sink
-                    #     if stop_melting == False:
+                    #     if stop_melting == False: #noqa
                     #         if qg1 < driver_constants.qpmin:
                     #             stop_melting = True
                     m = m + 1
@@ -696,7 +683,7 @@ def terminal_fall(
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if do_sedi_w == True:
+            if do_sedi_w == True:  # noqa
                 dm = dp1 * (1.0 + qv1 + ql1 + qr1 + qi1 + qs1 + qg1)
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
@@ -705,13 +692,13 @@ def terminal_fall(
     # set up inputs to the "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qg1
                 vt_implicit_fall = vtg
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 hold_data = ze - ze[0, 0, 1]
                 dd = dts * vt_implicit_fall
                 q_implicit_fall = q_implicit_fall * dp1
@@ -721,12 +708,12 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = q_implicit_fall / (hold_data + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
 
     # -----------------------------------------------------------------------
@@ -734,7 +721,7 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qm = qm * hold_data
 
     # -----------------------------------------------------------------------
@@ -742,17 +729,17 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = q_implicit_fall - qm
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 m1 = m1[0, 0, -1] + q_implicit_fall - qm
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip = m1
 
     # -----------------------------------------------------------------------
@@ -760,13 +747,13 @@ def terminal_fall(
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 q_implicit_fall = qm / dp1
 
     # update "outputs" after "function"
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 qg1 = q_implicit_fall
                 m1_sol = (
                     m1_sol + m1
@@ -774,7 +761,7 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            if use_ppm == False:
+            if use_ppm == False:  # noqa
                 precip_graupel = precip
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine implicit_fall
 

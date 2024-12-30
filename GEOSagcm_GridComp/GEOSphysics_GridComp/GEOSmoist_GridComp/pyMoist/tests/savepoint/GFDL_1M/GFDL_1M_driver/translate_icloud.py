@@ -1,11 +1,12 @@
-from ndsl import Namelist, Quantity, StencilFactory, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
-from ndsl.stencils.testing.translate import TranslateFortranData2Py
 import numpy as np
-from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
+
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl import Namelist, Quantity, StencilFactory, orchestrate
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
+from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
 
 
 class Translateicloud(TranslateFortranData2Py):
@@ -260,7 +261,7 @@ class Translateicloud(TranslateFortranData2Py):
         if hydrostatic == 1:
             hydrostatic = True
         else:
-            hydrostatic == False
+            hydrostatic = False
         if fix_negative == 1:
             fix_negative = True
         else:
@@ -296,7 +297,7 @@ class Translateicloud(TranslateFortranData2Py):
 
         # Calculate additional constants
         # -----------------------------------------------------------------------
-        # define heat capacity of dry air and water vapor based on hydrostatical property
+        # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
 
         phys_hydrostatic = (
@@ -447,11 +448,11 @@ class Translateicloud(TranslateFortranData2Py):
             / driver_constants.act[1] ** 0.725
         )
         cssub[3] = driver_constants.tcond * driver_constants.rvgas
-        cssub[4] = driver_constants.hlts**2 * driver_constants.vdifu
+        cssub[4] = driver_constants.hlts ** 2 * driver_constants.vdifu
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = driver_constants.hltc**2 * driver_constants.vdifu
+        crevp[4] = driver_constants.hltc ** 2 * driver_constants.vdifu
 
         cgfr_0 = (
             20.0e2

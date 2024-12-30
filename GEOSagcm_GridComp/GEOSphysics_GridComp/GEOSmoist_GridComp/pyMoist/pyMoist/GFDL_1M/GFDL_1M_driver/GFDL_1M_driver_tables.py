@@ -1,19 +1,21 @@
 import copy
+
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    computation,
-    interval,
     PARALLEL,
+    computation,
     exp,
+    i32,
+    interval,
     log,
     log10,
-    i32,
 )
-from ndsl import QuantityFactory, StencilFactory
+
+import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl import QuantityFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, Int, FloatField
-import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl.dsl.typing import Float
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
@@ -68,7 +70,8 @@ def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_dat
             i = i + 1
 
         # -----------------------------------------------------------------------
-        # derive blended es over ice and supercooled water between - 40 deg c and 0 deg c
+        # derive blended es over ice and supercooled
+        # water between - 40 deg c and 0 deg c
         # -----------------------------------------------------------------------
 
         i = 0
@@ -248,16 +251,14 @@ def des_tables(
 
 class GFDL_driver_tables:
     """
-    Initializes lookup tables for saturation water vapor pressure for the utility routines
-    that are designed to return qs consistent with the assumptions in FV3.
+    Initializes lookup tables for saturation water vapor pressure
+    for the utility routines that are designed to return qs
+    consistent with the assumptions in FV3.
 
     Reference Fortran: gfdl_cloud_microphys.F90: qsmith_init.py
     """
 
     def __init__(self, backend):
-        # NOTE: add backend as an input to make sure the same backend is always being used,
-        # and a warning that explains why we are using gt:cpu_ifirst for now
-
         qsat_domain = (1, 1, 1)
 
         stencil_factory, quantity_factory_data_dim = get_factories_single_tile(

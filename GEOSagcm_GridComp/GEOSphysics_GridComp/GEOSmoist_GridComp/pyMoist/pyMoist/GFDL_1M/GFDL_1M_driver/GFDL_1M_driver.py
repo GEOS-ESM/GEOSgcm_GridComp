@@ -1,19 +1,20 @@
 """GFDL_1M driver"""
 
+import numpy as np
 from gt4py.cartesian.gtscript import i32
+
+import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
-import numpy as np
-import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
-    gfdl_1m_driver_preloop,
+    create_temporaries,
     gfdl_1m_driver_loop_1,
     gfdl_1m_driver_loop_2,
     gfdl_1m_driver_loop_3,
     gfdl_1m_driver_loop_4,
     gfdl_1m_driver_postloop,
-    create_temporaries,
+    gfdl_1m_driver_preloop,
 )
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
@@ -113,7 +114,7 @@ class GFDL_1M_driver:
         """Wrapper for the GFDL_1M driver"""
 
         # -----------------------------------------------------------------------
-        # define heat capacity of dry air and water vapor based on hydrostatical property
+        # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
 
         if phys_hydrostatic or hydrostatic:
@@ -151,15 +152,11 @@ class GFDL_1M_driver:
 
         mpdt = min(dt_moist, mp_time)
         rdt = Float(1.0) / dt_moist
-        ntimes = i32(
-            dt_moist / mpdt
-        )  # need to implement a round function here. for now int does it, but this is temporary\
+        ntimes = i32(np.round(dt_moist / mpdt))
         self.ntimes = ntimes  # save so that this can be referenced from within __call__
 
         # small time step:
-        dts = dt_moist / Float(
-            ntimes
-        )  # make sure dts is a Float, if not, need to cast ntimes to float before calcualtion
+        dts = dt_moist / Float(ntimes)
 
         # -----------------------------------------------------------------------
         # calculate cloud condensation nuclei (ccn)
@@ -292,11 +289,11 @@ class GFDL_1M_driver:
             / driver_constants.act[1] ** Float(0.725)
         )
         cssub[3] = driver_constants.tcond * driver_constants.rvgas
-        cssub[4] = driver_constants.hlts**2 * driver_constants.vdifu
+        cssub[4] = driver_constants.hlts ** 2 * driver_constants.vdifu
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = driver_constants.hltc**2 * driver_constants.vdifu
+        crevp[4] = driver_constants.hltc ** 2 * driver_constants.vdifu
 
         cgfr_0 = (
             Float(20.0e2)
@@ -732,9 +729,9 @@ class GFDL_1M_driver:
         sedi_transport: bool,
     ):
 
-        # The driver modifies a number of variables (t, p, qX) but does not pass the changes back
-        # to the rest of the model. To replicate this behavior, temporary copies of these variables
-        # are used throughout the driver.
+        # The driver modifies a number of variables (t, p, qX) but does not pass
+        # the changes back to the rest of the model. To replicate this behavior,
+        # temporary copies of these variables are used throughout the driver.
         self._create_temporaries(
             t,
             dp,
@@ -1076,6 +1073,7 @@ class GFDL_1M_driver:
 
         if len(failed_keywords) > 0:
             raise ValueError(
-                "One or more namelist parameters do not meet expected values. Failing parameters: ",
+                "One or more namelist parameters do not meet \
+                    expected values. Failing parameters: ",
                 failed_keywords,
             )

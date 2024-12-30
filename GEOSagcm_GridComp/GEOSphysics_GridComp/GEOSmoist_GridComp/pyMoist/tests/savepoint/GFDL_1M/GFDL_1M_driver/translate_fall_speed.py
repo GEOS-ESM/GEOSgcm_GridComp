@@ -1,13 +1,10 @@
+from gt4py.cartesian.gtscript import PARALLEL, computation, interval
+
 from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, Int
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import fall_speed
-from gt4py.cartesian.gtscript import (
-    PARALLEL,
-    computation,
-    interval,
-)
 
 
 class Translatefall_speed(TranslateFortranData2Py):

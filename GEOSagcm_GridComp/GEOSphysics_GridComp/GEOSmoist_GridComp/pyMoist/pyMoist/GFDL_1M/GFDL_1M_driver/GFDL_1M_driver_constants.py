@@ -1,13 +1,16 @@
 """
-Constants for GFDL_1M Driver. Some of these are redefined (with different values)
-from the generic GFDL constants, others are duplicated. Both of these need a proper solution
+Constants for GFDL_1M Driver. Some of these are redefined
+(with different values) from the generic GFDL constants,
+others are duplicated. Both of these need a proper solution
 Commented comments are defined in namelist and set at stencil init.
 """
 
-from ndsl.dsl.typing import Float
 import numpy as np
 
-### constants from gfdl_1m_driver module
+from ndsl.dsl.typing import Float
+
+
+# constants from gfdl_1m_driver module
 
 grav = Float(9.80665)  # gfs: acceleration due to gravity
 rdgas = Float(287.05)  # gfs: gas constant for dry air
@@ -211,7 +214,7 @@ t_wfr = Float(273.16) - Float(
 # Constants moved from setup functions
 rgrav = Float(1.0) / grav
 
-### fall velocity constants:
+# fall velocity constants:
 
 thi = Float(1.0e-8)  # cloud ice threshold for terminal fall
 thg = Float(1.0e-8)
@@ -235,7 +238,7 @@ norms = Float(942477796.076938)
 normg = Float(5026548245.74367)
 
 
-### From setupm
+# From setupm
 
 gam263 = Float(1.456943)
 gam275 = Float(1.608355)

@@ -1,21 +1,21 @@
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
-    PARALLEL,
     FORWARD,
-    BACKWARD,
+    PARALLEL,
     computation,
-    interval,
     exp,
-    max,
-    log,
-    trunc,
-    sqrt,
     i32,
-    f32,
+    interval,
+    log,
+    max,
+    sqrt,
+    trunc,
 )
-from ndsl.dsl.typing import Float, FloatFieldIJ, FloatField, IntField, BoolField
+
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
+
 
 length = 2621
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
@@ -44,14 +44,7 @@ def icloud_component_1(
     cnv_frc: Float,
     srf_type: Float,
 ):
-    from __externals__ import (
-        c_air,
-        c_vap,
-        fac_imlt,
-        fac_frz,
-        ql_mlt,
-        qi0_crt,
-    )
+    from __externals__ import c_air, c_vap, fac_frz, fac_imlt, qi0_crt, ql_mlt
 
     # -----------------------------------------------------------------------
     # define heat capacity and latent heat coefficient
@@ -72,7 +65,8 @@ def icloud_component_1(
     # sources of cloud ice: pihom, cold rain, and the sat_adj
     # (initiation plus deposition)
     # sources of snow: cold rain, auto conversion + accretion (from cloud ice)
-    # sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
+    # sat_adj (deposition; requires pre - existing snow);
+    # initial snow comes from auto conversion
     # -----------------------------------------------------------------------
 
     newice = max(0.0, qi + new_ice_condensate(t, ql, qi, cnv_frc, srf_type))
@@ -192,7 +186,7 @@ def smlt(
     rhofac: Float,
 ):
     smlt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smlt
@@ -213,7 +207,7 @@ def gmlt(
     rho: Float,
 ):
     gmlt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return gmlt
@@ -250,30 +244,30 @@ def icloud_component_2(
     from __externals__ import (
         c_air,
         c_vap,
-        dts,
-        rdts,
-        const_vi,
-        fac_i2s,
-        cgacs,
-        csacw,
-        csaci,
-        cgacw,
         cgaci,
+        cgacs,
+        cgacw,
         cgfr_0,
         cgfr_1,
-        csmlt_0,
-        csmlt_1,
-        csmlt_2,
-        csmlt_3,
-        csmlt_4,
         cgmlt_0,
         cgmlt_1,
         cgmlt_2,
         cgmlt_3,
         cgmlt_4,
+        const_vi,
+        csaci,
+        csacw,
+        csmlt_0,
+        csmlt_1,
+        csmlt_2,
+        csmlt_3,
+        csmlt_4,
+        dts,
+        fac_i2s,
         qi0_crt,
         qs0_crt,
         qs_mlt,
+        rdts,
     )
 
     t2 = t1
@@ -541,14 +535,15 @@ def icloud_component_2(
             qi2 = qi2 - sink
             qs2 = qs2 + sink
 
-            #     # -----------------------------------------------------------------------
-            #     # pgaci: accretion of cloud ice by graupel
-            #     # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
+            # pgaci: accretion of cloud ice by graupel
+            # -----------------------------------------------------------------------
 
             if qg2 > driver_constants.qpmin:
                 # -----------------------------------------------------------------------
-                # factor = dts * cgaci / sqrt (den (k)) * exp (0.05 * tc + 0.875 * log (qg * den (k)))
-                # simplified form: remove temp dependency & set the exponent "0.875" -- > 1
+                # factor = dts * cgaci / sqrt (den (k)) *
+                # exp (0.05 * tc + 0.875 * log (qg * den (k)))
+                # simplified form: remove temp dependency & set the exponent 0.875 -> 1
                 # -----------------------------------------------------------------------
                 factor = dts * cgaci * sqrt(den1) * qg2
                 pgaci = factor / (1.0 + factor) * qi2
@@ -897,32 +892,32 @@ def subgrid_z_proc(
     from __externals__ import (
         c_air,
         c_vap,
-        d0_vap,
-        lv00,
-        lat2,
-        dts,
-        fac_l2v,
-        fac_s2v,
-        fac_v2s,
-        fac_g2v,
-        fac_v2g,
-        fac_frz,
         cssub_0,
         cssub_1,
         cssub_2,
         cssub_3,
         cssub_4,
-        do_qa,
-        do_evap,
+        d0_vap,
         do_bigg,
+        do_evap,
+        do_qa,
+        dts,
+        fac_frz,
+        fac_g2v,
+        fac_l2v,
+        fac_s2v,
+        fac_v2g,
+        fac_v2s,
+        icloud_f,
+        lat2,
+        lv00,
+        preciprad,
         qc_crt,
         qi_lim,
         rh_inc,
         rh_inr,
         t_min,
         t_sub,
-        preciprad,
-        icloud_f,
     )
 
     """
@@ -969,7 +964,7 @@ def subgrid_z_proc(
     # instant deposit all water vapor to cloud ice when temperature is super low
     # -----------------------------------------------------------------------
 
-    if t1 < t_min and cycle == False:
+    if t1 < t_min and cycle == False:  # noqa
         if qv1 - driver_constants.qvmin > 0:
             sink = qv1 - driver_constants.qvmin
         else:
@@ -984,11 +979,11 @@ def subgrid_z_proc(
             + q_sol * driver_constants.c_ice
         )
         t1 = t1 + sink * (lhl + lhi) / cvm
-        if do_qa == True:
+        if do_qa == True:  # noqa
             qa1 = 1.0  # air fully saturated; 100 % cloud cover
         cycle = True
 
-    if cycle == False:
+    if cycle == False:  # noqa
         # -----------------------------------------------------------------------
         # update heat capacity and latent heat coefficient
         # -----------------------------------------------------------------------
@@ -1022,15 +1017,15 @@ def subgrid_z_proc(
                 qv1 = qpz
                 ql1 = 0.0
                 qi1 = 0.0
-                if do_qa == True:
+                if do_qa == True:  # noqa
                     qa = 0.0
                 cycle = True  # cloud free
 
-    if cycle == False:
+    if cycle == False:  # noqa
         # -----------------------------------------------------------------------
         # cloud water < -- > vapor adjustment: LS evaporation
         # -----------------------------------------------------------------------
-        if do_evap == True:
+        if do_evap == True:  # noqa
             qsw, dwsdt = wqs2(t1, den1, table2, des2)
             dq0 = qsw - qv1
             if dq0 > driver_constants.qvmin:
@@ -1087,7 +1082,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         tc = driver_constants.tice - t1
-        if do_bigg == True and ql1 > driver_constants.qcmin and tc > 0.0:
+        if do_bigg == True and ql1 > driver_constants.qcmin and tc > 0.0:  # noqa
             sink = (
                 fac_frz
                 * (100.0 / driver_constants.rhor / ccn)
@@ -1138,7 +1133,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * driver_constants.rvgas * t1**2)
+                        qsi * den1 * lat2 / (0.0243 * driver_constants.rvgas * t1 ** 2)
                         + 4.42478e4
                     )
                 )
@@ -1152,11 +1147,12 @@ def subgrid_z_proc(
                 qi_crt = max(qi_crt, 1.82e-6) * qi_lim * ifrac / den1
                 sink = min(sink, min(max(qi_crt - qi1, pidep), tmp / tcpk))
             else:  # ice -- > vapor
-                # NOTE sublimation option is False in test case, not implemented b/c unsure how to
-                # handle pssub. In Fortran this variable is initalized to nan then used here
-                # (at least when do_subl is False, maybe do_subl has other unknown effects)
+                # NOTE sublimation option is False in test case, not implemented
+                # b/c unsure how to handle pssub. In Fortran this variable is
+                # initalized to nan then used here (at least when do_subl is False,
+                # maybe do_subl has other unknown effects)
                 # # sublimation
-                # if do_subl == True:
+                # if do_subl == True: #noqa
                 #     if t1 - t_sub > 0:
                 #         ans = t1 - t_sub
                 #     else:
@@ -1278,7 +1274,8 @@ def subgrid_z_proc(
             )
             t1 = t1 + pgsub * (lhl + lhi) / cvm
 
-            # Fortran ifdef USE_MIN_EVAP goes in here. Not currently executed, so not included
+            # Fortran ifdef USE_MIN_EVAP goes in here.
+            # Not currently executed, so not included
 
         # -----------------------------------------------------------------------
         # update capacity heat and latend heat coefficient
@@ -1291,14 +1288,14 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
         # compute cloud fraction
         # -----------------------------------------------------------------------
-        if do_qa == False:
+        if do_qa == False:  # noqa
             cycle = True
 
-    if cycle == False:
+    if cycle == False:  # noqa
         # -----------------------------------------------------------------------
         # combine water species
         # -----------------------------------------------------------------------
-        if preciprad == True:
+        if preciprad == True:  # noqa
             q_sol = qi1 + qs1 + qg1
             q_liq = ql1 + qr1
         else:
@@ -1309,7 +1306,8 @@ def subgrid_z_proc(
         qpz = qv1 + q_cond  # qpz is conserved
 
         # -----------------------------------------------------------------------
-        # use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
+        # use the "liquid - frozen water temperature" (tin)
+        # to compute saturated specific humidity
         # -----------------------------------------------------------------------
 
         tin = t1 - (lcpk * q_cond + icpk * q_sol)  # minimum temperature
@@ -1336,8 +1334,8 @@ def subgrid_z_proc(
             qstar = rqi * qsi + (1.0 - rqi) * qsw
 
         # -----------------------------------------------------------------------
-        # assuming subgrid linear distribution in horizontal; this is effectively a smoother for the
-        # binary cloud scheme
+        # assuming subgrid linear distribution in horizontal;
+        # this is effectively a smoother for the binary cloud scheme
         # -----------------------------------------------------------------------
         if qpz > driver_constants.qcmin:
             # partial cloudiness by pdf:
@@ -1422,62 +1420,7 @@ def icloud(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
-    from __externals__ import (
-        c_air,
-        c_vap,
-        dts,
-        rdts,
-        const_vi,
-        fac_g2v,
-        fac_i2s,
-        fac_imlt,
-        fac_frz,
-        fac_l2v,
-        fac_s2v,
-        fac_v2s,
-        fac_v2g,
-        cgacs,
-        csacw,
-        csaci,
-        cgacw,
-        cgaci,
-        cgfr_0,
-        cgfr_1,
-        csmlt_0,
-        csmlt_1,
-        csmlt_2,
-        csmlt_3,
-        csmlt_4,
-        cgmlt_0,
-        cgmlt_1,
-        cgmlt_2,
-        cgmlt_3,
-        cgmlt_4,
-        cssub_0,
-        cssub_1,
-        cssub_2,
-        cssub_3,
-        cssub_4,
-        qi0_crt,
-        qs0_crt,
-        qs_mlt,
-        ql_mlt,
-        z_slope_ice,
-        lv00,
-        d0_vap,
-        lat2,
-        do_qa,
-        do_evap,
-        do_bigg,
-        qc_crt,
-        qi_lim,
-        rh_inc,
-        rh_inr,
-        t_min,
-        t_sub,
-        preciprad,
-        icloud_f,
-    )  # comprehensive list of externals needed for stencil and sub functions
+    from __externals__ import d0_vap, lv00, z_slope_ice
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     with computation(FORWARD), interval(0, 1):
@@ -1502,7 +1445,7 @@ def icloud(
     # still within reference Fortran gfdl_cloud_microphys.F90: subroutine icloud
     # set up inputs to "function"
     with computation(PARALLEL), interval(...):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             q_linear_prof = qi1
             h_var_linear_prof = rh_limited
             dm_linear_prof = (
@@ -1510,18 +1453,18 @@ def icloud(
             )
 
     with computation(FORWARD), interval(1, None):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             dq_linear_prof = 0.5 * (q_linear_prof - q_linear_prof[0, 0, -1])
 
     # -----------------------------------------------------------------------
     # use twice the strength of the positive definiteness limiter (lin et al 1994)
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             dm_linear_prof = 0
 
     with computation(FORWARD), interval(1, -1):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             dm_linear_prof = 0.5 * min(
                 abs(dq_linear_prof + dq_linear_prof[0, 0, 1]), 0.5 * q_linear_prof
             )
@@ -1534,19 +1477,20 @@ def icloud(
                     dm_linear_prof = 0.0
 
     with computation(FORWARD), interval(-1, None):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             dm_linear_prof = 0
 
     # -----------------------------------------------------------------------
-    # impose a presumed background horizontal variability that is proportional to the value itself
+    # impose a presumed background horizontal variability
+    # that is proportional to the value itself
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        if z_slope_ice == True:
+        if z_slope_ice == True:  # noqa
             dm_linear_prof = max(
                 dm_linear_prof,
                 max(driver_constants.qvmin, h_var_linear_prof * q_linear_prof),
             )
-        if z_slope_ice == False:
+        if z_slope_ice == False:  # noqa
             dm_linear_prof = max(
                 driver_constants.qvmin, h_var_linear_prof * q_linear_prof
             )
