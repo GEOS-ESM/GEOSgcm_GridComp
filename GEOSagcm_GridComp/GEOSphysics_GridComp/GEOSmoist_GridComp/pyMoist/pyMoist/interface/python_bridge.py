@@ -78,7 +78,7 @@ class PYMOIST_WRAPPER:
         f_nactl: "cffi.FFI.CData",
     ):
         CUDAProfiler.start_cuda_profiler()
-        with TimedCUDAProfiler("Fortran -> Python", self._timings):
+        with TimedCUDAProfiler("[AER] Fortran -> Python", self._timings):
             aero_dgn = self.f_py.fortran_to_python(
                 f_aero_dgn,
                 [
@@ -175,8 +175,215 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(nwfa, f_nwfa)
             self.f_py.python_to_fortran(nactl, f_nactl)
 
+    def GFDL_1M__EVAP_SUBL_HYSTPDF(
+        self,
+        f_EIS: "cffi.FFI.CData",
+        f_dw_land: np.float32,
+        f_dw_ocean: np.float32,
+        f_PDF_shape: np.int32,
+        f_TurnRHCrit_Param: "cffi.FFI.CData",
+        f_PLmb: "cffi.FFI.CData",
+        f_KLCL: "cffi.FFI.CData",
+        f_PLEmb: "cffi.FFI.CData",
+        f_Area: "cffi.FFI.CData",
+        f_dt_moist: np.float32,
+        f_CNV_FRC: "cffi.FFI.CData",
+        f_SRF_TYPE: "cffi.FFI.CData",
+        f_T: "cffi.FFI.CData",
+        f_QLCN: "cffi.FFI.CData",
+        f_QICN: "cffi.FFI.CData",
+        f_QLLS: "cffi.FFI.CData",
+        f_QILS: "cffi.FFI.CData",
+        f_CCW_EVAP_EFF: np.float32,
+        f_CCI_EVAP_EFF: np.float32,
+        f_Q: "cffi.FFI.CData",
+        f_CLLS: "cffi.FFI.CData",
+        f_CLCN: "cffi.FFI.CData",
+        f_NACTL: "cffi.FFI.CData",
+        f_NACTI: "cffi.FFI.CData",
+        f_QST: "cffi.FFI.CData",
+        f_SUBLC: "cffi.FFI.CData",
+        f_EVAPC: "cffi.FFI.CData",
+        f_RHX: "cffi.FFI.CData",
+        f_LMELTFRZ: bool = True,
+    ):
+        CUDAProfiler.start_cuda_profiler()
+
+        with TimedCUDAProfiler("[GFDL_1M] Fortran -> Python", self._timings):
+            eis = self.f_py.fortran_to_python(
+                f_EIS,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            klcl = self.f_py.fortran_to_python(
+                f_KLCL,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            aera = self.f_py.fortran_to_python(
+                f_Area,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            cnv_fraction = self.f_py.fortran_to_python(
+                f_CNV_FRC,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            surface_type = self.f_py.fortran_to_python(
+                f_SRF_TYPE,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+
+            plmb = self.f_py.fortran_to_python(f_PLmb)
+            plemb = self.f_py.fortran_to_python(f_PLEmb)
+            T = self.f_py.fortran_to_python(f_T)
+            QLCN = self.f_py.fortran_to_python(f_QLCN)
+            QICN = self.f_py.fortran_to_python(f_QICN)
+            QLLS = self.f_py.fortran_to_python(f_QLLS)
+            QILS = self.f_py.fortran_to_python(f_QILS)
+            Q = self.f_py.fortran_to_python(f_Q)
+            CLLS = self.f_py.fortran_to_python(f_CLLS)
+            CLCN = self.f_py.fortran_to_python(f_CLCN)
+            NACTL = self.f_py.fortran_to_python(f_NACTL)
+            NACTI = self.f_py.fortran_to_python(f_NACTI)
+            QST = self.f_py.fortran_to_python(f_QST)
+
+            self.f_py.device_sync()
+
+        with TimedCUDAProfiler("[GFDL_1M] Run", self._timings):
+            self.pymoist.gfdl_1M(
+                EIS=eis,
+                dw_land=Float(f_dw_land),
+                dw_ocean=Float(f_dw_ocean),
+                PDFSHAPE=Float(f_PDF_shape),
+                TURNRHCRIT_PARAM=Float(f_TurnRHCrit_Param),
+                PLmb=plmb,
+                KLCL=klcl,
+                PLEmb=plemb,
+                AREA=aera,
+                DT_MOIST=Float(f_dt_moist),
+                CNV_FRC=cnv_fraction,
+                SRF_TYPE=surface_type,
+                T=T,
+                QLCN=QLCN,
+                QICN=QICN,
+                QLLS=QLLS,
+                QILS=QILS,
+                CCW_EVAP_EFF=Float(f_CCW_EVAP_EFF),
+                CCI_EVAP_EFF=Float(f_CCI_EVAP_EFF),
+                Q=Q,
+                CLLS=CLLS,
+                CLCN=CLCN,
+                NACTL=NACTL,
+                NACTI=NACTI,
+                QST=QST,
+                LMELTFRZ=f_LMELTFRZ,
+            )
+
+        # Convert NumPy arrays back to Fortran
+        with TimedCUDAProfiler("[GFDL_1M] Python -> Fortran", self._timings):
+            self.f_py.python_to_fortran(eis, f_EIS)
+            self.f_py.python_to_fortran(klcl, f_KLCL)
+            self.f_py.python_to_fortran(aera, f_Area)
+            self.f_py.python_to_fortran(cnv_fraction, f_CNV_FRC)
+            self.f_py.python_to_fortran(surface_type, f_SRF_TYPE)
+            self.f_py.python_to_fortran(plmb, f_PLmb)
+            self.f_py.python_to_fortran(plemb, f_PLEmb)
+            self.f_py.python_to_fortran(T, f_T)
+            self.f_py.python_to_fortran(QLCN, f_QLCN)
+            self.f_py.python_to_fortran(QICN, f_QICN)
+            self.f_py.python_to_fortran(QLLS, f_QLLS)
+            self.f_py.python_to_fortran(QILS, f_QILS)
+            self.f_py.python_to_fortran(Q, f_Q)
+            self.f_py.python_to_fortran(CLLS, f_CLLS)
+            self.f_py.python_to_fortran(CLCN, f_CLCN)
+            self.f_py.python_to_fortran(NACTL, f_NACTL)
+            self.f_py.python_to_fortran(NACTI, f_NACTI)
+            self.f_py.python_to_fortran(QST, f_QST)
+            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.sublc.view[:], f_SUBLC)
+            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.evapc.view[:], f_EVAPC)
+            self.f_py.python_to_fortran(self.pymoist.gfdl_1M.rhx.view[:], f_RHX)
+
 
 WRAPPER = PYMOIST_WRAPPER()
+
+
+def pyMoist_run_GFDL1M(
+    dw_land: np.float32,
+    dw_ocean: np.float32,
+    PDFSHAPE: np.int32,
+    TURNRHCRIT_PARAM: np.float32,
+    DT_MOIST: np.float32,
+    CCW_EVAP_EFF: np.float32,
+    CCI_EVAP_EFF: np.float32,
+    LMELTFRZ: bool,
+    AREA: "cffi.FFI.CData",
+    CNV_FRC: "cffi.FFI.CData",
+    SRF_TYPE: "cffi.FFI.CData",
+    KLCL: "cffi.FFI.CData",
+    EIS: "cffi.FFI.CData",
+    PLmb: "cffi.FFI.CData",
+    PLEmb: "cffi.FFI.CData",
+    NACTL: "cffi.FFI.CData",
+    NACTI: "cffi.FFI.CData",
+    QST: "cffi.FFI.CData",
+    T: "cffi.FFI.CData",
+    Q: "cffi.FFI.CData",
+    QLCN: "cffi.FFI.CData",
+    QICN: "cffi.FFI.CData",
+    QLLS: "cffi.FFI.CData",
+    QILS: "cffi.FFI.CData",
+    CLLS: "cffi.FFI.CData",
+    CLCN: "cffi.FFI.CData",
+    SUBLC: "cffi.FFI.CData",
+    EVAPC: "cffi.FFI.CData",
+    RHX: "cffi.FFI.CData",
+):
+    if not WRAPPER.ready:
+        raise RuntimeError("[pyMoist] Bad init, did you call init?")
+    WRAPPER.GFDL_1M__EVAP_SUBL_HYSTPDF(
+        f_EIS=EIS,
+        f_dw_land=dw_land,
+        f_dw_ocean=dw_ocean,
+        f_PDF_shape=PDFSHAPE,
+        f_TurnRHCrit_Param=TURNRHCRIT_PARAM,
+        f_PLmb=PLmb,
+        f_PLEmb=PLEmb,
+        f_Area=AREA,
+        f_dt_moist=DT_MOIST,
+        f_CNV_FRC=CNV_FRC,
+        f_SRF_TYPE=SRF_TYPE,
+        f_KLCL=KLCL,
+        f_T=T,
+        f_QLCN=QLCN,
+        f_QICN=QICN,
+        f_QLLS=QLLS,
+        f_QILS=QILS,
+        f_CCI_EVAP_EFF=CCI_EVAP_EFF,
+        f_CCW_EVAP_EFF=CCW_EVAP_EFF,
+        f_Q=Q,
+        f_CLLS=CLLS,
+        f_CLCN=CLCN,
+        f_NACTL=NACTL,
+        f_NACTI=NACTI,
+        f_QST=QST,
+        f_LMELTFRZ=LMELTFRZ,
+        f_SUBLC=SUBLC,
+        f_EVAPC=EVAPC,
+        f_RHX=RHX,
+    )
 
 
 def pyMoist_run_AerActivation(
