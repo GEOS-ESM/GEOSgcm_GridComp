@@ -17,8 +17,7 @@ import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constan
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 
-length = 2621
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(driver_constants.length)))]
 
 
 @gtscript.function

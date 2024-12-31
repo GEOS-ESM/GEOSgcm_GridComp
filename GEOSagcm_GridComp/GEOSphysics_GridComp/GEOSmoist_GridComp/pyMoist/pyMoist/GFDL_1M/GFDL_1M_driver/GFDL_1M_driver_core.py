@@ -17,8 +17,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_generic_math import sigma
 
 
-length = 2621
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.length))]
 
 
 def init_temporaries(

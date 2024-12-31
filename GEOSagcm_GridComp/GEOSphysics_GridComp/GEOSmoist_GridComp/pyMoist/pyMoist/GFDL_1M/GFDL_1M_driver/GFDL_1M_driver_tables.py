@@ -19,9 +19,10 @@ from ndsl.dsl.typing import Float
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
-length = i32(2621)
-_FloatField_data_dim = gtscript.Field[gtscript.IJK, (Float, (int(length)))]
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
+_FloatField_data_dim = gtscript.Field[
+    gtscript.IJK, (Float, (int(driver_constants.length)))
+]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.length))]
 
 
 def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_data_dim):
@@ -266,7 +267,7 @@ class GFDL_driver_tables:
         )
         quantity_factory_data_dim.set_extra_dim_lengths(
             **{
-                "table_axis": length,
+                "table_axis": driver_constants.length,
             }
         )
 
@@ -324,12 +325,12 @@ class GFDL_driver_tables:
             domain=qsat_domain,
         )
 
-        compute_qs_table_1(length, self._table1, self._esupc)
-        compute_qs_table_2(length, self._table2)
-        compute_qs_table_3(length, self._table3, self._table1)
-        compute_qs_table_4(length, self._table4, self._table1)
+        compute_qs_table_1(driver_constants.length, self._table1, self._esupc)
+        compute_qs_table_2(driver_constants.length, self._table2)
+        compute_qs_table_3(driver_constants.length, self._table3, self._table1)
+        compute_qs_table_4(driver_constants.length, self._table4, self._table1)
         compute_des_tables(
-            length,
+            driver_constants.length,
             self._des1,
             self._des2,
             self._des3,
@@ -387,16 +388,6 @@ class GFDL_driver_tables:
         self,
     ):
         return self._des4.view[0, 0, 0, :]
-
-    @staticmethod
-    def make_data_dim_quantity_factory(quantity_factory: QuantityFactory, length):
-        data_dim_quantity_factory = copy.deepcopy(quantity_factory)
-        data_dim_quantity_factory.set_extra_dim_lengths(
-            **{
-                "table_axis": length,
-            }
-        )
-        return data_dim_quantity_factory
 
 
 # Table needs to be calculated only once
