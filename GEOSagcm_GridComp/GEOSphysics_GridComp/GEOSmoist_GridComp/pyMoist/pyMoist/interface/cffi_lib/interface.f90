@@ -8,6 +8,7 @@ module pymoist_interface_mod
    public :: pymoist_interface_f_init
    public :: pymoist_interface_f_run_AerActivation
    public :: pymoist_interface_f_run_GFDL1M
+   public :: pymoist_interface_f_run_gfdl1m_driver
    public :: pymoist_interface_f_finalize
    public :: make_moist_flags_C_interop
    public :: moist_flags_interface_type
@@ -114,6 +115,39 @@ module pymoist_interface_mod
          real(kind=c_float), dimension(*), intent(out) :: SUBLC, EVAPC, RHX
 
       end subroutine pymoist_interface_f_run_GFDL1M
+
+      subroutine pymoist_interface_f_run_GFDL1M_driver( &
+         RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll, &
+         DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, &
+         DQSDTmic, DQGDTmic, DQADTmic, DTDTmic, &
+         T, W, U, V, DUDTmic, DVDTmic, DZ, DP, &
+         AREA, DT_MOIST, FRLAND, CNV_FRC, SRF_TYPE, EIS, &
+         RHCRIT3D, ANV_ICEFALL, LS_ICEFALL, &
+         REV_LS, RSU_LS, &
+         PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
+         PFL_LS, PFI_LS, &
+         LHYDROSTATIC, LPHYS_HYDROSTATIC ) bind(c, name='pymoist_interface_c_run_GFDL1M_driver')
+
+         import c_int, c_float, c_bool
+
+         implicit none
+
+         ! Input
+         real(kind=c_float), dimension(*), intent(in) :: RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll
+         real(kind=c_float), dimension(*), intent(in) :: T, W, U, V, DUDTmic, DVDTmic, DZ, DP
+
+         real(kind=c_float), dimension(*), intent(in) :: AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D
+         real(kind=c_float), value, intent(in) :: DT_MOIST, LS_ICEFALL, ANV_ICEFALL
+         integer(kind=c_int), value, intent(in) :: LHYDROSTATIC, LPHYS_HYDROSTATIC ! Actually bool but LOGICAL(4) and (1) are fighting
+
+         ! Output
+         real(kind=c_float), dimension(*), intent(inout) :: DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, DQSDTmic, DQGDTmic, DQADTmic, DTDTmic
+         real(kind=c_float), dimension(*), intent(inout) :: REV_LS, RSU_LS
+         real(kind=c_float), dimension(*), intent(inout) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
+         real(kind=c_float), dimension(*), intent(inout) :: PFL_LS, PFI_LS
+
+      end subroutine pymoist_interface_f_run_GFDL1M_driver
+
 
       subroutine pymoist_interface_f_finalize() bind(c, name='pymoist_interface_c_finalize')
       end subroutine pymoist_interface_f_finalize

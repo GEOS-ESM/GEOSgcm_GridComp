@@ -20,6 +20,7 @@ from pyMoist.interface.python_bridge import (
     pyMoist_init,
     pyMoist_run_AerActivation,
     pyMoist_run_GFDL1M,
+    pymoist_run_GFDL1M_driver,
     pyMoist_finalize
 )
 import traceback
@@ -85,6 +86,38 @@ def pymoist_interface_py_run_GFDL1M(
         print(traceback.format_exc())
         return -1
     return 0
+
+@ffi.def_extern()
+def pymoist_interface_py_run_GFDL1M_driver(
+        RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll,
+        DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,
+        DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
+        T, W, U, V, DUDTmic, DVDTmic, DZ, DP,
+        AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,
+        DT_MOIST, ANV_ICEFALL, LS_ICEFALL,
+        REV_LS, RSU_LS,
+        PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS,
+        LHYDROSTATIC, LPHYS_HYDROSTATIC
+    ):
+
+        try:
+            pymoist_run_GFDL1M_driver(
+                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF,
+                NACTAll,
+                DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,
+                DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
+                T, W, U, V, DUDTmic, DVDTmic, DZ, DP,
+                AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,
+                DT_MOIST, ANV_ICEFALL, LS_ICEFALL,
+                REV_LS, RSU_LS,
+                PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS,
+                LHYDROSTATIC, LPHYS_HYDROSTATIC
+            )
+        except Exception as err:
+            print("Error in Python:")
+            print(traceback.format_exc())
+            return -1
+        return 0
 
 @ffi.def_extern()
 def pymoist_interface_py_finalize() -> int:

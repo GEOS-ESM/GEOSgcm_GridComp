@@ -1,6 +1,9 @@
-import os
-from typing import TYPE_CHECKING, Dict, List
+from __future__ import annotations
 
+import os
+from typing import Dict, List
+
+import cffi
 import numpy as np
 from mpi4py import MPI
 
@@ -13,17 +16,13 @@ from pyMoist.interface.flags import flags_fv_to_python
 from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace
 
 
-if TYPE_CHECKING:
-    import cffi
-
-
 class PYMOIST_WRAPPER:
     def __init__(self) -> None:
         self.ready = False
 
     def init(
         self,
-        fv_flags: "cffi.FFI.CData",
+        fv_flags: cffi.FFI.CData,
         backend: str = "dace:cpu",
     ) -> None:
         self.rank = MPI.COMM_WORLD.Get_rank()
@@ -58,24 +57,24 @@ class PYMOIST_WRAPPER:
 
     def aer_activation(
         self,
-        f_aero_dgn: "cffi.FFI.CData",
-        f_aero_num: "cffi.FFI.CData",
-        f_aero_hygroscopicity: "cffi.FFI.CData",
-        f_aero_sigma: "cffi.FFI.CData",
-        f_frland: "cffi.FFI.CData",
+        f_aero_dgn: cffi.FFI.CData,
+        f_aero_num: cffi.FFI.CData,
+        f_aero_hygroscopicity: cffi.FFI.CData,
+        f_aero_sigma: cffi.FFI.CData,
+        f_frland: cffi.FFI.CData,
         f_nn_ocean: np.float32,
         f_nn_land: np.float32,
-        f_t: "cffi.FFI.CData",
-        f_plo: "cffi.FFI.CData",
-        f_qicn: "cffi.FFI.CData",
-        f_qils: "cffi.FFI.CData",
-        f_qlcn: "cffi.FFI.CData",
-        f_qlls: "cffi.FFI.CData",
-        f_vvel: "cffi.FFI.CData",
-        f_tke: "cffi.FFI.CData",
-        f_nacti: "cffi.FFI.CData",
-        f_nwfa: "cffi.FFI.CData",
-        f_nactl: "cffi.FFI.CData",
+        f_t: cffi.FFI.CData,
+        f_plo: cffi.FFI.CData,
+        f_qicn: cffi.FFI.CData,
+        f_qils: cffi.FFI.CData,
+        f_qlcn: cffi.FFI.CData,
+        f_qlls: cffi.FFI.CData,
+        f_vvel: cffi.FFI.CData,
+        f_tke: cffi.FFI.CData,
+        f_nacti: cffi.FFI.CData,
+        f_nwfa: cffi.FFI.CData,
+        f_nactl: cffi.FFI.CData,
     ):
         CUDAProfiler.start_cuda_profiler()
         with TimedCUDAProfiler("[AER] Fortran -> Python", self._timings):
@@ -177,34 +176,34 @@ class PYMOIST_WRAPPER:
 
     def GFDL_1M__EVAP_SUBL_HYSTPDF(
         self,
-        f_EIS: "cffi.FFI.CData",
+        f_EIS: cffi.FFI.CData,
         f_dw_land: np.float32,
         f_dw_ocean: np.float32,
         f_PDF_shape: np.int32,
-        f_TurnRHCrit_Param: "cffi.FFI.CData",
-        f_PLmb: "cffi.FFI.CData",
-        f_KLCL: "cffi.FFI.CData",
-        f_PLEmb: "cffi.FFI.CData",
-        f_Area: "cffi.FFI.CData",
+        f_TurnRHCrit_Param: cffi.FFI.CData,
+        f_PLmb: cffi.FFI.CData,
+        f_KLCL: cffi.FFI.CData,
+        f_PLEmb: cffi.FFI.CData,
+        f_Area: cffi.FFI.CData,
         f_dt_moist: np.float32,
-        f_CNV_FRC: "cffi.FFI.CData",
-        f_SRF_TYPE: "cffi.FFI.CData",
-        f_T: "cffi.FFI.CData",
-        f_QLCN: "cffi.FFI.CData",
-        f_QICN: "cffi.FFI.CData",
-        f_QLLS: "cffi.FFI.CData",
-        f_QILS: "cffi.FFI.CData",
+        f_CNV_FRC: cffi.FFI.CData,
+        f_SRF_TYPE: cffi.FFI.CData,
+        f_T: cffi.FFI.CData,
+        f_QLCN: cffi.FFI.CData,
+        f_QICN: cffi.FFI.CData,
+        f_QLLS: cffi.FFI.CData,
+        f_QILS: cffi.FFI.CData,
         f_CCW_EVAP_EFF: np.float32,
         f_CCI_EVAP_EFF: np.float32,
-        f_Q: "cffi.FFI.CData",
-        f_CLLS: "cffi.FFI.CData",
-        f_CLCN: "cffi.FFI.CData",
-        f_NACTL: "cffi.FFI.CData",
-        f_NACTI: "cffi.FFI.CData",
-        f_QST: "cffi.FFI.CData",
-        f_SUBLC: "cffi.FFI.CData",
-        f_EVAPC: "cffi.FFI.CData",
-        f_RHX: "cffi.FFI.CData",
+        f_Q: cffi.FFI.CData,
+        f_CLLS: cffi.FFI.CData,
+        f_CLCN: cffi.FFI.CData,
+        f_NACTL: cffi.FFI.CData,
+        f_NACTI: cffi.FFI.CData,
+        f_QST: cffi.FFI.CData,
+        f_SUBLC: cffi.FFI.CData,
+        f_EVAPC: cffi.FFI.CData,
+        f_RHX: cffi.FFI.CData,
         f_LMELTFRZ: bool = True,
     ):
         CUDAProfiler.start_cuda_profiler()
@@ -263,7 +262,7 @@ class PYMOIST_WRAPPER:
             self.f_py.device_sync()
 
         with TimedCUDAProfiler("[GFDL_1M] Run", self._timings):
-            self.pymoist.gfdl_1M(
+            self.pymoist.GFDL_1M_evap(
                 EIS=eis,
                 dw_land=Float(f_dw_land),
                 dw_ocean=Float(f_dw_ocean),
@@ -329,27 +328,27 @@ def pyMoist_run_GFDL1M(
     CCW_EVAP_EFF: np.float32,
     CCI_EVAP_EFF: np.float32,
     LMELTFRZ: bool,
-    AREA: "cffi.FFI.CData",
-    CNV_FRC: "cffi.FFI.CData",
-    SRF_TYPE: "cffi.FFI.CData",
-    KLCL: "cffi.FFI.CData",
-    EIS: "cffi.FFI.CData",
-    PLmb: "cffi.FFI.CData",
-    PLEmb: "cffi.FFI.CData",
-    NACTL: "cffi.FFI.CData",
-    NACTI: "cffi.FFI.CData",
-    QST: "cffi.FFI.CData",
-    T: "cffi.FFI.CData",
-    Q: "cffi.FFI.CData",
-    QLCN: "cffi.FFI.CData",
-    QICN: "cffi.FFI.CData",
-    QLLS: "cffi.FFI.CData",
-    QILS: "cffi.FFI.CData",
-    CLLS: "cffi.FFI.CData",
-    CLCN: "cffi.FFI.CData",
-    SUBLC: "cffi.FFI.CData",
-    EVAPC: "cffi.FFI.CData",
-    RHX: "cffi.FFI.CData",
+    AREA: cffi.FFI.CData,
+    CNV_FRC: cffi.FFI.CData,
+    SRF_TYPE: cffi.FFI.CData,
+    KLCL: cffi.FFI.CData,
+    EIS: cffi.FFI.CData,
+    PLmb: cffi.FFI.CData,
+    PLEmb: cffi.FFI.CData,
+    NACTL: cffi.FFI.CData,
+    NACTI: cffi.FFI.CData,
+    QST: cffi.FFI.CData,
+    T: cffi.FFI.CData,
+    Q: cffi.FFI.CData,
+    QLCN: cffi.FFI.CData,
+    QICN: cffi.FFI.CData,
+    QLLS: cffi.FFI.CData,
+    QILS: cffi.FFI.CData,
+    CLLS: cffi.FFI.CData,
+    CLCN: cffi.FFI.CData,
+    SUBLC: cffi.FFI.CData,
+    EVAPC: cffi.FFI.CData,
+    RHX: cffi.FFI.CData,
 ):
     if not WRAPPER.ready:
         raise RuntimeError("[pyMoist] Bad init, did you call init?")
@@ -386,25 +385,73 @@ def pyMoist_run_GFDL1M(
     )
 
 
+def pymoist_run_GFDL1M_driver(
+    RAD_QV: cffi.FFI.CData,
+    RAD_QL: cffi.FFI.CData,
+    RAD_QR: cffi.FFI.CData,
+    RAD_QI: cffi.FFI.CData,
+    RAD_QS: cffi.FFI.CData,
+    RAD_QG: cffi.FFI.CData,
+    RAD_CF: cffi.FFI.CData,
+    NACTAll: cffi.FFI.CData,
+    DQVDTmic: cffi.FFI.CData,
+    DQLDTmic: cffi.FFI.CData,
+    DQRDTmic: cffi.FFI.CData,
+    DQIDTmic: cffi.FFI.CData,
+    DQSDTmic: cffi.FFI.CData,
+    DQGDTmic: cffi.FFI.CData,
+    DQADTmic: cffi.FFI.CData,
+    DTDTmic: cffi.FFI.CData,
+    T: cffi.FFI.CData,
+    W: cffi.FFI.CData,
+    U: cffi.FFI.CData,
+    V: cffi.FFI.CData,
+    DUDTmic: cffi.FFI.CData,
+    DVDTmic: cffi.FFI.CData,
+    DZ: cffi.FFI.CData,
+    DP: cffi.FFI.CData,
+    AREA: cffi.FFI.CData,
+    FRLAND: cffi.FFI.CData,
+    CNV_FRC: cffi.FFI.CData,
+    SRF_TYPE: cffi.FFI.CData,
+    EIS: cffi.FFI.CData,
+    RHCRIT3D: cffi.FFI.CData,
+    DT_MOIST: np.float32,
+    ANV_ICEFALL: np.float32,
+    LS_ICEFALL: np.float32,
+    REV_LS: cffi.FFI.CData,
+    RSU_LS: cffi.FFI.CData,
+    PRCP_RAIN: cffi.FFI.CData,
+    PRCP_SNOW: cffi.FFI.CData,
+    PRCP_ICE: cffi.FFI.CData,
+    PRCP_GRAUPEL: cffi.FFI.CData,
+    PFL_LS: cffi.FFI.CData,
+    PFI_LS: cffi.FFI.CData,
+    LHYDROSTATIC: bool,
+    LPHYS_HYDROSTATIC: bool,
+):
+    print("Running pymoist_run_GFDL1M_driver")
+
+
 def pyMoist_run_AerActivation(
-    aero_dgn: "cffi.FFI.CData",
-    aero_num: "cffi.FFI.CData",
-    aero_hygroscopicity: "cffi.FFI.CData",
-    aero_sigma: "cffi.FFI.CData",
-    frland: "cffi.FFI.CData",
+    aero_dgn: cffi.FFI.CData,
+    aero_num: cffi.FFI.CData,
+    aero_hygroscopicity: cffi.FFI.CData,
+    aero_sigma: cffi.FFI.CData,
+    frland: cffi.FFI.CData,
     nn_ocean: np.float32,
     nn_land: np.float32,
-    t: "cffi.FFI.CData",
-    plo: "cffi.FFI.CData",
-    qicn: "cffi.FFI.CData",
-    qils: "cffi.FFI.CData",
-    qlcn: "cffi.FFI.CData",
-    qlls: "cffi.FFI.CData",
-    vvel: "cffi.FFI.CData",
-    tke: "cffi.FFI.CData",
-    nacti: "cffi.FFI.CData",
-    nwfa: "cffi.FFI.CData",
-    nactl: "cffi.FFI.CData",
+    t: cffi.FFI.CData,
+    plo: cffi.FFI.CData,
+    qicn: cffi.FFI.CData,
+    qils: cffi.FFI.CData,
+    qlcn: cffi.FFI.CData,
+    qlls: cffi.FFI.CData,
+    vvel: cffi.FFI.CData,
+    tke: cffi.FFI.CData,
+    nacti: cffi.FFI.CData,
+    nwfa: cffi.FFI.CData,
+    nactl: cffi.FFI.CData,
 ):
     if not WRAPPER.ready:
         raise RuntimeError("[GEOS WRAPPER] Bad init, did you call init?")
@@ -435,7 +482,7 @@ def pyMoist_finalize():
         WRAPPER.finalize()
 
 
-def pyMoist_init(fv_flags: "cffi.FFI.CData"):
+def pyMoist_init(fv_flags: cffi.FFI.CData):
     # Read in the backend
     BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
     if WRAPPER.ready:
