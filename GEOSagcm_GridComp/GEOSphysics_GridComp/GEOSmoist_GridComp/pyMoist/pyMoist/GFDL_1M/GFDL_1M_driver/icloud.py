@@ -23,7 +23,11 @@ GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
 
 @gtscript.function
 def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
-    # reference Fortran: gfdl_cloud_microphys.F90: function new_ice_condensate
+    """
+    calculate amount of new ice to be frozen at a given point
+
+    reference Fortran: gfdl_cloud_microphys.F90: function new_ice_condensate
+    """
     ifrac = ice_fraction(t, cnv_frc, srf_type)
     new_ice_condensate = min(max(0.0, ifrac * (ql + qi) - qi), ql)
 
@@ -31,7 +35,7 @@ def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
 
 
 @gtscript.function
-def icloud_component_1(
+def icloud_melt_freeze(
     t: Float,
     qv: Float,
     ql: Float,
@@ -44,6 +48,11 @@ def icloud_component_1(
     cnv_frc: Float,
     srf_type: Float,
 ):
+    """
+    melting and freezing of cloud ice/water within the icloud subroutine
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+    """
     from __externals__ import c_air, c_vap, fac_frz, fac_imlt, qi0_crt, ql_mlt
 
     # -----------------------------------------------------------------------
@@ -60,14 +69,6 @@ def icloud_component_1(
         + q_sol * driver_constants.c_ice
     )
     icpk = lhi / cvm
-
-    # -----------------------------------------------------------------------
-    # sources of cloud ice: pihom, cold rain, and the sat_adj
-    # (initiation plus deposition)
-    # sources of snow: cold rain, auto conversion + accretion (from cloud ice)
-    # sat_adj (deposition; requires pre - existing snow);
-    # initial snow comes from auto conversion
-    # -----------------------------------------------------------------------
 
     newice = max(0.0, qi + new_ice_condensate(t, ql, qi, cnv_frc, srf_type))
     newliq = max(0.0, ql + qi - newice)
@@ -159,7 +160,11 @@ def acr3d(
     cac_3: Float,
     rho: Float,
 ):
-    # reference Fortran: gfdl_cloud_microphys.F90: function acr3d
+    """
+    compute accretion according to Lin et al. 1983
+
+    reference Fortran: gfdl_cloud_microphys.F90: function acr3d
+    """
     t1 = sqrt(q1 * rho)
     s1 = sqrt(q2 * rho)
     s2 = sqrt(s1)  # s1 = s2 ** 2
@@ -171,7 +176,7 @@ def acr3d(
 
 
 @gtscript.function
-def smlt(
+def smow_melt(
     tc: Float,
     dqs: Float,
     qsrho: Float,
@@ -185,15 +190,21 @@ def smlt(
     rho: Float,
     rhofac: Float,
 ):
-    smlt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+    """
+    melting of snow function (lin et al. 1983)
+    note: psacw and psacr must be calc before smlt is called
+
+    reference Fortran: gfdl_cloud_microphys.F90: function smlt
+    """
+    smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
-    return smlt
+    return smow_melt
 
 
 @gtscript.function
-def gmlt(
+def graupel_melt(
     tc: Float,
     dqs: Float,
     qgrho: Float,
@@ -206,15 +217,21 @@ def gmlt(
     c_4: Float,
     rho: Float,
 ):
-    gmlt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+    """
+    melting of graupel function (lin et al. 1983)
+    note: pgacw and pgacr must be calc before gmlt is called
+
+    reference Fortran: gfdl_cloud_microphys.F90: function gmlt
+    """
+    graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
-    return gmlt
+    return graupel_melt
 
 
 @gtscript.function
-def icloud_component_2(
+def snow_graupel_coldrain(
     t1: Float,
     qv1: Float,
     ql1: Float,
@@ -241,6 +258,12 @@ def icloud_component_2(
     cnv_frc: Float,
     srf_type: Float,
 ):
+    """
+    snow, graupel, cold rain microphysics
+    melting, freezing, accretion
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+    """
     from __externals__ import (
         c_air,
         c_vap,
@@ -344,7 +367,7 @@ def icloud_component_2(
 
             psmlt = max(
                 0.0,
-                smlt(
+                smow_melt(
                     tc,
                     dqs0,
                     qs2 * den1,
@@ -439,7 +462,7 @@ def icloud_component_2(
             # pgmlt: graupel melt
             # -----------------------------------------------------------------------
 
-            pgmlt = dts * gmlt(
+            pgmlt = dts * graupel_melt(
                 tc,
                 dqs0,
                 qden,
@@ -767,6 +790,14 @@ def iqs1(
     table3: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
+    """
+    compute saturation specific humidity from table3
+
+    water - ice phase; universal dry / moist formular using air density
+    input "den" can be either dry or moist air density
+
+    reference Fortran: gfdl_cloud_microphys.F90: function iqs1
+    """
     tmin = driver_constants.table_ice - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
@@ -788,6 +819,15 @@ def iqs2(
     table3: GlobalTable_driver_qsat,
     des3: GlobalTable_driver_qsat,
 ):
+    """
+    compute saturation specific humidity from table3
+    with additional calculation of gradient (dq/dt)
+
+    water - ice phase; universal dry / moist formular using air density
+    input "den" can be either dry or moist air density
+
+    reference Fortran: gfdl_cloud_microphys.F90: function iqs2
+    """
     tmin = driver_constants.table_ice - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
@@ -798,9 +838,7 @@ def iqs2(
     it = i32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
     iqs2 = es / (driver_constants.rvgas * ta * den)
-    it = i32(
-        trunc(ap1 - 0.5)
-    )  # check if this rounds or truncates. need truncation here
+    it = i32(trunc(ap1 - 0.5))
     dqdt = (
         10.0
         * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1]))
@@ -817,6 +855,14 @@ def wqs1(
     table2: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
 ):
+    """
+    compute the saturated specific humidity for table2
+
+    pure water phase; universal dry / moist formular using air density
+    input "den" can be either dry or moist air density
+
+    reference Fortran: gfdl_cloud_microphys.F90: function wqs1
+    """
     tmin = driver_constants.table_ice - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
@@ -838,7 +884,15 @@ def wqs2(
     table2: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
 ):
+    """
+    compute the saturated specific humidity for table2
+    with additional calculation of gradient (dq/dt)
 
+    pure water phase; universal dry / moist formular using air density
+    input "den" can be either dry or moist air density
+
+    reference Fortran: gfdl_cloud_microphys.F90: function wqs2
+    """
     tmin = driver_constants.table_ice - 160.0
 
     if ta - tmin > 0:
@@ -850,9 +904,7 @@ def wqs2(
     it = i32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
     qsat = es / (driver_constants.rvgas * ta * den)
-    it = i32(
-        trunc(ap1 - 0.5)
-    )  # check if this rounds or truncates. need truncation here
+    it = i32(trunc(ap1 - 0.5))
     # finite diff, del_t = 0.1:
     dqdt = (
         10.0
@@ -1133,7 +1185,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * driver_constants.rvgas * t1 ** 2)
+                        qsi * den1 * lat2 / (0.0243 * driver_constants.rvgas * t1**2)
                         + 4.42478e4
                     )
                 )
@@ -1420,14 +1472,33 @@ def icloud(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
+    """
+    ice cloud microphysics processes
+    bulk cloud micro - physics; processes splitting
+    with some un - split sub - grouping
+    time implicit (when possible) accretion and autoconversion
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+
+    Fortran author: Shian-Jiann lin, gfdl
+    """
     from __externals__ import d0_vap, lv00, z_slope_ice
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
     with computation(FORWARD), interval(0, 1):
         # initalize vtr in place of the warm rain calculations
         vtr = 0
+
+    # -----------------------------------------------------------------------
+    # sources of cloud ice: pihom, cold rain, and the sat_adj
+    # (initiation plus deposition)
+    # sources of snow: cold rain, auto conversion + accretion (from cloud ice)
+    # sat_adj (deposition; requires pre - existing snow);
+    # initial snow comes from auto conversion
+    # -----------------------------------------------------------------------
+
     with computation(PARALLEL), interval(...):
-        t1, qv1, ql1, qr1, qi1, qs1, qg1, qa1, cvm, q_liq, q_sol = icloud_component_1(
+        t1, qv1, ql1, qr1, qi1, qs1, qg1, qa1, cvm, q_liq, q_sol = icloud_melt_freeze(
             t1,
             qv1,
             ql1,
@@ -1536,7 +1607,7 @@ def icloud(
                 lcpk,
                 icpk,
                 tcpk,
-            ) = icloud_component_2(
+            ) = snow_graupel_coldrain(
                 t1,
                 qv1,
                 ql1,

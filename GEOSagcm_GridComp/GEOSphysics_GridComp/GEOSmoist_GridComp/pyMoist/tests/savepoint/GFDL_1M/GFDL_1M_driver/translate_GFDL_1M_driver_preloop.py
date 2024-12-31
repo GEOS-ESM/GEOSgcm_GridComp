@@ -3,8 +3,8 @@ from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
-    create_temporaries,
-    gfdl_1m_driver_preloop,
+    init_temporaries,
+    fix_negative_values,
 )
 
 
@@ -91,7 +91,7 @@ class TranslateGFDL_1M_driver_preloop(TranslateFortranData2Py):
         # initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._create_temporaries = stencil_factory.from_dims_halo(
-            func=create_temporaries,
+            func=init_temporaries,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "cpaut": cpaut,
@@ -99,7 +99,7 @@ class TranslateGFDL_1M_driver_preloop(TranslateFortranData2Py):
         )
 
         self._gfdl_1m_driver_preloop = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_preloop,
+            func=fix_negative_values,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "c_air": c_air,

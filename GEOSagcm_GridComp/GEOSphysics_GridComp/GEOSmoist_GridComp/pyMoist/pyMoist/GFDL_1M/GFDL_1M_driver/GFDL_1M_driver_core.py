@@ -21,7 +21,7 @@ length = 2621
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (length))]
 
 
-def create_temporaries(
+def init_temporaries(
     t: FloatField,
     dp: FloatField,
     rhcrit3d: FloatField,
@@ -66,14 +66,18 @@ def create_temporaries(
     c_praut: FloatField,
     rh_limited: FloatField,
 ):
+    """
+    initalize temporary copies of many quantities
+
+    modification to quantities (t, p, q, etc.) made inside of the driver
+    are not returned outside of the driver. these copies are necessary
+    to ensure that no changes make it to the rest of the model
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     from __externals__ import cpaut
 
     with computation(PARALLEL), interval(...):
-        # -----------------------------------------------------------------------
-        # major cloud microphysics
-        # mpdrv in Fortran, inlined to avoid another massive function call
-        # -----------------------------------------------------------------------
-
         t1 = t
         dp1 = dp  # moist air mass * grav
 
@@ -131,7 +135,7 @@ def create_temporaries(
 
 
 @gtscript.function
-def fix_negative_values(
+def fix_negative_core(
     t: Float,
     qv: Float,
     ql: Float,
@@ -145,9 +149,9 @@ def fix_negative_values(
     d0_vap: Float,
 ):
     """
-    Adjusts/removes negative mixing ratios.
+    adjusts/removes negative mixing ratios
 
-    Reference Fortran: gfdl_cloud_microphys.F90: subroutine neg_adj
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine neg_adj
     """
     # -----------------------------------------------------------------------
     # define heat capacity and latent heat coefficient
@@ -197,7 +201,7 @@ def fix_negative_values(
     return t, qv, ql, qr, qi, qs, qg
 
 
-def gfdl_1m_driver_preloop(
+def fix_negative_values(
     t: FloatField,
     qv: FloatField,
     ql: FloatField,
@@ -207,6 +211,14 @@ def gfdl_1m_driver_preloop(
     qg: FloatField,
     dp: FloatField,
 ):
+    """
+    stencil wrapper for fix_negative_core
+
+    adjusts/removes negative mixing ratios
+    updates qv based on new values
+
+    refernce Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     from __externals__ import c_air, c_vap, d0_vap, lv00
 
     # -----------------------------------------------------------------------
@@ -214,7 +226,7 @@ def gfdl_1m_driver_preloop(
     # -----------------------------------------------------------------------
 
     with computation(FORWARD), interval(0, -1):
-        t, qv, ql, qr, qi, qs, qg = fix_negative_values(
+        t, qv, ql, qr, qi, qs, qg = fix_negative_core(
             t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap
         )
         if qv < 0.0:
@@ -222,7 +234,7 @@ def gfdl_1m_driver_preloop(
             qv = 0.0
 
     with computation(FORWARD), interval(-1, None):
-        t, qv, ql, qr, qi, qs, qg = fix_negative_values(
+        t, qv, ql, qr, qi, qs, qg = fix_negative_core(
             t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap
         )
 
@@ -233,7 +245,7 @@ def gfdl_1m_driver_preloop(
 
 
 @gtscript.function
-def fall_speed(
+def fall_speed_core(
     p_dry: Float,
     cnv_frc: Float,
     anv_icefall: Float,
@@ -246,9 +258,9 @@ def fall_speed(
     t: Float,
 ):
     """
-    Calculated the vertical fall speed of precipitation.
+    calculate the vertical fall speed of precipitation
 
-    Reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine fall_speed
     """
     from __externals__ import (
         const_vg,
@@ -344,7 +356,7 @@ def fall_speed(
     return vti, vts, vtg
 
 
-def gfdl_1m_driver_loop_1(
+def fall_speed(
     ql1: FloatField,
     qi1: FloatField,
     qs1: FloatField,
@@ -364,6 +376,13 @@ def gfdl_1m_driver_loop_1(
     anv_icefall: Float,
     lsc_icefall: Float,
 ):
+    """
+    stencil wrapper for fall_speed_core
+
+    calculate the vertical fall speed of precipitation
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     from __externals__ import p_nonhydro
 
     with computation(PARALLEL), interval(...):
@@ -376,12 +395,12 @@ def gfdl_1m_driver_loop_1(
             den1 = den * dz / dz1
             denfac = sqrt(driver_constants.sfcrho / den1)
 
-        vti, vts, vtg = fall_speed(
+        vti, vts, vtg = fall_speed_core(
             p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1
         )
 
 
-def gfdl_1m_driver_loop_2(
+def terminal_fall_update(
     rain: FloatFieldIJ,
     graupel: FloatFieldIJ,
     snow: FloatFieldIJ,
@@ -391,6 +410,11 @@ def gfdl_1m_driver_loop_2(
     snow1: FloatFieldIJ,
     ice1: FloatFieldIJ,
 ):
+    """
+    update precipitation totals with results of terminal_fall stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     with computation(FORWARD), interval(0, 1):
         rain = rain + rain1  # from melted snow & ice that reached the ground
         snow = snow + snow1
@@ -398,7 +422,7 @@ def gfdl_1m_driver_loop_2(
         ice = ice + ice1
 
 
-def gfdl_1m_driver_loop_3(
+def warm_rain_update(
     rain: FloatFieldIJ,
     rain1: FloatFieldIJ,
     evap1: FloatField,
@@ -409,6 +433,11 @@ def gfdl_1m_driver_loop_3(
     m2_sol: FloatField,
     m1: FloatField,
 ):
+    """
+    update precipitation totals with results of warm_rain stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     with computation(PARALLEL), interval(...):
         revap = revap + evap1
         m2_rain = m2_rain + m1_rain
@@ -419,15 +448,20 @@ def gfdl_1m_driver_loop_3(
         rain = rain + rain1
 
 
-def gfdl_1m_driver_loop_4(
+def icloud_update(
     isubl: FloatField,
     subl1: FloatField,
 ):
+    """
+    update precipitation totals with results of icloud stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
     with computation(PARALLEL), interval(...):
         isubl = isubl + subl1
 
 
-def gfdl_1m_driver_postloop(
+def update_tendencies(
     qv0: FloatField,
     ql0: FloatField,
     qr0: FloatField,
@@ -485,6 +519,12 @@ def gfdl_1m_driver_postloop(
     m2_rain: FloatField,  # strict output
     m2_sol: FloatField,  # strict output
 ):
+    """
+    compute output tendencies of the microphysics driver
+
+    reference Fortran: gfdl_cloud_microphys.F90:
+    subroutine mpdrv, subroutine gfdl_cloud_microphys_driver
+    """
     from __externals__ import c_air, c_vap, do_qa, do_sedi_w, rdt, sedi_transport
 
     # -----------------------------------------------------------------------

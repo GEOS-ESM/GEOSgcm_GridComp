@@ -28,7 +28,15 @@ def wqs2(
     table2: GlobalTable_driver_qsat,
     des2: GlobalTable_driver_qsat,
 ):
+    """
+    compute the saturated specific humidity for table2
+    with additional calculation of gradient (dq/dt)
 
+    pure water phase; universal dry / moist formular using air density
+    input "den" can be either dry or moist air density
+
+    reference Fortran: gfdl_cloud_microphys.F90: function wqs2
+    """
     tmin = driver_constants.table_ice - 160.0
 
     if ta - tmin > 0:
@@ -76,6 +84,11 @@ def revap_racc(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
+    """
+    evaporate rain
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
+    """
     from __externals__ import (
         c_air,
         c_vap,
@@ -92,7 +105,6 @@ def revap_racc(
 
     prec_ls = (qr1 + qs1 + qg1) * den1
     area_ls_prc = qa1 * (qr1 + qs1 + qg1) * den1
-    # DEV/TESTING STUFF REMOVE ME
     revap = 0.0
 
     if t1 > driver_constants.t_wfr and qr1 > driver_constants.qpmin:
@@ -227,6 +239,11 @@ def warm_rain(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
+    """
+    warm rain cloud microphysics: evaporation, accretion
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine warm_rain
+    """
     from __externals__ import (
         const_vr,
         do_qa,
@@ -243,7 +260,6 @@ def warm_rain(
         z_slope_liq,
     )
 
-    # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine warm_rain
     # warm rain cloud microphysics
     with computation(PARALLEL), interval(...):
         half_dt = 0.5 * dts
@@ -416,8 +432,6 @@ def warm_rain(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
-        # evaporation of rain
         (
             t1,
             qv1,
@@ -452,8 +466,6 @@ def warm_rain(
             des3,
             des4,
         )
-
-        #     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
 
         evap1 = revap
 
@@ -573,8 +585,6 @@ def warm_rain(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
-        # evaporation of rain
         (
             t1,
             qv1,
@@ -609,7 +619,5 @@ def warm_rain(
             des3,
             des4,
         )
-
-        # end reference Fortran: gfdl_cloud_microphys.F90: subroutine revap_racc
 
         evap1 = evap1 + revap

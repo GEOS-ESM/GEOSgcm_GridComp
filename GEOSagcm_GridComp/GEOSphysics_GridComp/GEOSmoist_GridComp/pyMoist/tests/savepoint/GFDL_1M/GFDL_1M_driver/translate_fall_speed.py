@@ -4,7 +4,7 @@ from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import fall_speed
+from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import fall_speed_core
 
 
 class Translatefall_speed(TranslateFortranData2Py):
@@ -159,6 +159,6 @@ def stencil(
     vtg: FloatField,
 ):
     with computation(PARALLEL), interval(...):
-        vti, vts, vtg = fall_speed(
+        vti, vts, vtg = fall_speed_core(
             p1, cnv_frc, anv_icefall, lsc_icefall, den, qs, qi, qg, ql, t
         )

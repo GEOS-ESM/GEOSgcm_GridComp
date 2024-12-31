@@ -14,7 +14,7 @@ from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ, IntField
 
 
 @gtscript.function
-def terminal_fall_speed_component(
+def prefall_melting(
     t: Float,
     qv: Float,
     ql: Float,
@@ -28,8 +28,9 @@ def terminal_fall_speed_component(
     from __externals__ import ql_mlt, tau_imlt
 
     """
-    Component of the reference Fortran:
-    gfdl_cloud_microphys.F90: subroutine terminal_fall
+    melt cloud ice before fall
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
     """
     from __externals__ import c_air, c_vap, d0_vap, dts, lv00
 
@@ -109,9 +110,14 @@ def terminal_fall(
     melting_mask_2: BoolField,
     current_k_level: IntField,
 ):
+    """
+    calculate terminal fall speed, accounting for
+    melting of ice, snow, and graupel during fall
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
+    """
     from __externals__ import do_sedi_w, dts, k_end, use_ppm, vi_fac
 
-    # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
     # determine frozen levels
     # later operations will only be executed if frozen/melted
     # initalized to is_frozen = False, True = frozen, False = melted
@@ -129,7 +135,7 @@ def terminal_fall(
         is_frozen = False
 
     with computation(PARALLEL), interval(...):
-        t1, ql1, qr1, qi1, cvm, lhi, icpk, m1_sol = terminal_fall_speed_component(
+        t1, ql1, qr1, qi1, cvm, lhi, icpk, m1_sol = prefall_melting(
             t1,
             qv1,
             ql1,
@@ -776,5 +782,3 @@ def terminal_fall(
                 w1 = (dm * w1 - m1[0, 0, -1] * vtg[0, 0, -1] + m1 * vtg) / (
                     dm + m1[0, 0, -1] - m1
                 )
-
-    # end reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall

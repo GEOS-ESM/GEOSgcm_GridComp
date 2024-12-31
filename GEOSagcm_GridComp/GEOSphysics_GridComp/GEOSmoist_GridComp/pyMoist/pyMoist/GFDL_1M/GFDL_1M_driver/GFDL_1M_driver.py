@@ -8,13 +8,13 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
-    create_temporaries,
-    gfdl_1m_driver_loop_1,
-    gfdl_1m_driver_loop_2,
-    gfdl_1m_driver_loop_3,
-    gfdl_1m_driver_loop_4,
-    gfdl_1m_driver_postloop,
-    gfdl_1m_driver_preloop,
+    init_temporaries,
+    fall_speed,
+    terminal_fall_update,
+    warm_rain_update,
+    icloud_update,
+    update_tendencies,
+    fix_negative_values,
 )
 from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
@@ -289,11 +289,11 @@ class GFDL_1M_driver:
             / driver_constants.act[1] ** Float(0.725)
         )
         cssub[3] = driver_constants.tcond * driver_constants.rvgas
-        cssub[4] = driver_constants.hlts ** 2 * driver_constants.vdifu
+        cssub[4] = driver_constants.hlts**2 * driver_constants.vdifu
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = driver_constants.hltc ** 2 * driver_constants.vdifu
+        crevp[4] = driver_constants.hltc**2 * driver_constants.vdifu
 
         cgfr_0 = (
             Float(20.0e2)
@@ -492,7 +492,7 @@ class GFDL_1M_driver:
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._create_temporaries = stencil_factory.from_dims_halo(
-            func=create_temporaries,
+            func=init_temporaries,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "cpaut": cpaut,
@@ -500,7 +500,7 @@ class GFDL_1M_driver:
         )
 
         self._gfdl_1m_driver_preloop = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_preloop,
+            func=fix_negative_values,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "c_air": c_air,
@@ -532,7 +532,7 @@ class GFDL_1M_driver:
         )
 
         self._gfdl_1m_driver_loop_1 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_1,
+            func=fall_speed,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "p_nonhydro": p_nonhydro,
@@ -568,7 +568,7 @@ class GFDL_1M_driver:
         )
 
         self._gfdl_1m_driver_loop_2 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_2,
+            func=terminal_fall_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -603,7 +603,7 @@ class GFDL_1M_driver:
         )
 
         self._gfdl_1m_driver_loop_3 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_3,
+            func=warm_rain_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
@@ -669,12 +669,12 @@ class GFDL_1M_driver:
         )
 
         self._gfdl_1m_driver_loop_4 = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_loop_4,
+            func=icloud_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._gfdl_1m_driver_postloop = stencil_factory.from_dims_halo(
-            func=gfdl_1m_driver_postloop,
+            func=update_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "c_air": c_air,
