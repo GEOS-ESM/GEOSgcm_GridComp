@@ -2117,9 +2117,9 @@ contains
        EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
        DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
 
-       DTX = DT  / ( SALTWATERICECAP*HH(:,N))
        SWN = (1.-ALBVRI)*VSUVR + (1.-ALBVFI)*VSUVF + &
              (1.-ALBNRI)*DRNIR + (1.-ALBNFI)*DFNIR
+       DTX = DT  / ( SALTWATERICECAP*HH(:,N))
        DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHS )
        DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHS) )
        DTS = DTS - max((TS(:,N) + DTS)-MAPL_TICE, 0.)
