@@ -82,11 +82,11 @@ class TranslateGFDL_1M_driver_preloop(TranslateFortranData2Py):
 
         # set externals manually to the need for avoid another workaround
         c_paut = 1
-        cpaut = c_paut * 0.104 * driver_constants.grav / 1.717e-5
-        c_air = driver_constants.cp_air
-        c_vap = driver_constants.cp_vap
-        d0_vap = c_vap - driver_constants.c_liq
-        lv00 = driver_constants.hlv0 - d0_vap * driver_constants.t_ice
+        cpaut = c_paut * 0.104 * driver_constants.GRAV / 1.717e-5
+        c_air = driver_constants.CP_AIR
+        c_vap = driver_constants.CP_VAP
+        d0_vap = c_vap - driver_constants.C_LIQ
+        lv00 = driver_constants.HLV0 - d0_vap * driver_constants.T_ICE
 
         # initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)

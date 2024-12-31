@@ -17,7 +17,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_generic_math import sigma
 
 
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.length))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.LENGTH))]
 
 
 def init_temporaries(
@@ -111,8 +111,8 @@ def init_temporaries(
         qa0 = qa
         qa1 = qa
 
-        den = -dp1 / (driver_constants.grav * dz)  # density of dry air
-        p_dry = den * driver_constants.rdgas * t  # dry air pressure
+        den = -dp1 / (driver_constants.GRAV * dz)  # density of dry air
+        p_dry = den * driver_constants.RDGAS * t  # dry air pressure
 
         # -----------------------------------------------------------------------
         # for sedi_momentum
@@ -125,7 +125,7 @@ def init_temporaries(
 
         # ccn needs units #/m^3
         ccn = qn
-        c_praut = cpaut * (ccn * driver_constants.rhor) ** (-1.0 / 3.0)
+        c_praut = cpaut * (ccn * driver_constants.RHOR) ** (-1.0 / 3.0)
 
     with computation(FORWARD), interval(0, 1):
         # 1 minus sigma used to control minimum cloud
@@ -159,11 +159,11 @@ def fix_negative_core(
     cvm = (
         c_air
         + qv * c_vap
-        + (qr + ql) * driver_constants.c_liq
-        + (qi + qs + qg) * driver_constants.c_ice
+        + (qr + ql) * driver_constants.C_LIQ
+        + (qi + qs + qg) * driver_constants.C_ICE
     )
     lcpk = (lv00 + d0_vap * t) / cvm
-    icpk = (driver_constants.li00 + driver_constants.dc_ice * t) / cvm
+    icpk = (driver_constants.LI00 + driver_constants.DC_ICE * t) / cvm
 
     # -----------------------------------------------------------------------
     # ice phase:
@@ -273,19 +273,19 @@ def fall_speed_core(
         vs_max,
     )
 
-    rhof = sqrt(min(10.0, driver_constants.sfcrho / den))
+    rhof = sqrt(min(10.0, driver_constants.SFCRHO / den))
     if const_vi == True:  # noqa
         vti = vi_fac
     else:
-        if qi < driver_constants.thi:
-            vti = driver_constants.vf_min
+        if qi < driver_constants.THI:
+            vti = driver_constants.VF_MIN
         else:
             # -----------------------------------------------------------------------
             # ice:
             # -----------------------------------------------------------------------
 
             vi1 = 0.01 * vi_fac
-            tc = t - driver_constants.tice  # deg C
+            tc = t - driver_constants.TICE  # deg C
             IWC = qi * den * 1.0e3  # Units are g/m3
             # -----------------------------------------------------------------------
             # use deng and mace (2008, grl)
@@ -294,27 +294,27 @@ def fall_speed_core(
             viLSC = lsc_icefall * 10.0 ** (
                 log10(IWC)
                 * (
-                    tc * (driver_constants.aaL * tc + driver_constants.bbL)
-                    + driver_constants.ccL
+                    tc * (driver_constants.AAL * tc + driver_constants.BBL)
+                    + driver_constants.CCL
                 )
-                + driver_constants.ddL * tc
-                + driver_constants.eeL
+                + driver_constants.DDL * tc
+                + driver_constants.EEL
             )
             viCNV = anv_icefall * 10.0 ** (
                 log10(IWC)
                 * (
-                    tc * (driver_constants.aaC * tc + driver_constants.bbC)
-                    + driver_constants.ccC
+                    tc * (driver_constants.AAC * tc + driver_constants.BBC)
+                    + driver_constants.CCC
                 )
-                + driver_constants.ddC * tc
-                + driver_constants.eeC
+                + driver_constants.DDC * tc
+                + driver_constants.EEC
             )
             # Combine
             vti = viLSC * (1.0 - cnv_frc) + viCNV * (cnv_frc)
             # Update units from cm/s to m/s
             vti = vi1 * vti
             # Limits
-            vti = min(vi_max, max(driver_constants.vf_min, vti))
+            vti = min(vi_max, max(driver_constants.VF_MIN, vti))
 
     # -----------------------------------------------------------------------
     # snow:
@@ -323,16 +323,16 @@ def fall_speed_core(
     if const_vs == True:  # noqa
         vts = vs_fac  # 1. ifs_2016
     else:
-        if qs < driver_constants.ths:
-            vts = driver_constants.vf_min
+        if qs < driver_constants.THS:
+            vts = driver_constants.VF_MIN
         else:
             vts = (
                 vs_fac
-                * driver_constants.vcons
+                * driver_constants.VCONS
                 * rhof
-                * exp(0.0625 * log(qs * den / driver_constants.norms))
+                * exp(0.0625 * log(qs * den / driver_constants.NORMS))
             )
-            vts = min(vs_max, max(driver_constants.vf_min, vts))
+            vts = min(vs_max, max(driver_constants.VF_MIN, vts))
 
     # -----------------------------------------------------------------------
     # graupel:
@@ -341,16 +341,16 @@ def fall_speed_core(
     if const_vg == True:  # noqa
         vtg = vg_fac  # 2.
     else:
-        if qg < driver_constants.thg:
-            vtg = driver_constants.vf_min
+        if qg < driver_constants.THG:
+            vtg = driver_constants.VF_MIN
         else:
             vtg = (
                 vg_fac
-                * driver_constants.vcong
+                * driver_constants.VCONG
                 * rhof
-                * sqrt(sqrt(sqrt(qg * den / driver_constants.normg)))
+                * sqrt(sqrt(sqrt(qg * den / driver_constants.NORMG)))
             )
-            vtg = min(vg_max, max(driver_constants.vf_min, vtg))
+            vtg = min(vg_max, max(driver_constants.VF_MIN, vtg))
 
     return vti, vts, vtg
 
@@ -388,11 +388,11 @@ def fall_speed(
         if p_nonhydro:
             dz1 = dz
             den1 = den  # dry air density remains the same
-            denfac = sqrt(driver_constants.sfcrho / den1)
+            denfac = sqrt(driver_constants.SFCRHO / den1)
         else:
             dz1 = dz * t1 / t  # hydrostatic balance
             den1 = den * dz / dz1
-            denfac = sqrt(driver_constants.sfcrho / den1)
+            denfac = sqrt(driver_constants.SFCRHO / den1)
 
         vti, vts, vtg = fall_speed_core(
             p_dry, cnv_frc, anv_icefall, lsc_icefall, den1, qs1, qi1, qg1, ql1, t1
@@ -558,22 +558,22 @@ def update_tendencies(
         cvm = (
             c_air
             + qv1 * c_vap
-            + (qr1 + ql1) * driver_constants.c_liq
-            + (qi1 + qs1 + qg1) * driver_constants.c_ice
+            + (qr1 + ql1) * driver_constants.C_LIQ
+            + (qi1 + qs1 + qg1) * driver_constants.C_ICE
         )
-        t_dt = t_dt + rdt * (t1 - t) * cvm / driver_constants.cp_air
+        t_dt = t_dt + rdt * (t1 - t) * cvm / driver_constants.CP_AIR
 
         # -----------------------------------------------------------------------
         # update cloud fraction tendency
         # -----------------------------------------------------------------------
         if do_qa == False:  # noqa
             qa_dt = qa_dt + rdt * (
-                qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.qcmin)) - qa0
+                qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.QCMIN)) - qa0
             )  # New Cloud - Old CloudCloud
 
     with computation(FORWARD), interval(0, 1):
         # convert to mm / day
-        conversion_factor = 86400.0 * rdt * driver_constants.rgrav
+        conversion_factor = 86400.0 * rdt * driver_constants.RGRAV
         rain = rain * conversion_factor
         snow = snow * conversion_factor
         ice = ice * conversion_factor

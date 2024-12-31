@@ -17,7 +17,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(driver_constants.length)))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(driver_constants.LENGTH)))]
 
 
 @gtscript.function
@@ -58,14 +58,14 @@ def icloud_melt_freeze(
     # define heat capacity and latent heat coefficient
     # -----------------------------------------------------------------------
 
-    lhi = driver_constants.li00 + driver_constants.dc_ice * t
+    lhi = driver_constants.LI00 + driver_constants.DC_ICE * t
     q_liq = ql + qr
     q_sol = qi + qs + qg
     cvm = (
         c_air
         + qv * c_vap
-        + q_liq * driver_constants.c_liq
-        + q_sol * driver_constants.c_ice
+        + q_liq * driver_constants.C_LIQ
+        + q_sol * driver_constants.C_ICE
     )
     icpk = lhi / cvm
 
@@ -75,7 +75,7 @@ def icloud_melt_freeze(
     melt = fac_imlt * max(0.0, newliq - ql)
     frez = fac_frz * max(0.0, newice - qi)
 
-    if melt > 0.0 and t > driver_constants.tice and qi > driver_constants.qcmin:
+    if melt > 0.0 and t > driver_constants.TICE and qi > driver_constants.QCMIN:
         # -----------------------------------------------------------------------
         # pimlt: melting of cloud ice
         # -----------------------------------------------------------------------
@@ -92,7 +92,7 @@ def icloud_melt_freeze(
                 1.0,
                 qa
                 * max(qi + ql - melt + tmp, 0.0)
-                / max(qi + ql, driver_constants.qcmin),
+                / max(qi + ql, driver_constants.QCMIN),
             ),
         )
 
@@ -104,11 +104,11 @@ def icloud_melt_freeze(
         cvm = (
             c_air
             + qv * c_vap
-            + q_liq * driver_constants.c_liq
-            + q_sol * driver_constants.c_ice
+            + q_liq * driver_constants.C_LIQ
+            + q_sol * driver_constants.C_ICE
         )
         t = t - melt * lhi / cvm
-    elif frez > 0.0 and t <= driver_constants.tice and ql > driver_constants.qcmin:
+    elif frez > 0.0 and t <= driver_constants.TICE and ql > driver_constants.QCMIN:
         # -----------------------------------------------------------------------
         # pihom: homogeneous freezing of cloud water into cloud ice
         # this is the 1st occurance of liquid water freezing in the split mp process
@@ -127,7 +127,7 @@ def icloud_melt_freeze(
                 1.0,
                 qa
                 * max(qi + ql - frez + tmp, 0.0)
-                / max(qi + ql, driver_constants.qcmin),
+                / max(qi + ql, driver_constants.QCMIN),
             ),
         )
 
@@ -139,8 +139,8 @@ def icloud_melt_freeze(
         cvm = (
             c_air
             + qv * c_vap
-            + q_liq * driver_constants.c_liq
-            + q_sol * driver_constants.c_ice
+            + q_liq * driver_constants.C_LIQ
+            + q_sol * driver_constants.C_ICE
         )
         t = t + frez * lhi / cvm
 
@@ -196,7 +196,7 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
@@ -223,7 +223,7 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
@@ -302,23 +302,23 @@ def snow_graupel_coldrain(
 
     pgacr = 0.0
     pgacw = 0.0
-    tc = t2 - driver_constants.tice
+    tc = t2 - driver_constants.TICE
 
     if tc >= 0.0:
         # -----------------------------------------------------------------------
         # melting of snow
         # -----------------------------------------------------------------------
 
-        dqs0 = driver_constants.ces0 / p_dry - qv2
+        dqs0 = driver_constants.CES0 / p_dry - qv2
 
-        if qs2 > driver_constants.qpmin:
+        if qs2 > driver_constants.QPMIN:
 
             # -----------------------------------------------------------------------
             # psacw: accretion of cloud water by snow
             # only rate is used (for snow melt) since tc > 0.
             # -----------------------------------------------------------------------
 
-            if ql2 > driver_constants.qcmin:
+            if ql2 > driver_constants.QCMIN:
                 factor = denfac * csacw * exp(0.8125 * log(qs2 * den1))
                 psacw = factor / (1.0 + dts * factor) * ql2  # rate
             else:
@@ -329,17 +329,17 @@ def snow_graupel_coldrain(
             # pracs: accretion of snow by rain
             # -----------------------------------------------------------------------
 
-            if qr2 > driver_constants.qpmin:
+            if qr2 > driver_constants.QPMIN:
                 psacr = min(
                     acr3d(
                         vts,
                         vtr,
                         qr2,
                         qs2,
-                        driver_constants.csacr,
-                        driver_constants.acco_01,
-                        driver_constants.acco_11,
-                        driver_constants.acco_21,
+                        driver_constants.CSARC,
+                        driver_constants.ACCO_01,
+                        driver_constants.ACCO_11,
+                        driver_constants.ACCO_21,
                         den1,
                     ),
                     qr2 * rdts,
@@ -349,10 +349,10 @@ def snow_graupel_coldrain(
                     vts,
                     qs2,
                     qr2,
-                    driver_constants.cracs,
-                    driver_constants.acco_00,
-                    driver_constants.acco_10,
-                    driver_constants.acco_20,
+                    driver_constants.CRACS,
+                    driver_constants.ACCO_00,
+                    driver_constants.ACCO_10,
+                    driver_constants.ACCO_20,
                     den1,
                 )
             else:
@@ -397,7 +397,7 @@ def snow_graupel_coldrain(
                     1.0,
                     qa1
                     * max(qi2 + ql2 + tmp, 0.0)
-                    / max(qi2 + ql2, driver_constants.qcmin),
+                    / max(qi2 + ql2, driver_constants.QCMIN),
                 ),
             )
 
@@ -409,40 +409,40 @@ def snow_graupel_coldrain(
             cvm = (
                 c_air
                 + qv2 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t2 = t2 - sink * lhi / cvm
-            tc = t2 - driver_constants.tice
+            tc = t2 - driver_constants.TICE
 
         # -----------------------------------------------------------------------
         # update capacity heat and latent heat coefficient
         # -----------------------------------------------------------------------
 
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t2
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t2
         icpk = lhi / cvm
 
         # -----------------------------------------------------------------------
         # melting of graupel
         # -----------------------------------------------------------------------
 
-        if qg2 > driver_constants.qpmin and tc > 0.0:
+        if qg2 > driver_constants.QPMIN and tc > 0.0:
 
             # -----------------------------------------------------------------------
             # pgacr: accretion of rain by graupel
             # -----------------------------------------------------------------------
 
-            if qr2 > driver_constants.qpmin:
+            if qr2 > driver_constants.QPMIN:
                 pgacr = min(
                     acr3d(
                         vtg,
                         vtr,
                         qr2,
                         qg2,
-                        driver_constants.cgacr,
-                        driver_constants.acco_02,
-                        driver_constants.acco_12,
-                        driver_constants.acco_22,
+                        driver_constants.CGARC,
+                        driver_constants.ACCO_02,
+                        driver_constants.ACCO_12,
+                        driver_constants.ACCO_22,
                         den1,
                     ),
                     rdts * qr2,
@@ -453,7 +453,7 @@ def snow_graupel_coldrain(
             # -----------------------------------------------------------------------
 
             qden = qg2 * den1
-            if ql2 > driver_constants.qcmin:
+            if ql2 > driver_constants.QCMIN:
                 factor = cgacw * qden / sqrt(den1 * sqrt(sqrt(qden)))
                 pgacw = factor / (1.0 + dts * factor) * ql2  # rate
 
@@ -482,8 +482,8 @@ def snow_graupel_coldrain(
             cvm = (
                 c_air
                 + qv2 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t2 = t2 - pgmlt * lhi / cvm
 
@@ -498,7 +498,7 @@ def snow_graupel_coldrain(
         # -----------------------------------------------------------------------
 
         if qi2 > 3.0e-7:  # cloud ice sink terms
-            if qs2 > driver_constants.qpmin:
+            if qs2 > driver_constants.QPMIN:
                 # -----------------------------------------------------------------------
                 # sjl added (following lin eq. 23) the temperature dependency
                 # to reduce accretion, use esi = exp (0.05 * tc) as in hong et al 2004
@@ -531,9 +531,9 @@ def snow_graupel_coldrain(
             else:
                 tmp = fac_i2s * exp(0.025 * tc)
 
-            di = max(di, driver_constants.qcmin)
+            di = max(di, driver_constants.QCMIN)
             q_plus = qi2 + di
-            if q_plus > (qim + driver_constants.qcmin):
+            if q_plus > (qim + driver_constants.QCMIN):
                 if qim > (qi2 - di):
                     dq = (0.25 * (q_plus - qim) ** 2) / di
                 else:
@@ -550,7 +550,7 @@ def snow_graupel_coldrain(
                     1.0,
                     qa1
                     * max(qi2 + ql2 - sink + tmp, 0.0)
-                    / max(qi2 + ql2, driver_constants.qcmin),
+                    / max(qi2 + ql2, driver_constants.QCMIN),
                 ),
             )
 
@@ -561,7 +561,7 @@ def snow_graupel_coldrain(
             # pgaci: accretion of cloud ice by graupel
             # -----------------------------------------------------------------------
 
-            if qg2 > driver_constants.qpmin:
+            if qg2 > driver_constants.QPMIN:
                 # -----------------------------------------------------------------------
                 # factor = dts * cgaci / sqrt (den (k)) *
                 # exp (0.05 * tc + 0.875 * log (qg * den (k)))
@@ -580,9 +580,9 @@ def snow_graupel_coldrain(
         # rain to ice, snow, graupel processes:
         # -----------------------------------------------------------------------
 
-        tc = t2 - driver_constants.tice
+        tc = t2 - driver_constants.TICE
 
-        if qr2 > driver_constants.qpmin and tc < 0.0:
+        if qr2 > driver_constants.QPMIN and tc < 0.0:
 
             # -----------------------------------------------------------------------
             # * sink * terms to qr: psacr + pgfr
@@ -594,16 +594,16 @@ def snow_graupel_coldrain(
             # psacr accretion of rain by snow
             # -----------------------------------------------------------------------
 
-            if qs2 > driver_constants.qpmin:  # if snow exists
+            if qs2 > driver_constants.QPMIN:  # if snow exists
                 psacr = dts * acr3d(
                     vts,
                     vtr,
                     qr2,
                     qs2,
-                    driver_constants.csacr,
-                    driver_constants.acco_01,
-                    driver_constants.acco_11,
-                    driver_constants.acco_21,
+                    driver_constants.CSARC,
+                    driver_constants.ACCO_01,
+                    driver_constants.ACCO_11,
+                    driver_constants.ACCO_21,
                     den1,
                 )
             else:
@@ -626,7 +626,7 @@ def snow_graupel_coldrain(
             # -----------------------------------------------------------------------
 
             sink = psacr + pgfr
-            factor = min(sink, min(qr2, -tc / icpk)) / max(sink, driver_constants.qpmin)
+            factor = min(sink, min(qr2, -tc / icpk)) / max(sink, driver_constants.QPMIN)
 
             psacr = factor * psacr
             pgfr = factor * pgfr
@@ -640,8 +640,8 @@ def snow_graupel_coldrain(
             cvm = (
                 c_air
                 + qv2 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t2 = t2 + sink * lhi / cvm
 
@@ -649,29 +649,29 @@ def snow_graupel_coldrain(
         # # update capacity heat and latent heat coefficient
         # # -----------------------------------------------------------------------
 
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t2
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t2
         icpk = lhi / cvm
 
         # # -----------------------------------------------------------------------
         # # graupel production terms:
         # # -----------------------------------------------------------------------
 
-        if qs2 > driver_constants.qpmin:
+        if qs2 > driver_constants.QPMIN:
 
             # -----------------------------------------------------------------------
             # accretion: snow -- > graupel
             # -----------------------------------------------------------------------
 
-            if qg2 > driver_constants.qpmin:
+            if qg2 > driver_constants.QPMIN:
                 sink = dts * acr3d(
                     vtg,
                     vts,
                     qs2,
                     qs2,
                     cgacs,
-                    driver_constants.acco_03,
-                    driver_constants.acco_13,
-                    driver_constants.acco_23,
+                    driver_constants.ACCO_03,
+                    driver_constants.ACCO_13,
+                    driver_constants.ACCO_23,
                     den1,
                 )
             else:
@@ -683,7 +683,7 @@ def snow_graupel_coldrain(
 
             qsm = qs0_crt / den1
             if qs2 > qsm:
-                factor = dts * 1.0e-3 * exp(0.09 * (t2 - driver_constants.tice))
+                factor = dts * 1.0e-3 * exp(0.09 * (t2 - driver_constants.TICE))
                 sink = sink + factor / (1.0 + factor) * (qs2 - qsm)
             sink = min(qs2, sink)
 
@@ -691,13 +691,13 @@ def snow_graupel_coldrain(
             qs2 = qs2 - sink
             qg2 = qg2 + sink
 
-        if qg2 > driver_constants.qpmin and t2 < (driver_constants.tice - 0.01):
+        if qg2 > driver_constants.QPMIN and t2 < (driver_constants.TICE - 0.01):
 
             # -----------------------------------------------------------------------
             # pgacw: accretion of cloud water by graupel
             # -----------------------------------------------------------------------
 
-            if ql2 > driver_constants.qcmin:
+            if ql2 > driver_constants.QCMIN:
                 qden = qg2 * den1
                 factor = dts * cgacw * qden / sqrt(den1 * sqrt(sqrt(qden)))
                 pgacw = factor / (1.0 + factor) * ql2
@@ -708,7 +708,7 @@ def snow_graupel_coldrain(
             # pgacr: accretion of rain by graupel
             # -----------------------------------------------------------------------
 
-            if qr2 > driver_constants.qpmin:
+            if qr2 > driver_constants.QPMIN:
                 pgacr = min(
                     dts
                     * acr3d(
@@ -716,10 +716,10 @@ def snow_graupel_coldrain(
                         vtr,
                         qr2,
                         qg2,
-                        driver_constants.cgacr,
-                        driver_constants.acco_02,
-                        driver_constants.acco_12,
-                        driver_constants.acco_22,
+                        driver_constants.CGARC,
+                        driver_constants.ACCO_02,
+                        driver_constants.ACCO_12,
+                        driver_constants.ACCO_22,
                         den1,
                     ),
                     qr2,
@@ -728,11 +728,11 @@ def snow_graupel_coldrain(
                 pgacr = 0.0
 
             sink = pgacr + pgacw
-            if driver_constants.tice - t2 > 0:
-                ans = driver_constants.tice - t2
+            if driver_constants.TICE - t2 > 0:
+                ans = driver_constants.TICE - t2
             else:
                 ans = 0
-            factor = min(sink, ans / icpk) / max(sink, driver_constants.qpmin)
+            factor = min(sink, ans / icpk) / max(sink, driver_constants.QPMIN)
             pgacr = factor * pgacr
             pgacw = factor * pgacw
 
@@ -745,8 +745,8 @@ def snow_graupel_coldrain(
             cvm = (
                 c_air
                 + qv2 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t2 = t2 + sink * lhi / cvm
 
@@ -797,7 +797,7 @@ def iqs1(
 
     reference Fortran: gfdl_cloud_microphys.F90: function iqs1
     """
-    tmin = driver_constants.table_ice - 160.0
+    tmin = driver_constants.TABLE_ICE - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
     else:
@@ -806,7 +806,7 @@ def iqs1(
     ap1 = min(2621.0, ap1)
     it = i32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
-    iqs1 = es / (driver_constants.rvgas * ta * den)
+    iqs1 = es / (driver_constants.RVGAS * ta * den)
 
     return iqs1
 
@@ -827,7 +827,7 @@ def iqs2(
 
     reference Fortran: gfdl_cloud_microphys.F90: function iqs2
     """
-    tmin = driver_constants.table_ice - 160.0
+    tmin = driver_constants.TABLE_ICE - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
     else:
@@ -836,12 +836,12 @@ def iqs2(
     ap1 = min(2621.0, ap1)
     it = i32(trunc(ap1))
     es = table3.A[it - 1] + (ap1 - it) * des3.A[it - 1]
-    iqs2 = es / (driver_constants.rvgas * ta * den)
+    iqs2 = es / (driver_constants.RVGAS * ta * den)
     it = i32(trunc(ap1 - 0.5))
     dqdt = (
         10.0
         * (des3.A[it - 1] + (ap1 - it) * (des3.A[it] - des3.A[it - 1]))
-        / (driver_constants.rvgas * ta * den)
+        / (driver_constants.RVGAS * ta * den)
     )
 
     return iqs2, dqdt
@@ -862,7 +862,7 @@ def wqs1(
 
     reference Fortran: gfdl_cloud_microphys.F90: function wqs1
     """
-    tmin = driver_constants.table_ice - 160.0
+    tmin = driver_constants.TABLE_ICE - 160.0
     if ta - tmin > 0:
         ans = ta - tmin
     else:
@@ -871,7 +871,7 @@ def wqs1(
     ap1 = min(2621.0, ap1)
     it = i32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
-    wqs1 = es / (driver_constants.rvgas * ta * den)
+    wqs1 = es / (driver_constants.RVGAS * ta * den)
 
     return wqs1
 
@@ -892,7 +892,7 @@ def wqs2(
 
     reference Fortran: gfdl_cloud_microphys.F90: function wqs2
     """
-    tmin = driver_constants.table_ice - 160.0
+    tmin = driver_constants.TABLE_ICE - 160.0
 
     if ta - tmin > 0:
         ans = ta - tmin
@@ -902,13 +902,13 @@ def wqs2(
     ap1 = min(2621.0, ap1)
     it = i32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
-    qsat = es / (driver_constants.rvgas * ta * den)
+    qsat = es / (driver_constants.RVGAS * ta * den)
     it = i32(trunc(ap1 - 0.5))
     # finite diff, del_t = 0.1:
     dqdt = (
         10.0
         * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1]))
-        / (driver_constants.rvgas * ta * den)
+        / (driver_constants.RVGAS * ta * den)
     )
 
     return qsat, dqdt
@@ -982,24 +982,24 @@ def subgrid_z_proc(
     # -----------------------------------------------------------------------
 
     lhl = lv00 + d0_vap * t1
-    lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+    lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
     q_liq = ql1 + qr1
     q_sol = qi1 + qs1 + qg1
     cvm = (
         c_air
         + qv1 * c_vap
-        + q_liq * driver_constants.c_liq
-        + q_sol * driver_constants.c_ice
+        + q_liq * driver_constants.C_LIQ
+        + q_sol * driver_constants.C_ICE
     )
     lcpk = lhl / cvm
     icpk = lhi / cvm
     tcpk = lcpk + icpk
-    if driver_constants.tice - t1 > 0:
-        ans = driver_constants.tice - t1
+    if driver_constants.TICE - t1 > 0:
+        ans = driver_constants.TICE - t1
     else:
         ans = 0
     tcp3 = lcpk + icpk * min(
-        1.0, ans / (driver_constants.tice - driver_constants.t_wfr)
+        1.0, ans / (driver_constants.TICE - driver_constants.T_WFR)
     )
 
     rh_adj = 1.0 - rh_limited - rh_inc
@@ -1008,7 +1008,7 @@ def subgrid_z_proc(
     subl1 = 0.0
 
     cycle = False
-    if p_dry < driver_constants.p_min:
+    if p_dry < driver_constants.P_MIN:
         cycle = True
 
     # -----------------------------------------------------------------------
@@ -1016,8 +1016,8 @@ def subgrid_z_proc(
     # -----------------------------------------------------------------------
 
     if t1 < t_min and cycle == False:  # noqa
-        if qv1 - driver_constants.qvmin > 0:
-            sink = qv1 - driver_constants.qvmin
+        if qv1 - driver_constants.QVMIN > 0:
+            sink = qv1 - driver_constants.QVMIN
         else:
             sink = 0
         qv1 = qv1 - sink
@@ -1026,8 +1026,8 @@ def subgrid_z_proc(
         cvm = (
             c_air
             + qv1 * c_vap
-            + q_liq * driver_constants.c_liq
-            + q_sol * driver_constants.c_ice
+            + q_liq * driver_constants.C_LIQ
+            + q_sol * driver_constants.C_ICE
         )
         t1 = t1 + sink * (lhl + lhi) / cvm
         if do_qa == True:  # noqa
@@ -1039,16 +1039,16 @@ def subgrid_z_proc(
         # update heat capacity and latent heat coefficient
         # -----------------------------------------------------------------------
         lhl = lv00 + d0_vap * t1
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         lcpk = lhl / cvm
         icpk = lhi / cvm
         tcpk = lcpk + icpk
-        if driver_constants.tice - t1 > 0:
-            ans = driver_constants.tice - t1
+        if driver_constants.TICE - t1 > 0:
+            ans = driver_constants.TICE - t1
         else:
             ans = 0
         tcp3 = lcpk + icpk * min(
-            1.0, ans / (driver_constants.tice - driver_constants.t_wfr)
+            1.0, ans / (driver_constants.TICE - driver_constants.T_WFR)
         )
 
         # -----------------------------------------------------------------------
@@ -1058,8 +1058,8 @@ def subgrid_z_proc(
         tin = t1 - (lhl * (ql1 + qi1) + lhi * qi1) / (
             c_air
             + qpz * c_vap
-            + qr1 * driver_constants.c_liq
-            + (qs1 + qg1) * driver_constants.c_ice
+            + qr1 * driver_constants.C_LIQ
+            + (qs1 + qg1) * driver_constants.C_ICE
         )
         if tin > t_sub + 6.0:
             rh = qpz / iqs1(tin, den1, table3, des3)
@@ -1079,7 +1079,7 @@ def subgrid_z_proc(
         if do_evap == True:  # noqa
             qsw, dwsdt = wqs2(t1, den1, table2, des2)
             dq0 = qsw - qv1
-            if dq0 > driver_constants.qvmin:
+            if dq0 > driver_constants.QVMIN:
                 factor = min(1.0, fac_l2v * (10.0 * dq0 / qsw))
                 evap = min(ql1, factor * ql1 / (1.0 + tcp3 * dwsdt))
             else:
@@ -1090,8 +1090,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 - evap * lhl / cvm
 
@@ -1099,7 +1099,7 @@ def subgrid_z_proc(
         # update heat capacity and latent heat coefficient
         # -----------------------------------------------------------------------
 
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         icpk = lhi / cvm
 
         # -----------------------------------------------------------------------
@@ -1107,7 +1107,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         ifrac = ice_fraction(t1, cnv_frc, srf_type)
-        if ifrac == 1.0 and ql1 > driver_constants.qcmin:
+        if ifrac == 1.0 and ql1 > driver_constants.QCMIN:
             sink = ql1
             ql1 = ql1 - sink
             qi1 = qi1 + sink
@@ -1116,8 +1116,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 + sink * lhi / cvm
 
@@ -1125,18 +1125,18 @@ def subgrid_z_proc(
         # update heat capacity and latent heat coefficient
         # -----------------------------------------------------------------------
 
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         icpk = lhi / cvm
 
         # -----------------------------------------------------------------------
         # bigg mechanism heterogeneous freezing on existing cloud nuclei
         # -----------------------------------------------------------------------
 
-        tc = driver_constants.tice - t1
-        if do_bigg == True and ql1 > driver_constants.qcmin and tc > 0.0:  # noqa
+        tc = driver_constants.TICE - t1
+        if do_bigg == True and ql1 > driver_constants.QCMIN and tc > 0.0:  # noqa
             sink = (
                 fac_frz
-                * (100.0 / driver_constants.rhor / ccn)
+                * (100.0 / driver_constants.RHOR / ccn)
                 * dts
                 * (exp(0.66 * tc) - 1.0)
                 * den1
@@ -1151,8 +1151,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 + sink * lhi / cvm
             # significant ql existed
@@ -1162,7 +1162,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         lhl = lv00 + d0_vap * t1
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         lcpk = lhl / cvm
         icpk = lhi / cvm
         tcpk = lcpk + icpk
@@ -1171,11 +1171,11 @@ def subgrid_z_proc(
         # sublimation / deposition of LS ice
         # -----------------------------------------------------------------------
 
-        if t1 < driver_constants.tice:
+        if t1 < driver_constants.TICE:
             qsi, dqsdt = iqs2(t1, den1, table3, des3)
             dq = qv1 - qsi
             sink = min(qi1, dq / (1.0 + tcpk * dqsdt))
-            if qi1 > driver_constants.qcmin:
+            if qi1 > driver_constants.QCMIN:
                 # eq 9, hong et al. 2004, mwr
                 # for a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
                 pidep = (
@@ -1184,7 +1184,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * driver_constants.rvgas * t1 ** 2)
+                        qsi * den1 * lat2 / (0.0243 * driver_constants.RVGAS * t1**2)
                         + 4.42478e4
                     )
                 )
@@ -1193,7 +1193,7 @@ def subgrid_z_proc(
             if dq > 0.0:  # vapor - > ice
                 # deposition
                 ifrac = ice_fraction(t1, cnv_frc, srf_type)
-                tmp = driver_constants.tice - t1
+                tmp = driver_constants.TICE - t1
                 qi_crt = 4.92e-11 * exp(1.33 * log(1.0e3 * exp(0.1 * tmp)))
                 qi_crt = max(qi_crt, 1.82e-6) * qi_lim * ifrac / den1
                 sink = min(sink, min(max(qi_crt - qi1, pidep), tmp / tcpk))
@@ -1220,8 +1220,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 + sink * (lhl + lhi) / cvm
 
@@ -1230,7 +1230,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         lhl = lv00 + d0_vap * t1
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         lcpk = lhl / cvm
         icpk = lhi / cvm
         tcpk = lcpk + icpk
@@ -1240,7 +1240,7 @@ def subgrid_z_proc(
         # this process happens for all temp rage
         # -----------------------------------------------------------------------
 
-        if qs1 > driver_constants.qpmin:
+        if qs1 > driver_constants.QPMIN:
             qsi, dqsdt = iqs2(t1, den1, table3, des3)
             qden = qs1 * den1
             tmp = exp(0.65625 * log(qden))
@@ -1261,11 +1261,11 @@ def subgrid_z_proc(
                 pssub = min(fac_s2v * pssub * min(1.0, ans * 0.2), qs1)
                 subl1 = subl1 + pssub / dts
             else:
-                if t1 > driver_constants.tice:
+                if t1 > driver_constants.TICE:
                     pssub = 0.0  # no deposition
                 else:
                     pssub = max(
-                        fac_v2s * pssub, max(dq, (t1 - driver_constants.tice) / tcpk)
+                        fac_v2s * pssub, max(dq, (t1 - driver_constants.TICE) / tcpk)
                     )
             qs1 = qs1 - pssub
             qv1 = qv1 + pssub
@@ -1273,8 +1273,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 - pssub * (lhl + lhi) / cvm
 
@@ -1283,7 +1283,7 @@ def subgrid_z_proc(
         # -----------------------------------------------------------------------
 
         lhl = lv00 + d0_vap * t1
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         lcpk = lhl / cvm
         icpk = lhi / cvm
         tcpk = lcpk + icpk
@@ -1292,19 +1292,19 @@ def subgrid_z_proc(
         # simplified 2 - way grapuel sublimation - deposition mechanism
         # -----------------------------------------------------------------------
 
-        if qg1 > driver_constants.qpmin:
+        if qg1 > driver_constants.QPMIN:
             qsi, dqsdt = iqs2(t1, den1, table3, des3)
             dq = (qv1 - qsi) / (1.0 + tcpk * dqsdt)
             pgsub = (qv1 / qsi - 1.0) * qg1
             if pgsub > 0.0:  # deposition
-                if t1 > driver_constants.tice:
+                if t1 > driver_constants.TICE:
                     pgsub = 0.0  # no deposition
                 else:
                     pgsub = min(
                         fac_v2g * pgsub,
                         min(
                             0.2 * dq,
-                            min(ql1 + qr1, (driver_constants.tice - t1) / tcpk),
+                            min(ql1 + qr1, (driver_constants.TICE - t1) / tcpk),
                         ),
                     )
             else:  # submilation
@@ -1320,8 +1320,8 @@ def subgrid_z_proc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 + pgsub * (lhl + lhi) / cvm
 
@@ -1367,10 +1367,10 @@ def subgrid_z_proc(
         # determine saturated specific humidity
         # -----------------------------------------------------------------------
 
-        if tin <= driver_constants.t_wfr:
+        if tin <= driver_constants.T_WFR:
             # ice phase:
             qstar = iqs1(tin, den1, table3, des3)
-        elif tin >= driver_constants.tice:
+        elif tin >= driver_constants.TICE:
             # liquid phase:
             qstar = wqs1(tin, den1, table2, des2)
         else:
@@ -1388,9 +1388,9 @@ def subgrid_z_proc(
         # assuming subgrid linear distribution in horizontal;
         # this is effectively a smoother for the binary cloud scheme
         # -----------------------------------------------------------------------
-        if qpz > driver_constants.qcmin:
+        if qpz > driver_constants.QCMIN:
             # partial cloudiness by pdf:
-            dq = max(driver_constants.qcmin, rh_limited * qpz)
+            dq = max(driver_constants.QCMIN, rh_limited * qpz)
             q_plus = qpz + dq  # cloud free if qstar > q_plus
             q_minus = qpz - dq
             if icloud_f == 3:
@@ -1400,7 +1400,7 @@ def subgrid_z_proc(
                     do_nothing = True
                 elif qpz <= qstar and qstar < q_plus:  # partial cloud cover
                     qa1 = max(
-                        driver_constants.qcmin,
+                        driver_constants.QCMIN,
                         min(
                             1.0,
                             qa1
@@ -1411,7 +1411,7 @@ def subgrid_z_proc(
                     )
                 elif q_minus <= qstar and qstar < qpz:  # partial cloud cover
                     qa1 = max(
-                        driver_constants.qcmin,
+                        driver_constants.QCMIN,
                         min(
                             1.0,
                             qa1
@@ -1432,7 +1432,7 @@ def subgrid_z_proc(
                     do_nothing = True
                 elif qstar < q_plus and q_cond > qc_crt:
                     qa1 = max(
-                        driver_constants.qcmin,
+                        driver_constants.QCMIN,
                         min(1.0, qa1 + (q_plus - qstar) / (dq + dq)),
                     )  # partial cloud cover
                 elif qstar <= q_minus:
@@ -1558,11 +1558,11 @@ def icloud(
         if z_slope_ice == True:  # noqa
             dm_linear_prof = max(
                 dm_linear_prof,
-                max(driver_constants.qvmin, h_var_linear_prof * q_linear_prof),
+                max(driver_constants.QVMIN, h_var_linear_prof * q_linear_prof),
             )
         if z_slope_ice == False:  # noqa
             dm_linear_prof = max(
-                driver_constants.qvmin, h_var_linear_prof * q_linear_prof
+                driver_constants.QVMIN, h_var_linear_prof * q_linear_prof
             )
 
     # handle outputs of "function"
@@ -1576,7 +1576,7 @@ def icloud(
         # update capacity heat and latent heat coefficient
         # -----------------------------------------------------------------------
         lhl = lv00 + d0_vap * t1
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         lcpk = lhl / cvm
         icpk = lhi / cvm
         tcpk = lcpk + icpk
@@ -1584,7 +1584,7 @@ def icloud(
         # -----------------------------------------------------------------------
         # do nothing above p_min
         # -----------------------------------------------------------------------
-        if p_dry >= driver_constants.p_min:
+        if p_dry >= driver_constants.P_MIN:
             (
                 t1,
                 qv1,

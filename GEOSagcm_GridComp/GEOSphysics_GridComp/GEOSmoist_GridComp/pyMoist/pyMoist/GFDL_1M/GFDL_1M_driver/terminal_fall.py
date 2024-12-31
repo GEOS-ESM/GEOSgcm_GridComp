@@ -42,14 +42,14 @@ def prefall_melting(
 
     m1_sol = 0.0
     lhl = lv00 + d0_vap * t
-    lhi = driver_constants.li00 + driver_constants.dc_ice * t
+    lhi = driver_constants.LI00 + driver_constants.DC_ICE * t
     q_liq = ql + qr
     q_sol = qi + qs + qg
     cvm = (
         c_air
         + qv * c_vap
-        + q_liq * driver_constants.c_liq
-        + q_sol * driver_constants.c_ice
+        + q_liq * driver_constants.C_LIQ
+        + q_sol * driver_constants.C_ICE
     )
     lcpk = lhl / cvm
     icpk = lhi / cvm
@@ -58,8 +58,8 @@ def prefall_melting(
     # melting of cloud_ice (before fall) :
     # -----------------------------------------------------------------------
 
-    tc = t - driver_constants.tice
-    if is_frozen == False and (qi > driver_constants.qcmin and tc > 0.0):  # noqa
+    tc = t - driver_constants.TICE
+    if is_frozen == False and (qi > driver_constants.QCMIN and tc > 0.0):  # noqa
         sink = min(qi, fac_imlt * tc / icpk)
         if ql_mlt - ql > 0:
             ans = ql_mlt - ql
@@ -74,8 +74,8 @@ def prefall_melting(
         cvm = (
             c_air
             + qv * c_vap
-            + q_liq * driver_constants.c_liq
-            + q_sol * driver_constants.c_ice
+            + q_liq * driver_constants.C_LIQ
+            + q_sol * driver_constants.C_ICE
         )
         t = t - sink * lhi / cvm
 
@@ -122,7 +122,7 @@ def terminal_fall(
     # later operations will only be executed if frozen/melted
     # initalized to is_frozen = False, True = frozen, False = melted
     with computation(PARALLEL), interval(...):
-        if t1 <= driver_constants.tice:
+        if t1 <= driver_constants.TICE:
             is_frozen = True
 
     # we only want the melting layer closest to the surface
@@ -174,11 +174,11 @@ def terminal_fall(
 
     with computation(PARALLEL), interval(...):
         if is_frozen == False:  # noqa
-            lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+            lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
             icpk = lhi / cvm
 
     with computation(FORWARD), interval(-1, None):
-        lhi = driver_constants.li00 + driver_constants.dc_ice * t1
+        lhi = driver_constants.LI00 + driver_constants.DC_ICE * t1
         icpk = lhi / cvm
 
     # -----------------------------------------------------------------------
@@ -192,7 +192,7 @@ def terminal_fall(
     # if it falls anywhere in the column, the entire column becomes true
     # initalized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
-        if qi1 > driver_constants.qpmin:
+        if qi1 > driver_constants.QPMIN:
             precip_fall = 1
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
 
@@ -206,12 +206,12 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
-            zt[0, 0, 1] = driver_constants.zs - dts * vti
+            zt[0, 0, 1] = driver_constants.ZS - dts * vti
 
     with computation(FORWARD), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1:
             if zt[0, 0, 1] >= zt:
-                zt[0, 0, 1] = zt - driver_constants.dz_min
+                zt[0, 0, 1] = zt - driver_constants.DZ_MIN
 
     with computation(PARALLEL), interval(...):
         if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:  # noqa
@@ -232,7 +232,7 @@ def terminal_fall(
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
         if vi_fac >= 1.0e-5 and precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qi1 > driver_constants.qcmin:  # noqa
+            if melting_mask_1 == True and qi1 > driver_constants.QCMIN:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0
@@ -391,7 +391,7 @@ def terminal_fall(
     # if it falls anywhere in the column, the entire column becomes true
     # initalized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
-        if qs1 > driver_constants.qpmin:
+        if qs1 > driver_constants.QPMIN:
             precip_fall = 1
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
 
@@ -405,12 +405,12 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            zt[0, 0, 1] = driver_constants.zs - dts * vts
+            zt[0, 0, 1] = driver_constants.ZS - dts * vts
 
     with computation(FORWARD), interval(...):
         if precip_fall == 1:
             if zt[0, 0, 1] >= zt:
-                zt[0, 0, 1] = zt - driver_constants.dz_min
+                zt[0, 0, 1] = zt - driver_constants.DZ_MIN
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1 and disable_melt == False:  # noqa
@@ -431,7 +431,7 @@ def terminal_fall(
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
         if precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qs1 > driver_constants.qpmin:  # noqa
+            if melting_mask_1 == True and qs1 > driver_constants.QPMIN:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0
@@ -600,7 +600,7 @@ def terminal_fall(
     # if it falls anywhere in the column, the entire column becomes true
     # initalized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
-        if qg1 > driver_constants.qpmin:
+        if qg1 > driver_constants.QPMIN:
             precip_fall = 1
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
 
@@ -614,12 +614,12 @@ def terminal_fall(
 
     with computation(FORWARD), interval(-1, None):
         if precip_fall == 1:
-            zt[0, 0, 1] = driver_constants.zs - dts * vtg
+            zt[0, 0, 1] = driver_constants.ZS - dts * vtg
 
     with computation(FORWARD), interval(...):
         if precip_fall == 1:
             if zt[0, 0, 1] >= zt:
-                zt[0, 0, 1] = zt - driver_constants.dz_min
+                zt[0, 0, 1] = zt - driver_constants.DZ_MIN
 
     with computation(PARALLEL), interval(...):
         if precip_fall == 1 and disable_melt == False:  # noqa
@@ -640,7 +640,7 @@ def terminal_fall(
         # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
         if precip_fall == 1 and disable_melt == False:  # noqa
             # only operate on melted layers
-            if melting_mask_1 == True and qg1 > driver_constants.qpmin:  # noqa
+            if melting_mask_1 == True and qg1 > driver_constants.QPMIN:  # noqa
                 # initalize exit trigger
                 stop_melting = False
                 m: i32 = 0

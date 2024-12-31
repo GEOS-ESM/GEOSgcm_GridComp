@@ -17,7 +17,7 @@ import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constan
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(driver_constants.length)))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(driver_constants.LENGTH)))]
 
 
 @gtscript.function
@@ -36,7 +36,7 @@ def wqs2(
 
     reference Fortran: gfdl_cloud_microphys.F90: function wqs2
     """
-    tmin = driver_constants.table_ice - 160.0
+    tmin = driver_constants.TABLE_ICE - 160.0
 
     if ta - tmin > 0:
         ans = ta - tmin
@@ -46,7 +46,7 @@ def wqs2(
     ap1 = min(2621.0, ap1)
     it = i32(trunc(ap1))
     es = table2.A[it - 1] + (ap1 - it) * des2.A[it - 1]
-    qsat = es / (driver_constants.rvgas * ta * den)
+    qsat = es / (driver_constants.RVGAS * ta * den)
     it = i32(
         trunc(ap1 - 0.5)
     )  # check if this rounds or truncates. need truncation here
@@ -54,7 +54,7 @@ def wqs2(
     dqdt = (
         10.0
         * (des2.A[it - 1] + (ap1 - it) * (des2.A[it] - des2.A[it - 1]))
-        / (driver_constants.rvgas * ta * den)
+        / (driver_constants.RVGAS * ta * den)
     )
 
     return qsat, dqdt
@@ -106,7 +106,7 @@ def revap_racc(
     area_ls_prc = qa1 * (qr1 + qs1 + qg1) * den1
     revap = 0.0
 
-    if t1 > driver_constants.t_wfr and qr1 > driver_constants.qpmin:
+    if t1 > driver_constants.T_WFR and qr1 > driver_constants.QPMIN:
         # area and timescale efficiency on revap
         fac_revp = 1.0 - exp(-half_dt / tau_revp)
 
@@ -120,15 +120,15 @@ def revap_racc(
         cvm = (
             c_air
             + qv1 * c_vap
-            + q_liq * driver_constants.c_liq
-            + q_sol * driver_constants.c_ice
+            + q_liq * driver_constants.C_LIQ
+            + q_sol * driver_constants.C_ICE
         )
         lcpk = lhl / cvm
 
         tin = t1 - lcpk * ql1  # presence of clouds suppresses the rain evap
         qpz = qv1 + ql1
         qsat, dqsdt = wqs2(tin, den1, table2, des2)
-        dqh = max(ql1, rh_limited * max(qpz, driver_constants.qcmin))
+        dqh = max(ql1, rh_limited * max(qpz, driver_constants.QCMIN))
         dqh = min(dqh, 0.2 * qpz)  # new limiter
         dqv = qsat - qv1  # use this to prevent super - sat the gird box
         q_minus = qpz - dqh
@@ -143,7 +143,7 @@ def revap_racc(
         # rain evaporation
         # -----------------------------------------------------------------------
 
-        if dqv > driver_constants.qvmin and qsat > q_minus:
+        if dqv > driver_constants.QVMIN and qsat > q_minus:
             if qsat > q_plus:
                 dq = qsat - qpz
             else:
@@ -168,8 +168,8 @@ def revap_racc(
             cvm = (
                 c_air
                 + qv1 * c_vap
-                + q_liq * driver_constants.c_liq
-                + q_sol * driver_constants.c_ice
+                + q_liq * driver_constants.C_LIQ
+                + q_sol * driver_constants.C_ICE
             )
             t1 = t1 - evap * lhl / cvm
             revap = evap / half_dt
@@ -179,8 +179,8 @@ def revap_racc(
         # -----------------------------------------------------------------------
 
         if (
-            qr1 > driver_constants.qpmin
-            and ql1 > driver_constants.qcmin
+            qr1 > driver_constants.QPMIN
+            and ql1 > driver_constants.QCMIN
             and qsat < q_minus
         ):
             sink = half_dt * denfac * cracw * exp(0.95 * log(qr1 * den1))
@@ -273,7 +273,7 @@ def warm_rain(
     # if it falls anywhere in the column, the entire column becomes true
     # initalized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
-        if qr1 > driver_constants.qpmin:
+        if qr1 > driver_constants.QPMIN:
             precip_fall = 1
     # end reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
 
@@ -286,7 +286,7 @@ def warm_rain(
     with computation(PARALLEL), interval(...):
         # Use In-Cloud condensates
         if do_qa == False:  # noqa
-            qadum = max(qa1, driver_constants.qcmin)
+            qadum = max(qa1, driver_constants.QCMIN)
         else:
             qadum = 1.0
         ql1 = ql1 / qadum
@@ -296,7 +296,7 @@ def warm_rain(
             min(1.0, eis / 15.0) ** 2
         )  # Estimated inversion strength determine stable regime
         fac_rc = (
-            driver_constants.rc * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
+            driver_constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
         )
 
     with computation(PARALLEL), interval(...):
@@ -305,13 +305,13 @@ def warm_rain(
             # no subgrid varaibility
             # -----------------------------------------------------------------------
             if qadum > onemsig:
-                if t1 > driver_constants.t_wfr:
+                if t1 > driver_constants.T_WFR:
                     qc = fac_rc * ccn / den1
                     dq = ql1 - qc
                     if dq > 0.0:
                         sink = min(
                             dq,
-                            dts * c_praut * den1 * exp(driver_constants.so3 * log(ql1)),
+                            dts * c_praut * den1 * exp(driver_constants.SO3 * log(ql1)),
                         )
                         sink = min(ql0_max, min(ql1, max(0.0, sink)))
                         ql1 = ql1 - sink
@@ -362,15 +362,15 @@ def warm_rain(
     with computation(PARALLEL), interval(...):
         if irain_f == 0:
             if z_slope_liq == True:  # noqa
-                dl = max(dl, max(driver_constants.qvmin, rh_limited * ql1))
+                dl = max(dl, max(driver_constants.QVMIN, rh_limited * ql1))
             if z_slope_liq == False:  # noqa
-                dl = max(driver_constants.qvmin, rh_limited * ql1)
+                dl = max(driver_constants.QVMIN, rh_limited * ql1)
 
             # end reference Fortran: gfdl_cloud_microphys.F90: subroutine linear_prof
 
             if qadum > onemsig:
-                if t1 > driver_constants.t_wfr + driver_constants.dt_fr:
-                    dl = min(max(driver_constants.qcmin, dl), 0.5 * ql1)
+                if t1 > driver_constants.T_WFR + driver_constants.DT_FR:
+                    dl = min(max(driver_constants.QCMIN, dl), 0.5 * ql1)
                     # --------------------------------------------------------------------
                     # as in klein's gfdl am2 stratiform scheme (with subgrid variations)
                     # --------------------------------------------------------------------
@@ -390,7 +390,7 @@ def warm_rain(
                             * dts
                             * c_praut
                             * den1
-                            * exp(driver_constants.so3 * log(ql1))
+                            * exp(driver_constants.SO3 * log(ql1))
                         )
                         sink = min(ql0_max, min(ql1, max(0.0, sink)))
                         ql1 = ql1 - sink
@@ -405,24 +405,24 @@ def warm_rain(
         # -----------------------------------------------------------------------
 
         if precip_fall == 0:
-            vtr = driver_constants.vf_min
+            vtr = driver_constants.VF_MIN
         elif const_vr == True:  # noqa
             vtr = vr_fac  # ifs_2016: 4.0
         else:
             qden = qr1 * den1
-            if qr1 < driver_constants.thr:
-                vtr = driver_constants.vr_min
+            if qr1 < driver_constants.THR:
+                vtr = driver_constants.VR_MIN
             else:
                 vtr = (
                     vr_fac
-                    * driver_constants.vconr
-                    * sqrt(min(10.0, driver_constants.sfcrho / den1))
-                    * exp(0.2 * log(qden / driver_constants.normr))
+                    * driver_constants.VCONR
+                    * sqrt(min(10.0, driver_constants.SFCRHO / den1))
+                    * exp(0.2 * log(qden / driver_constants.NORMR))
                 )
-                vtr = min(vr_max, max(driver_constants.vr_min, vtr))
+                vtr = min(vr_max, max(driver_constants.VR_MIN, vtr))
 
     with computation(FORWARD), interval(-1, None):
-        ze[0, 0, 1] = driver_constants.zs
+        ze[0, 0, 1] = driver_constants.ZS
 
     with computation(BACKWARD), interval(...):
         ze = ze[0, 0, 1] - dz1  # dz < 0

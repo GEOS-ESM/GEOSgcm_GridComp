@@ -1,5 +1,3 @@
-import copy
-
 import gt4py.cartesian.gtscript as gtscript
 from gt4py.cartesian.gtscript import (
     PARALLEL,
@@ -12,7 +10,6 @@ from gt4py.cartesian.gtscript import (
 )
 
 import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
-from ndsl import QuantityFactory
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
@@ -20,9 +17,9 @@ from pyMoist.shared_incloud_processes import ice_fraction
 
 
 _FloatField_data_dim = gtscript.Field[
-    gtscript.IJK, (Float, (int(driver_constants.length)))
+    gtscript.IJK, (Float, (int(driver_constants.LENGTH)))
 ]
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.length))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (driver_constants.LENGTH))]
 
 
 def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_data_dim):
@@ -34,7 +31,7 @@ def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_dat
     """
     with computation(PARALLEL), interval(...):
         delt = 0.1
-        tmin = driver_constants.table_ice - 160.0
+        tmin = driver_constants.TABLE_ICE - 160.0
 
         # -----------------------------------------------------------------------
         # compute es over ice between - 160 deg c and 0 deg c.
@@ -43,12 +40,12 @@ def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_dat
         i = 0
         while i < 1600:
             tem = tmin + delt * i
-            fac0 = (tem - driver_constants.t_ice) / (tem * driver_constants.t_ice)
-            fac1 = fac0 * driver_constants.li2
+            fac0 = (tem - driver_constants.T_ICE) / (tem * driver_constants.T_ICE)
+            fac1 = fac0 * driver_constants.LI2
             fac2 = (
-                driver_constants.d2ice * log(tem / driver_constants.t_ice) + fac1
-            ) / driver_constants.rvgas
-            table1[0, 0, 0][i] = driver_constants.e00 * exp(fac2)
+                driver_constants.D2ICE * log(tem / driver_constants.T_ICE) + fac1
+            ) / driver_constants.RVGAS
+            table1[0, 0, 0][i] = driver_constants.E_00 * exp(fac2)
             i = i + 1
 
         # -----------------------------------------------------------------------
@@ -58,12 +55,12 @@ def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_dat
         i = 0
         while i < 1421:
             tem = 233.16 + delt * i
-            fac0 = (tem - driver_constants.t_ice) / (tem * driver_constants.t_ice)
-            fac1 = fac0 * driver_constants.lv0
+            fac0 = (tem - driver_constants.T_ICE) / (tem * driver_constants.T_ICE)
+            fac1 = fac0 * driver_constants.LV0
             fac2 = (
-                driver_constants.dc_vap * log(tem / driver_constants.t_ice) + fac1
-            ) / driver_constants.rvgas
-            esh40 = driver_constants.e00 * exp(fac2)
+                driver_constants.DC_VAP * log(tem / driver_constants.T_ICE) + fac1
+            ) / driver_constants.RVGAS
+            esh40 = driver_constants.E_00 * exp(fac2)
             if i < 400:
                 esupc[0, 0, 0][i] = esh40
             else:
@@ -96,17 +93,17 @@ def qs_table_2(length: i32, table2: _FloatField_data_dim):
     """
     with computation(PARALLEL), interval(...):
         delt = 0.1
-        tmin = driver_constants.table_ice - 160.0
+        tmin = driver_constants.TABLE_ICE - 160.0
 
         i = 0
         while i < length:
             tem = tmin + delt * i
-            fac0 = (tem - driver_constants.t_ice) / (tem * driver_constants.t_ice)
-            fac1 = fac0 * driver_constants.lv0
+            fac0 = (tem - driver_constants.T_ICE) / (tem * driver_constants.T_ICE)
+            fac1 = fac0 * driver_constants.LV0
             fac2 = (
-                driver_constants.dc_vap * log(tem / driver_constants.t_ice) + fac1
-            ) / driver_constants.rvgas
-            table2[0, 0, 0][i] = driver_constants.e00 * exp(fac2)
+                driver_constants.DC_VAP * log(tem / driver_constants.T_ICE) + fac1
+            ) / driver_constants.RVGAS
+            table2[0, 0, 0][i] = driver_constants.E_00 * exp(fac2)
             i = i + 1
 
 
@@ -119,29 +116,29 @@ def qs_table_3(length: i32, table3: _FloatField_data_dim, table1: _FloatField_da
     """
     with computation(PARALLEL), interval(...):
         delt = 0.1
-        tmin = driver_constants.table_ice - 160.0
+        tmin = driver_constants.TABLE_ICE - 160.0
 
         i = 0
         while i < length:
             tem0 = tmin + delt * i
-            fac0 = (tem0 - driver_constants.t_ice) / (tem0 * driver_constants.t_ice)
+            fac0 = (tem0 - driver_constants.T_ICE) / (tem0 * driver_constants.T_ICE)
             if i < 1600:
                 # -----------------------------------------------------------------------
                 # compute es over ice between - 160 deg c and 0 deg c.
                 # -----------------------------------------------------------------------
-                fac1 = fac0 * driver_constants.li2
+                fac1 = fac0 * driver_constants.LI2
                 fac2 = (
-                    driver_constants.d2ice * log(tem0 / driver_constants.t_ice) + fac1
-                ) / driver_constants.rvgas
+                    driver_constants.D2ICE * log(tem0 / driver_constants.T_ICE) + fac1
+                ) / driver_constants.RVGAS
             else:
                 # -----------------------------------------------------------------------
                 # compute es over water between 0 deg c and 102 deg c.
                 # -----------------------------------------------------------------------
-                fac1 = fac0 * driver_constants.lv0
+                fac1 = fac0 * driver_constants.LV0
                 fac2 = (
-                    driver_constants.dc_vap * log(tem0 / driver_constants.t_ice) + fac1
-                ) / driver_constants.rvgas
-            table3[0, 0, 0][i] = driver_constants.e00 * exp(fac2)
+                    driver_constants.DC_VAP * log(tem0 / driver_constants.T_ICE) + fac1
+                ) / driver_constants.RVGAS
+            table3[0, 0, 0][i] = driver_constants.E_00 * exp(fac2)
             i = i + 1
 
         # -----------------------------------------------------------------------
@@ -174,9 +171,9 @@ def qs_table_4(length: i32, table4: _FloatField_data_dim, table1: _FloatField_da
     with computation(PARALLEL), interval(...):
         delt = 0.1
         esbasw = 1013246.0
-        tbasw = driver_constants.table_ice + 100.0
+        tbasw = driver_constants.TABLE_ICE + 100.0
         esbasi = 6107.1
-        tmin = driver_constants.table_ice - 160.0
+        tmin = driver_constants.TABLE_ICE - 160.0
 
         i = 0
         while i < length:
@@ -186,9 +183,9 @@ def qs_table_4(length: i32, table4: _FloatField_data_dim, table1: _FloatField_da
                 # compute es over ice between - 160 deg c and 0 deg c.
                 # see smithsonian meteorological tables page 350.
                 # -----------------------------------------------------------------------
-                aa = -9.09718 * (driver_constants.table_ice / tem - 1.0)
-                b = -3.56654 * log10(driver_constants.table_ice / tem)
-                c = 0.876793 * (1.0 - tem / driver_constants.table_ice)
+                aa = -9.09718 * (driver_constants.TABLE_ICE / tem - 1.0)
+                b = -3.56654 * log10(driver_constants.TABLE_ICE / tem)
+                c = 0.876793 * (1.0 - tem / driver_constants.TABLE_ICE)
                 e = log10(esbasi)
                 table4[0, 0, 0][i] = 0.1 * 10 ** (aa + b + c + e)
             else:
@@ -267,7 +264,7 @@ class GFDL_driver_tables:
         )
         quantity_factory_data_dim.set_extra_dim_lengths(
             **{
-                "table_axis": driver_constants.length,
+                "table_axis": driver_constants.LENGTH,
             }
         )
 
@@ -325,12 +322,12 @@ class GFDL_driver_tables:
             domain=qsat_domain,
         )
 
-        compute_qs_table_1(driver_constants.length, self._table1, self._esupc)
-        compute_qs_table_2(driver_constants.length, self._table2)
-        compute_qs_table_3(driver_constants.length, self._table3, self._table1)
-        compute_qs_table_4(driver_constants.length, self._table4, self._table1)
+        compute_qs_table_1(driver_constants.LENGTH, self._table1, self._esupc)
+        compute_qs_table_2(driver_constants.LENGTH, self._table2)
+        compute_qs_table_3(driver_constants.LENGTH, self._table3, self._table1)
+        compute_qs_table_4(driver_constants.LENGTH, self._table4, self._table1)
         compute_des_tables(
-            driver_constants.length,
+            driver_constants.LENGTH,
             self._des1,
             self._des2,
             self._des3,

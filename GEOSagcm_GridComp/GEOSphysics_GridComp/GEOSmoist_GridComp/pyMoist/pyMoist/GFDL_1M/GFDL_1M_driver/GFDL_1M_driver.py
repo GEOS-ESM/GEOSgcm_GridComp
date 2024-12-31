@@ -223,7 +223,7 @@ class GFDL_1M_driver:
             do_sedi_w,
             de_ice,
             mp_print,
-            self.namelist_constants.dts,
+            self.namelist_constants.DTS,
         )
 
         # -----------------------------------------------------------------------
@@ -325,7 +325,7 @@ class GFDL_1M_driver:
             func=init_temporaries,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "cpaut": self.namelist_constants.cpaut,
+                "cpaut": self.namelist_constants.CPAUT,
             },
         )
 
@@ -333,24 +333,24 @@ class GFDL_1M_driver:
             func=fix_negative_values,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "c_air": self.namelist_constants.c_air,
-                "c_vap": self.namelist_constants.c_vap,
-                "p_nonhydro": self.namelist_constants.p_nonhydro,
-                "d0_vap": self.namelist_constants.d0_vap,
-                "lv00": self.namelist_constants.lv00,
-                "latv": self.namelist_constants.latv,
-                "lati": self.namelist_constants.lati,
-                "lats": self.namelist_constants.lats,
-                "lat2": self.namelist_constants.lat2,
-                "lcp": self.namelist_constants.lcp,
-                "icp": self.namelist_constants.icp,
-                "tcp": self.namelist_constants.tcp,
-                "mpdt": self.namelist_constants.mpdt,
-                "rdt": self.namelist_constants.rdt,
-                "ntimes": self.namelist_constants.ntimes,
-                "dts": self.namelist_constants.dts,
+                "c_air": self.namelist_constants.C_AIR,
+                "c_vap": self.namelist_constants.C_VAP,
+                "p_nonhydro": self.namelist_constants.P_NONHYDRO,
+                "d0_vap": self.namelist_constants.D0_VAP,
+                "lv00": self.namelist_constants.LV00,
+                "latv": self.namelist_constants.LATV,
+                "lati": self.namelist_constants.LATI,
+                "lats": self.namelist_constants.LATS,
+                "lat2": self.namelist_constants.LAT2,
+                "lcp": self.namelist_constants.LCP,
+                "icp": self.namelist_constants.ICP,
+                "tcp": self.namelist_constants.TCP,
+                "mpdt": self.namelist_constants.MPDT,
+                "rdt": self.namelist_constants.RDT,
+                "ntimes": self.namelist_constants.NTIMES,
+                "dts": self.namelist_constants.DTS,
                 "do_sedi_w": do_sedi_w,
-                "cpaut": self.namelist_constants.cpaut,
+                "cpaut": self.namelist_constants.CPAUT,
                 "hydrostatic": hydrostatic,
                 "phys_hydrostatic": phys_hydrostatic,
                 "fix_negative": fix_negative,
@@ -365,7 +365,7 @@ class GFDL_1M_driver:
             func=fall_speed,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "p_nonhydro": self.namelist_constants.p_nonhydro,
+                "p_nonhydro": self.namelist_constants.P_NONHYDRO,
                 "const_vi": const_vi,
                 "const_vs": const_vs,
                 "const_vg": const_vg,
@@ -382,7 +382,7 @@ class GFDL_1M_driver:
             func=terminal_fall,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "dts": self.namelist_constants.dts,
+                "dts": self.namelist_constants.DTS,
                 "tau_imlt": tau_imlt,
                 "ql_mlt": ql_mlt,
                 "vi_fac": vi_fac,
@@ -390,10 +390,10 @@ class GFDL_1M_driver:
                 "use_ppm": use_ppm,
                 "tau_smlt": tau_smlt,
                 "tau_g2r": tau_g2r,
-                "c_air": self.namelist_constants.c_air,
-                "c_vap": self.namelist_constants.c_vap,
-                "d0_vap": self.namelist_constants.d0_vap,
-                "lv00": self.namelist_constants.lv00,
+                "c_air": self.namelist_constants.C_AIR,
+                "c_vap": self.namelist_constants.C_VAP,
+                "d0_vap": self.namelist_constants.D0_VAP,
+                "lv00": self.namelist_constants.LV00,
             },
         )
 
@@ -406,7 +406,7 @@ class GFDL_1M_driver:
             func=warm_rain,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "dts": self.namelist_constants.dts,
+                "dts": self.namelist_constants.DTS,
                 "do_qa": do_qa,
                 "rthreshs": rthreshs,
                 "rthreshu": rthreshu,
@@ -417,16 +417,16 @@ class GFDL_1M_driver:
                 "const_vr": const_vr,
                 "vr_max": vr_max,
                 "tau_revp": tau_revp,
-                "lv00": self.namelist_constants.lv00,
-                "d0_vap": self.namelist_constants.d0_vap,
-                "c_air": self.namelist_constants.c_air,
-                "c_vap": self.namelist_constants.c_vap,
-                "crevp_0": self.namelist_constants.crevp_0,
-                "crevp_1": self.namelist_constants.crevp_1,
-                "crevp_2": self.namelist_constants.crevp_2,
-                "crevp_3": self.namelist_constants.crevp_3,
-                "crevp_4": self.namelist_constants.crevp_4,
-                "cracw": self.namelist_constants.cracw,
+                "lv00": self.namelist_constants.LV00,
+                "d0_vap": self.namelist_constants.D0_VAP,
+                "c_air": self.namelist_constants.C_AIR,
+                "c_vap": self.namelist_constants.C_VAP,
+                "crevp_0": self.namelist_constants.CREVP_0,
+                "crevp_1": self.namelist_constants.CREVP_1,
+                "crevp_2": self.namelist_constants.CREVP_2,
+                "crevp_3": self.namelist_constants.CREVP_3,
+                "crevp_4": self.namelist_constants.CREVP_4,
+                "cracw": self.namelist_constants.CRACW,
                 "do_sedi_w": do_sedi_w,
                 "use_ppm": use_ppm,
             },
@@ -441,49 +441,49 @@ class GFDL_1M_driver:
             func=icloud,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "c_air": self.namelist_constants.c_air,
-                "c_vap": self.namelist_constants.c_vap,
-                "dts": self.namelist_constants.dts,
-                "rdts": self.namelist_constants.rdts,
+                "c_air": self.namelist_constants.C_AIR,
+                "c_vap": self.namelist_constants.C_VAP,
+                "dts": self.namelist_constants.DTS,
+                "rdts": self.namelist_constants.RDTS,
                 "const_vi": const_vi,
-                "fac_g2v": self.namelist_constants.fac_g2v,
-                "fac_i2s": self.namelist_constants.fac_i2s,
-                "fac_imlt": self.namelist_constants.fac_imlt,
-                "fac_frz": self.namelist_constants.fac_frz,
-                "fac_l2v": self.namelist_constants.fac_l2v,
-                "fac_s2v": self.namelist_constants.fac_s2v,
-                "fac_v2s": self.namelist_constants.fac_v2s,
-                "fac_v2g": self.namelist_constants.fac_v2g,
-                "cgacs": self.namelist_constants.cgacs,
-                "csacw": self.namelist_constants.csacw,
-                "csaci": self.namelist_constants.csaci,
-                "cgacw": self.namelist_constants.cgacw,
-                "cgaci": self.namelist_constants.cgaci,
-                "cgfr_0": self.namelist_constants.cgfr_0,
-                "cgfr_1": self.namelist_constants.cgfr_1,
-                "csmlt_0": self.namelist_constants.csmlt_0,
-                "csmlt_1": self.namelist_constants.csmlt_1,
-                "csmlt_2": self.namelist_constants.csmlt_2,
-                "csmlt_3": self.namelist_constants.csmlt_3,
-                "csmlt_4": self.namelist_constants.csmlt_4,
-                "cgmlt_0": self.namelist_constants.cgmlt_0,
-                "cgmlt_1": self.namelist_constants.cgmlt_1,
-                "cgmlt_2": self.namelist_constants.cgmlt_2,
-                "cgmlt_3": self.namelist_constants.cgmlt_3,
-                "cgmlt_4": self.namelist_constants.cgmlt_4,
-                "cssub_0": self.namelist_constants.cssub_0,
-                "cssub_1": self.namelist_constants.cssub_1,
-                "cssub_2": self.namelist_constants.cssub_2,
-                "cssub_3": self.namelist_constants.cssub_3,
-                "cssub_4": self.namelist_constants.cssub_4,
+                "fac_g2v": self.namelist_constants.FAC_G2V,
+                "fac_i2s": self.namelist_constants.FAC_I2S,
+                "fac_imlt": self.namelist_constants.FAC_IMLT,
+                "fac_frz": self.namelist_constants.FAC_FRZ,
+                "fac_l2v": self.namelist_constants.FAC_L2V,
+                "fac_s2v": self.namelist_constants.FAC_S2V,
+                "fac_v2s": self.namelist_constants.FAC_V2S,
+                "fac_v2g": self.namelist_constants.FAC_V2G,
+                "cgacs": self.namelist_constants.CGACS,
+                "csacw": self.namelist_constants.CSACW,
+                "csaci": self.namelist_constants.CSACI,
+                "cgacw": self.namelist_constants.CGACW,
+                "cgaci": self.namelist_constants.CGACI,
+                "cgfr_0": self.namelist_constants.CGFR_0,
+                "cgfr_1": self.namelist_constants.CGFR_1,
+                "csmlt_0": self.namelist_constants.CSMLT_0,
+                "csmlt_1": self.namelist_constants.CSMLT_1,
+                "csmlt_2": self.namelist_constants.CSMLT_2,
+                "csmlt_3": self.namelist_constants.CSMLT_3,
+                "csmlt_4": self.namelist_constants.CSMLT_4,
+                "cgmlt_0": self.namelist_constants.CGMLT_0,
+                "cgmlt_1": self.namelist_constants.CGMLT_1,
+                "cgmlt_2": self.namelist_constants.CGMLT_2,
+                "cgmlt_3": self.namelist_constants.CGMLT_3,
+                "cgmlt_4": self.namelist_constants.CGMLT_4,
+                "cssub_0": self.namelist_constants.CSSUB_0,
+                "cssub_1": self.namelist_constants.CSSUB_1,
+                "cssub_2": self.namelist_constants.CSSUB_2,
+                "cssub_3": self.namelist_constants.CSSUB_3,
+                "cssub_4": self.namelist_constants.CSSUB_4,
                 "qi0_crt": qi0_crt,
                 "qs0_crt": qs0_crt,
                 "qs_mlt": qs_mlt,
                 "ql_mlt": ql_mlt,
                 "z_slope_ice": z_slope_ice,
-                "lv00": self.namelist_constants.lv00,
-                "d0_vap": self.namelist_constants.d0_vap,
-                "lat2": self.namelist_constants.lat2,
+                "lv00": self.namelist_constants.LV00,
+                "d0_vap": self.namelist_constants.D0_VAP,
+                "lat2": self.namelist_constants.LAT2,
                 "do_qa": do_qa,
                 "do_evap": do_evap,
                 "do_bigg": do_bigg,
@@ -507,9 +507,9 @@ class GFDL_1M_driver:
             func=update_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "c_air": self.namelist_constants.c_air,
-                "c_vap": self.namelist_constants.c_vap,
-                "rdt": self.namelist_constants.rdt,
+                "c_air": self.namelist_constants.C_AIR,
+                "c_vap": self.namelist_constants.C_VAP,
+                "rdt": self.namelist_constants.RDT,
                 "do_sedi_w": do_sedi_w,
                 "sedi_transport": sedi_transport,
                 "do_qa": do_qa,
@@ -619,7 +619,7 @@ class GFDL_1M_driver:
             self.dp1,
         )
 
-        for n in range(self.namelist_constants.ntimes):
+        for n in range(self.namelist_constants.NTIMES):
             self._gfdl_1m_driver_loop_1(
                 self.ql1,
                 self.qi1,
@@ -1001,249 +1001,246 @@ class namelist_setup:
         # -----------------------------------------------------------------------
 
         if phys_hydrostatic or hydrostatic:
-            self.c_air = driver_constants.cp_air
-            self.c_vap = driver_constants.cp_vap
-            self.p_nonhydro = False
+            self.C_AIR = driver_constants.CP_AIR
+            self.C_VAP = driver_constants.CP_VAP
+            self.P_NONHYDRO = False
         else:
-            self.c_air = driver_constants.cv_air
-            self.c_vap = driver_constants.cv_vap
-            self.p_nonhydro = True
-        self.d0_vap = self.c_vap - driver_constants.c_liq
-        self.lv00 = driver_constants.hlv0 - self.d0_vap * driver_constants.t_ice
+            self.C_AIR = driver_constants.CV_AIR
+            self.C_VAP = driver_constants.CV_VAP
+            self.P_NONHYDRO = True
+        self.D0_VAP = self.C_VAP - driver_constants.C_LIQ
+        self.LV00 = driver_constants.HLV0 - self.D0_VAP * driver_constants.T_ICE
 
         if hydrostatic:
-            self.do_sedi_w = False
+            self.DO_SEDI_W = False
 
         # -----------------------------------------------------------------------
         # define latent heat coefficient used in wet bulb and bigg mechanism
         # -----------------------------------------------------------------------
 
-        self.latv = driver_constants.hlv
-        self.lati = driver_constants.hlf
-        self.lats = self.latv + self.lati
-        self.lat2 = self.lats * self.lats
+        self.LATV = driver_constants.HLV
+        self.LATI = driver_constants.HLF
+        self.LATS = self.LATV + self.LATI
+        self.LAT2 = self.LATS * self.LATS
 
-        self.lcp = self.latv / driver_constants.cp_air
-        self.icp = self.lati / driver_constants.cp_air
-        self.tcp = (self.latv + self.lati) / driver_constants.cp_air
+        self.LCP = self.LATV / driver_constants.CP_AIR
+        self.ICP = self.LATI / driver_constants.CP_AIR
+        self.TCP = (self.LATV + self.LATI) / driver_constants.CP_AIR
 
         # -----------------------------------------------------------------------
         # define cloud microphysics sub time step
         # -----------------------------------------------------------------------
 
-        self.mpdt = min(dt_moist, mp_time)
-        self.rdt = Float(1.0) / dt_moist
-        self.ntimes = i32(np.round(dt_moist / self.mpdt))
+        self.MPDT = min(dt_moist, mp_time)
+        self.RDT = Float(1.0) / dt_moist
+        self.NTIMES = i32(np.round(dt_moist / self.MPDT))
 
         # small time step:
-        self.dts = dt_moist / Float(self.ntimes)
+        self.DTS = dt_moist / Float(self.NTIMES)
 
         # -----------------------------------------------------------------------
         # calculate cloud condensation nuclei (ccn)
         # the following is based on klein eq. 15
         # -----------------------------------------------------------------------
 
-        self.cpaut = c_paut * Float(0.104) * driver_constants.grav / Float(1.717e-5)
+        self.CPAUT = c_paut * Float(0.104) * driver_constants.GRAV / Float(1.717e-5)
 
         # -----------------------------------------------------------------------
         # define conversion scalar / factor for icloud
         # -----------------------------------------------------------------------
-        self.rdts = Float(1.0) / self.dts
-        self.fac_imlt = Float(1.0) - np.exp(-self.dts / tau_imlt, dtype=Float)
-        self.fac_i2s = Float(1.0) - np.exp(-self.dts / tau_i2s, dtype=Float)
-        self.fac_v2l = Float(1.0) - np.exp(-self.dts / tau_v2l, dtype=Float)
-        self.fac_l2v = Float(1.0) - np.exp(-self.dts / tau_l2v, dtype=Float)
-        self.fac_i2v = Float(1.0) - np.exp(-self.dts / tau_i2v, dtype=Float)
-        self.fac_s2v = Float(1.0) - np.exp(-self.dts / tau_s2v, dtype=Float)
-        self.fac_v2s = Float(1.0) - np.exp(-self.dts / tau_v2s, dtype=Float)
-        self.fac_g2v = Float(1.0) - np.exp(-self.dts / tau_g2v, dtype=Float)
-        self.fac_v2g = Float(1.0) - np.exp(-self.dts / tau_v2g, dtype=Float)
-        self.fac_frz = Float(1.0) - np.exp(-self.dts / tau_frz, dtype=Float)
+        self.RDTS = Float(1.0) / self.DTS
+        self.FAC_IMLT = Float(1.0) - np.exp(-self.DTS / tau_imlt, dtype=Float)
+        self.FAC_I2S = Float(1.0) - np.exp(-self.DTS / tau_i2s, dtype=Float)
+        self.FAC_V2L = Float(1.0) - np.exp(-self.DTS / tau_v2l, dtype=Float)
+        self.FAC_L2V = Float(1.0) - np.exp(-self.DTS / tau_l2v, dtype=Float)
+        self.FAC_I2V = Float(1.0) - np.exp(-self.DTS / tau_i2v, dtype=Float)
+        self.FAC_S2V = Float(1.0) - np.exp(-self.DTS / tau_s2v, dtype=Float)
+        self.FAC_V2S = Float(1.0) - np.exp(-self.DTS / tau_v2s, dtype=Float)
+        self.FAC_G2V = Float(1.0) - np.exp(-self.DTS / tau_g2v, dtype=Float)
+        self.FAC_V2G = Float(1.0) - np.exp(-self.DTS / tau_v2g, dtype=Float)
+        self.FAC_FRZ = Float(1.0) - np.exp(-self.DTS / tau_frz, dtype=Float)
 
         # -----------------------------------------------------------------------
         # constatns from setupm
         # -----------------------------------------------------------------------
 
-        self.cgacs = (
-            driver_constants.pisq
-            * driver_constants.rnzg
-            * driver_constants.rnzs
-            * driver_constants.rhos
+        self.CGACS = (
+            driver_constants.PISQ
+            * driver_constants.RNZG
+            * driver_constants.RNZS
+            * driver_constants.RHOS
         )
-        self.cgacs = self.cgacs * c_pgacs
+        self.CGACS = self.CGACS * c_pgacs
 
-        self.csacw = (
-            driver_constants.pie
-            * driver_constants.rnzs
+        self.CSACW = (
+            driver_constants.PIE
+            * driver_constants.RNZS
             * clin
-            * driver_constants.gam325
-            / (Float(4.0) * np.power(driver_constants.act[0], 0.8125, dtype=Float))
+            * driver_constants.GAM325
+            / (Float(4.0) * np.power(driver_constants.ACT[0], 0.8125, dtype=Float))
         )
         # decreasing csacw to reduce cloud water --- > snow
 
-        self.craci = (
-            driver_constants.pie
-            * driver_constants.rnzr
+        self.CRACI = (
+            driver_constants.PIE
+            * driver_constants.RNZR
             * alin
-            * driver_constants.gam380
-            / (Float(4.0) * np.power(driver_constants.act[1], 0.95, dtype=Float))
+            * driver_constants.GAM380
+            / (Float(4.0) * np.power(driver_constants.ACT[1], 0.95, dtype=Float))
         )
-        self.csaci = self.csacw * c_psaci
+        self.CSACI = self.CSACW * c_psaci
 
-        self.cgacw = (
-            driver_constants.pie
-            * driver_constants.rnzg
-            * driver_constants.gam350
-            * driver_constants.gcon
-            / (Float(4.0) * np.power(driver_constants.act[5], 0.875, dtype=Float))
+        self.CGACW = (
+            driver_constants.PIE
+            * driver_constants.RNZG
+            * driver_constants.GAM350
+            * driver_constants.GCON
+            / (Float(4.0) * np.power(driver_constants.ACT[5], 0.875, dtype=Float))
         )
 
-        self.cgaci = self.cgacw * c_pgaci
+        self.CGACI = self.CGACW * c_pgaci
 
-        self.cracw = self.craci  # cracw = 3.27206196043822
-        self.cracw = c_cracw * self.cracw
+        self.CRACW = self.CRACI  # cracw = 3.27206196043822
+        self.CRACW = c_cracw * self.CRACW
 
-        self.cssub = np.zeros(5)
-        self.cgsub = np.zeros(5)
-        self.crevp = np.zeros(5)
+        self.CSSUB = np.zeros(5)
+        self.CGSUB = np.zeros(5)
+        self.CREVP = np.zeros(5)
 
-        self.cssub[0] = (
+        self.CSSUB[0] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.vdifu
-            * driver_constants.tcond
-            * driver_constants.rvgas
-            * driver_constants.rnzs
+            * driver_constants.PIE
+            * driver_constants.VDIFU
+            * driver_constants.TCOND
+            * driver_constants.RVGAS
+            * driver_constants.RNZS
         )
-        self.cgsub[0] = (
+        self.CGSUB[0] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.vdifu
-            * driver_constants.tcond
-            * driver_constants.rvgas
-            * driver_constants.rnzg
+            * driver_constants.PIE
+            * driver_constants.VDIFU
+            * driver_constants.TCOND
+            * driver_constants.RVGAS
+            * driver_constants.RNZG
         )
-        self.crevp[0] = (
+        self.CREVP[0] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.vdifu
-            * driver_constants.tcond
-            * driver_constants.rvgas
-            * driver_constants.rnzr
+            * driver_constants.PIE
+            * driver_constants.VDIFU
+            * driver_constants.TCOND
+            * driver_constants.RVGAS
+            * driver_constants.RNZR
         )
-        self.cssub[1] = Float(0.78) / np.sqrt(driver_constants.act[0], dtype=Float)
-        self.cgsub[1] = Float(0.78) / np.sqrt(driver_constants.act[5], dtype=Float)
-        self.crevp[1] = Float(0.78) / np.sqrt(driver_constants.act[1], dtype=Float)
-        self.cssub[2] = (
+        self.CSSUB[1] = Float(0.78) / np.sqrt(driver_constants.ACT[0], dtype=Float)
+        self.CGSUB[1] = Float(0.78) / np.sqrt(driver_constants.ACT[5], dtype=Float)
+        self.CREVP[1] = Float(0.78) / np.sqrt(driver_constants.ACT[1], dtype=Float)
+        self.CSSUB[2] = (
             Float(0.31)
-            * driver_constants.scm3
-            * driver_constants.gam263
-            * np.sqrt(clin / driver_constants.visk)
-            / driver_constants.act[0] ** Float(0.65625)
+            * driver_constants.SCM3
+            * driver_constants.GAM263
+            * np.sqrt(clin / driver_constants.VISK)
+            / driver_constants.ACT[0] ** Float(0.65625)
         )
-        self.cgsub[2] = (
+        self.CGSUB[2] = (
             Float(0.31)
-            * driver_constants.scm3
-            * driver_constants.gam275
-            * np.sqrt(driver_constants.gcon / driver_constants.visk)
-            / driver_constants.act[5] ** Float(0.6875)
+            * driver_constants.SCM3
+            * driver_constants.GAM275
+            * np.sqrt(driver_constants.GCON / driver_constants.VISK)
+            / driver_constants.ACT[5] ** Float(0.6875)
         )
-        self.crevp[2] = (
+        self.CREVP[2] = (
             Float(0.31)
-            * driver_constants.scm3
-            * driver_constants.gam290
-            * np.sqrt(alin / driver_constants.visk)
-            / driver_constants.act[1] ** Float(0.725)
+            * driver_constants.SCM3
+            * driver_constants.GAM209
+            * np.sqrt(alin / driver_constants.VISK)
+            / driver_constants.ACT[1] ** Float(0.725)
         )
-        self.cssub[3] = driver_constants.tcond * driver_constants.rvgas
-        self.cssub[4] = driver_constants.hlts ** 2 * driver_constants.vdifu
-        self.cgsub[3] = self.cssub[3]
-        self.crevp[3] = self.cssub[3]
-        self.cgsub[4] = self.cssub[4]
-        self.crevp[4] = driver_constants.hltc ** 2 * driver_constants.vdifu
+        self.CSSUB[3] = driver_constants.TCOND * driver_constants.RVGAS
+        self.CSSUB[4] = driver_constants.HLTS**2 * driver_constants.VDIFU
+        self.CGSUB[3] = self.CSSUB[3]
+        self.CREVP[3] = self.CSSUB[3]
+        self.CGSUB[4] = self.CSSUB[4]
+        self.CREVP[4] = driver_constants.HLTC**2 * driver_constants.VDIFU
 
-        self.cgfr_0 = (
+        self.CGFR_0 = (
             Float(20.0e2)
-            * driver_constants.pisq
-            * driver_constants.rnzr
-            * driver_constants.rhor
-            / driver_constants.act[1] ** Float(1.75)
+            * driver_constants.PISQ
+            * driver_constants.RNZR
+            * driver_constants.RHOR
+            / driver_constants.ACT[1] ** Float(1.75)
         )
-        self.cgfr_1 = Float(0.66)
+        self.CGFR_1 = Float(0.66)
 
-        self.cssub_0 = self.cssub[0]
-        self.cssub_1 = self.cssub[1]
-        self.cssub_2 = self.cssub[2]
-        self.cssub_3 = self.cssub[3]
-        self.cssub_4 = self.cssub[4]
+        self.CSSUB_0 = self.CSSUB[0]
+        self.CSSUB_1 = self.CSSUB[1]
+        self.CSSUB_2 = self.CSSUB[2]
+        self.CSSUB_3 = self.CSSUB[3]
+        self.CSSUB_4 = self.CSSUB[4]
 
-        self.cgsub_0 = self.cgsub[0]
-        self.cgsub_1 = self.cgsub[1]
-        self.cgsub_2 = self.cgsub[2]
-        self.cgsub_3 = self.cgsub[3]
-        self.cgsub_4 = self.cgsub[4]
+        self.CGSUB_0 = self.CGSUB[0]
+        self.CGSUB_1 = self.CGSUB[1]
+        self.CGSUB_2 = self.CGSUB[2]
+        self.CGSUB_3 = self.CGSUB[3]
+        self.CGSUB_4 = self.CGSUB[4]
 
-        self.crevp_0 = self.crevp[0]
-        self.crevp_1 = self.crevp[1]
-        self.crevp_2 = self.crevp[2]
-        self.crevp_3 = self.crevp[3]
-        self.crevp_4 = self.crevp[4]
+        self.CREVP_0 = self.CREVP[0]
+        self.CREVP_1 = self.CREVP[1]
+        self.CREVP_2 = self.CREVP[2]
+        self.CREVP_3 = self.CREVP[3]
+        self.CREVP_4 = self.CREVP[4]
 
         # smlt: five constants (lin et al. 1983)
 
-        self.csmlt = np.zeros(5)
-        self.csmlt[0] = (
+        self.CSMLT = np.zeros(5)
+        self.CSMLT[0] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.tcond
-            * driver_constants.rnzs
-            / driver_constants.hltf
+            * driver_constants.PIE
+            * driver_constants.TCOND
+            * driver_constants.RNZS
+            / driver_constants.HLTF
         )
-        self.csmlt[1] = (
+        self.CSMLT[1] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.vdifu
-            * driver_constants.rnzs
-            * driver_constants.hltc
-            / driver_constants.hltf
+            * driver_constants.PIE
+            * driver_constants.VDIFU
+            * driver_constants.RNZS
+            * driver_constants.HLTC
+            / driver_constants.HLTF
         )
-        self.csmlt[2] = self.cssub[1]
-        self.csmlt[3] = self.cssub[2]
-        self.csmlt[4] = driver_constants.ch2o / driver_constants.hltf
+        self.CSMLT[2] = self.CSSUB[1]
+        self.CSMLT[3] = self.CSSUB[2]
+        self.CSMLT[4] = driver_constants.CH2O / driver_constants.HLTF
 
-        self.csmlt_0 = self.csmlt[0]
-        self.csmlt_1 = self.csmlt[1]
-        self.csmlt_2 = self.csmlt[2]
-        self.csmlt_3 = self.csmlt[3]
-        self.csmlt_4 = self.csmlt[4]
+        self.CSMLT_0 = self.CSMLT[0]
+        self.CSMLT_1 = self.CSMLT[1]
+        self.CSMLT_2 = self.CSMLT[2]
+        self.CSMLT_3 = self.CSMLT[3]
+        self.CSMLT_4 = self.CSMLT[4]
 
         # gmlt: five constants
 
-        self.cgmlt = np.zeros(5)
-        self.cgmlt[0] = (
+        self.CGMLT = np.zeros(5)
+        self.CGMLT[0] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.tcond
-            * driver_constants.rnzg
-            / driver_constants.hltf
+            * driver_constants.PIE
+            * driver_constants.TCOND
+            * driver_constants.RNZG
+            / driver_constants.HLTF
         )
-        self.cgmlt[1] = (
+        self.CGMLT[1] = (
             Float(2.0)
-            * driver_constants.pie
-            * driver_constants.vdifu
-            * driver_constants.rnzg
-            * driver_constants.hltc
-            / driver_constants.hltf
+            * driver_constants.PIE
+            * driver_constants.VDIFU
+            * driver_constants.RNZG
+            * driver_constants.HLTC
+            / driver_constants.HLTF
         )
-        self.cgmlt[2] = self.cgsub[1]
-        self.cgmlt[3] = self.cgsub[2]
-        self.cgmlt[4] = driver_constants.ch2o / driver_constants.hltf
+        self.CGMLT[2] = self.CGSUB[1]
+        self.CGMLT[3] = self.CGSUB[2]
+        self.CGMLT[4] = driver_constants.CH2O / driver_constants.HLTF
 
-        self.cgmlt_0 = self.cgmlt[0]
-        self.cgmlt_1 = self.cgmlt[1]
-        self.cgmlt_2 = self.cgmlt[2]
-        self.cgmlt_3 = self.cgmlt[3]
-        self.cgmlt_4 = self.cgmlt[4]
-
-        self.es0 = Float(6.107799961e2)  # ~6.1 mb
-        self.ces0 = driver_constants.eps * self.es0
+        self.CGMLT_0 = self.CGMLT[0]
+        self.CGMLT_1 = self.CGMLT[1]
+        self.CGMLT_2 = self.CGMLT[2]
+        self.CGMLT_3 = self.CGMLT[3]
+        self.CGMLT_4 = self.CGMLT[4]
