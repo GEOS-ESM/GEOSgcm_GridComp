@@ -5873,6 +5873,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
                        ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
+        ! replace computed albedos with MODIS white sky albedos from file
+
+        ALBVR = modis_wsa_vis
+        ALBNR = modis_wsa_nir
+        ALBVF = modis_wsa_vis
+        ALBNF = modis_wsa_nir
+
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1TMP )
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
