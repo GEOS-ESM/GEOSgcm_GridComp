@@ -306,17 +306,17 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
 end subroutine WriteTilingIR
 
-subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat, rc)
-  character*(*),     intent(IN) :: File
-  character*(*),     intent(IN) :: GridName(:)
+subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, rc)
+  character(*),      intent(IN) :: File
+  character(*),      intent(IN) :: GridName(:)
   integer,           intent(IN) :: IM(:), JM(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(:,0:)
   real(kind=8),      intent(IN) :: rTable(:,:)
-  integer, optional, intent(in) :: maxcat
+  integer, optional, intent(in) :: srtm
   integer, optional, intent(out):: rc
 
-  integer                       :: k, ll, ng, ip, status, maxcat_
+  integer                       :: k, ll, ng, ip, status, srtm_maxcat_
 
   character(len=:), allocatable :: attr
   type (Variable)               :: v
@@ -333,8 +333,8 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat
   EASE = .false.
   if (index(GridName(1), 'EASE') /=0) EASE = .true.
 
-  maxcat_ = SRTM_maxcat
-  if (present(maxcat)) maxcat_ = maxcat
+  srtm_maxcat_ = SRTM_maxcat
+  if (present(srtm)) srtm_maxcat_ = srtm
 
   call metadata%add_dimension('tile', ip)
 
@@ -358,7 +358,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat
   attr = 'raster_ny'
   call metadata%add_attribute( attr, ny)
   attr = 'SRTM_maxcat'
-  call metadata%add_attribute( attr, maxcat_)
+  call metadata%add_attribute( attr, srtm_maxcat_)
 
   v = Variable(type=PFIO_INT32, dimensions='tile')
   call v%add_attribute('units', '1')
@@ -505,6 +505,146 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, maxcat
 
 end subroutine WriteTilingNC4
 
+subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, rc)
+  character(*),           intent(IN) :: File
+  character(*), optional, intent(out) :: GridName(:)
+  integer,      optional, intent(out) :: IM(:), JM(:)
+  integer,      optional, intent(out) :: nx,ny
+  integer,      optional, allocatable, intent(out) :: iTable(:,:)
+  real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
+  integer,      optional, intent(out) :: srtm
+  integer,      optional, intent(out) :: rc
+
+  type (Attribute), pointer     :: ref
+  character(len=:), allocatable :: attr
+  type (NetCDF4_FileFormatter)  :: formatter
+  type (FileMetadata)           :: meta
+  character(len=1)              :: str_num
+  integer                       :: ng, ntile, status, ll
+  class(*), pointer             :: attr_val
+  integer, allocatable          :: tmp_int(:)
+  real(kind=8), allocatable     :: fr(:)
+
+  call formatter%open(File, pFIO_READ, rc=status)
+  meta = formatter%read(rc=status)
+
+  ng = 1
+  if (meta%has_attribute("Grid1_Name")) ng = 2
+  ntile = meta%get_dimension('tile')
+
+  if (present(nx)) then
+     ref => meta%get_attribute('raster_nx')
+     attr_val => ref%get_value()
+     select type(attr_val)
+     type is (integer(INT32))
+        nx = attr_val
+     endselect
+  endif
+  if (present(ny)) then 
+     ref => meta%get_attribute('raster_ny')
+     attr_val => ref%get_value()
+     select type (attr_val)
+     type is (integer(INT32))
+        ny = attr_val
+     endselect
+  endif
+
+  if (present(srtm)) then
+     ref => meta%get_attribute('SRTM_maxcat')
+     attr_val => ref%get_value()
+     select type (attr_val)
+     type is (integer(INT32))
+        srtm = attr_val
+     endselect
+  endif
+
+  do ll = 1, ng
+    if (ng == 1) then
+      str_num = ''
+    else
+      write(str_num, '(i0)') ll
+    endif
+
+    if (present(GridName)) then
+       attr = 'Grid'//trim(str_num)//'_Name'
+       ref =>meta%get_attribute(attr)
+       attr_val => ref%get_value()
+       select type(attr_val)
+       type is(character(*))
+          GridName(ll) = attr_val
+       class default
+          print('unsupported subclass (not string) of attribute named '//attr)
+       end select
+    endif
+    if (present(IM)) then
+       attr = 'IM'//trim(str_num)
+       ref =>meta%get_attribute(attr)
+       attr_val => ref%get_value()
+       select type(attr_val)
+       type is( integer(INT32))
+          IM(ll) = attr_val
+       end select
+    endif
+    if (present(JM)) then
+       attr = 'JM'//trim(str_num)
+       ref =>meta%get_attribute(attr)
+       attr_val => ref%get_value()
+       select type(attr_val)
+       type is(integer(INT32))
+          JM(ll) = attr_val
+       end select
+    endif
+  enddo
+
+  if (present(iTable)) then
+     allocate(iTable(ntile,0:7))
+     allocate(tmp_int(ntile))
+     call formatter%get_var('typ', iTable(:,0))
+     do ll = 1, ng
+       if (ng == 1) then
+         str_num=''
+       else
+         write(str_num, '(i0)') ll
+       endif
+
+       call formatter%get_var('i_indg'    //trim(str_num), tmp_int, rc=status)
+       iTable(:,ll*2) = tmp_int
+       call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
+       iTable(:,ll*2) = tmp_int
+       call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
+       if ( ng == 1) then
+         iTable(:,4) = tmp_int
+       else
+         iTable(:,5+ll) = tmp_int
+       endif
+     enddo
+  endif
+
+  if (present(rTable)) then
+    allocate(rTable(ntile,10))
+    allocate(fr(ntile))
+    call formatter%get_var('com_lon', rTable(:,1),   rc=status)
+    call formatter%get_var('com_lat', rTable(:,2),   rc=status)
+    call formatter%get_var('area',    rTable(:,3),   rc=status)
+    do ll = 1, ng
+      if (ng == 1) then
+        str_num=''
+      else
+        write(str_num, '(i0)') ll
+      endif
+      call formatter%get_var('frac_cell' //trim(str_num), fr, rc=status)
+      where (fr /=0.0) rTable(:,3+ll) = rTable(:,3)/fr
+    enddo
+    call formatter%get_var('min_lon', rTable(:, 6), rc=status)
+    call formatter%get_var('max_lon', rTable(:, 7), rc=status)
+    call formatter%get_var('min_lat', rTable(:, 8), rc=status)
+    call formatter%get_var('max_lat', rTable(:, 9), rc=status)
+    call formatter%get_var('elev',    rTable(:,10), rc=status)
+  endif
+
+  if (present(rc)) rc= status
+end subroutine
+
 subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
   integer,           intent(OUT) :: Unit
   character*(*),     intent(IN) :: File
@@ -577,9 +717,6 @@ subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
 
   return
 end subroutine OpenTiling
-
-
-
 
 subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   character*(*),     intent(IN) :: File

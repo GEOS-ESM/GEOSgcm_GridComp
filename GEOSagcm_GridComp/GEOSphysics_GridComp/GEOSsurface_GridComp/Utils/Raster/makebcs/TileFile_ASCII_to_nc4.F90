@@ -181,9 +181,9 @@ program TileFile_ASCII_to_nc4
   ! write nc4 file
   
   if (N_grid == 1) then
-     call WriteTilingNC4(filenameNc4, [gName1        ], [n_lon1        ], [n_lat1        ], nx, ny, iTable, rTable, maxcat=maxcat) 
+     call WriteTilingNC4(filenameNc4, [gName1        ], [n_lon1        ], [n_lat1        ], nx, ny, iTable, rTable, srtm=maxcat) 
   else
-     call WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2], [n_lat1, n_lat2], nx, ny, iTable, rTable, maxcat=maxcat) 
+     call WriteTilingNC4(filenameNc4, [gName1, gName2], [n_lon1, n_lon2], [n_lat1, n_lat2], nx, ny, iTable, rTable, srtm=maxcat) 
   endif
   
 contains

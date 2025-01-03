@@ -13,7 +13,7 @@ module rmTinyCatchParaMod
   use lsm_routines, ONLY: sibalb
   use LogRectRasterizeMod, only: SRTM_maxcat
   use LogRectRasterizeMod, only: WritetilingNC4 
-  
+ 
   implicit none
   
   logical, parameter :: error_file=.true.
@@ -29,7 +29,7 @@ module rmTinyCatchParaMod
   real,    parameter :: slice=0.1, lim =5.,grzdep =1.1
   logical, parameter :: bug =.false.
 
-  include 'netcdf.inc'	
+  include 'netcdf.inc'
 
   logical :: preserve_soiltype = .false.
   
@@ -363,7 +363,7 @@ contains
     integer                                      :: k,ncatch
     integer                                      :: yr,mn,yr1,mn1
     integer, pointer                             :: Raster(:,:)
-    character*100                                :: fname
+    character*512                                :: fname
 
     ! -----------------------------------------------------------------
  
@@ -512,10 +512,9 @@ contains
     INTEGER :: soil_class_top,soil_class_com,soil_gswp,swit
     REAL :: BEE, PSIS, POROS,COND,WPWET
     integer :: n,maxcat,count,k1,i1,i,j
-    character*100 :: path,fname,fout,metpath
+    character*512 :: path,fname,fout,metpath
 
-    character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent
+    CHARACTER*512 :: version,resoln,continent
     integer :: iret,ncid,ncid1
     real, allocatable, target, dimension (:,:) :: SOIL_HIGH
     integer, allocatable, dimension (:,:) :: tile_id
@@ -819,9 +818,8 @@ contains
     
     ! -----------------------------------------------
 
-    CHARACTER*20 :: version,resoln,continent
-    character*100 :: path,fname,fout,metpath
-    character*10 :: dline
+    CHARACTER*512 :: version,resoln,continent
+    character*512 :: path,fname,fout,metpath
     integer :: n,ip,maxcat,count,k1,i1,i
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
@@ -831,10 +829,10 @@ contains
     integer :: ialbt,ialbs,yy,j,month
     character*2 :: bw
     character*5 :: cyy
-    character*300 :: albtype, albspec
+    character*512 :: albtype, albspec
     real, allocatable, target, dimension (:,:) :: alb_in
     real, allocatable, dimension (:) :: alb_count,alb_out
-    character*300 :: ifile,ofile
+    character*512 :: ifile,ofile
     integer :: status
     real,pointer :: raster (:,:)
 
@@ -983,7 +981,7 @@ contains
 
     logical,      intent(in) :: regrid    
 
-    character*2,  intent(in) :: dateline
+    character(*), intent(in) :: dateline
 
     character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
     character(*), intent(in) :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
@@ -999,9 +997,9 @@ contains
 
     REAL (kind=8), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
-    character*100                      :: fname
-    character*200                      :: gtopo30
-    CHARACTER*20                       :: version
+    character*512                      :: fname
+    character*512                      :: gtopo30
+    CHARACTER*512                      :: version
 
     REAL, allocatable                  :: limits(:,:)
 
@@ -1016,7 +1014,7 @@ contains
     real*4,            allocatable, target :: q0 (:,:)
     real(kind=8),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
-    character(len=128)                     :: gName(2)
+    character(len=512)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
 
     ! -----------------------------------------------------
@@ -1282,9 +1280,9 @@ contains
     
     fname=trim(fnameTil)//'.nc4'
     if (im(2) == 0) then  ! one grid
-       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
+       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, srtm=SRTM_maxcat, rc=status)
     else                  ! two grids
-       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, maxcat=SRTM_maxcat, rc=status)
+       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, srtm=SRTM_maxcat, rc=status)
     endif
     
     deallocate (rTable, iTable)
@@ -1345,9 +1343,8 @@ contains
     INTEGER IDVAL,STEX
     INTEGER (kind=1), allocatable :: gtext(:,:)
     INTEGER irrecs, c1,c2,r1,r2
-    CHARACTER*200 ifile,ifile2,ofile1,ofile2,fname
-    character*10 :: dline
-    CHARACTER*20 :: version,resoln    
+    CHARACTER*512 ifile,ifile2,ofile1,ofile2,fname
+    CHARACTER*512 :: version,resoln    
     INTEGER, allocatable, dimension (:) :: id !indx,id,indx_old
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
@@ -1640,9 +1637,8 @@ contains
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
     INTEGER :: typ,pfs,ig,jg,i_dum,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
-    character*100 :: fname,fout
-    character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent
+    character*512 :: fname,fout
+    CHARACTER*512 :: version,resoln,continent
     character*2 :: chyear
     integer :: mon,smon,imon,year
     integer :: status
@@ -1918,8 +1914,8 @@ contains
     REAL :: fr
     REAL, allocatable, dimension (:,:) :: var
     REAL, allocatable, dimension (:) :: dummy
-    CHARACTER*20 :: version
-    character*100 :: fname
+    CHARACTER*512 :: version
+    character*512 :: fname
 
     fname=trim(fnameTil)//'.til'
     open (10,file=fname,status='old',action='read',form='formatted')
@@ -2064,10 +2060,9 @@ contains
     real, allocatable, dimension  (:,:,:,:) :: &
          gwatdep,gwan,grzexcn,gfrc
     real :: wtdep,wanom,rzaact,fracl,profdep,dist_save,tile_distance 
-    character*200 :: pathout,fname,fout,losfile
-    character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent
-    character*6 rdep,ext
+    character*512 :: pathout,fname,fout,losfile
+    CHARACTER*512 :: version,resoln,continent
+    character*6 :: rdep,ext
     integer :: iwt,irz,group
     logical :: picked
 
@@ -2747,10 +2742,9 @@ contains
          gwatdep,gwan,grzexcn,gfrc
     real :: wtdep,wanom,rzaact,fracl,profdep,dist_save,     &
          ncells_top, ncells_top_pro,ncells_sub_pro,tile_distance
-    character*200 :: pathout,fname,fout,losfile
-    character*10 :: dline
-    CHARACTER*20 :: version,resoln,continent
-    character*6 rdep,ext
+    character*512 :: pathout,fname,fout,losfile
+    CHARACTER*512 :: version,resoln,continent
+    character*6  ::rdep,ext
     integer :: iwt,irz,group
     logical :: picked
     logical :: file_exists
@@ -6281,10 +6275,10 @@ contains
 
   SUBROUTINE REFORMAT_VEGFILES
 
-    character*400 :: tmp_string
+    character*512 :: tmp_string
     integer :: n_tiles
     real, dimension (:), allocatable :: var_array
-    character*40 :: header
+    character*512 :: header
     real :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14
     integer :: month
 
@@ -6356,7 +6350,7 @@ contains
     REAL, ALLOCATABLE, dimension (:)   :: count_pix
     REAL, ALLOCATABLE, dimension (:,:) :: z0_grid, data_grid
     INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
-    character*100                      :: fout
+    character*512                      :: fout
 
     ! Reading number of tiles
     ! -----------------------
@@ -6452,7 +6446,7 @@ contains
     REAL,    ALLOCATABLE, dimension (:)   :: count_pix
     INTEGER, ALLOCATABLE, dimension (:,:) :: data_grid, z2_grid
     INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
-    character*100                         :: fout
+    character*512                         :: fout
 
     ! Reading number of tiles
     ! -----------------------
