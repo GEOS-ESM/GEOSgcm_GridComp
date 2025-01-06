@@ -1850,7 +1850,7 @@ contains
                  go to 35
              end if 
           end do
-       endif  ! End of CIN case selection
+       endif  ! End of CIN case selectio
 
  35    continue
        if( cin .lt. 0. ) limit_cin(i) = 1.
