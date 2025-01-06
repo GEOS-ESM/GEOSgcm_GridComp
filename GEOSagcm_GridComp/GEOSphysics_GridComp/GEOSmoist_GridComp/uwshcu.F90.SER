@@ -309,7 +309,12 @@ contains
      !$ser data qtsrchgt=shlwparams%qtsrchgt thlsrc_fac=shlwparams%thlsrc_fac
      !$ser data qtsrc_fac=shlwparams%qtsrc_fac rbuoy=shlwparams%rbuoy epsvarw=shlwparams%epsvarw
      !$ser data use_CINcin=shlwparams%use_CINcin mumin1=shlwparams%mumin1 rmaxfrac=shlwparams%rmaxfrac
-     !$ser data PGFc=shlwparams%PGFc
+     !$ser data PGFc=shlwparams%PGFc niter_xc=shlwparams%niter_xc criqc=shlwparams%criqc 
+     !$ser data rle=shlwparams%rle mixscale=shlwparams%mixscale rkm=shlwparams%rkm 
+     !$ser data detrhgt=shlwparams%detrhgt cridist_opt=shlwparams%cridist_opt 
+     !$ser data rdrag=shlwparams%rdrag use_self_detrain=shlwparams%use_self_detrain
+     !$ser data rpen=shlwparams%rpen use_cumpenent=shlwparams%use_cumpenent 
+     !$ser data use_momenflx=shlwparams%use_momenflx
      call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
           exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
           qv0, ql0, qi0, th0, tr0, kpbl, frland, tke, rkfre, cush, umf, &
@@ -1215,12 +1220,13 @@ contains
          !$ser savepoint ComputeUwshcu-Out
          !$ser verbatim do k=1,k0
          !$ser verbatim call ser_set_indices(i,k,1,1)
-         !$ser data_buffered Dx=2 ssthl0=ssthl0(k) ssqt0=ssqt0(k) ssu0=ssu0(k) ssv0=ssv0(k)
+         !$ser data_buffered Dx=2 ssthl0=ssthl0(k) ssqt0=ssqt0(k) ssu0=ssu0(k) ssv0=ssv0(k) 
          !$ser verbatim do m=1,ncnst
          !$ser verbatim call ser_set_indices(i,k,m,1)
          !$ser data_buffered Dx=3 sstr0=sstr0(k,m) tr0=tr0(k,m)
          !$ser verbatim enddo
          !$ser verbatim enddo
+
 
          ! Compute thv0 and thvl0 at top/bottom interfaces in each layer
          do k = 1,k0
@@ -1257,10 +1263,18 @@ contains
               thv0top(k)  = thv0bot(k)
               thvl0top(k) = thvl0bot(k)
             end if
-            !$ser data_buffered Dx=2 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse id_check=id_check
-            !$ser data_buffered Dx=2 thv0top=thv0top(k) thvl0top=thvl0top(k)
+            !$ser data_buffered Dx=2 thj=thj qvj=qvj qlj=qlj qij=qij qse=qse
+            !$ser data_buffered Dx=2 thvl0top=thvl0top(k) thvl0bot=thvl0bot(k) 
+            
 
          end do
+
+          !$ser verbatim do k=1, k0
+          !$ser verbatim call ser_set_indices(i,k,1,1) 
+          !$ser data_buffered Dx=2 thv0bot=thv0bot(k) 
+          !$ser verbatim enddo
+
+          !$ser data_buffered Dx=1 thl0top=thl0top qt0top=qt0top
 
 !         print *,'thvl0bot=',thvl0bot
 !         print *,'thvl0top=',thvl0top
@@ -1461,7 +1475,7 @@ contains
 
 15         continue    
 
-           if( kinv .le. 1 ) then        
+           if( kinv .le. 1 ) then       
               exit_kinv1(i) = 1.
               id_exit = .true.
               if (scverbose) then
@@ -1577,7 +1591,7 @@ contains
             vsrc    = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
          endif
 
-         !$ser data_buffered Dx=2 thlsrc=thlsrc usrc=usrc vsrc=vsrc
+         !$ser data_buffered Dx=2 thlsrc=thlsrc usrc=usrc vsrc=vsrc thvlsrc_test=thvlsrc
 
          if (dotransport.eq.1) then
          do m = 1, ncnst
@@ -1619,7 +1633,7 @@ contains
            print *,"pifc0(0)=",pifc0(0)
            id_exit = .true.
            go to 333
-        end if
+         end if
          plcl = qsinvert(qtsrc,thlsrc,pifc0(0))
          !$ser data_buffered Dx=2 plcl=plcl
          do k = 0, k0
@@ -1629,13 +1643,12 @@ contains
             endif
          end do
          klcl = k0
+         
 25       continue
          klcl = max(1,klcl)
-
-         !$ser data_buffered Dx=2 klcl=klcl
+         !$ser data_buffered Dx=2 klcl_test=klcl
 
          
-     
          if( plcl .lt. 60000. ) then               
             exit_klclk0(i) = 1.
             id_exit = .true.
@@ -1655,15 +1668,18 @@ contains
 
          thl0lcl = thl0(klcl) + ssthl0(klcl) * ( plcl - pmid0(klcl) )
          qt0lcl  = qt0(klcl)  + ssqt0(klcl)  * ( plcl - pmid0(klcl) )
+         !$ser data_buffered Dx=2 thl0lcl_test=thl0lcl qt0lcl_test=qt0lcl
          call conden(plcl,thl0lcl,qt0lcl,thj,qvj,qlj,qij,qse,id_check)
          if( id_check .eq. 1 ) then
             exit_conden(i) = 1.
             id_exit = .true.
             go to 333
          end if
+  
          thv0lcl = thj * ( 1. + zvir * qvj - qlj - qij )
+         !$ser data_buffered Dx=2 thv0lcl_test=thv0lcl
 
-         !$ser data_buffered Dx=2 thl0lcl=thl0lcl qt0lcl=qt0lcl thv0lcl=thv0lcl
+         
 
        ! ------------------------------------------------------------------------
        !
@@ -1697,23 +1713,71 @@ contains
         plfc   = 0.
         klfc   = k0
 
+        
+
+        ! THIS IS FOR TESTING PURPOSES ONLY
+        ! MAKE SURE TO DELETE
+        if( klcl .ge. kinv ) then
+           do k = kinv, k0 - 1
+               if( k .lt. klcl ) then
+                   !print *, "triggered 1"
+                   thvubot = thvlsrc
+                   thvutop = thvlsrc  
+                   !cin=1.0
+                   cin     = cin + single_cin(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop)
+               elseif( k .eq. klcl ) then
+                   !----- Bottom to LCL
+                   thvubot = thvlsrc
+                   thvutop = thvlsrc
+                   cin     = cin + single_cin(pifc0(k-1),thv0bot(k),plcl,thv0lcl,thvubot,thvutop)
+                   if( cin .lt. 0. ) limit_cinlcl(i) = 1.
+                   cinlcl  = max(cin,0.)
+                   cin     = cinlcl
+                   thvubot = thvlsrc
+                   call conden(pifc0(k),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
+                   if( id_check .eq. 1 ) then
+                       exit_conden(i) = 1.
+                       id_exit = .true.
+                       go to 333
+                   end if
+                   thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
+                   call getbuoy(plcl,thv0lcl,pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+
+                   if( plfc .gt. 0. ) then 
+                       klfc = k 
+                       go to 35
+                   end if
+               else
+                   thvubot = thvutop
+                   call conden(pifc0(k),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
+                   if( id_check .eq. 1 ) then
+                       exit_conden(i) = 1.
+                       id_exit = .true.
+                       go to 333
+                   end if
+                   thvutop = thj * ( 1. + zvir*qvj - qlj - qij )
+                   call getbuoy(pifc0(k-1),thv0bot(k),pifc0(k),thv0top(k),thvubot,thvutop,plfc,cin)
+                   if( plfc .gt. 0. ) then 
+                       klfc = k
+                       go to 35
+                   end if 
+                end if
+            enddo
+         endif
+        
+       
 
 
-!        lts =  0.0
-!        do k = 2,k0-1
-!           if (pmid0(k).lt.70000.0) then
-!             lts = t0(k-1)/exnmid0(k-1)  ! theta
-!             exit
-!           end if
-!        end do
-!        lts = lts - t0(1)/exnmid0(1)
+        cin    = 0.
+        cinlcl = 0.
+        plfc   = 0.
+        klfc   = k0
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
         !------------------------------------------------------------------------!
 
         if( klcl .ge. kinv ) then
-
             do k = kinv, k0 - 1
                if( k .lt. klcl ) then
                    thvubot = thvlsrc
@@ -1757,7 +1821,7 @@ contains
                        go to 35
                    end if 
                endif
-            end do        
+            end do       
 
        ! -----------------------------------------------------------------------!
        ! Case 2. LCL height is lower than PBL interface ( 'pLCL > ps0(kinv-1)') !
@@ -1792,6 +1856,13 @@ contains
        if( cin .lt. 0. ) limit_cin(i) = 1.
        cin = max(0.,cin)
 !       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
+
+       !$ser data_buffered Dx=2 cin_test=cin plfc_test=plfc
+       !$ser data_buffered Dx=2 thvubot_test=thvubot thvutop_test=thvutop
+
+       !$ser data_buffered Dx=2 thj_test=thj qvj_test=qvj qlj_test=qlj
+       !$ser data_buffered Dx=2 qij_test=qij qse_test=qse id_check_test=id_check
+  
 
 
        if( klfc .ge. k0 ) then
@@ -2392,6 +2463,7 @@ contains
             tre(m) = tr0(krel,m)  + sstr0(krel,m) * ( pe - pmid0(krel) )
          enddo
          end if
+
 
        !-------------------------! 
        ! Buoyancy-Sorting Mixing !
@@ -5142,7 +5214,7 @@ contains
         frc  = ( thvutop/thv0top - 1.) / ( (thvutop/thv0top - 1.) - (thvubot/thv0bot - 1.) )
         cin  = cin - ( thvutop/thv0top - 1.) * ( (ptop + frc*(pbot - ptop)) - ptop ) /             &
                      ( pbot/(r*thv0bot*exnerfn(pbot)) + ptop/(r*thv0top*exnerfn(ptop)) )
-    else            
+    else           
         frc  = ( thvubot/thv0bot - 1.) / ( (thvubot/thv0bot - 1.) - (thvutop/thv0top - 1.) )
         plfc = pbot - frc * ( pbot - ptop )
         cin  = cin - ( thvubot/thv0bot - 1.)*(pbot - plfc)/                                         & 
