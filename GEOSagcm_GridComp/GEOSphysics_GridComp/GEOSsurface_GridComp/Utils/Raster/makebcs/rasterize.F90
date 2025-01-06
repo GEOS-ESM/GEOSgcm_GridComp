@@ -5,7 +5,8 @@ module LogRectRasterizeMod
   use MAPL_SORTMOD
   use MAPL_ExceptionHandling  
   use MAPL_Constants,          only: PI=>MAPL_PI_R8
-  use MAPL                                          
+  use MAPL
+  use, intrinsic :: iso_fortran_env, only: INT32
   implicit none
   private
 
@@ -24,6 +25,7 @@ module LogRectRasterizeMod
   public WriteRaster
   public Writetiling
   public WritetilingNC4
+  public ReadTilingNC4
   public Sorttiling
   public Opentiling
   public Closetiling
@@ -521,7 +523,8 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
   type (FileMetadata)           :: meta
   character(len=1)              :: str_num
   integer                       :: ng, ntile, status, ll
-  class(*), pointer             :: attr_val
+  class(*), pointer             :: attr_val(:)
+  class(*), pointer             :: char_val
   integer, allocatable          :: tmp_int(:)
   real(kind=8), allocatable     :: fr(:)
 
@@ -534,27 +537,27 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
 
   if (present(nx)) then
      ref => meta%get_attribute('raster_nx')
-     attr_val => ref%get_value()
+     attr_val => ref%get_values()
      select type(attr_val)
      type is (integer(INT32))
-        nx = attr_val
+        nx = attr_val(1)
      endselect
   endif
   if (present(ny)) then 
      ref => meta%get_attribute('raster_ny')
-     attr_val => ref%get_value()
+     attr_val => ref%get_values()
      select type (attr_val)
      type is (integer(INT32))
-        ny = attr_val
+        ny = attr_val(1)
      endselect
   endif
 
   if (present(srtm)) then
      ref => meta%get_attribute('SRTM_maxcat')
-     attr_val => ref%get_value()
+     attr_val => ref%get_values()
      select type (attr_val)
      type is (integer(INT32))
-        srtm = attr_val
+        srtm = attr_val(1)
      endselect
   endif
 
@@ -568,10 +571,10 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
     if (present(GridName)) then
        attr = 'Grid'//trim(str_num)//'_Name'
        ref =>meta%get_attribute(attr)
-       attr_val => ref%get_value()
-       select type(attr_val)
+       char_val => ref%get_value()
+       select type(char_val)
        type is(character(*))
-          GridName(ll) = attr_val
+          GridName(ll) = char_val
        class default
           print('unsupported subclass (not string) of attribute named '//attr)
        end select
@@ -579,19 +582,19 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
     if (present(IM)) then
        attr = 'IM'//trim(str_num)
        ref =>meta%get_attribute(attr)
-       attr_val => ref%get_value()
+       attr_val => ref%get_values()
        select type(attr_val)
        type is( integer(INT32))
-          IM(ll) = attr_val
+          IM(ll) = attr_val(1)
        end select
     endif
     if (present(JM)) then
        attr = 'JM'//trim(str_num)
        ref =>meta%get_attribute(attr)
-       attr_val => ref%get_value()
+       attr_val => ref%get_values()
        select type(attr_val)
        type is(integer(INT32))
-          JM(ll) = attr_val
+          JM(ll) = attr_val(1)
        end select
     endif
   enddo
@@ -610,7 +613,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
        call formatter%get_var('i_indg'    //trim(str_num), tmp_int, rc=status)
        iTable(:,ll*2) = tmp_int
        call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
-       iTable(:,ll*2) = tmp_int
+       iTable(:,ll*2+1) = tmp_int
        call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
        if ( ng == 1) then
          iTable(:,4) = tmp_int
