@@ -122,12 +122,22 @@ contains
 
     CHARACTER(len=10) :: GF_ENV_SETTING
 
+    !$ser verbatim integer :: comm, rank, mpierr, n_modes   
+    !$ser verbatim type(ESMF_VM) :: vm
+
     !=============================================================================
 
     ! Begin...
 
     ! Get my name and set-up traceback handle
     ! ---------------------------------------
+
+    !$ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
+    !$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+    !$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
+    !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+
+    !$ser on
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
@@ -5144,13 +5154,6 @@ contains
     !           in so they have to be defined
     call MAPL_GetResource( MAPL, CCN_OCN, 'NCCN_OCN:', DEFAULT= 100., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
     call MAPL_GetResource( MAPL, CCN_LND, 'NCCN_LND:', DEFAULT= 300., RC=STATUS); VERIFY_(STATUS) ! #/cm^3
-
-    !$ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
-    !$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
-    !$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
-    !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
-
-    !$ser on
 
     !$ser savepoint Constants.MAPL-In
     !$ser verbatim #if defined(CODATA_2018_CONSTANTS)

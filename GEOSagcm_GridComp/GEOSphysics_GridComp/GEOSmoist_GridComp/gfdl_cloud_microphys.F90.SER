@@ -683,6 +683,9 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     integer :: i, k, n
 
     !$ser verbatim integer :: hold_0, hold_1, hold_2, hold_3, hold_4, hold_5, hold_6, hold_7, hold_8, hold_9, hold_10, hold_11, hold_12, hold_13, hold_14, hold_15, hold_16, hold_17, hold_18, hold_19, hold_20, hold_21, hold_22, hold_23, hold_24, hold_25, hold_26, hold_27, hold_28, hold_29, hold_30, hold_31, hold_32, hold_33, hold_34
+    !$ser verbatim logical :: serialize_all
+    !$ser verbatim integer :: serialize_index
+    !$ser verbatim serialize_all = .true.
 
     dts = dt_in / real (ntimes)
     rdt = 1. / dt_in
@@ -694,13 +697,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     do i = is, ie
 
         do k = ktop, kbot
-            !$ser savepoint GFDL_driver_preloop-In
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 u_GFDL_driver_preloop=uin(i,j,k) v_GFDL_driver_preloop=vin(i,j,k) w_GFDL_driver_preloop=w(i,j,k) t_GFDL_driver_preloop=pt(i,j,k) dp_GFDL_driver_preloop=delp(i,j,k)
-            !$ser data_buffered Dx=3 rhcrit_GFDL_driver_preloop=rhcrit(i,j,k) dz_GFDL_driver_preloop=dz(i,j,k)
-            !$ser data_buffered Dx=3 qv_GFDL_driver_preloop=qv(i,j,k) ql_GFDL_driver_preloop=ql(i,j,k) qi_GFDL_driver_preloop=qi(i,j,k) qr_GFDL_driver_preloop=qr(i,j,k)
-            !$ser data_buffered Dx=3 qs_GFDL_driver_preloop=qs(i,j,k) qg_GFDL_driver_preloop=qg(i,j,k) qa_GFDL_driver_preloop=qa(i,j,k) qn_GFDL_driver_preloop=qn(i,j,k)
-            !$ser data_buffered Dx=2 area_GFDL_driver_preloop=area1(i)
+            !$ser savepoint GFDL_1M_driver_preloop-In
+            !$ser verbatim call ser_set_indices(i, j, k ,1)
+            !$ser data_buffered Dx=3 u_GFDL_1M_driver_preloop=uin(i,j,k) v_GFDL_1M_driver_preloop=vin(i,j,k) w_GFDL_1M_driver_preloop=w(i,j,k) t_GFDL_1M_driver_preloop=pt(i,j,k) dp_GFDL_1M_driver_preloop=delp(i,j,k)
+            !$ser data_buffered Dx=3 rhcrit_GFDL_1M_driver_preloop=rhcrit(i,j,k) dz_GFDL_1M_driver_preloop=dz(i,j,k)
+            !$ser data_buffered Dx=3 qv_GFDL_1M_driver_preloop=qv(i,j,k) ql_GFDL_1M_driver_preloop=ql(i,j,k) qi_GFDL_1M_driver_preloop=qi(i,j,k) qr_GFDL_1M_driver_preloop=qr(i,j,k)
+            !$ser data_buffered Dx=3 qs_GFDL_1M_driver_preloop=qs(i,j,k) qg_GFDL_1M_driver_preloop=qg(i,j,k) qa_GFDL_1M_driver_preloop=qa(i,j,k) qn_GFDL_1M_driver_preloop=qn(i,j,k)
+            !$ser data_buffered Dx=2 area_GFDL_1M_driver_preloop=area1(i)
 
             t0 (k) = pt (i, j, k)
             tz (k) = t0 (k)
@@ -765,9 +768,9 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             u1 (k) = u0 (k)
             v1 (k) = v0 (k)
 
-            !$ser savepoint GFDL_driver_preloop-Out
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 omq_GFDL_driver_preloop=omq den_GFDL_driver_preloop=den0(k) p_dry_GFDL_driver_preloop=p1(k)
+            !$ser savepoint GFDL_1M_driver_preloop-Out
+            !$ser verbatim call ser_set_indices(i, j, k ,1)
+            !$ser data_buffered Dx=3 omq_GFDL_1M_driver_preloop=omq den_GFDL_1M_driver_preloop=den0(k) p_dry_GFDL_1M_driver_preloop=p1(k)
 
         enddo
 
@@ -816,11 +819,16 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         isubl (i, j, :) = 0.
 
         !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_indices(i, j ,k ,1)
-            !$ser data_buffered Dx=3 t_GFDL_driver_preloop=tz(k) dp_GFDL_driver_preloop=dp1(k) qv_GFDL_driver_preloop=qvz(k) ql_GFDL_driver_preloop=qlz(k) qr_GFDL_driver_preloop=qrz(k) qi_GFDL_driver_preloop=qiz(k) qs_GFDL_driver_preloop=qsz(k) qg_GFDL_driver_preloop=qgz(k) c_praut_GFDL_driver_preloop=c_praut(k)
+            !$ser verbatim call ser_set_indices(i, j, k, 1)
+            !$ser data_buffered Dx=3 t_GFDL_1M_driver_preloop=tz(k) dp_GFDL_1M_driver_preloop=dp1(k) qv_GFDL_1M_driver_preloop=qvz(k) ql_GFDL_1M_driver_preloop=qlz(k) qr_GFDL_1M_driver_preloop=qrz(k) qi_GFDL_1M_driver_preloop=qiz(k) qs_GFDL_1M_driver_preloop=qsz(k) qg_GFDL_1M_driver_preloop=qgz(k) c_praut_GFDL_1M_driver_preloop=c_praut(k)
         !$ser verbatim enddo
 
-        do n = 1, 1 !ntimes
+        do n = 1, ntimes
+            !$ser verbatim if (serialize_all .eqv. .true.) then
+                !$ser verbatim serialize_index = n
+            !$ser verbatim else
+                !$ser verbatim serialize_index = ntimes
+            !$ser verbatim endif
 
             ! -----------------------------------------------------------------------
             ! dry air density
@@ -843,68 +851,74 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             ! sedimentation of cloud ice, snow, and graupel
             ! -----------------------------------------------------------------------
-            !$ser savepoint fall_speed-In
-            !$ser verbatim if (const_vi) then
-            !$ser verbatim     hold_0 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_0 = 0
+            !$ser verbatim if (serialize_index == n) then
+                !$ser savepoint fall_speed-In
+                !$ser verbatim if (const_vi) then
+                !$ser verbatim     hold_0 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_0 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vs) then
+                !$ser verbatim     hold_1 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_1 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vg) then
+                !$ser verbatim     hold_2 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_2 = 0
+                !$ser verbatim endif
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 p1_fall_speed=p1(k) den_fall_speed=den(k) qs_fall_speed=qsz(k) qi_fall_speed=qiz(k) qg_fall_speed=qgz(k) ql_fall_speed=qlz(k) t_fall_speed=tz(k)
+                    !$ser data_buffered Dx=2 cnv_frc_fall_speed=cnv_fraction(i) 
+                    !$ser data_buffered Dx=1 anv_icefall_fall_speed=anv_icefall lsc_icefall_fall_speed=lsc_icefall
+                    !$ser data_buffered Dx=1 const_vi_fall_speed=hold_0 const_vs_fall_speed=hold_1 const_vg_fall_speed=hold_2 vi_fac_fall_speed=vi_fac vi_max_fall_speed=vi_max vs_fac_fall_speed=vs_fac vs_max_fall_speed=vs_max vg_fac_fall_speed=vg_fac vg_max_fall_speed=vg_max
+                !$ser verbatim enddo
             !$ser verbatim endif
-            !$ser verbatim if (const_vs) then
-            !$ser verbatim     hold_1 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_1 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vg) then
-            !$ser verbatim     hold_2 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_2 = 0
-            !$ser verbatim endif
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 p1_fall_speed=p1(k) den_fall_speed=den(k) qs_fall_speed=qsz(k) qi_fall_speed=qiz(k) qg_fall_speed=qgz(k) ql_fall_speed=qlz(k) t_fall_speed=tz(k)
-                !$ser data_buffered Dx=2 cnv_frc_fall_speed=cnv_fraction(i) 
-                !$ser data_buffered Dx=1 anv_icefall_fall_speed=anv_icefall lsc_icefall_fall_speed=lsc_icefall
-                !$ser data_buffered Dx=1 const_vi_fall_speed=hold_0 const_vs_fall_speed=hold_1 const_vg_fall_speed=hold_2 vi_fac_fall_speed=vi_fac vi_max_fall_speed=vi_max vs_fac_fall_speed=vs_fac vs_max_fall_speed=vs_max vg_fac_fall_speed=vg_fac vg_max_fall_speed=vg_max
-            !$ser verbatim enddo
             call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
                              den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
-            !$ser savepoint fall_speed-Out
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 vti_fall_speed=vtiz(k) vts_fall_speed=vtsz(k) vtg_fall_speed=vtgz(k)
-            !$ser verbatim enddo
-            
-            !$ser savepoint terminal_fall-In
-            !$ser verbatim if (do_sedi_w) then
-            !$ser verbatim     hold_4 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_4 = 0
+            !$ser verbatim if (serialize_index == n) then
+                !$ser savepoint fall_speed-Out
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 vti_fall_speed=vtiz(k) vts_fall_speed=vtsz(k) vtg_fall_speed=vtgz(k)
+                !$ser verbatim enddo
+                
+                !$ser savepoint terminal_fall-In
+                !$ser verbatim if (do_sedi_w) then
+                !$ser verbatim     hold_4 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_4 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (use_ppm) then
+                !$ser verbatim     hold_5 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_5 = 0
+                !$ser verbatim endif
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 t_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k) qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k) qi_terminal_fall=qiz(k)
+                    !$ser data_buffered Dx=3 dz1_terminal_fall=dz1(k) dp1_terminal_fall=dp1(k) den1_terminal_fall=den(k) vtg_terminal_fall=vtgz(k) vts_terminal_fall=vtsz(k) vti_terminal_fall=vtiz(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
+                    !$ser data_buffered Dx=1 dts_terminal_fall=dts tau_imlt_terminal_fall=tau_imlt ql_mlt_terminal_fall=ql_mlt c_air_terminal_fall=c_air c_vap_terminal_fall=c_vap d0_vap_terminal_fall=d0_vap lv00_terminal_fall=lv00
+                    !$ser data_buffered Dx=1 vi_fac_terminal_fall=vi_fac do_sedi_w_terminal_fall=hold_4 use_ppm_terminal_fall=hold_5 tau_smlt_terminal_fall=tau_smlt tau_g2r_terminal_fall=tau_g2r
+                !$ser verbatim enddo
+                !$ser verbatim hold_6=ser_D3
+                !$ser verbatim call ser_set_D3(1)
+                !$ser verbatim call ser_set_indices(i, j, 1, 1)
+                !$ser savepoint terminal_fall-Out
             !$ser verbatim endif
-            !$ser verbatim if (use_ppm) then
-            !$ser verbatim     hold_5 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_5 = 0
-            !$ser verbatim endif
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 t_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k) qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k) qi_terminal_fall=qiz(k)
-                !$ser data_buffered Dx=3 dz1_terminal_fall=dz1(k) dp1_terminal_fall=dp1(k) den1_terminal_fall=den(k) vtg_terminal_fall=vtgz(k) vts_terminal_fall=vtsz(k) vti_terminal_fall=vtiz(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
-                !$ser data_buffered Dx=1 dts_terminal_fall=dts tau_imlt_terminal_fall=tau_imlt ql_mlt_terminal_fall=ql_mlt c_air_terminal_fall=c_air c_vap_terminal_fall=c_vap d0_vap_terminal_fall=d0_vap lv00_terminal_fall=lv00
-                !$ser data_buffered Dx=1 vi_fac_terminal_fall=vi_fac do_sedi_w_terminal_fall=hold_4 use_ppm_terminal_fall=hold_5 tau_smlt_terminal_fall=tau_smlt tau_g2r_terminal_fall=tau_g2r
-            !$ser verbatim enddo
-            !$ser verbatim hold_6=ser_D3
-            !$ser verbatim call ser_set_D3(1)
-            !$ser verbatim call ser_set_indices(i, j, 1, 1)
-            !$ser savepoint terminal_fall-Out
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                 dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
-            !$ser verbatim call ser_set_D3(hold_6)
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 t_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k) qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k) qi_terminal_fall=qiz(k)
-                !$ser data_buffered Dx=3 dz1_terminal_fall=dz1(k) dp1_terminal_fall=dp1(k) den1_terminal_fall=den(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
-                !$ser data_buffered Dx=2 r1_terminal_fall=r1 g1_terminal_fall=g1 s1_terminal_fall=s1 i1_terminal_fall=i1
-            !$ser verbatim enddo
+            !$ser verbatim if (serialize_index == n) then
+                !$ser verbatim call ser_set_D3(hold_6)
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 t_terminal_fall=tz(k) qv_terminal_fall=qvz(k) ql_terminal_fall=qlz(k) qr_terminal_fall=qrz(k) qg_terminal_fall=qgz(k) qs_terminal_fall=qsz(k) qi_terminal_fall=qiz(k)
+                    !$ser data_buffered Dx=3 dz1_terminal_fall=dz1(k) dp1_terminal_fall=dp1(k) den1_terminal_fall=den(k) m1_sol_terminal_fall=m1_sol(k) w1_terminal_fall=w1(k)
+                    !$ser data_buffered Dx=2 r1_terminal_fall=r1 g1_terminal_fall=g1 s1_terminal_fall=s1 i1_terminal_fall=i1
+                !$ser verbatim enddo
+            !$ser verbatim endif
 
             rain (i) = rain (i) + r1 ! from melted snow & ice that reached the ground
             snow (i) = snow (i) + s1
@@ -922,63 +936,66 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             ! warm rain processes
             ! -----------------------------------------------------------------------
-            
-            !$ser savepoint warm_rain-In
-            !$ser verbatim if (do_qa) then
-            !$ser verbatim     hold_7 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_7 = 0
+            !$ser verbatim if (serialize_index == n) then
+                !$ser savepoint warm_rain-In
+                !$ser verbatim if (do_qa) then
+                !$ser verbatim     hold_7 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_7 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (z_slope_liq) then
+                !$ser verbatim     hold_8 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_8 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vr) then
+                !$ser verbatim     hold_9 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_9 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_sedi_w) then
+                !$ser verbatim     hold_10 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_10 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (use_ppm) then
+                !$ser verbatim     hold_11 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_11 = 0
+                !$ser verbatim endif
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 dp1_warm_rain=dp1(k) dz1_warm_rain=dz1(k) t1_warm_rain=tz(k)
+                    !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
+                    !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k) ccn_warm_rain=ccn(k)
+                    !$ser data_buffered Dx=3 den_warm_rain=den(k) denfac_warm_rain=denfac(k) c_praut_warm_rain=c_praut(k)
+                    !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
+                    !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k) rh_limited_warm_rain=h_var1d(k)
+                    !$ser data_buffered Dx=2 eis_warm_rain=eis(i) onemsig_warm_rain=onemsig
+                    !$ser data_buffered Dx=1 dts_warm_rain=dts do_qa_warm_rain=hold_7 rthreshs_warm_rain=rthreshs rthreshu_warm_rain=rthreshu
+                    !$ser data_buffered Dx=1 irain_f_warm_rain=irain_f ql0_max_warm_rain=ql0_max z_slope_liq_warm_rain=hold_8
+                    !$ser data_buffered Dx=1 const_vr_warm_rain=hold_9 vr_fac_warm_rain=vr_fac vr_max_warm_rain=vr_max vr_min_warm_rain=vr_min
+                    !$ser data_buffered Dx=1 tau_revp_warm_rain=tau_revp cracw_warm_rain=cracw do_sedi_w_warm_rain=hold_10 use_ppm_warm_rain=hold_11
+                    !$ser data_buffered Dx=1 lv00_warm_rain=lv00 d0_vap_warm_rain=d0_vap c_air_warm_rain=c_air c_vap_warm_rain=c_vap
+                    !$ser data_buffered Dx=1 crevp_0_warm_rain=crevp(1) crevp_1_warm_rain=crevp(2) crevp_2_warm_rain=crevp(3) crevp_3_warm_rain=crevp(4) crevp_4_warm_rain=crevp(5)
+                !$ser verbatim enddo
+                !$ser savepoint warm_rain-Out
+                !$ser verbatim call ser_set_indices(i,j,1,1)
             !$ser verbatim endif
-            !$ser verbatim if (z_slope_liq) then
-            !$ser verbatim     hold_8 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_8 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vr) then
-            !$ser verbatim     hold_9 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_9 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_sedi_w) then
-            !$ser verbatim     hold_10 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_10 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (use_ppm) then
-            !$ser verbatim     hold_11 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_11 = 0
-            !$ser verbatim endif
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 dp1_warm_rain=dp1(k) dz1_warm_rain=dz1(k) t1_warm_rain=tz(k)
-                !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
-                !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k) ccn_warm_rain=ccn(k)
-                !$ser data_buffered Dx=3 den_warm_rain=den(k) denfac_warm_rain=denfac(k) c_praut_warm_rain=c_praut(k)
-                !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
-                !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k) rh_limited_warm_rain=h_var1d(k)
-                !$ser data_buffered Dx=2 eis_warm_rain=eis(i) onemsig_warm_rain=onemsig
-                !$ser data_buffered Dx=1 dts_warm_rain=dts do_qa_warm_rain=hold_7 rthreshs_warm_rain=rthreshs rthreshu_warm_rain=rthreshu
-                !$ser data_buffered Dx=1 irain_f_warm_rain=irain_f ql0_max_warm_rain=ql0_max z_slope_liq_warm_rain=hold_8
-                !$ser data_buffered Dx=1 const_vr_warm_rain=hold_9 vr_fac_warm_rain=vr_fac vr_max_warm_rain=vr_max vr_min_warm_rain=vr_min
-                !$ser data_buffered Dx=1 tau_revp_warm_rain=tau_revp cracw_warm_rain=cracw do_sedi_w_warm_rain=hold_10 use_ppm_warm_rain=hold_11
-                !$ser data_buffered Dx=1 lv00_warm_rain=lv00 d0_vap_warm_rain=d0_vap c_air_warm_rain=c_air c_vap_warm_rain=c_vap
-                !$ser data_buffered Dx=1 crevp_0_warm_rain=crevp(1) crevp_1_warm_rain=crevp(2) crevp_2_warm_rain=crevp(3) crevp_3_warm_rain=crevp(4) crevp_4_warm_rain=crevp(5)
-            !$ser verbatim enddo
-            !$ser savepoint warm_rain-Out
-            !$ser verbatim call ser_set_indices(i,j,1,1)
             call warm_rain (dts, ktop, kbot, dp1, dz1, tz, qvz, qlz, qrz, qiz, qsz, &
                 qgz, qaz, eis(i), onemsig, den, denfac, ccn, c_praut, vtrz,   &
                 r1, evap1, m1_rain, w1, h_var1d)
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j ,k ,1)
-                !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
-                !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
-                !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k)
-                !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
-                !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k)
-                !$ser data_buffered Dx=2 r1_warm_rain=r1
-            !$ser verbatim enddo
+            !$ser verbatim if (serialize_index == n) then
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j ,k ,1)
+                    !$ser data_buffered Dx=3 t1_warm_rain=tz(k)
+                    !$ser data_buffered Dx=3 qv_warm_rain=qvz(k) ql_warm_rain=qlz(k) qr_warm_rain=qrz(k) qi_warm_rain=qiz(k)
+                    !$ser data_buffered Dx=3 qs_warm_rain=qsz(k) qg_warm_rain=qgz(k) qa_warm_rain=qaz(k)
+                    !$ser data_buffered Dx=3 vtr_warm_rain=vtrz(k) evap1_warm_rain=evap1(k)
+                    !$ser data_buffered Dx=3 m1_rain_warm_rain=m1_rain(k) w1_warm_rain=w1(k)
+                    !$ser data_buffered Dx=2 r1_warm_rain=r1
+                !$ser verbatim enddo
+            !$ser verbatim endif
             rain (i) = rain (i) + r1
 
             do k = ktop, kbot
@@ -992,158 +1009,162 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! ice - phase microphysics
             ! -----------------------------------------------------------------------
 
-            !$ser savepoint icloud-In
-            !$ser verbatim if (do_qa) then
-            !$ser verbatim     hold_12 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_12 = 0
+            !$ser verbatim if (serialize_index == n) then
+                !$ser savepoint icloud-In
+                !$ser verbatim if (do_qa) then
+                !$ser verbatim     hold_12 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_12 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (fix_negative) then
+                !$ser verbatim     hold_13 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_13 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (fast_sat_adj) then
+                !$ser verbatim     hold_14 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_14 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vi) then
+                !$ser verbatim     hold_15 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_15 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vs) then
+                !$ser verbatim     hold_16 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_16 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vg) then
+                !$ser verbatim     hold_17 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_17 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (const_vr) then
+                !$ser verbatim     hold_18 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_18 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (use_ccn) then
+                !$ser verbatim     hold_19 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_19 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_bigg) then
+                !$ser verbatim     hold_20 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_20 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_evap) then
+                !$ser verbatim     hold_21 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_21 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_subl) then
+                !$ser verbatim     hold_22 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_22 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (z_slope_liq) then
+                !$ser verbatim     hold_23 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_23 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (z_slope_ice) then
+                !$ser verbatim     hold_24 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_24 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (prog_ccn) then
+                !$ser verbatim     hold_25 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_25 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (preciprad) then
+                !$ser verbatim     hold_26 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_26 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (use_ppm) then
+                !$ser verbatim     hold_27 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_27 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (mono_prof) then
+                !$ser verbatim     hold_28 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_28 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_sedi_heat) then
+                !$ser verbatim     hold_29 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_29 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (sedi_transport) then
+                !$ser verbatim     hold_30 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_30 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (do_sedi_w) then
+                !$ser verbatim     hold_31 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_31 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (de_ice) then
+                !$ser verbatim     hold_32 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_32 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (mp_print) then
+                !$ser verbatim     hold_33 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_33 = 0
+                !$ser verbatim endif
+                !$ser verbatim if (hydrostatic) then
+                !$ser verbatim     hold_34 = 1
+                !$ser verbatim else
+                !$ser verbatim     hold_34 = 0
+                !$ser verbatim endif
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j, k, 1)
+                    !$ser data_buffered Dx=3 t1_icloud=tz(k) p1_icloud=p1(k) dp1_icloud=dp1(k)
+                    !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
+                    !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
+                    !$ser data_buffered Dx=3 vts_icloud=vtsz(k) vtg_icloud=vtgz(k) vtr_icloud=vtrz(k)
+                    !$ser data_buffered Dx=3 den1_icloud=den(k) denfac_icloud=denfac(k)
+                    !$ser data_buffered Dx=3 subl1_icloud=subl1(k) rh_limited_icloud=h_var1d(k)
+                    !$ser data_buffered Dx=3 ccn_icloud=ccn(k)
+                    !$ser data_buffered Dx=2 cnv_frc_icloud=cnv_fraction(i) srf_type_icloud=srf_type(i)
+                    !!!!! namelist variables
+                    !$ser data_buffered Dx=1 mp_time_icloud=mp_time t_min_icloud=t_min t_sub_icloud=t_sub tau_r2g_icloud=tau_r2g tau_smlt_icloud=tau_smlt tau_g2r_icloud=tau_g2r dw_land_icloud=dw_land dw_ocean_icloud=dw_ocean
+                    !$ser data_buffered Dx=1 vi_fac_icloud=vi_fac vr_fac_icloud=vr_fac vs_fac_icloud=vs_fac vg_fac_icloud=vg_fac ql_mlt_icloud=ql_mlt do_qa_icloud=hold_12 fix_negative_icloud=hold_13 vi_max_icloud=vi_max
+                    !$ser data_buffered Dx=1 vs_max_icloud=vs_max vg_max_icloud=vg_max vr_max_icloud=vr_max qs_mlt_icloud=qs_mlt qs0_crt_icloud=qs0_crt qi_gen_icloud=qi_gen ql0_max_icloud=ql0_max qi0_max_icloud=qi0_max
+                    !$ser data_buffered Dx=1 qi0_crt_icloud=qi0_crt qr0_crt_icloud=qr0_crt fast_sat_adj_icloud=hold_14 rh_inc_icloud=rh_inc rh_ins_icloud=rh_ins rh_inr_icloud=rh_inr const_vi_icloud=hold_15
+                    !$ser data_buffered Dx=1 const_vs_icloud=hold_16 const_vg_icloud=hold_17 const_vr_icloud=hold_18 use_ccn_icloud=hold_19 rthreshu_icloud=rthreshu rthreshs_icloud=rthreshs ccn_l_icloud=ccn_l ccn_o_icloud=ccn_o qc_crt_icloud=qc_crt
+                    !$ser data_buffered Dx=1 tau_g2v_icloud=tau_g2v tau_v2g_icloud=tau_v2g tau_s2v_icloud=tau_s2v tau_v2s_icloud=tau_v2s
+                    !$ser data_buffered Dx=1 tau_revp_icloud=tau_revp tau_frz_icloud=tau_frz do_bigg_icloud=hold_20 do_evap_icloud=hold_21 do_subl_icloud=hold_22
+                    !$ser data_buffered Dx=1 sat_adj0_icloud=sat_adj0 c_piacr_icloud=c_piacr tau_imlt_icloud=tau_imlt tau_v2l_icloud=tau_v2l tau_l2v_icloud=tau_l2v tau_i2v_icloud=tau_i2v
+                    !$ser data_buffered Dx=1 tau_i2s_icloud=tau_i2s tau_l2r_icloud=tau_l2r qi_lim_icloud=qi_lim ql_gen_icloud=ql_gen c_paut_icloud=c_paut c_psaci_icloud=c_psaci c_pgacs_icloud=c_pgacs c_pgaci_icloud=c_pgaci
+                    !$ser data_buffered Dx=1 z_slope_liq_icloud=hold_23 z_slope_ice_icloud=hold_24 prog_ccn_icloud=hold_25 c_cracw_icloud=c_cracw alin_icloud=alin clin_icloud=clin
+                    !$ser data_buffered Dx=1 preciprad_icloud=hold_26 cld_min_icloud=cld_min use_ppm_icloud=hold_27 mono_prof_icloud=hold_28
+                    !$ser data_buffered Dx=1 do_sedi_heat_icloud=hold_29 sedi_transport_icloud=hold_30 do_sedi_w_icloud=hold_31 de_ice_icloud=hold_32 icloud_f_icloud=icloud_f irain_f_icloud=irain_f mp_print_icloud=hold_33
+                    !$ser data_buffered Dx=1 hydrostatic_icloud=hold_34 dts_icloud=dts
+                !$ser verbatim enddo
             !$ser verbatim endif
-            !$ser verbatim if (fix_negative) then
-            !$ser verbatim     hold_13 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_13 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (fast_sat_adj) then
-            !$ser verbatim     hold_14 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_14 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vi) then
-            !$ser verbatim     hold_15 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_15 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vs) then
-            !$ser verbatim     hold_16 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_16 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vg) then
-            !$ser verbatim     hold_17 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_17 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (const_vr) then
-            !$ser verbatim     hold_18 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_18 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (use_ccn) then
-            !$ser verbatim     hold_19 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_19 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_bigg) then
-            !$ser verbatim     hold_20 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_20 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_evap) then
-            !$ser verbatim     hold_21 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_21 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_subl) then
-            !$ser verbatim     hold_22 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_22 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (z_slope_liq) then
-            !$ser verbatim     hold_23 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_23 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (z_slope_ice) then
-            !$ser verbatim     hold_24 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_24 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (prog_ccn) then
-            !$ser verbatim     hold_25 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_25 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (preciprad) then
-            !$ser verbatim     hold_26 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_26 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (use_ppm) then
-            !$ser verbatim     hold_27 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_27 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (mono_prof) then
-            !$ser verbatim     hold_28 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_28 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_sedi_heat) then
-            !$ser verbatim     hold_29 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_29 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (sedi_transport) then
-            !$ser verbatim     hold_30 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_30 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (do_sedi_w) then
-            !$ser verbatim     hold_31 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_31 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (de_ice) then
-            !$ser verbatim     hold_32 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_32 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (mp_print) then
-            !$ser verbatim     hold_33 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_33 = 0
-            !$ser verbatim endif
-            !$ser verbatim if (hydrostatic) then
-            !$ser verbatim     hold_34 = 1
-            !$ser verbatim else
-            !$ser verbatim     hold_34 = 0
-            !$ser verbatim endif
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j, k, 1)
-                !$ser data_buffered Dx=3 t1_icloud=tz(k) p1_icloud=p1(k) dp1_icloud=dp1(k)
-                !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
-                !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
-                !$ser data_buffered Dx=3 vts_icloud=vtsz(k) vtg_icloud=vtgz(k) vtr_icloud=vtrz(k)
-                !$ser data_buffered Dx=3 den1_icloud=den(k) denfac_icloud=denfac(k)
-                !$ser data_buffered Dx=3 subl1_icloud=subl1(k) rh_limited_icloud=h_var1d(k)
-                !$ser data_buffered Dx=3 ccn_icloud=ccn(k)
-                !$ser data_buffered Dx=2 cnv_frc_icloud=cnv_fraction(i) srf_type_icloud=srf_type(i)
-                !!!!! namelist variables
-                !$ser data_buffered Dx=1 mp_time_icloud=mp_time t_min_icloud=t_min t_sub_icloud=t_sub tau_r2g_icloud=tau_r2g tau_smlt_icloud=tau_smlt tau_g2r_icloud=tau_g2r dw_land_icloud=dw_land dw_ocean_icloud=dw_ocean
-                !$ser data_buffered Dx=1 vi_fac_icloud=vi_fac vr_fac_icloud=vr_fac vs_fac_icloud=vs_fac vg_fac_icloud=vg_fac ql_mlt_icloud=ql_mlt do_qa_icloud=hold_12 fix_negative_icloud=hold_13 vi_max_icloud=vi_max
-                !$ser data_buffered Dx=1 vs_max_icloud=vs_max vg_max_icloud=vg_max vr_max_icloud=vr_max qs_mlt_icloud=qs_mlt qs0_crt_icloud=qs0_crt qi_gen_icloud=qi_gen ql0_max_icloud=ql0_max qi0_max_icloud=qi0_max
-                !$ser data_buffered Dx=1 qi0_crt_icloud=qi0_crt qr0_crt_icloud=qr0_crt fast_sat_adj_icloud=hold_14 rh_inc_icloud=rh_inc rh_ins_icloud=rh_ins rh_inr_icloud=rh_inr const_vi_icloud=hold_15
-                !$ser data_buffered Dx=1 const_vs_icloud=hold_16 const_vg_icloud=hold_17 const_vr_icloud=hold_18 use_ccn_icloud=hold_19 rthreshu_icloud=rthreshu rthreshs_icloud=rthreshs ccn_l_icloud=ccn_l ccn_o_icloud=ccn_o qc_crt_icloud=qc_crt
-                !$ser data_buffered Dx=1 tau_g2v_icloud=tau_g2v tau_v2g_icloud=tau_v2g tau_s2v_icloud=tau_s2v tau_v2s_icloud=tau_v2s
-                !$ser data_buffered Dx=1 tau_revp_icloud=tau_revp tau_frz_icloud=tau_frz do_bigg_icloud=hold_20 do_evap_icloud=hold_21 do_subl_icloud=hold_22
-                !$ser data_buffered Dx=1 sat_adj0_icloud=sat_adj0 c_piacr_icloud=c_piacr tau_imlt_icloud=tau_imlt tau_v2l_icloud=tau_v2l tau_l2v_icloud=tau_l2v tau_i2v_icloud=tau_i2v
-                !$ser data_buffered Dx=1 tau_i2s_icloud=tau_i2s tau_l2r_icloud=tau_l2r qi_lim_icloud=qi_lim ql_gen_icloud=ql_gen c_paut_icloud=c_paut c_psaci_icloud=c_psaci c_pgacs_icloud=c_pgacs c_pgaci_icloud=c_pgaci
-                !$ser data_buffered Dx=1 z_slope_liq_icloud=hold_23 z_slope_ice_icloud=hold_24 prog_ccn_icloud=hold_25 c_cracw_icloud=c_cracw alin_icloud=alin clin_icloud=clin
-                !$ser data_buffered Dx=1 preciprad_icloud=hold_26 cld_min_icloud=cld_min use_ppm_icloud=hold_27 mono_prof_icloud=hold_28
-                !$ser data_buffered Dx=1 do_sedi_heat_icloud=hold_29 sedi_transport_icloud=hold_30 do_sedi_w_icloud=hold_31 de_ice_icloud=hold_32 icloud_f_icloud=icloud_f irain_f_icloud=irain_f mp_print_icloud=hold_33
-                !$ser data_buffered Dx=1 hydrostatic_icloud=hold_34 dts_icloud=dts
-            !$ser verbatim enddo
             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
                 denfac, vtsz, vtgz, vtrz, qaz, dts, subl1, h_var1d, &
                 ccn, cnv_fraction(i), srf_type(i))
-            !$ser savepoint icloud-Out
-            !$ser verbatim do k = ktop, kbot
-                !$ser verbatim call ser_set_indices(i, j, k, 1)
-                !$ser data_buffered Dx=3 t1_icloud=tz(k)
-                !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
-                !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
-                !$ser data_buffered Dx=3 subl1_icloud=subl1(k)
-            !$ser verbatim enddo
+            !$ser verbatim if (serialize_index == n) then
+                !$ser savepoint icloud-Out
+                !$ser verbatim do k = ktop, kbot
+                    !$ser verbatim call ser_set_indices(i, j, k, 1)
+                    !$ser data_buffered Dx=3 t1_icloud=tz(k)
+                    !$ser data_buffered Dx=3 qv_icloud=qvz(k) ql_icloud=qlz(k) qr_icloud=qrz(k) qi_icloud=qiz(k)
+                    !$ser data_buffered Dx=3 qs_icloud=qsz(k) qg_icloud=qgz(k) qa_icloud=qaz(k)
+                    !$ser data_buffered Dx=3 subl1_icloud=subl1(k)
+                !$ser verbatim enddo
+            !$ser verbatim endif
             
             do k = ktop, kbot
                 isubl (i,j,k) = isubl (i,j,k) + subl1(k)
@@ -1403,10 +1424,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! with subgrid variability
         ! -----------------------------------------------------------------------
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-        !$ser verbatim do k = ktop, kbot
-            !$ser verbatim call ser_set_idx_d3(k)
-            !$ser data_buffered Dx=3 dl_warm_rain=dl(k)
-        !$ser verbatim enddo
 
         do k = ktop, kbot
             if (qadum(k) > onemsig) then
@@ -1558,12 +1575,8 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
 
     TOT_PREC_LS = 0.
     AREA_LS_PRC = 0.
-
     do k = ktop, kbot
         
-        qsat = 999.0
-        dqsdt = 999.0
-
         TOT_PREC_LS = TOT_PREC_LS  + (          ( qr (k) + qs (k) + qg (k) ) * den (k) )
         AREA_LS_PRC = AREA_LS_PRC  + ( qa (k) * ( qr (k) + qs (k) + qg (k) ) * den (k) )
 
@@ -1638,8 +1651,6 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, qa, revap, de
             endif
 
         endif ! warm - rain
-        !$ser verbatim call ser_set_idx_d3(k)
-        !$ser data_buffered Dx=3 qsat_warm_rain=qsat dqsdt_warm_rain=dqsdt
     enddo
 
 end subroutine revap_racc
