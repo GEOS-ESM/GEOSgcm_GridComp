@@ -183,7 +183,9 @@ def conden(
     tc: f64 = f32(thl) * exnerfn(p)
 
     nu: f64 = ice_fraction(f32(tc), 0.0, 0.0)
-    leff: f64 = (f64(1.0) - nu) * constants.MAPL_ALHL + (nu * constants.MAPL_ALHS)
+    leff: f64 = (f64(1.0) - nu) * constants.MAPL_LATENT_HEAT_VAPORIZATION + (
+        nu * constants.MAPL_LATENT_HEAT_SUBLIMATION
+    )
     temps: f32 = tc
     ps: f32 = p
     qs, _ = QSat_Float(ese, esx, temps, ps / 100.0)
@@ -357,14 +359,15 @@ def getbuoy(
 
     if thvubot > thv0bot and thvutop > thv0top:
         plfc = pbot
-    elif thvubot < thv0bot and thvutop < thv0top:
+    elif thvubot <= thv0bot and thvutop <= thv0top:
         cin = cin_in - ((thvubot / thv0bot - 1.0) + (thvutop / thv0top - 1.0)) * (
             pbot - ptop
         ) / (
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
-    elif thvubot > thv0bot and thvutop < thv0top:
+        # cin = 1.0
+    elif thvubot > thv0bot and thvutop <= thv0top:
         frc = (thvutop / thv0top - 1.0) / (
             (thvutop / thv0top - 1.0) - (thvubot / thv0bot - 1.0)
         )
@@ -374,15 +377,19 @@ def getbuoy(
             pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
             + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
         )
+        # cin = 2.0
     else:
         frc = (thvubot / thv0bot - 1.0) / (
             (thvubot / thv0bot - 1.0) - (thvutop / thv0top - 1.0)
         )
         plfc = pbot - frc * (pbot - ptop)
-        cin = cin_in - (thvubot / thv0bot - 1.0) * (pbot - plfc) / (
-            pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
-            + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
+        cin = cin_in - ((thvubot / thv0bot - 1.0) * (pbot - plfc)) / (
+            (
+                pbot / (constants.MAPL_RGAS * thv0bot * exnerfn(pbot))
+                + ptop / (constants.MAPL_RGAS * thv0top * exnerfn(ptop))
+            )
         )
+        # cin = 3.0
 
     return plfc, cin  # Note: plfc and cin are returned, but not always used
 

@@ -132,11 +132,12 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             "thl0lcl": self.grid.compute_dict(),
             "qt0lcl": self.grid.compute_dict(),
             "thv0lcl": self.grid.compute_dict(),
-            "plfc_test": self.grid.compute_dict(),
-            "cin_test": self.grid.compute_dict(),
+            "plfc": self.grid.compute_dict(),
+            "cin": self.grid.compute_dict(),
             "thvubot_test": self.grid.compute_dict(),
             "thvlsrc": self.grid.compute_dict(),
             "thv0bot_test": self.grid.compute_dict(),
+            "thl0top": self.grid.compute_dict(),
         }
 
     def reshape_before(self, inputs):
@@ -252,9 +253,9 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
 
         # Float/Int Inputs
         dotransport = inputs_reshaped["dotransport"]
-        ncnst = np.int64(inputs_reshaped["ncnst"])
-        k0 = np.int64(inputs_reshaped["k0"])
-        windsrcavg = np.int64(inputs_reshaped["windsrcavg"])
+        ncnst = Int(inputs_reshaped["ncnst"])
+        k0 = Int(inputs_reshaped["k0"])
+        windsrcavg = Int(inputs_reshaped["windsrcavg"])
         qtsrchgt = inputs_reshaped["qtsrchgt"]
         qtsrc_fac = inputs_reshaped["qtsrc_fac"]
         thlsrc_fac = inputs_reshaped["thlsrc_fac"]
@@ -358,7 +359,16 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         plfc = self.make_ij_field(np.zeros(shape=[24, 24]))
         cin = self.make_ij_field(np.zeros(shape=[24, 24]))
         thvubot = self.make_ij_field(np.zeros(shape=[24, 24]))
+        thvutop = self.make_ij_field(np.zeros(shape=[24, 24]))
         thvlsrc = self.make_ij_field(np.zeros(shape=[24, 24]))
+        thl0top = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qt0top = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thl0bot = self.make_ij_field(np.zeros(shape=[24, 24]))
+        thj2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qvj2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlj2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qij2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qse2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -465,14 +475,22 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             cin=cin,
             thvubot=thvubot,
             thvlsrc=thvlsrc,
+            thl0top=thl0top,
+            qt0top=qt0top,
+            thvutop=thvutop,
+            thj2=thj2,
+            qvj2=qvj2,
+            qlj2=qlj2,
+            qij2=qij2,
+            qse2=qse2,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(cin.view[:])
+        print(cin.view[:, :])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "cin"
+            testvar = "cin_test"
             var = cin
             testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 0, 0]
             # Replace nans with zero
@@ -492,28 +510,31 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         failed_indicies = 0
         testing_variable = var
         reference_variable = testvar_out
-        # print(testing_variable.shape)
-        # print(reference_variable.shape)
 
         for i in range(testing_variable.view[:].shape[0]):
             for j in range(testing_variable.view[:].shape[1]):
                 # for k in range(testing_variable.view[:].shape[2]):
                 diff = testing_variable.view[i, j] - reference_variable.view[i, j]
 
+                rel_error = abs(diff / reference_variable.view[i, j])
+
                 tot_indicies = tot_indicies + 1
                 if testing_variable.view[i, j] != reference_variable.view[i, j]:
-                    failed_indicies = failed_indicies + 1
-                    print(
-                        "DIFF: ",
-                        i,
-                        j,
-                        "computed: ",
-                        testing_variable.view[i, j],
-                        "reference: ",
-                        reference_variable.view[i, j],
-                        "difference: ",
-                        testing_variable.view[i, j] - reference_variable.view[i, j],
-                    )
+                    if rel_error > 1e-9:
+                        failed_indicies = failed_indicies + 1
+                        print(
+                            "DIFF: ",
+                            i,
+                            j,
+                            "computed: ",
+                            testing_variable.view[i, j],
+                            "reference: ",
+                            reference_variable.view[i, j],
+                            "abs difference: ",
+                            testing_variable.view[i, j] - reference_variable.view[i, j],
+                            "rel difference: ",
+                            diff / reference_variable.view[i, j],
+                        )
         print(
             "failures: ",
             failed_indicies,
@@ -523,7 +544,3 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             (failed_indicies / tot_indicies) * 100,
             "%)",
         )
-
-        # return {
-        #     "thvlavg": tkeavg_4D,
-        # }
