@@ -1,5 +1,6 @@
 import cffi
 from mpi4py import MPI
+from distutils.sysconfig import get_config_var
 
 
 TMPFILEBASE = "pyMoist_interface_py"
@@ -105,7 +106,10 @@ with open("moist.h") as f:
     data = data.replace("CFFI_DLLEXPORT", "")
     ffi.embedding_api(data)
 
-ffi.set_source(TMPFILEBASE, '#include "moist.h"')
-
+ffi.set_source(
+    TMPFILEBASE,
+    '#include "moist.h"',
+    library_dirs=[get_config_var("LIBDIR")],
+)
 ffi.embedding_init_code(source)
-ffi.compile(target="lib" + TMPFILEBASE + ".so", verbose=True)
+ffi.compile(target="lib" + TMPFILEBASE + ".*", verbose=3)
