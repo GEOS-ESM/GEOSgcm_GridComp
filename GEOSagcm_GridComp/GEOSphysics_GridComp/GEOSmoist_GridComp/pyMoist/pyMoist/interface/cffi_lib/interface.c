@@ -45,6 +45,31 @@ void pymoist_interface_c_run_GFDL1M(
     }
 }
 
+void pymoist_interface_c_run_GFDL1M_driver(
+    float *RAD_QV, float *RAD_QL, float *RAD_QR, float *RAD_QI, float *RAD_QS, float *RAD_QG, float *RAD_CF, float *NACTAll,
+    float *DQVDTmic, float *DQLDTmic, float *DQRDTmic, float *DQIDTmic,
+    float *DQSDTmic, float *DQGDTmic, float *DQADTmic, float *DTDTmic,
+    float *T, float *W, float *U, float *V, float *DUDTmic, float *DVDTmic, float *DZ, float *DP,
+    float *AREA, float *FRLAND, float *CNV_FRC, float *SRF_TYPE, float *EIS, float *RHCRIT3D,
+    float DT_MOIST, float ANV_ICEFALL, float LS_ICEFALL,
+    float *REV_LS, float *RSU_LS,
+    float *PRCP_RAIN, float *PRCP_SNOW, float *PRCP_ICE, float *PRCP_GRAUPEL,
+    float *PFL_LS, float *PFI_LS,
+    int LHYDROSTATIC, int LPHYS_HYDROSTATIC)
+{
+    int return_code = pymoist_interface_py_run_GFDL1M_driver(
+        RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll,
+        DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
+        T, W, U, V, DUDTmic, DVDTmic, DZ, DP, AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,
+        DT_MOIST, ANV_ICEFALL, LS_ICEFALL,
+        REV_LS, RSU_LS, PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, PFL_LS, PFI_LS,
+        LHYDROSTATIC, LPHYS_HYDROSTATIC);
+    if (return_code < 0)
+    {
+        exit(return_code);
+    }
+}
+
 void pymoist_interface_c_run_AerActivation(
     // input
     float *aero_dgn, float *aero_num, float *aero_hygroscopicity, float *aero_sigma,

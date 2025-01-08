@@ -36,7 +36,7 @@ if (BUILD_PYMOIST_INTERFACE)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
   # Set up some variables in case names change
-  set(PYMOIST_INTERFACE_LIBRARY     ${CMAKE_CURRENT_BINARY_DIR}/libpyMoist_interface_py.so)
+  set(PYMOIST_INTERFACE_LIBRARY     ${CMAKE_CURRENT_BINARY_DIR}/libpyMoist_interface_py${CMAKE_SHARED_LIBRARY_SUFFIX})
   set(PYMOIST_INTERFACE_HEADER_FILE ${CMAKE_CURRENT_BINARY_DIR}/pymoist_interface_py.h)
   set(PYMOIST_INTERFACE_FLAG_HEADER_FILE ${CMAKE_CURRENT_SOURCE_DIR}/pyMoist/pyMoist/interface/cffi_lib/moist.h)
   set(PYMOIST_INTERFACE_SRCS        ${CMAKE_CURRENT_SOURCE_DIR}/pyMoist/pyMoist/interface/cffi_lib/interface.py)
