@@ -5267,10 +5267,10 @@ end if
 
        ! Add presribed fluxes
        if ( SCM_SL /= 0 .and. (SCM_SL_FLUX /= 1 .and. SCM_SL_FLUX /= 2) ) then
-          if ( name == 'S' ) then
+          if ( trim(name) == 'S' ) then
              SG => ssurf_scm
           end if
-          if ( name == 'Q' ) then
+          if ( trim(name) == 'Q' ) then
              SG => qsurf_scm
           end if
        end if
@@ -5278,9 +5278,9 @@ end if
 ! Pick the right exchange coefficients
 !-------------------------------------
 
-if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
-     (name /= 'QLLS') .and. (name /= 'QILS') .and. &
-     (name /= 'U'   ) .and. (name /= 'V'   )) then
+if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
+     (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
+     (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
     
 
        if     ( TYPE=='U' ) then ! Momentum
@@ -5304,32 +5304,32 @@ if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
        
        SX = S
 
- elseif (name =='S') then
+ elseif (trim(name) =='S') then
           CX => CT
           DX => DKSS
           AK => AKSS; BK => BKSS; CK => CKSS
           SX=S+YS      
- elseif (name=='Q') then
+ elseif (trim(name)=='Q') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQV
- elseif (name=='QLLS') then
+ elseif (trim(name)=='QLLS') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
- elseif (name=='QILS') then
+ elseif (trim(name)=='QILS') then
           CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
- elseif (name=='U') then       
+ elseif (trim(name)=='U') then       
          CX => CU
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YU
- elseif (name=='V') then       
+ elseif (trim(name)=='V') then       
          CX => CU
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
@@ -5347,15 +5347,15 @@ if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
 
        if(associated(SF)) then
           if ( SCM_SL /= 0 .and. SCM_SL_FLUX == 1 ) then
-             if ( name == 'S' ) then
+             if ( trim(name) == 'S' ) then
                 SF(:,:) = scm_sh
-             elseif ( name == 'Q' ) then
+             elseif ( trim(name) == 'Q' ) then
                 SF(:,:) = scm_evap/mapl_alhl
              end if
           else if ( SCM_SL /= 0 .and. SCM_SL_FLUX ==2 ) then
-             if ( name == 'S' ) then
+             if ( trim(name) == 'S' ) then
                 SF(:,:) = SHOBS 
-             elseif ( name == 'Q' ) then
+             elseif ( trim(name) == 'Q' ) then
                 SF(:,:) = LHOBS/MAPL_ALHL 
              end if
           else
@@ -5368,11 +5368,11 @@ if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
        end if
 
        if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
-          if (NAME == 'S') then
+          if (trim(name) == 'S') then
              SF = SF + SH_SPRAY
           end if
 
-          if (NAME == 'Q') then 
+          if (trim(name) == 'Q') then 
              SF = SF + LH_SPRAY/MAPL_ALHL
           end if
        end if
@@ -5389,16 +5389,16 @@ if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
        end if
 
        if (DO_WAVES /= 0 .and. DO_SEA_SPRAY /= 0) then
-          if (NAME == 'S') then
+          if (trim(name) == 'S') then
              SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
           end if
 
-          if (NAME == 'Q') then
+          if (trim(name) == 'Q') then
              SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
           end if
        end if
 
-       if( NAME=='S' ) then
+       if( trim(name)=='S' ) then
           SINC = ( (SX - S)/DT )
        end if
 
@@ -5410,16 +5410,16 @@ if ( (name /= 'S'   ) .and. (name /= 'Q'   ) .and. &
        end if
 
 ! Fill exports of U,V and S after diffusion
-      if( name == 'U' ) then
+      if( trim(name) == 'U' ) then
           if(associated(UAFDIFFUSE)) UAFDIFFUSE = SX
        endif
-      if( name == 'V' ) then
+      if( trim(name) == 'V' ) then
           if(associated(VAFDIFFUSE)) VAFDIFFUSE = SX
        endif
-       if( name == 'S' ) then 
+       if( trim(name) == 'S' ) then 
           if(associated(SAFDIFFUSE)) SAFDIFFUSE = SX
        endif
-       if( name == 'Q' ) then
+       if( trim(name) == 'Q' ) then
           if(associated(QAFDIFFUSE)) QAFDIFFUSE = SX
        endif
 
@@ -5966,13 +5966,13 @@ end subroutine RUN1
          else
             RETURN_(ESMF_FAILURE)
          end if
-         if( NAME=='QV' ) then
+         if( trim(NAME)=='QV' ) then
             DKX => DKQQ
          end if
-         if( NAME=='S') then
+         if( trim(NAME)=='S') then
             DKX => DKSS
          end if
-         if( NAME=='U' .or. NAME=='V' ) then
+         if( trim(NAME)=='U' .or. trim(NAME)=='V' ) then
             DKX => DKUU
          end if
 
@@ -5996,9 +5996,11 @@ end subroutine RUN1
             if(associated(KETOP )) KETOP  = 0.0
             if(associated(KEINT )) KEINT  = 0.0
             if(associated(INTDIS)) then
+
                DF = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
-               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF(:,:,1:LM-1)
-               INTDIS(:,:,2:LM-1) = INTDIS(:,:,2:LM-1) + DF(:,:,1:LM-2)
+               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
+               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+
                ! Add surface dissipation to lower 200m
                do J=1,JM
                   do I=1,IM
@@ -6014,13 +6016,14 @@ end subroutine RUN1
                   end do
                end do
               ! limit INTDIS to 5-deg/hour
-               do L=1,LM
-                  do J=1,JM
-                     do I=1,IM
-                        INTDIS(I,J,L) = SIGN(min(5.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
-                     end do
-                  end do
-               end do
+              !do L=1,LM
+              !   do J=1,JM
+              !      do I=1,IM
+              !         INTDIS(I,J,L) = SIGN(min(5.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
+              !      end do
+              !   end do
+              !end do
+
                if(associated(KETRB)) then
                   do L=1,LM
                      KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
@@ -6583,7 +6586,7 @@ end subroutine RUN1
            !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
             if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
                 wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MAX(CBl,wsp0) ! enhance winds
+                wsp  = SQRT(MIN(wsp0/CBl,1.0))*CBl ! enhance and cap winds
                 FKV_temp = Z(I,J,L)/Hefold
                 FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                 FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/Hefold) * wsp
