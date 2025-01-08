@@ -19,6 +19,19 @@ typedef struct
 	int n_tiles;
 	// Aer Activation
 	int n_modes;
+	// Magic number needs to be last item
+	int mn_123456789;
+} moist_flags_t;
+
+typedef struct
+{
+	// Grid information
+	int npx;
+	int npy;
+	int npz;
+	int layout_x;
+	int layout_y;
+	int n_tiles;
 	// GFDL_1M driver
 	bool phys_hydrostatic;
 	bool hydrostatic;
@@ -105,7 +118,7 @@ typedef struct
 	float irain_f;
 	// Magic number needs to be last item
 	int mn_123456789;
-} moist_flags_t;
+} gfdl_1m_flags_t;
 
 // Carry wrapper for MPI
 typedef union
@@ -115,6 +128,8 @@ typedef union
 } MPI_Comm_t;
 
 extern int pymoist_interface_py_init(moist_flags_t *flags);
+
+extern int gfdl_1m_interface_py_init(gfdl_1m_flags_t *flags);
 
 extern int pymoist_interface_py_run_AerActivation(
 	// input
@@ -136,7 +151,7 @@ extern int pymoist_interface_py_run_GFDL1M(
 	float *T, float *Q, float *QLCN, float *QICN, float *QLLS, float *QILS, float *CLLS, float *CLCN,
 	float *SUBLC, float *EVAPC, float *RHX);
 
-extern int pymoist_interface_py_run_GFDL1M_driver(
+extern int pymoist_interface_py_run_GFDL_1M_driver(
 	float *RAD_QV, float *RAD_QL, float *RAD_QR, float *RAD_QI, float *RAD_QS, float *RAD_QG, float *RAD_CF, float *NACTAll,
 	float *DQVDTmic, float *DQLDTmic, float *DQRDTmic, float *DQIDTmic,
 	float *DQSDTmic, float *DQGDTmic, float *DQADTmic, float *DTDTmic,

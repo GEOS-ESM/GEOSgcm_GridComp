@@ -8,7 +8,8 @@ import cffi
 
 
 @dataclass
-class MoistFlags:
+class moist_flags:
+    # Grid layout
     npx: int = 0
     npy: int = 0
     npz: int = 0
@@ -17,6 +18,19 @@ class MoistFlags:
     n_tiles: int = 6
     # Aer Activation
     n_modes: int = 0
+    # Magic number
+    mn_123456789: int = 0
+
+
+@dataclass
+class gfdl_1m_flags:
+    # Grid layout
+    npx: int = 0
+    npy: int = 0
+    npz: int = 0
+    layout_x: int = 1
+    layout_y: int = 1
+    n_tiles: int = 6
     # GFDL_1M driver (for now initalized to junk values, these values dont matter, right?)
     phys_hydrostatic: bool = False
     hydrostatic: bool = False
@@ -106,7 +120,7 @@ class MoistFlags:
 
 
 def _generic_config_bridge(
-    py_flags: MoistFlags,
+    py_flags: moist_flags,
     fv_flags: cffi.FFI.CData,
 ):
     keys = list(filter(lambda k: not k.startswith("__"), dir(type(py_flags))))
@@ -115,14 +129,14 @@ def _generic_config_bridge(
             setattr(py_flags, k, getattr(fv_flags, k))
 
 
-def flags_fv_to_python(
+def flags_f_to_python(
     fv_flags: cffi.FFI.CData,
-) -> MoistFlags:
+) -> moist_flags:
     if fv_flags.mn_123456789 != 123456789:
         raise RuntimeError(
             "Magic number failed, pyMoist interface is broken on the python side"
         )
 
-    py_flags = MoistFlags()
+    py_flags = moist_flags()
     _generic_config_bridge(py_flags, fv_flags)
     return py_flags

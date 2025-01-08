@@ -19,6 +19,23 @@ extern int pymoist_interface_c_init(moist_flags_t *flags)
     }
 }
 
+extern int gfdl_1m_interface_c_init(gfdl_1m_flags_t *flags)
+{
+    // Check magic number
+    if (flags->mn_123456789 != 123456789)
+    {
+        printf("Magic number failed, gfdl_1m interface is broken on the C side\n");
+        exit(-1);
+    }
+
+    int return_code = gfdl_1m_interface_py_init(flags);
+
+    if (return_code < 0)
+    {
+        exit(return_code);
+    }
+}
+
 void pymoist_interface_c_run_GFDL1M(
     float dw_land, float dw_ocean, int PDFSHAPE, float TURNRHCRIT_PARAM,
     float DT_MOIST, float CCW_EVAP_EFF, float CCI_EVAP_EFF,
@@ -45,7 +62,7 @@ void pymoist_interface_c_run_GFDL1M(
     }
 }
 
-void pymoist_interface_c_run_GFDL1M_driver(
+void pymoist_interface_c_run_GFDL_1M_driver(
     float *RAD_QV, float *RAD_QL, float *RAD_QR, float *RAD_QI, float *RAD_QS, float *RAD_QG, float *RAD_CF, float *NACTAll,
     float *DQVDTmic, float *DQLDTmic, float *DQRDTmic, float *DQIDTmic,
     float *DQSDTmic, float *DQGDTmic, float *DQADTmic, float *DTDTmic,
@@ -57,7 +74,7 @@ void pymoist_interface_c_run_GFDL1M_driver(
     float *PFL_LS, float *PFI_LS,
     int LHYDROSTATIC, int LPHYS_HYDROSTATIC)
 {
-    int return_code = pymoist_interface_py_run_GFDL1M_driver(
+    int return_code = pymoist_interface_py_run_GFDL_1M_driver(
         RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll,
         DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic, DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
         T, W, U, V, DUDTmic, DVDTmic, DZ, DP, AREA, FRLAND, CNV_FRC, SRF_TYPE, EIS, RHCRIT3D,

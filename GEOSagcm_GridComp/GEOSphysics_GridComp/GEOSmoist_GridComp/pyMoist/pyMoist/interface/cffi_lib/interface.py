@@ -20,7 +20,7 @@ from pyMoist.interface.python_bridge import (
     pyMoist_init,
     pyMoist_run_AerActivation,
     pyMoist_run_GFDL1M,
-    pymoist_run_GFDL1M_driver,
+    pymoist_run_GFDL_1M_driver,
     pyMoist_finalize
 )
 import traceback
@@ -30,6 +30,17 @@ def pymoist_interface_py_init(flags) -> int:
 
     try:
         pyMoist_init(flags)
+    except Exception as err:
+        print("Error in Python:")
+        print(traceback.format_exc())
+        return -1
+    return 0
+
+@ffi.def_extern()
+def gfdl_1m_interface_py_init(flags) -> int:
+
+    try:
+        gfdl_1m_init(flags)
     except Exception as err:
         print("Error in Python:")
         print(traceback.format_exc())
@@ -88,7 +99,7 @@ def pymoist_interface_py_run_GFDL1M(
     return 0
 
 @ffi.def_extern()
-def pymoist_interface_py_run_GFDL1M_driver(
+def pymoist_interface_py_run_GFDL_1M_driver(
         RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, NACTAll,
         DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,
         DQSDTmic, DQGDTmic, DQADTmic, DTDTmic,
@@ -101,7 +112,7 @@ def pymoist_interface_py_run_GFDL1M_driver(
     ):
 
         try:
-            pymoist_run_GFDL1M_driver(
+            pymoist_run_GFDL_1M_driver(
                 RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF,
                 NACTAll,
                 DQVDTmic, DQLDTmic, DQRDTmic, DQIDTmic,

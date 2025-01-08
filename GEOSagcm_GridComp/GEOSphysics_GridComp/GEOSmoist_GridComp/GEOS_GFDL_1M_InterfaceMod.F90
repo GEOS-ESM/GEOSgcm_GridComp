@@ -373,6 +373,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: IM,JM,LM
     integer :: I, J, L
 
+#ifdef PYMOIST_INTEGRATION
+    integer                               :: NX, NY
+    type(gfdl_1m_flags_interface_type)      :: gfdl_1m_flags
+    logical                               :: init_gfdl_1m_flags = .true.
+    ! IEEE trapping see below
+    logical                               :: halting_mode(5)
+    real                                  :: start, finish
+    integer                               :: comm, rank, mpierr
+#endif
+
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
 
@@ -824,10 +834,38 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
          RAD_QG = QGRAUPEL
         ! Run the driver
 #ifdef PYMOIST_INTEGRATION
+        if (init_gfdl_1m_flags) then
+            call cpu_time(start)
+            init_gfdl_1m_flags = .false.
+            call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
+            call MAPL_GetResource( MAPL, NX, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
+            call MAPL_GetResource( MAPL, NY, 'NX:', default=0, RC=STATUS ); VERIFY_(STATUS)
+            call make_gfdl_1m_flags_C_interop(IM, JM, LM, NX, NY, 6, &
+                LPHYS_HYDROSTATIC, LHYDROSTATIC, do_qa, fix_negative, fast_sat_adj, &
+                const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap, &
+                do_subl, z_slope_liq, z_slope_ice, prog_ccn, preciprad, use_ppm, &
+                mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
+                dt_moist, mp_time, t_min, t_sub, tau_r2g, tau_smlt, tau_g2r, &
+                dw_land, dw_ocean, vi_fac, vr_fac, vs_fac, vg_fac, ql_mlt, vi_max, &
+                vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max, &
+                qi0_crt, qr0_crt, rh_inc, rh_ins, rh_inr, rthreshu, rthreshs, ccn_l, &
+                ccn_o, qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz, &
+                sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s, &
+                tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw, &
+                alin, clin, cld_min, icloud_f, irain_f, gfdl_1m_flags)
+            ! A workaround to the issue of SIGFPE abort during importing of numpy, is to
+            ! disable trapping of FPEs temporarily, call the Python interface and resume trapping
+            call ieee_get_halting_mode(ieee_all, halting_mode)
+            call ieee_set_halting_mode(ieee_all, .false.)
+            call gfdl_1m_interface_f_init(gfdl_1m_flags)
+            call ieee_set_halting_mode(ieee_all, halting_mode)
+            call cpu_time(finish)
+            if (rank == 0) print *, rank, ': pymoist_runtime_init: time taken = ', finish - start, 's'
+        endif
         IF (USE_PYMOIST_GFDL1M_DRIVER) THEN
             C_LHYDROSTATIC = LHYDROSTATIC
             C_LPHYS_HYDROSTATIC = LPHYS_HYDROSTATIC
-            call pymoist_interface_f_run_GFDL1M_driver( &
+            call pymoist_interface_f_run_GFDL_1M_driver( &
               ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI (#/m^3)]
               RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI), &
               ! Output tendencies

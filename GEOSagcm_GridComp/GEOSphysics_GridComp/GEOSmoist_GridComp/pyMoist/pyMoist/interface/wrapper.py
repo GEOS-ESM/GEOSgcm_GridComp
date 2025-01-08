@@ -35,7 +35,7 @@ from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.GFDL_1M.GFDL_1M_driver import GFDL_1M_driver
-from pyMoist.interface.flags import MoistFlags
+from pyMoist.interface.flags import moist_flags, gfdl_1m_flags
 
 
 class MemorySpace(enum.Enum):
@@ -96,7 +96,7 @@ class StencilBackendCompilerOverride:
 class GEOSPyMoistWrapper:
     def __init__(
         self,
-        flags: MoistFlags,
+        flags: moist_flags,
         backend="numpy",
         fortran_mem_space: MemorySpace = MemorySpace.HOST,
     ) -> None:
@@ -194,7 +194,6 @@ class GEOSPyMoistWrapper:
         # JIT system for the component of Moist
         self._aer_activation = None
         self._GFDL_1M_evap = None
-        self._GFDL_1M_driver = None
 
     @property
     def aer_activation(self) -> Callable:
@@ -223,6 +222,116 @@ class GEOSPyMoistWrapper:
                     quantity_factory=self.quantity_factory,
                 )
         return self._GFDL_1M_evap
+
+    def make_nmmodes_quantity(self, data):
+        qty = self.nmodes_quantity_factory.empty(
+            [X_DIM, Y_DIM, Z_DIM, "n_modes"],
+            "n/a",
+        )
+        qty.view[:, :, :, :] = qty.np.asarray(data[:, :, :, :])
+        return qty
+
+
+class GEOSGFDL1MDriverWrapper:
+    def __init__(
+        self,
+        flags: gfdl_1m_flags,
+        backend="numpy",
+        fortran_mem_space: MemorySpace = MemorySpace.HOST,
+    ) -> None:
+        # Look for an override to run on a single node
+        single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
+        comm = MPIComm()
+        if single_rank_override >= 0:
+            comm = NullComm(single_rank_override, 6, 42)
+
+        self.backend = backend
+        self.flags = flags
+        layout = (self.flags.layout_x, self.flags.layout_y)
+
+        # Make a custom performance collector for the GEOS wrapper
+        self.perf_collector = PerformanceCollector("GEOS Moist", comm)
+        partitioner = CubedSpherePartitioner(TilePartitioner(layout))
+        self.communicator = CubedSphereCommunicator(
+            comm,
+            partitioner,
+            timer=self.perf_collector.timestep_timer,
+        )
+        sizer = SubtileGridSizer.from_tile_params(
+            nx_tile=self.flags.npx * self.flags.layout_x,
+            ny_tile=self.flags.npy * self.flags.layout_y,
+            nz=self.flags.npz,
+            n_halo=0,
+            extra_dim_lengths={},
+            layout=layout,
+            tile_partitioner=partitioner.tile,
+            tile_rank=self.communicator.tile.rank,
+        )
+        self.quantity_factory = QuantityFactory.from_backend(
+            sizer=sizer, backend=backend
+        )
+        self.nmodes_quantity_factory = AerActivation.make_nmodes_quantity_factory(
+            self.quantity_factory
+        )
+
+        self.stencil_config = StencilConfig(
+            compilation_config=CompilationConfig(
+                backend=backend, rebuild=False, validate_args=True
+            ),
+        )
+
+        # Build a DaCeConfig for orchestration.
+        # This and all orchestration code are transparent when outside
+        # configuration deactivate orchestration
+        self.stencil_config.dace_config = DaceConfig(
+            communicator=self.communicator,
+            backend=self.stencil_config.backend,
+            tile_nx=self.flags.npx * self.flags.layout_x,
+            tile_nz=self.flags.npz,
+        )
+        self._is_orchestrated = self.stencil_config.dace_config.is_dace_orchestrated()
+
+        # TODO: Orchestrate all code called from this function
+
+        self._grid_indexing = GridIndexing.from_sizer_and_communicator(
+            sizer=sizer, comm=self.communicator
+        )
+        self.stencil_factory = StencilFactory(
+            config=self.stencil_config, grid_indexing=self._grid_indexing
+        )
+
+        self._fortran_mem_space = fortran_mem_space
+        self._pace_mem_space = (
+            MemorySpace.DEVICE if is_gpu_backend(backend) else MemorySpace.HOST
+        )
+
+        # Feedback information
+        device_ordinal_info = (
+            f"  Device PCI bus id: {cp.cuda.Device(0).pci_bus_id}\n"
+            if is_gpu_backend(backend)
+            else "N/A"
+        )
+        MPS_pipe_directory = os.getenv("CUDA_MPS_PIPE_DIRECTORY", None)
+        MPS_is_on = (
+            MPS_pipe_directory is not None
+            and is_gpu_backend(backend)
+            and os.path.exists(f"{MPS_pipe_directory}/log")
+        )
+        ndsl_log.info(
+            "pyMoist <> GEOS wrapper initialized: \n"
+            f"         bridge : {self._fortran_mem_space}"
+            f" > {self._pace_mem_space}\n"
+            f"        backend : {backend}\n"
+            f"          float : {floating_point_precision()}bit\n"
+            f"  orchestration : {self._is_orchestrated}\n"
+            f"          sizer : {sizer.nx}x{sizer.ny}x{sizer.nz}"
+            f"(halo: {sizer.n_halo})\n"
+            f"     Device ord : {device_ordinal_info}\n"
+            f"     Nvidia MPS : {MPS_is_on}"
+        )
+
+        # JIT system for the component
+        self._GFDL_1M_driver = None
 
     @property
     def GFDL_1M_driver(self) -> Callable:
