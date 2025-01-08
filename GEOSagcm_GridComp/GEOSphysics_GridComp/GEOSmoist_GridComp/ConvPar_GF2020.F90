@@ -43,6 +43,8 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  !- number of microphysics schemes in the host model
  INTEGER ,PARAMETER  :: nmp = 1, lsmp = 1, cnmp = 2
 
+ LOGICAL :: FIX_NEGATIVES     = .true.
+
  INTEGER :: USE_MEMORY        =-1 != -1/0/1/2 .../10    !-
 
  INTEGER :: CONVECTION_TRACER = 0 != 0/1:  turn ON/OFF the "convection" tracer
@@ -1612,51 +1614,47 @@ loop1:  do n=1,maxiens
           endif
         enddo loop1
      ENDDO
+
      !----------- check for negative water vapor mix ratio
-     DO i=its,itf
+     if (FIX_NEGATIVES) then
+       DO i=its,itf
           if(do_this_column(i,j) == 0) CYCLE
           do k = kts,ktf
             temp_tendqv(i,k)= outq (i,k,shal) + outq (i,k,deep) + outq (i,k,mid )
           enddo
-
           do k = kts,ktf
             distance(k)= qv_curr(i,k) + temp_tendqv(i,k) * dt
           enddo
-
           if(minval(distance(kts:ktf)) < 0.) then
                 zmax   =  MINLOC(distance(kts:ktf),1)
-
                 if( abs(temp_tendqv(i,zmax) * dt) <  mintracer) then
                   fixout_qv(i)= 0.999999
-                 !fixout_qv(i)= 0.
                 else
                   fixout_qv(i)= ( (smallerQV - qv_curr(i,zmax))) / (temp_tendqv(i,zmax) *dt)
                 endif
                 fixout_qv(i)=max(0.,min(fixout_qv(i),1.))
           endif
-          !--- apply to convective precip
-          CONPRR(i,j)= CONPRR(i,j) * fixout_qv(i)
-     ENDDO
+       ENDDO
+     endif
 
      !------------ feedback
      !-- deep + shallow + mid convection
      DO i = its,itf
       if(do_this_column(i,j) == 0) CYCLE
+      !--- apply to convective precip
+      CONPRR(i,j)= CONPRR(i,j) * fixout_qv(i)
       DO k = kts,kte
              kr=k!+1
              !- feedback the tendencies from convection
              RTHCUTEN (kr,i,j)= (outt (i,k,shal) + outt (i,k,deep) + outt (i,k,mid )) *fixout_qv(i)
-
              RQVCUTEN (kr,i,j)= (outq (i,k,shal) + outq (i,k,deep) + outq (i,k,mid )) *fixout_qv(i)
-
              RQCCUTEN (kr,i,j)= (outqc(i,k,shal) + outqc(i,k,deep) + outqc(i,k,mid )) *fixout_qv(i)
-
              REVSU_GF (kr,i,j)= revsu_gf_2d(i,k)*fixout_qv(i) !-- already contains deep and mid amounts.
-
             !---these arrays are only for the deep plume mode
              PRFIL_GF (kr,i,j)= prfil_gf_2d (i,k)*fixout_qv(i) !-- ice/liq prec flux of the deep plume
       ENDDO
      ENDDO
+
      IF(USE_MOMENTUM_TRANSP > 0) THEN
       DO i = its,itf
        if(do_this_column(i,j) == 0) CYCLE
@@ -1667,7 +1665,6 @@ loop1:  do n=1,maxiens
        ENDDO
       ENDDO
      ENDIF
-
 
      IF(APPLY_SUB_MP == 1) THEN
       DO i = its,itf
@@ -1689,34 +1686,29 @@ loop1:  do n=1,maxiens
          RCHEMCUTEN (:,kr,i,j)= (out_CHEM(:,i,k,deep) +out_CHEM(:,i,k,mid)+out_CHEM(:,i,k,shal)) *fixout_qv(i)
        ENDDO
       ENDDO
-
       !- constrain positivity for tracers
+      if (FIX_NEGATIVES) then
       DO i = its,itf
          if(do_this_column(i,j) == 0) CYCLE
-
          do ispc=1,mtp
-
            do k=kts,ktf
               distance(k)= se_chem(ispc,i,k) + RCHEMCUTEN(ispc,k,i,j)* dt
            enddo
-
            !-- fixer for mass of tracer
            IF(minval(distance(kts:ktf)) < 0.) THEN
                 zmax   =  MINLOC(distance(kts:ktf),1)
-
                 if( abs(RCHEMCUTEN(ispc,zmax,i,j)*dt) <  mintracer) then
                   fixouts= 0.999999
-                 !fixouts= 0.
                 else
                   fixouts=  ( (mintracer - se_chem(ispc,i,zmax))) / (RCHEMCUTEN(ispc,zmax,i,j)*dt)
                 endif
                 if(fixouts > 1. .or. fixouts <0.)fixouts=0.
-
                 RCHEMCUTEN(ispc,kts:ktf,i,j)=fixouts*RCHEMCUTEN(ispc,kts:ktf,i,j)
            ENDIF
          enddo
       ENDDO
      ENDIF
+     endif
 
      IF(CONVECTION_TRACER==1) THEN
       DO i = its,itf
@@ -8788,8 +8780,8 @@ cycle
              outtem (i,k) = outtem (i,k) * check_cons_F(i,1)
              outq   (i,k) = outq   (i,k) * check_cons_F(i,2)
              outqc  (i,k) = outqc  (i,k) * check_cons_F(i,3)
-                  outu   (i,k) = outu   (i,k) * check_cons_F(i,4)
-                   outv   (i,k) = outv   (i,k) * check_cons_F(i,5)
+             outu   (i,k) = outu   (i,k) * check_cons_F(i,4)
+             outv   (i,k) = outv   (i,k) * check_cons_F(i,5)
            ENDDO
 
 !           print*,"check=",real( (check_cons_F(i,3)+check_cons_F(i,2))/(check_cons_I(i,3)+check_cons_I(i,2)),4)!&
