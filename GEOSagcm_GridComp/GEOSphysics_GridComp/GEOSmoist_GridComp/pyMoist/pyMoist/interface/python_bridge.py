@@ -12,8 +12,12 @@ from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
-from pyMoist.interface.flags import flags_f_to_python
-from pyMoist.interface.wrapper import GEOSPyMoistWrapper, GEOSGFDL1MDriverWrapper, MemorySpace
+from pyMoist.interface.flags import moist_flags_f_to_python, gfdl_1m_flags_f_to_python
+from pyMoist.interface.wrapper import (
+    GEOSPyMoistWrapper,
+    GEOSGFDL1MDriverWrapper,
+    MemorySpace,
+)
 
 
 class PYMOIST_WRAPPER:
@@ -27,7 +31,7 @@ class PYMOIST_WRAPPER:
     ) -> None:
         self.rank = MPI.COMM_WORLD.Get_rank()
         self.backend = backend
-        self.flags = flags_f_to_python(pyMoist_flags)
+        self.flags = moist_flags_f_to_python(pyMoist_flags)
         print(f"Moist Flags:\n{self.flags}")
         # For Fortran<->NumPy conversion
         if is_gpu_backend(self.backend):
@@ -315,46 +319,6 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(self.pymoist.gfdl_1M.evapc.view[:], f_EVAPC)
             self.f_py.python_to_fortran(self.pymoist.gfdl_1M.rhx.view[:], f_RHX)
 
-
-class GFDL_1M_WRAPPER:
-    def __init__(self) -> None:
-        self.ready = False
-
-    def init(
-        self,
-        gfdl_1m_flags: cffi.FFI.CData,
-        backend: str = "dace:cpu",
-    ) -> None:
-        self.rank = MPI.COMM_WORLD.Get_rank()
-        self.backend = backend
-        self.flags = flags_f_to_python(gfdl_1m_flags)
-        print(f"GFDL_1M Flags:\n{self.flags}")
-        # For Fortran<->NumPy conversion
-        if is_gpu_backend(self.backend):
-            numpy_module = cp
-            self.fortran_mem_space = MemorySpace.DEVICE
-        else:
-            numpy_module = np
-            self.fortran_mem_space = MemorySpace.HOST
-        self.f_py = FortranPythonConversion(
-            self.flags.npx,
-            self.flags.npy,
-            self.flags.npz,
-            numpy_module,
-        )
-
-        # Initalize GFDL_1M driver
-        self.gfdl_1m = GEOSGFDL1MDriverWrapper(self.flags, backend)
-
-        self._timings: Dict[str, List[float]] = {}
-        self.ready = True
-
-    def finalize(self):
-        import json
-
-        with open("gfdl_1m_timings.json", "w") as f:
-            json.dump(self._timings, f, indent=4)
-
     def GFDL_1M_driver(
         self,
         f_qv: cffi.FFI.CData,
@@ -561,8 +525,6 @@ class GFDL_1M_WRAPPER:
 
 
 WRAPPER = PYMOIST_WRAPPER()
-DRIVER_WRAPPER = GFDL_1M_WRAPPER()
-
 
 def pyMoist_run_GFDL_1M_evap_subl_hystpdf(
     dw_land: np.float32,
@@ -680,7 +642,7 @@ def pymoist_run_GFDL_1M_driver(
 
     print("Running pyMoist GFDL_1M driver")
 
-    DRIVER_WRAPPER.GFDL_1M_driver(
+    WRAPPER.GFDL_1M_driver(
         f_qv=RAD_QV,
         f_ql=RAD_QL,
         f_qr=RAD_QR,
@@ -787,11 +749,8 @@ def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
 
 
 def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData):
-    # Read in the backend
-    BACKEND = os.environ.get("GEOS_PYFV3_BACKEND", "dace:cpu")
-    if DRIVER_WRAPPER.ready:
+    if WRAPPER.ready:
         raise RuntimeError("[GFDL_1M WRAPPER] Double init")
-    DRIVER_WRAPPER.init(
-        gfdl_1m_flags_flags=gfdl_1m_flags,
-        backend=BACKEND,
+    WRAPPER.pymoist.init_gfdl_1m_flags(
+        gfdl_1m_flags_flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
     )

@@ -25,13 +25,6 @@ typedef struct
 
 typedef struct
 {
-	// Grid information
-	int npx;
-	int npy;
-	int npz;
-	int layout_x;
-	int layout_y;
-	int n_tiles;
 	// GFDL_1M driver
 	bool phys_hydrostatic;
 	bool hydrostatic;
@@ -114,8 +107,8 @@ typedef struct
 	float alin;
 	float clin;
 	float cld_min;
-	float icloud_f;
-	float irain_f;
+	int icloud_f;
+	int irain_f;
 	// Magic number needs to be last item
 	int mn_123456789;
 } gfdl_1m_flags_t;
