@@ -174,7 +174,7 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(nwfa, f_nwfa)
             self.f_py.python_to_fortran(nactl, f_nactl)
 
-    def GFDL_1M__EVAP_SUBL_HYSTPDF(
+    def GFDL_1M_evap_subl_hystpdf(
         self,
         f_EIS: cffi.FFI.CData,
         f_dw_land: np.float32,
@@ -315,11 +315,215 @@ class PYMOIST_WRAPPER:
             self.f_py.python_to_fortran(self.pymoist.gfdl_1M.evapc.view[:], f_EVAPC)
             self.f_py.python_to_fortran(self.pymoist.gfdl_1M.rhx.view[:], f_RHX)
 
+    def GFDL_1M_driver(
+        self,
+        f_qv: cffi.FFI.CData,
+        f_ql: cffi.FFI.CData,
+        f_qr: cffi.FFI.CData,
+        f_qi: cffi.FFI.CData,
+        f_qs: cffi.FFI.CData,
+        f_qg: cffi.FFI.CData,
+        f_qa: cffi.FFI.CData,
+        f_qn: cffi.FFI.CData,
+        f_qv_dt: cffi.FFI.CData,
+        f_ql_dt: cffi.FFI.CData,
+        f_qr_dt: cffi.FFI.CData,
+        f_qi_dt: cffi.FFI.CData,
+        f_qs_dt: cffi.FFI.CData,
+        f_qg_dt: cffi.FFI.CData,
+        f_qa_dt: cffi.FFI.CData,
+        f_t_dt: cffi.FFI.CData,
+        f_t: cffi.FFI.CData,
+        f_w: cffi.FFI.CData,
+        f_uin: cffi.FFI.CData,
+        f_vin: cffi.FFI.CData,
+        f_udt: cffi.FFI.CData,
+        f_vdt: cffi.FFI.CData,
+        f_dz: cffi.FFI.CData,
+        f_dp: cffi.FFI.CData,
+        f_area: cffi.FFI.CData,
+        f_fr_land: cffi.FFI.CData,
+        f_cnv_frc: cffi.FFI.CData,
+        f_srf_type: cffi.FFI.CData,
+        f_eis: cffi.FFI.CData,
+        f_rhcrit3d: cffi.FFI.CData,
+        f_anv_icefall: np.float32,
+        f_ls_icefall: np.float32,
+        f_hydrostatic: bool,
+        f_phys_hydrostatic: bool,
+        f_rain: cffi.FFI.CData,
+        f_snow: cffi.FFI.CData,
+        f_ice: cffi.FFI.CData,
+        f_graupel: cffi.FFI.CData,
+        f_m2_rain: cffi.FFI.CData,
+        f_m2_sol: cffi.FFI.CData,
+        f_revap: cffi.FFI.CData,
+        f_isubl: cffi.FFI.CData,
+    ):
+        CUDAProfiler.start_cuda_profiler()
+
+        with TimedCUDAProfiler("[GFDL_1M] Fortran -> Python", self._timings):
+            qv = self.f_py.fortran_to_python(f_qv)
+            ql = self.f_py.fortran_to_python(f_ql)
+            qr = self.f_py.fortran_to_python(f_qr)
+            qi = self.f_py.fortran_to_python(f_qi)
+            qs = self.f_py.fortran_to_python(f_qs)
+            qg = self.f_py.fortran_to_python(f_qg)
+            qa = self.f_py.fortran_to_python(f_qa)
+            qn = self.f_py.fortran_to_python(f_qn)
+            qv_dt = self.f_py.fortran_to_python(f_qv_dt)
+            ql_dt = self.f_py.fortran_to_python(f_ql_dt)
+            qr_dt = self.f_py.fortran_to_python(f_qr_dt)
+            qi_dt = self.f_py.fortran_to_python(f_qi_dt)
+            qs_dt = self.f_py.fortran_to_python(f_qs_dt)
+            qg_dt = self.f_py.fortran_to_python(f_qg_dt)
+            qa_dt = self.f_py.fortran_to_python(f_qa_dt)
+            t_dt = self.f_py.fortran_to_python(f_t_dt)
+            t = self.f_py.fortran_to_python(f_t)
+            w = self.f_py.fortran_to_python(f_w)
+            uin = self.f_py.fortran_to_python(f_uin)
+            vin = self.f_py.fortran_to_python(f_vin)
+            udt = self.f_py.fortran_to_python(f_udt)
+            vdt = self.f_py.fortran_to_python(f_vdt)
+            dz = self.f_py.fortran_to_python(f_dz)
+            dp = self.f_py.fortran_to_python(f_dp)
+            area = self.f_py.fortran_to_python(
+                f_area,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            fr_land = self.f_py.fortran_to_python(
+                f_fr_land,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            cnv_frc = self.f_py.fortran_to_python(
+                f_cnv_frc,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            srf_type = self.f_py.fortran_to_python(
+                f_srf_type,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            eis = self.f_py.fortran_to_python(
+                f_eis,
+                [
+                    self.flags.npx,
+                    self.flags.npy,
+                ],
+            )
+            rhcrit3d = self.f_py.fortran_to_python(f_rhcrit3d)
+
+            self.f_py.device_sync()
+
+        with TimedCUDAProfiler("[GFDL_1M] Run", self._timings):
+            self.pymoist.GFDL_1M_driver(
+                qv=qv,
+                ql=ql,
+                qr=qr,
+                qi=qi,
+                qs=qs,
+                qg=qg,
+                qa=qa,
+                qn=qn,
+                qv_dt=qv_dt,
+                ql_dt=ql_dt,
+                qr_dt=qr_dt,
+                qi_dt=qi_dt,
+                qs_dt=qs_dt,
+                qg_dt=qg_dt,
+                qa_dt=qa_dt,
+                t_dt=t_dt,
+                t=t,
+                w=w,
+                uin=uin,
+                vin=vin,
+                udt=udt,
+                vdt=vdt,
+                dz=dz,
+                dp=dp,
+                area=area,
+                fr_land=fr_land,
+                cnv_frc=cnv_frc,
+                srf_type=srf_type,
+                eis=eis,
+                rhcrit3d=rhcrit3d,
+                anv_icefall=Float(f_anv_icefall),
+                ls_icefall=Float(f_ls_icefall),
+                hydrostatic=Float(f_hydrostatic),
+                phys_hydrostatic=Float(f_phys_hydrostatic),
+            )
+
+        # Convert NumPy arrays back to Fortran
+        with TimedCUDAProfiler("[GFDL_1M] Python -> Fortran", self._timings):
+            self.f_py.python_to_fortran(qv, f_qv)
+            self.f_py.python_to_fortran(ql, f_ql)
+            self.f_py.python_to_fortran(qr, f_qr)
+            self.f_py.python_to_fortran(qi, f_qi)
+            self.f_py.python_to_fortran(qs, f_qs)
+            self.f_py.python_to_fortran(qg, f_qg)
+            self.f_py.python_to_fortran(qa, f_qa)
+            self.f_py.python_to_fortran(qn, f_qn)
+            self.f_py.python_to_fortran(qv_dt, f_qv_dt)
+            self.f_py.python_to_fortran(ql_dt, f_ql_dt)
+            self.f_py.python_to_fortran(qr_dt, f_qr_dt)
+            self.f_py.python_to_fortran(qi_dt, f_qi_dt)
+            self.f_py.python_to_fortran(qs_dt, f_qs_dt)
+            self.f_py.python_to_fortran(qg_dt, f_qg_dt)
+            self.f_py.python_to_fortran(qa_dt, f_qa_dt)
+            self.f_py.python_to_fortran(t_dt, f_t_dt)
+            self.f_py.python_to_fortran(t, f_t)
+            self.f_py.python_to_fortran(w, f_w)
+            self.f_py.python_to_fortran(uin, f_uin)
+            self.f_py.python_to_fortran(vin, f_vin)
+            self.f_py.python_to_fortran(udt, f_udt)
+            self.f_py.python_to_fortran(vdt, f_vdt)
+            self.f_py.python_to_fortran(dz, f_dz)
+            self.f_py.python_to_fortran(dp, f_dp)
+            self.f_py.python_to_fortran(area, f_area)
+            self.f_py.python_to_fortran(fr_land, f_fr_land)
+            self.f_py.python_to_fortran(cnv_frc, f_cnv_frc)
+            self.f_py.python_to_fortran(srf_type, f_srf_type)
+            self.f_py.python_to_fortran(eis, f_eis)
+            self.f_py.python_to_fortran(rhcrit3d, f_rhcrit3d)
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.rain.view[:], f_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.snow.view[:], f_snow
+            )
+            self.f_py.python_to_fortran(self.pymoist.GFDL_1M_driver.ice.view[:], f_ice)
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.graupel.view[:], f_graupel
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.m2_rain.view[:], f_m2_rain
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.m2_sol.view[:], f_m2_sol
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.revap.view[:], f_revap
+            )
+            self.f_py.python_to_fortran(
+                self.pymoist.GFDL_1M_driver.isubl.view[:], f_isubl
+            )
+
 
 WRAPPER = PYMOIST_WRAPPER()
 
 
-def pyMoist_run_GFDL1M(
+def pyMoist_run_GFDL_1M_evap_subl_hystpdf(
     dw_land: np.float32,
     dw_ocean: np.float32,
     PDFSHAPE: np.int32,
@@ -352,7 +556,7 @@ def pyMoist_run_GFDL1M(
 ):
     if not WRAPPER.ready:
         raise RuntimeError("[pyMoist] Bad init, did you call init?")
-    WRAPPER.GFDL_1M__EVAP_SUBL_HYSTPDF(
+    WRAPPER.GFDL_1M_evap_subl_hystpdf(
         f_EIS=EIS,
         f_dw_land=dw_land,
         f_dw_ocean=dw_ocean,
@@ -385,7 +589,7 @@ def pyMoist_run_GFDL1M(
     )
 
 
-def pymoist_run_GFDL1M_driver(
+def pymoist_run_GFDL_1M_driver(
     RAD_QV: cffi.FFI.CData,
     RAD_QL: cffi.FFI.CData,
     RAD_QR: cffi.FFI.CData,
@@ -430,7 +634,55 @@ def pymoist_run_GFDL1M_driver(
     LHYDROSTATIC: bool,
     LPHYS_HYDROSTATIC: bool,
 ):
-    print("Running pymoist_run_GFDL1M_driver")
+    if not WRAPPER.ready:
+        raise RuntimeError("[pyMoist] Bad init, did you call init?")
+
+    print("Running pyMoist GFDL_1M driver")
+
+    WRAPPER.GFDL_1M_driver(
+        f_qv=RAD_QV,
+        f_ql=RAD_QL,
+        f_qr=RAD_QR,
+        f_qi=RAD_QI,
+        f_qs=RAD_QS,
+        f_qg=RAD_QG,
+        f_qa=RAD_CF,
+        f_qn=NACTAll,
+        f_qv_dt=DQVDTmic,
+        f_ql_dt=DQLDTmic,
+        f_qr_dt=DQRDTmic,
+        f_qi_dt=DQIDTmic,
+        f_qs_dt=DQSDTmic,
+        f_qg_dt=DQGDTmic,
+        f_qa_dt=DQADTmic,
+        f_t_dt=DTDTmic,
+        f_t=T,
+        f_w=W,
+        f_uin=U,
+        f_vin=V,
+        f_udt=DUDTmic,
+        f_vdt=DVDTmic,
+        f_dz=DZ,
+        f_dp=DP,
+        f_area=AREA,
+        f_fr_land=FRLAND,
+        f_cnv_frc=CNV_FRC,
+        f_srf_type=SRF_TYPE,
+        f_eis=EIS,
+        f_rhcrit3d=RHCRIT3D,
+        f_anv_icefall=ANV_ICEFALL,
+        f_ls_icefall=LS_ICEFALL,
+        f_hydrostatic=LHYDROSTATIC,
+        f_phys_hydrostatic=LPHYS_HYDROSTATIC,
+        f_rain=PRCP_RAIN,
+        f_snow=PRCP_SNOW,
+        f_ice=PRCP_ICE,
+        f_graupel=PRCP_GRAUPEL,
+        f_m2_rain=PFL_LS,
+        f_m2_sol=PFI_LS,
+        f_revap=REV_LS,
+        f_isubl=RSU_LS,
+    )
 
 
 def pyMoist_run_AerActivation(

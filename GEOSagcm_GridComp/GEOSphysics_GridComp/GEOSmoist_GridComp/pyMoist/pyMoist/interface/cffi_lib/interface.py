@@ -138,7 +138,11 @@ with open("moist.h") as f:
     data = data.replace("CFFI_DLLEXPORT", "")
     ffi.embedding_api(data)
 
-ffi.set_source(TMPFILEBASE, '#include "moist.h"')
+ffi.set_source(
+    TMPFILEBASE,
+    '#include "moist.h"',
+    library_dirs=["/Library/Frameworks/Python.framework/Versions/3.11/lib"],
+)
 
 ffi.embedding_init_code(source)
-ffi.compile(target="lib" + TMPFILEBASE + ".so", verbose=True)
+ffi.compile(target="lib" + TMPFILEBASE + ".*", verbose=True)

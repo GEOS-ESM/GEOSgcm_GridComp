@@ -431,7 +431,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             DZ,
             DP,
             AREA,
-            DT_MOIST,
             FRLAND,
             CNV_FRC,
             SRF_TYPE,
@@ -439,12 +438,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             RHCRIT3D,
             ANV_ICEFALL,
             LS_ICEFALL,
-            LHYDROSTATIC,
-            LPHYS_HYDROSTATIC,
-            KTOP,
-            KBOT,
-            fix_negative,
-            sedi_transport,
         )
 
         return {

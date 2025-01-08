@@ -112,6 +112,10 @@ class GFDL_1M_driver:
         mp_print: bool,
     ):
 
+        self.dt_moist = dt_moist
+        self.fix_negative = fix_negative
+        self.sedi_transport = sedi_transport
+
         self.namelist_constants = namelist_setup(
             phys_hydrostatic,
             hydrostatic,
@@ -543,7 +547,6 @@ class GFDL_1M_driver:
         dz: FloatField,
         dp: FloatField,
         area: FloatFieldIJ,
-        dt_moist: Float,
         fr_land: FloatFieldIJ,
         cnv_frc: FloatFieldIJ,
         srf_type: FloatFieldIJ,
@@ -551,12 +554,6 @@ class GFDL_1M_driver:
         rhcrit3d: FloatField,
         anv_icefall: Float,
         ls_icefall: Float,
-        hydrostatic: bool,
-        phys_hydrostatic: bool,
-        kmin: Int,
-        kmax: Int,
-        fix_negative: bool,
-        sedi_transport: bool,
     ):
 
         # The driver modifies a number of variables (t, p, qX) but does not pass
@@ -805,7 +802,7 @@ class GFDL_1M_driver:
             self.den,
             self.p_dry,
             area,
-            dt_moist,
+            self.dt_moist,
             fr_land,
             cnv_frc,
             srf_type,
