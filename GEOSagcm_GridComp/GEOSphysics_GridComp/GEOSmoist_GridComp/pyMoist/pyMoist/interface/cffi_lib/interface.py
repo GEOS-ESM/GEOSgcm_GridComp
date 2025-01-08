@@ -1,6 +1,7 @@
+from distutils.sysconfig import get_config_var
+
 import cffi
 from mpi4py import MPI
-from distutils.sysconfig import get_config_var
 
 
 TMPFILEBASE = "pyMoist_interface_py"
