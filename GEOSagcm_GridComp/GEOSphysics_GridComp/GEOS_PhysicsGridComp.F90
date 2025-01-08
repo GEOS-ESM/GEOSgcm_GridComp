@@ -114,6 +114,7 @@ contains
     integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
     integer                                 :: DO_WAVES, DO_SEA_SPRAY
 
+    real                                    :: SYNCUV
     real                                    :: SYNCTQ
     logical                                 :: DEBUG_SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
@@ -186,8 +187,10 @@ contains
     call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-! Get SYNCTQ flag from config to know whether to terminate some imports
+! Get SYNCTQ & SYNCUV flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
+    call MAPL_GetResource ( MAPL, SYNCUV, Label="SYNCUV:", DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
@@ -1516,10 +1519,18 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+! terminate imports to SURF for SYNCUV
+     if ( SYNCUV.ge.1.) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = [character(len=5) :: 'UA','VA','SPEED' ], &
+          CHILD      = SURF,               &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
 ! terminate imports to SURF for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = [character(len=5) :: 'UA','VA','TA','QA','SPEED' ], &
+          SHORT_NAME = [character(len=5) :: 'TA','QA' ], &
           CHILD      = SURF,               &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -1547,10 +1558,18 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+! terminate imports to turb for SYNCUV
+     if ( SYNCUV.ge.1.) then
+       call MAPL_TerminateImport    ( GC,  &
+          SHORT_NAME = (/'U ','V ' /),     &
+          CHILD      = TURBL,              &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
 ! terminate imports to turb for SYNCTQ
      if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
-          SHORT_NAME = (/'U ','V ','T ','TH' /),     &
+          SHORT_NAME = (/'T ','TH' /),     &
           CHILD      = TURBL,              &
           RC=STATUS  )
        VERIFY_(STATUS)
@@ -2175,7 +2194,7 @@ contains
    logical                             :: DPEDT_PHYS
    real                                :: DT
    logical                             :: DEBUG_SYNCTQ
-   real                                :: SYNCTQ, DOPHYSICS
+   real                                :: SYNCUV, SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
 
    real, pointer, dimension(:,:,:)     :: S, T, ZLE, PLE, PK, U, V, W
@@ -2369,6 +2388,8 @@ contains
 
 ! Get Global PHYSICS Parameters
 ! -----------------------------
+    call MAPL_GetResource(STATE, SYNCUV,    'SYNCUV:',    DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(STATE, SYNCTQ,    'SYNCTQ:',    DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DEBUG_SYNCTQ, Label="DEBUG_SYNCTQ:", DEFAULT= .false., RC=STATUS)
@@ -2583,7 +2604,7 @@ contains
 
     if ( DOPHYSICS.eq.1. ) then
 
-     if ( SYNCTQ.ge.1. ) then
+     if ( (SYNCTQ.ge.1.) .OR. (SYNCUV.ge.1.) ) then
       !  Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
@@ -2632,14 +2653,37 @@ contains
     call Compute_IncBundle( GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)  ! 3D non-weighted
     call Compute_IncMBundle(GIM(MOIST), EXPORT, CMETA, DM=DM,   __RC__)  ! 2D mass-weighted
 
+!  SYNCUV - Stage 1 SYNC of U/V
+!--------------------------------------
+    if ( SYNCUV.ge.1. ) then
+    ! From Moist
+     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+     else
+       UFORSURF = UAFMOIST(:,:,LM)
+       VFORSURF = VAFMOIST(:,:,LM)
+     endif
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    ! For TURBL
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+     UFORTURB =  UAFMOIST
+     VFORTURB =  VAFMOIST
+    endif
+
 !  SYNCTQ - Stage 1 SYNC of T/Q and U/V
 !--------------------------------------
     if ( SYNCTQ.ge.1. ) then
      call MAPL_GetPointer(GIM(MOIST), DTDT_BL, 'DTDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(GIM(MOIST), DQDT_BL, 'DQDT_BL', alloc = .true. ,RC=STATUS); VERIFY_(STATUS)
     ! From Moist
-     call MAPL_GetPointer ( GEX(MOIST),  UAFMOIST,  'UAFMOIST', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GEX(MOIST),  VAFMOIST,  'VAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  TAFMOIST,  'TAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST), THAFMOIST, 'THAFMOIST', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(MOIST),  SAFMOIST,  'SAFMOIST', RC=STATUS); VERIFY_(STATUS)
@@ -2648,23 +2692,16 @@ contains
      DTDT_BL=TAFMOIST
      DQDT_BL=QV
     ! For SURF
-     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
        call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
        call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
-       UFORSURF = UAFMOIST(:,:,LM)
-       VFORSURF = VAFMOIST(:,:,LM)
        TFORSURF = TAFMOIST(:,:,LM)
        QFORSURF = QAFMOIST(:,:,LM)
      endif
-     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
     ! For CHEM
      if ( SYNCTQ.eq.1. ) then
        call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS); VERIFY_(STATUS)
@@ -2675,39 +2712,38 @@ contains
     ! For TURBL
      call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
      call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
-      UFORTURB =  UAFMOIST
-      VFORTURB =  VAFMOIST
       TFORTURB =  TAFMOIST
      THFORTURB = THAFMOIST
       SFORTURB =  SAFMOIST
+    endif
 
-     if (DEBUG_SYNCTQ) then
-     call MAPL_MaxMin('SYNCTQ: TAFMOIST', TAFMOIST)
-     call MAPL_MaxMin('SYNCTQ: QAFMOIST', QAFMOIST)
-     call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
-     call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
-     call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
-     call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: TPREC   ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: CN_PRCP ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: PCU     ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: PLS     ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: SNO     ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: ICE     ', PTR2D)
-     call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_MaxMin('SYNCTQ: FRZR    ', PTR2D)
-     endif
-
+    if (DEBUG_SYNCTQ) then
+       if ( SYNCTQ.ge.1. ) then
+         call MAPL_MaxMin('SYNCTQ: TAFMOIST', TAFMOIST)
+         call MAPL_MaxMin('SYNCTQ: QAFMOIST', QAFMOIST)
+         call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
+         call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
+       endif
+       if ( SYNCUV.ge.1. ) then
+         call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
+         call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
+       endif
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: TPREC   ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: CN_PRCP ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PCU', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: PCU     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'PLS', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: PLS     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'SNO', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: SNO     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'ICE', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: ICE     ', PTR2D)
+       call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_MaxMin('SYNCTQ: FRZR    ', PTR2D)
     endif
 
 ! Surface Stage 1
@@ -2750,51 +2786,67 @@ contains
      if (associated(PTR2D)) PTR2D = t2-t1                                                  
     call MAPL_TimerOff(STATE,GCNames(I))
 
-!  SYNCTQ - Stage 2 SYNC of T/Q and U/V
+!  SYNCUV - Stage 2 SYNC of U/V
 !--------------------------------------
-    if ( SYNCTQ.ge.1. ) then
+    if ( SYNCUV.ge.1. ) then
     ! From TURBL Run 1
      call MAPL_GetPointer ( GEX(TURBL), UAFDIFFUSE, 'UAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GEX(TURBL), VAFDIFFUSE, 'VAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
+    ! For TURBL
+     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
+      UFORTURB = UAFDIFFUSE
+      VFORTURB = VAFDIFFUSE
+    ! For SURF
+     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+     else
+       UFORSURF = UAFDIFFUSE(:,:,LM)
+       VFORSURF = VAFDIFFUSE(:,:,LM)
+     endif
+     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    endif
+
+!  SYNCTQ - Stage 2 SYNC of T/Q 
+!--------------------------------------
+    if ( SYNCTQ.ge.1. ) then
+    ! From TURBL Run 1
      call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', RC=STATUS); VERIFY_(STATUS)
     ! For TURBL
      call ESMF_StateGet(GIM(TURBL), 'TR', BUNDLE, RC=STATUS ); VERIFY_(STATUS)
      call ESMFL_BundleGetPointerToData(BUNDLE,'S',SFORTURB, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), UFORTURB,   'U', RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(TURBL), VFORTURB,   'V', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), TFORTURB,   'T', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(TURBL), THFORTURB, 'TH', RC=STATUS); VERIFY_(STATUS)
-      UFORTURB = UAFDIFFUSE
-      VFORTURB = VAFDIFFUSE
      ! For Stage 2 - Changes in S from TURBL assumed to be all in T
       TFORTURB = TFORTURB + (SAFDIFFUSE-SFORTURB)/MAPL_CP
      THFORTURB = TFORTURB/PK
       SFORTURB = SAFDIFFUSE
     ! For SURF
-     call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
        call VertInterp(TFORSURF,TFORTURB  ,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
        call VertInterp(QFORSURF,QV        ,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        TFORSURF =   TFORTURB(:,:,LM)
-       UFORSURF = UAFDIFFUSE(:,:,LM)
-       VFORSURF = VAFDIFFUSE(:,:,LM)
        QFORSURF =         QV(:,:,LM)
      endif
-     call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
-     SPD4SURF = SQRT( UFORSURF*UFORSURF + VFORSURF*VFORSURF )
+    endif
 
-     if (DEBUG_SYNCTQ) then
-     call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
-     call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
-     call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
-     call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
-     call MAPL_MaxMin('SYNCTQ: TFORTURB', TFORTURB)
+    if (DEBUG_SYNCTQ) then
+     if ( SYNCTQ.ge.1. ) then
+       call MAPL_MaxMin('SYNCTQ: TFORSURF', TFORSURF)
+       call MAPL_MaxMin('SYNCTQ: QFORSURF', QFORSURF)
+       call MAPL_MaxMin('SYNCTQ: TFORTURB', TFORTURB)
+     endif
+     if ( SYNCUV.ge.1. ) then
+       call MAPL_MaxMin('SYNCTQ: UFORSURF', UFORSURF)
+       call MAPL_MaxMin('SYNCTQ: VFORSURF', VFORSURF)
+     endif
      call MAPL_GetPointer ( GIM(SURF), PTR2D, 'TPREC', RC=STATUS); VERIFY_(STATUS)
      call MAPL_MaxMin('SYNCTQ: TPREC   ', PTR2D)
      call MAPL_GetPointer ( GIM(SURF), PTR2D, 'CN_PRCP', RC=STATUS); VERIFY_(STATUS)
@@ -2809,8 +2861,6 @@ contains
      call MAPL_MaxMin('SYNCTQ: ICE     ', PTR2D)
      call MAPL_GetPointer ( GIM(SURF), PTR2D, 'FRZR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_MaxMin('SYNCTQ: FRZR    ', PTR2D)
-     endif
-
     endif
 
 ! Surface Stage 2
