@@ -507,7 +507,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, 
 
 end subroutine WriteTilingNC4
 
-subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, rc)
+subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, AVR,rc)
   character(*),           intent(IN) :: File
   character(*), optional, intent(out) :: GridName(:)
   integer,      optional, intent(out) :: IM(:), JM(:)
@@ -515,6 +515,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
   integer,      optional, allocatable, intent(out) :: iTable(:,:)
   real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
   integer,      optional, intent(out) :: srtm
+  real,         optional, allocatable :: AVR(:,:) ! used by GEOSgcm
   integer,      optional, intent(out) :: rc
 
   type (Attribute), pointer     :: ref
@@ -527,6 +528,12 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
   class(*), pointer             :: char_val
   integer, allocatable          :: tmp_int(:)
   real(kind=8), allocatable     :: fr(:)
+
+  integer, parameter :: NumGlobalVars =4
+  integer, parameter :: NumGridVars   =3
+  integer            :: NumCol
+  integer,      allocatable :: iTable_(:,:)
+  real(kind=8), allocatable :: rTable_(:,:)
 
   call formatter%open(File, pFIO_READ, rc=status)
   meta = formatter%read(rc=status)
@@ -599,50 +606,80 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, r
     endif
   enddo
 
-  if (present(iTable)) then
-     allocate(iTable(ntile,0:7))
-     allocate(tmp_int(ntile))
-     call formatter%get_var('typ', iTable(:,0))
-     do ll = 1, ng
-       if (ng == 1) then
-         str_num=''
-       else
-         write(str_num, '(i0)') ll
-       endif
-
-       call formatter%get_var('i_indg'    //trim(str_num), tmp_int, rc=status)
-       iTable(:,ll*2) = tmp_int
-       call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
-       iTable(:,ll*2+1) = tmp_int
-       call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
-       if ( ng == 1) then
-         iTable(:,4) = tmp_int
-       else
-         iTable(:,5+ll) = tmp_int
-       endif
-     enddo
-  endif
-
-  if (present(rTable)) then
-    allocate(rTable(ntile,10))
-    allocate(fr(ntile))
-    call formatter%get_var('com_lon', rTable(:,1),   rc=status)
-    call formatter%get_var('com_lat', rTable(:,2),   rc=status)
-    call formatter%get_var('area',    rTable(:,3),   rc=status)
+  if (present(iTable) .or. present(AVR) ) then
+    allocate(iTable_(ntile,0:7))
+    allocate(tmp_int(ntile))
+    call formatter%get_var('typ', iTable_(:,0))
     do ll = 1, ng
       if (ng == 1) then
         str_num=''
       else
         write(str_num, '(i0)') ll
       endif
-      call formatter%get_var('frac_cell' //trim(str_num), fr, rc=status)
-      where (fr /=0.0) rTable(:,3+ll) = rTable(:,3)/fr
+
+      call formatter%get_var('i_indg'    //trim(str_num), tmp_int, rc=status)
+      iTable_(:,ll*2) = tmp_int
+      call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
+      iTable_(:,ll*2+1) = tmp_int
+      call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
+      if ( ng == 1) then
+        iTable_(:,4) = tmp_int
+      else
+        iTable_(:,5+ll) = tmp_int
+      endif
     enddo
-    call formatter%get_var('min_lon', rTable(:, 6), rc=status)
-    call formatter%get_var('max_lon', rTable(:, 7), rc=status)
-    call formatter%get_var('min_lat', rTable(:, 8), rc=status)
-    call formatter%get_var('max_lat', rTable(:, 9), rc=status)
-    call formatter%get_var('elev',    rTable(:,10), rc=status)
+  endif
+
+  if (present(rTable) .or. present(AVR) ) then
+    allocate(rTable_(ntile,10))
+    call formatter%get_var('com_lon', rTable_(:,1),   rc=status)
+    call formatter%get_var('com_lat', rTable_(:,2),   rc=status)
+    call formatter%get_var('area',    rTable_(:,3),   rc=status)
+    do ll = 1, ng
+      if (ng == 1) then
+        str_num=''
+      else
+        write(str_num, '(i0)') ll
+      endif
+      call formatter%get_var('frac_cell' //trim(str_num), rTable_(:,3+ll), rc=status)
+    enddo
+    call formatter%get_var('min_lon', rTable_(:, 6), rc=status)
+    call formatter%get_var('max_lon', rTable_(:, 7), rc=status)
+    call formatter%get_var('min_lat', rTable_(:, 8), rc=status)
+    call formatter%get_var('max_lat', rTable_(:, 9), rc=status)
+    call formatter%get_var('elev',    rTable_(:,10), rc=status)
+  endif
+
+  if (present(AVR)) then
+    ! In GEOSgcm, it already assumes ng = 2, so NumCol = 10
+     NumCol = NumGlobalVars+NumGridVars*ng
+     allocate(AVR(ntile, NumCol))
+     AVR(:, 1) = iTable_(:,0)
+     AVR(:, 2) = rTable_(:,3)
+     AVR(:, 3) = rTable_(:,1)
+     AVR(:, 4) = rTable_(:,2)
+
+     AVR(:, 5) = iTable_(:,2)
+     AVR(:, 6) = iTable_(:,3)
+     AVR(:, 7) = rTable_(:,4)
+
+     if ( ng == 2) then
+       AVR(:, 7) = iTable_(:,4)
+       AVR(:, 8) = iTable_(:,5)
+       AVR(:, 9) = rTable_(:,5)
+     endif
+
+  endif
+
+  if (present(iTable)) then
+    call move_alloc(iTable_, iTable)
+  endif
+
+  if (present(rTable)) then
+    call move_alloc(rTable_, rTable)
+    do ll = 1, ng
+       where ( rTable(:,3+ll) /=0.0 ) rTable(:,3+ll) = rTable(:,3)/rTable(:,3+ll)
+    enddo
   endif
 
   if (present(rc)) rc= status
