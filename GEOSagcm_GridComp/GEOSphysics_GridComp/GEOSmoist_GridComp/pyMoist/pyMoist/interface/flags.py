@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from typing import Any
 
-import numpy as np
-
 import cffi
+import numpy as np
 
 
 @dataclass
@@ -107,8 +105,8 @@ class gfdl_1m_flags:
     sedi_transport: bool = False
     do_sedi_w: bool = False
     de_ice: bool = False
-    icloud_f: np.float32 = 0
-    irain_f: np.float32 = 0
+    icloud_f: np.int32 = 0
+    irain_f: np.int32 = 0
     mp_print: bool = False
     # Magic number
     mn_123456789: int = 0

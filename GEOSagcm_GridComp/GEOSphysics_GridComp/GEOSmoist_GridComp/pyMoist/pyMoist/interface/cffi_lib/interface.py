@@ -19,9 +19,10 @@ from mpi4py import MPI
 from pyMoist.interface.python_bridge import (
     pyMoist_init,
     pyMoist_run_AerActivation,
-    pyMoist_run_GFDL1M,
+    pyMoist_run_GFDL_1M_evap_subl_hystpdf,
     pymoist_run_GFDL_1M_driver,
-    pyMoist_finalize
+    pyMoist_finalize,
+    gfdl_1m_init
 )
 import traceback
 
@@ -82,7 +83,7 @@ def pymoist_interface_py_run_GFDL1M(
     SUBLC, EVAPC, RHX):
 
     try:
-        pyMoist_run_GFDL1M(
+        pyMoist_run_GFDL_1M_evap_subl_hystpdf(
             dw_land, dw_ocean, PDFSHAPE, TURNRHCRIT_PARAM,
             DT_MOIST, CCW_EVAP_EFF, CCI_EVAP_EFF,
             LMELTFRZ,
@@ -140,9 +141,7 @@ def pymoist_interface_py_finalize() -> int:
         return -1
     return 0
 
-""".format(
-    TMPFILEBASE
-)
+""".format(TMPFILEBASE)
 
 with open("moist.h") as f:
     data = "".join([line for line in f if not line.startswith("#")])

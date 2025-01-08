@@ -34,8 +34,9 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
-from pyMoist.GFDL_1M.GFDL_1M_driver import GFDL_1M_driver
-from pyMoist.interface.flags import moist_flags, gfdl_1m_flags
+from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
+from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
+import numpy as np
 
 
 class MemorySpace(enum.Enum):
@@ -82,6 +83,7 @@ class StencilBackendCompilerOverride:
         else:
             ndsl_log.info(f"Stencil backend waits on {self.comm.Get_rank()}")
             self.comm.Barrier()
+            ndsl_log.info(f"Stencil backend released on {self.comm.Get_rank()}")
 
     def __exit__(self, type, value, traceback):
         if self.no_op:
@@ -89,8 +91,11 @@ class StencilBackendCompilerOverride:
         if not self.config.do_compile:
             ndsl_log.info(f"Stencil backend read cache on {self.comm.Get_rank()}")
         else:
-            ndsl_log.info(f"Stencil backend compiled on {self.comm.Get_rank()}")
+            ndsl_log.info(
+                f"Stencil backend was compiled on {self.comm.Get_rank()} now waiting for other ranks"
+            )
             self.comm.Barrier()
+        ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")
 
 
 class GEOSPyMoistWrapper:
@@ -192,9 +197,9 @@ class GEOSPyMoistWrapper:
         )
 
         # JIT system for the component of Moist
-        self._aer_activation = None
-        self._GFDL_1M_evap = None
-        self._GFDL_1M_driver = None
+        self._aer_activation: Optional[AerActivation] = None
+        self._GFDL_1M_evap: Optional[GFDL_1M] = None
+        self._GFDL_1M_driver: Optional[GFDL_1M_driver] = None
 
         # Initalize flags later
         self.gfdl_1m_flags: Optional[gfdl_1m_flags] = None
@@ -292,8 +297,8 @@ class GEOSPyMoistWrapper:
                     self.gfdl_1m_flags.sedi_transport,
                     self.gfdl_1m_flags.do_sedi_w,
                     self.gfdl_1m_flags.de_ice,
-                    self.gfdl_1m_flags.icloud_f,
-                    self.gfdl_1m_flags.irain_f,
+                    np.int32(self.gfdl_1m_flags.icloud_f),
+                    np.int32(self.gfdl_1m_flags.irain_f),
                     self.gfdl_1m_flags.mp_print,
                 )
         return self._GFDL_1M_driver

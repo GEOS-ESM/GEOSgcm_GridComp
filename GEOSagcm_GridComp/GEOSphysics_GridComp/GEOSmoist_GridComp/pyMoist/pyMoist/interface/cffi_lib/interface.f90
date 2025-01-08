@@ -304,7 +304,7 @@ contains
       integer, intent(in) :: icloud_f, irain_f
 
       type(gfdl_1m_flags_interface_type), intent(out) :: gfdl_1m_flags
-      
+
       gfdl_1m_flags%phys_hydrostatic = phys_hydrostatic
       gfdl_1m_flags%hydrostatic = hydrostatic
       gfdl_1m_flags%do_qa = do_qa

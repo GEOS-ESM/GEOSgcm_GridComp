@@ -12,10 +12,9 @@ from ndsl.dsl.typing import Float
 from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
-from pyMoist.interface.flags import moist_flags_f_to_python, gfdl_1m_flags_f_to_python
+from pyMoist.interface.flags import gfdl_1m_flags_f_to_python, moist_flags_f_to_python
 from pyMoist.interface.wrapper import (
     GEOSPyMoistWrapper,
-    GEOSGFDL1MDriverWrapper,
     MemorySpace,
 )
 
@@ -439,7 +438,7 @@ class PYMOIST_WRAPPER:
                 qs=qs,
                 qg=qg,
                 qa=qa,
-                qn=qn,
+                qn=qn,  # NACTL + NACTI
                 qv_dt=qv_dt,
                 ql_dt=ql_dt,
                 qr_dt=qr_dt,
@@ -464,8 +463,6 @@ class PYMOIST_WRAPPER:
                 rhcrit3d=rhcrit3d,
                 anv_icefall=Float(f_anv_icefall),
                 ls_icefall=Float(f_ls_icefall),
-                hydrostatic=Float(f_hydrostatic),
-                phys_hydrostatic=Float(f_phys_hydrostatic),
             )
 
         # Convert NumPy arrays back to Fortran
@@ -525,6 +522,7 @@ class PYMOIST_WRAPPER:
 
 
 WRAPPER = PYMOIST_WRAPPER()
+
 
 def pyMoist_run_GFDL_1M_evap_subl_hystpdf(
     dw_land: np.float32,
@@ -640,8 +638,6 @@ def pymoist_run_GFDL_1M_driver(
     if not WRAPPER.ready:
         raise RuntimeError("[pyMoist] Bad init, did you call init?")
 
-    print("Running pyMoist GFDL_1M driver")
-
     WRAPPER.GFDL_1M_driver(
         f_qv=RAD_QV,
         f_ql=RAD_QL,
@@ -749,8 +745,8 @@ def pyMoist_init(pyMoist_flags: cffi.FFI.CData):
 
 
 def gfdl_1m_init(gfdl_1m_flags: cffi.FFI.CData):
-    if WRAPPER.ready:
-        raise RuntimeError("[GFDL_1M WRAPPER] Double init")
+    if not WRAPPER.ready:
+        raise RuntimeError("[GFDL_1M WRAPPER] pyMoist_init needs to be called first")
     WRAPPER.pymoist.init_gfdl_1m_flags(
-        gfdl_1m_flags_flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
+        flags=gfdl_1m_flags_f_to_python(gfdl_1m_flags),
     )
