@@ -131,7 +131,7 @@ function M09_to_cat(runoff,nlon,nlat,ncat,inputdir) result(Qrunf)
   !$OMP DO
   ! Loop over all catchments and sub-areas
   do i=1,nc
-    do j=1,nmax
+    do j=1,nsub(i)
       sy=suby(j,i)  ! Get y-coordinate of the sub-area
       sx=subx(j,i)  ! Get x-coordinate of the sub-area
       ! Check for valid fraction and runoff values
