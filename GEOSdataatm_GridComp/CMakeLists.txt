@@ -11,6 +11,6 @@ esma_add_library (${this}
 target_compile_definitions (${this} PRIVATE USE_CICE USE_R8)
 
 install(
-   FILES CORE_NYF_Data_AtmForcings_ExtData.yaml
+   FILES JRA55-DO_DataAtm_Forcings_ExtData.yaml CORE_NYF_Data_AtmForcings_ExtData.yaml
    DESTINATION etc
    )
