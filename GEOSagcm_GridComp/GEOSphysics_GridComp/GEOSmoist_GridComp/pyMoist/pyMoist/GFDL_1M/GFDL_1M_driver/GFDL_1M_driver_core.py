@@ -64,6 +64,10 @@ def init_temporaries(
     ccn: FloatField,
     c_praut: FloatField,
     rh_limited: FloatField,
+    rain: FloatFieldIJ,
+    snow: FloatFieldIJ,
+    graupel: FloatFieldIJ,
+    ice: FloatFieldIJ,
 ):
     """
     initalize temporary copies of many quantities
@@ -131,6 +135,12 @@ def init_temporaries(
         # 1 minus sigma used to control minimum cloud
         # fraction needed to autoconvert ql->qr
         onemsig = 1.0 - sigma(sqrt(area))
+
+        # Reset precipitation aggregates to zero
+        rain = 0
+        snow = 0
+        graupel = 0
+        ice = 0
 
 
 @gtscript.function
@@ -420,6 +430,11 @@ def terminal_fall_update(
         graupel = graupel + graupel1
         ice = ice + ice1
 
+        rain1 = 0
+        snow1 = 0
+        graupel1 = 0
+        ice1 = 0
+
 
 def warm_rain_update(
     rain: FloatFieldIJ,
@@ -443,8 +458,14 @@ def warm_rain_update(
         m2_sol = m2_sol + m1_sol
         m1 = m1 + m1_rain + m1_sol
 
+        evap1 = 0
+        m1_rain = 0
+        m1_sol = 0
+
     with computation(FORWARD), interval(0, 1):
         rain = rain + rain1
+
+        rain1 = 0
 
 
 def icloud_update(
@@ -458,6 +479,8 @@ def icloud_update(
     """
     with computation(PARALLEL), interval(...):
         isubl = isubl + subl1
+
+        subl1 = 0
 
 
 def update_tendencies(

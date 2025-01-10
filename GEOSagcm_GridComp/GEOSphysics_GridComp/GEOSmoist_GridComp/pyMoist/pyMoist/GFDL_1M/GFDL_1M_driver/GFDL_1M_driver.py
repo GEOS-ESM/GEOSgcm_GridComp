@@ -111,7 +111,6 @@ class GFDL_1M_driver:
         irain_f: Float,
         mp_print: bool,
     ):
-
         self.dt_moist = dt_moist
         self.fix_negative = fix_negative
         self.sedi_transport = sedi_transport
@@ -325,7 +324,7 @@ class GFDL_1M_driver:
         # -----------------------------------------------------------------------
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._create_temporaries = stencil_factory.from_dims_halo(
+        self._init_temporaries = stencil_factory.from_dims_halo(
             func=init_temporaries,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
@@ -365,7 +364,7 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_1 = stencil_factory.from_dims_halo(
+        self._fall_speed = stencil_factory.from_dims_halo(
             func=fall_speed,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
@@ -401,7 +400,7 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_2 = stencil_factory.from_dims_halo(
+        self._terminal_fall_update = stencil_factory.from_dims_halo(
             func=terminal_fall_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
@@ -436,7 +435,7 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_3 = stencil_factory.from_dims_halo(
+        self._warm_rain_update = stencil_factory.from_dims_halo(
             func=warm_rain_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
@@ -502,12 +501,12 @@ class GFDL_1M_driver:
             },
         )
 
-        self._gfdl_1m_driver_loop_4 = stencil_factory.from_dims_halo(
+        self._icloud_update = stencil_factory.from_dims_halo(
             func=icloud_update,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
-        self._gfdl_1m_driver_postloop = stencil_factory.from_dims_halo(
+        self._update_tendencies = stencil_factory.from_dims_halo(
             func=update_tendencies,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
@@ -555,11 +554,14 @@ class GFDL_1M_driver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
+        rain_x = 7
+        rain_y = 11
+        print("Should be zero (at call) --> ", sum(sum(self.rain.view[:])))
 
         # The driver modifies a number of variables (t, p, qX) but does not pass
         # the changes back to the rest of the model. To replicate this behavior,
         # temporary copies of these variables are used throughout the driver.
-        self._create_temporaries(
+        self._init_temporaries(
             t,
             dp,
             rhcrit3d,
@@ -603,7 +605,17 @@ class GFDL_1M_driver:
             self.ccn,
             self.c_praut,
             self.rh_limited,
+            self.rain,
+            self.snow,
+            self.graupel,
+            self.ice,
         )
+
+        print(
+            "Should be zero (post init_temporaries) --> ", sum(sum(self.rain.view[:]))
+        )
+
+        print("rain 11 7 post init: ", self.rain.view[rain_x, rain_y])
 
         self._gfdl_1m_driver_preloop(
             self.t1,
@@ -617,7 +629,7 @@ class GFDL_1M_driver:
         )
 
         for n in range(self.namelist_constants.NTIMES):
-            self._gfdl_1m_driver_loop_1(
+            self._fall_speed(
                 self.ql1,
                 self.qi1,
                 self.qs1,
@@ -667,7 +679,10 @@ class GFDL_1M_driver:
                 self.current_k_level,
             )
 
-            self._gfdl_1m_driver_loop_2(
+            print("rain 11 7 post terminal_fall: ", self.rain.view[rain_x, rain_y])
+            print("rain1 11 7 post terminal_fall: ", self.rain1.view[rain_x, rain_y])
+
+            self._terminal_fall_update(
                 self.rain,
                 self.graupel,
                 self.snow,
@@ -676,6 +691,14 @@ class GFDL_1M_driver:
                 self.graupel1,
                 self.snow1,
                 self.ice1,
+            )
+
+            print(
+                "rain 11 7 post terminal_fall_update: ", self.rain.view[rain_x, rain_y]
+            )
+            print(
+                "rain1 11 7 post terminal_fall_update: ",
+                self.rain1.view[rain_x, rain_y],
             )
 
             self._warm_rain(
@@ -714,7 +737,10 @@ class GFDL_1M_driver:
                 self.sat_tables.des4,
             )
 
-            self._gfdl_1m_driver_loop_3(
+            print("rain 11 7 post warm_rain: ", self.rain.view[rain_x, rain_y])
+            print("rain1 11 7 post warm_rain: ", self.rain1.view[rain_x, rain_y])
+
+            self._warm_rain_update(
                 self.rain,
                 self.rain1,
                 self.evap1,
@@ -725,6 +751,9 @@ class GFDL_1M_driver:
                 self.m2_sol,
                 self.m1,
             )
+
+            print("rain 11 7 post warm_rain_update: ", self.rain.view[rain_x, rain_y])
+            print("rain1 11 7 post warm_rain_update: ", self.rain1.view[rain_x, rain_y])
 
             self._icloud(
                 self.t1,
@@ -757,12 +786,12 @@ class GFDL_1M_driver:
                 self.sat_tables.des4,
             )
 
-            self._gfdl_1m_driver_loop_4(
+            self._icloud_update(
                 self.isubl,
                 self.subl1,
             )
 
-        self._gfdl_1m_driver_postloop(
+        self._update_tendencies(
             self.qv0,
             self.ql0,
             self.qr0,
@@ -1135,36 +1164,40 @@ class namelist_setup:
             Float(0.31)
             * driver_constants.SCM3
             * driver_constants.GAM263
-            * np.sqrt(clin / driver_constants.VISK)
-            / driver_constants.ACT[0] ** Float(0.65625)
+            * np.sqrt(clin / driver_constants.VISK, dtype=Float)
+            / np.power(driver_constants.ACT[0], Float(0.65625), dtype=Float)
         )
         self.CGSUB[2] = (
             Float(0.31)
             * driver_constants.SCM3
             * driver_constants.GAM275
-            * np.sqrt(driver_constants.GCON / driver_constants.VISK)
-            / driver_constants.ACT[5] ** Float(0.6875)
+            * np.sqrt(driver_constants.GCON / driver_constants.VISK, dtype=Float)
+            / np.power(driver_constants.ACT[5], Float(0.6875), dtype=Float)
         )
         self.CREVP[2] = (
             Float(0.31)
             * driver_constants.SCM3
             * driver_constants.GAM209
-            * np.sqrt(alin / driver_constants.VISK)
-            / driver_constants.ACT[1] ** Float(0.725)
+            * np.sqrt(alin / driver_constants.VISK, dtype=Float)
+            / np.power(driver_constants.ACT[1], Float(0.725), dtype=Float)
         )
         self.CSSUB[3] = driver_constants.TCOND * driver_constants.RVGAS
-        self.CSSUB[4] = driver_constants.HLTS**2 * driver_constants.VDIFU
+        self.CSSUB[4] = (
+            np.power(driver_constants.HLTS, 2, dtype=Float) * driver_constants.VDIFU
+        )
         self.CGSUB[3] = self.CSSUB[3]
         self.CREVP[3] = self.CSSUB[3]
         self.CGSUB[4] = self.CSSUB[4]
-        self.CREVP[4] = driver_constants.HLTC**2 * driver_constants.VDIFU
+        self.CREVP[4] = (
+            np.power(driver_constants.HLTC, 2, dtype=Float) * driver_constants.VDIFU
+        )
 
         self.CGFR_0 = (
             Float(20.0e2)
             * driver_constants.PISQ
             * driver_constants.RNZR
             * driver_constants.RHOR
-            / driver_constants.ACT[1] ** Float(1.75)
+            / np.power(driver_constants.ACT[1], Float(1.75), dtype=Float)
         )
         self.CGFR_1 = Float(0.66)
 
