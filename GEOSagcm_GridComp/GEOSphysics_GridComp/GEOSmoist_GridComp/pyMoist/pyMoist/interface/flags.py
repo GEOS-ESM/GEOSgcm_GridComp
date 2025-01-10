@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-import numpy as np
+from typing import Any
 
 import cffi
+import numpy as np
 
 
 @dataclass
@@ -24,13 +24,6 @@ class moist_flags:
 
 @dataclass
 class gfdl_1m_flags:
-    # Grid layout
-    npx: int = 0
-    npy: int = 0
-    npz: int = 0
-    layout_x: int = 1
-    layout_y: int = 1
-    n_tiles: int = 6
     # GFDL_1M driver (for now initalized to junk values, these values dont matter, right?)
     phys_hydrostatic: bool = False
     hydrostatic: bool = False
@@ -112,31 +105,44 @@ class gfdl_1m_flags:
     sedi_transport: bool = False
     do_sedi_w: bool = False
     de_ice: bool = False
-    icloud_f: np.float32 = 0
-    irain_f: np.float32 = 0
+    icloud_f: np.int32 = 0
+    irain_f: np.int32 = 0
     mp_print: bool = False
     # Magic number
     mn_123456789: int = 0
 
 
 def _generic_config_bridge(
-    py_flags: moist_flags,
-    fv_flags: cffi.FFI.CData,
+    py_flags: Any,
+    f_flags: cffi.FFI.CData,
 ):
     keys = list(filter(lambda k: not k.startswith("__"), dir(type(py_flags))))
     for k in keys:
-        if hasattr(fv_flags, k):
-            setattr(py_flags, k, getattr(fv_flags, k))
+        if hasattr(f_flags, k):
+            setattr(py_flags, k, getattr(f_flags, k))
 
 
-def flags_f_to_python(
-    fv_flags: cffi.FFI.CData,
+def moist_flags_f_to_python(
+    f_flags: cffi.FFI.CData,
 ) -> moist_flags:
-    if fv_flags.mn_123456789 != 123456789:
+    if f_flags.mn_123456789 != 123456789:
         raise RuntimeError(
             "Magic number failed, pyMoist interface is broken on the python side"
         )
 
     py_flags = moist_flags()
-    _generic_config_bridge(py_flags, fv_flags)
+    _generic_config_bridge(py_flags, f_flags)
+    return py_flags
+
+
+def gfdl_1m_flags_f_to_python(
+    f_flags: cffi.FFI.CData,
+) -> gfdl_1m_flags:
+    if f_flags.mn_123456789 != 123456789:
+        raise RuntimeError(
+            "Magic number failed, pyMoist interface is broken on the python side"
+        )
+
+    py_flags = gfdl_1m_flags()
+    _generic_config_bridge(py_flags, f_flags)
     return py_flags

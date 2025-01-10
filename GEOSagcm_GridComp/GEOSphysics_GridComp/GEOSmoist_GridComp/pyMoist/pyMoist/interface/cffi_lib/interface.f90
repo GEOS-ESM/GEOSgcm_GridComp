@@ -6,11 +6,13 @@ module pymoist_interface_mod
 
    private
    public :: pymoist_interface_f_init
+   public :: gfdl_1m_interface_f_init
    public :: pymoist_interface_f_run_AerActivation
    public :: pymoist_interface_f_run_GFDL1M
    public :: pymoist_interface_f_run_gfdl_1m_driver
    public :: pymoist_interface_f_finalize
    public :: make_moist_flags_C_interop
+   public :: make_gfdl_1m_flags_C_interop
    public :: moist_flags_interface_type
    public :: gfdl_1m_flags_interface_type
 
@@ -33,13 +35,6 @@ module pymoist_interface_mod
    end type
 
    type, bind(c) :: gfdl_1m_flags_interface_type
-      ! Grid information
-      integer(kind=c_int) :: npx
-      integer(kind=c_int) :: npy
-      integer(kind=c_int) :: npz
-      integer(kind=c_int) :: layout_x
-      integer(kind=c_int) :: layout_y
-      integer(kind=c_int) :: n_tiles
       ! GFDL_1M driver
       logical(kind=c_bool) :: phys_hydrostatic
       logical(kind=c_bool) :: hydrostatic
@@ -122,8 +117,8 @@ module pymoist_interface_mod
       real(kind=c_float) :: alin
       real(kind=c_float) :: clin
       real(kind=c_float) :: cld_min
-      real(kind=c_float) :: icloud_f
-      real(kind=c_float) :: irain_f
+      integer(kind=c_int) :: icloud_f
+      integer(kind=c_int) :: irain_f
       ! Magic number
       integer(kind=c_int) :: make_flags_C_interop = 123456789
    end type
@@ -280,8 +275,7 @@ contains
 
    end subroutine make_moist_flags_C_interop
 
-   subroutine make_gfdl_1m_flags_C_interop(npx, npy, npz , nx, ny, n_tiles, &
-      phys_hydrostatic, hydrostatic, do_qa, fix_negative, fast_sat_adj, &
+   subroutine make_gfdl_1m_flags_C_interop(phys_hydrostatic, hydrostatic, do_qa, fix_negative, fast_sat_adj, &
       const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap, &
       do_subl, z_slope_liq, z_slope_ice, prog_ccn, preciprad, use_ppm, &
       mono_prof, do_sedi_heat, sedi_transport, do_sedi_w, de_ice, mp_print, &
@@ -294,7 +288,6 @@ contains
       tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw, &
       alin, clin, cld_min, icloud_f, irain_f, gfdl_1m_flags)
 
-      integer, intent(in) :: nx, ny, npx, npy, npz, n_tiles
       ! GFDL_1M driver
       logical, intent(in) :: phys_hydrostatic, hydrostatic, do_qa, fix_negative, fast_sat_adj
       logical, intent(in) :: const_vi, const_vs, const_vg, const_vr, use_ccn, do_bigg, do_evap
@@ -307,16 +300,11 @@ contains
       real, intent(in) :: ccn_o, qc_crt, tau_g2v, tau_v2g, tau_s2v, tau_v2s, tau_revp, tau_frz
       real, intent(in) :: sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v, tau_i2v, tau_i2s
       real, intent(in) :: tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci, c_cracw
-      real, intent(in) :: alin, clin, cld_min, icloud_f, irain_f
+      real, intent(in) :: alin, clin, cld_min
+      integer, intent(in) :: icloud_f, irain_f
 
       type(gfdl_1m_flags_interface_type), intent(out) :: gfdl_1m_flags
-      
-      gfdl_1m_flags%npx = npx
-      gfdl_1m_flags%npy = npy
-      gfdl_1m_flags%npz = npz
-      gfdl_1m_flags%layout_x = nx
-      gfdl_1m_flags%layout_y = ny
-      gfdl_1m_flags%n_tiles = n_tiles
+
       gfdl_1m_flags%phys_hydrostatic = phys_hydrostatic
       gfdl_1m_flags%hydrostatic = hydrostatic
       gfdl_1m_flags%do_qa = do_qa
