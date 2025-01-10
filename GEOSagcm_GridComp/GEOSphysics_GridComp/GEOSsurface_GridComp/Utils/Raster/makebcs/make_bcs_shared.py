@@ -10,12 +10,12 @@ def get_script_head() :
 
   head =  """#!/bin/csh -x
 
-#SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.log
-#SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME2}.err
+#SBATCH --output={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME}.log
+#SBATCH --error={EXPDIR}/{TMP_DIR}/logs/{GRIDNAME}/{GRIDNAME}.err
 #SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
-#SBATCH --job-name={GRIDNAME2}.j
+#SBATCH --job-name={GRIDNAME}.j
 """
   constraint = "#SBATCH --constraint=sky|cas"
   if BUILT_ON_SLES15 :

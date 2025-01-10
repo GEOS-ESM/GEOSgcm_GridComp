@@ -83,20 +83,22 @@ contains
   ! ---------------------------------------------------------------------
   !
   
-  SUBROUTINE ESA2CLM (nc, nr, fnameRst)
+  SUBROUTINE ESA2CLM (nc, nr, maxcat, tile_lat, tile_pfs, Rst_id)
 
     implicit none
 
-    integer  , intent (in) :: nc, nr
-    character (*)          :: fnameRst
+    integer, intent (in) :: nc, nr, maxcat
+    real,    intent (in) :: tile_lat(:)
+    integer, intent (in) :: tile_pfs(:) 
+    integer, intent (in) :: Rst_id(:,:) 
     
     integer  , parameter   :: N_lon_clm = 1152, N_lat_clm = 768, lsmpft = 17
     integer*2, allocatable, target, dimension (:,:) :: esa_veg
     integer*2, pointer    , dimension (:,:) :: subset
     integer  , allocatable, dimension (:)   :: tile_id, i_esa2clm, j_esa2clm
-    integer :: i,j, k,n, status, ncid, varid, maxcat, dx,dy, esa_type, tid, cid, ii, jj   
+    integer :: i,j, k,n, status, ncid, varid, dx,dy, esa_type, tid, cid, ii, jj   
     real    :: dx_clm, dy_clm, x_min_clm (N_lon_clm), y_min_clm (N_lat_clm), clm_fracs(lsmpft)
-    real    :: minlon,maxlon,minlat,maxlat,tile_lat, scale, ftot
+    real    :: scale, ftot
     integer :: cpt1, cpt2, cst1, cst2  ! CLM-carbon types
     real    :: cpf1, cpf2, csf1, csf2  ! CLM-carbon fractions
     DOUBLE PRECISION,  allocatable, dimension (:) :: lon_esa, lat_esa
@@ -245,16 +247,6 @@ contains
        where ((real(lat_esa) >=  y_min_clm(j)).and.(real(lat_esa) <  (y_min_clm(j) + dy_clm))) j_esa2clm= j
     end do
 
-    !
-    ! Reading number of tiles
-    ! -----------------------
-
-    open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (10, *) maxcat
-
-    close (10, status = 'keep')
     
     !
     ! Loop through tile_id raster
@@ -268,14 +260,11 @@ contains
     dx = nc_esa / nc
     dy = nr_esa / nr
 
-    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-          form='unformatted',convert='little_endian')
-
     do j=1,nr
        
        ! read a row
        
-       read(10)tile_id(:)
+       tile_id(:) = Rst_id(:, j)
        
        do i = 1,nc
 
@@ -616,7 +605,6 @@ contains
     
     
     deallocate (tile_id, PCTPFT,esa_veg,lon_esa,lat_esa,i_esa2clm,j_esa2clm)  
-    close (10,status='keep')    
 
     !
     ! Now create CLM-carbon_veg_fracs file
@@ -624,10 +612,6 @@ contains
 
     open (10,file='clsm/CLM_veg_typs_fracs',  &
          form='formatted',status='unknown')
-    open (11, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (11, *) maxcat   
 
     inquire(file='clsm/catchcn_params.nc4', exist=file_exists)
     if(file_exists) then
@@ -638,9 +622,7 @@ contains
 
     do k = 1, maxcat
 
-       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
-       tile_lat = (minlat + maxlat)/2.
-       scale = (ABS (tile_lat) - 32.)/10.
+       scale = (ABS (tile_lat(k)) - 32.)/10.
        scale = min (max(scale,0.),1.)
 
        esa_clm_veg = 0
@@ -780,7 +762,7 @@ contains
        endif
     
        write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
-            tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
+            k, tile_pfs(k), cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
 
        if (allocated (NITYP)) NITYP (k, :) = (/REAL(cpt1), REAL(cpt2), REAL(cst1), REAL(cst2)/)
@@ -804,23 +786,23 @@ contains
     endif
     
     close (10, status = 'keep')
-    close (11, status = 'keep')    
 
   END SUBROUTINE ESA2CLM
 !
 ! ---------------------------------------------------------------------
 !
-  SUBROUTINE ESA2MOSAIC (nc, nr, fnameRst)
+  SUBROUTINE ESA2MOSAIC (nc, nr, maxcat, tile_pfs, rst_id)
     
     implicit none
 
-    integer  , intent (in) :: nc, nr
-    character (*)          :: fnameRst
+    integer, intent(in) :: nc, nr, maxcat
+    integer, intent(in) :: tile_pfs(:)
+    integer, intent(in) :: rst_id(:,:)
     !integer  , parameter   :: nc_esa = 129600, nr_esa = 64800
     integer*2, allocatable, target, dimension (:,:) :: esa_veg
     integer*2, pointer    , dimension (:,:) :: subset
     integer  , allocatable, dimension (:)   :: tile_id, ityp
-    integer :: i,j, k, status, ncid, maxcat, dx,dy, esa_type, tid, cid
+    integer :: i,j, k, status, ncid, dx,dy, esa_type
     integer :: mos1, mos2
     real    :: mfrac, sfrac, tfrac, tem (6)
     integer, allocatable, dimension (:) :: density, loc_int
@@ -857,17 +839,6 @@ contains
     status = NF_CLOSE(ncid)
 
 !
-! Reading number of tiles
-! -----------------------
-
-    open (10, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (10, *) maxcat
-    
-    close (10, status = 'keep')
-
-!
 ! Loop through tile_id raster
 ! ___________________________
 
@@ -879,14 +850,11 @@ contains
     dx = nc_esa / nc
     dy = nr_esa / nr
 
-    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-          form='unformatted',convert='little_endian')
-    
     do j=1,nr
 
        ! read a row
 
-       read(10)tile_id(:)
+       tile_id(:) = rst_id(:,j)
 
        do i = 1,nc
           if((tile_id (i) >= 1).and.(tile_id(i)  <= maxcat)) then
@@ -969,14 +937,13 @@ contains
     end do
 
     deallocate (tile_id)   
-    close (10,status='keep')    
 
 ! Canopy height and ASCAT roughness length
 
-    call ascat_r0 (nc,nr,fnameRst, z0)
+    call ascat_r0 (nc,nr, maxcat, Rst_id, z0)
 
     if(jpl_height) then
-       call jpl_canoph (nc,nr,fnameRst, z2)
+       call jpl_canoph (nc,nr, maxcat, Rst_id, z2)
     else
        allocate (z2(1:maxcat))       
     endif
@@ -988,14 +955,8 @@ contains
 
     open (10,file='clsm/mosaic_veg_typs_fracs',  &
          form='formatted',status='unknown')
-    open (11, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
     
-    read (11, *) maxcat   
- 
     do k = 1, maxcat
-
-       read (11,'(i10,i8,5(2x,f9.4))') tid,cid
        tem = 0.
        tem(1:6)=veg (k,1:6)
 
@@ -1037,13 +998,12 @@ contains
           if(.not.jpl_height) z2(k) = VGZ2(mos1)
           ityp (k) = mos1
           write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
-            tid,cid,mos1,mos2,100.*mfrac,100.*sfrac, z2(k), z0 (k)
+            k, tile_pfs(k) ,mos1,mos2,100.*mfrac,100.*sfrac, z2(k), z0 (k)
           
        endif
     end do
 
     close (10,status='keep')    
-    close (11,status='keep') 
 
     inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
@@ -1127,7 +1087,7 @@ contains
 !----------------------------------------------------------------------
 !
 
- SUBROUTINE create_mapping( nc, nr, nc_data, nr_data, rmap, fnameRst )
+ SUBROUTINE create_mapping( nc, nr, nc_data, nr_data, rmap, ncatch, tile_id )
 
    ! assemble "rmap" structure that can be used for remapping 2-dim gridded 
    !   science data (nc_data-by-nr_data) to *land* tiles, which are defined
@@ -1138,41 +1098,22 @@ contains
    integer,          intent(in)    :: nc, nr            ! dims of raster array (with tile IDs)
    integer,          intent(in)    :: nc_data, nr_data  ! dims of science data array
    type(regrid_map), intent(inout) :: rmap              ! structure for remapping
-   character(*),     intent(in)    :: fnameRst          ! name of raster (*.rst) file
+   integer,          intent(in)    :: ncatch
+   integer,  target, intent(in)    :: tile_id(:,:)
 
    ! -----------------------
 
-   integer :: i, j, n, i1, i2, j1, j2, ncatch, nbins, status, NPLUS, pix_count
+   integer :: i, j, n, i1, i2, j1, j2, nbins, status, NPLUS, pix_count
    
    REAL,    allocatable, DIMENSION(:)            :: loc_val
    INTEGER, ALLOCATABLE, DIMENSION(:)            :: density, loc_int
    logical, allocatable, dimension(:)            :: unq_mask    
-   integer, allocatable, dimension(:,:), target  :: tile_id
    integer,              dimension(:,:), pointer :: subset, iraster
 
    real :: dx_data, dy_data, dx_rst, dy_rst
 
    ! -------------------------------------------------------------------
    !
-   ! Read raster (*.rst) file
-
-   open( 10, file=trim(fnameRst)//'.rst', status='old', action='read',  &
-        form='unformatted', convert='little_endian')
-   
-   allocate(tile_id(1:nc,1:nr))         
-   
-   do j=1,nr
-      read(10) tile_id(:,j)
-   end do
-   
-   close( 10,status='keep')
-   
-   ! Read number of land ("catchment") tiles (ncatch)
-    
-   open( 10, file='clsm/catchment.def', status='old', action='read',  &
-        form='formatted')
-   read( 10, *) ncatch
-   close(10, status = 'keep')
    
    ! grid spacing
    
@@ -1403,13 +1344,16 @@ contains
 !
 !----------------------------------------------------------------------
 !
-  SUBROUTINE merge_lai_data (MaskFile)
+  SUBROUTINE merge_lai_data (MaskFile, ntiles, pfaf)
     implicit none
+    character (*) :: MaskFile
+    integer, intent(in) :: ntiles
+    integer, intent(in) :: pfaf(:)
+
     type (date_time_type) :: bf_geol2_time,af_geol2_time,date_time_new,bf_lai_time,   &
        af_lai_time
-    character (*) :: MaskFile
-    integer :: n,k,ntiles,t,ierr
-    integer, allocatable, dimension (:) :: pfaf
+    integer :: n,k, t,ierr
+
     ! South AMerica/ Africa/ Australia are from GEOLAND2
     integer :: i1,i2,i3,i4,i5,i6
     integer, parameter :: i1_hydr = 1011000, i2_hydr =  1999900  ! South America
@@ -1439,21 +1383,11 @@ contains
        i6 = i6_hydr
     endif
 
-    open (10, file ='clsm/catchment.def',form='formatted',status='old',action='read')
-    read (10,*) ntiles
-
-    allocate (pfaf(1:ntiles))
     allocate (geol2_lai_bf(1:ntiles))
     allocate (geol2_lai_af(1:ntiles))
     allocate (geol2_lai   (1:ntiles))
     allocate (lai         (1:ntiles))  
            
-    do n =1,ntiles
-       read (10,*) k,pfaf(n)
-    end do
-
-    close (10,status='keep')
-
 !
         open (41,file='clsm/lai.GEOLAND2_10-DayClim',  &
          form='unformatted',status='old',convert='little_endian',action='read')
@@ -1545,26 +1479,25 @@ contains
        close (42,status = 'keep')
        close (43,status = 'keep')
 
-       deallocate (pfaf,geol2_lai_bf, geol2_lai_af,geol2_lai,lai)
+       deallocate (geol2_lai_bf, geol2_lai_af,geol2_lai,lai)
 
   END SUBROUTINE merge_lai_data
 !
 !----------------------------------------------------------------------
 !
-  SUBROUTINE modis_scale_para_high (ease_grid,MA,fnameTil)
-    
+  SUBROUTINE modis_scale_para_high (MA, n_land)
     implicit none
+    character(*), intent(in) :: MA
+    integer,      intent(in) :: n_land
+
     type (date_time_type) :: gf_green_time,af_green_time,end_time, &
               bf_lai_time,af_lai_time,date_time_new,bf_modis_time,   &
               af_modis_time
-    logical :: ease_grid
-    character*6 :: MA
     CHARACTER*20 :: version,resoln,continent
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: tsteps,zth, slr,tarea
     INTEGER :: typ,j_dum,ierr,indr1,ip2
     character*100 :: path,fname,fout,metpath
-    character (*) :: fnameTil
     integer :: n,maxcat,ip
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
@@ -1580,9 +1513,7 @@ contains
     real :: yr,mn,dy,yr1,mn1,dy1,dum, slice1,slice2
     logical :: save_sib = .false.
 
-    fname='clsm/catchment.def'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)maxcat
+    maxcat = n_land
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -1600,40 +1531,15 @@ contains
     allocate (one_array  (1:maxcat))
     allocate (albvr      (1:maxcat))
     allocate (albnr      (1:maxcat))
-    close (10,status='keep')
 
-    fname=trim(fnameTil)//'.til'
-    open (10,file=fname,status='old',action='read',form='formatted')
 
     fname='clsm/mosaic_veg_typs_fracs'
     open (20,file=fname,status='old',action='read',form='formatted')
 
-    read (10,*)ip
-    read (10,*)j_dum
-
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do    
-    
-    do n = 1,ip
-      if (ease_grid) then     
-         read(10,*,IOSTAT=ierr) typ !,pfs,lont,latt,ig,jg,fr_gcm
-      else
-         !read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-         !   typ,tarea,lont,latt,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
-         read(10,*,IOSTAT=ierr) typ
-      endif
-       if (typ == 100) then
-          ip2 = n 
-          !read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
-          !  indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
-          read (20,*,IOSTAT=ierr) indr1,indr1,vegcls(ip2)
-       endif
-       if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
+    do n = 1, n_land
+      read (20,*,IOSTAT=ierr) indr1,indr1,vegcls(n)
+      if(ierr /= 0)write (*,*)'Problem reading', n
     end do
-    close (10,status='keep')
     close (20,status='keep')
 
     albvf    =0.
@@ -1914,7 +1820,7 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE modis_alb_on_tiles_high( nc_data, nr_data, rmap, MA )
+  SUBROUTINE modis_alb_on_tiles_high( nc_data, nr_data, rmap, MA, n_tiles)
     
     ! process high-res MODIS albedo and create 8-day or 16-day climatological data in tile space
     
@@ -1923,10 +1829,11 @@ END SUBROUTINE modis_scale_para_high
     integer,           intent(in) :: nc_data, nr_data   ! expected dimensions of global science data array 
     type (regrid_map), intent(in) :: rmap               ! structure for mapping from science data grid to tile space
     character*6,       intent(in) :: MA                 ! MODIS albedo version string
+    integer,           intent(in) :: n_tiles
     
     ! ------------------------------------------
 
-    integer       :: kk, nn, ii, jj, ncid, i_highd, j_highd, pix_count, N_tiles
+    integer       :: kk, nn, ii, jj, ncid, i_highd, j_highd, pix_count
     integer       :: status, iLL, jLL, iG, jG, ix, jx, nc_10, nr_10, n_tslices, tt
     integer       :: time_slice, time_slice_next, yr, mn, dd, yr1, mn1, dd1
     character*512 :: fname
@@ -1942,12 +1849,6 @@ END SUBROUTINE modis_scale_para_high
     
     ! -----------------------------------------------------------------------
     !
-    ! read number of catchment-tiles (N_tiles) from "catchment.def" file
-    
-    fname='clsm/catchment.def' 
-    open( 10, file=fname, status='old', action='read', form='formatted')
-    read( 10, * ) N_tiles
-    close(10, status='keep')
     
     ! get some common dimensions and attributes from one of the 36-by-18 MODIS files
     
@@ -2170,15 +2071,15 @@ END SUBROUTINE modis_scale_para_high
   
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_lai (nx,ny,fnameRst,lai_name,merge)
+  SUBROUTINE hres_lai (nx,ny, maxcat,fnameRst,lai_name,merge)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
   implicit none 
-  integer, intent (in) :: nx, ny 
+  integer, intent (in) :: nx, ny, maxcat 
   character(*)  :: fnameRst,lai_name
   integer, intent(in), optional :: merge 
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
+  integer :: n,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
   real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
@@ -2201,16 +2102,9 @@ END SUBROUTINE modis_scale_para_high
   type (date_time_type) :: bf_gswp2_time,af_gswp2_time,date_time_new,bf_lai_time,   &
        af_lai_time
 !
-! Reading number of cathment-tiles from catchment.def file
-!--------------------------------------------------------- 
       if (first_entry) then
           nullify(iraster) ; first_entry = .false.
       end if
-
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      close (10,status='keep')
 
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
@@ -2442,16 +2336,18 @@ END SUBROUTINE modis_scale_para_high
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE grid2tile_modis6 (nc_data,nr_data,ncol,nrow,fnameRst,lai_name)
+  SUBROUTINE grid2tile_modis6 (nc_data,nr_data,ncol,nrow, maxcat, tile_lon, tile_lat, tile_id,lai_name)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
   implicit none 
-  integer, intent (in) :: nc_data,nr_data, ncol,nrow
+  integer,         intent(in) :: nc_data,nr_data, ncol,nrow, maxcat
+  real,            intent(in) :: tile_lon(:), tile_lat(:)
+  integer, target, intent(in) :: tile_id(:,:)
+  character(*),    intent(in) :: lai_name
   real, parameter :: dxy = 1.
   integer :: QSize
-  character(*)  :: fnameRst,lai_name
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
+  integer :: n,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
   character*100 :: fout
@@ -2461,8 +2357,7 @@ END SUBROUTINE modis_scale_para_high
   integer, allocatable, target,  dimension (:,:) :: net_data1
   integer, pointer, dimension (:,:) :: QSub
   real,    pointer, dimension (:,:)    :: subset
-  REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai,tile_lon, tile_lat &
-       , x, y !, distance
+  REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai, x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
@@ -2471,19 +2366,10 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time
-  integer, dimension (:,:), allocatable, target :: tile_id
   integer ::  tileid_tile
   real    :: dxm, dym
 ! Reading rst file
 !-----------------
-   open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-        form='unformatted',convert='little_endian')
-   allocate (tile_id    (1:ncol,1:nrow))         
-   
-   do j=1,nrow
-      read(10)tile_id(:,j)
-   end do
-   close (10,status='keep')
 
    dxm = real(nc_data) /real(ncol) 
    dym = real(nr_data) /real(nrow)
@@ -2493,22 +2379,8 @@ END SUBROUTINE modis_scale_para_high
       stop
    endif
 !
-! Reading number of cathment-tiles from catchment.def file
 !_________________________________________________________ 
 !
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      allocate (tile_lon(1:maxcat)) 
-      allocate (tile_lat(1:maxcat)) 
-      
-      do n = 1, maxcat
-         read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-         tile_lon(n) = (minlon + maxlon)/2.
-         tile_lat(n) = (minlat + maxlat)/2.
-      end do      
-      close (10,status='keep')
-
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v3/'//trim(lai_name)//'lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
@@ -2679,28 +2551,30 @@ END SUBROUTINE modis_scale_para_high
        end do
        close(31,status='keep')
        
-       deallocate (net_data1, tile_id)
+       deallocate (net_data1)
        deallocate (count_lai)
        deallocate (vec_lai) 
-       deallocate (tile_lat,tile_lon)
 
      END SUBROUTINE grid2tile_modis6
 
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, merge)
+  SUBROUTINE hres_lai_no_gswp (nc_data,nr_data,rmap,lai_name, maxcat, tile_lon, tile_lat, merge)
 !
 ! Processing GEOLAND2/MODIS LAI and creating 10-day climatological data 
 !
   implicit none 
-  integer, intent (in) :: nc_data,nr_data
+  integer,            intent(in) :: nc_data,nr_data
+  type (regrid_map),  intent(in) :: rmap
+  character(*),       intent(in) :: lai_name
+  integer,            intent(in) :: maxcat
+  real,               intent(in) :: tile_lon(:), tile_lat(:)
+  integer, intent(in), optional :: merge 
+
   real, parameter :: dxy = 1.
   integer :: QSize
-  type (regrid_map), intent (in) :: rmap
-  character(*)  :: lai_name
-  integer, intent(in), optional :: merge 
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
+  integer :: n,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
   character*100 :: fout
@@ -2710,8 +2584,7 @@ END SUBROUTINE modis_scale_para_high
   integer, allocatable, target,  dimension (:,:) :: net_data1
   integer, pointer, dimension (:,:) :: QSub
   real,    pointer, dimension (:,:)    :: subset
-  REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai,tile_lon, tile_lat &
-       , x, y !, distance
+  REAL, ALLOCATABLE, dimension (:)     :: vec_lai, count_lai, x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,pix_count
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
@@ -2733,22 +2606,8 @@ END SUBROUTINE modis_scale_para_high
 !   close (10,status='keep')
 !
 !
-! Reading number of cathment-tiles from catchment.def file
 !_________________________________________________________ 
 !
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      allocate (tile_lon(1:maxcat)) 
-      allocate (tile_lat(1:maxcat)) 
-      
-      do n = 1, maxcat
-         read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-         tile_lon(n) = (minlon + maxlon)/2.
-         tile_lat(n) = (minlat + maxlat)/2.
-      end do      
-      close (10,status='keep')
-
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/'//trim(lai_name)//'lai_clim.H11V13.nc'
       status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
@@ -3006,23 +2865,26 @@ END SUBROUTINE modis_scale_para_high
        deallocate (net_data1)
        deallocate (count_lai)
        deallocate (vec_lai) 
-       deallocate (tile_lat,tile_lon)
 
      END SUBROUTINE hres_lai_no_gswp
 !
 ! ---------------------------------------------------------------------------------------
 ! 
-  SUBROUTINE hres_gswp2 (nc_data,nr_data,rmap,lai_name,merge)
+  SUBROUTINE hres_gswp2 (nc_data,nr_data,rmap,lai_name, maxcat, tile_lon, tile_lat, merge)
 !
 ! Processing GSWP2 30sec LAI and grnFrac climatological data 
 !
   implicit none 
-  integer, intent (in) :: nc_data, nr_data 
-  character(*)  :: lai_name
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
+  integer,           intent (in) :: nc_data, nr_data 
+  type (regrid_map), intent (in) :: rmap
+  character(*),      intent (in) :: lai_name
+  integer,           intent (in) :: maxcat
+  real,              intent (in) :: tile_lon(:), tile_lat(:)    
+  integer, optional, intent (in) :: merge
+
+  integer :: n,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
-  type (regrid_map), intent (in) :: rmap
   real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
   character*100 :: fout
   character*200 :: fname
@@ -3037,10 +2899,9 @@ END SUBROUTINE modis_scale_para_high
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time
-  integer, intent(in), optional :: merge
   real, parameter :: dxy = 1.
   integer         :: nx, ny, QSize, pix_count
-  REAL, ALLOCATABLE, dimension (:) :: x,y,tile_lon, tile_lat
+  REAL, ALLOCATABLE, dimension (:) :: x,y
   real, allocatable, target, dimension (:,:) :: data_grid
   integer, pointer, dimension (:,:) :: QSub
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,tindex1,pfaf1 
@@ -3065,22 +2926,6 @@ END SUBROUTINE modis_scale_para_high
   
   QSize = nint(dxy*nc_data/360.)
   
-! Reading number of cathment-tiles from catchment.def file
-! -------------------------------------------------------- 
-
-  fname='clsm/catchment.def' 
-  open (10,file=fname,status='old',action='read',form='formatted')
-  read(10,*) maxcat
-  allocate (tile_lon(1:maxcat)) 
-  allocate (tile_lat(1:maxcat)) 
-  
-  do n = 1, maxcat
-     read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-     tile_lon(n) = (minlon + maxlon)/2.
-     tile_lat(n) = (minlat + maxlat)/2.
-  end do
-  
-  close (10,status='keep')
   
   call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
   fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v1/GSWP2_VegParam_H11V13.nc'
@@ -3243,7 +3088,7 @@ END SUBROUTINE modis_scale_para_high
 
   !----------------------------------------------------------------------  
 
-  SUBROUTINE MODIS_snow_alb_v2( nc_data, nr_data, rmap )
+  SUBROUTINE MODIS_snow_alb_v2( nc_data, nr_data, rmap, n_tile )
     
     ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
     !   to *land* tiles and write into clsm/catch_params.nc4.
@@ -3266,10 +3111,11 @@ END SUBROUTINE modis_scale_para_high
     integer(kind=4), parameter     :: nc_10=1200   ! # columns in 10deg-by-10deg MODIS input file
     integer(kind=4), parameter     :: nr_10=1200   ! # rows    in 10deg-by-10deg MODIS input file
     
+    integer,           intent (in) :: nc_data,nr_data
     type (regrid_map), intent (in) :: rmap
-    integer,           intent (in) :: nc_data,nr_data 
-    
-    integer                        :: nn, N_tile, ii, jj, ncid, iG, jG 
+    integer,           intent (in) :: n_tile  
+ 
+    integer                        :: nn, ii, jj, ncid, iG, jG 
     integer                        :: status, iLL, jLL, ix, jx
     integer                        :: pix_count  
     
@@ -3294,13 +3140,6 @@ END SUBROUTINE modis_scale_para_high
     !
     ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    ! Read number of catchment-tiles (N_tile) from catchment.def file
-
-    fname='clsm/catchment.def'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*) N_tile               ! # of tiles 
-    close(10,status='keep')
-    
     allocate(stch_snw_alb   (1:nc_10,1:nr_10)) ! 10deg-by-10deg snow albedo data 
     allocate(snw_alb        (1:N_tile))        ! snow albedo in tile space
     allocate(count_snow_alb (1:N_tile))        ! count of MODIS grid cells contributing to tile-average snow albedo
@@ -3419,7 +3258,7 @@ END SUBROUTINE modis_scale_para_high
   
   !----------------------------------------------------------------------  
   
-  SUBROUTINE MODIS_snow_alb( )
+  SUBROUTINE MODIS_snow_alb(n_tile, min_lon, max_lon, min_lat, max_lat)
 
     ! Map static, MODIS climatology-based snow albedo from preprocessed 30-arcsec grid
     !   to land tiles and write into clsm/catch_params.nc4.
@@ -3434,47 +3273,28 @@ END SUBROUTINE modis_scale_para_high
     ! Biljana Orescanin July 2022, SSAI@NASA
 
     implicit none
+    integer,   intent(in) :: n_tile
+    real,      intent(in) :: min_lon(:),max_lon(:),min_lat(:),max_lat(:)
+
+    real, allocatable     :: snw_alb(:)
 
     character*200                   :: fname
     character*2                     :: vv,hh
-    integer                         :: n,N_tile,ncid,status
-    real,allocatable,dimension(:)   :: min_lon,max_lon,min_lat,max_lat,snw_alb
+    integer                         :: n,ncid,status
     integer(kind=4),parameter       :: xdim = 1200, ydim = 1200
     real,dimension(xdim,ydim)       :: stch_snw_alb_tmp
     real,dimension(36,18,xdim,ydim) :: stch_snw_alb
-    real                            :: minlon,maxlon,minlat,maxlat
     real                            :: sno_alb_cnt,sno_alb_sum
     integer                         :: vvtil_min,hhtil_min,vvtil_max,hhtil_max,hhtil,vvtil
-    integer                         :: tindex1,pfaf1
     integer(kind=4)                 :: imin,imax,jmin,jmax,varid1
     logical                         :: file_exists
 
-    ! Read number of catchment-tiles (N_tile) from catchment.def file
-    fname='clsm/catchment.def'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read(10,*) N_tile
-
-    ! Read min/max lat/lons to use when locating snow albedo grids in 
     ! the stitched MODIS albedo file
-    allocate (min_lon(1:N_tile))
-    allocate (min_lat(1:N_tile))
-    allocate (max_lon(1:N_tile))
-    allocate (max_lat(1:N_tile))
     allocate (snw_alb(1:N_tile))
 
     ! Start by setting all snow albedo values to missing
     snw_alb(:)=MAPL_UNDEF
 
-    do n = 1, N_tile
-       read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-       min_lon(n) = minlon
-       max_lon(n) = maxlon
-       min_lat(n) = minlat
-       max_lat(n) = maxlat
-    end do
-
-    close (10,status='keep')
-    
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
 
     ! ----------- Get the information on snow albedo -----
@@ -3587,23 +3407,26 @@ END SUBROUTINE modis_scale_para_high
 
   !--------------------------------------------------------------------------------------
 
-  SUBROUTINE soil_para_hwsd (nx,ny,fnameRst)
+  SUBROUTINE soil_para_hwsd (nx,ny, maxcat, tile_pfs, tile_id)
 
 ! Processing NGDC-HWSD-STATSGO merged soil properties with Woesten Soil
 ! Parameters and produces tau_param.dat and soil_param.dat files
  
-      implicit none	    
-      integer, intent (in) :: nx, ny 
-      character(*)         :: fnameRst
+      implicit none
+      integer,         intent(in) :: nx, ny, maxcat
+      integer,         intent(in) :: tile_pfs(:)
+      integer, target, intent(in) :: tile_id(:,:)
+
+
       real, dimension (:), allocatable ::           &
-      	    a_sand,a_clay,a_silt,a_oc,a_bee,a_psis, &
+            a_sand,a_clay,a_silt,a_oc,a_bee,a_psis, &
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
             atau_2cm,btau_2cm 
       integer, dimension (100,3) :: table_map
       integer, dimension (3) :: nsoil_pcarbon 
       type (mineral_perc) :: min_percs
  
-      integer :: n,maxcat,i,j,k,ktop,ncid,i_highd,j_highd,nx_adj,ny_adj
+      integer :: n,i,j,k,ktop,ncid,i_highd,j_highd,nx_adj,ny_adj
       integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,d_undef,   &
                  i1,i2,icount
       character*100 :: fout
@@ -3626,7 +3449,6 @@ END SUBROUTINE modis_scale_para_high
       integer(kind=2) , allocatable, dimension (:) :: ss_clay,    &
              ss_sand,ss_clay_all,ss_sand_all,ss_oc_all
       REAL, ALLOCATABLE :: count_soil(:)
-      integer, allocatable, target, dimension (:,:) :: tile_id
       integer, pointer :: iRaster(:,:)
       integer :: tindex, pfafindex,fac,o_cl,o_clp,fac_surf   !,vtype
       real,dimension(4) :: cFamily
@@ -3706,30 +3528,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       nsoil_pcarbon(2) = nsoil_pcarbon(1) + 84 ! 84
       nsoil_pcarbon(3) = nsoil_pcarbon(2) + 84 ! 57
 
-      ! Read number of catchment-tiles (maxcat) from catchment.def file
-      
-      fname='clsm/catchment.def'
-      
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      
-      close (10,status='keep')
           
-      ! Read tile-id raster file
-
-      allocate(tile_id(1:nx,1:ny))
-      
-      fname=trim(fnameRst)//'.rst'
-      
-      open (10,file=fname,status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,ny
-         read(10)tile_id(:,j)
-      end do
-      
-      close (10,status='keep')
-
       ! read soil depth data from GSWP2_soildepth_H[xx]V[yy].nc
       !
       ! get info common to all H[xx]V[yy] rectangles:
@@ -4182,7 +3981,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       deallocate (count_soil)
       NULLIFY(Raster,Raster1,Raster2,Raster3,Raster4,Raster5,Raster6)
       deallocate (clay_top,sand_top,oc_top,clay_sub,sand_sub,oc_sub,grav_grid) 
-      deallocate (tile_id)
 
       ! sort 1-d land pixels vectors according to tile_id
 
@@ -4768,12 +4566,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       fname ='clsm/tau_param.dat'
       open (12,file=trim(fname),form='formatted',status='unknown',action = 'write')
 
-      ! open catchment.def for reading tile index and Pfafstetter index
     
-      fname='clsm/catchment.def'
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat     ! re-read header line
-
 !obsolete20220502      fname ='clsm/mosaic_veg_typs_fracs'
 !obsolete20220502      open (13,file=trim(fname),form='formatted',status='old',action = 'read')
 
@@ -4831,7 +4624,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          endif
 
          fac_surf = soil_class_top(n)
-	 fac      = soil_class_com(n)
+         fac      = soil_class_com(n)
 
          if(use_PEATMAP) then
             ! the maximum peat soil depth is set to the value Michel used to derive parameters (5000.) 
@@ -4844,9 +4637,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          
          this_cond  = a_aksat(fac)/exp(-1.0*zks*gnu)
          
-         ! read tile index and Pfafstetter index from catchment.def
          
-         read (10,*) tindex,pfafindex     
+         tindex    = n
+         pfafindex = tile_pfs(n)     
 
          ! write soil_param.first
 
@@ -4855,12 +4648,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                this_cond,wp_wetness,soildepth(n),                 &
                grav_vec(n),soc_vec(n),poc_vec(n), &
                a_sand(fac_surf),a_clay(fac_surf),a_sand(fac),a_clay(fac), &
-	       a_wpsurf(fac_surf)/a_porosurf(fac_surf),a_porosurf(fac_surf), pmap(n)
+               a_wpsurf(fac_surf)/a_porosurf(fac_surf),a_porosurf(fac_surf), pmap(n)
 
          ! write tau_param.dat
-	       	    
          write (12,'(i10,i8,4f10.7)')tindex,pfafindex, &
-	       atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
+            atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
 
          ! write catch_params.nc [soil hydraulic and srfexc-rzexc time scale parameters]
 
@@ -4877,7 +4669,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             parms4file (n, 9) = atau(fac_surf)
             parms4file (n,10) = btau(fac_surf) 
   
-  	 endif
+         endif
       end do
 
       ! add "header" line to the bottom of soil_param.first
@@ -5143,7 +4935,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     
 ! ====================================================================
 
-  SUBROUTINE grid2tile_ndep_t2m_alb (irst,jrst,fnameRst)  
+  SUBROUTINE grid2tile_ndep_t2m_alb (irst,jrst,nland, tile_id)  
 
     implicit none
 
@@ -5168,8 +4960,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! 18 crop          [moisture + deciduous]
     ! 19 crop          [moisture stress only]
 
-    integer  ,intent (in)       :: irst, jrst
-    character (*), intent (in)  :: fnameRst    
+    integer, intent(in)    :: irst, jrst, nland
+    integer, intent(in)    :: tile_id(:,:) ! tile raster file 
 
     integer, parameter :: nveg =  4   ! number of veg types
     integer, parameter :: npft = 19   ! number of PFT
@@ -5191,7 +4983,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     logical, parameter :: dir_access_files = .false.
 
-    integer, dimension (:,:), allocatable :: tile_id ! tile raster file 
 
     real, allocatable :: ndep_tile(:), t2mp_tile(:), t2mm_tile(:), alb_tile(:,:,:)
     real, allocatable :: data_grid (:,:), vector(:) 
@@ -5200,32 +4991,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     character :: ctype*1, cband*1
 
     real :: rdum, ftot, xg, yg, fill, alonw, alats, alone, alatn, rlonw, rlats, rlone, rlatn, xx, yy
-    integer :: i, j, n, im, jm, lwi, idum, ntiles, nland, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx, ncid, status
+    integer :: i, j, n, im, jm, lwi, idum, ntiles, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx, ncid, status
     logical :: file_exists
 
-
-    ! read nland from catchment.def
-    ! -----------------------------
- 
-    open (8, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-         action =  'read')
-    
-    read (8,*) nland
-
-    close(8, status = 'keep')
 
     ! Read tile-id raster file; used for mapping gridded fields to tile space
     ! -----------------------------------------------------------------------
 
-    allocate (tile_id(1:irst,1:jrst))
     allocate(vector(nland))
     allocate(icount(nland))
     
-    open(8,file=trim(fnameRst)//'.rst' ,status='old',action='read',form='unformatted')
-    do j=1,jrst
-      read(8) tile_id(:,j)
-    end do
-    close (8)
 
     !=====================================================================================================
     ! The below correction was moved to esa2clm - SM
@@ -5803,7 +5578,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! -------------------------------------------------------------------------------------------------------------------------------
 
-    SUBROUTINE CLM45_fixed_parameters (nc,nr,fnameRst)
+    SUBROUTINE CLM45_fixed_parameters (nc,nr, ntiles, tile_id)
 
       implicit none
       
@@ -5819,15 +5594,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! one value per tile
       ! 3) field capacity one value per tile
      
-      integer, intent (in)               :: nc, nr 
-      character(*), intent (in)          :: fnameRst
+      integer, intent(in)                :: nc, nr, ntiles
+      integer, intent(in)                :: tile_id(:,:)
+
       integer  , parameter               :: N_lon_clm = 720, N_lat_clm = 360
       real, parameter                    :: dxy_clm = 0.5
       integer                            :: i,j, status, varid, ncid_hdm, ncid_abm, ncid_gdp, ncid_peatf
-      integer                            :: NTILES, tid, cid, ABM_INT, sc_top, sc_com
+      integer                            :: tid, cid, ABM_INT, sc_top, sc_com
       REAL, ALLOCATABLE, dimension (:)   :: hdm, abm, gdp, peatf
       REAL, ALLOCATABLE, dimension (:,:) :: hdm_grid, gdp_grid, peatf_grid, data_grid, count_pix
-      INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id, abm_grid, int_grid
+      INTEGER, ALLOCATABLE, dimension (:,:) :: abm_grid, int_grid
       REAL                               :: hdm_r, gdp_r, peatf_r
       character*100                      :: fout
       real                               ::                     &
@@ -5835,15 +5611,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             a_poros,a_wp,a_aksat,atau,btau,a_wpsurf,a_porosurf, &
             atau_2cm,btau_2cm, field_cap (n_SoilClasses) 
 
-
-      ! Reading number of tiles
-      ! -----------------------
-      
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-      
-      read (20, *) NTILES
-      
-      close (20, status = 'keep')
 
       ! READ CLM4.5 source data files and regrid
       ! ----------------------------------------
@@ -5885,19 +5652,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       ! Grid to tile
       ! ------------
                 
-      ! Reading tile-id raster file
-
-      allocate(tile_id(1:nc,1:nr))
-      
-      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,nr
-         read(10)tile_id(:,j)
-      end do       
-
-      close (10,status='keep')     
-      
       allocate (hdm   (1:NTILES))
       allocate (abm   (1:NTILES))
       allocate (gdp   (1:NTILES))
@@ -5978,7 +5732,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
     deallocate (hdm, abm, gdp, peatf)
     deallocate (hdm_grid, gdp_grid, peatf_grid, data_grid, count_pix)
-    deallocate (tile_id, abm_grid)
+    deallocate (abm_grid)
 
     close (10, status = 'keep')
     close (20, status = 'keep')
@@ -5987,45 +5741,24 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
    ! ----------------------------------------------------------------------------------------------------------------------------
 
-  SUBROUTINE CLM45_clim_parameters (nc,nr,fnameRst)
+  SUBROUTINE CLM45_clim_parameters (nc,nr, ntiles, tile_id)
 
       implicit none
       ! Producing :  lightening frequency HRMC_COM_FR /gpfsm/dnb31/fzeng/clm4-to-clm4.5/data/firedata4.5/LISOTD_HRMC_V2.3.2014.hdf
       !  12 values per tile
-      integer, intent (in)                   :: nc, nr 
-      character(*), intent (in)              :: fnameRst
+      integer, intent (in)                   :: nc, nr, ntiles 
+      INTEGER, intent (in)                   :: tile_id(:,:)
+
       integer  , parameter                   :: N_lon_clm = 720, N_lat_clm = 360
-      integer                                :: NTILES, status, varid, ncid
+      integer                                :: status, varid, ncid
       real, dimension (:,:), allocatable     :: hrmc_grid, data_grid
       REAL, ALLOCATABLE, dimension (:)       :: hrmc, count_pix
-      INTEGER, ALLOCATABLE, dimension (:,:)  :: tile_id
       integer                                :: yr,mn,yr1,mn1, k,t,i,j
 
-
-     ! Reading number of tiles
-      ! -----------------------
-      
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-      
-      read (20, *) NTILES
-      
-      close (20, status = 'keep')
 
       ! Grid to tile
       ! ------------
                 
-      ! Reading tile-id raster file
-
-      allocate(tile_id(1:nc,1:nr))
-      
-      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,nr
-         read(10)tile_id(:,j)
-      end do       
-
-      close (10,status='keep')     
       
       ! READ CLM4.5 source data files and regrid
       ! ----------------------------------------
@@ -6080,17 +5813,21 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! ----------------------------------------------------------------------------------------------------------------------------
 
-  SUBROUTINE grid2tile_glass (ncol,nrow,fnameRst,lai_name)
+  SUBROUTINE grid2tile_glass (ncol,nrow, tile_id,lai_name, maxcat, tile_lon, tile_lat)
 !
 ! Processing GLASS LAI (AVHRR or MODIS) and creating 8-day climatological data 
 !
   implicit none 
+  integer,         intent(in) :: ncol, nrow
+  integer, target, intent(in) :: tile_id(:,:)
+  character(*),    intent(in) :: lai_name
+  integer,         intent(in) :: maxcat
+  real,            intent(in) :: tile_lon(:), tile_lat(:)
+
   integer  , parameter                   :: N_lon_glass = 7200, N_lat_glass = 3600
-  integer, intent (in) :: ncol, nrow
   real, parameter :: dxy = 1.
   integer :: QSize
-  character(*)  :: fnameRst,lai_name
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
+  integer :: n,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
   character*100 :: fout
@@ -6100,8 +5837,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   integer, allocatable, target,  dimension (:,:) :: net_data1
   real,  pointer, dimension (:,:) :: QSub
   real,  pointer, dimension (:,:) :: subset
-  REAL, ALLOCATABLE, dimension (:):: vec_lai, count_lai,tile_lon, tile_lat &
-       , x, y !, distance
+  REAL, ALLOCATABLE, dimension (:):: vec_lai, count_lai, x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid, data_grid, data_grid2
   INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l, VarID
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
@@ -6110,37 +5846,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time, date_time_this
-  integer, dimension (:,:), allocatable, target :: tile_id
   integer       ::  tileid_tile
   character*3   :: ddd
-
-! Reading rst file
-!-----------------
-   open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-        form='unformatted',convert='little_endian')
-   allocate (tile_id    (1:ncol,1:nrow))         
-   
-   do j=1,nrow
-      read(10)tile_id(:,j)
-   end do
-   close (10,status='keep')
-
-!
-! Reading number of cathment-tiles from catchment.def file
-!_________________________________________________________ 
-!
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      allocate (tile_lon(1:maxcat)) 
-      allocate (tile_lat(1:maxcat)) 
-      
-      do n = 1, maxcat
-         read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-         tile_lon(n) = (minlon + maxlon)/2.
-         tile_lat(n) = (minlat + maxlat)/2.
-      end do      
-      close (10,status='keep')
 
       call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR) 
       fname =trim(MAKE_BCS_INPUT_DIR)//'/land/veg/lai_grn/v2/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
@@ -6298,58 +6005,35 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
        end do
        close(31,status='keep')
        
-       deallocate (net_data1, tile_id)
+       deallocate (net_data1)
        deallocate (count_lai)
        deallocate (vec_lai) 
-       deallocate (tile_lat,tile_lon)
 
      END SUBROUTINE grid2tile_glass
 
    ! ----------------------------------------------------------------------------------------------------------------------------
 
-    SUBROUTINE gimms_clim_ndvi (nc,nr,fnameRst)
+    SUBROUTINE gimms_clim_ndvi (nc,nr, ntiles, tile_id)
       
       implicit none
       ! Producing :  GIMMS NDVI 15-day climatology from 5 arcmin data
       !  24 values per tile
-      integer, intent (in)                   :: nc, nr 
-      character(*), intent (in)              :: fnameRst
+      integer, intent (in)                   :: nc, nr, ntiles 
+      INTEGER, intent(in)                    :: tile_id(:,:)
+
       integer  , parameter                   :: N_lon_gimms = 4320, N_lat_gimms = 2160
-      integer                                :: NTILES, status, varid, ncid1, ncid2,ncid
+      integer                                :: status, varid, ncid1, ncid2,ncid
       real, dimension (:,:), allocatable     :: ndvi_grid, data_grid 
       integer, dimension (:,:), allocatable     ::data_grid2
       REAL, ALLOCATABLE, dimension (:)       :: ndvi, count_pix
-      INTEGER, ALLOCATABLE, dimension (:,:)  :: tile_id
       integer                                :: yr,mn,yr1,mn1, k,t,i,j,l
       integer, parameter :: scale_fac = 10000
       real,    parameter :: val_min = -0.3, val_max = 1.
 
 
-     ! Reading number of tiles
-      ! -----------------------
-      
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-      
-      read (20, *) NTILES
-      
-      close (20, status = 'keep')
-
       ! Grid to tile
       ! ------------
                 
-      ! Reading tile-id raster file
-      
-      allocate(tile_id(1:nc,1:nr))
-      
-      open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-           form='unformatted',convert='little_endian')
-      
-      do j=1,nr
-         read(10)tile_id(:,j)
-      end do
-      
-      close (10,status='keep')     
-      
       ! READ GIMMS NDVI source data files and regrid
       ! ----------------------------------------
       
@@ -6596,10 +6280,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     ! ----------------------------------------------------------------------------------------------
 
 
-    SUBROUTINE map_country_codes (NC, NR)
+    SUBROUTINE map_country_codes (NC, NR, maxcat, tile_lon, tile_lat)
 
       implicit none
-      integer  , intent (in) :: nc, nr
+      integer  , intent(in) :: nc, nr, maxcat
+      real,      intent(in) :: tile_lon(:), tile_lat(:)
 
       integer, parameter :: GC = 43200
       integer, parameter :: GR = 21600
@@ -6608,7 +6293,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       character*48, dimension (:), pointer :: CNT_NAME  
       
       integer :: CNT_CODE, ST_CODE
-      integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
+      integer :: i(GC),j(GR), k,n, status, ncid, varid, I0(1), j0(1)
       INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
       real    :: lat_mn, lat_mx, lon_mn, lon_mx
       real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
@@ -6616,14 +6301,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       call get_country_codes (index_RANGE = index_RANGE, ST_NAME = ST_NAME, &
            CNT_NAME = CNT_NAME)
 
-      
-      ! Reading number of tiles
-      ! -----------------------
-
-      open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', &
-           action =  'read')
-      
-      read (20, *) maxcat
       
 
       ! READ country code source data files and regrid
@@ -6653,9 +6330,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       end do      
 
       DO n = 1, MAXCAT
-         read (20,*) i0,j0, lon_mn, lon_mx, lat_mn, lat_mx
-         x0 = (lon_mn + lon_mx)/2.
-         y0 = (lat_mn + lat_mx)/2.
+         x0 = tile_lon(n)
+         y0 = tile_lat(n)
          I = 0
          J = 0
          WHERE ((xg >= x0).and.(xg < x0 + dxy)) I = 1
@@ -6678,9 +6354,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          endif
       
      END DO
-
      close (10, status = 'keep')
-     close (20, status = 'keep')
    END SUBROUTINE map_country_codes
 
    ! -------------------------------------------------------------------------------------------

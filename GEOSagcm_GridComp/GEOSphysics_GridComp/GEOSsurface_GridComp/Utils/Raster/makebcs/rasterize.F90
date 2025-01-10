@@ -655,6 +655,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, A
      NumCol = NumGlobalVars+NumGridVars*ng
      allocate(AVR(ntile, NumCol))
      AVR(:, 1) = iTable_(:,0)
+     ! for EASE grid, the second collum is replaced by the area
      AVR(:, 2) = rTable_(:,3)
      AVR(:, 3) = rTable_(:,1)
      AVR(:, 4) = rTable_(:,2)

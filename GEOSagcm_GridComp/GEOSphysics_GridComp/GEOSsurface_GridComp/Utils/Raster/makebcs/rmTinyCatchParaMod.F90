@@ -336,14 +336,12 @@ contains
   
   ! ---------------------------------------------------------------------
   
-  SUBROUTINE process_gswp2_veg (nc,nr,regrid,vname,fnameRst,merge)
+  SUBROUTINE process_gswp2_veg (nc,nr,regrid,vname, n_land, tile_id,merge)
     
     integer,      intent(in)           :: nc, nr
-
     logical,      intent(in)           :: regrid
-    
-    character(*), intent(in)           :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
-    
+    integer,      intent(in)           :: n_land
+    integer,      intent(in)           :: tile_id(:,:)
     character(*), intent(in)           :: vname
 
     integer,      intent(in), optional :: merge
@@ -356,7 +354,6 @@ contains
     
     real,    allocatable,         dimension(:)   :: catforc,vecforc,catcount	  
     integer, allocatable, target, dimension(:,:) :: gswp2_mask
-    integer, allocatable,         dimension(:,:) :: tile_id
     REAL,    ALLOCATABLE                         :: mon_climate(:,:)	
     integer                                      :: ierr, ncid,iret, maxcat
     integer                                      :: i1,k1,n,iv,year,smon,imon,mon,i,j,status
@@ -367,16 +364,8 @@ contains
 
     ! -----------------------------------------------------------------
  
-    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-         form='unformatted',convert='little_endian')
     
     allocate (gswp2_mask (1:i_raster,1:j_raster))
-    allocate (tile_id    (1:nc,1:nr))         
-    
-    do j=1,nr
-       read(10)tile_id(:,j)
-    end do
-    close (10,status='keep')
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     open (10,file=trim(MAKE_BCS_INPUT_DIR)//'/shared/mask/mapping_2.5_grid_to_gswp2_tile_index.rst',&
@@ -396,11 +385,8 @@ contains
     if(regrid) then
        call RegridRaster(gswp2_mask,raster)
     endif
-    
-    fname='clsm/catchment.def'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)maxcat
-    close (10,status='keep')
+   
+    maxcat = n_land 
     
     allocate(vecforc(1:MAX_NOF_GRID))
     allocate(catforc(maxcat))
@@ -458,11 +444,7 @@ contains
     iret = NF_CLOSE(ncid)
     ASSERT_(iret==NF_NOERR)
 
-    fname='clsm/catchment.def'
-    
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*) ncatch
-    close(10,status='keep')
+    ncatch = n_land
     
     do K=0,13
        yr = (k+11)/12
@@ -479,7 +461,6 @@ contains
     deallocate(vecforc)
     deallocate(catcount)  
     deallocate(gswp2_mask)
-    deallocate(tile_id)
     if(regrid) then
        deallocate(raster)
     endif 
@@ -494,14 +475,12 @@ contains
   !
   !----------------------------------------------------------------------  
   
-  SUBROUTINE soil_para_high (nx,ny,regrid,fnameRst,F25Tag)
+  SUBROUTINE soil_para_high (nx,ny,regrid, maxcat, tile_id, F25Tag)
     
     integer,      intent(in)            :: nx, ny
-    
     logical,      intent(in)            :: regrid
-    
-    character(*), intent(in)            :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
-
+    integer,      intent(in)            :: maxcat
+    integer,      intent(in)            :: tile_id(:,:)
     logical,      intent (in), optional :: F25Tag
 
     ! -----------------------------------------------------------
@@ -511,13 +490,12 @@ contains
     REAL, ALLOCATABLE :: soildepth (:)
     INTEGER :: soil_class_top,soil_class_com,soil_gswp,swit
     REAL :: BEE, PSIS, POROS,COND,WPWET
-    integer :: n,maxcat,count,k1,i1,i,j
+    integer :: n,count,k1,i1,i,j
     character*512 :: path,fname,fout,metpath
 
     CHARACTER*512 :: version,resoln,continent
     integer :: iret,ncid,ncid1
     real, allocatable, target, dimension (:,:) :: SOIL_HIGH
-    integer, allocatable, dimension (:,:) :: tile_id
     REAL, ALLOCATABLE :: count_soil(:)
     integer :: tindex, pfafindex,i_sib,j_sib
     integer :: status
@@ -601,17 +579,10 @@ contains
 
     i_sib = i_raster
     j_sib = j_raster
-    
-    fname='clsm/catchment.def'
-    
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read(10,*) maxcat
-    close (10,status='keep')
-    
+   
     allocate(soildepth(maxcat))
     allocate(soil_high(1:i_raster,1:j_raster))  
     allocate(count_soil(1:maxcat))  
-    allocate(tile_id(1:nx,1:ny))
     
     inquire(file='clsm/catch_params.nc4', exist=file_exists)
     
@@ -621,16 +592,6 @@ contains
     endif
     
     soil_high =-9999.
-    fname=trim(fnameRst)//'.rst'
-    
-    open (10,file=fname,status='old',action='read',  &
-         form='unformatted',convert='little_endian')
-    
-    do j=1,ny
-       read(10)tile_id(:,j)
-    end do
-    
-    close (10,status='keep')
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     
@@ -807,14 +768,13 @@ contains
   ! ---------------------------------------------------------------------
   ! ---------------------------------------------------------------------
   
-  SUBROUTINE modis_alb_on_tiles (nx,ny,ease_grid,regrid,fnameTil,fnameRst)
+  SUBROUTINE modis_alb_on_tiles (nx,ny,regrid, n_land, n_tile, tile_id)
     
     integer,      intent(in) :: nx, ny
-
-    logical,      intent(in) :: ease_grid, regrid
-    
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    character(*), intent(in) :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
+    logical,      intent(in) :: regrid
+    integer,      intent(in) :: n_land
+    integer,      intent(in) :: n_tile
+    integer,      intent(in) :: tile_id(:,:)
     
     ! -----------------------------------------------
 
@@ -825,7 +785,6 @@ contains
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     INTEGER :: laiid,year,mon,smon,imon,iret  
-    integer,allocatable :: tile_id(:,:)
     integer :: ialbt,ialbs,yy,j,month
     character*2 :: bw
     character*5 :: cyy
@@ -836,44 +795,10 @@ contains
     integer :: status
     real,pointer :: raster (:,:)
 
-    fname=trim(fnameTil)//'.til'
-
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)ip
-    read (10,*)j_dum
-
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do
-
-    do n = 1,ip
-      if (ease_grid) then     
-	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
-      else
-      read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-            typ,tarea,lon,lat,ig,jg,fr_gcm,j_dum,pfs,j_dum,fr_cat,j_dum
-       endif
-       if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading'
-    end do
-
-    close (10,status='keep')
+    ip  = n_tile
+    ip2 = n_land
 
     maxcat = ip2
-
-    fname=trim(fnameRst)//'.rst'
-  
-    open (10,file=fname,status='old',action='read',  &
-         form='unformatted',convert='little_endian')
-    allocate(tile_id(1:nx,1:ny))
-
-    do j=1,ny
-       read(10)tile_id(:,j)
-    end do
-
-    close (10,status='keep')
 
     allocate(alb_in(1:i_raster,1:j_raster))  
     allocate(alb_out(1:maxcat)) 
@@ -952,7 +877,7 @@ contains
        end do
     end do
     
-    deallocate (tile_id,alb_in,alb_out,alb_count)
+    deallocate (alb_in,alb_out,alb_count)
     if(regrid) then
        deallocate(raster)
     endif
@@ -971,7 +896,7 @@ contains
   !
   !----------------------------------------------------------------------
   
-  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil,fnameRst)
+  SUBROUTINE supplemental_tile_attributes(nx,ny,regrid,dateline,fnameTil, Rst_id)
     
     ! 1) get supplemental tile attributes not provided in MAPL-generated (ASCII) tile file,
     !    incl. min/max lat/lon of each tile and tile elevation
@@ -984,8 +909,8 @@ contains
     character(*), intent(in) :: dateline
 
     character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    character(*), intent(in) :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
-    
+    integer, intent(in)      :: Rst_id(:,:)   
+ 
     ! ---------------------------------------------------------
 
     INTEGER, allocatable, dimension(:) :: CATID  
@@ -1140,9 +1065,6 @@ contains
 
     ! read raster file with tile IDs
 
-    fname=trim(fnameRst)//'.rst'    
-    open (10,file=fname,status='old',action='read',form='unformatted',convert='little_endian')
-    
     do j=1,j_sib
        
        ! latitude and area of raster grid cells associated with lat index j
@@ -1152,8 +1074,7 @@ contains
        area_rst = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
 
        ! read tile IDs for lat index j
-       
-       read (10)(catid(i),i=1,i_sib)
+       catid(:) = rst_id(:,j) 
 
        ! compute average elevation weighted by area of contributing raster grid cells
        
@@ -1206,7 +1127,6 @@ contains
           end do
        endif
     enddo
-    close (10, status='keep')  
     
     ! finalize min/max lat/lon
     
@@ -1251,7 +1171,7 @@ contains
     
     open (10,file='clsm//catchment.def',  &
          form='formatted',status='unknown')
-    write (10,*)maxcat
+    write (10,*) maxcat
     
     do j=1,maxcat
  !      if(trim(dateline)=='DC')then
@@ -1297,14 +1217,12 @@ contains
  
   !----------------------------------------------------------------------
   
-  SUBROUTINE create_soil_types_files( nx, ny, ease_grid, fnameTil, fnameRst )
+  SUBROUTINE create_soil_types_files( nx, ny, n_land, tile_pfs, catid )
     
-    integer,      intent(in) :: nx, ny
-    
-    logical,      intent(in) :: ease_grid
-
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    character(*), intent(in) :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
+    integer,        intent(in) :: nx, ny
+    integer,        intent(in) :: n_land    
+    integer,        intent(in) :: tile_pfs(:)    
+    INTEGER, target,intent(in) :: CATID(:,:)
 
     
     !     This program reads global 5'x5' soil texture classification,
@@ -1335,7 +1253,6 @@ contains
     PARAMETER(col=4320,row=2160)
     
     INTEGER, allocatable :: SIB_LAY(:,:)
-    INTEGER, allocatable, target :: CATID(:,:)
     INTEGER, allocatable :: SOIL1(:,:)
     INTEGER, allocatable :: SOIL2(:,:)
     INTEGER tem1 (13),tem2(13),tem3(13)
@@ -1396,8 +1313,6 @@ contains
     !	Compute the number of input records per row.
     irrecs = nint (col / 4.0)      
     !
-    allocate(catid(1:nx,1:ny))
-    catid =0
     
     call get_environment_variable ("MAKE_BCS_INPUT_DIR",MAKE_BCS_INPUT_DIR)
     
@@ -1407,45 +1322,10 @@ contains
     ofile1='clsm/soil_text.top'
     ofile2='clsm/soil_text.com'     
 
-    fname=trim(fnameTil)//'.til'
-    
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)ip
-    read (10,*)j_dum
-    
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do
-    
-    allocate(id(ip))
-    id=0
- 
-    do n = 1,ip
-       if (ease_grid) then     
-          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
-       else 
-          read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,j_dum,fr_cat,j_dum
-       endif
-       id(n)=pfs
-       if (typ == 100) ip2 = n
-       
-       if(ierr /= 0)write (*,*)'Problem reading'
-    end do
-    
-    close (10,status='keep')
-    !
-    fname=trim(fnameRst)//'.rst'
-    
-    open (1,file=fname,form='unformatted',status='old', convert='little_endian')
-    
-    do j=1,ny
-       read (1)(catid(i,j),i=1,nx)
-    end do
-    
-    close(1,status='keep')
+    ip = size(tile_pfs,1)
+    allocate(id(1:ip), source = tile_pfs)
+    ip2 = n_land
+
     ! write(*,*)'Finished reading CAT_IDs'
     
     !     Top layer soil classification 0-30cm
@@ -1606,21 +1486,22 @@ contains
     end do
     close(11)
     close(12) 
-    deallocate (CATID,soil1,soil2,top,com,id)
+    deallocate (soil1,soil2,top,com,id)
     
   END SUBROUTINE create_soil_types_files
   
   !----------------------------------------------------------------------
   
-  SUBROUTINE compute_mosaic_veg_types( nx, ny, ease_grid, regrid, fnameTil, fnameRst)
+  SUBROUTINE compute_mosaic_veg_types( nx, ny, regrid, n_land, tile_pfs, Rst_id)
     
     integer,      intent(in) :: nx, ny
     
-    logical,      intent(in) :: ease_grid, regrid
+    logical,      intent(in) :: regrid
     
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
-    character(*), intent(in) :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
-    
+    integer,      intent(in) :: n_land
+    integer,      intent(in) :: tile_pfs(:)
+    integer,      intent(in) :: Rst_id(:,:)   
+ 
     ! -----------------------------
     
     integer*1, allocatable , dimension (:,:)  :: sib_veg2
@@ -1636,7 +1517,7 @@ contains
     INTEGER, allocatable, dimension (:) :: id ! indx,id,indx_old
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,i_dum,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: ig,jg,i_dum,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
     character*512 :: fname,fout
     CHARACTER*512 :: version,resoln,continent
     character*2 :: chyear
@@ -1648,31 +1529,9 @@ contains
     logical                            :: file_exists
     integer                            :: ncid
 
-    fname=trim(fnameTil)//'.til'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)ip
-    allocate(id(1:ip))
-    
-    read (10,*)j_dum
-    
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do
-    
-    do n = 1,ip
-       if (ease_grid) then     
-          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
-       else
-          read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
-               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
-       endif
-       id(n)=pfs      
-       if (typ == 100) ip2 = n
-       if(ierr /= 0)write (*,*)'Problem reading'
-    end do
-    close (10,status='keep')
+    ip = size(tile_pfs,1)
+    allocate(id(1:ip), source = tile_pfs)
+    ip2 = n_land
     maxcat=ip2
     
     allocate(sib_veg2(1:i_raster,1:j_raster))
@@ -1695,10 +1554,6 @@ contains
        call RegridRaster(sib_veg,raster)
     endif
     
-    fname=trim(fnameRst)//'.rst'  
-
-    open (10,file=fname,status='old',action='read',form='unformatted',convert='little_endian')
-    
     allocate(veg(1:maxcat,1:6))
     allocate(zdep2_g(1:maxcat,1:1))
     
@@ -1709,7 +1564,7 @@ contains
 
     do j=1,ny
        
-       read (10)(catid(i),i=1,nx)
+       catid(:) = Rst_id(:,j)
        
        do i=1,nx
           
@@ -1755,8 +1610,6 @@ contains
           endif
        enddo
     enddo
-    
-    close(10,status='keep')
     
     allocate(mos_veg(1:maxcat,1:2))
     allocate(veg_frac(1:maxcat,1:3))
@@ -1831,10 +1684,10 @@ contains
     
     ! Canopy height and ASCAT roughness length
     
-    call ascat_r0 (nx,ny,fnameRst, z0)
+    call ascat_r0 (nx,ny, n_land, Rst_id, z0)
     
     if(jpl_height) then
-       call jpl_canoph (nx,ny,fnameRst, z2)
+       call jpl_canoph (nx,ny, n_land, Rst_id, z2)
     else
        allocate (z2(1:maxcat))       
     endif
@@ -1891,18 +1744,15 @@ contains
   
   !----------------------------------------------------------------------
   
-  SUBROUTINE cti_stat_file (ease_grid,fnameTil, MaskFile)
-    
-    logical,      intent(in) :: ease_grid
-    
-    character(*), intent(in) :: fnameTil   ! file name (w/o extension) of tile file
+  SUBROUTINE cti_stat_file ( MaskFile, n_land, tile_pfs, til_j_dum)
     character(*), intent(in) :: MaskFile
+    integer, intent(in)      :: n_land, tile_pfs(:), til_j_dum(:)
 
     ! ----------------------------------------------
 
     INTEGER, PARAMETER :: nbcat=36716,nofvar=6
     INTEGER :: n,i,ip, itext(SRTM_maxcat,2),ix, jx,ip2, maxcat
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
+    INTEGER :: pfs, ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
     INTEGER*8 :: idum8
     INTEGER :: ncat,i_dum
     INTEGER, dimension(:), allocatable :: colin2cat 
@@ -1917,39 +1767,14 @@ contains
     CHARACTER*512 :: version
     character*512 :: fname
 
-    fname=trim(fnameTil)//'.til'
-    open (10,file=fname,status='old',action='read',form='formatted')
-    read (10,*)ip
+    ip = size(tile_pfs,1)
     allocate(indx_old(ip))
     allocate(id(ip))
-    indx_old=0
-    id=0
 
-    read (10,*)j_dum
-
-    do n = 1, j_dum
-       read (10,'(a)')version
-       read (10,*)nc_gcm
-       read (10,*)nr_gcm
-    end do
-
-    do n = 1,ip
-       if (ease_grid) then  
-          read(10,*,IOSTAT=ierr) typ,pfs !,lon,lat,ig,jg,fr_gcm,i_dum
-       else
-          read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)             &
-               typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
-       endif
-
-       id(n)=pfs
-       indx_old(n) = j_dum         
-       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old(n) = pfs
-       if (typ == 100) ip2 = n
-       if (ierr /= 0) write (*,*)'Problem reading',fname
-       if (ierr /= 0) stop
-    end do
-
-    close (10,status='keep')
+    ip2      = n_land
+    id       = tile_pfs
+    indx_old = til_j_dum
+    if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old = tile_pfs
 
     allocate(colin2cat(1:6000000))
     colin2cat=0
@@ -2011,21 +1836,17 @@ contains
 
     close (10,status='keep')
     !
-    do i=1,ip
+    do i=ip1+1,ip2
+       if(((id(i).ge.5000142).and.(id(i).le.5025829)))then
+          write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
+               var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),            &
+               var(indx_old(i),6)
+       else
 
-       if((i > ip1).and.(i <= ip2))then
-          if(((id(i).ge.5000142).and.(id(i).le.5025829)))then
-             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
-                  var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),            &
-                  var(indx_old(i),6)
-          else
-
-             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
-                  var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),   &
-                  var(indx_old(i),6)
-          endif
+          write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
+               var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),   &
+               var(indx_old(i),6)
        endif
-
     end do
     close (20,status='keep')
     deallocate (colin2cat,var,id,indx_old)
@@ -2034,18 +1855,21 @@ contains
   
   !---------------------------------------------------------------------
 
-  SUBROUTINE create_model_para (MaskFile)
+  SUBROUTINE create_model_para (MaskFile, nbcatch, tile_lon, tile_lat, tile_pfs)
 
     character(*), intent(in) :: MaskFile
+    integer,      intent(in) :: nbcatch
+    real,         intent(in) :: tile_lon(:), tile_lat(:)
+    integer,      intent(in) :: tile_pfs(:)
 
     ! --------------------------------------------
     
-    integer i,n,k, tindex1,pfaf1,nbcatch
+    integer i,n,k, tindex1,pfaf1
     integer soil_gswp
     real meanlu,stdev,minlu,maxlu,coesk,rzdep
     real minlat,maxlat,minlon,maxlon
     real,allocatable, dimension (:) ::   &
-         BEE, PSIS,POROS,COND,WPWET,soildepth, tile_lon, tile_lat
+         BEE, PSIS,POROS,COND,WPWET,soildepth
     REAL, allocatable, dimension(:) :: TOPMEAN, TOPVAR, TOPSKEW
     REAL ST(NAR), AC(NAR),COESKEW
     REAL, allocatable, dimension (:) ::   &
@@ -2155,10 +1979,6 @@ contains
     open (11,file=fname,action='read',        &
          form='formatted',status='old')              
 
-    fname='clsm/catchment.def'           
-    open (12,file=fname,action='read',        &
-         form='formatted',status='old')                                                             
-
     fout='clsm/ar.new'               
     open (20,file=fout,action='write',        &
          form='formatted',status='unknown')          
@@ -2187,11 +2007,8 @@ contains
     fout='clsm/soil_param.dat'
     open (42,file=fout,action='write',        &
          form='formatted',status='unknown')    
-    read (11,*)nbcatch
-    read (12,*)nbcatch
+    read (11,*) n ! read off nbcatch
 
-    allocate (tile_lon(1:nbcatch))
-    allocate (tile_lat(1:nbcatch))
     allocate (TOPMEAN (1:nbcatch))
     allocate (TOPVAR  (1:nbcatch))
     allocate (TOPSKEW (1:nbcatch))
@@ -2243,11 +2060,7 @@ contains
           stop
        endif
 
-       read (12,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-       tile_lon(n) = (minlon + maxlon)/2.
-       tile_lat(n) = (minlat + maxlat)/2.
-
-       if(pfaf1.ne.pfaf2(n)) then
+       if(tile_pfs(n).ne.pfaf2(n)) then
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
@@ -2710,17 +2523,19 @@ contains
 
   !--------------------------------------------------------------------
 
-  SUBROUTINE create_model_para_woesten (Maskfile)
+  SUBROUTINE create_model_para_woesten (Maskfile, nbcatch, tile_lon, tile_lat, tile_pfs)
 
     character(*), intent(in) :: MaskFile
-    
+    integer,      intent(in) :: nbcatch
+    real,         intent(in) :: tile_lon(:), tile_lat(:)
+    integer,      intent(in) :: tile_pfs(:)
     ! -----------------------------------------------
 
     real, allocatable, dimension (:)  :: a_sand,a_clay,a_silt,a_oc,  &
-         atile_sand,atile_clay, tile_lon, tile_lat, grav_vec, soc_vec,&
+         atile_sand,atile_clay, grav_vec, soc_vec,&
          poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf, pmap
 
-    integer i,j,n,k, tindex1,pfaf1,nbcatch
+    integer i,j,n,k, tindex1,pfaf1
     integer soil_gswp
     real meanlu,stdev,minlu,maxlu,coesk,rzdep
     real minlat,maxlat,minlon,maxlon
@@ -2869,10 +2684,6 @@ contains
     open (11,file=fname,action='read',        &
          form='formatted',status='old')  
 
-    fname='clsm/catchment.def'           
-    open (12,file=fname,action='read',        &
-         form='formatted',status='old')                                                             
-
     ! open files for *writing*
 
     fout='clsm/ar.new'               
@@ -2906,11 +2717,8 @@ contains
     open (42,file=fout,action='write',        &
          form='formatted',status='unknown')       
 
-    read (11,*)nbcatch    ! read header line (number of tiles) -- cti_stats.dat
-    read (12,*)nbcatch    ! read header line (number of tiles) -- catchment.def
+    read (11,*) n    ! read off header line (number of tiles) -- cti_stats.dat
 
-    allocate (tile_lon(1:nbcatch))
-    allocate (tile_lat(1:nbcatch))
     allocate (TOPMEAN (1:nbcatch))
     allocate (TOPVAR  (1:nbcatch))
     allocate (TOPSKEW (1:nbcatch))
@@ -2985,13 +2793,7 @@ contains
           stop
        endif
 
-       ! read catchment.def
-
-       read (12,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
-       tile_lon(n) = (minlon + maxlon)/2.
-       tile_lat(n) = (minlat + maxlat)/2.
-
-       if(pfaf1.ne.pfaf2(n)) then
+       if(tile_pfs(n).ne.pfaf2(n)) then
           write(*,*)'Warnning 1: pfafstetter mismatched' 
           stop
        endif
@@ -3280,7 +3082,6 @@ contains
 
     close(10,status='keep')
     close(11,status='keep')
-    close(12,status='keep')
     close(20,status='keep')
     close(30,status='keep')
     close(40,status='keep')
@@ -6333,33 +6134,22 @@ contains
   !
   ! -----------------------------------------------------------------------------------
   
-  SUBROUTINE ascat_r0 (nc,nr,fnameRst, z0)
+  SUBROUTINE ascat_r0 (nc,nr, ntiles,tile_id, z0)
 
     ! 1) ASCAT roughness 
     ! /discover/nobackup/adarmeno/projects/k14/arlems-roughness.x3600_y1800_t1.nc4
 
-    integer,                      intent(in)    :: nc, nr
-
-    character(*),                 intent(in)    :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
+    integer,                      intent(in)  :: nc, nr
+    integer,                      intent(in)  :: ntiles  
+    INTEGER,                      intent(in)  :: tile_id(:,:)
 
     real, pointer, dimension (:), intent(inout) :: z0
 
     integer  , parameter               :: N_lon_ascat = 3600, N_lat_ascat = 1800
     integer                            :: i,j, status, varid, ncid
-    integer                            :: NTILES
     REAL, ALLOCATABLE, dimension (:)   :: count_pix
     REAL, ALLOCATABLE, dimension (:,:) :: z0_grid, data_grid
-    INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
     character*512                      :: fout
-
-    ! Reading number of tiles
-    ! -----------------------
-
-    open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-
-    read (20, *) NTILES
-
-    close (20, status = 'keep')
 
     ! READ ASCAT source data and regrid
     ! ---------------------------------
@@ -6381,17 +6171,6 @@ contains
     ! ------------
 
     ! Reading tile-id raster file
-
-    allocate(tile_id(1:nc,1:nr))
-
-    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-         form='unformatted',convert='little_endian')
-
-    do j=1,nr
-       read(10)tile_id(:,j)
-    end do
-
-    close (10,status='keep')     
 
     allocate (z0        (1:NTILES))
     allocate (count_pix (1:NTILES))
@@ -6418,21 +6197,18 @@ contains
 
     deallocate (count_pix)
     deallocate (z0_grid)
-    deallocate (tile_id)
 
   END SUBROUTINE ascat_r0
 
   ! ----------------------------------------------------------------------------------------------------------------------------
   
-  SUBROUTINE jpl_canoph (nc,nr,fnameRst, z2)
+  SUBROUTINE jpl_canoph (nc,nr, ntiles, tile_id, z2)
 
     ! 1) JPL Canopy Height 
     ! /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/veg/veg_height/v1/Simard_Pinto_3DGlobalVeg_JGR.nc4
 
-    integer,                     intent(in)    :: nc, nr
-
-    character(*),                intent(in)    :: fnameRst   ! file name (w/o extension) of raster file w/ tile IDs
-
+    integer,                     intent(in)    :: nc, nr, ntiles
+    integer,                     intent(in)    :: tile_id(:,:)
     real, pointer, dimension(:), intent(inout) :: z2
 
     ! ----------------------------------------------------------
@@ -6442,20 +6218,9 @@ contains
     ! ----------------------------------------------------------
 
     integer                               :: i,j, status, varid, ncid
-    integer                               :: NTILES
     REAL,    ALLOCATABLE, dimension (:)   :: count_pix
     INTEGER, ALLOCATABLE, dimension (:,:) :: data_grid, z2_grid
-    INTEGER, ALLOCATABLE, dimension (:,:) :: tile_id
     character*512                         :: fout
-
-    ! Reading number of tiles
-    ! -----------------------
-
-    open (20, file = 'clsm/catchment.def', form = 'formatted', status = 'old', action =  'read')
-
-    read (20, *) NTILES
-
-    close (20, status = 'keep')
 
     ! READ JPL source data files and regrid
     ! -------------------------------------
@@ -6477,17 +6242,6 @@ contains
     ! ------------
 
     ! Reading tile-id raster file
-
-    allocate(tile_id(1:nc,1:nr))
-
-    open (10,file=trim(fnameRst)//'.rst',status='old',action='read',  &
-         form='unformatted',convert='little_endian')
-
-    do j=1,nr
-       read(10)tile_id(:,j)
-    end do
-
-    close (10,status='keep')     
 
     allocate (z2        (1:NTILES))
     allocate (count_pix (1:NTILES))
@@ -6513,7 +6267,6 @@ contains
 
     deallocate (count_pix)
     deallocate (z2_grid)
-    deallocate (tile_id)
 
   END SUBROUTINE jpl_canoph
 
