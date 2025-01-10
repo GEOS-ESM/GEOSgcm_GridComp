@@ -554,10 +554,6 @@ class GFDL_1M_driver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
-        rain_x = 7
-        rain_y = 11
-        print("Should be zero (at call) --> ", sum(sum(self.rain.view[:])))
-
         # The driver modifies a number of variables (t, p, qX) but does not pass
         # the changes back to the rest of the model. To replicate this behavior,
         # temporary copies of these variables are used throughout the driver.
@@ -614,12 +610,6 @@ class GFDL_1M_driver:
             self.revap,
             self.isubl,
         )
-
-        print(
-            "Should be zero (post init_temporaries) --> ", sum(sum(self.rain.view[:]))
-        )
-
-        print("rain 11 7 post init: ", self.rain.view[rain_x, rain_y])
 
         self._gfdl_1m_driver_preloop(
             self.t1,
@@ -683,9 +673,6 @@ class GFDL_1M_driver:
                 self.current_k_level,
             )
 
-            print("rain 11 7 post terminal_fall: ", self.rain.view[rain_x, rain_y])
-            print("rain1 11 7 post terminal_fall: ", self.rain1.view[rain_x, rain_y])
-
             self._terminal_fall_update(
                 self.rain,
                 self.graupel,
@@ -695,14 +682,6 @@ class GFDL_1M_driver:
                 self.graupel1,
                 self.snow1,
                 self.ice1,
-            )
-
-            print(
-                "rain 11 7 post terminal_fall_update: ", self.rain.view[rain_x, rain_y]
-            )
-            print(
-                "rain1 11 7 post terminal_fall_update: ",
-                self.rain1.view[rain_x, rain_y],
             )
 
             self._warm_rain(
@@ -741,9 +720,6 @@ class GFDL_1M_driver:
                 self.sat_tables.des4,
             )
 
-            print("rain 11 7 post warm_rain: ", self.rain.view[rain_x, rain_y])
-            print("rain1 11 7 post warm_rain: ", self.rain1.view[rain_x, rain_y])
-
             self._warm_rain_update(
                 self.rain,
                 self.rain1,
@@ -755,9 +731,6 @@ class GFDL_1M_driver:
                 self.m2_sol,
                 self.m1,
             )
-
-            print("rain 11 7 post warm_rain_update: ", self.rain.view[rain_x, rain_y])
-            print("rain1 11 7 post warm_rain_update: ", self.rain1.view[rain_x, rain_y])
 
             self._icloud(
                 self.t1,
