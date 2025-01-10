@@ -604,10 +604,10 @@ def update_tendencies(
                 qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.QCMIN)) - qa0
             )  # New Cloud - Old CloudCloud
 
-    # with computation(FORWARD), interval(0, 1):
-    #     # convert to mm / day
-    #     conversion_factor = 86400.0 * rdt * driver_constants.RGRAV
-    #     rain = rain * conversion_factor
-    #     snow = snow * conversion_factor
-    #     ice = ice * conversion_factor
-    #     graupel = graupel * conversion_factor
+    with computation(FORWARD), interval(0, 1):
+        # convert to mm / day
+        conversion_factor = 86400.0 * rdt * driver_constants.RGRAV
+        rain = rain * conversion_factor
+        snow = snow * conversion_factor
+        ice = ice * conversion_factor
+        graupel = graupel * conversion_factor
