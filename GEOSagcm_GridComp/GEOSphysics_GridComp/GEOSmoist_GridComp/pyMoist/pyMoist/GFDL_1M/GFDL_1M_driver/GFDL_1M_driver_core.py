@@ -68,6 +68,10 @@ def init_temporaries(
     snow: FloatFieldIJ,
     graupel: FloatFieldIJ,
     ice: FloatFieldIJ,
+    m2_rain: FloatField,
+    m2_sol: FloatField,
+    revap: FloatField,
+    isubl: FloatField,
 ):
     """
     initalize temporary copies of many quantities
@@ -130,6 +134,12 @@ def init_temporaries(
         # ccn needs units #/m^3
         ccn = qn
         c_praut = cpaut * (ccn * driver_constants.RHOR) ** (-1.0 / 3.0)
+
+        # Reset precipitation aggregates to zero
+        m2_rain = 0
+        m2_sol = 0
+        revap = 0
+        isubl = 0
 
     with computation(FORWARD), interval(0, 1):
         # 1 minus sigma used to control minimum cloud
@@ -594,10 +604,10 @@ def update_tendencies(
                 qa0 * sqrt((qi1 + ql1) / max(qi0 + ql0, driver_constants.QCMIN)) - qa0
             )  # New Cloud - Old CloudCloud
 
-    with computation(FORWARD), interval(0, 1):
-        # convert to mm / day
-        conversion_factor = 86400.0 * rdt * driver_constants.RGRAV
-        rain = rain * conversion_factor
-        snow = snow * conversion_factor
-        ice = ice * conversion_factor
-        graupel = graupel * conversion_factor
+    # with computation(FORWARD), interval(0, 1):
+    #     # convert to mm / day
+    #     conversion_factor = 86400.0 * rdt * driver_constants.RGRAV
+    #     rain = rain * conversion_factor
+    #     snow = snow * conversion_factor
+    #     ice = ice * conversion_factor
+    #     graupel = graupel * conversion_factor

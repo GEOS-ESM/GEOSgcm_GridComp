@@ -12,7 +12,7 @@ export GT4PY_COMPILE_OPT_LEVEL=0
 export OMP_NUM_THREADS=1
 python -m pytest -s \
     --data_path=/Users/ckropiew/netcdfs \
-    --backend=dace:cpu \
+    --backend=debug \
     --grid=default \
     --multimodal_metric \
     --which_modules=GFDL_1M_driver \

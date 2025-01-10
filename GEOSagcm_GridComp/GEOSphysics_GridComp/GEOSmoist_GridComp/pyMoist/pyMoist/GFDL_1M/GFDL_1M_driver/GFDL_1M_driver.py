@@ -609,6 +609,10 @@ class GFDL_1M_driver:
             self.snow,
             self.graupel,
             self.ice,
+            self.m2_rain,
+            self.m2_sol,
+            self.revap,
+            self.isubl,
         )
 
         print(
