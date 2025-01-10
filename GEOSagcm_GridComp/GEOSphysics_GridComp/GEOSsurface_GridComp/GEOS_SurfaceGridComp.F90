@@ -7355,6 +7355,36 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
     end do
 
+! Total precipitation diagnostic from SurfaceGridComp,
+!  including any correction. The uncorrected comes from moist.
+!-------------------------------------------------------------
+
+  ! Convective Precipitation
+  ! ------------------------
+    call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
+    VERIFY_(STATUS)
+
+    if(PRECIP_FILE /= "null") then
+       TMPTILE = PCUTILE
+       call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       CN_PRCP = PRECCU
+    endif
+
+  ! Total Precipitation
+  ! -------------------
+    call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
+    VERIFY_(STATUS)
+
+    if(PRECIP_FILE /= "null") then
+       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
+       call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       PRECTOT = TPREC
+    endif
+
 ! Create the Discharge for the ocean. This is an import of 
 !  Saltwater, which simply makes a copy to an export.
 !  That export is what goes to GcmGridComp for coupling to the OGCM.
@@ -7446,29 +7476,29 @@ module GEOS_SurfaceGridCompMod
 
   ! Convective Precipitation
   ! ------------------------
-    call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
-    VERIFY_(STATUS)
+!    call MAPL_GetPointer(EXPORT, CN_PRCP, 'CN_PRCP', ALLOC=.true., RC=STATUS)
+!    VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
-       TMPTILE = PCUTILE
-       call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       CN_PRCP = PRECCU
-    endif
+!    if(PRECIP_FILE /= "null") then
+!       TMPTILE = PCUTILE
+!       call MAPL_LocStreamTransform( LOCSTREAM, CN_PRCP, TMPTILE, RC=STATUS)
+!       VERIFY_(STATUS)
+!    else
+!       CN_PRCP = PRECCU
+!    endif
 
   ! Total Precipitation
   ! -------------------
-    call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
-    VERIFY_(STATUS)
+!    call MAPL_GetPointer(EXPORT, PRECTOT, 'PRECTOT', ALLOC=.true., RC=STATUS)
+!    VERIFY_(STATUS)
 
-    if(PRECIP_FILE /= "null") then
-       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
-       call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       PRECTOT = TPREC
-    endif
+!    if(PRECIP_FILE /= "null") then
+!       TMPTILE = PCUTILE + PLSTILE + SNOFLTILE + ICEFLTILE + FRZRFLTILE
+!       call MAPL_LocStreamTransform( LOCSTREAM, PRECTOT, TMPTILE, RC=STATUS)
+!       VERIFY_(STATUS)
+!    else
+!       PRECTOT = TPREC
+!    endif
 
 ! New effective temperature and humidity
 !---------------------------------------
