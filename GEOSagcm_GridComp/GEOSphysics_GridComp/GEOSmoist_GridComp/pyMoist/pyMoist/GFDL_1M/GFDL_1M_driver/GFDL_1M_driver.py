@@ -212,6 +212,7 @@ class GFDL_1M_driver:
             use_ppm,
             use_ccn,
             do_qa,
+            fix_negative,
             fast_sat_adj,
             do_bigg,
             do_evap,
@@ -865,6 +866,7 @@ class GFDL_1M_driver:
         use_ppm: bool,
         use_ccn: bool,
         do_qa: bool,
+        fix_negative: bool,
         fast_set_adj: bool,
         do_bigg: bool,
         do_evap: bool,
@@ -900,6 +902,8 @@ class GFDL_1M_driver:
             failed_keywords.append("use_ccn")
         if do_qa:
             failed_keywords.append("do_qa")
+        if not fix_negative:
+            failed_keywords.append("fix_negative")
         if fast_set_adj:
             failed_keywords.append("fast_set_adj")
         if do_bigg:
