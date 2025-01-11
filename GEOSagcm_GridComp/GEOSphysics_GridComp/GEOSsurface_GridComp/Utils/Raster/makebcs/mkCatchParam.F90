@@ -259,7 +259,7 @@ integer :: n_threads=1
              call supplemental_tile_attributes(nc,nr,regrid,dl,fnameTil, tile_id) 
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -271,7 +271,7 @@ integer :: n_threads=1
 
        call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable, rTable = rTable) 
        N_Tile = size(iTable, 1)
-       N_land = count(iTable(:,0) == 100)
+       N_land = count(iTable(:,0) == 100)                        ! n_land = number of land tiles
        allocate(tile_pfs,   source = iTable(1:n_land,4))
        allocate(tile_j_dum, source = iTable(1:n_land,7))
        deallocate (iTable)
@@ -302,7 +302,7 @@ integer :: n_threads=1
           call cti_stat_file (MaskFile, n_land, tile_pfs, tile_j_dum)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -323,7 +323,7 @@ integer :: n_threads=1
              call ESA2MOSAIC (nc,nr, n_land, tile_pfs, tile_id)
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -339,7 +339,7 @@ integer :: n_threads=1
              call ESA2CLM (nc,nr, n_land, tile_lat, tile_pfs, tile_id)
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -357,7 +357,7 @@ integer :: n_threads=1
              call compute_mosaic_veg_types (nc, nr, regrid, n_land, tile_pfs, tile_id)
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -401,7 +401,7 @@ integer :: n_threads=1
              call create_mapping (nc,nr,40320,20160,mapgeoland2, n_land, tile_id )
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done create mapping mapgeoland2. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done create mapping mapgeoland2. Spent   ', seconds, "  seconds"
              lai_name = 'GEOLAND2_10-DayClim/geoland2_'
  
              write (log_file,'(a)')'         Creating '//lai_name
@@ -413,7 +413,7 @@ integer :: n_threads=1
              endif
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
              ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
              deallocate (mapgeoland2%map)
              deallocate (mapgeoland2%ij_index)
@@ -429,7 +429,7 @@ integer :: n_threads=1
           call create_mapping (nc,nr,43200,21600,maparc30, n_land,  tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done create mapping maparc30. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done create mapping maparc30. Spent   ', seconds, "  seconds"
        endif
        
        fname_tmp = 'clsm/green.dat'
@@ -501,7 +501,7 @@ integer :: n_threads=1
           endif
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -515,7 +515,7 @@ integer :: n_threads=1
           call gimms_clim_ndvi (nc,nr, n_land, tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -552,7 +552,7 @@ integer :: n_threads=1
              endif
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -570,7 +570,7 @@ integer :: n_threads=1
              call modis_alb_on_tiles_high (43200,21600,maparc30,MODALB, n_land)
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)
-             write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+             write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           else
              write (log_file,'(a)')'         Using existing file.'
           endif
@@ -605,7 +605,7 @@ integer :: n_threads=1
           !  endif
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing files.'
        endif
@@ -626,7 +626,7 @@ integer :: n_threads=1
           call create_soil_types_files (nc,nr, n_land, tile_pfs, tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
           write (log_file,'(a)')' '
        endif
        
@@ -648,7 +648,7 @@ integer :: n_threads=1
           if(SOILBCS(1:4)=='HWSD') call soil_para_hwsd (nc,nr, n_land, tile_pfs, tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a,a)')'         Using existing file.'
        endif
@@ -672,7 +672,7 @@ integer :: n_threads=1
           if(SOILBCS(1:4) =='HWSD') call create_model_para_woesten(MaskFile, n_land, tile_lon, tile_lat, tile_pfs)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a,a)')'         Using existing files.'
        endif
@@ -697,7 +697,7 @@ integer :: n_threads=1
           call grid2tile_ndep_t2m_alb (nc,nr, n_land,tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) 'Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) 'Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'Skipping step for lack of matching veg types file.'
        endif
@@ -713,7 +713,7 @@ integer :: n_threads=1
           call CLM45_fixed_parameters (nc,nr, n_land, tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) 'Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) 'Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -729,7 +729,7 @@ integer :: n_threads=1
           call CLM45_clim_parameters (nc,nr,n_land,tile_id)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) 'Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) 'Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -745,7 +745,7 @@ integer :: n_threads=1
           call map_country_codes (nc,nr,n_land, tile_lon, tile_lat)
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) 'Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) 'Done. Spent   ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
@@ -769,7 +769,7 @@ integer :: n_threads=1
           endif
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) 'Done. Spend   ', seconds, "  seconds"
+          write (log_file, *) 'Done. Spent   ', seconds, "  seconds"
           write (log_file,'(a)')' '
        endif
 
