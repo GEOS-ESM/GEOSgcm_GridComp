@@ -548,7 +548,7 @@ integer :: n_threads=1
                 deallocate (maparc60%ij_index)
              else
                 !  This option is for legacy sets like Fortuna 2.1
-                call modis_alb_on_tiles (nc,nr,regrid, n_land, n_tile, tile_id)
+                call modis_alb_on_tiles (nc,nr,regrid, n_land, tile_id)
              endif
              call system_clock(clock2)
              seconds = (clock2-clock1)/real(clock_rate)

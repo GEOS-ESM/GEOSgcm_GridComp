@@ -21,7 +21,8 @@ module rmTinyCatchParaMod
   integer, parameter :: i_raster = 8640, j_raster=4320
   integer, parameter :: ncat_gswp2 = 15238
   REAL,    PARAMETER :: undef = 1.e+20
-  integer, parameter :: arr_len = 1734915,ip1 =0 
+  integer, parameter :: arr_len = 1734915
+  integer, parameter :: ip1 =0                       ! index offset for land tiles within all vector of all tiles (ip1=0 => land tiles are first) 
   real,    parameter :: dx_gswp2 =1.,dy_gswp2=1. 
   integer, parameter :: MAX_NOF_GRID = ncat_gswp2
   integer, PARAMETER :: nbdep=150, NAR=1000,nwt=81,nrz=41
@@ -354,7 +355,7 @@ contains
     real,    allocatable,         dimension(:)   :: catforc,vecforc,catcount	  
     integer, allocatable, target, dimension(:,:) :: gswp2_mask
     REAL,    ALLOCATABLE                         :: mon_climate(:,:)	
-    integer                                      :: ierr, ncid,iret, maxcat
+    integer                                      :: ierr, ncid,iret
     integer                                      :: i1,k1,n,iv,year,smon,imon,mon,i,j,status
     integer                                      :: k,ncatch
     integer                                      :: yr,mn,yr1,mn1
@@ -385,12 +386,10 @@ contains
        call RegridRaster(gswp2_mask,raster)
     endif
    
-    maxcat = n_land 
-    
     allocate(vecforc(1:MAX_NOF_GRID))
-    allocate(catforc(maxcat))
-    allocate(catcount(maxcat))
-    allocate(mon_climate(1:maxcat,1:12))
+    allocate(catforc(n_land))
+    allocate(catcount(n_land))
+    allocate(mon_climate(1:n_land,1:12))
     mon_climate(:,:)=0.
     catforc=0.
     
@@ -423,7 +422,7 @@ contains
           catcount=0
           DO j =1,nr
              DO I = 1,nc
-                if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.maxcat)) then
+                if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.n_land)) then
                    if ((Raster(i,j).ge.1).and.(Raster(i,j).le.MAX_NOF_GRID)) then
                       catforc(tile_id(i,j)) = catforc(tile_id(i,j)) +   &
                            vecforc(Raster(i,j))  
@@ -433,7 +432,7 @@ contains
              END DO
           END DO
 	  
-	  do i = 1, maxcat
+	  do i = 1, n_land
              if(catcount(i).gt.0.) catforc(i) = catforc (i) /catcount(i)
           end do
           mon_climate(:,imon)=mon_climate(:,imon)+catforc(:)/17.
@@ -474,11 +473,11 @@ contains
   !
   !----------------------------------------------------------------------  
   
-  SUBROUTINE soil_para_high (nx,ny,regrid, maxcat, tile_id, F25Tag)
+  SUBROUTINE soil_para_high (nx,ny,regrid, n_land, tile_id, F25Tag)
     
     integer,      intent(in)            :: nx, ny
     logical,      intent(in)            :: regrid
-    integer,      intent(in)            :: maxcat
+    integer,      intent(in)            :: n_land
     integer,      intent(in)            :: tile_id(:,:)
     logical,      intent (in), optional :: F25Tag
 
@@ -579,15 +578,15 @@ contains
     i_sib = i_raster
     j_sib = j_raster
    
-    allocate(soildepth(maxcat))
+    allocate(soildepth(n_land))
     allocate(soil_high(1:i_raster,1:j_raster))  
-    allocate(count_soil(1:maxcat))  
+    allocate(count_soil(1:n_land))  
     
     inquire(file='clsm/catch_params.nc4', exist=file_exists)
     
     if(file_exists) then
        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
-       allocate (parms4file (1:maxcat, 1:10))
+       allocate (parms4file (1:n_land, 1:10))
     endif
     
     soil_high =-9999.
@@ -645,7 +644,7 @@ contains
     
     do j=1,ny
        do i=1,nx
-          if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.maxcat)) then
+          if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.n_land)) then
              if(raster(i,j).eq.-9999.)   then
                 !		   write (*,*)'soil_high UNDEF',i,j,tile_id(i,j),raster(i,j) 
                 !                           stop
@@ -661,7 +660,7 @@ contains
        end do
     end do
     
-    DO n =1,maxcat
+    DO n =1,n_land
        if(count_soil(n)/=0.) soildepth(n)=soildepth(n)/count_soil(n)	
        if (present(F25Tag)) then
           soildepth(n) = max(soildepth(n),1.)
@@ -684,7 +683,7 @@ contains
     open (22,file=fout,status='unknown',action='write',form='formatted')
     
     swit =0
-    DO n=1 , maxcat
+    DO n=1 , n_land
        read (10,*) tindex,pfafindex, soil_class_top
        write (22,'(i10,i8,4f10.7)')tindex,pfafindex,atau2(soil_class_top), &
             btau2(soil_class_top),atau5(soil_class_top),btau5(soil_class_top)
@@ -734,16 +733,16 @@ contains
     close (22,status='keep')
     
     if(file_exists) then
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/n_land/), parms4file (:, 1)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/n_land/), parms4file (:, 2)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/n_land/), parms4file (:, 3)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/n_land/), parms4file (:, 4)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/n_land/), parms4file (:, 5)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/n_land/), parms4file (:, 6)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/n_land/), parms4file (:, 7)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/n_land/), parms4file (:, 8)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/n_land/), parms4file (:, 9)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/n_land/), parms4file (:,10)) ; VERIFY_(STATUS)
        STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
        DEALLOCATE (parms4file)
     endif
@@ -767,22 +766,21 @@ contains
   ! ---------------------------------------------------------------------
   ! ---------------------------------------------------------------------
   
-  SUBROUTINE modis_alb_on_tiles (nx,ny,regrid, n_land, n_tile, tile_id)
+  SUBROUTINE modis_alb_on_tiles (nx,ny,regrid, n_land, tile_id)
     
     integer,      intent(in) :: nx, ny
     logical,      intent(in) :: regrid
     integer,      intent(in) :: n_land
-    integer,      intent(in) :: n_tile
     integer,      intent(in) :: tile_id(:,:)
     
     ! -----------------------------------------------
 
     CHARACTER*512 :: version,resoln,continent
     character*512 :: path,fname,fout,metpath
-    integer :: n,ip,maxcat,count,k1,i1,i
+    integer :: n,count,k1,i1,i
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3,ip2
     INTEGER :: laiid,year,mon,smon,imon,iret  
     integer :: ialbt,ialbs,yy,j,month
     character*2 :: bw
@@ -794,14 +792,11 @@ contains
     integer :: status
     real,pointer :: raster (:,:)
 
-    ip  = n_tile
-    ip2 = n_land
-
-    maxcat = ip2
+    ip2 = ip1 + n_land
 
     allocate(alb_in(1:i_raster,1:j_raster))  
-    allocate(alb_out(1:maxcat)) 
-    allocate(alb_count(1:maxcat)) 
+    allocate(alb_out(1:n_land)) 
+    allocate(alb_count(1:n_land)) 
     if(regrid) then
        allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
     else
@@ -859,7 +854,7 @@ contains
                    end do
                 end do
                 
-                do n = 1,maxcat
+                do n = 1,n_land
                    if (alb_count(n).gt.0)then
                       alb_out(n) = alb_out(n)/alb_count(n)
                    else
@@ -913,7 +908,7 @@ contains
     ! ---------------------------------------------------------
 
     INTEGER, allocatable, dimension(:) :: CATID  
-    integer                            :: n, ip, maxcat, i, j, i_sib, j_sib, status
+    integer                            :: n, ip, n_land, i, j, i_sib, j_sib, status
     INTEGER, allocatable, dimension(:) :: id, I_INDEX, J_INDEX 
     integer                            :: nc_gcm, nr_gcm, nc_ocean, nr_ocean
     REAL                               :: lat, lon, fr_gcm, fr_cat, tarea
@@ -975,8 +970,8 @@ contains
     ! read ASCII-formatted tile file (*.til)
     !
     ! ip  = number of tiles in global domain (all types, incl. land, landice, lake, & ocean)
-    ! ip1 = 0 = index offset for land tiles in *.til files ==> assumes land tiles first in *.til file
-    ! ip2 = maxcat + ip1 = number of land tiles in global *.til file
+    ! ip1 = index offset for land tiles in *.til files  (ip1=0 implies that land tiles first in *.til file)
+    ! ip2 = ip1 + n_land = end index of land tiles (where n_land is number of land tiles in global *.til file)
     
     allocate (catid(1:i_sib))
     catid=0
@@ -1043,7 +1038,7 @@ contains
     end do
     close (10,status='keep')
     
-    maxcat=ip2-ip1                 ! = number of land tiles
+    n_land=ip2-ip1                 ! = number of land tiles
     
     ! ---------------------------------------------------------------
     !
@@ -1140,27 +1135,27 @@ contains
     
     sum1=0.
     
-    do j=1,maxcat
+    do j=1,n_land
        sum1 = sum1 + tile_ele(j)*tile_area(j)
     enddo
     
-    mean_land_elev = sum1/sum(tile_area(1:maxcat))
+    mean_land_elev = sum1/sum(tile_area(1:n_land))
    
     if ( mean_land_elev .ne. Target_mean_land_elev ) then
        
        print *, 'Global mean land elevation before adjustment     [m]: ', mean_land_elev
        
-       tile_ele(1:maxcat) = tile_ele(1:maxcat)*(Target_mean_land_elev / mean_land_elev) 
+       tile_ele(1:n_land) = tile_ele(1:n_land)*(Target_mean_land_elev / mean_land_elev) 
        
        ! verify adjustment
        
        sum1=0.
        
-       do j=1,maxcat
+       do j=1,n_land
           sum1 = sum1 + tile_ele(j)*tile_area(j)
        enddo
        
-       print *, 'Global mean land elevation after scaling to SRTM [m]: ', sum1/sum(tile_area(1:maxcat))
+       print *, 'Global mean land elevation after scaling to SRTM [m]: ', sum1/sum(tile_area(1:n_land))
        
     endif
     
@@ -1170,9 +1165,9 @@ contains
     
     open (10,file='clsm//catchment.def',  &
          form='formatted',status='unknown')
-    write (10,*) maxcat
+    write (10,*) n_land
     
-    do j=1,maxcat
+    do j=1,n_land
  !      if(trim(dateline)=='DC')then
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
@@ -1323,7 +1318,8 @@ contains
 
     ip = size(tile_pfs,1)
     allocate(id(1:ip), source = tile_pfs)
-    ip2 = n_land
+
+    ip2 = ip1 + n_land 
 
     ! write(*,*)'Finished reading CAT_IDs'
     
@@ -1361,7 +1357,7 @@ contains
     deallocate(gtext)
     !
     !     Top layer on 2x2.5
-    allocate(soil1(ip2,1:13))
+    allocate(soil1(n_land,1:13))
     soil1(:,:)=0
     do j=1,rowsib
        do i=1,colsib
@@ -1412,7 +1408,7 @@ contains
     ! write(*,*)'Finished reading bottom layer'
     !
     !     Bottom layer on 2x2.5
-    allocate(soil2(ip2,1:13))
+    allocate(soil2(n_land,1:13))
     soil2(:,:)=0
     do j=1,rowsib
        do i=1,colsib
@@ -1428,11 +1424,11 @@ contains
     !
     !         write(*,*)'Finished counting pixels for each catchment'
     k=0
-    allocate(top(ip2,2))
-    allocate(com(ip2,2))
+    allocate(top(n_land,2))
+    allocate(com(n_land,2))
     top=0
     com=0
-    do j=1,ip2
+    do j=1,n_land
        tem1(1:13)=SOIL1(j,1:13)
        tem2(1:13)=SOIL2(j,1:13)
        
@@ -1468,7 +1464,7 @@ contains
     if(top(1,2).eq.0)top(1,2)= 3
     if(com(1,2).eq.0)com(1,2)= 9
     
-    do j=1,ip2
+    do j=1,n_land
        
        if(top(j,2).eq.0)top(j,2)=top(j-1,2)
        if(com(j,2).eq.0)com(j,2)=com(j-1,2)
@@ -1512,11 +1508,11 @@ contains
     REAL, allocatable :: veg(:,:),bare_frac(:),zdep2_g(:,:)
     REAL :: fmax0,dummy,tem(6),mfrac,sfrac,bfrac
     
-    integer :: n,ip,maxcat,count,k1,i1,i
+    integer :: n,ip,count,k1,i1,i
     INTEGER, allocatable, dimension (:) :: id ! indx,id,indx_old
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
-    INTEGER :: ig,jg,i_dum,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
+    INTEGER :: ig,jg,i_dum,j_dum,ierr,indx_dum,indr1,indr2,indr3,ip2
     character*512 :: fname,fout
     CHARACTER*512 :: version,resoln,continent
     character*2 :: chyear
@@ -1529,9 +1525,10 @@ contains
     integer                            :: ncid
 
     ip = size(tile_pfs,1)
+
+    ip2 = ip1 + n_land
+
     allocate(id(1:ip), source = tile_pfs)
-    ip2 = n_land
-    maxcat=ip2
     
     allocate(sib_veg2(1:i_raster,1:j_raster))
     allocate(sib_veg (1:i_raster,1:j_raster))
@@ -1553,8 +1550,8 @@ contains
        call RegridRaster(sib_veg,raster)
     endif
     
-    allocate(veg(1:maxcat,1:6))
-    allocate(zdep2_g(1:maxcat,1:1))
+    allocate(veg(1:n_land,1:6))
+    allocate(zdep2_g(1:n_land,1:1))
     
     veg=0.
     zdep2_g=0.
@@ -1610,13 +1607,13 @@ contains
        enddo
     enddo
     
-    allocate(mos_veg(1:maxcat,1:2))
-    allocate(veg_frac(1:maxcat,1:3))
+    allocate(mos_veg(1:n_land,1:2))
+    allocate(veg_frac(1:n_land,1:3))
     mos_veg=0
     veg_frac=0.
     
     k=0
-    do j=1,maxcat
+    do j=1,n_land
        tem(1:6)=veg(j,1:6)
        
        if(sum(tem).le.0.)write(*,*) 'Warning no veg types',j
@@ -1688,12 +1685,12 @@ contains
     if(jpl_height) then
        call jpl_canoph (nx,ny, n_land, Rst_id, z2)
     else
-       allocate (z2(1:maxcat))       
+       allocate (z2(1:n_land))       
     endif
     
     open (10,file='clsm/mosaic_veg_typs_fracs',  &
          form='formatted',status='unknown')
-    do j=1,maxcat
+    do j=1,n_land
        if (mos_veg(j,1) == 0) then
           if(.not.jpl_height) z2(j) = VGZ2(mos_veg(j,1))
           mos_veg(j,1) = mos_veg(j-1,1)
@@ -1712,7 +1709,7 @@ contains
     
     if(file_exists) then
        status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                  ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'),(/1/),(/n_land/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
        STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
     endif
     
@@ -1720,9 +1717,9 @@ contains
     
     if(file_exists) then
        status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                       ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ),(/1/),(/maxcat/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ),(/1/),(/maxcat/),z2                ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0'),(/1/),(/maxcat/),Z0                ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ),(/1/),(/n_land/),real(mos_veg(:,1))) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ),(/1/),(/n_land/),z2                ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0'),(/1/),(/n_land/),Z0                ) ; VERIFY_(STATUS)
        STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
     else
        open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
@@ -1750,7 +1747,7 @@ contains
     ! ----------------------------------------------
 
     INTEGER, PARAMETER :: nbcat=36716,nofvar=6
-    INTEGER :: n,i,ip, itext(SRTM_maxcat,2),ix, jx,ip2, maxcat
+    INTEGER :: n,i,ip, itext(SRTM_maxcat,2),ix, jx,ip2
     INTEGER :: pfs, ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
     INTEGER*8 :: idum8
     INTEGER :: ncat,i_dum
@@ -1770,7 +1767,7 @@ contains
     allocate(indx_old(ip))
     allocate(id(ip))
 
-    ip2      = n_land
+    ip2      = ip1 + n_land
     id       = tile_pfs
     indx_old = til_j_dum
     if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) indx_old = tile_pfs
@@ -1807,7 +1804,7 @@ contains
 
     fname='clsm/cti_stats.dat'
     open (20,file=fname,form='formatted', status='unknown')
-    write (20,*)ip2
+    write (20,*) n_land
 
     read (10,*)ncat
     allocate(var(1:ncat,1:nofvar))
