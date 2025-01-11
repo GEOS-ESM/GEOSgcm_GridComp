@@ -3,7 +3,7 @@
 
 program mkOverlaySimple
 
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling
   use MAPL_SortMod
   use MAPL_HashMod
   use MAPL_ExceptionHandling

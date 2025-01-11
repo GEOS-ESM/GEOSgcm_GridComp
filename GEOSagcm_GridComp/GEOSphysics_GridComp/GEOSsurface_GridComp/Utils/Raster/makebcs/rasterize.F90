@@ -21,15 +21,21 @@ module LogRectRasterizeMod
 !EOP
 
   public LRRasterize
-  public ReadRaster
+! public ReadRaster
   public WriteRaster
   public Writetiling
   public WritetilingNC4
   public ReadTilingNC4
   public Sorttiling
-  public Opentiling
-  public Closetiling
-  public WriteLine
+
+  ! SRTM_maxcat = number of Pfafstetter catchments defined in raster file produced by Kristine Version in 2013
+  !               (based on DEMs from 3.0-arcsec HydroSHEDS/SRTM south of 60N, 
+  !                                   7.5-arcsec GMTED2010 north of 60N, and 
+  !                                   CGIAR/SRTM where HydroSHEDS/SRTM is undefined [typically islands])
+
+  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284    
+
+  ! -------------------------------------------------------------------------------------------------------------
 
   integer,      parameter :: PUSHLEFT      = 10000
   real(kind=8), parameter :: Zero          = 0.0
@@ -40,8 +46,7 @@ module LogRectRasterizeMod
 
   real(kind=8)            :: garea_
   integer                 :: ctg_
-  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284 
- 
+
   interface LRRasterize
      module procedure LRRasterize2File
      module procedure LRRasterize2File0
@@ -81,32 +86,32 @@ subroutine WriteRaster(File, Raster, Zip)
   return
 end subroutine WriteRaster
 
-subroutine ReadRaster(File, Raster, Zip)
-  character*(*), intent(IN) :: File
-  integer,       intent(IN) :: Raster(:,:)
-  logical, optional         :: Zip
-
-  logical :: DoZip, Opened
-  integer :: nx, ny
-
-  nx = size(Raster,1)
-  ny = size(Raster,2)
-
-  if(present(Zip)) then
-     DoZip = Zip
-  else
-     DoZip = .false.
-  endif
-
-  if(DoZip) then
-     print *, "Reading zipped raster files not supported"
-     call exit(1)
-  else
-     call READRST(RASTER(1,1),nx,ny,trim(FILE)//CHAR(0))
-  end if
-
-  return
-end subroutine ReadRaster
+! subroutine ReadRaster(File, Raster, Zip)
+!  character*(*), intent(IN) :: File
+!  integer,       intent(IN) :: Raster(:,:)
+!  logical, optional         :: Zip
+!
+!  logical :: DoZip, Opened
+!  integer :: nx, ny
+!
+!  nx = size(Raster,1)
+!  ny = size(Raster,2)
+!
+!  if(present(Zip)) then
+!     DoZip = Zip
+!  else
+!     DoZip = .false.
+!  endif
+!
+!  if(DoZip) then
+!     print *, "Reading zipped raster files not supported"
+!     call exit(1)
+!  else
+!     call READRST(RASTER(1,1),nx,ny,trim(FILE)//CHAR(0))
+!  end if
+!
+!  return
+! end subroutine ReadRaster
 
 
 
@@ -162,7 +167,10 @@ subroutine SortTiling(Raster,rTable,iTable)
   return
 end subroutine SortTiling
 
+! --------------------------------------------------------------------------------------------
+
 subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc)
+
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: nx,ny
@@ -308,17 +316,20 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
 end subroutine WriteTilingIR
 
-subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, rc)
+! -----------------------------------------------------------------------------------------
+
+subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafCat, rc)
+
   character(*),      intent(IN) :: File
   character(*),      intent(IN) :: GridName(:)
   integer,           intent(IN) :: IM(:), JM(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(:,0:)
   real(kind=8),      intent(IN) :: rTable(:,:)
-  integer, optional, intent(in) :: srtm
+  integer, optional, intent(in) :: N_PfafCat
   integer, optional, intent(out):: rc
 
-  integer                       :: k, ll, ng, ip, status, srtm_maxcat_
+  integer                       :: k, ll, ng, ip, status, n_pfafcat_
 
   character(len=:), allocatable :: attr
   type (Variable)               :: v
@@ -335,8 +346,11 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, 
   EASE = .false.
   if (index(GridName(1), 'EASE') /=0) EASE = .true.
 
-  srtm_maxcat_ = SRTM_maxcat
-  if (present(srtm)) srtm_maxcat_ = srtm
+  ! number of Pfafstetter catchments defined in underlying raster file
+
+  n_pfafcat_ = SRTM_maxcat
+
+  if (present(N_PfafCat)) n_pfafcat_ = N_PfafCat
 
   call metadata%add_dimension('tile', ip)
 
@@ -359,8 +373,8 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, 
   call metadata%add_attribute( attr, nx)
   attr = 'raster_ny'
   call metadata%add_attribute( attr, ny)
-  attr = 'SRTM_maxcat'
-  call metadata%add_attribute( attr, srtm_maxcat_)
+  attr = 'N_PfafCat'
+  call metadata%add_attribute( attr, n_pfafcat_)
 
   v = Variable(type=PFIO_INT32, dimensions='tile')
   call v%add_attribute('units', '1')
@@ -507,16 +521,19 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, 
 
 end subroutine WriteTilingNC4
 
-subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, AVR,rc)
-  character(*),           intent(IN) :: File
-  character(*), optional, intent(out) :: GridName(:)
-  integer,      optional, intent(out) :: IM(:), JM(:)
-  integer,      optional, intent(out) :: nx,ny
+! -------------------------------------------------------------------------------------
+
+subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafCat, AVR,rc)
+
+  character(*),                        intent(IN)  :: File
+  character(*), optional,              intent(out) :: GridName(:)
+  integer,      optional,              intent(out) :: IM(:), JM(:)
+  integer,      optional,              intent(out) :: nx,ny
   integer,      optional, allocatable, intent(out) :: iTable(:,:)
   real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
-  integer,      optional, intent(out) :: srtm
-  real,         optional, allocatable :: AVR(:,:) ! used by GEOSgcm
-  integer,      optional, intent(out) :: rc
+  integer,      optional,              intent(out) :: N_PfafCat
+  real,         optional, allocatable, intent(out) :: AVR(:,:)      ! used by GEOSgcm
+  integer,      optional,              intent(out) :: rc
 
   type (Attribute), pointer     :: ref
   character(len=:), allocatable :: attr
@@ -559,12 +576,12 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, A
      endselect
   endif
 
-  if (present(srtm)) then
-     ref => meta%get_attribute('SRTM_maxcat')
+  if (present(N_PfafCat)) then
+     ref => meta%get_attribute('N_PfafCat')
      attr_val => ref%get_values()
      select type (attr_val)
      type is (integer(INT32))
-        srtm = attr_val(1)
+        N_PfafCat = attr_val(1)
      endselect
   endif
 
@@ -684,9 +701,13 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, srtm, A
   endif
 
   if (present(rc)) rc= status
-end subroutine
+
+end subroutine ReadTilingNC4
+
+! ----------------------------------------------------------------------------------
 
 subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
+
   integer,           intent(OUT) :: Unit
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName
@@ -757,7 +778,10 @@ subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
   end if
 
   return
+
 end subroutine OpenTiling
+
+! --------------------------------------------------------------------------
 
 subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   character*(*),     intent(IN) :: File

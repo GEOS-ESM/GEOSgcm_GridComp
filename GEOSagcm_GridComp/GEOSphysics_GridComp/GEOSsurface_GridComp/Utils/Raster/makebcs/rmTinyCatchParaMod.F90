@@ -9,10 +9,9 @@ module rmTinyCatchParaMod
 
   use LDAS_DateTimeMod
   use MAPL_ConstantsMod
-  use MAPL_Base,    ONLY: MAPL_UNDEF
-  use lsm_routines, ONLY: sibalb
-  use LogRectRasterizeMod, only: SRTM_maxcat
-  use LogRectRasterizeMod, only: WritetilingNC4 
+  use MAPL_Base,           ONLY: MAPL_UNDEF
+  use lsm_routines,        ONLY: sibalb
+  use LogRectRasterizeMod, ONLY: SRTM_maxcat, WritetilingNC4 
  
   implicit none
   
@@ -1200,9 +1199,9 @@ contains
     
     fname=trim(fnameTil)//'.nc4'
     if (im(2) == 0) then  ! one grid
-       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, srtm=SRTM_maxcat, rc=status)
+       call WriteTilingNC4(fname, [gName(1)], [im(1)], [jm(1)], nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
     else                  ! two grids
-       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, srtm=SRTM_maxcat, rc=status)
+       call WriteTilingNC4(fname,  gName,      im,      jm,     nx, ny, iTable, rTable, N_PfafCat=SRTM_maxcat, rc=status)
     endif
     
     deallocate (rTable, iTable)

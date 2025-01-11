@@ -3,7 +3,7 @@
 
       program MAIN
 
-      use LogRectRasterizeMod
+      use LogRectRasterizeMod,     ONLY: LRRasterize
       use MAPL_ExceptionHandling
 
       implicit none

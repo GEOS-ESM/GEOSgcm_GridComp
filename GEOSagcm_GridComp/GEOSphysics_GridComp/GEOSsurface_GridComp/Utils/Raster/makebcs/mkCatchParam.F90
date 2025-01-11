@@ -19,9 +19,10 @@ PROGRAM mkCatchParam
 ! Sarith Mahanama - March 23, 2012 
 ! Email: sarith.p.mahanama@nasa.gov
   use EASE_conv
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,     ONLY: ReadTilingNC4
   use rmTinyCatchParaMod 
   use process_hres_data
+
   !   use module_irrig_params, ONLY : create_irrig_params
 
   implicit none

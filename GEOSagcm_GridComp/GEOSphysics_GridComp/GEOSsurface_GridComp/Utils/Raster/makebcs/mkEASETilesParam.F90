@@ -30,12 +30,12 @@ PROGRAM mkEASETilesParam
   ! - added comments
   ! - white-space changes for improved readability
   
-  use EASE_conv,          only : EASE_extent, EASE_convert, EASE_inverse
-  use rmTinyCatchParaMod, only : i_raster, j_raster 
-  use rmTinyCatchParaMod, only : RegridRasterReal     
-  use rmTinyCatchParaMod, only : Target_mean_land_elev
-  use process_hres_data,  only : histogram
-  use LogRectRasterizeMod
+  use EASE_conv,             only : EASE_extent, EASE_convert, EASE_inverse
+  use rmTinyCatchParaMod,    only : i_raster, j_raster 
+  use rmTinyCatchParaMod,    only : RegridRasterReal     
+  use rmTinyCatchParaMod,    only : Target_mean_land_elev
+  use process_hres_data,     only : histogram
+  use LogRectRasterizeMod,   only : WriteTilingNC4, SRTM_maxcat                       ! rasterize.F90
   use MAPL_SortMod
   use MAPL_ConstantsMod
   use MAPL_ExceptionHandling

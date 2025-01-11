@@ -4,12 +4,12 @@
 Program MakeLandRaster
   
   use MAPL_ExceptionHandling
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling, SRTM_maxcat
   use MAPL_HashMod
   use process_hres_data
   use MAPL_SortMod
-  use rmTinyCatchParaMod, ONLY: RegridRaster
-  use MAPL_Constants, only: PI=>MAPL_PI_R8
+  use rmTinyCatchParaMod,      ONLY: RegridRaster
+  use MAPL_Constants,          ONLY: PI=>MAPL_PI_R8
   
   ! Program to create a surface raster file that has
   ! the ocean divided with a regular lat-lon DE grid. Its inputs
