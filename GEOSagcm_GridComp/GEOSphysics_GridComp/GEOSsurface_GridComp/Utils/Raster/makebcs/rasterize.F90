@@ -323,7 +323,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   character(*),      intent(IN) :: File
   character(*),      intent(IN) :: GridName(:)
   integer,           intent(IN) :: IM(:), JM(:)
-  integer,           intent(IN) :: nx,ny
+  integer,           intent(IN) :: nx, ny
   integer,           intent(IN) :: iTable(:,0:)
   real(kind=8),      intent(IN) :: rTable(:,:)
   integer, optional, intent(in) :: N_PfafCat
@@ -353,6 +353,10 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   if (present(N_PfafCat)) n_pfafcat_ = N_PfafCat
 
   call metadata%add_dimension('tile', ip)
+
+  ! -------------------------------------------------------------------
+  !  
+  ! create nc4 variables and write metadata
 
   do ll = 1, ng
     if (ng == 1) then
@@ -426,16 +430,17 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
      call v%add_attribute("_FillValue",    MAPL_UNDEF_R8)
      call metadata%add_variable('frac_cell'//trim(str_num), v)
 
-     v = Variable(type=PFIO_INT32, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'Pfafstetter_index')
-     call metadata%add_variable('pfaf_index'//trim(str_num), v)
   enddo
+
+  v = Variable(type=PFIO_INT32, dimensions='tile')
+  call v%add_attribute('units', '1')
+  call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
+  call metadata%add_variable('pfaf_index'//trim(str_num), v)
 
   if ( .not. EASE ) then
      v = Variable(type=PFIO_REAL64, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'fraction_of_Pfafstetter')
+     call v%add_attribute('long_name', 'area_fraction_of_tile_in_Pfafstetter_catchment')
      call metadata%add_variable('frac_pfaf', v)
   endif
 
@@ -468,6 +473,10 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call v%add_attribute('long_name', 'tile_mean_elevation')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call metadata%add_variable('elev', v)
+  
+  ! -------------------------------------------------------------------
+  !  
+  ! write data into nc4 file
 
   call formatter%create(File, mode=PFIO_NOCLOBBER, rc=status)
   call formatter%write(metadata,                   rc=status)
@@ -528,7 +537,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
   character(*),                        intent(IN)  :: File
   character(*), optional,              intent(out) :: GridName(:)
   integer,      optional,              intent(out) :: IM(:), JM(:)
-  integer,      optional,              intent(out) :: nx,ny
+  integer,      optional,              intent(out) :: nx, ny
   integer,      optional, allocatable, intent(out) :: iTable(:,:)
   real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
   integer,      optional,              intent(out) :: N_PfafCat
@@ -556,7 +565,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
   meta = formatter%read(rc=status)
 
   ng = 1
-  if (meta%has_attribute("Grid1_Name")) ng = 2
+  if (meta%has_attribute("Grid1_Name")) ng = 2   ! for ng=1 (i.e., EASE), attribute is just "Grid_Name"
   ntile = meta%get_dimension('tile')
 
   if (present(nx)) then
