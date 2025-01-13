@@ -994,7 +994,7 @@ contains
        read (10,'(a)')version
        read (10,*)nc_gcm
        read (10,*)nr_gcm
-       gName(n) = version
+       gName(n) = trim(adjustl(version))
        IM(n)    = nc_gcm
        JM(n)    = nr_gcm
     end do

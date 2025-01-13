@@ -429,13 +429,12 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call v%add_attribute("_FillValue",    MAPL_UNDEF_R8)
      call metadata%add_variable('frac_cell'//trim(str_num), v)
-
+  
+     v = Variable(type=PFIO_INT32, dimensions='tile')
+     call v%add_attribute('units', '1')
+     call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
+     call metadata%add_variable('pfaf_index'//trim(str_num), v)
   enddo
-
-  v = Variable(type=PFIO_INT32, dimensions='tile')
-  call v%add_attribute('units', '1')
-  call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
-  call metadata%add_variable('pfaf_index'//trim(str_num), v)
 
   if ( .not. EASE ) then
      v = Variable(type=PFIO_REAL64, dimensions='tile')
