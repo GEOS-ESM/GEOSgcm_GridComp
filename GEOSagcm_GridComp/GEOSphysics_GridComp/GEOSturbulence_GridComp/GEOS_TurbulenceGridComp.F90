@@ -3141,7 +3141,7 @@ end if
      else
        call MAPL_GetResource (MAPL, JASON_TRB, "JASON_TRB:", default=.FALSE., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=100.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=500.0,  RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
@@ -3181,7 +3181,7 @@ end if
      call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1,      RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,      RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,     RC=STATUS); VERIFY_(STATUS)
@@ -6015,14 +6015,14 @@ end subroutine RUN1
                      end do 
                   end do
                end do
-              ! limit INTDIS to 5-deg/hour
-              !do L=1,LM
-              !   do J=1,JM
-              !      do I=1,IM
-              !         INTDIS(I,J,L) = SIGN(min(5.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
-              !      end do
-              !   end do
-              !end do
+               ! limit INTDIS to 2-deg/hour
+               do L=1,LM
+                  do J=1,JM
+                     do I=1,IM
+                        INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
+                     end do
+                  end do
+               end do
 
                if(associated(KETRB)) then
                   do L=1,LM
@@ -6452,12 +6452,16 @@ end subroutine RUN1
 
 !===>   Limits on distance between layer centers and vertical shear at edges.
 
-      DZ =  max(DZ, MINTHICK)
-      DU = sqrt(DU)/DZ
+      DZ = max(DZ, MINTHICK)
+      DU = sqrt(DU)
+      call MAPL_MaxMin('LOUIS: DZ', DZ)
+      call MAPL_MaxMin('LOUIS: DU', DU)
+      DU = DU/DZ
 
 !===>   Richardson number  ( RI = G*(DTheta_v/DZ) / (Theta_v*|DV/DZ|^2) )
 
       RI = MAPL_GRAV*(DT/DZ)/(TM*( max(DU, MINSHEAR)**2))
+      call MAPL_MaxMin('LOUIS: RI', RI)
 
 !===>   Blackadar(1962) length scale: $1/l = 1/(kz) + 1/\lambda$
 
@@ -6508,6 +6512,9 @@ end subroutine RUN1
 
       KM  = min(KM*ALM, AKHMMAX)
       KH  = min(KH*ALH, AKHMMAX)
+
+      call MAPL_MaxMin('LOUIS: KM', KM)
+      call MAPL_MaxMin('LOUIS: KH', KH)
 
       if (associated(KMLS_DIAG)) KMLS_DIAG(:,:,1:LM-1) = KM(:,:,1:LM-1)
       if (associated(KHLS_DIAG)) KHLS_DIAG(:,:,1:LM-1) = KH(:,:,1:LM-1)
