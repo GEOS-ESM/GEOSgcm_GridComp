@@ -102,8 +102,6 @@ def revap_racc(
         tau_revp,
     )
 
-    prec_ls = (qr1 + qs1 + qg1) * den1
-    area_ls_prc = qa1 * (qr1 + qs1 + qg1) * den1
     revap = 0.0
 
     if t1 > driver_constants.T_WFR and qr1 > driver_constants.QPMIN:
@@ -198,8 +196,6 @@ def revap_racc(
         qg1,
         qa1,
         revap,
-        prec_ls,
-        area_ls_prc,
     )
 
 
@@ -441,8 +437,6 @@ def warm_rain(
             qg1,
             qa1,
             revap,
-            prec_ls,
-            area_ls_prc,
         ) = revap_racc(
             half_dt,
             t1,
@@ -467,14 +461,6 @@ def warm_rain(
         )
 
         evap1 = revap
-
-    with computation(FORWARD), interval(1, None):
-        prec_ls = prec_ls + prec_ls[0, 0, -1]
-        area_ls_prc = area_ls_prc + area_ls_prc[0, 0, -1]
-
-    with computation(FORWARD), interval(0, 1):
-        total_prec_ls = prec_ls.at(K=k_end)
-        total_area_ls_prc = area_ls_prc.at(K=k_end)
 
     with computation(PARALLEL), interval(...):
         if do_sedi_w == True:  # noqa
@@ -501,7 +487,7 @@ def warm_rain(
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:  # noqa
-                hold_data = ze - ze[0, 0, 1]
+                dz_implicit_fall = ze - ze[0, 0, 1]
                 dd = dts * vt_implicit_fall
                 q_implicit_fall = q_implicit_fall * dp1
 
@@ -511,12 +497,14 @@ def warm_rain(
     with computation(FORWARD), interval(0, 1):
         if precip_fall == 1:
             if use_ppm == False:  # noqa
-                qm = q_implicit_fall / (hold_data + dd)
+                qm = q_implicit_fall / (dz_implicit_fall + dd)
 
     with computation(FORWARD), interval(1, None):
         if precip_fall == 1:
             if use_ppm == False:  # noqa
-                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (hold_data + dd)
+                qm = (q_implicit_fall + dd[0, 0, -1] * qm[0, 0, -1]) / (
+                    dz_implicit_fall + dd
+                )
 
     # -----------------------------------------------------------------------
     # qm is density at this stage
@@ -524,7 +512,7 @@ def warm_rain(
     with computation(PARALLEL), interval(...):
         if precip_fall == 1:
             if use_ppm == False:  # noqa
-                qm = qm * hold_data
+                qm = qm * dz_implicit_fall
 
     # -----------------------------------------------------------------------
     # output mass fluxes: non - vectorizable loop
@@ -594,8 +582,6 @@ def warm_rain(
             qg1,
             qa1,
             revap,
-            prec_ls,
-            area_ls_prc,
         ) = revap_racc(
             half_dt,
             t1,

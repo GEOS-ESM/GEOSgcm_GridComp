@@ -12,9 +12,9 @@ export GT4PY_COMPILE_OPT_LEVEL=0
 export OMP_NUM_THREADS=1
 python -m pytest -s \
     --data_path=/Users/ckropiew/netcdfs \
-    --backend=debug \
+    --backend=gt:cpu_kfirst \
     --grid=default \
     --multimodal_metric \
-    --which_modules=GFDL_1M_driver \
+    --which_modules=icloud \
     --which_rank=0 \
     ..
