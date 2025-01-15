@@ -1725,21 +1725,21 @@ end subroutine fast_dblgss
 
 
 ! Compute square roots of some variables so we don't have to do it again
-          if (w_sec > 0.0) then
+          if (w_sec > w_thresh*w_thresh) then
             sqrtw2   = sqrt(w_sec)
             Skew_w   = w3var / (sqrtw2*sqrtw2*sqrtw2)
           else
             sqrtw2   = w_thresh
             Skew_w   = 0.
           endif
-          if (thlsec > 0.0) then
+          if (thlsec > 1e-6) then
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
           else
             sqrtthl  = 1e-3
             skew_thl = 0.
           endif
-          if (qwsec > 0.0) then
+          if (qwsec > 1e-8*total_water*total_water) then
             sqrtqt   = sqrt(qwsec)
             skew_qw =  qt3/sqrtqt**3
           else
@@ -2125,7 +2125,7 @@ end subroutine fast_dblgss
 
 
 ! finally, compute the SGS cloud fraction
-          diag_frac = aterm*C1 + onema*C2
+          cld_sgs = aterm*C1 + onema*C2
 
 !          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
 !          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
@@ -2150,21 +2150,13 @@ end subroutine fast_dblgss
                     !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
 ! Update moisture fields
 
-
-
-!         qc      = diag_ql + diag_qi
-!         qi      = diag_qi
-!         qwv     = total_water - diag_qn
-         cld_sgs = diag_frac
-
-         if (sqrtqt>0.0 .AND. sqrtw2>0.0) then
-            rwqt = (1.-0.5)*wqwsec/(sqrtqt*sqrtw2)
-!            rwqt = (wqwsec)/(sqrtqt*sqrtw2)
+         if (sqrtqt>1e-4*total_water .AND. sqrtw2>w_thresh) then
+            rwqt = 0.5*wqwsec/(sqrtqt*sqrtw2)
 !            rwqt = max(-1.,min(1.,pdf_rwqt))
          else
             rwqt = 0.0
          end if
-         if (sqrtthl>0.0 .AND. sqrtw2>0.0) then
+         if (sqrtthl>1e-3 .AND. sqrtw2>w_thresh) then
             rwthl = wthlsec/(sqrtthl*sqrtw2)
 !            rwthl = max(-1.,min(1.,pdf_rwth))
          else
@@ -2187,8 +2179,7 @@ end subroutine fast_dblgss
           wthv_sec = wthlsec + wrk*wqwsec                                     &
                    + (fac_cond-bastoeps)*wqls                                 &
                    + (fac_sub-bastoeps) *wqis
-
-!                          + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
+!                   + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
 
   end subroutine partition_dblgss
 

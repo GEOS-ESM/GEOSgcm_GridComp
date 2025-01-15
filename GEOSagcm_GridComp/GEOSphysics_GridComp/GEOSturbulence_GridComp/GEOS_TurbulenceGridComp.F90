@@ -3917,7 +3917,7 @@ end if
           do while (edmfdrya(i,j,k).gt.0.01 .and. edmfmoista(i,j,k).lt.1e-4 .and. k.gt.1)
             k = k-1
           end do
-          drycblh(i,j) = ZL0(i,j,k+1)
+          drycblh(i,j) = ZL0(i,j,k)
         end do
       end do
 
@@ -3965,7 +3965,8 @@ end if
       if (associated(edmf_wsl))       edmf_wsl      = mfwsl
       if (associated(edmf_tke))       edmf_tke      = mftke
       if (associated(EDMF_FRC))       EDMF_FRC = 0.
-     
+
+      drycblh = 0.     
    ENDIF
 
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
@@ -4515,7 +4516,8 @@ end if
                           Z,              &
                           ZLE,            &
                           KH,             &
-                          BRUNTSHOC,      &
+                          THV,            &
+!                          BRUNTSHOC,      &
                           TKESHOC,        &
                           ISOTROPY,       &
                           QT,             &

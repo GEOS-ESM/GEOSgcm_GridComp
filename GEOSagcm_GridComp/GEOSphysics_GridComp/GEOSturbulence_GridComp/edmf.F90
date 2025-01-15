@@ -705,7 +705,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       K = KTS
       tmp = 0.
       tmp2 = 0.
-      DO WHILE (ZW(K).lt.70. .and. K.lt.KTE)
+      DO WHILE (ZW(K).lt.100. .and. K.lt.KTE)
          tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
          tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
 !         UPW(K,:) = UPW(K,:)*exp(-(100.-ZW(K))**2/1e4)

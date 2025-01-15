@@ -2025,7 +2025,7 @@ contains
          elseif (CFCSE .eq. 11) then
            zrel=2500.
            zrelp=3000.
-           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+           qfloor=3.55e-3  ! not used in Blossey LES, but recommended for future
          elseif (CFCSE .eq. 6) then
            zrel=4000.
            zrelp=4800.
