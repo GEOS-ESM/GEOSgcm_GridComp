@@ -1808,7 +1808,7 @@ contains
                   !      go to 35
                   !  end if
                else
-                  limit_cin(i) = 1. ! This is for testing
+                  limit_cin(i) = 1. ! This is for testin
                   ! thvubot = thvutop
                   ! call conden(pifc0(k),thlsrc,qtsrc,thj,qvj,qlj,qij,qse,id_check)
                   ! if( id_check .eq. 1 ) then
