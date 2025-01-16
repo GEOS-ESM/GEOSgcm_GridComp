@@ -25,7 +25,7 @@ endforeach ()
 
 esma_add_library (${this}
    SRCS ${SRCS}
-   DEPENDENCIES esmf NetCDF::NetCDF_Fortran
+   DEPENDENCIES ESMF::ESMF NetCDF::NetCDF_Fortran
 )
 
 target_compile_definitions(${this} PRIVATE MPI ESMF GEOS)

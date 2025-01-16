@@ -94,7 +94,7 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   _RC)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,     _RC)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_READRESTART,  Refresh,    _RC)
+    call MAPL_GridCompSetEntryPoint ( GC, MAPL_METHOD_REFRESH,      Refresh,    _RC)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -933,6 +933,8 @@ contains
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
 
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
@@ -940,7 +942,7 @@ contains
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    __Iam__('Record')
+    Iam = "Record"
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1003,18 +1005,18 @@ contains
   integer, optional,   intent(  OUT) :: RC     ! Error code
 
 !EOP
-
     type(MAPL_MetaComp),     pointer :: MAPL
 
 ! ErrLog Variables
-
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
 ! Locals
     character(len=14)                :: timeStamp
     logical                          :: doRecord
 
-    __Iam__('Restore')
+    IAm = "Restore"
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------

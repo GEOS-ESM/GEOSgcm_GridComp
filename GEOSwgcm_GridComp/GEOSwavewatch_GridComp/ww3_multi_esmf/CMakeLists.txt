@@ -73,8 +73,8 @@ set (WW3_path ${CMAKE_CURRENT_SOURCE_DIR}/${WW3_rel_path})
 get_filename_component(aux_dir ${WW3_path}/model/aux ABSOLUTE)
 get_filename_component(ftn_dir ${WW3_path}/model/ftn ABSOLUTE)
 
-message(STATUS "WW3 aux_dir ${aux_dir}")
-message(STATUS "WW3 ftn_dir ${ftn_dir}")
+message(DEBUG "WW3 aux_dir ${aux_dir}")
+message(DEBUG "WW3 ftn_dir ${ftn_dir}")
 
 add_executable(w3adc "${aux_dir}/w3adc.f")
 
@@ -82,9 +82,16 @@ set (WW3ESMF_F90)
 foreach(src_file ${WW3ESMF_FTN})
     STRING(REGEX REPLACE ".ftn" ".F90" gen_src_file ${src_file})
     STRING(REGEX REPLACE "/" "_" gen_log_file ${gen_src_file})
+    # Testing shows that we only want BYPRODUCTS here if our CMAKE_GENERATOR is Unix Makefiles
+    # If we use Ninja, we don't want BYPRODUCTS
+    if (CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+      set(BYPRODUCTS ${gen_src_file})
+    else()
+      set(BYPRODUCTS "")
+    endif()
     add_custom_command(
         OUTPUT  ${gen_src_file}
-        BYPRODUCTS  ${gen_src_file}
+        BYPRODUCTS  ${BYPRODUCTS}
         DEPENDS w3adc ${ftn_dir}/${src_file}
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run_w3adc.sh ${ftn_dir} ${src_file} > ${gen_log_file}.w3adc.log 2>&1
         COMMENT "Running w3adc ${src_file}")
@@ -94,7 +101,7 @@ endforeach()
 
 esma_add_library (${this}
    SRCS ${WW3ESMF_F90}
-   DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran
+   DEPENDENCIES MAPL ESMF::ESMF NetCDF::NetCDF_Fortran
   )
 
 target_include_directories (${this} PRIVATE
