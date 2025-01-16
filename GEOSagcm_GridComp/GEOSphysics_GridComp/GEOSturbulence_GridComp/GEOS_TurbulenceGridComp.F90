@@ -3551,15 +3551,12 @@ end if
       if (DO_SHOC == 0) then
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
       if (SMTH_HGT >= 0) then
-        TSM(:,:,LM) = TSM(:,:,LM-1)*0.25 + TSM(:,:,LM  )*0.75
-        USM(:,:,LM) = USM(:,:,LM-1)*0.25 + USM(:,:,LM  )*0.75
-        VSM(:,:,LM) = VSM(:,:,LM-1)*0.25 + VSM(:,:,LM  )*0.75
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
-              TSM(I,J,L) = TSM(I,J,L-1)*0.25 + TSM(I,J,L)*0.50 + TSM(I,J,L+1)*0.25
-              USM(I,J,L) = USM(I,J,L-1)*0.25 + USM(I,J,L)*0.50 + USM(I,J,L+1)*0.25
-              VSM(I,J,L) = VSM(I,J,L-1)*0.25 + VSM(I,J,L)*0.50 + VSM(I,J,L+1)*0.25
+              TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
+              USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
+              VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
            end do
          end do
         end do
@@ -4733,13 +4730,7 @@ end if
         do I = 1, IM
           do J = 1, JM
             if (DO_SHOC==0) then
-              if (JASON_TRB) then
-                temparray(1:LM+1) = KHSFC(I,J,0:LM)                    
-              else
-                do L=1,LM+1
-                  temparray(L) = max(KHSFC(I,J,L-1),KHLS(I,J,LM-1))
-                end do
-              endif
+              temparray(1:LM+1) = KHSFC(I,J,0:LM)
             else
               temparray(1:LM+1) = KH(I,J,0:LM)
             endif
@@ -5598,7 +5589,7 @@ end subroutine RUN1
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
       logical                             :: WEIGHTED
-      real, dimension(IM,JM,LM)           :: DP, SX
+      real, dimension(IM,JM,LM)           :: DZ, DP, SX
       real, dimension(IM,JM,LM-1)         :: DF
       real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
       real, dimension(IM,JM,0:LM)         :: ZL0
@@ -5784,9 +5775,11 @@ end subroutine RUN1
       DP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
 
       do L=0,LM
-         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
+         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! Edge heights above the surface 
       enddo
-      ZLO = 0.5*(ZL0(:,:,1:LM)+ZL0(:,:,0:LM-1))
+      ZLO = 0.5*(ZL0(:,:,1:LM)+ZL0(:,:,0:LM-1)) ! Layer heights above the surface
+
+      DZ = ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ! Layer thickness (positive m)
 
 ! Diagnostics
       call MAPL_GetPointer(EXPORT, HGTLM5 ,  'HGTLM5' , RC=STATUS); VERIFY_(STATUS)
@@ -5797,7 +5790,7 @@ end subroutine RUN1
       if(associated(LM50M)) then
          LM50M = LM
          do L=LM,2,-1
-            where (ZL0(:,:,L) <= 150. .and. ZL0(:,:,L-1) > 150.)
+            where (ZL0(:,:,L) <= 50. .and. ZL0(:,:,L-1) > 50.)
                LM50M=L-1
             endwhere
          enddo
@@ -5991,38 +5984,36 @@ end subroutine RUN1
 !-------------------------- 
 
          if( TYPE=='U' ) then
-            if(associated(KETRB )) KETRB  = 0.0
-            if(associated(KESRF )) KESRF  = 0.0
-            if(associated(KETOP )) KETOP  = 0.0
-            if(associated(KEINT )) KEINT  = 0.0
             if(associated(INTDIS)) then
-
                DF = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
                INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
                INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
 
-               ! Add surface dissipation to lower 200m
+               ! Add surface dissipation to lower 200m, thickness weighted & ramped up to the surface
                do J=1,JM
                   do I=1,IM
-                     DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
+                     DF(I,J,1) = 0.0
+                     do L=L200(I,J),LM
+                        DF(I,J,1) = DF(I,J,1) + DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
+                     end do
                      DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
                   end do
                end do
                do J=1,JM
                   do I=1,IM
                      do L=L200(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DP(I,J,L)
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
                      end do 
                   end do
                end do
                ! limit INTDIS to 2-deg/hour
-               do L=1,LM
-                  do J=1,JM
-                     do I=1,IM
-                        INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
-                     end do
-                  end do
-               end do
+              !do L=1,LM
+              !   do J=1,JM
+              !      do I=1,IM
+              !         INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
+              !      end do
+              !   end do
+              !end do
 
                if(associated(KETRB)) then
                   do L=1,LM
@@ -6052,7 +6043,7 @@ end subroutine RUN1
                SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
                if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
                if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
-               if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
+             ! if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
             endif
          end if
 
@@ -6507,14 +6498,14 @@ end subroutine RUN1
 
 !===>   DIMENSIONALIZE Kz and  LIMIT DIFFUSIVITY
 
-      ALM = DU*ALM
-      ALH = DU*ALH
-
-      KM  = min(KM*ALM, AKHMMAX)
-      KH  = min(KH*ALH, AKHMMAX)
+      KM = KM*DU*ALM
+      KH = KH*DU*ALH
 
       call MAPL_MaxMin('LOUIS: KM', KM)
       call MAPL_MaxMin('LOUIS: KH', KH)
+
+      KM  = min(KM, AKHMMAX)
+      KH  = min(KH, AKHMMAX)
 
       if (associated(KMLS_DIAG)) KMLS_DIAG(:,:,1:LM-1) = KM(:,:,1:LM-1)
       if (associated(KHLS_DIAG)) KHLS_DIAG(:,:,1:LM-1) = KH(:,:,1:LM-1)
