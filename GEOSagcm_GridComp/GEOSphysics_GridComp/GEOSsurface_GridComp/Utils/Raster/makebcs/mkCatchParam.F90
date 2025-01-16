@@ -69,7 +69,8 @@ PROGRAM mkCatchParam
   integer, pointer     :: tile_id(:,:)
   real(kind=8), allocatable :: rTable(:,:)
   real, allocatable    :: tile_lat(:), tile_lon(:), min_lon(:), max_lon(:), min_lat(:), max_lat(:)
-
+  real                 :: minlon, minlat, maxlon, maxlat
+  integer              :: tindex1,pfaf1
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation
@@ -284,6 +285,23 @@ integer :: n_threads=1
        tile_lon = (min_lon + max_lon)/2.0
        tile_lat = (min_lat + max_lat)/2.0
        deallocate (rTable)
+
+       ! debugging section
+       ! reading from catchment
+       open (newunit=unit,file='clsm/catchment.def',status='old',action='read',form='formatted')
+       read(unit,*) N_land
+       do n = 1, N_land
+          read (unit,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+          min_lon(n) = minlon
+          max_lon(n) = maxlon
+          min_lat(n) = minlat
+          max_lat(n) = maxlat
+          tile_lon(n)= (minlon + maxlon)/2.0
+          tile_lat(n)= (minlat + maxlat)/2.0
+          tile_pfs(n)= pfaf1  
+       end do
+       close (unit,status='keep')
+       ! end debugging section
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
        if (.not.file_exists) CALL open_landparam_nc4_files(N_land,process_snow_albedo)  
