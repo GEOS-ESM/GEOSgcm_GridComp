@@ -531,12 +531,12 @@ end subroutine WriteTilingNC4
 
 ! -------------------------------------------------------------------------------------
 
-subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafCat, AVR,rc)
+subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable, N_PfafCat, AVR,rc)
 
   character(*),                        intent(IN)  :: File
   character(*), optional,              intent(out) :: GridName(:)
   integer,      optional,              intent(out) :: IM(:), JM(:)
-  integer,      optional,              intent(out) :: nx, ny
+  integer,      optional,              intent(out) :: nx, ny, n_Grids
   integer,      optional, allocatable, intent(out) :: iTable(:,:)
   real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
   integer,      optional,              intent(out) :: N_PfafCat
@@ -555,7 +555,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
   real(kind=8), allocatable     :: fr(:)
 
   integer, parameter :: NumGlobalVars =4
-  integer, parameter :: NumGridVars   =3
+  integer, parameter :: NumLocalVars   =4
   integer            :: NumCol
   integer,      allocatable :: iTable_(:,:)
   real(kind=8), allocatable :: rTable_(:,:)
@@ -566,6 +566,10 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
   ng = 1
   if (meta%has_attribute("Grid1_Name")) ng = 2   ! for ng=1 (i.e., EASE), attribute is just "Grid_Name"
   ntile = meta%get_dimension('tile')
+
+  if (present(n_Grids)) then
+    n_Grids = ng
+  endif
 
   if (present(nx)) then
      ref => meta%get_attribute('raster_nx')
@@ -677,7 +681,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
 
   if (present(AVR)) then
     ! In GEOSgcm, it already assumes ng = 2, so NumCol = 10
-     NumCol = NumGlobalVars+NumGridVars*ng
+     NumCol = NumGlobalVars+NumLocalVars*ng
      allocate(AVR(ntile, NumCol))
      AVR(:, 1) = iTable_(:,0)
      ! for EASE grid, the second collum is replaced by the area
@@ -688,13 +692,16 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_PfafC
      AVR(:, 5) = iTable_(:,2)
      AVR(:, 6) = iTable_(:,3)
      AVR(:, 7) = rTable_(:,4)
+     if (ng == 1) then
+       AVR(:,8) = iTable_(:,4)
+     else
+       AVR(:, 8)  = iTable_(:,6)
 
-     if ( ng == 2) then
-       AVR(:, 7) = iTable_(:,4)
-       AVR(:, 8) = iTable_(:,5)
-       AVR(:, 9) = rTable_(:,5)
+       AVR(:, 9)  = iTable_(:,4)
+       AVR(:, 10) = iTable_(:,5)
+       AVR(:, 11) = rTable_(:,5)
+       AVR(:, 12) = iTable_(:,7)
      endif
-
   endif
 
   if (present(iTable)) then
