@@ -60,7 +60,7 @@ PROGRAM mkCatchParam
   type (regrid_map)    :: maparc30, mapgeoland2,maparc60
   character*200        :: tmpstring, tmpstring1, tmpstring2
   character*200        :: fname_tmp, fname_tmp2, fname_tmp3, fname_tmp4
-  integer              :: N_tile, n_land
+  integer              :: n_land
   logical              :: process_snow_albedo = .false. 
   character(len=10)    :: nc_string, nr_string
   integer              :: nc_ease, nr_ease, unit, clock_rate, clock1, clock2
@@ -270,7 +270,6 @@ integer :: n_threads=1
        write (log_file,'(a)')' '
 
        call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable, rTable = rTable) 
-       N_Tile = size(iTable, 1)
        N_land = count(iTable(:,0) == 100)                        ! n_land = number of land tiles
        allocate(tile_pfs,   source = iTable(1:n_land,4))
        allocate(tile_j_dum, source = iTable(1:n_land,7))
@@ -287,7 +286,7 @@ integer :: n_threads=1
        deallocate (rTable)
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files(N_tile,process_snow_albedo)  
+       if (.not.file_exists) CALL open_landparam_nc4_files(N_land,process_snow_albedo)  
 
        ! Creating cti_stats.dat 
        ! ----------------------
