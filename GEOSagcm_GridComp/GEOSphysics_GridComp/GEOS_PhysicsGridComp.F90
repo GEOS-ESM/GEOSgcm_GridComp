@@ -2264,7 +2264,7 @@ contains
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
-   real, allocatable, dimension(:,:)   :: qs,pmean
+   real, allocatable, dimension(:,:)   :: LS,qs,pmean
 
    logical :: isPresent, SCM_NO_RAD
    real, allocatable, target :: zero(:,:,:)
@@ -2613,6 +2613,13 @@ contains
          do k = 1,LM+1
            HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
          enddo
+         allocate(LS(IM,JM),stat=STATUS);VERIFY_(STATUS)
+         LS=LM
+         do L=LM,2,-1
+            where (HGT(:,:,L) <= HGT_SURFACE .and. HGT(:,:,L-1) > HGT_SURFACE)
+               LS=L-1
+            endwhere
+         enddo
       endif
      endif
 
@@ -2663,9 +2670,14 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
+
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       do J=1,JM
+          do I=1,IM
+             UFORSURF(I,J) = UAFMOIST(I,J,LS(I,J))
+             VFORSURF(I,J) = VAFMOIST(I,J,LS(I,J))
+          enddo
+       enddo
      else
        UFORSURF = UAFMOIST(:,:,LM)
        VFORSURF = VAFMOIST(:,:,LM)
@@ -2696,8 +2708,12 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
+       do J=1,JM
+          do I=1,IM
+             TFORSURF(I,J) = TAFMOIST(I,J,LS(I,J))
+             QFORSURF(I,J) = QAFMOIST(I,J,LS(I,J))
+          enddo
+       enddo
      else
        TFORSURF = TAFMOIST(:,:,LM)
        QFORSURF = QAFMOIST(:,:,LM)
@@ -2801,8 +2817,12 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       do J=1,JM
+          do I=1,IM
+             UFORSURF(I,J) = UAFDIFFUSE(I,J,LS(I,J))
+             VFORSURF(I,J) = VAFDIFFUSE(I,J,LS(I,J))
+          enddo
+       enddo
      else
        UFORSURF = UAFDIFFUSE(:,:,LM)
        VFORSURF = VAFDIFFUSE(:,:,LM)
@@ -2829,8 +2849,12 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       call VertInterp(TFORSURF,TFORTURB  ,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
-       call VertInterp(QFORSURF,QV        ,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
+       do J=1,JM
+          do I=1,IM
+             TFORSURF(I,J) = TFORTURB(I,J,LS(I,J))  
+             QFORSURF(I,J) =       QV(I,J,LS(I,J)) 
+          enddo
+       enddo
      else
        TFORSURF =   TFORTURB(:,:,LM)
        QFORSURF =         QV(:,:,LM)
@@ -2955,7 +2979,10 @@ contains
 ! Clean up SYNTQ things
     if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
-      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
+      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+          deallocate(HGT)
+          deallocate(LS)
+      endif
     endif
 
     endif     !   end of if do physics condition

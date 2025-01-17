@@ -3175,9 +3175,9 @@ end if
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=450.0,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
@@ -3224,7 +3224,7 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,      RI,      'RI', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,      DU,      'DU',               RC=STATUS)
+     call MAPL_GetPointer(EXPORT,      DU,      'DU', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,     EKH,     'EKH', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3466,6 +3466,7 @@ end if
       KH    = 0.0
       KM    = 0.0
       RI    = 0.0
+      DU    = 0.0
       EKH   = 0.0
       EKM   = 0.0
       KHSFC = 0.0
@@ -3938,13 +3939,13 @@ end if
       if (DO_SHOC == 0) then
         call LOUIS_KS( IM,JM,LM,            &
             Z,ZL0,TSM,USM,VSM,ZPBL,         &
-            KH, KM, RI,                     &
+            KH, KM, RI, DU,                 &
             LOUIS, MINSHEAR, MINTHICK,      &
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
             ALHFAC, ALMFAC,                 &
             ZKMENV, ZKHENV, AKHMMAX,        &
-            DU, ALH, KMLS, KHLS             )
+            ALH, KMLS, KHLS                 )
       end if
 
 
@@ -5600,7 +5601,7 @@ end subroutine RUN1
 
       real, dimension(IM,JM,LM)           :: SOIOFS, XINC
       real,    dimension(IM,JM)           :: z500, z1500, z7000, STDV
-      integer, dimension(IM,JM)           :: L500, L1500, L7000, L50
+      integer, dimension(IM,JM)           :: L500, L1500, L7000, L200
       integer, dimension(IM,JM)           :: LTOPS,LBOT,LTOPQ
       logical, dimension(IM,JM)           :: DidSHVC
       real                                :: REDUFAC, SUMSOI
@@ -5794,10 +5795,10 @@ end subroutine RUN1
          enddo
       end if
 
-      L50=LM
+      L200=LM
       do L=LM,2,-1
-         where (ZL0(:,:,L) <= 50. .and. ZL0(:,:,L-1) > 50.)
-            L50=L-1
+         where (ZL0(:,:,L) <= 200. .and. ZL0(:,:,L-1) > 200.)
+            L200=L-1
          endwhere
       enddo
 
@@ -5984,28 +5985,23 @@ end subroutine RUN1
          if( TYPE=='U' ) then
             if(associated(INTDIS)) then
                DF = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
-               do J=1,JM                                      
-                  do I=1,IM
-                     do L=1,L50(I,J)-1
-                        INTDIS(I,J,L) = DF(I,J,L) + DF(I,J,L+1)
-                      enddo
-                   enddo
-                enddo
+               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
+               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
 
-               ! Add surface dissipation to lower 50m, thickness weighted & ramped up to the surface
+               ! Add surface dissipation to lower 200m, thickness weighted & ramped up to the surface
                do J=1,JM
                   do I=1,IM
                      DF(I,J,1) = 0.0
-                     do L=L50(I,J),LM
-                        DF(I,J,1) = DF(I,J,1) + DZ(I,J,L)
+                     do L=L200(I,J),LM
+                        DF(I,J,1) = DF(I,J,1) + DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
                      end do
                      DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
                   end do
                end do
                do J=1,JM
                   do I=1,IM
-                     do L=L50(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DZ(I,J,L)
+                     do L=L200(I,J),LM
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
                      end do 
                   end do
                end do
@@ -6283,13 +6279,13 @@ end subroutine RUN1
 
    subroutine LOUIS_KS( IM,JM,LM,    &
          ZZ,ZE,PV,UU,VV,ZPBL,        &
-         KH,KM,RI,                   & 
+         KH,KM,RI,DU,                & 
          LOUIS, MINSHEAR, MINTHICK,  &
          LAMBDAM, LAMBDAM2,          &
          LAMBDAH, LAMBDAH2,          &
          ALHFAC, ALMFAC,             &
          ZKMENV, ZKHENV, AKHMMAX,    &
-         DU_DIAG, ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
+         ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
 ! !ARGUMENTS:
 
@@ -6306,9 +6302,9 @@ end subroutine RUN1
       real,    intent(  OUT) ::   KM(IM,JM,0:LM) ! Momentum diffusivity at base of each layer (m+2 s-1).
       real,    intent(  OUT) ::   KH(IM,JM,0:LM) ! Heat diffusivity at base of each layer  (m+2 s-1).
       real,    intent(  OUT) ::   RI(IM,JM,0:LM) ! Richardson number
+      real,    intent(  OUT) ::   DU(IM,JM,0:LM) ! Magnitude of wind shear (s-1).
    
       ! Diagnostic outputs
-      real,    pointer       ::   DU_DIAG(:,:,:) ! Magnitude of wind shear (s-1).
       real,    pointer       ::  ALH_DIAG(:,:,:) ! Blackadar Length Scale diagnostic (m) [Optional] 
       real,    pointer       :: KMLS_DIAG(:,:,:) ! Momentum diffusivity at base of each layer (m+2 s-1).
       real,    pointer       :: KHLS_DIAG(:,:,:) ! Heat diffusivity at base of each layer  (m+2 s-1).
@@ -6414,12 +6410,10 @@ end subroutine RUN1
 
 ! Locals
 
-      real, dimension(IM,JM,LM-1) :: ALH, ALM, DV, DZ, DT, TM, LAMBDAM_X, LAMBDAH_X
+      real, dimension(IM,JM,LM-1) :: ALH, ALM, DZ, DT, TM, PS, LAMBDAM_X, LAMBDAH_X
       real, dimension(IM,JM     ) :: pbllocal
 
-      integer :: I,J,L
-      real :: PS
-      real, parameter :: r13 = 1.0/3.0
+      integer :: L
 
 ! Begin...
 
@@ -6427,6 +6421,7 @@ end subroutine RUN1
 
       KH = 0.0
       KM = 0.0
+      DU = 0.0
       RI = 0.0
 
 !===>   Initialize pbllocal
@@ -6436,73 +6431,59 @@ end subroutine RUN1
 
 !===>   Quantities needed for Richardson number (all layers above the surface layer)
 
-      DZ(:,:,:) = (ZZ(:,:,1:LM-1) - ZZ(:,:,2:LM))
-      TM(:,:,:) = (PV(:,:,1:LM-1) + PV(:,:,2:LM))*0.5
-      DT(:,:,:) = (PV(:,:,1:LM-1) - PV(:,:,2:LM))
-      DV(:,:,:) = (UU(:,:,1:LM-1) - UU(:,:,2:LM))**2 + &
-                  (VV(:,:,1:LM-1) - VV(:,:,2:LM))**2
-      DV = sqrt(DV)
-      call MAPL_MaxMin('LOUIS: DZ', DZ)
-      call MAPL_MaxMin('LOUIS: TM', TM)
-      call MAPL_MaxMin('LOUIS: DT', DT)
-      call MAPL_MaxMin('LOUIS: DV', DV)
+      DZ(:,:,:) = (ZZ(:,:,0:LM-2) - ZZ(:,:,1:LM-1))
+      TM(:,:,:) = (PV(:,:,0:LM-2) + PV(:,:,1:LM-1))*0.5
+      DT(:,:,:) = (PV(:,:,0:LM-2) - PV(:,:,1:LM-1))
+      DU(:,:,:) = (UU(:,:,0:LM-2) - UU(:,:,1:LM-1))**2 + &
+                  (VV(:,:,0:LM-2) - VV(:,:,1:LM-1))**2
 
 !===>   Limits on distance between layer centers and vertical shear at edges.
 
       DZ = max(DZ, MINTHICK)
-      DT = DT/DZ
-      DV = DV/DZ 
+      DU = sqrt(DU)
+      call MAPL_MaxMin('LOUIS: DZ', DZ)
+      call MAPL_MaxMin('LOUIS: DU', DU)
+      DU = DU/DZ
 
-!===>   Richardson number  ( RI = G*DTheta_v) / (Theta_v*|DV/DZ|^2) )
+!===>   Richardson number  ( RI = G*(DTheta_v/DZ) / (Theta_v*|DV/DZ|^2) )
 
-      RI(:,:,1:LM-1) = MAPL_GRAV*DT/(TM*(max(DV, MINSHEAR)**2))
+      RI(:,:,1:LM-1) = MAPL_GRAV*(DT/DZ)/(TM*( max(DU, MINSHEAR)**2))
       call MAPL_MaxMin('LOUIS: RI', RI)
 
 !===>   Blackadar(1962) length scale: $1/l = 1/(kz) + 1/\lambda$
 
       do L = 1, LM-1
-         LAMBDAM_X(:,:,L) = MIN(MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKMENV )**2 ) , LAMBDAM2), LAMBDAM)
-         LAMBDAH_X(:,:,L) = MIN(MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2), LAMBDAH)
+         LAMBDAM_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKMENV )**2 ) , LAMBDAM2 )
+         LAMBDAH_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2 )
       end do
 
       ALM = ALMFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAM_X) ) )**2
       ALH = ALHFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAH_X) ) )**2
 
-      if (associated(ALH_DIAG)) then
-         ALH_DIAG(:,:,0) = 0.0
-         ALH_DIAG(:,:,1:LM-1) = SQRT( ALH )
-         ALH_DIAG(:,:,LM) = 0.0
-      endif
+      if (associated(ALH_DIAG)) ALH_DIAG(:,:,1:LM-1) = SQRT( ALH )
 
-      do L=1,LM-1
-        do J=1,JM
-          do I=1,IM
-            if ( RI(I,J,L) < 0.0 ) then
-             !===> UnStable case
-              PS = ( (ZZ(I,J,L)/ZZ(I,J,L+1))**r13 - 1.0 )**3
-              PS = ALH(I,J,L)*sqrt( PS/(ZE(I,J,L)*(DZ(I,J,L)**3)) )
-              PS = RI(I,J,L) /(1.0 + (3.0*LOUIS*5.0)*PS*sqrt(abs(RI(I,J,L))))
-              KH(I,J,L) = 1.0 - 3.0*LOUIS*PS
+      where ( RI(:,:,1:LM-1) < 0.0 )
+         PS = ( (ZZ(:,:,1:LM-1)/ZZ(:,:,2:LM))**(1./3.) - 1.0 ) ** 3
+         PS = ALH*sqrt( PS/(ZE(:,:,1:LM-1)*(DZ**3)) )
+         PS = RI(:,:,1:LM-1) /(1.0 + (3.0*LOUIS*LOUIS)*PS*sqrt(-RI(:,:,1:LM-1) ))
 
-              PS = ( (ZZ(I,J,L)/ZZ(I,J,L+1))**r13 - 1.0 )**3
-              PS = ALM(I,J,L)*sqrt( PS/(ZE(I,J,L)*(DZ(I,J,L)**3)) )
-              PS = RI(I,J,L) /(1.0 + (2.0*LOUIS*7.5)*PS*sqrt(abs(RI(I,J,L))))
-              KM(I,J,L) = 1.0 - 2.0*LOUIS*PS
-            else
-             !===>   Stable case
-              PS = sqrt(1.0 + LOUIS*RI(I,J,L))
+         KH(:,:,1:LM-1) = 1.0 - (LOUIS*3.0)*PS
+         KM(:,:,1:LM-1) = 1.0 - (LOUIS*2.0)*PS
+      end where
 
-              KH(I,J,L) = 1.0 / (1.0 + 3.0*LOUIS*RI(I,J,L)*PS)
-              KM(I,J,L) = PS  / (PS  + 2.0*LOUIS*RI(I,J,L)   )
-            end if
-          end do
-        end do
-      end do
+!===>   Stable case
+
+      where ( RI(:,:,1:LM-1) >= 0.0 )
+         PS = sqrt(1.0 + LOUIS*RI(:,:,1:LM-1))
+
+         KH(:,:,1:LM-1) = 1.0 / (1.0 + (LOUIS*3.0)*RI(:,:,1:LM-1)*PS)
+         KM(:,:,1:LM-1) = PS  / (PS  + (LOUIS*2.0)*RI(:,:,1:LM-1)   )
+      end where
 
 !===>   DIMENSIONALIZE Kz and  LIMIT DIFFUSIVITY
 
-      KM(:,:,1:LM-1) = ALM*KM(:,:,1:LM-1)*DV
-      KH(:,:,1:LM-1) = ALH*KH(:,:,1:LM-1)*DV
+      KM = KM*DU*ALM
+      KH = KH*DU*ALH
 
       call MAPL_MaxMin('LOUIS: KM', KM)
       call MAPL_MaxMin('LOUIS: KH', KH)
@@ -6510,13 +6491,8 @@ end subroutine RUN1
       KM  = min(KM, AKHMMAX)
       KH  = min(KH, AKHMMAX)
 
-      if (associated(  DU_DIAG)) then
-         DU_DIAG(:,:,0) = 0.0
-         DU_DIAG(:,:,1:LM-1) = DV
-         DU_DIAG(:,:,LM) = 0.0
-      endif
-      if (associated(KMLS_DIAG)) KMLS_DIAG = KM
-      if (associated(KHLS_DIAG)) KHLS_DIAG = KH
+      if (associated(KMLS_DIAG)) KMLS_DIAG(:,:,1:LM-1) = KM(:,:,1:LM-1)
+      if (associated(KHLS_DIAG)) KHLS_DIAG(:,:,1:LM-1) = KH(:,:,1:LM-1)
 
   end subroutine LOUIS_KS
 
