@@ -3256,6 +3256,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
+
+    niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
+    call MAPL_GetResource ( MAPL, niter, Label="NITER_HELFSURFACE:", DEFAULT=niter, RC=STATUS)
+    VERIFY_(STATUS)
+
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
     
@@ -3547,7 +3552,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       elseif (CATCH_INTERNAL_STATE%CHOOSEMOSFC.eq.1)then
   
-        niter  = 6   ! number of internal iterations in the helfand MO surface layer routine
         IWATER = 3
   
         PSMB = PS * 0.01            ! convert to MB
