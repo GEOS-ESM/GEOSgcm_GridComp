@@ -1209,169 +1209,299 @@ def implicit_cin_closure(
                 'kinv' and 'klcl'.
             """
 
+    with computation(FORWARD), interval(1, -1):  # Case 1 (if)
+        if id_exit == False and klcl >= kinv:
+            stop35 = False
             cin = 0.0
             cinlcl = 0.0
             plfc = 0.0
             klfc = k0
-
-            """
-                #Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' )
-            """
-
-            # thvubot = thvlsrc
-
-            stop35 = False
             klev = kinv
-            if (klcl) >= kinv and stop35 == False and id_exit == False:
-                while klev < k0 and stop35 == False and id_exit == False:
-                    if klev < (klcl) and stop35 == False and id_exit == False:
-                        if id_exit == False:
-                            if THIS_K == klev - 1:
-                                thvubot = thvlsrc
-                                thvutop = thvlsrc
 
-                                cin = cin[0, 0, -1] + single_cin(
-                                    pifc0.at(K=klev - 1),
-                                    thv0bot.at(K=klev - 1),
-                                    pifc0.at(K=klev),
-                                    thv0top.at(K=klev - 1),
-                                    thvubot,
-                                    thvutop,
-                                )
+            if stop35 == False and THIS_K >= kinv and THIS_K < klcl:
+                thvubot[0, 0, -1] = thvlsrc
+                thvutop[0, 0, -1] = thvlsrc
+                cin = cin[0, 0, -2] + single_cin(
+                    pifc0.at(K=THIS_K - 1),
+                    thv0bot.at(K=THIS_K - 1),
+                    pifc0.at(K=THIS_K),
+                    thv0top.at(K=THIS_K - 1),
+                    thvubot[0, 0, -1],
+                    thvutop[0, 0, -1],
+                )
+            # elif stop35 == False and THIS_K == klcl:
+            #     # ----- Bottom to LCL
+            #     thvubot = thvlsrc
+            #     thvutop = thvlsrc
+            #     cin = cin[0, 0, -1] + single_cin(
+            #         pifc0.at(K=THIS_K - 1),
+            #         thv0bot.at(K=THIS_K - 1),
+            #         pifc0.at(K=THIS_K),
+            #         thv0top.at(K=THIS_K - 1),
+            #         thvubot,
+            #         thvutop,
+            #     )
+            #     cinlcl = max(cin, 0.0)
+            #     cin = cinlcl
+            #     # ----- LCL to Top
+            #     thvubot = thvlsrc
+            #     thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
+            #         pifc0.at(K=THIS_K),
+            #         thlsrc,
+            #         qtsrc,
+            #         ese,
+            #         esx,
+            #     )
+            #     if id_check == 1:
+            #         id_exit = True
+            #         umf_out[0, 0, 1] = 0.0
+            #         dcm_out = 0.0
+            #         qvten_out = 0.0
+            #         qlten_out = 0.0
+            #         qiten_out = 0.0
+            #         sten_out = 0.0
+            #         uten_out = 0.0
+            #         vten_out = 0.0
+            #         qrten_out = 0.0
+            #         qsten_out = 0.0
+            #         cufrc_out = 0.0
+            #         cush_inout = -1.0
+            #         qldet_out = 0.0
+            #         qidet_out = 0.0
+            #         qtflx_out[0, 0, 1] = 0.0
+            #         slflx_out[0, 0, 1] = 0.0
+            #         uflx_out[0, 0, 1] = 0.0
+            #         vflx_out[0, 0, 1] = 0.0
+            #         fer_out = constants.MAPL_UNDEF
+            #         fdr_out = constants.MAPL_UNDEF
 
-                    elif klev == (klcl) and stop35 == False and id_exit == False:
-                        if id_exit == False:
-                            if THIS_K == klev - 1:
-                                # ----- Bottom to LCL
-                                thvubot = thvlsrc
-                                thvutop = thvlsrc
-                                cin = cin[0, 0, -1] + single_cin(
-                                    pifc0.at(K=klev - 1),
-                                    thv0bot.at(K=klev - 1),
-                                    plcl,
-                                    thv0lcl,
-                                    thvubot,
-                                    thvutop,
-                                )
-                                cinlcl = max(cin, 0.0)
-                                cin = cinlcl
+            #     thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+            #     plfc, cin = getbuoy(
+            #         plcl,
+            #         thv0lcl,
+            #         pifc0.at(K=THIS_K),
+            #         thv0top.at(K=THIS_K - 1),
+            #         thvubot,
+            #         thvutop,
+            #         cin,
+            #         plfc,
+            #     )
 
-                                # ----- LCL to Top
-                                thvubot = thvlsrc
+            #     if plfc > 0.0:
+            #         klfc = THIS_K
+            #         stop35 = True
 
-                                thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
-                                    pifc0.at(K=klev), thlsrc, qtsrc, ese, esx
-                                )
+            # else:
+            #     thvubot = thvutop
+            #     thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
+            #         pifc0.at(K=THIS_K),
+            #         thlsrc,
+            #         qtsrc,
+            #         ese,
+            #         esx,
+            #     )
+            #     if id_check == 1:
+            #         id_exit = True
+            #         umf_out[0, 0, 1] = 0.0
+            #         dcm_out = 0.0
+            #         qvten_out = 0.0
+            #         qlten_out = 0.0
+            #         qiten_out = 0.0
+            #         sten_out = 0.0
+            #         uten_out = 0.0
+            #         vten_out = 0.0
+            #         qrten_out = 0.0
+            #         qsten_out = 0.0
+            #         cufrc_out = 0.0
+            #         cush_inout = -1.0
+            #         qldet_out = 0.0
+            #         qidet_out = 0.0
+            #         qtflx_out[0, 0, 1] = 0.0
+            #         slflx_out[0, 0, 1] = 0.0
+            #         uflx_out[0, 0, 1] = 0.0
+            #         vflx_out[0, 0, 1] = 0.0
+            #         fer_out = constants.MAPL_UNDEF
+            #         fdr_out = constants.MAPL_UNDEF
 
-                                if id_check == 1:
-                                    id_exit = True
-                                    umf_out[0, 0, 1] = 0.0
-                                    dcm_out = 0.0
-                                    qvten_out = 0.0
-                                    qlten_out = 0.0
-                                    qiten_out = 0.0
-                                    sten_out = 0.0
-                                    uten_out = 0.0
-                                    vten_out = 0.0
-                                    qrten_out = 0.0
-                                    qsten_out = 0.0
-                                    cufrc_out = 0.0
-                                    cush_inout = -1.0
-                                    qldet_out = 0.0
-                                    qidet_out = 0.0
-                                    qtflx_out[0, 0, 1] = 0.0
-                                    slflx_out[0, 0, 1] = 0.0
-                                    uflx_out[0, 0, 1] = 0.0
-                                    vflx_out[0, 0, 1] = 0.0
-                                    fer_out = constants.MAPL_UNDEF
-                                    fdr_out = constants.MAPL_UNDEF
+            #     thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+            #     plfc, cin = getbuoy(
+            #         plcl,
+            #         thv0lcl,
+            #         pifc0.at(K=THIS_K),
+            #         thv0top.at(K=THIS_K - 1),
+            #         thvubot,
+            #         thvutop,
+            #         cin,
+            #         plfc,
+            #     )
 
-                                if id_exit == False:
-                                    thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+            #     if plfc > 0.0:
+            #         klfc = THIS_K
+            #         stop35 = True
 
-                                    plfc, cin = getbuoy(
-                                        plcl,
-                                        thv0lcl,
-                                        pifc0.at(K=klev),
-                                        thv0top.at(K=klev - 1),
-                                        thvubot,
-                                        thvutop,
-                                        cin,
-                                        plfc,
-                                    )
+            # cin = 0.0
+            # cinlcl = 0.0
+            # plfc = 0.0
+            # klfc = k0
 
-                                    if plfc > 0.0:
-                                        klfc = klev
-                                        cin = 0.0
-                                        cinlcl = 0.0
-                                        plfc = 0.0
-                                        thvubot = 0.0
-                                        thvutop = 0.0
-                                        thj3 = 0.0
-                                        qvj3 = 0.0
-                                        qij3 = 0.0
-                                        qlj3 = 0.0
-                                        qse3 = 0.0
-                                        id_check = 0.0
-                                        stop35 = True
+            # """
+            #     #Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' )
+            # """
 
-                    else:
-                        if id_exit == False and stop35 == False:
-                            if THIS_K == klev - 1:
-                                thvubot = thvutop.at(K=klcl - 1)
-                                thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
-                                    pifc0.at(K=klev),
-                                    thlsrc,
-                                    qtsrc,
-                                    ese,
-                                    esx,
-                                )
+            # # thvubot = thvlsrc
 
-                    klev += 1
+            # stop35 = False
+            # klev = kinv
+            # if (klcl) >= kinv and stop35 == False and id_exit == False:
+            #     while klev < k0 and stop35 == False and id_exit == False:
+            #         if klev < (klcl) and stop35 == False and id_exit == False:
+            #             if id_exit == False:
+            #                 if THIS_K == klev - 1:
+            #                     thvubot = thvlsrc
+            #                     thvutop = thvlsrc
 
-                    #             if id_check == 1:
-                    #                 id_exit = True
-                    #                 umf_out[0, 0, 1] = 0.0
-                    #                 dcm_out = 0.0
-                    #                 qvten_out = 0.0
-                    #                 qlten_out = 0.0
-                    #                 qiten_out = 0.0
-                    #                 sten_out = 0.0
-                    #                 uten_out = 0.0
-                    #                 vten_out = 0.0
-                    #                 qrten_out = 0.0
-                    #                 qsten_out = 0.0
-                    #                 cufrc_out = 0.0
-                    #                 cush_inout = -1.0
-                    #                 qldet_out = 0.0
-                    #                 qidet_out = 0.0
-                    #                 qtflx_out[0, 0, 1] = 0.0
-                    #                 slflx_out[0, 0, 1] = 0.0
-                    #                 uflx_out[0, 0, 1] = 0.0
-                    #                 vflx_out[0, 0, 1] = 0.0
-                    #                 fer_out = constants.MAPL_UNDEF
-                    #                 fdr_out = constants.MAPL_UNDEF
+            #                     cin = cin[0, 0, -1] + single_cin(
+            #                         pifc0.at(K=klev - 1),
+            #                         thv0bot.at(K=klev - 1),
+            #                         pifc0.at(K=klev),
+            #                         thv0top.at(K=klev - 1),
+            #                         thvubot,
+            #                         thvutop,
+            #                     )
 
-                    #             if id_exit == False:
-                    #                 thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+            #         elif klev == (klcl) and stop35 == False and id_exit == False:
+            #             if id_exit == False:
+            #                 if THIS_K == klev - 1:
+            #                     # ----- Bottom to LCL
+            #                     thvubot = thvlsrc
+            #                     thvutop = thvlsrc
+            #                     cin = cin[0, 0, -1] + single_cin(
+            #                         pifc0.at(K=klev - 1),
+            #                         thv0bot.at(K=klev - 1),
+            #                         plcl,
+            #                         thv0lcl,
+            #                         thvubot,
+            #                         thvutop,
+            #                     )
+            #                     cinlcl = max(cin, 0.0)
+            #                     cin = cinlcl
 
-                    #             #     plfc, cin = getbuoy(
-                    #             #         pifc0.at(K=klev - 1),
-                    #             #         thv0bot.at(K=klev - 1),
-                    #             #         pifc0.at(K=klev),
-                    #             #         thv0top.at(K=klev - 1),
-                    #             #         thvubot,
-                    #             #         thvutop,
-                    #             #         cin,
-                    #             #         plfc,
-                    #             #     )
+            #                     # ----- LCL to Top
+            #                     thvubot = thvlsrc
 
-                    #             #     if plfc > 0.0:
-                    #             #         klfc = klev
-                    #             #         # cin = 0.0
-                    #             #         # plfc = 0.0
-                    #             #         stop35 = True
-                    # klev += 1
+            #                     thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
+            #                         pifc0.at(K=klev), thlsrc, qtsrc, ese, esx
+            #                     )
+
+            #                     if id_check == 1:
+            #                         id_exit = True
+            #                         umf_out[0, 0, 1] = 0.0
+            #                         dcm_out = 0.0
+            #                         qvten_out = 0.0
+            #                         qlten_out = 0.0
+            #                         qiten_out = 0.0
+            #                         sten_out = 0.0
+            #                         uten_out = 0.0
+            #                         vten_out = 0.0
+            #                         qrten_out = 0.0
+            #                         qsten_out = 0.0
+            #                         cufrc_out = 0.0
+            #                         cush_inout = -1.0
+            #                         qldet_out = 0.0
+            #                         qidet_out = 0.0
+            #                         qtflx_out[0, 0, 1] = 0.0
+            #                         slflx_out[0, 0, 1] = 0.0
+            #                         uflx_out[0, 0, 1] = 0.0
+            #                         vflx_out[0, 0, 1] = 0.0
+            #                         fer_out = constants.MAPL_UNDEF
+            #                         fdr_out = constants.MAPL_UNDEF
+
+            #                     if id_exit == False:
+            #                         thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+
+            #                         plfc, cin = getbuoy(
+            #                             plcl,
+            #                             thv0lcl,
+            #                             pifc0.at(K=klev),
+            #                             thv0top.at(K=klev - 1),
+            #                             thvubot,
+            #                             thvutop,
+            #                             cin,
+            #                             plfc,
+            #                         )
+
+            #                         if plfc > 0.0:
+            #                             klfc = klev
+            #                             cin = 0.0
+            #                             cinlcl = 0.0
+            #                             plfc = 0.0
+            #                             thvubot = 0.0
+            #                             thvutop = 0.0
+            #                             thj3 = 0.0
+            #                             qvj3 = 0.0
+            #                             qij3 = 0.0
+            #                             qlj3 = 0.0
+            #                             qse3 = 0.0
+            #                             id_check = 0.0
+            #                             stop35 = True
+
+            #         else:
+            #             if id_exit == False and stop35 == False:
+            #                 if THIS_K == klev - 1:
+            #                     thvubot = thvutop.at(K=klcl - 1)
+            #                     thj3, qvj3, qlj3, qij3, qse3, id_check = conden(
+            #                         pifc0.at(K=klev),
+            #                         thlsrc,
+            #                         qtsrc,
+            #                         ese,
+            #                         esx,
+            #                     )
+
+            #         klev += 1
+
+            #             if id_check == 1:
+            #                 id_exit = True
+            #                 umf_out[0, 0, 1] = 0.0
+            #                 dcm_out = 0.0
+            #                 qvten_out = 0.0
+            #                 qlten_out = 0.0
+            #                 qiten_out = 0.0
+            #                 sten_out = 0.0
+            #                 uten_out = 0.0
+            #                 vten_out = 0.0
+            #                 qrten_out = 0.0
+            #                 qsten_out = 0.0
+            #                 cufrc_out = 0.0
+            #                 cush_inout = -1.0
+            #                 qldet_out = 0.0
+            #                 qidet_out = 0.0
+            #                 qtflx_out[0, 0, 1] = 0.0
+            #                 slflx_out[0, 0, 1] = 0.0
+            #                 uflx_out[0, 0, 1] = 0.0
+            #                 vflx_out[0, 0, 1] = 0.0
+            #                 fer_out = constants.MAPL_UNDEF
+            #                 fdr_out = constants.MAPL_UNDEF
+
+            #             if id_exit == False:
+            #                 thvutop = thj3 * (1.0 + zvir * qvj3 - qlj3 - qij3)
+
+            #             #     plfc, cin = getbuoy(
+            #             #         pifc0.at(K=klev - 1),
+            #             #         thv0bot.at(K=klev - 1),
+            #             #         pifc0.at(K=klev),
+            #             #         thv0top.at(K=klev - 1),
+            #             #         thvubot,
+            #             #         thvutop,
+            #             #         cin,
+            #             #         plfc,
+            #             #     )
+
+            #             #     if plfc > 0.0:
+            #             #         klfc = klev
+            #             #         # cin = 0.0
+            #             #         # plfc = 0.0
+            #             #         stop35 = True
+            # klev += 1
 
     # else:
     #     """
