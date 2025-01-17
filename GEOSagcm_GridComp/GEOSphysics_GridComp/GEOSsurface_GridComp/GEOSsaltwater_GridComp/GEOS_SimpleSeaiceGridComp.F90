@@ -2119,9 +2119,8 @@ contains
 
        SWN = (1.-ALBVRI)*VSUVR + (1.-ALBVFI)*VSUVF + &
              (1.-ALBNRI)*DRNIR + (1.-ALBNFI)*DFNIR
-       DTX = DT  / ( SALTWATERICECAP*HH(:,N))
-       DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHS ) &
-                 / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHS) )
+       DTX = (SALTWATERICECAP / DT) * HH(:,N)
+       DTS = (DTS + SWN - EVP*MAPL_ALHS ) / (DTX + BLW + SHD + EVD*MAPL_ALHS)
        DTS = DTS - max((TS(:,N) + DTS)-MAPL_TICE, 0.)
        EVP = EVP + EVD * DTS
        SHF = SHF + SHD * DTS
