@@ -5588,7 +5588,7 @@ end subroutine RUN1
       logical                             :: FRIENDLY
       logical                             :: WEIGHTED
       real, dimension(IM,JM,LM)           :: DZ, DP, SX
-      real, dimension(IM,JM,LM-1)         :: DF
+      real, dimension(IM,JM,LM)           :: DF
       real, dimension(IM,JM,LM)           :: QT,SL,U,V,ZLO
       real, dimension(IM,JM,0:LM)         :: ZL0
       real, allocatable                   :: tmp3d(:,:,:)
@@ -5600,7 +5600,7 @@ end subroutine RUN1
 
       real, dimension(IM,JM,LM)           :: SOIOFS, XINC
       real,    dimension(IM,JM)           :: z500, z1500, z7000, STDV
-      integer, dimension(IM,JM)           :: L500, L1500, L7000, L50
+      integer, dimension(IM,JM)           :: L500, L1500, L7000, L200, LSURF
       integer, dimension(IM,JM)           :: LTOPS,LBOT,LTOPQ
       logical, dimension(IM,JM)           :: DidSHVC
       real                                :: REDUFAC, SUMSOI
@@ -5612,6 +5612,7 @@ end subroutine RUN1
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
       integer                             :: KS
+      real                                :: HGT_SURFACE, WGTSUM
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
@@ -5663,6 +5664,11 @@ end subroutine RUN1
       call MAPL_GetPointer(EXPORT, TOPDIS,  'TOPDIS',                  &
                        alloc=associated(KETRB) .or. associated(KETOP), &
                                                               RC=STATUS)
+      VERIFY_(STATUS)
+
+                      HGT_SURFACE = 50.0
+      if (LM .eq. 72) HGT_SURFACE =  0.0
+      call MAPL_GetResource( MAPL, HGT_SURFACE, 'HGT_SURFACE:', default=HGT_SURFACE, RC=STATUS )
       VERIFY_(STATUS)
 
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
@@ -5794,10 +5800,17 @@ end subroutine RUN1
          enddo
       end if
 
-      L50=LM
-      do L=LM,2,-1
-         where (ZL0(:,:,L) <= 50. .and. ZL0(:,:,L-1) > 50.)
-            L50=L-1
+      L200=LM
+      do L=LM+1,1,-1
+         where (ZL0(:,:,L) <= 200. .and. ZL0(:,:,L-1) > 200.)
+            L200=L-1
+         endwhere
+      enddo
+
+      LSURF=LM
+      do L=LM+1,1,-1
+         where (ZL0(:,:,L) <= HGT_SURFACE .and. ZL0(:,:,L-1) > HGT_SURFACE)
+            LSURF=L-1
          endwhere
       enddo
 
@@ -5983,29 +5996,31 @@ end subroutine RUN1
 
          if( TYPE=='U' ) then
             if(associated(INTDIS)) then
-               DF = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
-               do J=1,JM                                      
-                  do I=1,IM
-                     do L=1,L50(I,J)-1
-                        INTDIS(I,J,L) = DF(I,J,L) + DF(I,J,L+1)
-                      enddo
-                   enddo
-                enddo
-
-               ! Add surface dissipation to lower 50m, thickness weighted & ramped up to the surface
+               DF(:,:,1:LM-1) = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
                do J=1,JM
                   do I=1,IM
-                     DF(I,J,1) = 0.0
-                     do L=L50(I,J),LM
-                        DF(I,J,1) = DF(I,J,1) + DZ(I,J,L)
-                     end do
-                     DF(I,J,1) = ((1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LM)**2)/DF(I,J,1)
+                     DF(I,J,LM) = 0.0 ! no shear at the surface, surface friction added later
                   end do
                end do
                do J=1,JM
                   do I=1,IM
-                     do L=L50(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,1)*DZ(I,J,L)
+                     do L=1,LSURF(I,J)-1
+                        INTDIS(I,J,L) = DF(I,J,L) + DF(I,J,L+1)
+                      enddo
+                   enddo
+                enddo
+               ! Add surface dissipation to lowest 200m
+               do J=1,JM
+                  do I=1,IM
+                     WGTSUM = 0.0
+                     do L=L200(I,J),LM
+                        WGTSUM = WGTSUM + DZ(I,J,L)
+                     end do
+                    !  weighted by the layer thickness
+                     DF(I,J,LM) = (1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LSURF(I,J))**2 ! Surface
+                     DF(I,J,LM) = DF(I,J,LM)/WGTSUM
+                     do L=L200(I,J),LM
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,LM)*DZ(I,J,L)
                      end do 
                   end do
                end do

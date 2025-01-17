@@ -2264,7 +2264,7 @@ contains
    real, allocatable, dimension(:,:,:) :: HGT
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
-   real, allocatable, dimension(:,:)   :: LS,qs,pmean
+   real, allocatable, dimension(:,:)   :: qs,pmean
 
    logical :: isPresent, SCM_NO_RAD
    real, allocatable, target :: zero(:,:,:)
@@ -2396,7 +2396,9 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS)
+                    HGT_SURFACE = 50.0
+    if (LM .eq. 72) HGT_SURFACE =  0.0
+    call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= HGT_SURFACE, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -2608,17 +2610,10 @@ contains
       !  Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
-      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+      if ( HGT_SURFACE .gt. 0.0 ) then
          allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
          do k = 1,LM+1
            HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
-         enddo
-         allocate(LS(IM,JM),stat=STATUS);VERIFY_(STATUS)
-         LS=LM
-         do L=LM,2,-1
-            where (HGT(:,:,L) <= HGT_SURFACE .and. HGT(:,:,L-1) > HGT_SURFACE)
-               LS=L-1
-            endwhere
          enddo
       endif
      endif
@@ -2670,14 +2665,9 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
-
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       do J=1,JM
-          do I=1,IM
-             UFORSURF(I,J) = UAFMOIST(I,J,LS(I,J))
-             VFORSURF(I,J) = VAFMOIST(I,J,LS(I,J))
-          enddo
-       enddo
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(UFORSURF,UAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
      else
        UFORSURF = UAFMOIST(:,:,LM)
        VFORSURF = VAFMOIST(:,:,LM)
@@ -2707,13 +2697,9 @@ contains
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  SPD4SURF,  'SPEED', RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       do J=1,JM
-          do I=1,IM
-             TFORSURF(I,J) = TAFMOIST(I,J,LS(I,J))
-             QFORSURF(I,J) = QAFMOIST(I,J,LS(I,J))
-          enddo
-       enddo
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(TFORSURF,TAFMOIST,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QAFMOIST,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        TFORSURF = TAFMOIST(:,:,LM)
        QFORSURF = QAFMOIST(:,:,LM)
@@ -2816,13 +2802,9 @@ contains
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  UFORSURF,  'UA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VFORSURF,  'VA',    RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       do J=1,JM
-          do I=1,IM
-             UFORSURF(I,J) = UAFDIFFUSE(I,J,LS(I,J))
-             VFORSURF(I,J) = VAFDIFFUSE(I,J,LS(I,J))
-          enddo
-       enddo
+     if ( HGT_SURFACE .gt. 0.0  ) then
+       call VertInterp(UFORSURF,UAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(VFORSURF,VAFDIFFUSE,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
      else
        UFORSURF = UAFDIFFUSE(:,:,LM)
        VFORSURF = VAFDIFFUSE(:,:,LM)
@@ -2848,13 +2830,9 @@ contains
     ! For SURF
      call MAPL_GetPointer ( GIM(SURF),  TFORSURF,  'TA',    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  QFORSURF,  'QA',    RC=STATUS); VERIFY_(STATUS)
-     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
-       do J=1,JM
-          do I=1,IM
-             TFORSURF(I,J) = TFORTURB(I,J,LS(I,J))  
-             QFORSURF(I,J) =       QV(I,J,LS(I,J)) 
-          enddo
-       enddo
+     if ( HGT_SURFACE .gt. 0.0 ) then
+       call VertInterp(TFORSURF,TFORTURB,-HGT,-HGT_SURFACE, rc=status); VERIFY_(STATUS)
+       call VertInterp(QFORSURF,QV      ,-HGT,-HGT_SURFACE, positive_definite=.true., rc=status); VERIFY_(STATUS)
      else
        TFORSURF =   TFORTURB(:,:,LM)
        QFORSURF =         QV(:,:,LM)
@@ -2979,9 +2957,8 @@ contains
 ! Clean up SYNTQ things
     if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
-      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+      if ( HGT_SURFACE .gt. 0.0 ) then
           deallocate(HGT)
-          deallocate(LS)
       endif
     endif
 
