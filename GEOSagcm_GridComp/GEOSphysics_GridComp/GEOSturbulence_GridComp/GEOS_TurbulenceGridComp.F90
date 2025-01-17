@@ -6014,13 +6014,13 @@ end subroutine RUN1
                   do I=1,IM
                      WGTSUM = 0.0
                      do L=L200(I,J),LM
-                        WGTSUM = WGTSUM + DZ(I,J,L)
+                        WGTSUM = WGTSUM + DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
                      end do
                     !  weighted by the layer thickness
                      DF(I,J,LM) = (1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LSURF(I,J))**2 ! Surface
                      DF(I,J,LM) = DF(I,J,LM)/WGTSUM
                      do L=L200(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,LM)*DZ(I,J,L)
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,LM)*DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
                      end do 
                   end do
                end do
