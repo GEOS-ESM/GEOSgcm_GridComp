@@ -11,7 +11,7 @@
 
 module GEOS_DataSeaIceGridCompMod
 
-! !USES: 
+! !USES:
 
   use ESMF
   use MAPL
@@ -27,11 +27,14 @@ module GEOS_DataSeaIceGridCompMod
   logical            :: ocean_extData
   logical            :: seaIceT_extData
 
+  real               :: MAX_SEAICE_THICKNESS
+  real               :: MIN_SEAICE_THICKNESS
+
 ! !DESCRIPTION:
-! 
-!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the 
-!   ocean\_bcs file 
-!   This module interpolates the sea ice fraction and optionally thickness data from 
+!
+!   {\tt GEOS\_DataSeaIce} is a gridded component that reads the
+!   ocean\_bcs file
+!   This module interpolates the sea ice fraction and optionally thickness data from
 !   either daily or monthly values to the correct time of the simulation.
 !   Data are read only if the simulation time is not in the save interval.
 !
@@ -55,7 +58,7 @@ module GEOS_DataSeaIceGridCompMod
 
 !  !DESCRIPTION: This version uses the MAPL\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -105,6 +108,16 @@ module GEOS_DataSeaIceGridCompMod
 
     ! This feature (ice thickness data) will be with ExtData ONLY.
     call MAPL_GetResource ( MAPL,    seaIceT_extData, Label="SEAICE_THICKNESS_EXT_DATA:",  DEFAULT=.FALSE., _RC ) ! .TRUE. or .FALSE.
+
+    call MAPL_GetResource ( MAPL, MIN_SEAICE_THICKNESS, Label='MIN_SEAICE_THICKNESS:',  DEFAULT=0.0, _RC ) ! .TRUE. or .FALSE.
+    call MAPL_GetResource ( MAPL, MAX_SEAICE_THICKNESS, Label='MAX_SEAICE_THICKNESS:',  DEFAULT=2.0,    _RC ) ! .TRUE. or .FALSE.
+
+    if (MAPL_AM_I_ROOT()) then
+        print *, '*** WIP: Using V2 of Data Sea Ice GC.'
+        print *, '*** WIP: SEAICE_THICKNESS_EXT_DATA: ', seaIceT_extData
+        print *, '*** WIP: OCEAN_EXT_DATA:            ', ocean_extData
+    end if
+
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -204,7 +217,7 @@ module GEOS_DataSeaIceGridCompMod
   call MAPL_GenericSetServices    ( GC,  _RC )
 
   RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -219,7 +232,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -293,9 +306,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      call MAPL_GetPointer(IMPORT, DATA_sit     ,  'DATA_SIT', _RC )
    else
      call MAPL_GetPointer(IMPORT, TI    ,  'TI'  , _RC )
-     call MAPL_GetPointer(IMPORT, HI    ,  'HI'  , _RC ) 
+     call MAPL_GetPointer(IMPORT, HI    ,  'HI'  , _RC )
      call MAPL_GetPointer(IMPORT, SI    ,  'SI'  , _RC )
-  endif
+   endif
 
 !  Pointers to Exports
 !---------------------
@@ -348,16 +361,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         _ASSERT(.FALSE.,'Fix sea fraci and try.')
      endif
    end if
-  
+
    if (seaIceT_extData) then
      call MAPL_GetPointer(EXPORT, SIT , 'SEAICETHICKNESS'  ,  _RC )
-     SIT = DATA_sit ! netcdf variable
+     SIT = 0.0
+
+     if (associated(FR)) then
+         where ((FR > tiny(FR)) .and. (Data_sit /= MAPL_UNDEF))
+             SIT = min(max(MIN_SEAICE_THICKNESS, Data_sit), MAX_SEAICE_THICKNESS)  ! SIT <- DATA_sit | FR * DATA_sit ?
+         end where
+     else
+         where (Data_sit /= MAPL_UNDEF)
+             SIT = min(max(MIN_SEAICE_THICKNESS, Data_sit), MAX_SEAICE_THICKNESS)  ! SIT <- DATA_sit | FR * DATA_sit ?
+         end where
+     end if
    else
      where (TI /= MAPL_Undef)
-       TI   =(TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
+       TI = (TI + (DT/TAU_SIT)*MAPL_TICE)/(1.+ (DT/TAU_SIT))
      end where
-     HI   = HI
-     SI   = 30.0
+     HI = HI
+     SI = 30.0
    end if
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )

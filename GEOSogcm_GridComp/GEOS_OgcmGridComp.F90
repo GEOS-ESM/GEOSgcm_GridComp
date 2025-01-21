@@ -846,7 +846,11 @@ contains
       call MAPL_TerminateImport    ( GC, ["DATA_KPAR "], [orad], RC=STATUS  ) ! need to terminate others as well: cosz, discharge, frocean, pice, taux, tauy
     endif
   else
-    call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+    if (seaIceT_extData) then
+      call MAPL_TerminateImport(GC, ['DATA_UW ', 'DATA_VW ', 'DATA_SIT'], [OCEAN, OCEAN, SEAICE], _RC)
+    else
+      call MAPL_TerminateImport(GC, ['DATA_UW', 'DATA_VW'], [OCEAN, OCEAN], _RC)
+    endif
   endif
 
 ! Set the Profiling timers
