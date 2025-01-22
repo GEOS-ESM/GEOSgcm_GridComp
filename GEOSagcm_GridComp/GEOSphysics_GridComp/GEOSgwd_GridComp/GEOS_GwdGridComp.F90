@@ -1159,8 +1159,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
       real                                     :: a1, wsp, var_temp
-      !real, allocatable :: THV(:,:,:)
-      real :: THV(IM,JM,LM)
 
       integer           :: I,IRUN
       type (ESMF_State) :: INTERNAL
