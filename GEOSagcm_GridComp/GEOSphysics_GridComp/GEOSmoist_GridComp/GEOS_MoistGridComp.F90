@@ -920,7 +920,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                             &
          SHORT_NAME = 'QCTOT',                                     &
-         LONG_NAME  = 'mass_fraction_of_total_cloud_water',        &
+         LONG_NAME  = 'mass_fraction_of_total_condensate',         &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -5287,7 +5287,7 @@ contains
     real, allocatable, dimension(:,:)   :: TMP2D
     integer, allocatable,dimension(:,:) :: KLCL
     ! Internals
-    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN, QRTOT, QSTOT, QGTOT
     real, pointer, dimension(:,:,:) :: NACTL, NACTI
     ! Imports
     real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W
@@ -6125,7 +6125,15 @@ contains
        if (associated(PTR3D)) PTR3D = QILS+QICN
 
        call MAPL_GetPointer(EXPORT, PTR3D, 'QCTOT', RC=STATUS); VERIFY_(STATUS)
-       if (associated(PTR3D)) PTR3D = QLLS+QLCN+QILS+QICN
+       if (associated(PTR3D)) then 
+          PTR3D = QLLS+QLCN+QILS+QICN
+          call MAPL_GetPointer(EXPORT, QRTOT, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+          if (associated(QRTOT)) PTR3D=PTR3D+QRTOT
+          call MAPL_GetPointer(EXPORT, QSTOT, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+          if (associated(QSTOT)) PTR3D=PTR3D+QSTOT
+          call MAPL_GetPointer(EXPORT, QGTOT, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+          if (associated(QGTOT)) PTR3D=PTR3D+QGTOT
+       endif
 
        ! Cloud condensate exports
        call MAPL_GetPointer(EXPORT, PTR3D, 'QLLSX1', RC=STATUS); VERIFY_(STATUS)

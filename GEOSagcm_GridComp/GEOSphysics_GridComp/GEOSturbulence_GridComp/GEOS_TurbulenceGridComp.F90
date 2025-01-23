@@ -365,6 +365,36 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'QRTOT',                                     &
+        LONG_NAME  = 'suspended_rain_mixing_ratio',               &
+        UNITS      = 'kg kg-1',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'QSTOT',                                     &
+        LONG_NAME  = 'suspended_snow_mixing_ratio',               &
+        UNITS      = 'kg kg-1',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME = 'QGTOT',                                     &
+        LONG_NAME  = 'suspended_graupel_mixing_ratio',            &
+        UNITS      = 'kg kg-1',                                   &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,                        &
+        RESTART    = MAPL_RestartSkip,                            &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'FCLD',                                      &
         LONG_NAME  = 'cloud_fraction',                            &
         UNITS      = '1',                                         &
@@ -2922,7 +2952,7 @@ end if
 
      real, dimension(:,:,:), pointer     :: TH, U, V, OMEGA, Q, T, RI, DU, RADLW, RADLWC, LWCRT
      real, dimension(:,:  ), pointer     :: AREA, VARFLT
-     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, FCLD
+     real, dimension(:,:,:), pointer     :: KH, KM, QLTOT, QITOT, QRTOT, QSTOT, QGTOT, FCLD
      real, dimension(:,:,:), pointer     :: ALH
      real, dimension(:    ), pointer     :: PREF
 
@@ -2988,10 +3018,10 @@ end if
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
      logical                             :: PDFALLOC
 
-     real                                :: LOUIS, ALHFAC, ALMFAC
+     real                                :: LOUISKH, LOUISKM, ALHFAC, ALMFAC
      real                                :: LAMBDAM, LAMBDAM2
      real                                :: LAMBDAH, LAMBDAH2
-     real                                :: ZKMENV, ZKHENV 
+     real                                :: ZKMENV, ZKHENV, ZKHMENV
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
@@ -3121,6 +3151,9 @@ end if
      call MAPL_GetPointer(IMPORT,RADLWC,  'RADLWC', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QLTOT,   'QLTOT', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, QITOT,   'QITOT', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, QRTOT,   'QRTOT', RC=STATUS); VERIFY_(STATUS) 
+     call MAPL_GetPointer(IMPORT, QSTOT,   'QSTOT', RC=STATUS); VERIFY_(STATUS) 
+     call MAPL_GetPointer(IMPORT, QGTOT,   'QGTOT', RC=STATUS); VERIFY_(STATUS) 
      call MAPL_GetPointer(IMPORT,  FCLD,    'FCLD', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, BSTAR,   'BSTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
@@ -3143,10 +3176,11 @@ end if
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,      RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SMTH_HGT,     trim(COMP_NAME)//"_SMTH_HGT:",     default=500.0,  RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-      if (JASON_TRB) then
+     if (JASON_TRB) then
+       call MAPL_GetResource (MAPL, LOUISKH,      trim(COMP_NAME)//"_LOUISKH:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
@@ -3161,19 +3195,23 @@ end if
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
      else
+       call MAPL_GetResource (MAPL, LOUISKH,      trim(COMP_NAME)//"_LOUISKH:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=7.5,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.3,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,     trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,    trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.15e-3,RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
@@ -3181,6 +3219,7 @@ end if
      call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=4000.,    RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,      RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,    RC=STATUS); VERIFY_(STATUS)
@@ -3498,17 +3537,17 @@ end if
                    ALLOC_TCZPBL = .TRUE.
       endif
 
+      do L=0,LM
+         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! edge height above the surface 
+      enddo
+
       if (SMTH_HGT > 0) then
-         ! Use Pressure Thickness at the surface to determine index
+         ! Use Thickness at the surface to determine index
          SMTH_LEV=LM
          do L=LM,1,-1
-          do J=1,JM
-           do I=1,IM
-             if ( (SMTH_LEV(I,J) == LM) .AND. ((ZLE(I,J,L)-ZLE(I,J,LM)) >= SMTH_HGT) ) then
-               SMTH_LEV(I,J)=L
-             end if
-           enddo
-          enddo
+            where (ZL0(:,:,L) <= SMTH_HGT .and. ZL0(:,:,L-1) > SMTH_HGT)
+               SMTH_LEV=L
+            endwhere
          enddo
       else
          SMTH_LEV=LM-5
@@ -3516,15 +3555,11 @@ end if
 
       call MAPL_TimerOn(MAPL,"---PRELIMS")
 
-      do L=0,LM
-         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! edge height above the surface 
-      enddo
-
       ! Layer height, pressure, and virtual temperatures
       !-------------------------------------------------
 
-      QL  = QLTOT
-      QI  = QITOT
+      QL  = QLTOT+QRTOT
+      QI  = QITOT+QSTOT+QGTOT
       QA  = FCLD
       Z   = 0.5*(ZL0(:,:,0:LM-1)+ZL0(:,:,1:LM)) ! layer height above surface
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
@@ -3549,7 +3584,7 @@ end if
       VSM = V
       if (DO_SHOC == 0) then
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
-      if (SMTH_HGT >= 0) then
+      if (SMTH_HGT > 0) then
         do J=1,JM
          do I=1,IM
            do L=LM-1,SMTH_LEV(I,J),-1
@@ -3938,12 +3973,12 @@ end if
       if (DO_SHOC == 0) then
         call LOUIS_KS( IM,JM,LM,            &
             Z,ZL0,TSM,USM,VSM,ZPBL,         &
-            KH, KM, RI,                     &
-            LOUIS, MINSHEAR, MINTHICK,      &
+            KH, KM, RI, LOUISKH, LOUISKM,   &
+            MINSHEAR, MINTHICK,             &
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
             ALHFAC, ALMFAC,                 &
-            ZKMENV, ZKHENV, AKHMMAX,        &
+            ZKMENV, ZKHENV, ZKHMENV, AKHMMAX,  &
             DU, ALH, KMLS, KHLS             )
       end if
 
@@ -5600,7 +5635,7 @@ end subroutine RUN1
 
       real, dimension(IM,JM,LM)           :: SOIOFS, XINC
       real,    dimension(IM,JM)           :: z500, z1500, z7000, STDV
-      integer, dimension(IM,JM)           :: L500, L1500, L7000, L200, LSURF
+      integer, dimension(IM,JM)           :: L300, L500, L1500, L7000, LSURF
       integer, dimension(IM,JM)           :: LTOPS,LBOT,LTOPQ
       logical, dimension(IM,JM)           :: DidSHVC
       real                                :: REDUFAC, SUMSOI
@@ -5800,17 +5835,24 @@ end subroutine RUN1
          enddo
       end if
 
-      L200=LM
-      do L=LM+1,1,-1
-         where (ZL0(:,:,L) <= 200. .and. ZL0(:,:,L-1) > 200.)
-            L200=L-1
+      LSURF=LM
+      do L=LM,1,-1
+         where (ZL0(:,:,L) <= HGT_SURFACE .and. ZL0(:,:,L-1) > HGT_SURFACE)
+            LSURF=L
          endwhere
       enddo
 
-      LSURF=LM
-      do L=LM+1,1,-1
-         where (ZL0(:,:,L) <= HGT_SURFACE .and. ZL0(:,:,L-1) > HGT_SURFACE)
-            LSURF=L-1
+      L300=1.
+      do L=LM,1,-1
+         where (ZL0(:,:,L) <= 300. .and. ZL0(:,:,L-1) > 300.)
+            L300=L
+         endwhere
+      enddo
+
+      L500=1.
+      do L=LM,1,-1
+         where (ZL0(:,:,L) <= 500. .and. ZL0(:,:,L-1) > 500.)
+            L500=L
          endwhere
       enddo
 
@@ -5869,8 +5911,6 @@ end subroutine RUN1
          endwhere  
 
          z7000 = z1500 + SHVC_ZDEPTH
-
-
 
          L500=1.
          do L=LM,2,-1
@@ -5996,72 +6036,31 @@ end subroutine RUN1
 
          if( TYPE=='U' ) then
             if(associated(INTDIS)) then
-               DF(:,:,1:LM-1) = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
-               do J=1,JM
-                  do I=1,IM
-                     DF(I,J,LM) = 0.0 ! no shear at the surface, surface friction added later
-                  end do
-               end do
-               do J=1,JM
-                  do I=1,IM
-                     do L=1,LSURF(I,J)-1
-                        INTDIS(I,J,L) = DF(I,J,L) + DF(I,J,L+1)
-                      enddo
-                   enddo
-                enddo
-               ! Add surface dissipation to lowest 200m
+               DF(:,:,1:LM-1) = (0.5/MAPL_CP)*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
+               DF(:,:,  LM  ) =  0.0 ! no shear at the surface, surface friction added later
+               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
+               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+               ! Add surface dissipation to lower levels
                do J=1,JM
                   do I=1,IM
                      WGTSUM = 0.0
-                     do L=L200(I,J),LM
-                        WGTSUM = WGTSUM + DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
+                     do L=L300(I,J),LM
+                        WGTSUM = WGTSUM + DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L300(I,J)))**2
                      end do
                     !  weighted by the layer thickness
-                     DF(I,J,LM) = (1.0/(MAPL_CP))*EKV(I,J,LM)*SX(I,J,LSURF(I,J))**2 ! Surface
+                     DF(I,J,LM) = (1.0/MAPL_CP)*EKV(I,J,LM)*SX(I,J,LSURF(I,J))**2 ! Use Surface Winds
                      DF(I,J,LM) = DF(I,J,LM)/WGTSUM
-                     do L=L200(I,J),LM
-                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,LM)*DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L200(I,J)))**2
+                     do L=L300(I,J),LM
+                        INTDIS(I,J,L) = INTDIS(I,J,L) + DF(I,J,LM)*DZ(I,J,L)*(1.0-ZL0(I,J,L)/ZL0(I,J,L300(I,J)))**2
                      end do 
                   end do
                end do
-               ! limit INTDIS to 2-deg/hour
-              !do L=1,LM
-              !   do J=1,JM
-              !      do I=1,IM
-              !         INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
-              !      end do
-              !   end do
-              !end do
-
-               if(associated(KETRB)) then
-                  do L=1,LM
-                     KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
-               if(associated(KEINT)) then
-                  do L=1,LM
-                     KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
             endif
             if(associated(TOPDIS)) then
-               TOPDIS = TOPDIS + (1.0/(MAPL_CP))*FKV*SX**2
-               if(associated(KETRB)) then
-                  do L=1,LM
-                     KETRB = KETRB - TOPDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
-               if(associated(KETOP)) then
-                  do L=1,LM
-                     KETOP = KETOP - TOPDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
-                  end do
-               end if
+               TOPDIS = TOPDIS + (1.0/MAPL_CP)*FKV*SX**2
              endif
             if(associated(SRFDIS)) then
-               SRFDIS = SRFDIS + (1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2
-               if(associated(KETRB)) KETRB = KETRB - SRFDIS* (MAPL_CP/MAPL_GRAV)
-               if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
-             ! if(associated(KEINT)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
+               SRFDIS = SRFDIS + (1.0/MAPL_CP)*EKV(:,:,LM)*SX(:,:,LM)**2
             endif
          end if
 
@@ -6276,6 +6275,44 @@ end subroutine RUN1
          VFLXTRB(:,:,0) = 0.0
       end if
 
+      if(associated(INTDIS)) then
+        !! limit INTDIS to 2-deg/hour
+        !do L=1,LM
+        !   do J=1,JM
+        !      do I=1,IM
+        !         INTDIS(I,J,L) = SIGN(min(2.0/3600.0,ABS(INTDIS(I,J,L))/DP(I,J,L))*DP(I,J,L),INTDIS(I,J,L))
+        !      end do
+        !   end do
+        !end do
+         if(associated(KETRB)) then
+            do L=1,LM
+               KETRB = KETRB - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+            end do
+         end if
+         if(associated(KEINT)) then
+            do L=1,LM
+               KEINT = KEINT - INTDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+            end do
+            if(associated(SRFDIS)) KEINT = KEINT + SRFDIS* (MAPL_CP/MAPL_GRAV) ! avoid double-counting SRF in INT
+         end if
+      end if
+
+      if(associated(TOPDIS)) then
+         if(associated(KETRB)) then
+            do L=1,LM
+               KETRB = KETRB - TOPDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+            end do
+         end if
+         if(associated(KETOP)) then
+            do L=1,LM
+               KETOP = KETOP - TOPDIS(:,:,L)* (MAPL_CP/MAPL_GRAV)
+            end do
+         end if
+      endif
+      if(associated(SRFDIS)) then
+         if(associated(KESRF)) KESRF = KESRF - SRFDIS* (MAPL_CP/MAPL_GRAV)
+      endif
+
       RETURN_(ESMF_SUCCESS)
     end subroutine UPDATE
 
@@ -6298,12 +6335,12 @@ end subroutine RUN1
 
    subroutine LOUIS_KS( IM,JM,LM,    &
          ZZ,ZE,PV,UU,VV,ZPBL,        &
-         KH,KM,RI,                   & 
-         LOUIS, MINSHEAR, MINTHICK,  &
+         KH,KM,RI,LOUISKH,LOUISKM,   & 
+         MINSHEAR, MINTHICK,         &
          LAMBDAM, LAMBDAM2,          &
          LAMBDAH, LAMBDAH2,          &
          ALHFAC, ALMFAC,             &
-         ZKMENV, ZKHENV, AKHMMAX,    &
+         ZKMENV, ZKHENV, ZKHMENV, AKHMMAX,    &
          DU_DIAG, ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
 ! !ARGUMENTS:
@@ -6329,7 +6366,7 @@ end subroutine RUN1
       real,    pointer       :: KHLS_DIAG(:,:,:) ! Heat diffusivity at base of each layer  (m+2 s-1).
 
       ! These are constants
-      real,    intent(IN   ) :: LOUIS        ! Louis scheme parameters (usually 5).
+      real,    intent(IN   ) :: LOUISKH, LOUISKM ! Louis scheme parameters (usually 5).
       real,    intent(IN   ) :: MINSHEAR     ! Min shear allowed in Ri calculation (s-1).
       real,    intent(IN   ) :: MINTHICK     ! Min layer thickness (m).
       real,    intent(IN   ) :: LAMBDAM      ! Blackadar(1962) length scale parameter for momentum (m).
@@ -6340,6 +6377,7 @@ end subroutine RUN1
       real,    intent(IN   ) :: ALMFAC
       real,    intent(IN   ) :: ZKMENV       ! Transition height for Blackadar param for momentum (m)
       real,    intent(IN   ) :: ZKHENV       ! Transition height for Blackadar param for heat     (m)
+      real,    intent(IN   ) :: ZKHMENV      ! Transition height for reduction of diffusivity in the free atm (m)
       real,    intent(IN   ) :: AKHMMAX      ! Maximum allowe diffusivity (m+2 s-1).
 
 ! !DESCRIPTION: Computes Louis et al.(1979) Richardson-number-based diffusivites,
@@ -6429,12 +6467,13 @@ end subroutine RUN1
 
 ! Locals
 
-      real, dimension(IM,JM,LM-1) :: ALH, ALM, DV, DZ, DT, TM, LAMBDAM_X, LAMBDAH_X
+      real, dimension(IM,JM,LM-1) :: ALH, ALM, DV, DZ, DT, TM, LAMBDAM_X, LAMBDAH_X, RLS
       real, dimension(IM,JM     ) :: pbllocal
 
       integer :: I,J,L
       real :: PS
       real, parameter :: r13 = 1.0/3.0
+      real, parameter :: r32 = 3.0/2.0
 
 ! Begin...
 
@@ -6449,36 +6488,42 @@ end subroutine RUN1
       pbllocal = ZPBL
       where ( pbllocal .LE. ZZ(:,:,LM) ) pbllocal = ZZ(:,:,LM)
 
-!===>   Quantities needed for Richardson number (all layers above the surface layer)
+!===>   Quantities needed for Richardson number (all layer edges above the surface layer)
 
       DZ(:,:,:) = (ZZ(:,:,1:LM-1) - ZZ(:,:,2:LM))
       TM(:,:,:) = (PV(:,:,1:LM-1) + PV(:,:,2:LM))*0.5
       DT(:,:,:) = (PV(:,:,1:LM-1) - PV(:,:,2:LM))
       DV(:,:,:) = (UU(:,:,1:LM-1) - UU(:,:,2:LM))**2 + &
                   (VV(:,:,1:LM-1) - VV(:,:,2:LM))**2
-      DV = sqrt(DV)
-      call MAPL_MaxMin('LOUIS: DZ', DZ)
-      call MAPL_MaxMin('LOUIS: TM', TM)
-      call MAPL_MaxMin('LOUIS: DT', DT)
-      call MAPL_MaxMin('LOUIS: DV', DV)
 
 !===>   Limits on distance between layer centers and vertical shear at edges.
 
       DZ = max(DZ, MINTHICK)
+      DV = SQRT(DV)/DZ
       DT = DT/DZ
-      DV = DV/DZ 
 
-!===>   Richardson number  ( RI = G*DTheta_v) / (Theta_v*|DV/DZ|^2) )
+!===>   Richardson number  ( RI = G*(DTheta_v/DZ) / (Theta_v*|DV/DZ|^2) )
 
-      RI(:,:,1:LM-1) = MAPL_GRAV*DT/(TM*(max(DV, MINSHEAR)**2))
+      RI(:,:,1:LM-1) = MAPL_GRAV*DT/(TM*(MAX(DV, MINSHEAR)**2))
+
+      call MAPL_MaxMin('LOUIS: DZ', DZ)
+      call MAPL_MaxMin('LOUIS: TM', TM)
+      call MAPL_MaxMin('LOUIS: DT', DT)
+      call MAPL_MaxMin('LOUIS: DV', DV)
       call MAPL_MaxMin('LOUIS: RI', RI)
 
 !===>   Blackadar(1962) length scale: $1/l = 1/(kz) + 1/\lambda$
 
       do L = 1, LM-1
-         LAMBDAM_X(:,:,L) = MIN(MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKMENV )**2 ) , LAMBDAM2), LAMBDAM)
-         LAMBDAH_X(:,:,L) = MIN(MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2), LAMBDAH)
+         LAMBDAM_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKMENV )**2 ) , LAMBDAM2)
+         LAMBDAH_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2)
       end do
+
+      call MAPL_MaxMin('LOUIS: LM', LAMBDAM_X)
+      call MAPL_MaxMin('LOUIS: LH', LAMBDAH_X)
+
+      LAMBDAM_X = MIN(LAMBDAM_X,LAMBDAM)
+      LAMBDAH_X = MIN(LAMBDAH_X,LAMBDAH)
 
       ALM = ALMFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAM_X) ) )**2
       ALH = ALHFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAH_X) ) )**2
@@ -6493,31 +6538,33 @@ end subroutine RUN1
         do J=1,JM
           do I=1,IM
             if ( RI(I,J,L) < 0.0 ) then
-             !===> UnStable case
+             !===> UnStable case PS from eqs 14 and 24 of Louis, 1979
               PS = ( (ZZ(I,J,L)/ZZ(I,J,L+1))**r13 - 1.0 )**3
-              PS = ALH(I,J,L)*sqrt( PS/(ZE(I,J,L)*(DZ(I,J,L)**3)) )
-              PS = RI(I,J,L) /(1.0 + (3.0*LOUIS*5.0)*PS*sqrt(abs(RI(I,J,L))))
-              KH(I,J,L) = 1.0 - 3.0*LOUIS*PS
+              PS = SQRT( (PS/(ZE(I,J,L)*(DZ(I,J,L)**3))) * ABS(RI(I,J,L)) )
 
-              PS = ( (ZZ(I,J,L)/ZZ(I,J,L+1))**r13 - 1.0 )**3
-              PS = ALM(I,J,L)*sqrt( PS/(ZE(I,J,L)*(DZ(I,J,L)**3)) )
-              PS = RI(I,J,L) /(1.0 + (2.0*LOUIS*7.5)*PS*sqrt(abs(RI(I,J,L))))
-              KM(I,J,L) = 1.0 - 2.0*LOUIS*PS
+              KM(I,J,L) = 1.0 - 10.0*RI(I,J,L) / &
+                               (1.0 + 15.0*LOUISKM*ALM(I,J,L)*PS)
+              KH(I,J,L) = 1.0 - 15.0*RI(I,J,L) / &
+                               (1.0 + 15.0*LOUISKH*ALH(I,J,L)*PS)
             else
              !===>   Stable case
-              PS = sqrt(1.0 + LOUIS*RI(I,J,L))
+              PS = sqrt(1.0 + 5.0*RI(I,J,L))
 
-              KH(I,J,L) = 1.0 / (1.0 + 3.0*LOUIS*RI(I,J,L)*PS)
-              KM(I,J,L) = PS  / (PS  + 2.0*LOUIS*RI(I,J,L)   )
+              KM(I,J,L) = 1.0 / (1.0 + 10.0*RI(I,J,L)/PS)
+              KH(I,J,L) = 1.0 / (1.0 + 15.0*RI(I,J,L)*PS)
             end if
           end do
         end do
       end do
 
-!===>   DIMENSIONALIZE Kz and  LIMIT DIFFUSIVITY
+!===>   Reduction length in the free atmosphere eq 3.12 (IFS Documentation Cycle CY25r1)
 
-      KM(:,:,1:LM-1) = ALM*KM(:,:,1:LM-1)*DV
-      KH(:,:,1:LM-1) = ALH*KH(:,:,1:LM-1)*DV
+      RLS = (0.2 + (0.8)/(1.0 + (ZE(:,:,1:LM-1)/ZKHMENV)**2))**2
+
+!===>   DIMENSIONALIZE Kz and LIMIT DIFFUSIVITY
+
+      KM(:,:,1:LM-1) = ALM*KM(:,:,1:LM-1)*DV*RLS
+      KH(:,:,1:LM-1) = ALH*KH(:,:,1:LM-1)*DV*RLS
 
       call MAPL_MaxMin('LOUIS: KM', KM)
       call MAPL_MaxMin('LOUIS: KH', KH)
@@ -6574,7 +6621,7 @@ end subroutine RUN1
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
       integer :: I,J,L
-      real    :: CBl, wsp0, wsp, FKV_temp, Hefold
+      real    :: CBl, wsp0, wsp, FKV_temp
 
       if (C_B > 0.0) then
       do I = 1, IM
@@ -6600,17 +6647,14 @@ end subroutine RUN1
           do I = 1, IM
            ! determine the resolution dependent wsp amplification factor based on Arakawa sigma function
             CBl = ABS(C_B) * MAX(1.e-9,MIN(1.0,1.0-0.9839*EXP(-0.09835*(SQRT(AREA(i,j))/1000.0))))
-           ! determine the efolding height
-           !Hefold = MIN(MAX(2*SQRT(VARFLT(i,j)),Z(i,j,KPBL(i,j))),LAMBDA_B) ! From UFS
-            Hefold = LAMBDA_B 
             FKV(I,J,L) = 0.0
            !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
-            if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*Hefold) then
+            if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
                 wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                wsp  = SQRT(MIN(wsp0/CBl,1.0))*CBl ! enhance and cap winds
-                FKV_temp = Z(I,J,L)/Hefold
+                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MIN(MAX(CBl,wsp0),30.0) ! enhance and cap winds
+                FKV_temp = Z(I,J,L)/LAMBDA_B
                 FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/Hefold) * wsp
+                FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/LAMBDA_B) * wsp
 
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                 BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp

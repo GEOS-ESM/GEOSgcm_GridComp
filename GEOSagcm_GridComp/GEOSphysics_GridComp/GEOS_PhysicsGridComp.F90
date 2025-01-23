@@ -1168,9 +1168,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = [character(len=6) ::           &
-                         'QV','QLTOT','QITOT','FCLD', &
-                         'WTHV2','WQT_DC'],           &
+         SHORT_NAME  = [character(len=6) ::                        &
+                         'QV','QLTOT','QITOT','QRTOT','QSTOT','QGTOT','FCLD', &
+                         'WTHV2','WQT_DC'],                        &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
