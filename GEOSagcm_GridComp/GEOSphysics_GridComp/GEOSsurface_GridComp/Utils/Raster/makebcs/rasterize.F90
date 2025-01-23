@@ -358,7 +358,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   type (NetCDF4_FileFormatter)  :: formatter
   character(len=1)              :: str_num
   type (FileMetadata)           :: metadata
-  integer,          allocatable :: II(:), JJ(:), KK(:)
+  integer,          allocatable :: II(:), JJ(:), KK(:), pfaf(:)
   real(kind=8),     allocatable :: fr(:)
   logical                       :: EASE
 
@@ -454,16 +454,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
-     call metadata%add_variable('pfaf_index'//trim(str_num), v)
+     call v%add_attribute('long_name', 'internal_dummy_index_of_tile')
+     call metadata%add_variable('dummy_index'//trim(str_num), v)
   enddo
 
-  if ( .not. EASE ) then
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'area_fraction_of_tile_in_Pfafstetter_catchment')
-     call metadata%add_variable('frac_pfaf', v)
-  endif
+  v = Variable(type=PFIO_INT32, dimensions='tile')
+  call v%add_attribute('units', '1')
+  call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
+  call metadata%add_variable('pfaf_index', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
@@ -506,13 +504,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call formatter%put_var('com_lon', rTable(:,1),   rc=status)
   call formatter%put_var('com_lat', rTable(:,2),   rc=status)
 
-  allocate(fr(ip))
+  allocate(fr(ip), pfaf(ip))
   fr = MAPL_UNDEF_R8
 
   do ll = 1, ng
      if (ng == 1) then
         if (EASE) then
-           KK = iTable(:,4)
+           KK   = iTable(:,4)
+           pfaf = KK
         else
            KK =[(k, k=1,ip)]
         endif
@@ -533,10 +532,32 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
        write(str_num, '(i0)') ll
      endif
 
+     if (ll == 2) then
+       pfaf = -huge(0)
+       where (iTable(:,0) == 100)
+         pfaf = II
+       endwhere
+       where (iTable(:,0) == 19)
+         pfaf = 190000000 
+       endwhere
+       where (iTable(:,0) == 20)
+         pfaf = 200000000
+       endwhere
+
+       where (iTable(:,0) /=0 )
+         II = -huge(0)
+         JJ = -huge(0)
+         fr = MAPL_UNDEF_R8
+       endwhere
+     endif
+
      call formatter%put_var('i_indg'    //trim(str_num), II, rc=status)
      call formatter%put_var('j_indg'    //trim(str_num), JJ, rc=status)
      call formatter%put_var('frac_cell' //trim(str_num), fr, rc=status)
-     call formatter%put_var('pfaf_index'//trim(str_num), KK, rc=status)
+     call formatter%put_var('dummy_index'//trim(str_num), KK, rc=status)
+
+     if (EASE .or. ll == 2) call formatter%put_var('pfaf_index', pfaf, rc=status)
+
   enddo
 
   call formatter%put_var('min_lon', rTable(:, 6), rc=status)
@@ -672,13 +693,19 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
       iTable_(:,ll*2) = tmp_int
       call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
       iTable_(:,ll*2+1) = tmp_int
-      call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
+      call formatter%get_var('dummy_index'//trim(str_num), tmp_int, rc=status)
       if ( ng == 1) then
         iTable_(:,4) = tmp_int
       else
         iTable_(:,5+ll) = tmp_int
       endif
     enddo
+    call formatter%get_var('pfaf_index', tmp_int, rc=status)
+    if (ng == 2) then
+       where (iTable(:,0) == 100)
+          iTable(:,4) = tmp_int
+       endwhere
+    endif
   endif
 
   if (present(rTable) .or. present(AVR) ) then
