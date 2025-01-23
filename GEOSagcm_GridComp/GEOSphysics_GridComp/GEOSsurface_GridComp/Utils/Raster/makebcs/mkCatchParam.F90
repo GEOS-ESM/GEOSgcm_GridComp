@@ -70,7 +70,7 @@ PROGRAM mkCatchParam
   real(kind=8), allocatable :: rTable(:,:)
   real, allocatable    :: tile_lat(:), tile_lon(:), min_lon(:), max_lon(:), min_lat(:), max_lat(:)
   real                 :: minlon, minlat, maxlon, maxlat
-  integer              :: tindex1,pfaf1
+  integer              :: tindex1,pfaf1, n
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation

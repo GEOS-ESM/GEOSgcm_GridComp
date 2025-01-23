@@ -1064,8 +1064,9 @@ contains
        ! latitude and area of raster grid cells associated with lat index j
        
        lats     = -90._8 + (j - 0.5_8)*dy
-       
-       area_rst = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
+        
+       ! preserve zero-diff
+       !area_rst = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
 
        ! read tile IDs for lat index j
        catid(:) = rst_id(:,j) 
@@ -1075,9 +1076,11 @@ contains
        do i=1,i_sib          
           if (.not. IsOcean(catid(i)-ip1)) then
              
-             tile_ele(     catid(i)-ip1) = tile_ele(     catid(i)-ip1) + raster(i,j)*area_rst
+             tile_ele(     catid(i)-ip1) = tile_ele(     catid(i)-ip1) + raster(i,j)* &
+                                           (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
              
-             tile_area_rst(catid(i)-ip1) = tile_area_rst(catid(i)-ip1) +             area_rst
+             tile_area_rst(catid(i)-ip1) = tile_area_rst(catid(i)-ip1) +             &
+                                            (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
              
           endif
        enddo

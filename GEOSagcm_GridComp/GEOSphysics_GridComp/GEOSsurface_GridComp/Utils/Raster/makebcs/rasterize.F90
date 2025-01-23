@@ -696,6 +696,9 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
       call formatter%get_var('dummy_index'//trim(str_num), tmp_int, rc=status)
       if ( ng == 1) then
         iTable_(:,4) = tmp_int
+        ! set this 7th column to 1. This is to reproduce a potential bug
+        ! when it is ease grid and mask file is not GEOS5_10arcsec_mask
+        iTable_(:,7) = 1
       else
         iTable_(:,5+ll) = tmp_int
       endif
