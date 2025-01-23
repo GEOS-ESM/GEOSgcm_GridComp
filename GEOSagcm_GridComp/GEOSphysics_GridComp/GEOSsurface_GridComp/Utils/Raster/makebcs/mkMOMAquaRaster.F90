@@ -2,7 +2,7 @@
 #include "MAPL_ErrLog.h"
 program MOMraster
 
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,       ONLY: LRRasterize
   use MAPL_ExceptionHandling
   implicit none
 
