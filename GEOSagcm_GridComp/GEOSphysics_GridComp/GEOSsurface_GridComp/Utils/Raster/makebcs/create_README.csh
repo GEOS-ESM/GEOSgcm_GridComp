@@ -47,10 +47,10 @@ set NPfafs=291284
 set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ............................................... 7\\n \
  7.1 Data generation and processing chain\\n \
  7.2 Data files and images\\n \
-      7.2.1 Pafafstetter catchment connectivity, channel information\\n \
+      7.2.1 Pfafstetter catchment connectivity, channel information\\n \
  7.3 References'`"   
       
-      set sec3_veg_des="`printf '(a) Deriving Mosaic vegetation classes:\\n \
+set sec3_veg_des="`printf '(a) Deriving Mosaic vegetation classes:\\n \
 \\n \
        Global ESA land cover classification at 10-arcsec resolution is available from\\n \
        European Space Agency (see GLOBCOVER 2009). A simple one-to-one mapping scheme\\n \
@@ -170,33 +170,33 @@ endif
 #########################
 set WGRID=AGCM
 set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} hydraulic catchments \\n  in the ${MYMASK} mask file.'`"
-set sec2_til="`printf ' area, longitude, latitude, ig, jg, cell_frac'`"
-set pfafin_des="`printf 'catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order'`"  
-set pfaf_des="`printf 'Pfafstetter code of the hydrologic catchment'`"
+set sec2_til="`printf ' area, longitude, latitude, ig, jg, cell_frac, dummy_integer, pfaf_index, dummy_integer, dummy_real, dummy_integer'`"
+set pfafin_des="`printf 'Pfafstetter (hydrological) catchment index (1-$NPfafs) after sorting Pfafstetter (routing) codes in ascending order'`"  
+set pfaf_des="`printf 'Pfafstetter (routing) code of the hydrologic catchment'`"
 if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) set pfaf_des=`echo "${pfafin_des}"`
 set pfaf_dest=`echo "${pfaf_des}"`
 set sec2_til2="`printf '\\n \
-	 ** Since the purpose of this README file is to describe land parameters and land specific fields,\\n \
-	    above description is specific to type 100 land tiles. Other surface types use some of the columns\\n \
+	 ** Since the purpose of this README file is to describe *land* parameters and land-specific fields, the\\n \
+	    above description is specific to type=100 land tiles. Other surface types use some of the columns\\n \
 	    to store different fields. For e.g. columns 8 and 9 in type 0 ocean tiles contains i-index and j-index\\n \
-	    of the ocean grid cell where the ocean tile is located while column 11 contains the fraction\\n \
+	    of the ocean grid cell where the ocean tile is located, while column 11 contains the fraction\\n \
 	    of the ocean grid cell. '`" 
 set rout_smap
 
-if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then
-   set WGRID=SMAP
-   set sec2_til="`printf 'pfaf_code, longitude, latitude, ig, jg, cell_frac, pfaf_index'`"
+if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then   
+   set WGRID=SMAP   
+   set sec2_til="`printf 'pfaf_index, longitude, latitude, ig, jg, cell_frac, pfaf_index'`"
    if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) then
     set sec2_til="`printf 'pfaf_index, longitude, latitude, ig, jg, cell_frac, pfaf_index, pfaf_code'`" 
     set pfaf_des=`echo "${pfafin_des}"`
-set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ............................................... 7\\n \
+    set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ............................................... 7\\n \
  7.1 Data generation and processing chain\\n \
  7.2 Data files and images\\n \
-      7.2.1 Pafafstetter catchment connectivity, channel information\\n \
+      7.2.1 Pfafstetter catchment connectivity, channel information\\n \
       7.2.2 Fractional areas to aggregate from SMAP grid cells to Pfafstetter watersheds\\n \
       7.3 References'`"   
 
-set rout_smap="`printf '\\n \
+    set rout_smap="`printf '\\n \
      7.2.2 Fractional areas to aggregate from SMAP grid cells to Pfafstetter watersheds\\n \
 \\n \
        The self-describing SMAP-Catch_TransferData.nc file contains the information needed to \\n \
@@ -213,7 +213,7 @@ set rout_smap="`printf '\\n \
 \\n'`" 
  
    endif
-   set pfaf_dest="`printf 'Pfafstetter code of the hydrologic catchment'`"
+   set pfaf_dest="`printf 'Pfafstetter (routing) code of the hydrologic catchment'`"
    set int_str1="`printf 'using the land-ice-lakes-ocean mask in ${MYMASK} mask file.'`"
    set sec2_til2=
 endif
@@ -505,7 +505,7 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 also delineated the Earth’s land surface into 291,254 hydrologic catchments, 
 	 and sub-dividing 30 dateline catchments increased the total number of catchments 
 	 to ${NPfafs}. Furthermore, Verdin (2013) produced an associated global 1 arc-minute 
-	 raster array of Level 12 Pfafstetter codes to map those hydrologic catchments. 
+	 raster array of Level-12 Pfafstetter codes to map those hydrologic catchments. 
 	 The 1 arc-minute data array was also updated to accommodate the changes stemming
 	 from the 30 dateline catchments. 
 
@@ -570,25 +570,29 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 end do
 	 
 	where for each tile:
-	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
-         (2)    area      [x EarthRadius^2 km2]  tile area
-	 (3)    longitude [degree] longitude at the centroid of the tile
-	 (4)    latitude  [degree] latitude at the centroid of the tile
-	 (5)    ig        [-]      i-index of the atmospheric grid cell where the tile is located
-	 (6)    jg        [-]      j-index of the atmospheric grid cell where the tile is located
-	 (7)    cell_frac [-]      fraction of the atmospheric grid cell    
+	        type       [-]      tile type (100=land; 0=ocean; 19=lake/inland_water; 20=landice)
+                area       [x EarthRadius^2 km2]  tile area
+	        longitude  [degree] longitude at the centroid of the tile
+	        latitude   [degree] latitude at the centroid of the tile
+	        ig         [-]      i-index of the atmospheric grid cell where the tile is located
+	        jg         [-]      j-index of the atmospheric grid cell where the tile is located
+	        cell_frac  [-]      fraction of the atmospheric grid cell    
+	        pfaf_index [-]      index of Pfafstetter (hydrological) catchment to which tile belongs
+		pfaf_code  [-]      Pfafstetter (routing) code of the hydrologic catchment to which tile belongs
+
 	`echo "${sec2_til2}"`
+
        2.2.2 Western, eastern, southern, northern edges and mean elevation of tiles
 	 file name: catchment.def
 	 read ([UNIT],*) NTILES
 	 do n = 1, ${NTILES}
-		read ([UNIT],'(i10,i8,5(2x,f9.4))') tile_index, pfaf_code,   &
+		read ([UNIT],'(i10,i8,5(2x,f9.4))') tile_index, pfaf_index,   &
 		     min_lon, max_lon,min_lat, max_lat, mean_elevation 
          end do
 	 
 	 where for each tile:
 	 (1)	tile_index [-] 	number
-	 (2)	pfaf_code [-]	${pfaf_des}
+	 (2)	pfaf_index [-]	${pfaf_des}
 	 (3)    min_lon [degree]   Western edge
 	 (4)    max_lon [degree]   Eastern edge
 	 (5)    min_lat [degree]   Southern edge
@@ -600,13 +604,13 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 file name: cti_stats.dat
 	 read ([UNIT],*) NTILES
 	 do n = 1, ${NTILES}
-		read ([UNIT],'(i10,i8,5(1x,f8.4),i5,e18.3)') tile_index, pfaf_code,   &
+		read ([UNIT],'(i10,i8,5(1x,f8.4),i5,e18.3)') tile_index, pfaf_index,   &
                      cti_mean, cti_std, cti_min, cti_max, cti_skew, dummy, dummy
 	 enddo
 
 	 where for each tile:
 	 (1)	tile_index [-] 	number
-	 (2)	pfaf_code [-]	${pfaf_des}
+	 (2)	pfaf_index [-]	${pfaf_des}
 	 (3)    cti_mean  [log(m)] mean CTI of the underlying hydrologic catchment
 		[Figure 3 : "plots/cti.jpg" top panel]
 	 (4)    cti_std   standard deviation of CTI of the underlying hydrologic catchment
@@ -623,14 +627,14 @@ _EOI_
 if( $mysoil == HWSD || $mysoil == HWSD_b ) then
 cat << _EOS1_ > clsm/soil
 		read ([UNIT],'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')       &
-                     tile_index, pfaf_code, soil_class_top, soil_class_com, BEE,                     &
+                     tile_index, pfaf_index, soil_class_top, soil_class_com, BEE,                     &
                      PSIS, POROS, COND, WPWET, DP2BR, gravel, OrgCarbon_top,                         &
                      OrgCarbon_rz, sand_top, clay_top, sand_rz, clay_rz, WPWET_top, POROS_top, PMAP
 	 end do
 
 	 where for each tile:
 	 (1)	tile_index [-] 	number
-	 (2)	pfaf_code [-]	${pfaf_des}
+	 (2)	pfaf_index [-]	${pfaf_des}
 	 (3)	soil_class_top [-] 	soil class for the surface layer (0-30cm)
 	 (4)	soil_class_com  [-]	soil class for the root-zone  (0-100cm)
 	 (5)	BEE [-] 	b-parameter of the tension curve
@@ -946,14 +950,14 @@ _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
  		read ([UNIT],'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')       &
-                     tile_index, pfaf_code, soil_class_top,                 &
+                     tile_index, pfaf_index, soil_class_top,                 &
 	             soil_class_com,BEE, PSIS, POROS, COND,                 &
 		     WPWET, soildepth	
 	 end do
 
 	 where for each tile:
 	 (1)	tile_index [-] 	number
-	 (2)	pfaf_code [-]	${pfaf_des}
+	 (2)	pfaf_index [-]	${pfaf_des}
 	 (3)	soil_class_top [-] 	soil class for the surface layer (0-30cm)
 	 (4)	soil_class_com  [-]	soil class for the root-zone  (0-100cm)
 	 (5)	BEE [-] 	b-parameter of the tension curve
@@ -1016,14 +1020,14 @@ cat << _EOV1_ > clsm/veg1
        3.2.1 Mosaic vegetation types and fractions
 	 file name: mosaic_veg_typs_fracs
 	 do n = 1, ${NTILES}
-		read ([UNIT],(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)) tile_index, pfaf_code,  &
+		read ([UNIT],(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)) tile_index, pfaf_index,  &
 		     primary_veg_type, secondary_veg_type, primary_veg_frac,                        &
 		     secondary_veg_frac, canopy_height, ASCATZ0
 	 end do
 
 	 where for each tile:
 	 (1)	tile_index [-] 	number
-	 (2)	pfaf_code [-]	${pfaf_des}
+	 (2)	pfaf_index [-]	${pfaf_des}
 	 (3)	primary_veg_type [-]	primary vegetation type    
 		[Figure 5 : "plots/mosaic_prim.jpg"]
 	 (4)	secondary_veg_type [-]	secondary vegetation type
@@ -1052,7 +1056,7 @@ cat << _EOV2_ > clsm/veg2
 	 file names: CLM_veg_typs_fracs
 	 do n = 1, ${NTILES} 
 	 read ([UNIT],'(2I10,4I3,4f7.2,2I3,2f7.2)')         &
-              tile_index, pfaf_code,                        &
+              tile_index, pfaf_index,                        &
 	      CLM-C_pt1, CLM-C_pt2, CLM-C_st1, CLM-C_st2,   &
 	      CLM-C_pf1, CLM-C_pf2, CLM-C_sf1, CLM-C_sf2,   &
 	      CLM_pt, CLM_st, CLM_pf, CLM_sf
@@ -1060,7 +1064,7 @@ cat << _EOV2_ > clsm/veg2
 
 	 where for each tile:
 	 (1) tile_index [-]	number
-	 (2) pfaf_code [-]    ${pfaf_des}
+	 (2) pfaf_index [-]    ${pfaf_des}
 	 (3) CLM-C_pt1 [-]      Catchment-CN primary type 1  
 		[Figure 7a : top panel of "plots/CLM-Carbon_PRIM_veg_typs.jpg"]			    
 	 (4) CLM-C_pt2 [-]	Catchment-CN primary type 2 (moisture stressed only) 
@@ -1362,7 +1366,7 @@ cat << _EOF0_ > clsm/README1
 	 file name : tau_param.dat
          do n = 1, ${NTILES}
 		read ([UNIT],'(i10,i8,4f10.7)')                                           &
-		     tile_index, pfaf_code, atau2, btau2, atau5, btau5
+		     tile_index, pfaf_index, atau2, btau2, atau5, btau5
 	 end do
 	 where:
 	 (1) atau2	atau2: Equation (17) for a 2cm surface layer [-]
@@ -1374,7 +1378,7 @@ cat << _EOF0_ > clsm/README1
 	 root zone and water table
 	 file name : ts.dat
    	 do n = 1, ${NTILES}
-		read ([UNIT],'(i10,i8,f5.2,4(2x,e13.7))') tile_index, pfaf_code,gnu,     &
+		read ([UNIT],'(i10,i8,f5.2,4(2x,e13.7))') tile_index, pfaf_index, gnu,     &
 	             tsa1, tsa2, tsb1, tsb2
       	 end do
 
@@ -1387,7 +1391,7 @@ cat << _EOF0_ > clsm/README1
        6.2.3 Baseflow parameters
 	 file name : bf.dat
 	 do n = 1, ${NTILES}
-		read ([UNIT],'(i10,i8,f5.2,3(2x,e13.7))') tile_index, pfaf_code, gnu, bf1, bf2, bf3
+		read ([UNIT],'(i10,i8,f5.2,3(2x,e13.7))') tile_index, pfaf_index, gnu, bf1, bf2, bf3
 	 end do
 
 	 where:
@@ -1399,7 +1403,7 @@ cat << _EOF0_ > clsm/README1
        6.2.4 Area fractioning parameters
 	 file name : ar.new
 	 do n = 1, ${NTILES}
-		read ([UNIT],'(i10,i8,f5.2,11(2x,e14.7))') tile_index, pfaf_code, gnu,  &
+		read ([UNIT],'(i10,i8,f5.2,11(2x,e14.7))') tile_index, pfaf_index, gnu,  &
 		      ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4
 	 end do
 
@@ -1492,7 +1496,7 @@ cat << _EOF1_ > clsm/README2
 	        water pixel is assumed to be the location of the downstream confluence. 
 
    7.2 Data files
-       7.2.1 Pafafstetter catchment connectivity, channel information
+       7.2.1 Pfafstetter catchment connectivity, channel information
          file path : /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/    [NCCS/Discover]
 	 file name : land/topo/v1/SRTM-TopoData/Pfafcatch-routing.dat
 	 read ([UNIT],*) NPfafs
@@ -1503,8 +1507,8 @@ cat << _EOF1_ > clsm/README2
                      UP_lon, UP_lat, mouth_lon, mouth_lat
          end do
 
-         pfaf_index     [-] catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order
-         pfaf_code      [-] Pfafstetter code of the hydrologic catchment
+         pfaf_index     [-] Pfafstetter (hydrological) catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order
+         pfaf_code      [-] Pfafstetter (routing) code of the hydrologic catchment
          min_lon   [degree] Western edge of the catchment
          max_lon   [degree] Eastern edge of the catchment
          min_lat   [degree] Southern edge of the catchment

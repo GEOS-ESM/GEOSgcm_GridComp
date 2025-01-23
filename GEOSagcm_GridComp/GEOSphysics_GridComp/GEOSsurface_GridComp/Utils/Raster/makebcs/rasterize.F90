@@ -171,6 +171,25 @@ end subroutine SortTiling
 
 subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zip, Verb, rc)
 
+  ! Write ASCII tile file 
+  !
+  ! We have ascii tile files that support either 1 or 2 grids. The most typcal case for GEOS is a tile file with
+  ! 2 grids (although to generate the final file, we generate a lot of intermediate tile files with a single grid).
+  ! For the 2-grid tile file, the pfaf index number should be in column 9 (basically that file has 3 groups, 
+  ! each of which has 4 columns: the "global" info part (type, area, lat, lon), and then for each grid we have 
+  ! (index1 (i.e. "i"), index2 (i.e. "j"), weight, dummy). Here "dummy" is a variable, used internally for 
+  ! bookkeeping purposes, but it is totally ignored by GEOS, MAPL, etc. So, for the typical case, ATM and OCN 
+  ! grids, columns 1-4 represent the global variables, then the next 4 columns refer to the ATM grid (but this 
+  ! is to a large extend an artifact of the ordering of the "combine" calls that generate the final tile file). 
+  ! Then for type=0 (i.e., "ocean") the last 4 columns are the i, j, weight, dummy of the ocean grid. 
+  ! But for type=100 (i.e., land) the convention is the first index, i.e. column 9, is the pfaf index
+  ! (that is, the index of the Pfafstetter hydrological catchment). 
+  ! I do not think we use the content of column 10 anywhere in the model.
+  ! So my bottom line is the pfaf index should be in column 9. If it appears in column 8, it won't do any harm 
+  ! to the atmosphere, but we cannot use it properly to do river routing inside the land model.
+  ! (From https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1028#issuecomment-2599275578, lightly edited.)
+
+
   character*(*),     intent(IN) :: File
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: nx,ny
@@ -185,10 +204,12 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 !
 !  iTable(0)    :: Surface type
 !  iTable(1)    :: tile count 
-!  iTable(2)    :: I_1 I of first grid
+!  iTable(2)    :: I_1 I of 1st grid
 !  iTable(3)    :: J_1
-!  iTable(4)    :: I_2 I of 2nd   grid
+!  iTable(4)    :: I_2 I of 2nd grid *OR* for land tiles: index of Pfafstetter catchment (see comment above)
 !  iTable(5)    :: J_2
+!  iTable(6)    :: kk_1 (dummy variable for internal bookkeeping)
+!  iTable(7)    :: kk_2 (dummy variable for internal bookkeeping)
 !
 !  rTable(1)    :: sum of lons
 !  rTable(2)    :: sum of lats
@@ -258,8 +279,8 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 ! Write tile info, one line per tile.
 
 #define LINE_FORMAT     '(I10,3E20.12,9(2I10,E20.12,I10))'
-#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)
-
+#define LINE_VARIABLES  iTable(0,k),area,xc,yc, (ii(l),jj(l),fr(l),kk(l),l=1,ng)   ! for *land* tiles, ii(2) = index of Pfafstetter catchment
+ 
   garea = 0.0
   ctg   = 0.0
 
@@ -273,10 +294,11 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
      do l=0,ng-1
         ii(l+1) = iTable(2 +L*2,K)
         jj(l+1) = iTable(3 +L*2,K)
+        ! kk = "dummy" variable, used internally for bookkeeping purposes, ignored by GEOS, MAPL, etc
         if(ng==1) then
-           kk(l+1) = K
+           kk(l+1) = K                 
         else
-           kk(l+1) = iTable(6 +L,K)
+           kk(l+1) = iTable(6 +L,K)    
         end if
         if(rTable(4+L,K)/=0.0) then
            fr (l+1) = area / rTable(4+L,K)
@@ -336,7 +358,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   type (NetCDF4_FileFormatter)  :: formatter
   character(len=1)              :: str_num
   type (FileMetadata)           :: metadata
-  integer,          allocatable :: II(:), JJ(:), KK(:)
+  integer,          allocatable :: II(:), JJ(:), KK(:), pfaf(:)
   real(kind=8),     allocatable :: fr(:)
   logical                       :: EASE
 
@@ -432,16 +454,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
-     call metadata%add_variable('pfaf_index'//trim(str_num), v)
+     call v%add_attribute('long_name', 'internal_dummy_index_of_tile')
+     call metadata%add_variable('dummy_index'//trim(str_num), v)
   enddo
 
-  if ( .not. EASE ) then
-     v = Variable(type=PFIO_REAL64, dimensions='tile')
-     call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'area_fraction_of_tile_in_Pfafstetter_catchment')
-     call metadata%add_variable('frac_pfaf', v)
-  endif
+  v = Variable(type=PFIO_INT32, dimensions='tile')
+  call v%add_attribute('units', '1')
+  call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
+  call metadata%add_variable('pfaf_index', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
@@ -484,13 +504,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call formatter%put_var('com_lon', rTable(:,1),   rc=status)
   call formatter%put_var('com_lat', rTable(:,2),   rc=status)
 
-  allocate(fr(ip))
+  allocate(fr(ip), pfaf(ip))
   fr = MAPL_UNDEF_R8
 
   do ll = 1, ng
      if (ng == 1) then
         if (EASE) then
-           KK = iTable(:,4)
+           KK   = iTable(:,4)
+           pfaf = KK
         else
            KK =[(k, k=1,ip)]
         endif
@@ -511,10 +532,32 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
        write(str_num, '(i0)') ll
      endif
 
+     if (ll == 2) then
+       pfaf = -huge(0)
+       where (iTable(:,0) == 100)
+         pfaf = II
+       endwhere
+       where (iTable(:,0) == 19)
+         pfaf = 190000000 
+       endwhere
+       where (iTable(:,0) == 20)
+         pfaf = 200000000
+       endwhere
+
+       where (iTable(:,0) /=0 )
+         II = -huge(0)
+         JJ = -huge(0)
+         fr = MAPL_UNDEF_R8
+       endwhere
+     endif
+
      call formatter%put_var('i_indg'    //trim(str_num), II, rc=status)
      call formatter%put_var('j_indg'    //trim(str_num), JJ, rc=status)
      call formatter%put_var('frac_cell' //trim(str_num), fr, rc=status)
-     call formatter%put_var('pfaf_index'//trim(str_num), KK, rc=status)
+     call formatter%put_var('dummy_index'//trim(str_num), KK, rc=status)
+
+     if (EASE .or. ll == 2) call formatter%put_var('pfaf_index', pfaf, rc=status)
+
   enddo
 
   call formatter%put_var('min_lon', rTable(:, 6), rc=status)
@@ -650,13 +693,19 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
       iTable_(:,ll*2) = tmp_int
       call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
       iTable_(:,ll*2+1) = tmp_int
-      call formatter%get_var('pfaf_index'//trim(str_num), tmp_int, rc=status)
+      call formatter%get_var('dummy_index'//trim(str_num), tmp_int, rc=status)
       if ( ng == 1) then
         iTable_(:,4) = tmp_int
       else
         iTable_(:,5+ll) = tmp_int
       endif
     enddo
+    call formatter%get_var('pfaf_index', tmp_int, rc=status)
+    if (ng == 2) then
+       where (iTable(:,0) == 100)
+          iTable(:,4) = tmp_int
+       endwhere
+    endif
   endif
 
   if (present(rTable) .or. present(AVR) ) then
