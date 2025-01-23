@@ -67,7 +67,6 @@ PROGRAM mkCatchParam
   real                 :: seconds
   integer, allocatable :: iTable(:,:), tile_pfs(:), tile_j_dum(:)
   integer, pointer     :: tile_id(:,:)
-  real(kind=8), allocatable :: rTable(:,:)
   real, allocatable    :: tile_lat(:), tile_lon(:), min_lon(:), max_lon(:), min_lat(:), max_lat(:)
   real                 :: minlon, minlat, maxlon, maxlat
   integer              :: tindex1,pfaf1, n
@@ -270,24 +269,15 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
-       call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable, rTable = rTable) 
-       N_land = count(iTable(:,0) == 100)                        ! n_land = number of land tiles
-       allocate(tile_pfs,   source = iTable(1:n_land,4))
-       allocate(tile_j_dum, source = iTable(1:n_land,7))
+       call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
+       N_land = count(iTable(:,0) == 100)          ! n_land = number of land tiles
+       allocate(tile_j_dum, source = iTable(1:n_land,7)) ! possible used in cti_stats.dat
        deallocate (iTable)
    
        allocate(min_lon(n_land), max_lon(n_land), min_lat(n_land), max_lat(n_land))
        allocate(tile_lat(n_land), tile_lon(n_land))
-       min_lon  = rTable(1:n_land, 6)
-       max_lon  = rTable(1:n_land, 7)
-       min_lat  = rTable(1:n_land, 8)
-       max_lat  = rTable(1:n_land, 9)
-       tile_lon = (min_lon + max_lon)/2.0
-       tile_lat = (min_lat + max_lat)/2.0
-       deallocate (rTable)
 
-       ! debugging section
-       ! reading from catchment
+       ! reading from catchment to preserve zero-diff
        open (newunit=unit,file='clsm/catchment.def',status='old',action='read',form='formatted')
        read(unit,*) N_land
        do n = 1, N_land
@@ -301,7 +291,6 @@ integer :: n_threads=1
           tile_pfs(n)= pfaf1  
        end do
        close (unit,status='keep')
-       ! end debugging section
 
        inquire(file='clsm/catch_params.nc4', exist=file_exists)
        if (.not.file_exists) CALL open_landparam_nc4_files(N_land,process_snow_albedo)  
