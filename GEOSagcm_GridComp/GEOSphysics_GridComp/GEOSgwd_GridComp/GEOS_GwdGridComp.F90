@@ -922,7 +922,7 @@ contains
       call MAPL_GetResource( MAPL, NCAR_ORO_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5, _RC)
       if (self%NCAR_NRDG > 0) then
           call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2, Label="NCAR_ORO_FCRIT2:",     default=1.0,  _RC)
-          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=250.0,_RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX, Label="NCAR_ORO_TNDMAX:",     default=400.0,_RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
         ! Ridge Scheme
           do thread = 0, num_threads-1
@@ -932,7 +932,7 @@ contains
         ! Old Scheme
           call MAPL_GetResource( MAPL, NCAR_ORO_FCRIT2,     Label="NCAR_ORO_FCRIT2:",     default=0.5,   _RC)
           call MAPL_GetResource( MAPL, NCAR_ORO_SOUTH_FAC,  Label="NCAR_ORO_SOUTH_FAC:",  default=1.0,   _RC)
-          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=250.0, _RC)
+          call MAPL_GetResource( MAPL, NCAR_ORO_TNDMAX,     Label="NCAR_ORO_TNDMAX:",     default=400.0, _RC)
           NCAR_ORO_TNDMAX = NCAR_ORO_TNDMAX/86400.0
           do thread = 0, num_threads-1
              call gw_oro_init ( self%workspaces(thread)%oro_band, NCAR_ORO_GW_DC, &
