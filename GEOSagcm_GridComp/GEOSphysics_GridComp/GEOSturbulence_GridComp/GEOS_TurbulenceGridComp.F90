@@ -185,6 +185,9 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
+
+    logical :: DEBUG_TRB
+
 contains
 
 !=============================================================================
@@ -246,6 +249,9 @@ contains
 ! Get my MAPL_Generic state
 !--------------------------
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource( MAPL, DEBUG_TRB,   Label="DEBUG_TRB:", default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=0, RC=STATUS)
@@ -3021,7 +3027,7 @@ end if
      real                                :: LOUISKH, LOUISKM, ALHFAC, ALMFAC
      real                                :: LAMBDAM, LAMBDAM2
      real                                :: LAMBDAH, LAMBDAH2
-     real                                :: ZKMENV, ZKHENV, ZKHMENV
+     real                                :: ZKHMENV
      real                                :: MINTHICK
      real                                :: MINSHEAR
      real                                :: AKHMMAX
@@ -3194,12 +3200,24 @@ end if
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=1.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=1500.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=4500.0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=3000.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,  RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, LOUISKH,      trim(COMP_NAME)//"_LOUISKH:",      default=5.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=7.5,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-30.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-10.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
@@ -3212,21 +3230,21 @@ end if
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PERTOPT_SURF, trim(COMP_NAME)//"_PERTOPT_SURF:", default=0.,     RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,    RC=STATUS); VERIFY_(STATUS)
+       LAMBDAM = MIN(1.0,300.0/DT)*150.0
+       LAMBDAH = MIN(1.0,300.0/DT)*450.0
+       call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=LAMBDAM,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=LAMBDAH,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=4000.,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,      RC=STATUS); VERIFY_(STATUS)  
+       call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,    RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,     RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,        RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,   RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,    RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=150.0,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=450.0,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,      RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, ZKHMENV,      trim(COMP_NAME)//"_ZKHMENV:",      default=4000.,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=2.0,      RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,     RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,        RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, VSCALE_SURF,  trim(COMP_NAME)//"_VSCALE_SURF:",  default=2.5e-3,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,    RC=STATUS); VERIFY_(STATUS)
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
@@ -3978,7 +3996,7 @@ end if
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
             ALHFAC, ALMFAC,                 &
-            ZKMENV, ZKHENV, ZKHMENV, AKHMMAX,  &
+            ZKHMENV, AKHMMAX,               &
             DU, ALH, KMLS, KHLS             )
       end if
 
@@ -6340,7 +6358,7 @@ end subroutine RUN1
          LAMBDAM, LAMBDAM2,          &
          LAMBDAH, LAMBDAH2,          &
          ALHFAC, ALMFAC,             &
-         ZKMENV, ZKHENV, ZKHMENV, AKHMMAX,    &
+         ZKHMENV, AKHMMAX,           &
          DU_DIAG, ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
 ! !ARGUMENTS:
@@ -6375,8 +6393,6 @@ end subroutine RUN1
       real,    intent(IN   ) :: LAMBDAH2     ! Second Blackadar parameter for heat (m).
       real,    intent(IN   ) :: ALHFAC
       real,    intent(IN   ) :: ALMFAC
-      real,    intent(IN   ) :: ZKMENV       ! Transition height for Blackadar param for momentum (m)
-      real,    intent(IN   ) :: ZKHENV       ! Transition height for Blackadar param for heat     (m)
       real,    intent(IN   ) :: ZKHMENV      ! Transition height for reduction of diffusivity in the free atm (m)
       real,    intent(IN   ) :: AKHMMAX      ! Maximum allowe diffusivity (m+2 s-1).
 
@@ -6506,27 +6522,30 @@ end subroutine RUN1
 
       RI(:,:,1:LM-1) = MAPL_GRAV*DT/(TM*(MAX(DV, MINSHEAR)**2))
 
-      call MAPL_MaxMin('LOUIS: DZ', DZ)
-      call MAPL_MaxMin('LOUIS: TM', TM)
-      call MAPL_MaxMin('LOUIS: DT', DT)
-      call MAPL_MaxMin('LOUIS: DV', DV)
-      call MAPL_MaxMin('LOUIS: RI', RI)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: DZ', DZ)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: TM', TM)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: DT', DT)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: DV', DV)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: RI', RI)
 
 !===>   Blackadar(1962) length scale: $1/l = 1/(kz) + 1/\lambda$
 
+     ! 0.1 * local PBL includes diurnal variability on the Blackadar length scale
+      pbllocal = 0.1*pbllocal
       do L = 1, LM-1
-         LAMBDAM_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKMENV )**2 ) , LAMBDAM2)
-         LAMBDAH_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2)
+         LAMBDAM_X(:,:,L) = MAX( pbllocal , LAMBDAM2)
+         LAMBDAH_X(:,:,L) = MAX( pbllocal , LAMBDAH2)
       end do
 
-      call MAPL_MaxMin('LOUIS: LM', LAMBDAM_X)
-      call MAPL_MaxMin('LOUIS: LH', LAMBDAH_X)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: LM', LAMBDAM_X)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: LH', LAMBDAH_X)
 
+     ! cap the Blackadar length scales
       LAMBDAM_X = MIN(LAMBDAM_X,LAMBDAM)
       LAMBDAH_X = MIN(LAMBDAH_X,LAMBDAH)
 
-      ALM = ALMFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAM_X) ) )**2
-      ALH = ALHFAC * ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAH_X) ) )**2
+      ALM = ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAM_X) ) )**2
+      ALH = ( MAPL_KARMAN*ZE(:,:,1:LM-1)/( 1.0 + MAPL_KARMAN*(ZE(:,:,1:LM-1)/LAMBDAH_X) ) )**2
 
       if (associated(ALH_DIAG)) then
          ALH_DIAG(:,:,0) = 0.0
@@ -6563,11 +6582,11 @@ end subroutine RUN1
 
 !===>   DIMENSIONALIZE Kz and LIMIT DIFFUSIVITY
 
-      KM(:,:,1:LM-1) = ALM*KM(:,:,1:LM-1)*DV*RLS
-      KH(:,:,1:LM-1) = ALH*KH(:,:,1:LM-1)*DV*RLS
+      KM(:,:,1:LM-1) = ALMFAC*ALM*KM(:,:,1:LM-1)*DV*RLS
+      KH(:,:,1:LM-1) = ALHFAC*ALH*KH(:,:,1:LM-1)*DV*RLS
 
-      call MAPL_MaxMin('LOUIS: KM', KM)
-      call MAPL_MaxMin('LOUIS: KH', KH)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: KM', KM)
+      if (DEBUG_TRB) call MAPL_MaxMin('LOUIS: KH', KH)
 
       KM  = min(KM, AKHMMAX)
       KH  = min(KH, AKHMMAX)
@@ -6651,7 +6670,7 @@ end subroutine RUN1
            !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
             if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
                 wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MIN(MAX(CBl,wsp0),30.0) ! enhance and cap winds
+                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MAX(CBl,wsp0) ! enhance low wind speeds
                 FKV_temp = Z(I,J,L)/LAMBDA_B
                 FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
                 FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/LAMBDA_B) * wsp
