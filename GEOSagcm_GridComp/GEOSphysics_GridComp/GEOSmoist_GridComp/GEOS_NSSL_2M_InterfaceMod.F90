@@ -57,8 +57,6 @@ module GEOS_NSSL_2M_InterfaceMod
   real    :: FAC_RI
   real    :: MIN_RI
   real    :: MAX_RI
-  logical :: LHYDROSTATIC
-  logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
 
   public :: NSSL_2M_Setup, NSSL_2M_Initialize, NSSL_2M_Run
@@ -278,10 +276,6 @@ subroutine NSSL_2M_Initialize (MAPL, RC)
     type(ESMF_VM) :: VM
     integer :: comm
 
-    call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 

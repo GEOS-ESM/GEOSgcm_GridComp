@@ -225,10 +225,9 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
     type(ESMF_VM) :: VM
     integer :: comm
 
-    call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
+    LHYDROSTATIC = LPHYS_HYDROSTATIC
     call MAPL_GetResource( MAPL, LMELTFRZ, Label="MELTFRZ:",  default=.FALSE., RC=STATUS)
     VERIFY_(STATUS)
 

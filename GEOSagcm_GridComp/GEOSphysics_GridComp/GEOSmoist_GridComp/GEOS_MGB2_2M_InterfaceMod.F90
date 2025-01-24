@@ -62,8 +62,6 @@ module GEOS_MGB2_2M_InterfaceMod
   real    :: FAC_RI
   real    :: MIN_RI
   real    :: MAX_RI
-  logical :: LHYDROSTATIC
-  logical :: LPHYS_HYDROSTATIC
   logical :: LMELTFRZ
   logical :: USE_AV_V 
   logical :: PREEXISITING_ICE
@@ -307,8 +305,6 @@ subroutine MGB2_2M_Initialize (MAPL, RC)
     logical  :: nccons, nicons, ngcons, do_graupel
     real(ESMF_KIND_R8)  Dcsr8, micro_mg_berg_eff_factor_in, ncnstr8, ninstr8, ngnstr8, mui_cnstr8
 
-    call MAPL_GetResource( MAPL, LHYDROSTATIC,      Label="HYDROSTATIC:",      default=.TRUE.,  __RC__ )
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:", default=.TRUE.,  __RC__ )
     call MAPL_GetResource( MAPL, LMELTFRZ,          Label="MELTFRZ:",          default=.TRUE.,  __RC__ )
     call MAPL_GetResource( MAPL, PREEXISITING_ICE,  Label='PREEXISITING_ICE:', default=.FALSE., __RC__ )
     call MAPL_GetResource( MAPL, USE_BERGERON,      Label='USE_BERGERON:',     default=.TRUE.,  __RC__ )
@@ -784,7 +780,7 @@ subroutine MGB2_2M_Run  (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_TimerOn(MAPL,"---ACTIV_2MOM", RC=STATUS); VERIFY_(STATUS)
   !!=============== vertical velocity variance
     !- Determine which W is proper import
-    if (LHYDROSTATIC) then
+    if (all(W == 0.0)) then
        SIGW_RC = -1*OMEGA/(MAPL_GRAV*100.*PLmb/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
     else
        SIGW_RC = W

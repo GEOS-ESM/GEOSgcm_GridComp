@@ -33,7 +33,6 @@ module GEOS_GF_InterfaceMod
   type (FRIENDLIES_TYPE) FRIENDLIES
 
   integer :: USE_GF2020
-  logical :: LHYDROSTATIC
   logical :: STOCHASTIC_CNV
   real    :: STOCH_TOP, STOCH_BOT
   real    :: SCLM_DEEP
@@ -119,7 +118,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
     endif
     IF (USE_GF2020==1) THEN
-      call MAPL_GetResource(MAPL, LHYDROSTATIC              , 'HYDROSTATIC:'           ,default=.TRUE., RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
       call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
@@ -175,7 +173,6 @@ subroutine GF_Initialize (MAPL, CLOCK, RC)
       if (INT(ZERO_DIFF) == 0) then
          call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
                                      SGS_W_TIMESCALE = 3 ! Hours
-                  if (LHYDROSTATIC)  SGS_W_TIMESCALE = 0
          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
          if (SGS_W_TIMESCALE == 0) then
            call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default=  3600., RC=STATUS );VERIFY_(STATUS)
@@ -587,7 +584,7 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
     IF (USE_GF2020==1) THEN
          !- Determine which W is proper import
-         IF (LHYDROSTATIC) THEN
+         IF (all(W == 0.0)) THEN
             TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
          ELSE
             TMP3D = W

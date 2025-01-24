@@ -58,8 +58,6 @@ module GEOS_THOM_1M_InterfaceMod
   real    :: FAC_RI
   real    :: MIN_RI
   real    :: MAX_RI
-  logical :: LHYDROSTATIC
-  logical :: LPHYS_HYDROSTATIC
 
   public :: THOM_1M_Setup, THOM_1M_Initialize, THOM_1M_Run
 
@@ -250,10 +248,6 @@ subroutine THOM_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
-    call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LPHYS_HYDROSTATIC, Label="PHYS_HYDROSTATIC:",  default=.TRUE., RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, DT_THOM, Label="DT_THOM:",  default=300.0, RC=STATUS)
     VERIFY_(STATUS) 
 
@@ -873,11 +867,11 @@ subroutine THOM_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         ! Air Density
          AIRDEN   = MAPL_EPSILON*100.*PLmb/(T*MAPL_RGAS*(Q+MAPL_EPSILON))
         ! Vertical velocity
-         if (LHYDROSTATIC) then 
-           VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
-         else 
-           VVEL = W                
-         endif                  
+         IF (all(W == 0.0)) THEN
+            VVEL = -OMEGA/(MAPL_GRAV*AIRDEN)
+         ELSE
+            VVEL = W
+         ENDIF
         ! RESHAPE
          qv = RESHAPE(RAD_QV,(/IM*JM,LM,1/))
          qc = RESHAPE(RAD_QL,(/IM*JM,LM,1/))

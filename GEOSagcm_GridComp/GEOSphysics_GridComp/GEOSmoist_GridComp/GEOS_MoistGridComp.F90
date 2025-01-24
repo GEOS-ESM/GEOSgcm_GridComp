@@ -45,7 +45,6 @@ module GEOS_MoistGridCompMod
   logical :: DEBUG_MST
   logical :: LDIAGNOSE_PRECIP_TYPE
   logical :: LUPDATE_PRECIP_TYPE
-  logical :: LHYDROSTATIC
   logical :: USE_AERO_BUFFER
   real    :: CCN_OCN
   real    :: CCN_LND
@@ -5204,7 +5203,6 @@ contains
     !-----------------------------------
     call MAPL_GetResource( MAPL, LDIAGNOSE_PRECIP_TYPE, Label="DIAGNOSE_PRECIP_TYPE:",  default=.FALSE., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, LUPDATE_PRECIP_TYPE,   Label="UPDATE_PRECIP_TYPE:",    default=.FALSE., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, LHYDROSTATIC,          Label="HYDROSTATIC:",           default=.TRUE. , RC=STATUS)
 
     call MAPL_GetResource( MAPL, USE_AEROSOL_NN  , 'USE_AEROSOL_NN:'  , DEFAULT=.TRUE.        , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_BERGERON    , 'USE_BERGERON:'    , DEFAULT=USE_AEROSOL_NN, RC=STATUS); VERIFY_(STATUS)
@@ -5569,7 +5567,7 @@ contains
        call MAPL_TimerOn (MAPL,"---AERO_ACTIVATE")
        if (USE_AEROSOL_NN) then
          ! get veritical velocity
-         if (LHYDROSTATIC) then
+         if (all(W == 0.0)) then
            TMP3D = -OMEGA/(MAPL_GRAV*PLmb*100.0/(MAPL_RGAS*T))
          else
            TMP3D = W
