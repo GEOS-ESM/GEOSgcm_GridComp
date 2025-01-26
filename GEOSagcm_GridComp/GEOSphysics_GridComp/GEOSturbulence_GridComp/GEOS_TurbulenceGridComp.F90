@@ -3217,7 +3217,7 @@ end if
        call MAPL_GetResource (MAPL, LOUISKM,      trim(COMP_NAME)//"_LOUISKM:",      default=7.5,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-10.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=-1.7,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=15.,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.6,    RC=STATUS); VERIFY_(STATUS)
@@ -6641,6 +6641,7 @@ end subroutine RUN1
 
       integer :: I,J,L
       real    :: CBl, wsp0, wsp, FKV_temp
+      real, parameter :: C_TOFD = 9.031E-09 * 12.0
 
       if (C_B > 0.0) then
       do I = 1, IM
@@ -6661,19 +6662,17 @@ end subroutine RUN1
          end do 
       end do 
       else
+    ! C_TOFD is the end product of all coeficients in eq 16 of Beljaars, 2003 (doi: 10.1256/qj.03.73)
+    ! C_B is a factor used to amplify the variance of the filtered topography
+      CBl = C_TOFD * C_B**2
       do L = LM, 1, -1
         do J = 1, JM
           do I = 1, IM
-           ! determine the resolution dependent wsp amplification factor based on Arakawa sigma function
-            CBl = ABS(C_B) * MAX(1.e-9,MIN(1.0,1.0-0.9839*EXP(-0.09835*(SQRT(AREA(i,j))/1000.0))))
             FKV(I,J,L) = 0.0
-           !if (CBl > ABS(C_B)) write (*,*) "BELJAARS: CBl too big: ", CBl, SQRT(AREA(i,j)), ABS(C_B)
-            if (VARFLT(i,j) > 0.0 .AND. CBl > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
-                wsp0 = SQRT(U(I,J,L)**2+V(I,J,L)**2)
-                wsp  = SQRT(MIN(wsp0/CBl,1.0))*MAX(CBl,wsp0) ! enhance low wind speeds
-                FKV_temp = Z(I,J,L)/LAMBDA_B
-                FKV_temp = exp(-FKV_temp*sqrt(FKV_temp))*(FKV_temp**(-1.2))
-                FKV_temp = 1.08371722e-7 * VARFLT(i,j) * (FKV_temp/LAMBDA_B) * wsp
+            if (VARFLT(i,j) > 0.0 .AND. Z(I,J,L) < 4.0*LAMBDA_B) then
+                wsp = SQRT(U(I,J,L)**2+V(I,J,L)**2)
+                FKV_temp = exp(-1*(Z(I,J,L)/LAMBDA_B)**1.5) * Z(I,J,L)**(-1.2)
+                FKV_temp = CBl * VARFLT(i,j) * FKV_temp * wsp
 
                 BKV(I,J,L)  = BKV(I,J,L)  + DT*FKV_temp
                 BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
