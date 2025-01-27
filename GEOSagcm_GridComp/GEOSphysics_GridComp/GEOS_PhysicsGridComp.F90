@@ -1240,8 +1240,8 @@ contains
      call MAPL_AddConnectivity ( GC,                                      &
         SHORT_NAME  = (/ 'RL      ',  'QL      ', 'QLTOT   ', 'DQLDT   ', &
                          'RI      ',  'QI      ', 'QITOT   ', 'DQIDT   ', &
-                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN',             &
-                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN',             &
+                         'QLCN    ',  'PFL_CN  ', 'PFL_LSAN', 'ZLCL    ', &
+                         'QICN    ',  'PFI_CN  ', 'PFI_LSAN', 'ZLFC    ', &
                          'FCLD    ',  'QCTOT   ', 'CNV_QC  ',             &
                          'REV_LS  ',  'REV_AN  ', 'REV_CN  ', 'TPREC   ', &
                          'Q       ',  'DQDT    ', 'DQRL    ', 'DQRC    ', &
