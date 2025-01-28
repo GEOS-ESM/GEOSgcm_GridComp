@@ -2542,7 +2542,8 @@ contains
 
     deallocate (net_data1)
     deallocate (count_lai)
-    deallocate (vec_lai) 
+    deallocate (vec_lai)
+    deallocate (lai_grid)
 
   END SUBROUTINE grid2tile_modis6
 
@@ -2841,7 +2842,8 @@ contains
 
     deallocate (net_data1)
     deallocate (count_lai)
-    deallocate (vec_lai) 
+    deallocate (vec_lai)
+    deallocate (lai_grid)
 
   END SUBROUTINE hres_lai_no_gswp
   !
@@ -3060,6 +3062,7 @@ contains
     deallocate (net_data1)
     deallocate (count_lai)
     deallocate (vec_lai)
+    deallocate (data_grid)
 
   END SUBROUTINE hres_gswp2
 
@@ -5982,7 +5985,9 @@ contains
 
     deallocate (net_data1)
     deallocate (count_lai)
-    deallocate (vec_lai) 
+    deallocate (vec_lai)
+    deallocate (data_grid)
+    deallocate (data_grid2)
 
   END SUBROUTINE grid2tile_glass
 

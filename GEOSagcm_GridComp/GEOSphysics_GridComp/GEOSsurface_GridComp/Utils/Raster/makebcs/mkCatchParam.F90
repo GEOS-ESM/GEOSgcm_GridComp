@@ -274,11 +274,8 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
-       write (log_file,'(a)')'          Read nc4 tile file. '
        call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
        N_land = count(iTable(:,0) == 100)          ! n_land = number of land tiles
-       write (log_file,*)'          land tiles', n_land
-
        allocate(tile_j_dum, source = iTable(1:n_land,7)) ! possible used in cti_stats.dat
        deallocate (iTable)
    
