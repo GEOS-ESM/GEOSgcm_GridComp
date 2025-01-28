@@ -356,7 +356,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         thl0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qt0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thv0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        plfc = self.make_ij_field(np.zeros(shape=[24, 24]))
+        plfc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         cin = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvubot = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         thvutop = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -369,10 +369,17 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qlj2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qij2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qse2 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        thj3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qvj3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qlj3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qij3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        qse3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        cin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        id_check3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         test_var_1 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qtsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
 
-        test_var_1.view[:] = np.nan
+        # test_var_1.view[:] = np.nan
         # tkeavg.view[:] = np.nan
         # thvlmin.view[:] = np.nan
         # uavg.view[:] = np.nan
@@ -501,25 +508,32 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             qlj2=qlj2,
             qij2=qij2,
             qse2=qse2,
+            thj3=thj3,
+            qvj3=qvj3,
+            qlj3=qlj3,
+            qij3=qij3,
+            qse3=qse3,
+            id_check3=id_check3,
             test_var1=test_var_1,
+            cin_IJ=cin_IJ,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        print(id_check.view[:])
+        # print(test_var_1.view[23, 23])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "thj_test1"
-            var = test_var_1
-            testvar_nan = ds.variables[testvar].data[0, 0, :, 0, :-1, 0]
+            testvar = "cin_test3"
+            var = cin_IJ
+            testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 10, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
 
             # Reshape and make testvar quantity
             i, j, k = self.grid.nic, self.grid.njc, self.grid.npz
-            testvar_reshaped = np.reshape(testvar_zeros, (i, j, k)).astype(np.float32)
+            testvar_reshaped = np.reshape(testvar_zeros, (i, j)).astype(np.float32)
             # testvar_out = self.make_zinterface_field(testvar_reshaped)
-            testvar_out = self.make_ijk_field(testvar_reshaped)
+            testvar_out = self.make_ij_field(testvar_reshaped)
             # testvar_out = self.make_ntracers_ijk_field(testvar_reshaped)
             # testvar_out = self.make_ntracers_zdim_field(testvar_reshaped)
 
@@ -532,36 +546,28 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
 
         for i in range(testing_variable.view[:].shape[0]):
             for j in range(testing_variable.view[:].shape[1]):
-                for k in range(testing_variable.view[:].shape[2]):
-                    diff = (
-                        testing_variable.view[i, j, k]
-                        - reference_variable.view[i, j, k]
-                    )
+                # for k in range(testing_variable.view[:].shape[2]):
+                diff = testing_variable.view[i, j] - reference_variable.view[i, j]
 
-                    rel_error = abs(diff / reference_variable.view[i, j, k])
+                rel_error = abs(diff / reference_variable.view[i, j])
 
-                    tot_indicies = tot_indicies + 1
-                    if (
-                        testing_variable.view[i, j, k]
-                        != reference_variable.view[i, j, k]
-                    ):
-                        if rel_error > 1e-9:
-                            failed_indicies = failed_indicies + 1
-                            print(
-                                "DIFF: ",
-                                i,
-                                j,
-                                k,
-                                "computed: ",
-                                testing_variable.view[i, j, k],
-                                "reference: ",
-                                reference_variable.view[i, j, k],
-                                "abs difference: ",
-                                testing_variable.view[i, j, k]
-                                - reference_variable.view[i, j, k],
-                                "rel difference: ",
-                                diff / reference_variable.view[i, j, k],
-                            )
+                tot_indicies = tot_indicies + 1
+                if testing_variable.view[i, j] != reference_variable.view[i, j]:
+                    if abs(diff) > 1e-9:
+                        failed_indicies = failed_indicies + 1
+                        print(
+                            "DIFF: ",
+                            i,
+                            j,
+                            "computed: ",
+                            testing_variable.view[i, j],
+                            "reference: ",
+                            reference_variable.view[i, j],
+                            "abs difference: ",
+                            testing_variable.view[i, j] - reference_variable.view[i, j],
+                            "rel difference: ",
+                            diff / reference_variable.view[i, j],
+                        )
         print(
             "failures: ",
             failed_indicies,
