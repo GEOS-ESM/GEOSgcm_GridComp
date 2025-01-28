@@ -8,7 +8,7 @@ setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1 | 
 setenv workdir `pwd`
 setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f3 | cut -d'-' -f1`
 setenv NR `head -1 clsm/mkCatchParam.log | cut -d'y' -f2 | cut -d'-' -f1`
-setenv ease `head -1 clsm/mkCatchParam.log | cut -d 'e' -f2 | cut -d '-' -f1`
+setenv ease `head -1 clsm/mkCatchParam.log | cut -d ' ' -f3 | cut -d 'v' -f1`
 
 ##########################
 ##  Writing README file ##
