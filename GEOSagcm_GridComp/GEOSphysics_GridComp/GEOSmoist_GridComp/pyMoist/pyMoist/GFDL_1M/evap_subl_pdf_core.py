@@ -8,13 +8,14 @@ from gt4py.cartesian.gtscript import (
     atan,
     computation,
     exp,
+    i32,
     interval,
     sqrt,
     tan,
 )
 
 import pyMoist.constants as constants
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.field_types import FloatField_VaporSaturationTable
 from pyMoist.saturation.qsat import QSat_Float, QSat_Float_Ice, QSat_Float_Liquid
 from pyMoist.shared_incloud_processes import (
@@ -26,7 +27,7 @@ from pyMoist.shared_incloud_processes import (
 
 @gtscript.function
 def pdffrac(
-    pdfshape: Int,
+    pdfshape: i32,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,
@@ -51,7 +52,7 @@ def pdffrac(
 
 @gtscript.function
 def pdfcondensate(
-    pdfshape: Int,
+    pdfshape: i32,
     qtmean: Float,
     sigmaqt1: Float,
     sigmaqt2: Float,

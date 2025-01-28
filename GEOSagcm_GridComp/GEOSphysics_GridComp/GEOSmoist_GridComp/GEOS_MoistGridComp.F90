@@ -5334,7 +5334,7 @@ contains
        ! to run initialization
      call MAPL_GetResource(MAPL, USE_PYMOIST_AER, 'USE_PYMOIST_AER:', default=.false., RC=STATUS); VERIFY_(STATUS);
      call ESMF_AttributeGet(AERO, name='number_of_aerosol_modes', value=n_modes, __RC__)
-     if (USE_PYMOIST_AER .and. init_pymoist) then
+     if (init_pymoist) then
           call cpu_time(start)
           init_pymoist = .false.
           call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS ); VERIFY_(STATUS)
