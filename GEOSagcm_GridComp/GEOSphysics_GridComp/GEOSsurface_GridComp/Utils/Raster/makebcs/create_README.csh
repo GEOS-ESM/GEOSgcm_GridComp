@@ -183,7 +183,7 @@ set sec2_til2="`printf '\\n \
 	    of the ocean grid cell. '`" 
 set rout_smap
 
-if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then   
+if($ease == EASE) then   
    set WGRID=SMAP   
    set sec2_til="`printf 'pfaf_index, longitude, latitude, ig, jg, cell_frac, pfaf_index'`"
    if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) then

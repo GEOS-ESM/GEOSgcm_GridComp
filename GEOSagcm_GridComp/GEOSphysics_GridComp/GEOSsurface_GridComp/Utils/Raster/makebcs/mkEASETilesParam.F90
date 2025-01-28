@@ -46,7 +46,7 @@ PROGRAM mkEASETilesParam
   
   integer,      parameter :: nc_esa        = 129600      ! number of cols in 10-arcsec ESA mask file
   integer,      parameter :: nr_esa        =  64800      ! number of rows in 10-arcsec ESA mask file
-  real(kind=8), parameter :: MAPL_UNDEF_R8 = MAPL_UNDEF
+  real(REAL64), parameter :: MAPL_UNDEF_R8 = 1.0D15
 
   ! define tile types used for processing here (values may be from ESA mask?) 
   
@@ -72,7 +72,7 @@ PROGRAM mkEASETilesParam
   integer                                            :: dx_esa, dy_esa, NBINS, NPLUS
   
   integer*8,   allocatable, dimension(:)             :: SRTM_catid
-  real(kind=8),allocatable, dimension(:)             :: SRTM_catid_r8
+  real(REAL64),allocatable, dimension(:)             :: SRTM_catid_r8
   
   integer,     allocatable, dimension(:,:), target   :: tileid_index, catid_index
   
@@ -85,7 +85,7 @@ PROGRAM mkEASETilesParam
   real*4,      allocatable, dimension(:,:)           :: q0, raster
   REAL,        allocatable, dimension(:)             :: tile_elev
   integer,     allocatable, dimension(:,:)           :: iTable
-  real(kind=8),allocatable, dimension(:,:)           :: rTable
+  real(REAL64),allocatable, dimension(:,:)           :: rTable
 
   !INTEGER*8    :: PFAF_CODE  
   

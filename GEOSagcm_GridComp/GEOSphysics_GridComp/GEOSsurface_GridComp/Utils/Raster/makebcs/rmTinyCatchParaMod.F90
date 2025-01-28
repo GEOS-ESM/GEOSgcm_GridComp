@@ -12,7 +12,7 @@ module rmTinyCatchParaMod
   use MAPL_Base,           ONLY: MAPL_UNDEF
   use lsm_routines,        ONLY: sibalb
   use LogRectRasterizeMod, ONLY: SRTM_maxcat, WritetilingNC4 
- 
+  use, intrinsic :: iso_fortran_env, only: REAL64 
   implicit none
   
   logical, parameter :: error_file=.true.
@@ -28,6 +28,7 @@ module rmTinyCatchParaMod
   integer, PARAMETER :: nbdep=150, NAR=1000,nwt=81,nrz=41
   real,    parameter :: slice=0.1, lim =5.,grzdep =1.1
   logical, parameter :: bug =.false.
+  real(REAL64), parameter :: MAPL_UNDEF_r8 = 1.0D15
 
   include 'netcdf.inc'
 
@@ -914,7 +915,7 @@ contains
     REAL                               :: lat, lon, fr_gcm, fr_cat, tarea
     INTEGER                            :: typ, pfs, ig, jg, j_dum, i_dum, ierr, indx_dum, ip2
 
-    REAL (kind=8), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
+    REAL (REAL64), PARAMETER           :: RADIUS=MAPL_RADIUS, pi= MAPL_PI 
 
     character*512                      :: fname
     character*512                      :: gtopo30
@@ -931,7 +932,7 @@ contains
     real                               :: mean_land_elev
 
     real*4,            allocatable, target :: q0 (:,:)
-    real(kind=8),      allocatable         :: rTable(:,:)
+    real(REAL64),      allocatable         :: rTable(:,:)
     integer,           allocatable         :: iTable(:,:)
     character(len=512)                     :: gName(2)
     logical,           allocatable         :: IsOcean(:)
@@ -1003,7 +1004,7 @@ contains
     
     allocate(iTable(ip,0:7))
     allocate(rTable(ip,10))    
-    rTable = MAPL_UNDEF
+    rTable = MAPL_UNDEF_r8
     
     allocate(IsOcean(ip))
     IsOcean = .false.
@@ -5324,7 +5325,7 @@ contains
     integer, intent(IN)  :: Rin( :,:)
     integer, intent(OUT) :: Rout(:,:)
 
-    REAL(KIND=8) :: xx, yy
+    REAL(REAL64) :: xx, yy
     integer      :: i, j, ii, jj
     integer      :: Nx_in, Ny_in, Nx_out, Ny_out
 
@@ -5383,7 +5384,7 @@ contains
     integer*1, intent(IN)  :: Rin( :,:)
     integer*1, intent(OUT) :: Rout(:,:)
 
-    REAL(KIND=8) :: xx, yy
+    REAL(REAL64) :: xx, yy
     integer      :: i, j, ii, jj
     integer      :: Nx_in, Ny_in, Nx_out, Ny_out
 
@@ -5424,7 +5425,7 @@ contains
     integer(kind=2), intent(IN)  :: Rin( :,:)
     integer(kind=2), intent(OUT) :: Rout(:,:)
 
-    REAL(KIND=8) :: xx, yy
+    REAL(REAL64) :: xx, yy
     integer      :: i, j, ii, jj
     integer      :: Nx_in, Ny_in, Nx_out, Ny_out
 
@@ -5465,7 +5466,7 @@ contains
     real, intent(IN)  :: Rin( :,:)
     real, intent(OUT) :: Rout(:,:)
 
-    REAL(KIND=8) :: xx, yy
+    REAL(REAL64) :: xx, yy
     integer      :: i, j, ii, jj
     integer      :: Nx_in, Ny_in, Nx_out, Ny_out
 

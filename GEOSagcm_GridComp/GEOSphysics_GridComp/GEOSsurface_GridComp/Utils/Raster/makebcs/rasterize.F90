@@ -6,7 +6,7 @@ module LogRectRasterizeMod
   use MAPL_ExceptionHandling  
   use MAPL_Constants,          only: PI=>MAPL_PI_R8
   use MAPL
-  use, intrinsic :: iso_fortran_env, only: INT32
+  use, intrinsic :: iso_fortran_env, only: INT32, REAL64
   implicit none
   private
 
@@ -38,13 +38,13 @@ module LogRectRasterizeMod
   ! -------------------------------------------------------------------------------------------------------------
 
   integer,      parameter :: PUSHLEFT      = 10000
-  real(kind=8), parameter :: Zero          = 0.0
+  real(REAL64), parameter :: Zero          = 0.0d0
 
   integer,      parameter :: NX            = 8640
   integer,      parameter :: NY            = 4320
-  real(kind=8), parameter :: MAPL_UNDEF_R8 = MAPL_UNDEF
+  real(REAL64), parameter :: MAPL_UNDEF_R8 = 1.0D15
 
-  real(kind=8)            :: garea_
+  real(REAL64)            :: garea_
   integer                 :: ctg_
 
   interface LRRasterize
@@ -117,7 +117,7 @@ end subroutine WriteRaster
 
 subroutine SortTiling(Raster,rTable,iTable)
   integer, intent(INOUT) :: Raster(:,:), iTable(0:,:)
-  real(kind=8),   intent(INOUT) :: rTable(:,:)
+  real(REAL64),   intent(INOUT) :: rTable(:,:)
 
   integer,   dimension(size(iTable,2)) :: old, new
   integer*8, dimension(size(iTable,2)) :: key, key0
@@ -194,7 +194,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   character*(*),     intent(IN) :: GridName(:)
   integer,           intent(IN) :: nx,ny
   integer,           intent(IN) :: iTable(0:,:)
-  real(kind=8),      intent(IN) :: rTable(:,:)
+  real(REAL64),      intent(IN) :: rTable(:,:)
   integer,           intent(IN) :: IM(:), JM(:), ipx(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
@@ -221,10 +221,10 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   integer        :: j, unit, ng, ip, l, i, k, ix
   character*1000 :: Line
   integer        :: ii(size(GridName)), jj(size(GridName)), kk(size(GridName))
-  real(kind=8)   :: fr(size(GridName))
-  real(kind=8)   :: xc, yc, area
-  real(kind=8)   :: garea, ctg(size(Gridname))
-  real(kind=8)   :: sphere, error
+  real(REAL64)   :: fr(size(GridName))
+  real(REAL64)   :: xc, yc, area
+  real(REAL64)   :: garea, ctg(size(Gridname))
+  real(REAL64)   :: sphere, error
   integer        :: status, tmp_in1, tmp_in2, ncat
   logical        :: file_exists
 
@@ -317,7 +317,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   end do
 
   if(present(Verb)) then
-     sphere = 4.*pi
+     sphere = 4.*PI
      error  = (sphere-garea)/garea
      if(Verb) then
         print '(A,3e20.13)','Stats for the globe:',garea, sphere, error
@@ -347,7 +347,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   integer,           intent(IN) :: IM(:), JM(:)
   integer,           intent(IN) :: nx, ny
   integer,           intent(IN) :: iTable(:,0:)
-  real(kind=8),      intent(IN) :: rTable(:,:)
+  real(REAL64),      intent(IN) :: rTable(:,:)
   integer, optional, intent(in) :: N_PfafCat
   integer, optional, intent(out):: rc
 
@@ -356,11 +356,12 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   character(len=:), allocatable :: attr
   type (Variable)               :: v
   type (NetCDF4_FileFormatter)  :: formatter
-  character(len=1)              :: str_num
+  character(len=4)              :: ocn_str
   type (FileMetadata)           :: metadata
   integer,          allocatable :: II(:), JJ(:), KK(:), pfaf(:)
-  real(kind=8),     allocatable :: fr(:)
+  real(REAL64),     allocatable :: fr(:)
   logical                       :: EASE
+  integer, parameter            :: deflate_level = 1
 
   ng  = size(GridName)
   ip  = size(iTable,1)
@@ -381,17 +382,17 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   ! create nc4 variables and write metadata
 
   do ll = 1, ng
-    if (ng == 1) then
-      str_num = ''
+    if (ll == 1) then
+      ocn_str = ''
     else
-      write(str_num, '(i0)') ll
+      ocn_str = '_ocn'
     endif
 
-    attr = 'Grid'//trim(str_num)//'_Name'
+    attr = 'Grid'//trim(ocn_str)//'_Name'
     call metadata%add_attribute( attr, trim(GridName(ll)))
-    attr = 'IM'//trim(str_num)
+    attr = 'IM'//trim(ocn_str)
     call metadata%add_attribute( attr, IM(ll))
-    attr = 'JM'//trim(str_num)
+    attr = 'JM'//trim(ocn_str)
     call metadata%add_attribute( attr, JM(ll))
   enddo
 
@@ -401,17 +402,21 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call metadata%add_attribute( attr, ny)
   attr = 'N_PfafCat'
   call metadata%add_attribute( attr, n_pfafcat_)
+  attr = 'N_Grids'
+  call metadata%add_attribute( attr, ng)
 
   v = Variable(type=PFIO_INT32, dimensions='tile')
   call v%add_attribute('units', '1')
   call v%add_attribute('long_name', 'tile_type')
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('typ', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
-  call v%add_attribute('units', 'km2')
+  call v%add_attribute('units', 'radian2')
   call v%add_attribute('long_name', 'tile_area')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('area', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
@@ -419,6 +424,7 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call v%add_attribute('long_name', 'tile_center_of_mass_longitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('com_lon', v)
   
   v = Variable(type=PFIO_REAL64, dimensions='tile')
@@ -426,71 +432,86 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
   call v%add_attribute('long_name', 'tile_center_of_mass_latitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
   call v%add_attribute("_FillValue", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('com_lat', v)
  
   do ll = 1, ng
-     if (ng == 1) then
-        str_num = ''
+     if (ll == 1) then
+        ocn_str = ''
      else
-        write(str_num, '(i0)') ll
+        ocn_str = '_ocn'
      endif
 
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_i_index_of_tile_in_global_grid')
-     call metadata%add_variable('i_indg'//trim(str_num), v)
+     call v%add_attribute('long_name', 'GRID'//trim(ocn_str)//'_i_index_of_tile_in_global_grid')
+     call v%add_attribute("missing_value",   MAPL_UNDEFINED_INTEGER)
+     call v%set_deflation(DEFLATE_LEVEL)
+     call metadata%add_variable('i_indg'//trim(ocn_str), v)
 
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_j_index_of_tile_in_global_grid')
-     call metadata%add_variable('j_indg'//trim(str_num), v)
+     call v%add_attribute('long_name', 'GRID'//trim(ocn_str)//'_j_index_of_tile_in_global_grid')
+     call v%set_deflation(DEFLATE_LEVEL)
+     call v%add_attribute("missing_value",   MAPL_UNDEFINED_INTEGER)
+     call metadata%add_variable('j_indg'//trim(ocn_str), v)
 
      v = Variable(type=PFIO_REAL64, dimensions='tile')
      call v%add_attribute('units', '1')
-     call v%add_attribute('long_name', 'GRID'//trim(str_num)//'_area_fraction_of_tile_in_grid_cell')
+     call v%add_attribute('long_name', 'GRID'//trim(ocn_str)//'_area_fraction_of_tile_in_grid_cell')
      call v%add_attribute("missing_value", MAPL_UNDEF_R8)
      call v%add_attribute("_FillValue",    MAPL_UNDEF_R8)
-     call metadata%add_variable('frac_cell'//trim(str_num), v)
+     call v%set_deflation(DEFLATE_LEVEL)
+     call metadata%add_variable('frac_cell'//trim(ocn_str), v)
   
      v = Variable(type=PFIO_INT32, dimensions='tile')
      call v%add_attribute('units', '1')
      call v%add_attribute('long_name', 'internal_dummy_index_of_tile')
-     call metadata%add_variable('dummy_index'//trim(str_num), v)
+     call v%add_attribute("missing_value",  MAPL_UNDEFINED_INTEGER)
+     call v%set_deflation(DEFLATE_LEVEL)
+     call metadata%add_variable('dummy_index'//trim(ocn_str), v)
   enddo
 
   v = Variable(type=PFIO_INT32, dimensions='tile')
   call v%add_attribute('units', '1')
   call v%add_attribute('long_name', 'Pfafstetter_index_of_tile')
+  call v%add_attribute("missing_value",   MAPL_UNDEFINED_INTEGER)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('pfaf_index', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_minimum_longitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('min_lon', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_maximum_longitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('max_lon', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_minimum_latitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('min_lat', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'degree')
   call v%add_attribute('long_name', 'tile_maximum_latitude')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('max_lat', v)
 
   v = Variable(type=PFIO_REAL64, dimensions='tile')
   call v%add_attribute('units', 'm')
   call v%add_attribute('long_name', 'tile_mean_elevation')
   call v%add_attribute("missing_value", MAPL_UNDEF_R8)
+  call v%set_deflation(DEFLATE_LEVEL)
   call metadata%add_variable('elev', v)
   
   ! -------------------------------------------------------------------
@@ -526,14 +547,14 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
         fr = rTable(:,3)/rTable(:,3+ll)
      endwhere
 
-     if (ng == 1) then
-       str_num=''
+     if (ll == 1) then
+       ocn_str=''
      else
-       write(str_num, '(i0)') ll
+       ocn_str='_ocn'
      endif
 
      if (ll == 2) then
-       pfaf = -huge(0)
+       pfaf = MAPL_UNDEFINED_INTEGER 
        where (iTable(:,0) == 100)
          pfaf = II
        endwhere
@@ -545,16 +566,16 @@ subroutine WriteTilingNC4(File, GridName, im, jm, nx, ny, iTable, rTable, N_Pfaf
        endwhere
 
        where (iTable(:,0) /=0 )
-         II = -huge(0)
-         JJ = -huge(0)
+         II = MAPL_UNDEFINED_INTEGER 
+         JJ = MAPL_UNDEFINED_INTEGER
          fr = MAPL_UNDEF_R8
        endwhere
      endif
 
-     call formatter%put_var('i_indg'    //trim(str_num), II, rc=status)
-     call formatter%put_var('j_indg'    //trim(str_num), JJ, rc=status)
-     call formatter%put_var('frac_cell' //trim(str_num), fr, rc=status)
-     call formatter%put_var('dummy_index'//trim(str_num), KK, rc=status)
+     call formatter%put_var('i_indg'    //trim(ocn_str), II, rc=status)
+     call formatter%put_var('j_indg'    //trim(ocn_str), JJ, rc=status)
+     call formatter%put_var('frac_cell' //trim(ocn_str), fr, rc=status)
+     call formatter%put_var('dummy_index'//trim(ocn_str), KK, rc=status)
 
      if (EASE .or. ll == 2) call formatter%put_var('pfaf_index', pfaf, rc=status)
 
@@ -581,7 +602,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
   integer,      optional,              intent(out) :: IM(:), JM(:)
   integer,      optional,              intent(out) :: nx, ny, n_Grids
   integer,      optional, allocatable, intent(out) :: iTable(:,:)
-  real(kind=8), optional, allocatable, intent(out) :: rTable(:,:)
+  real(REAL64), optional, allocatable, intent(out) :: rTable(:,:)
   integer,      optional,              intent(out) :: N_PfafCat
   real,         optional, allocatable, intent(out) :: AVR(:,:)      ! used by GEOSgcm
   integer,      optional,              intent(out) :: rc
@@ -590,26 +611,30 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
   character(len=:), allocatable :: attr
   type (NetCDF4_FileFormatter)  :: formatter
   type (FileMetadata)           :: meta
-  character(len=1)              :: str_num
+  character(len=4)              :: ocn_str
   integer                       :: ng, ntile, status, ll
   class(*), pointer             :: attr_val(:)
   class(*), pointer             :: char_val
   integer, allocatable          :: tmp_int(:)
-  real(kind=8), allocatable     :: fr(:)
+  real(REAL64), allocatable     :: fr(:)
 
   integer, parameter :: NumGlobalVars =4
   integer, parameter :: NumLocalVars   =4
   integer            :: NumCol
   integer,      allocatable :: iTable_(:,:)
-  real(kind=8), allocatable :: rTable_(:,:)
+  real(REAL64), allocatable :: rTable_(:,:)
 
   call formatter%open(File, pFIO_READ, rc=status)
   meta = formatter%read(rc=status)
 
-  ng = 1
-  if (meta%has_attribute("Grid1_Name")) ng = 2   ! for ng=1 (i.e., EASE), attribute is just "Grid_Name"
   ntile = meta%get_dimension('tile')
 
+  ref => meta%get_attribute('N_Grids')
+  attr_val => ref%get_values()
+  select type (attr_val)
+  type is (integer(INT32))
+     ng = attr_val(1)
+  endselect
   if (present(n_Grids)) then
     n_Grids = ng
   endif
@@ -641,14 +666,14 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
   endif
 
   do ll = 1, ng
-    if (ng == 1) then
-      str_num = ''
+    if (ll == 1) then
+      ocn_str = ''
     else
-      write(str_num, '(i0)') ll
+      ocn_str = '_ocn'
     endif
 
     if (present(GridName)) then
-       attr = 'Grid'//trim(str_num)//'_Name'
+       attr = 'Grid'//trim(ocn_str)//'_Name'
        ref =>meta%get_attribute(attr)
        char_val => ref%get_value()
        select type(char_val)
@@ -659,7 +684,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
        end select
     endif
     if (present(IM)) then
-       attr = 'IM'//trim(str_num)
+       attr = 'IM'//trim(ocn_str)
        ref =>meta%get_attribute(attr)
        attr_val => ref%get_values()
        select type(attr_val)
@@ -668,7 +693,7 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
        end select
     endif
     if (present(JM)) then
-       attr = 'JM'//trim(str_num)
+       attr = 'JM'//trim(ocn_str)
        ref =>meta%get_attribute(attr)
        attr_val => ref%get_values()
        select type(attr_val)
@@ -683,17 +708,17 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
     allocate(tmp_int(ntile))
     call formatter%get_var('typ', iTable_(:,0))
     do ll = 1, ng
-      if (ng == 1) then
-        str_num=''
+      if (ll == 1) then
+        ocn_str = ''
       else
-        write(str_num, '(i0)') ll
+        ocn_str = '_ocn'
       endif
 
-      call formatter%get_var('i_indg'    //trim(str_num), tmp_int, rc=status)
+      call formatter%get_var('i_indg'    //trim(ocn_str), tmp_int, rc=status)
       iTable_(:,ll*2) = tmp_int
-      call formatter%get_var('j_indg'    //trim(str_num), tmp_int, rc=status)
+      call formatter%get_var('j_indg'    //trim(ocn_str), tmp_int, rc=status)
       iTable_(:,ll*2+1) = tmp_int
-      call formatter%get_var('dummy_index'//trim(str_num), tmp_int, rc=status)
+      call formatter%get_var('dummy_index'//trim(ocn_str), tmp_int, rc=status)
       if ( ng == 1) then
         iTable_(:,4) = tmp_int
         ! set this 7th column to 1. This is to reproduce a potential bug
@@ -705,8 +730,8 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
     enddo
     call formatter%get_var('pfaf_index', tmp_int, rc=status)
     if (ng == 2) then
-       where (iTable(:,0) == 100)
-          iTable(:,4) = tmp_int
+       where (iTable_(:,0) == 100)
+          iTable_(:,4) = tmp_int
        endwhere
     endif
   endif
@@ -717,12 +742,12 @@ subroutine ReadTilingNC4(File, GridName, im, jm, nx, ny, n_Grids, iTable, rTable
     call formatter%get_var('com_lat', rTable_(:,2),   rc=status)
     call formatter%get_var('area',    rTable_(:,3),   rc=status)
     do ll = 1, ng
-      if (ng == 1) then
-        str_num=''
+      if (ll == 1) then
+        ocn_str = ''
       else
-        write(str_num, '(i0)') ll
+        ocn_str = '_ocn'
       endif
-      call formatter%get_var('frac_cell' //trim(str_num), rTable_(:,3+ll), rc=status)
+      call formatter%get_var('frac_cell' //trim(ocn_str), rTable_(:,3+ll), rc=status)
     enddo
     call formatter%get_var('min_lon', rTable_(:, 6), rc=status)
     call formatter%get_var('max_lon', rTable_(:, 7), rc=status)
@@ -854,7 +879,7 @@ subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   character*(*),     intent(IN) :: File
   integer,           intent(IN) :: Unit, k
   integer,           intent(IN) :: iTable(0:)
-  real(kind=8),             intent(IN) :: rTable(:)
+  real(REAL64),             intent(IN) :: rTable(:)
   logical, optional, intent(IN) :: Zip
   logical, optional, intent(IN) :: Verb
 
@@ -876,8 +901,8 @@ subroutine WriteLine(File, Unit, iTable, rTable, k, Zip, Verb)
   logical :: DoZip
   character*1000 :: Line
   integer :: ii, jj
-  real(kind=8)   :: fr
-  real(kind=8)   :: xc, yc, area
+  real(REAL64)   :: fr
+  real(REAL64)   :: xc, yc, area
 
   if(present(Zip)) then
      DoZip = Zip
@@ -943,7 +968,7 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
 !  rTable(5)    :: of 2nd   grid box area
 
   logical :: DoZip
-  real(kind=8)   :: sphere, error
+  real(REAL64)   :: sphere, error
   character*1000 :: Line
 
   Line=""
@@ -955,7 +980,7 @@ subroutine CloseTiling(FIle, Unit, ip,  Zip, Verb)
   endif
 
   if(present(Verb)) then
-     sphere = 4.*pi
+     sphere = 4.*PI
      error  = (sphere-garea_)/garea_
      if(Verb) then
         print '(A,3e20.13)','Stats for the globe:',garea_, sphere, error

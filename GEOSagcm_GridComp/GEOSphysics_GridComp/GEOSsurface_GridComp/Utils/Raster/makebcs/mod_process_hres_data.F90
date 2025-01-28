@@ -6271,7 +6271,7 @@ contains
     integer :: i(GC),j(GR), k,n, status, ncid, varid, I0(1), j0(1)
     INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
     real    :: lat_mn, lat_mx, lon_mn, lon_mx
-    real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
+    real (REAL64) :: XG(GC),YG(GR), y0, x0, dxy
 
     call get_country_codes (index_RANGE = index_RANGE, ST_NAME = ST_NAME, &
          CNT_NAME = CNT_NAME)

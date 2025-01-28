@@ -62,8 +62,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
-ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{RS}.nc4
 endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
@@ -73,8 +73,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
-ncatted -a Grid2_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_ocn_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
 endif
 if( {LATLON_OCEAN} == True ) then
 cat > sedfile << EOF
@@ -84,8 +84,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
-ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 endif
 cd ../../
 
@@ -102,8 +102,8 @@ EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
 /bin/rm -f sedfile
-ncatted -a Grid1_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
-ncatted -a Grid2_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 cd ../../
 
 """

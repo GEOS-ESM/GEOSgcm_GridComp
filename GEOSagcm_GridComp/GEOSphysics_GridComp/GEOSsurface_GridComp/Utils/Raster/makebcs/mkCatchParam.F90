@@ -68,8 +68,9 @@ PROGRAM mkCatchParam
   integer, allocatable :: iTable(:,:), tile_pfs(:), tile_j_dum(:)
   integer, pointer     :: tile_id(:,:)
   real, allocatable    :: tile_lat(:), tile_lon(:), min_lon(:), max_lon(:), min_lat(:), max_lat(:)
-  real                 :: minlon, minlat, maxlon, maxlat
-  integer              :: tindex1,pfaf1, n
+  real                 :: minlon, minlat, maxlon, maxlat, elev
+  integer              :: tindex1, pfaf1, n, status
+
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
 ! NOTE: "!$" is for conditional compilation
@@ -240,7 +241,11 @@ integer :: n_threads=1
 
        allocate(tile_id(nc, nr))
        fname_tmp = trim(fnameRst)//'.rst'
-       open (newunit=unit,file=fname_tmp,status='old',action='read',form='unformatted',convert='little_endian')
+       open (newunit=unit,file=fname_tmp,status='old',action='read',form='unformatted',convert='little_endian', IOSTAT=status)
+       if (status /=0) then
+          write (log_file,'(a)')'         '//trim(fname_tmp) // 'cannot be opened, exit '
+          call exit(1)
+       endif
        do j = 1, nr
          read(unit)tile_id(:,j)
        end do        
@@ -269,19 +274,33 @@ integer :: n_threads=1
        endif
        write (log_file,'(a)')' '
 
+       write (log_file,'(a)')'          Read nc4 tile file. '
        call ReadTilingNC4( trim(fnameTil)//".nc4", iTable = iTable) 
        N_land = count(iTable(:,0) == 100)          ! n_land = number of land tiles
+       write (log_file,*)'          land tiles', n_land
+
        allocate(tile_j_dum, source = iTable(1:n_land,7)) ! possible used in cti_stats.dat
        deallocate (iTable)
    
+       ! reading from catchment to preserve zero-diff
+       open (newunit=unit,file='clsm/catchment.def',status='old',action='read',form='formatted', IOSTAT=status)
+       if (status /=0) then
+          write (log_file,'(a)')'         clsm/cathment.def cannot be opened, exit '
+          call exit(1)
+       endif
+       read(unit,*) N
+       if (n /= n_land) then
+           write (log_file,'(a)')'n_land is not consitent in tile file and catmentdef, exit '
+           write (log_file,*) n_land, n
+           call exit(1) 
+       endif
+
        allocate(min_lon(n_land), max_lon(n_land), min_lat(n_land), max_lat(n_land))
        allocate(tile_lat(n_land), tile_lon(n_land))
+       allocate(tile_pfs(n_land))
 
-       ! reading from catchment to preserve zero-diff
-       open (newunit=unit,file='clsm/catchment.def',status='old',action='read',form='formatted')
-       read(unit,*) N_land
        do n = 1, N_land
-          read (unit,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+          read (unit,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat, elev
           min_lon(n) = minlon
           max_lon(n) = maxlon
           min_lat(n) = minlat

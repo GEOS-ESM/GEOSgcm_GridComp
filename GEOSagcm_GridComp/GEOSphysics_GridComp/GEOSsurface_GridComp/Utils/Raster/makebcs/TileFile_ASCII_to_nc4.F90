@@ -6,7 +6,7 @@
 ! wjiang, rreichle, 29 Nov 2024
 
 program TileFile_ASCII_to_nc4
-  
+  use, intrinsic :: iso_fortran_env, only: REAL64 
   use MAPL
   use LogRectRasterizeMod, only: WriteTilingNC4
   use EASE_conv,           only: ease_extent
@@ -18,7 +18,7 @@ program TileFile_ASCII_to_nc4
   
   character(:),      allocatable :: tile_file
   character(:),      allocatable :: catchmentdef_file
-  real(kind=8),      allocatable :: rTable(:,:)
+  real(REAL64),      allocatable :: rTable(:,:)
   integer,           allocatable :: iTable(:,:)
   character(128)                 :: gName1, gName2
   character(len=512)             :: tmpline
@@ -31,7 +31,8 @@ program TileFile_ASCII_to_nc4
   integer                        :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
   integer                        :: n_lon2, n_lat2, nx, ny, num, ll, maxcat
   logical                        :: file_exists
-  
+  real(REAL64), parameter        :: MAPL_UNDEF_r8 = 1.0D15  
+
   ! ----------------------------------------------------------------------
   !
   ! process command-line arguments
@@ -97,7 +98,7 @@ program TileFile_ASCII_to_nc4
   allocate(iTable(N_tile,0:7))
   allocate(rTable(N_tile,10))
   
-  rTable = MAPL_UNDEF  
+  rTable = MAPL_UNDEF_r8  
 
   ! read ASCII tile file (NOTE: Info for first tile is already in tmpline!)
   
