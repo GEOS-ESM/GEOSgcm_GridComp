@@ -287,7 +287,7 @@ integer :: n_threads=1
        endif
        read(unit,*) N
        if (n /= n_land) then
-           write (log_file,'(a)')'n_land is not consitent in tile file and catmentdef, exit '
+           write (log_file,'(a)')'n_land not consistent between tile file and catchment.def file, exit '
            write (log_file,*) n_land, n
            call exit(1) 
        endif
