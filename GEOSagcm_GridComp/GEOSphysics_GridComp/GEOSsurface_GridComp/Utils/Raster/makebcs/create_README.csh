@@ -41,7 +41,7 @@ set mygrid=`echo $myusage | cut -d'g' -f2 | cut -d '-' -f1`
 
 # Set Mask/Topo specifics
 #########################
-set MYMASK=`head -6 clsm/mkCatchParam.log | tail -1`
+set MYMASK=$MASKFILE
 set NPfafs=291284
 
 set toc_rout="`printf '\\n7. GLOBAL RUNOFF ROUTING MODEL DATA ............................................... 7\\n \

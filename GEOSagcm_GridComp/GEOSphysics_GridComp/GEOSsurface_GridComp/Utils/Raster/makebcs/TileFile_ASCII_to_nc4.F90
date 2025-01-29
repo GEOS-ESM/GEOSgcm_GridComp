@@ -8,7 +8,7 @@
 program TileFile_ASCII_to_nc4
   use, intrinsic :: iso_fortran_env, only: REAL64 
   use MAPL
-  use LogRectRasterizeMod, only: WriteTilingNC4
+  use LogRectRasterizeMod, only: WriteTilingNC4, MAPL_UNDEF_R8
   use EASE_conv,           only: ease_extent
   
   implicit none
@@ -31,7 +31,6 @@ program TileFile_ASCII_to_nc4
   integer                        :: n_tile, n_grid, n_lon1, n_lat1, n_cat, tmp_in1, tmp_in2
   integer                        :: n_lon2, n_lat2, nx, ny, num, ll, maxcat
   logical                        :: file_exists
-  real(REAL64), parameter        :: MAPL_UNDEF_r8 = 1.0D15  
 
   ! ----------------------------------------------------------------------
   !

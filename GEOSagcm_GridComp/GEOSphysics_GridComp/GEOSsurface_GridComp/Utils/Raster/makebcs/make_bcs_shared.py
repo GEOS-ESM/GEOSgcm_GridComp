@@ -17,9 +17,9 @@ def get_script_head() :
 #SBATCH --nodes=1
 #SBATCH --job-name={GRIDNAME}.j
 """
-  constraint = "#SBATCH --constraint=sky|cas"
-  if BUILT_ON_SLES15 :
-     constraint = "#SBATCH --constraint=mil"
+  constraint = '#SBATCH --constraint="[mil|cas]"'
+  #if 'TRUE' not in BUILT_ON_SLES15:
+  #   constraint = "#SBATCH --constraint=sky"
 
   head = head + constraint + """
 echo "-----------------------------" 

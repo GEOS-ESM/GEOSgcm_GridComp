@@ -27,7 +27,7 @@ module LogRectRasterizeMod
   public WritetilingNC4
   public ReadTilingNC4
   public Sorttiling
-
+  public MAPL_UNDEF_R8
   ! SRTM_maxcat = number of Pfafstetter catchments defined in raster file produced by Kristine Version in 2013
   !               (based on DEMs from 3.0-arcsec HydroSHEDS/SRTM south of 60N, 
   !                                   7.5-arcsec GMTED2010 north of 60N, and 

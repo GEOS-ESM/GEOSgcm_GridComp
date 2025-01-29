@@ -11,7 +11,7 @@ module rmTinyCatchParaMod
   use MAPL_ConstantsMod
   use MAPL_Base,           ONLY: MAPL_UNDEF
   use lsm_routines,        ONLY: sibalb
-  use LogRectRasterizeMod, ONLY: SRTM_maxcat, WritetilingNC4 
+  use LogRectRasterizeMod, ONLY: SRTM_maxcat, WritetilingNC4, MAPL_UNDEF_R8 
   use, intrinsic :: iso_fortran_env, only: REAL64 
   implicit none
   
@@ -28,7 +28,6 @@ module rmTinyCatchParaMod
   integer, PARAMETER :: nbdep=150, NAR=1000,nwt=81,nrz=41
   real,    parameter :: slice=0.1, lim =5.,grzdep =1.1
   logical, parameter :: bug =.false.
-  real(REAL64), parameter :: MAPL_UNDEF_r8 = 1.0D15
 
   include 'netcdf.inc'
 

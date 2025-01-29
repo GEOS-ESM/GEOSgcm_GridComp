@@ -35,7 +35,7 @@ PROGRAM mkEASETilesParam
   use rmTinyCatchParaMod,    only : RegridRasterReal     
   use rmTinyCatchParaMod,    only : Target_mean_land_elev
   use process_hres_data,     only : histogram
-  use LogRectRasterizeMod,   only : WriteTilingNC4, SRTM_maxcat                       ! rasterize.F90
+  use LogRectRasterizeMod,   only : WriteTilingNC4, SRTM_maxcat, MAPL_UNDEF_R8   ! rasterize.F90
   use MAPL_SortMod
   use MAPL_ConstantsMod
   use MAPL_ExceptionHandling
@@ -46,7 +46,6 @@ PROGRAM mkEASETilesParam
   
   integer,      parameter :: nc_esa        = 129600      ! number of cols in 10-arcsec ESA mask file
   integer,      parameter :: nr_esa        =  64800      ! number of rows in 10-arcsec ESA mask file
-  real(REAL64), parameter :: MAPL_UNDEF_R8 = 1.0D15
 
   ! define tile types used for processing here (values may be from ESA mask?) 
   
