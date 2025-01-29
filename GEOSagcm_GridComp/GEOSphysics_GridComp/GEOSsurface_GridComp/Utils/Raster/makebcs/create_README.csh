@@ -215,7 +215,6 @@ if($ease == EASE) then
    endif
    set pfaf_dest="`printf 'Pfafstetter (routing) code of the hydrologic catchment'`"
    set int_str1="`printf 'using the land-ice-lakes-ocean mask in ${MYMASK} mask file.'`"
-   set sec2_til2=
 endif
 
 # Set LAI specifics
@@ -561,6 +560,10 @@ APPENDIX I - mkCatchParam input options and log ................................
 	 peatland tiles are now obtained from Bechtold et al. (2019).
          
    2.2 Data files and images
+
+       NOTE: Boundary conditions generated after ~January 2025 include a netcdf-4 (nc4) file
+             that combines the data stored in the tile file (section 2.2.1) and the catchment.def 
+             file (section 2.2.2).
 
        2.2.1 Tile types, location, area and Pfafstetter catchment mapping
 	 file name: ../til/${gfile}.til
