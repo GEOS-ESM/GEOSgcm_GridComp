@@ -472,7 +472,7 @@ integer :: n_threads=1
           endif
           call system_clock(clock2)
           seconds = (clock2-clock1)/real(clock_rate)
-          write (log_file, *) '         Done. Spen  ', seconds, "  seconds"
+          write (log_file, *) '         Done. Spent  ', seconds, "  seconds"
        else
           write (log_file,'(a)')'         Using existing file.'
        endif
