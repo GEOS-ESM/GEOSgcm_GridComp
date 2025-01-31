@@ -120,7 +120,7 @@
 #           - backfilled with global land average snow albedo where unavailable
 #           - must use compatible bcs version that includes MODIS-based snow albedo (e.g., v06, v08, v09, ...)
 #           - NOTE: bcs v06, v08, and v09 used approximate averaging of MODIS-based snow albedo to tile space;
-#                   bcs v11 and v12 employ more accurate, raster-based averaging.
+#                   bcs v11, v12 and v13  employ more accurate, raster-based averaging.
 #
 # GEOSagcm=>SNOW_ALBEDO_INFO: 0
 # GEOSldas=>SNOW_ALBEDO_INFO: 0

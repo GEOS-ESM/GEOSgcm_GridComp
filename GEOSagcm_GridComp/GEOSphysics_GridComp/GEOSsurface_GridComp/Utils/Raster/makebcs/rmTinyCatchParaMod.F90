@@ -33,7 +33,13 @@ module rmTinyCatchParaMod
 
   logical :: preserve_soiltype = .false.
   
-  real*8,  parameter :: Target_mean_land_elev = 614.649D0  ! *8 not used, but keep to avoid non-0-diff changes, reichle, 20 Dec 2024
+  ! Bugfix for Target_mean_land_elev: 
+  ! Previously, the hardcoded value 614.649 m was used as the target mean land elevation.
+  ! This was incorrect because it did not account for the proper cosine-lat-weighted mean over land.
+  ! The correct value, 656.83 m, is derived from NCAR GMTED TOPO 30arcsec dataset.
+  ! This ensures that land elevation adjustment is based on the correct reference mean elevation.
+
+  real*8, parameter :: Target_mean_land_elev = 656.83D0  ! Updated to use cosine-lat-weighted mean from NCAR GMTED TOPO 30arcsec dataset
   
   private
   
@@ -220,6 +226,16 @@ contains
        jpl_height  = .true.
 
      case ("v12")   
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD_b'
+       MODALB  = 'MODIS2'
+       SNOWALB = 'MODC061v2'
+       OUTLETV = "v2"       
+       GNU     = 1.0
+       use_PEATMAP = .true.
+       jpl_height  = .true.
+
+     case ("v13")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
