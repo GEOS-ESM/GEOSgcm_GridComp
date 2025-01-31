@@ -227,8 +227,11 @@ contains
 
     case ("v12","v13")  
 
-       ! "v12" and "v13" differ only in the topography used for the atm, which is processed outside of make_bcs
-       
+       ! "v12" and "v13" are identical except for:
+       ! - topography used for the atm (processed outside of make_bcs)
+       ! - bug fix for land elevation in catchment.def file
+       ! - generation of nc4-formatted tile file
+ 
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
