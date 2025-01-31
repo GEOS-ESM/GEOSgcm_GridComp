@@ -95,7 +95,24 @@ module StieglitzSnow
   integer, parameter, public :: NUM_SUDP = 1, NUM_SUSV = 1, NUM_SUWT = 1, NUM_SUSD = 1
   integer, parameter, public :: NUM_SSDP = 5, NUM_SSSV = 5, NUM_SSWT = 5, NUM_SSSD = 5 
   
-  integer, public, parameter :: N_constit = 9         ! Number of constituents in snow
+  ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  !
+  ! Turn off GOSWIM by setting N_constit=0
+  !
+  integer, parameter, public  :: N_constit        = 0   ! number of constituents *used* below
+  integer, parameter, private :: N_constit_GOSWIM = 9   ! number of constituents in GOSWIM
+  !
+  ! Previously, N_constit=9 was hardwired even though GOSWIM was never used.  
+  ! The GCM's rc parameter AEROSOL_DEPOSITION was set to 0, which forced 
+  ! the constituent mass and the deposition rates to remain zero, but the many 
+  ! do loops through the 9 constituents were still executed, thus multiplying and adding lots
+  ! zeros many times.
+  !
+  ! If needed, recover original behavior by setting N_constit=N_constit_GOSWIM=9
+  !
+  ! - reichle, 31 Jan 2025
+  !
+  ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  
   
   ! (for riv, rin,aicev, aicen, and denice, instead use Teppei-defined 
   !  values below)
@@ -128,7 +145,7 @@ module StieglitzSnow
   ! constants for snow constituents (dust, carbon, etc.)
   
   ! MAC, visible (VIS)
-  real, private, parameter, dimension(N_constit) :: ABVIS = (/                              & 
+  real, private, parameter, dimension(N_constit_GOSWIM) :: ABVIS = (/                              & 
        0.148,      &   ! Dust1 
        0.106,      &   ! Dust2
        0.076,      &   ! Dust3
@@ -140,7 +157,7 @@ module StieglitzSnow
        0.114   /)      ! Organic carbon hydrophic
   
   ! MAC, near-infrared (NIR)
-  real, private, parameter, dimension(N_constit) :: ABNIR = (/                              &
+  real, private, parameter, dimension(N_constit_GOSWIM) :: ABNIR = (/                              &
        0.095,      &   ! Dust1   	
        0.080,      &   ! Dust2
        0.062,      &   ! Dust3
@@ -158,7 +175,7 @@ module StieglitzSnow
   !     Tuning parameters so as to satisfy NCAR/CLM based scavenging efficiencies;
   !     See more in Yasunari et al. (SOLA, 2014)
   
-  real, private, parameter, dimension(N_constit) :: SCAV = (/                               &
+  real, private, parameter, dimension(N_constit_GOSWIM) :: SCAV = (/                               &
        0.065442,  &   ! Dust 1
        0.077829,  &   ! Dust 2
        0.306841,  &   ! Dust 3
@@ -172,7 +189,7 @@ module StieglitzSnow
   !  Representative particle size in diameter 
   !  based on effective radius GOCART/GEOS-5 (dust 1-5 bins, BC, and OC) [um]
 
-  real, private, parameter, dimension(N_constit) :: PSIZE = (/                              &
+  real, private, parameter, dimension(N_constit_GOSWIM) :: PSIZE = (/                              &
        1.272,     &   ! Dust 1
        2.649,     &   ! Dust 2
        4.602,     &   ! Dust 3
