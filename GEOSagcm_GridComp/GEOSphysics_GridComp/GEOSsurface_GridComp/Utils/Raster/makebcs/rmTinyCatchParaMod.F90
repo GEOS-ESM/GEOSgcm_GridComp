@@ -37,9 +37,9 @@ module rmTinyCatchParaMod
   ! Previously, the hardcoded value 614.649 m was used as the target mean land elevation.
   ! This was incorrect because it did not account for the proper cosine-lat-weighted mean over land.
   ! The correct value, 656.83 m, is derived from NCAR GMTED TOPO 30arcsec dataset.
-  ! This ensures that land elevation adjustment is based on the correct reference mean elevation.
+  ! This ensures that land elevation adjustment is based on the correct reference mean land elevation.
 
-  real*8, parameter :: Target_mean_land_elev = 656.83D0  ! Updated to use cosine-lat-weighted mean from NCAR GMTED TOPO 30arcsec dataset
+  real*8, parameter :: Target_mean_land_elev = 656.83D0  ! cosine-lat-weighted mean land elev from NCAR GMTED TOPO 30arcsec 
   
   private
   
@@ -114,7 +114,7 @@ contains
     character(*), intent (in) :: LBCSV     ! land BCs version 
 
     select case (trim(LBCSV))
-
+       
     case ("F25")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
@@ -124,7 +124,7 @@ contains
        GNU     = 2.17
        use_PEATMAP = .false.
        jpl_height  = .false.
-
+       
     case ("GM4", "ICA")
        LAIBCS  = 'GSWP2'
        SOILBCS = 'NGDC'
@@ -145,7 +145,7 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
 
-     case ("NL4")
+    case ("NL4")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'      
@@ -155,7 +155,7 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .true.
 
-     case ("NL5")
+    case ("NL5")
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -165,7 +165,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-     case ("v06")   
+    case ("v06")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -175,7 +175,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-     case ("v07")   
+    case ("v07")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -184,8 +184,8 @@ contains
        GNU     = 1.0
        use_PEATMAP = .true.
        jpl_height  = .false.
-
-     case ("v08")   
+       
+    case ("v08")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -195,7 +195,7 @@ contains
        use_PEATMAP = .false.
        jpl_height  = .false.
        
-     case ("v09")   
+    case ("v09")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -205,7 +205,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .false.
 
-     case ("v10")   
+    case ("v10")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -215,7 +215,7 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .false.
 
-     case ("v11")   
+    case ("v11")   
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD'
        MODALB  = 'MODIS2'
@@ -225,17 +225,10 @@ contains
        use_PEATMAP = .true.
        jpl_height  = .true.
 
-     case ("v12")   
-       LAIBCS  = 'MODGEO'
-       SOILBCS = 'HWSD_b'
-       MODALB  = 'MODIS2'
-       SNOWALB = 'MODC061v2'
-       OUTLETV = "v2"       
-       GNU     = 1.0
-       use_PEATMAP = .true.
-       jpl_height  = .true.
+    case ("v12","v13")  
 
-     case ("v13")   
+       ! "v12" and "v13" differ only in the topography used for the atm, which is processed outside of make_bcs
+       
        LAIBCS  = 'MODGEO'
        SOILBCS = 'HWSD_b'
        MODALB  = 'MODIS2'
@@ -246,16 +239,16 @@ contains
        jpl_height  = .true.
 
     case default
-
+       
        print *,'init_bcs_config(): unknown land boundary conditions version (LBCSV)'
        stop
-
+       
     end select
-             
+    
   END SUBROUTINE init_bcs_config
-
+  
   ! --------------------------------------------------------------------------------------------
-
+  
   SUBROUTINE Get_MidTime (                           &
                           yr1,mn1,dy1,yr2,mn2,dy2,   &
                           MIDT)
