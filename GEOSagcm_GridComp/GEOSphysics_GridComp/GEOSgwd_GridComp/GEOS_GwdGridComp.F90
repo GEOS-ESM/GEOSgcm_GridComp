@@ -613,69 +613,7 @@ contains
            DIMS       = MAPL_DimsHorzOnly,                                                                 &
            VLOCATION  = MAPL_VLocationNone,                                                     _RC  )
 
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'SGH30', &
-           LONG_NAME  = 'standard deviation of 30s elevation from 3km cube', &
-           UNITS      = 'm', &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'KWVRDG', &
-           LONG_NAME  = 'horizonal wwavenumber of mountain ridges', &
-           UNITS      = 'km', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'EFFRDG', &
-           LONG_NAME  = 'efficiency of mountain ridge scheme', &
-           UNITS      = 'km', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'GBXAR', &
-           LONG_NAME  = 'grid box area', &
-           UNITS      = 'NA', &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'HWDTH', &
-           LONG_NAME  = 'width of mountain ridges', &
-           UNITS      = 'km', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'CLNGT', &
-           LONG_NAME  = 'width of mountain ridges', &
-           UNITS      = 'km', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'MXDIS', &
-           LONG_NAME  = 'NA', &
-           UNITS      = 'NA', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'ANGLL', &
-           LONG_NAME  = 'NA', &
-           UNITS      = 'NA', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-      call MAPL_AddInternalSpec(GC, &
-           SHORT_NAME = 'ANIXY', &
-           LONG_NAME  = 'NA', &
-           UNITS      = 'NA', &
-           UNGRIDDED_DIMS     = (/16/),                      &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,              _RC  )
-
-      !EOS
+#include "GWD_Internal___.h"
 
       ! Set the Profiling timers
       ! ------------------------
