@@ -746,36 +746,36 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME          = 'sprinkler_irrigation_rate'   ,&
+         LONG_NAME          = 'irrigation_flux_sprinkler'   ,&
          UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'SPRINKLERRATE'               ,&
+         SHORT_NAME         = 'IRRG_RATE_SPR'               ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME          = 'drip_irrigation_rate'	    ,&
+         LONG_NAME          = 'irrigation_flux_drip'	    ,&
          UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'DRIPRATE'                    ,&
+         SHORT_NAME         = 'IRRG_RATE_DRP'               ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME          = 'furrow_irrigation_rate'      ,&
+         LONG_NAME          = 'irrigation_flux_furrow'      ,&
          UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'FURROWRATE'                  ,&
+         SHORT_NAME         = 'IRRG_RATE_FRW'               ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         LONG_NAME          = 'flood_irrigation_rate'       ,&
+         LONG_NAME          = 'irrigation_flux_paddy'       ,&
          UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'FLOODRATE'                   ,&
+         SHORT_NAME         = 'IRRG_RATE_PDY'               ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
          RC=STATUS  )
@@ -2376,8 +2376,8 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    SHORT_NAME         = 'IRRLAND',                   &
-    LONG_NAME          = 'Total_irrigation_land',     &
+    SHORT_NAME         = 'IRRG_RATE_TOT',                   &
+    LONG_NAME          = 'irrigation_flux_total',     &
     UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
@@ -3881,10 +3881,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ASCATZ0
         real, dimension(:),   pointer :: NDVI
 
-        real, dimension(:),   pointer :: SPRINKLERRATE
-        real, dimension(:),   pointer :: DRIPRATE
-        real, dimension(:),   pointer :: FURROWRATE
-        real, dimension(:),   pointer :: FLOODRATE
+        real, dimension(:),   pointer :: IRRG_RATE_SPR
+        real, dimension(:),   pointer :: IRRG_RATE_DRP
+        real, dimension(:),   pointer :: IRRG_RATE_FRW
+        real, dimension(:),   pointer :: IRRG_RATE_PDY
 
         real, dimension(:,:), pointer :: DUDP
         real, dimension(:,:), pointer :: DUSV
@@ -4048,7 +4048,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real, dimension(:),   pointer :: EVLAND
         real, dimension(:),   pointer :: PRLAND
-        real, dimension(:),   pointer :: IRRLAND
+        real, dimension(:),   pointer :: IRRG_RATE_TOT
         real, dimension(:),   pointer :: SNOLAND
         real, dimension(:),   pointer :: DRPARLAND
         real, dimension(:),   pointer :: DFPARLAND
@@ -4466,10 +4466,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
 
-        call MAPL_GetPointer(IMPORT,SPRINKLERRATE,'SPRINKLERRATE',RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DRIPRATE,     'DRIPRATE'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,FURROWRATE,   'FURROWRATE'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,FLOODRATE,    'FLOODRATE'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_SPR,'IRRG_RATE_SPR',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_DRP,'IRRG_RATE_DRP',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_FRW,'IRRG_RATE_FRW',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,IRRG_RATE_PDY,'IRRG_RATE_PDY',RC=STATUS); VERIFY_(STATUS)
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4613,7 +4613,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SNOWDP, 'SNOWDP' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVLAND, 'EVLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PRLAND, 'PRLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,IRRLAND,'IRRLAND',             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,IRRG_RATE_TOT,'IRRG_RATE_TOT',             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SNOLAND, 'SNOLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DRPARLAND, 'DRPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DFPARLAND, 'DFPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
@@ -5252,17 +5252,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         if(CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) then
-           where (SPRINKLERRATE > 0)
-              PLS_IN = PLS_IN + SPRINKLERRATE
+           where (IRRG_RATE_SPR > 0)
+              PLS_IN = PLS_IN + IRRG_RATE_SPR
            end where
-           where (DRIPRATE > 0)
-              RZEXC  = RZEXC + DRIPRATE  *DT
+           where (IRRG_RATE_DRP > 0)
+              RZEXC  = RZEXC  + IRRG_RATE_DRP * DT
            end where
-           where (FURROWRATE > 0)
-              RZEXC  = RZEXC + FURROWRATE*DT
+           where (IRRG_RATE_FRW > 0)
+              RZEXC  = RZEXC  + IRRG_RATE_FRW * DT
            end where
-           where (FLOODRATE > 0)
-              SRFEXC = SRFEXC + FLOODRATE*DT
+           where (IRRG_RATE_PDY > 0)
+              SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
            end where
         endif
 
@@ -5904,8 +5904,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
-        if(associated(IRRLAND)) then
-           if (CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) IRRLAND = SPRINKLERRATE + FURROWRATE +FLOODRATE + DRIPRATE
+        if(associated(IRRG_RATE_TOT)) then
+           if (CATCH_INTERNAL_STATE%RUN_IRRIG /= 0) IRRG_RATE_TOT = IRRG_RATE_SPR + IRRG_RATE_FRW +IRRG_RATE_PDY + IRRG_RATE_DRP
         endif
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR

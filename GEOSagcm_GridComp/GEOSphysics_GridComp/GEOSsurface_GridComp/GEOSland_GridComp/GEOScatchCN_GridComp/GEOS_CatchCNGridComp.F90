@@ -672,8 +672,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         SHORT_NAME = 'SPRINKLERRATE'                         ,&
-         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
+         SHORT_NAME = 'IRRG_RATE_SPR'                         ,&
+         LONG_NAME  = 'irrigation_flux_sprinkler'             ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -681,8 +681,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)  
     
     call MAPL_AddImportSpec(GC                              ,&
-         SHORT_NAME = 'DRIPRATE'                              ,&
-         LONG_NAME  = 'drip_irrigation_rate'	              ,&
+         SHORT_NAME = 'IRRG_RATE_DRP'                         ,&
+         LONG_NAME  = 'irrigation_flux_drip'	              ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -690,8 +690,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)  	 
    
     call MAPL_AddImportSpec(GC                              ,&
-         SHORT_NAME = 'FURROWRATE'                             ,&
-         LONG_NAME  = 'furrow_irrigation_rate'                 ,&
+         SHORT_NAME = 'IRRG_RATE_FRW'                         ,&
+         LONG_NAME  = 'irrigation_flux_furrow'                 ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -699,8 +699,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                              ,&
-         SHORT_NAME = 'FLOODRATE'                             ,&
-         LONG_NAME  = 'flood_irrigation_rate'                 ,&
+         SHORT_NAME = 'IRRG_RATE_PDY'                         ,&
+         LONG_NAME  = 'irrigation_flux_paddy'                 ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -826,7 +826,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
+    call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN, RC=STATUS  )
     VERIFY_(STATUS)

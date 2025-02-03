@@ -29,7 +29,7 @@ module GEOS_IrrigationGridCompMod
 !
 ! IMPORTS:   POROS, WPWET, VGWMAX, WCRZ, LAI\\
 !
-! EXPORTS:   SPRINKLERRATE, DRIPRATE, FURROWRATE, FLOODRATE\\ 
+! EXPORTS:   IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY\\ 
 !  
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
 !            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
@@ -285,7 +285,7 @@ contains
        ! only two crop types: irrigated crops and paddy in that order.
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
-            LONG_NAME  ='crop_specific_sprinkler_irrigation_rate',&
+            LONG_NAME  ='crop_specific_irrigation_flux_sprinkler',&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -297,7 +297,7 @@ contains
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'DRATE'                                 ,&
-            LONG_NAME  = 'crop_specific_drip_irrigation_rate'    ,&
+            LONG_NAME  = 'crop_specific_irrigation_flux_drip'    ,&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -309,7 +309,7 @@ contains
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'FRATE'                                 ,&
-            LONG_NAME  = 'crop_specific_flood_irrigation_rate'   ,&
+            LONG_NAME  = 'crop_specific_irrigation_flux_paddy'   ,&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -323,7 +323,7 @@ contains
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
-            LONG_NAME  ='crop_specific_sprinkler_irrigation_rate',&
+            LONG_NAME  ='crop_specific_irrigation_flux_sprinkler',&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -335,7 +335,7 @@ contains
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'DRATE'                                 ,&
-            LONG_NAME  = 'crop_specific_drip_irrigation_rate'    ,&
+            LONG_NAME  = 'crop_specific_irrigation_flux_drip'    ,&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -347,7 +347,7 @@ contains
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'FRATE'                                 ,&
-            LONG_NAME  = 'crop_specific_flood_irrigation_rate'   ,&
+            LONG_NAME  = 'crop_specific_irrigation_flux_paddy'   ,&
             UNITS      = 'kg m-2 s-1'                            ,&
             DIMS       = MAPL_DimsTileOnly                       ,&
             VLOCATION  = MAPL_VLocationNone                      ,&
@@ -364,8 +364,8 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_AddExportSpec(GC                                ,&
-         SHORT_NAME = 'SPRINKLERRATE'                         ,&
-         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
+         SHORT_NAME = 'IRRG_RATE_SPR'                         ,&
+         LONG_NAME  = 'irrigation_flux_sprinkler'             ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -373,8 +373,8 @@ contains
     VERIFY_(STATUS)  
     
     call MAPL_AddExportSpec(GC                                ,&
-         SHORT_NAME = 'DRIPRATE'                              ,&
-         LONG_NAME  = 'drip_irrigation_rate'	              ,&
+         SHORT_NAME = 'IRRG_RATE_DRP'                         ,&
+         LONG_NAME  = 'irrigation_flux_drip'	              ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -382,8 +382,8 @@ contains
     VERIFY_(STATUS)  	 
     
      call MAPL_AddExportSpec(GC                               ,&
-         SHORT_NAME = 'FURROWRATE'                            ,&
-         LONG_NAME  = 'furrow_irrigation_rate'                ,&
+         SHORT_NAME = 'IRRG_RATE_FRW'                         ,&
+         LONG_NAME  = 'irrigation_flux_furrow'                ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -391,8 +391,8 @@ contains
     VERIFY_(STATUS)
   
     call MAPL_AddExportSpec(GC                                ,&
-         SHORT_NAME = 'FLOODRATE'                             ,&
-         LONG_NAME  = 'flood_irrigation_rate'                 ,&
+         SHORT_NAME = 'IRRG_RATE_PDY'                         ,&
+         LONG_NAME  = 'irrigation_flux_paddy'                 ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -518,10 +518,10 @@ contains
 
 ! EXPORT ponters
     
-    real, dimension(:),     pointer :: SPRINKLERRATE
-    real, dimension(:),     pointer :: DRIPRATE
-    real, dimension(:),     pointer :: FURROWRATE
-    real, dimension(:),     pointer :: FLOODRATE
+    real, dimension(:),     pointer :: IRRG_RATE_SPR
+    real, dimension(:),     pointer :: IRRG_RATE_DRP
+    real, dimension(:),     pointer :: IRRG_RATE_FRW
+    real, dimension(:),     pointer :: IRRG_RATE_PDY
 
     type(irrigation_model), pointer :: IM
     type (IRRIG_wrap)               :: wrap
@@ -566,10 +566,10 @@ contains
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, SPRINKLERRATE,    'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DRIPRATE,         'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FURROWRATE,       'FURROWRATE',   ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FLOODRATE,        'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR,    'IRRG_RATE_SPR',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,    'IRRG_RATE_DRP',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,    'IRRG_RATE_FRW',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,    'IRRG_RATE_PDY',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
     ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in 
     ! which IRRIGFRAC and PADDYFRAC in BCs are fractions.
@@ -597,7 +597,7 @@ contains
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
        
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, & 
+       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, & 
             IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
@@ -605,18 +605,18 @@ contains
        ! crop calendar based irrigation
        ! ==============================
 
-       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE,FURROWRATE, &
+       call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
             CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
 
-    ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
+    ! Scale computed IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, and IRRG_RATE_PDY to the total
     ! irrigated tile fraction before exporting to Catchment[CN].
 
-    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
-    DRIPRATE      = DRIPRATE     *(IRRIGFRAC)
-    FURROWRATE    = FURROWRATE   *(IRRIGFRAC)
-    FLOODRATE     = FLOODRATE    *(PADDYFRAC)
+    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRIGFRAC 
+    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRIGFRAC 
+    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRIGFRAC 
+    IRRG_RATE_PDY = IRRG_RATE_PDY * PADDYFRAC 
 
     call MAPL_TimerOff(MAPL,"INITIALIZE")
     RETURN_(ESMF_SUCCESS)
@@ -668,10 +668,10 @@ contains
 
 ! EXPORT ponters
     
-    real, dimension(:),     pointer :: SPRINKLERRATE
-    real, dimension(:),     pointer :: DRIPRATE
-    real, dimension(:),     pointer :: FURROWRATE    
-    real, dimension(:),     pointer :: FLOODRATE    
+    real, dimension(:),     pointer :: IRRG_RATE_SPR
+    real, dimension(:),     pointer :: IRRG_RATE_DRP
+    real, dimension(:),     pointer :: IRRG_RATE_FRW    
+    real, dimension(:),     pointer :: IRRG_RATE_PDY    
     
 ! IMPORT pointers
     
@@ -743,10 +743,10 @@ contains
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, SPRINKLERRATE,   'SPRINKLERRATE', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, DRIPRATE,        'DRIPRATE',      ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FLOODRATE,       'FLOODRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FURROWRATE,      'FURROWRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR,   'IRRG_RATE_SPR', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,   'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,   'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,   'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
   
     
     
@@ -835,7 +835,7 @@ contains
        call IM%run_model(IRRIG_METHOD, local_hour,                      &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
             SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, RZDEF,         &
-            SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE,             &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW, &
             SRATE, DRATE, FRATE) 
        
     else
@@ -847,18 +847,18 @@ contains
             SPRINKLERFR, DRIPFR, FLOODFR,                     &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
             SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
-            SPRINKLERRATE, DRIPRATE, FLOODRATE, FURROWRATE,   &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,   &
             SRATE, DRATE, FRATE) 
 
     endif
 
-    ! Scale computed SPRINKLERRATE, DRIPRATE, FURROWRATE, and FLOODRATE to the total
+    ! Scale computed IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, and IRRG_RATE_PDY to the total
     ! irrigated tile fraction before exporting to Catchment[CN].
  
-    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC)
-    DRIPRATE      = DRIPRATE     *(IRRIGFRAC)
-    FURROWRATE    = FURROWRATE   *(IRRIGFRAC)
-    FLOODRATE     = FLOODRATE    *(PADDYFRAC)
+    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRIGFRAC 
+    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRIGFRAC 
+    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRIGFRAC 
+    IRRG_RATE_PDY = IRRG_RATE_PDY * PADDYFRAC 
 
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
 

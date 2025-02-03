@@ -556,7 +556,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
-            SHORT_NAME = 'IRRLAND', &
+            SHORT_NAME = 'IRRG_RATE_TOT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -1122,7 +1122,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRLAND',  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_TOT',  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1384,10 +1384,10 @@ contains
     END SELECT   ! LSM_CHOICE (Catch, CatchCN)
     
     if (RUN_IRRIG == 1) then
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPRINKLERRATE', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FLOODRATE',     CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FURROWRATE',    CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRIPRATE',      CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_SPR', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_PDY', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_FRW', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_DRP', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
     end if
 
 
@@ -1506,8 +1506,8 @@ contains
 
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME = (/'SPRINKLERRATE', 'DRIPRATE     '               ,&
-                                 'FURROWRATE   ', 'FLOODRATE    '/)             ,&
+                  SHORT_NAME = (/'IRRG_RATE_SPR', 'IRRG_RATE_DRP'               ,&
+                                 'IRRG_RATE_FRW', 'IRRG_RATE_PDY'/)             ,&
                   SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,&
                   RC = STATUS )
@@ -1559,8 +1559,8 @@ contains
 
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME = (/'SPRINKLERRATE', 'DRIPRATE     '               ,&
-                                 'FURROWRATE   ', 'FLOODRATE    '/)             ,&
+                  SHORT_NAME = (/'IRRG_RATE_SPR', 'IRRG_RATE_DRP'               ,&
+                                 'IRRG_RATE_FRW', 'IRRG_RATE_PDY'/)             ,&
                   SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,&
                   RC=STATUS )
