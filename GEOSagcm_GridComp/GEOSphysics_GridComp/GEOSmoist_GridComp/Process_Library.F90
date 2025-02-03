@@ -1537,21 +1537,21 @@ module GEOSmoist_Process_Library
 
 
 ! Compute square roots of some variables so we don't have to do it again
-          if (w_sec > 0.0) then
+          if (w_sec > w_thresh*w_thresh) then
             sqrtw2   = sqrt(w_sec)
             Skew_w   = w3var / (sqrtw2*sqrtw2*sqrtw2)
           else
             sqrtw2   = w_thresh
             Skew_w   = 0.
           endif
-          if (thlsec > 0.0) then
+          if (thlsec > 1e-6) then
             sqrtthl  = sqrt(thlsec)
             skew_thl = hl3 / sqrtthl**3
           else
             sqrtthl  = 1e-3
             skew_thl = 0.
           endif
-          if (qwsec > 0.0) then
+          if (qwsec > 1e-8*total_water*total_water) then
             sqrtqt   = sqrt(qwsec)
             skew_qw =  qt3/sqrtqt**3
           else
@@ -1700,7 +1700,7 @@ module GEOSmoist_Process_Library
 
           IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN ! if no active updrafts
 
-            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. Skew_qw.lt.1e-8) then ! if no residual skewness
+            if (aterm .lt. 1e-3 .or. aterm.gt.0.499 .or. abs(Skew_qw).lt.1e-8) then ! if no residual skewness
               qw1_1     = total_water
               qw1_2     = total_water
               qw2_1     = qwsec
@@ -1851,7 +1851,6 @@ module GEOSmoist_Process_Library
           ! this is qs evaluated at Tl
           qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
                 + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
-!          qs1 = GEOS_QSAT( Tl1_1, pval*0.01 )
 
           beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
 
@@ -1862,18 +1861,10 @@ module GEOSmoist_Process_Library
             beta2 = beta1
           ELSE
 
-!            IF (Tl1_2 < tbgmin) THEN
-!              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-!              lstarn2  = lsub
-!            ELSE IF (Tl1_2 >= tbgmax) THEN
-!              esval1_2 = MAPL_EQsat(Tl1_2)
-!              lstarn2  = lcond
-!            ELSE
               esval1_2 = MAPL_EQsat(Tl1_2)
               esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
               om2      = max(0.,min(1.,1.-fQi)) !max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
               lstarn2  = lcond + (1.-om2)*lfus
-!            ENDIF
 
             qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
                   + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
@@ -1945,7 +1936,7 @@ module GEOSmoist_Process_Library
 
 
 ! finally, compute the SGS cloud fraction
-          diag_frac = aterm*C1 + onema*C2
+          cld_sgs = aterm*C1 + onema*C2
 
 !          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))
 !          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
@@ -1970,21 +1961,13 @@ module GEOSmoist_Process_Library
                     !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
 ! Update moisture fields
 
-
-
-!         qc      = diag_ql + diag_qi
-!         qi      = diag_qi
-!         qwv     = total_water - diag_qn
-         cld_sgs = diag_frac
-
-         if (sqrtqt>0.0 .AND. sqrtw2>0.0) then
-            rwqt = (1.-0.5)*wqwsec/(sqrtqt*sqrtw2)
-!            rwqt = (wqwsec)/(sqrtqt*sqrtw2)
+         if (sqrtqt>1e-4*total_water .AND. sqrtw2>w_thresh) then
+            rwqt = 0.5*wqwsec/(sqrtqt*sqrtw2)
 !            rwqt = max(-1.,min(1.,pdf_rwqt))
          else
             rwqt = 0.0
          end if
-         if (sqrtthl>0.0 .AND. sqrtw2>0.0) then
+         if (sqrtthl>1e-3 .AND. sqrtw2>w_thresh) then
             rwthl = wthlsec/(sqrtthl*sqrtw2)
 !            rwthl = max(-1.,min(1.,pdf_rwth))
          else
@@ -2007,8 +1990,7 @@ module GEOSmoist_Process_Library
           wthv_sec = wthlsec + wrk*wqwsec                                     &
                    + (fac_cond-bastoeps)*wqls                                 &
                    + (fac_sub-bastoeps) *wqis
-
-!                          + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
+!                   + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
 
   end subroutine partition_dblgss
 

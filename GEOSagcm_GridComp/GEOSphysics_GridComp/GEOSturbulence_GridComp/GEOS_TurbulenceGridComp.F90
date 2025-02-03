@@ -1488,6 +1488,34 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_base_pressure',                         &
+       UNITS      = 'Pa',                                                    &
+       SHORT_NAME = 'TRINVBS',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_temperature_jump',                      &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'TRINVDELT',                                             &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'trade_inversion_frequency',                             &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'TRINVFRQ',                                               &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+
+    call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'Buoyancy_jump_across_inversion',                        &
        UNITS      = 'm s-2',                                                 &
        SHORT_NAME = 'DBUOY',                                                 &
@@ -1972,22 +2000,6 @@ end if
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
-       SHORT_NAME = 'BRUNTDRY',                                 &
-       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
-       UNITS      = 's-1',                                       &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
-       SHORT_NAME = 'BRUNTEDGE',                                 &
-       LONG_NAME  = 'Brunt_Vaisala_frequency_from_SHOC',         &
-       UNITS      = 's-1',                                       &
-       DIMS       = MAPL_DimsHorzVert,                           &
-       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                  &
        LONG_NAME  = 'edge_height_above_surface',                 &
        SHORT_NAME = 'ZLES',                                      &
        UNITS      = 'm',                                         &
@@ -2178,34 +2190,13 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_s',        &
-       SHORT_NAME = 'DKSS',                                                  &
-       UNITS      = 's-1',                                                   &
+       LONG_NAME  = 'SHOC_TKE_dissipation_rate',                             &
+       SHORT_NAME = 'TKEDISS',                                               &
+       UNITS      = 'J kg-1 s-1',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_q',        &
-       SHORT_NAME = 'DKQQ',                                                  &
-       UNITS      = 's-1',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_u',        &
-       SHORT_NAME = 'DKUU',                                                  &
-       UNITS      = 's-1',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
+       RESTART    = MAPL_RestartSkip,                            &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2616,7 +2607,6 @@ end if
     real, dimension(:,:,:), pointer    :: AKSS, BKSS, CKSS, YS
     real, dimension(:,:,:), pointer    :: AKQQ, BKQQ, CKQQ, YQV,YQL,YQI
     real, dimension(:,:,:), pointer    :: AKUU, BKUU, CKUU, YU,YV
-    real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
     integer                             :: DO_SHOC, SCM_SL
@@ -2792,12 +2782,6 @@ end if
 ! edmf variables
 !
     
-    call MAPL_GetPointer(INTERNAL, DKSS,   'DKSS',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DKQQ,   'DKQQ',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DKUU,   'DKUU',     RC=STATUS)
-    VERIFY_(STATUS)
 ! a,b,c and rhs for s
     call MAPL_GetPointer(INTERNAL, AKSS,   'AKSS',     RC=STATUS)
     VERIFY_(STATUS)
@@ -2965,11 +2949,12 @@ end if
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
      real, dimension(IM,JM,0:LM)         :: ZL0
+     real, dimension(IM,JM)              :: drycblh
      integer, dimension(IM,JM)           :: SMTH_LEV
 
 !     real, dimension(:,:,:), pointer     :: MFQTSRC, MFTHSRC, MFW, MFAREA
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
-     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND
+     real, dimension(:,:  ), pointer     :: BSTAR, USTAR, PPBL, WERAD, WESFC,VSCRAD,KERAD,DBUOY,ZSML,ZCLD,ZRADML,FRLAND,TRINVBS,TRINVFRQ,TRINVDELT
      real, dimension(:,:  ), pointer     :: TCZPBL => null()
      real, dimension(:,:  ), pointer     :: ZPBL2 => null()
      real, dimension(:,:  ), pointer     :: ZPBL10P => null()
@@ -2991,10 +2976,10 @@ end if
      real, dimension(:,:,:), pointer     :: AKQODT, CKQODT
      real, dimension(:,:,:), pointer     :: AKVODT, CKVODT
 
-     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,BRUNTDRY, BRUNTEDGE,ISOTROPY, &
+     real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,&
-                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
+                                            TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx,TKETRANS, &
                                             SL2, SL3, W2, W3, WQT, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
      real, dimension(:,:), pointer       :: LMIX, edmf_depth
 
@@ -3101,7 +3086,7 @@ end if
      real, dimension( IM, JM, LM )       :: QPL,QPI
      integer                             :: DO_SHOC, DOPROGQT2, DOCANUTO
      real                                :: SL2TUNE, QT2TUNE, SLQT2TUNE,          &
-                                            QT3_TSCALE, AFRC_TSCALE
+                                            SKEW_TGEN, SKEW_TDIS
      real    :: PDFSHAPE
 
      real    :: lambdadiss
@@ -3249,25 +3234,25 @@ end if
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-1.0, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.08, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=10.0,  RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=8.0,  RC=STATUS); VERIFY_(STATUS)       
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.0,  RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=3.0,  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=1.0,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOPROGQT2,  'DOPROGQT2:',  DEFAULT = 1     , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SL2TUNE,    'SL2TUNE:',    DEFAULT = 4.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 5.0   , RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, QT2TUNE,    'QT2TUNE:',    DEFAULT = 9.0   , RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, SLQT2TUNE,  'SLQT2TUNE:',  DEFAULT = 7.0   , RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, QT3_TSCALE, 'QT3_TSCALE:', DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetResource (MAPL, AFRC_TSCALE,'AFRC_TSCALE:',DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SKEW_TDIS,  'SKEW_TDIS:',  DEFAULT = 1600.0, RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, SKEW_TGEN,  'SKEW_TGEN:',  DEFAULT = 900.0,  RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, DOCANUTO,   'DOCANUTO:',   DEFAULT = 0,      RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from export state...
@@ -3334,6 +3319,12 @@ end if
      call MAPL_GetPointer(EXPORT,   WESFC,   'WESFC',               RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,   DBUOY,   'DBUOY',               RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVBS, 'TRINVBS',               RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVDELT, 'TRINVDELT',           RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TRINVFRQ, 'TRINVFRQ',             RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  VSCRAD,  'VSCRAD',               RC=STATUS)
      VERIFY_(STATUS)
@@ -3487,7 +3478,7 @@ end if
      VERIFY_(STATUS)
 
 !========== SHOC ===========
-     call MAPL_GetPointer(EXPORT, TKEDISS, 'TKEDISS',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT, TKEDISSx, 'TKEDISS',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TKEBUOY, 'TKEBUOY',  RC=STATUS)
      VERIFY_(STATUS)
@@ -3509,13 +3500,10 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, BRUNTSHOC, 'BRUNTSHOC', ALLOC=PDFALLOC, RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, BRUNTDRY, 'BRUNTDRY', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, BRUNTEDGE, 'BRUNTEDGE', RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, SHOCPRNUM,'SHOCPRNUM', RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , RC=STATUS); VERIFY_(STATUS)
 ! Initialize some arrays
 
       LWCRT = RADLW - RADLWC
@@ -3644,21 +3632,21 @@ end if
       ! number of updrafts
       call MAPL_GetResource (MAPL, MFPARAMS%NUP,       "EDMF_NUMUP:",         default=10,    RC=STATUS)
       ! boundaries for the updraft area (min/max sigma of w pdf)
-      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.,    RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%PWMIN,     "EDMF_PWMIN:",         default=1.2,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%PWMAX,     "EDMF_PWMAX:",         default=3.,    RC=STATUS)
       !
-      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=1.6,   RC=STATUS)  
+      call MAPL_GetResource (MAPL, MFPARAMS%ENTUFAC,   "EDMF_ENTUFAC:",       default=2.0,   RC=STATUS)  
       call MAPL_GetResource (MAPL, MFPARAMS%WA,        "EDMF_WA:",            default=1.0,   RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%WB,        "EDMF_WB:",            default=1.5,   RC=STATUS)
       ! coefficients for surface forcing, appropriate for L137
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaW,    "EDMF_ALPHAW:",        default=0.05,  RC=STATUS)
       call MAPL_GetResource (MAPL, MFPARAMS%AlphaQT,   "EDMF_ALPHAQT:",       default=1.0,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,  RC=STATUS) 
+      call MAPL_GetResource (MAPL, MFPARAMS%AlphaTH,   "EDMF_ALPHATH:",       default=1.0,   RC=STATUS) 
       ! Entrainment rate options
       call MAPL_GetResource (MAPL, MFPARAMS%ET,        "EDMF_ET:",            default=2,     RC=STATUS)
       ! constant entrainment rate   
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.25,   RC=STATUS)
-      call MAPL_GetResource (MAPL, MFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=1.2,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0,      "EDMF_ENT0:",          default=0.4,   RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%ENT0LTS,   "EDMF_ENT0LTS:",       default=0.8,   RC=STATUS)
       ! L0 if ET==1
       call MAPL_GetResource (MAPL, MFPARAMS%L0,        "EDMF_L0:",            default=100.,  RC=STATUS)
       ! L0fac if ET==2
@@ -3685,6 +3673,9 @@ end if
 !      call MAPL_GetResource (MAPL, EDMF_RHO_QB, "EDMF_RHO_QB:", default=0.5,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, C_KH_MF, "C_KH_MF:", default=0.,  RC=STATUS)
 !      call MAPL_GetResource (MAPL, NumUpQ, "EDMF_NumUpQ:", default=1,     RC=STATUS)
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=100.,  RC=STATUS)
+    else
+      call MAPL_GetResource (MAPL, MFPARAMS%TREFF,     "EDMF_TREFF:",         default=0.,    RC=STATUS)
     end if
 
     call MAPL_GetResource(MAPL, SCM_SL,        'SCM_SL:',        DEFAULT=0 )
@@ -3740,13 +3731,20 @@ if (SCM_SL /= 0) then
        cu => cu_scm
        ct => ct_scm
        cq => ct_scm
-       ustar_scm = 0.3 ! sqrt(CU*UU/RHOS)      
+!       ustar_scm = sqrt(CU*sqrt(U(:,:,LM)**2+V(:,:,LM)**2)/RHOE(:,:,LM))
+       ustar_scm = 0.25 !sqrt(CU*U(:,:,LM)/RHOE(:,:,LM))
+!       print *,'ustar=',ustar_scm,' cu=',cu
+       bstar_scm = 0.002
 !       bstar_scm = (MAPL_GRAV/(RHOS*sqrt(CM*max(UU,1.e-30)/RHOS))) *  &
 !                   (CT*(TH-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ*(QH-QA))
+!       bstar_scm = (MAPL_GRAV/(RHOE(:,:,LM)*ustar_scm)) *  &
+!                   (SH/THV(:,:,LM) + MAPL_VIREPS*EVAP)
        
        ustar => ustar_scm
        sh    => sh_scm
        evap  => evap_scm
+
+       print *,'bstar=',bstar_scm,'  ustar=',ustar_scm
 
        call MAPL_TimerOff(MAPL,"---SURFACE")
 end if
@@ -3774,6 +3772,7 @@ end if
     qvsrc  = 0.0
     qlsrc  = 0.0
 
+
     IF(DOMF /= 0) then
 
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,  &
@@ -3789,14 +3788,13 @@ end if
                     T,                        & 
                     THL,                      & 
                     THV,                      & 
-                    QT,                       & 
                     Q,                        & 
-                    QL,                       & 
-                    QI,                       & 
+                    QLTOT,                    & 
+                    QITOT,                    & 
                     SH,                       & 
                     EVAP,                     & 
-                    FRLAND,                   & 
-                    ZPBL,                     & 
+                    FRLAND,                   &
+                    ZPBL,                     &
 !                   MFTHSRC, MFQTSRC, MFW, MFAREA, & ! CLASP inputs
                     !== Outputs for trisolver ==
                     ae3,                      &
@@ -3816,8 +3814,6 @@ end if
                     mfqt3,                    &
                     mfsl3,                    &
                     mfwqt,                    &
-!                    mfqt2,                    &
-!                    mfsl2,                    &
                     mfslqt,                   &
                     mfwsl,                    &
                     !== Outputs for SHOC ==
@@ -3849,14 +3845,12 @@ end if
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
       if (associated(edmf_buoyf))     edmf_buoyf   = buoyf 
       if (associated(edmf_mfx))       edmf_mfx     = edmf_mf
-      if (associated(mfaw))           mfaw         = edmf_mf/rhoe
+      if (associated(mfaw))           mfaw         = aw3  !edmf_mf/rhoe
       if (associated(slflxmf))        slflxmf      = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
       if (associated(qtflxmf))        qtflxmf      = awqv3+awql3+awqi3
       if (associated(ssrcmf))         ssrcmf       = ssrc
       if (associated(qvsrcmf))        qvsrcmf      = qvsrc
       if (associated(qlsrcmf))        qlsrcmf      = qlsrc
-!      if (associated(edmf_sl2))       edmf_sl2 = mfsl2 
-!      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
       if (associated(edmf_w2))        edmf_w2      = mfw2
       if (associated(edmf_w3))        edmf_w3      = mfw3
       if (associated(edmf_qt3))       edmf_qt3     = mfqt3
@@ -3867,6 +3861,15 @@ end if
       if (associated(edmf_tke))       edmf_tke     = mftke
       if (associated(EDMF_FRC))       EDMF_FRC     = 0.5*(edmfdrya(:,:,0:LM-1)+edmfdrya(:,:,1:LM) &
                                                      + edmfmoista(:,:,0:LM-1)+edmfmoista(:,:,1:LM)) 
+      do i = 1,IM
+        do j = 1,JM
+          k = LM
+          do while (edmfdrya(i,j,k).gt.0.01 .and. edmfmoista(i,j,k).lt.1e-4 .and. k.gt.1)
+            k = k-1
+          end do
+          drycblh(i,j) = ZL0(i,j,k)
+        end do
+      end do
 
     ELSE            ! if there is no mass-flux
       ae3   = 1.0
@@ -3901,8 +3904,6 @@ end if
       if (associated(qvsrcmf))        qvsrcmf       = 0.0
       if (associated(slflxmf))        slflxmf       = 0.0
       if (associated(qtflxmf))        qtflxmf       = 0.0
-!      if (associated(edmf_sl2))       edmf_sl2      = mfsl2 
-!      if (associated(edmf_qt2))       edmf_qt2      = mfqt2 
       if (associated(edmf_w2))        edmf_w2       = mfw2
       if (associated(edmf_w3))        edmf_w3       = mfw3
       if (associated(edmf_qt3))       edmf_qt3      = mfqt3
@@ -3912,7 +3913,8 @@ end if
       if (associated(edmf_wsl))       edmf_wsl      = mfwsl
       if (associated(edmf_tke))       edmf_tke      = mftke
       if (associated(EDMF_FRC))       EDMF_FRC = 0.
-     
+
+      drycblh = 0.     
    ENDIF
 
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
@@ -3953,15 +3955,15 @@ end if
                        WTHV2(:,:,1:LM),       &
                        BUOYF(:,:,1:LM),       &
                        MFTKE(:,:,0:LM),       &
-                       ZPBL(:,:),             &
+                       DRYCBLH(:,:),          &    
                        !== Input-Outputs ==
                        TKESHOC(:,:,1:LM),     &
                        TKH(:,:,1:LM),         &
                        !== Outputs ==
                        KM(:,:,1:LM),          &
                        ISOTROPY(:,:,1:LM),    &
-                       !== Diagnostics ==  ! not used elsewhere
                        TKEDISS,               &
+                       !== Diagnostics ==  ! not used elsewhere
                        TKEBUOY,               &
                        TKESHEAR,              &
                        LSHOC,                 &
@@ -3975,6 +3977,7 @@ end if
                        !== Tuning params ==
                        SHOCPARAMS )
 
+        if (associated(TKEDISSx)) TKEDISSx = TKEDISS
         KH(:,:,1:LM) = TKH(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4450,7 +4453,7 @@ end if
       end if ! TKE
 
       ! Update the higher order moments required for the ADG PDF
-      if ( (PDFSHAPE.eq.5) .AND. (DO_SHOC /= 0) ) then
+      if ( (PDFSHAPE.ge.5) ) then
       SL = T + (MAPL_GRAV*Z - MAPL_ALHL*QLTOT - MAPL_ALHS*QITOT)/MAPL_CP
       call update_moments(IM, JM, LM, DT, &
                           SH,             &  ! in
@@ -4493,8 +4496,8 @@ end if
                           sl2tune,        &
                           qt2tune,        &
                           slqt2tune,      &
-                          qt3_tscale,     &
-                          afrc_tscale,    &
+                          skew_tgen,      &
+                          skew_tdis,      &
                           docanuto )
 
        end if
@@ -4744,6 +4747,47 @@ end if
 
      end if ! SBITOP, SBIFRQ
 
+     ! Trade inversion base height
+     if (associated(TRINVBS)) then
+        TRINVBS = MAPL_UNDEF
+        TRINVDELT = MAPL_UNDEF
+        TRINVFRQ = 0.
+        do I = 1,IM
+           do J = 1,JM
+              K = LM
+
+              do while (PLO(I,J,K).gt.95000.)
+                 K = K-1
+              end do
+              do L = K,1,-1    ! K is first level above 950mb
+                 if (PLO(I,J,L).lt.60000.) exit
+                 
+                 if (T(I,J,L-1).ge.T(I,J,L)) then ! if next level is warmer...
+                    LTOP = L                      ! L is index of minimum T so far
+                    do while (T(I,J,LTOP).ge.T(I,J,L)) ! find depth of warm layer
+                       LTOP = LTOP-1
+                    end do
+                    LTOP = LTOP+1   ! LTOP is index of highest level inside warm layer
+
+                    if (  MAXVAL(T(I,J,LTOP:L))-T(I,J,L).ge.0.5 .or. &
+                         (MAXVAL(T(I,J,LTOP:L))-T(I,J,L).gt.0.01 .and. PLO(I,J,L)-PLO(I,J,LTOP)>2500.) ) then
+
+                       ! only save if DELTA-T exceeds any previous inversion
+                       if ( TRINVFRQ(I,J).eq.0. .or. &
+                            (TRINVFRQ(I,J).ne.0. .and. MAXVAL(T(I,J,LTOP:L))-T(I,J,L).gt.TRINVDELT(I,J)) ) then
+                          TRINVBS(I,J)   = PLO(I,J,L)
+                          TRINVDELT(I,J) = MAXVAL(T(I,J,LTOP:L))-T(I,J,L)
+                          TRINVFRQ(I,J)  = 1.
+                       end if
+
+                    end if
+                 end if ! next level warmer
+
+              end do ! L vert loop
+
+           end do
+        end do
+     end if
 
       SELECT CASE(PBLHT_OPTION)
 
@@ -4815,23 +4859,25 @@ end if
          PPBL = MAX(PPBL,PLO(:,:,KPBLMIN))
       end if
 
+      RHOAW3=RHOE*AW3  ! mass flux (positive)
+
       ! Second difference coefficients for scalars; RDZ is RHO/DZ, DMI is (G DT)/DP
       ! ---------------------------------------------------------------------------
 
-      CKS(:,:,1:LM-1) = -KH(:,:,1:LM-1) * RDZ(:,:,1:LM-1)
+      CKS(:,:,1:LM-1) = -(KH(:,:,1:LM-1)+MFPARAMS%TREFF*RHOAW3(:,:,1:LM-1)) * RDZ(:,:,1:LM-1)
       AKS(:,:,1     ) = 0.0
       AKS(:,:,2:LM  ) = CKS(:,:,1:LM-1) * DMI(:,:,2:LM  )
       CKS(:,:,1:LM-1) = CKS(:,:,1:LM-1) * DMI(:,:,1:LM-1)
       CKS(:,:,  LM  ) = -CT             * DMI(:,:,  LM  )
 
-      ! Fill KH at level LM+1 with CT * RDZ for diagnostic output
+      ! Fill KH at level LM+1 with CT / RDZ for diagnostic output
       ! ---------------------------------------------------------
 
       KH(:,:,LM) = CT * Z(:,:,LM)*((MAPL_RGAS * TV(:,:,LM))/PLE(:,:,LM))
       TKH = KH
 
-      ! Water vapor can differ at the surface
-      !--------------------------------------
+      ! Water vapor exchange coefficient can differ at the surface
+      !-----------------------------------------------------------
 
       AKQ         = AKS
       CKQ         = CKS
@@ -4850,10 +4896,10 @@ end if
       CKV(:,:,  LM  ) = -  CU           * DMI(:,:,  LM  )
       EKV(:,:,  LM  ) =  MAPL_GRAV      * CU
 
-      ! Fill KM at level LM with CU * RDZ for diagnostic output
+      ! Fill KM at level LM with CU / RDZ for diagnostic output
       ! -------------------------------------------------------
 
-      KM(:,:,LM) = CU * (PLE(:,:,LM)/(MAPL_RGAS * TV(:,:,LM))) / Z(:,:,LM)
+      KM(:,:,LM) = CU * Z(:,:,LM)*(MAPL_RGAS * TV(:,:,LM)) / PLE(:,:,LM)   !Z/rho
 
       ! Setup the tridiagonal matrix
       ! ----------------------------
@@ -5063,10 +5109,6 @@ end if
       call VTRISOLVESURF(BKQ,CKQ,DKQ)
       call VTRISOLVESURF(BKV,CKV,DKV)
 
-      call VTRISOLVESURF(BKSS,CKSS,DKSS)
-      call VTRISOLVESURF(BKQQ,CKQQ,DKQQ)
-      call VTRISOLVESURF(BKUU,CKUU,DKUU)
-
       call MAPL_TimerOff(MAPL,"---DECOMP")
 
       if(ALLOC_TCZPBL) deallocate(TCZPBL)
@@ -5124,6 +5166,7 @@ end if
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
+    logical                             :: OPT      ! selects algorithm in VTRISOLVE
 
     real,               dimension(IM,JM,LM) :: DP
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
@@ -5320,6 +5363,8 @@ end if
 ! Pick the right exchange coefficients
 !-------------------------------------
 
+OPT = .TRUE.
+
 if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
      (trim(name) /= 'QLLS') .and. (trim(name) /= 'QILS') .and. &
      (trim(name) /= 'U'   ) .and. (trim(name) /= 'V'   )) then
@@ -5348,32 +5393,34 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
 
  elseif (trim(name) =='S') then
           CX => CT
-          DX => DKSS
+          DX => DKS
           AK => AKSS; BK => BKSS; CK => CKSS
           SX=S+YS      
  elseif (trim(name)=='Q') then
           CX => CQ
-          DX => DKQQ
+          DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQV
  elseif (trim(name)=='QLLS') then
           CX => CQ
-          DX => DKQQ
+          DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
+!          OPT = .FALSE.
  elseif (trim(name)=='QILS') then
           CX => CQ
-          DX => DKQQ
+          DX => DKQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
+!          OPT = .FALSE.
  elseif (trim(name)=='U') then       
          CX => CU
-         DX => DKUU
+         DX => DKV
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YU
  elseif (trim(name)=='V') then       
          CX => CU
-         DX => DKUU
+         DX => DKV
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YV        
  end if
@@ -5382,7 +5429,7 @@ if ( (trim(name) /= 'S'   ) .and. (trim(name) /= 'Q'   ) .and. &
 ! Solve for semi-implicit changes. This modifies SX
 ! -------------------------------------------------
 
-       call VTRISOLVE(AK,BK,CK,SX,SG)
+       call VTRISOLVE(AK,BK,CK,SX,SG,OPT)
 
 ! Compute the surface fluxes
 !---------------------------
@@ -5631,11 +5678,11 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: DSG, SF, SDF, SRFDIS
       real, dimension(:,:  ), pointer     :: HGTLM5, LM50M
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
-      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKSS, DKUU, DKQQ, DKX, EKV, FKV
+      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
       real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, MFWSL, &
                                              MFWQT, TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
-                                             SLFLXMF, QTFLXMF, MFAW
+                                             SLFLXMF, QTFLXMF, MFAW, TKEDISS
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
@@ -5664,7 +5711,7 @@ end subroutine RUN1
       real                                :: SHVC_ALPHA, SHVC_EFFECT, SHVC_SCALING 
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
-      integer                             :: KS
+      integer                             :: KS, DO_SHOC
       real                                :: HGT_SURFACE, WGTSUM
 
       ! For idealized SCM surface layer
@@ -5681,6 +5728,7 @@ end subroutine RUN1
       ALLOC_TMP = .FALSE.
 
       call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5724,6 +5772,8 @@ end subroutine RUN1
       call MAPL_GetResource( MAPL, HGT_SURFACE, 'HGT_SURFACE:', default=HGT_SURFACE, RC=STATUS )
       VERIFY_(STATUS)
 
+      call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, RC=STATUS); VERIFY_(STATUS)
+
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
 ! SHVC_EFFECT = 1. is the tuned value for  2 degree horizontal resolution.
 ! It should be set to a lower number at higher resolution.
@@ -5765,12 +5815,7 @@ end subroutine RUN1
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, DKQ,   'DKQ',   RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKQQ,  'DKQQ',  RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKSS,  'DKSS',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKUU,  'DKUU',   RC=STATUS)
-      VERIFY_(STATUS)
+
       call MAPL_GetPointer(INTERNAL, EKV,   'EKV',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, FKV,   'FKV',   RC=STATUS)
@@ -5966,6 +6011,10 @@ end subroutine RUN1
 ! Loop over all quantities to be diffused.
 !-----------------------------------------
 
+       if (associated(INTDIS) .and. DO_SHOC /= 0) then
+          INTDIS(:,:,1:LM) = -1.*TKEDISS(:,:,1:LM)*DP(:,:,1:LM)/MAPL_CP
+       endif
+
        TRACERS: do KS=1,KM
 
          K = KK(KS)
@@ -6029,13 +6078,13 @@ end subroutine RUN1
             RETURN_(ESMF_FAILURE)
          end if
          if( trim(NAME)=='QV' ) then
-            DKX => DKQQ
+            DKX => DKQ
          end if
          if( trim(NAME)=='S') then
-            DKX => DKSS
+            DKX => DKS
          end if
          if( trim(NAME)=='U' .or. trim(NAME)=='V' ) then
-            DKX => DKUU
+            DKX => DKV
          end if
 
 ! Update diffused quantity
@@ -6054,10 +6103,12 @@ end subroutine RUN1
 
          if( TYPE=='U' ) then
             if(associated(INTDIS)) then
-               DF(:,:,1:LM-1) = (0.5/MAPL_CP)*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
-               DF(:,:,  LM  ) =  0.0 ! no shear at the surface, surface friction added later
-               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
-               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+               if (DO_SHOC==0) then
+                 DF(:,:,1:LM-1) = (0.5/MAPL_CP)*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
+                 DF(:,:,  LM  ) =  0.0 ! no shear at the surface, surface friction added later
+                 INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
+                 INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+               endif
                ! Add surface dissipation to lower levels
                do J=1,JM
                   do I=1,IM
@@ -6266,6 +6317,7 @@ end subroutine RUN1
          if (associated(QTFLXTRB)) QTFLXTRB = tmp3d + QTFLXMF
          if (associated(WQT)) WQT = 0.5*( tmp3d(:,:,1:LM)+tmp3d(:,:,0:LM-1) + QTFLXMF(:,:,1:LM)+QTFLXMF(:,:,0:LM-1) ) 
       end if
+
       if (associated(SLFLXTRB).or.associated(WSL)) then
          tmp3d(:,:,1:LM-1) = (SL(:,:,1:LM-1)-SL(:,:,2:LM))/(ZLO(:,:,1:LM-1)-ZLO(:,:,2:LM))
          tmp3d(:,:,1:LM-1) = -1.*TKH(:,:,1:LM-1)*tmp3d(:,:,1:LM-1)
@@ -6814,13 +6866,14 @@ end subroutine RUN1
 
 ! !INTERFACE:
 
-  subroutine VTRISOLVE ( A,B,C,Y,YG )
+  subroutine VTRISOLVE ( A,B,C,Y,YG,OPT )
 
 ! !ARGUMENTS:
 
     real,               dimension(:,:,:),  intent(IN   ) ::  A, B, C
     real(kind=MAPL_R8), dimension(:,:,:),  intent(INOUT) ::  Y
     real,               dimension(:,:),    intent(IN)    ::  YG
+    logical,                               intent(IN)    :: OPT
 
 ! !DESCRIPTION: Solves tridiagonal system that has been LU decomposed
 !   $LU x = f$. This is done by first solving $L g = f$ for $g$, and 
@@ -6865,9 +6918,10 @@ end subroutine RUN1
 
     if(size(YG)>0) then
        Y(:,:,LM)   = (Y(:,:,LM) - C(:,:,LM) * YG        )*B(:,:,LM)
-    else
+    else if (OPT) then
        Y(:,:,LM)   =  Y(:,:,LM)*B(:,:,LM-1)/(B(:,:,LM-1) - A(:,:,LM)*(1.0+C(:,:,LM-1)*B(:,:,LM-1) ))
-    !  Y(:,:,LM)   =  Y(:,:,LM)*B(:,:,LM)/( 1.0+C(:,:,LM)*B(:,:,LM) )     ! Alternate formulation
+    else
+       Y(:,:,LM)   =  Y(:,:,LM)*B(:,:,LM)/( 1.0+C(:,:,LM)*B(:,:,LM) )     ! Alternate formulation
     endif
 
     do L = LM-1,1,-1
