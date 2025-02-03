@@ -77,6 +77,13 @@ message(DEBUG "WW3 aux_dir ${aux_dir}")
 message(DEBUG "WW3 ftn_dir ${ftn_dir}")
 
 add_executable(w3adc "${aux_dir}/w3adc.f")
+# We don't need or even desire AVX2 instructions for w3adc as
+# it prevents use on older, non-AVX2 capable systems where
+# we might build. It is only used at build time to generate
+# code and so doesn't need vectorization, etc.
+if (CMAKE_Fortran_COMPILER_ID MATCHES "Intel" AND CMAKE_BUILD_TYPE MATCHES "Release")
+  set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
+endif()
 
 set (WW3ESMF_F90)
 foreach(src_file ${WW3ESMF_FTN})
