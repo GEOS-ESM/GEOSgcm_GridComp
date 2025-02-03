@@ -148,7 +148,7 @@ def get_configs_from_answers(answers):
         config ['expdir']    = expdir
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
-        config ['NCPUS'] = 20
+        config ['NCPUS'] = 16
 
         for x in answers.get('Stretched_CS',[]):
             config ['SG'] = answers['SG']
@@ -195,6 +195,7 @@ def ask_questions(default_grid="Cubed-Sphere"):
    "v10 : NL3 + PEATMAP + MODIS snow alb v2", \
    "v11 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2", \
    "v12 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix", \
+   "v13 : NL3 + JPL veg height + PEATMAP + MODIS snow alb v2 + Argentina peatland fix + mean land elevation fix", \
    "ICA : Icarus        (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/)", \
    "GM4 : Ganymed-4_0   (archived*: /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/)", \
    "F25 : Fortuna-2_5   (archived*: n/a)"], 
