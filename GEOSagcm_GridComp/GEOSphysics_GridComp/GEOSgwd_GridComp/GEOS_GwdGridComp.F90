@@ -150,128 +150,7 @@ contains
 
       ! Set the state variable specs.
       ! -----------------------------
-
-      !BOS
-      ! !IMPORT STATE:
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'PLE',                                       &
-           LONG_NAME  = 'air_pressure',                              &
-           UNITS      = 'Pa',                                        &
-           DIMS       = MAPL_DimsHorzVert,                           &
-           VLOCATION  = MAPL_VLocationEdge,                          &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'T',                                         &
-           LONG_NAME  = 'air_temperature',                           &
-           UNITS      = 'K',                                         &
-           DIMS       = MAPL_DimsHorzVert,                           &
-           VLOCATION  = MAPL_VLocationCenter,                        &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'Q',                                         &
-           LONG_NAME  = 'specific_humidity',                         &
-           UNITS      = 'kg kg-1',                                   &
-           DIMS       = MAPL_DimsHorzVert,                           &
-           VLOCATION  = MAPL_VLocationCenter,                        &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'U',                                         &
-           LONG_NAME  = 'eastward_wind',                             &
-           UNITS      = 'm s-1',                                     &
-           DIMS       = MAPL_DimsHorzVert,                           &
-           VLOCATION  = MAPL_VLocationCenter,                        &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'V',                                         &
-           LONG_NAME  = 'northward_wind',                            &
-           UNITS      = 'm s-1',                                     &
-           DIMS       = MAPL_DimsHorzVert,                           &
-           VLOCATION  = MAPL_VLocationCenter,                        &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME         = 'PHIS',                              &
-           LONG_NAME          = 'surface geopotential height',       &
-           UNITS              = 'm+2 s-2',                           &
-           DIMS               = MAPL_DimsHorzOnly,                   &
-           VLOCATION          = MAPL_VLocationNone,                  &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'SGH',                                       &
-           LONG_NAME  = 'standard_deviation_of_topography',          &
-           UNITS      = 'm',                                         &
-           DIMS       = MAPL_DimsHorzOnly,                           &
-           VLOCATION  = MAPL_VLocationNone,                          &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'VARFLT',                                    &
-           LONG_NAME  = 'variance_of_the_filtered_topography',       &
-           UNITS      = 'm+2',                                       &
-           DIMS       = MAPL_DimsHorzOnly,                           &
-           VLOCATION  = MAPL_VLocationNone,                          &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'PREF',                                      &
-           LONG_NAME  = 'reference_air_pressure',                    &
-           UNITS      = 'Pa',                                        &
-           DIMS       = MAPL_DimsVertOnly,                           &
-           VLOCATION  = MAPL_VLocationEdge,                          &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      call MAPL_AddImportSpec(GC,                             &
-           SHORT_NAME = 'AREA',                                      &
-           LONG_NAME  = 'grid_box_area',                             &
-           UNITS      = 'm^2',                                       &
-           DIMS       = MAPL_DimsHorzOnly,                           &
-           VLOCATION  = MAPL_VLocationNone,                          &
-           RESTART    = MAPL_RestartSkip,                            &
-           _RC  )
-
-      ! from moist
-      call MAPL_AddImportSpec(GC,                              &
-           SHORT_NAME='DTDT_DC',                               &
-           LONG_NAME ='T tendency due to deep convection',     &
-           UNITS     ='K s-1',                                 &
-           DIMS      = MAPL_DimsHorzVert,                      &
-           VLOCATION = MAPL_VLocationCenter,              _RC  )
-      call MAPL_AddImportSpec(GC,                               &
-           SHORT_NAME= 'DQLDT',                                   &
-           LONG_NAME = 'total_liq_water_tendency_due_to_moist',       &
-           UNITS     = 'kg kg-1 s-1',                                 &
-           DIMS      = MAPL_DimsHorzVert,                            &
-           VLOCATION = MAPL_VLocationCenter,                         &
-           _RC  )
-      call MAPL_AddImportSpec(GC,                               &
-           SHORT_NAME= 'DQIDT',                                   &
-           LONG_NAME = 'total_ice_water_tendency_due_to_moist',       &
-           UNITS     = 'kg kg-1 s-1',                                 &
-           DIMS      = MAPL_DimsHorzVert,                            &
-           VLOCATION = MAPL_VLocationCenter,                         &
-           _RC  )
-      call MAPL_AddImportSpec(GC,                           &
-           SHORT_NAME = 'CNV_FRC',                            &
-           LONG_NAME  = 'convective_fraction',                &
-           UNITS      = '1',                                  &
-           DIMS       = MAPL_DimsHorzOnly,                    &
-           VLOCATION  = MAPL_VLocationNone,                   &
-           _RC  )
+#include "GWD_Import___.h"
 
       ! !EXPORT STATE:
 
@@ -316,30 +195,35 @@ contains
            UNITS      = '1',                                         &
            DIMS       = MAPL_DimsHorzOnly,                           &
            VLOCATION  = MAPL_VLocationNone,               _RC  )
+
       call MAPL_AddExportSpec(GC,                             &
            SHORT_NAME = 'RDG1_HWDTH',                                &
            LONG_NAME  = 'ridge1_hwdth',                              &
            UNITS      = '1',                                         &
            DIMS       = MAPL_DimsHorzOnly,                           &
            VLOCATION  = MAPL_VLocationNone,               _RC  )
+
       call MAPL_AddExportSpec(GC,                             &
            SHORT_NAME = 'RDG1_CLNGT',                                &
            LONG_NAME  = 'ridge1_clngt',                              &
            UNITS      = '1',                                         &
            DIMS       = MAPL_DimsHorzOnly,                           &
            VLOCATION  = MAPL_VLocationNone,               _RC  )
+
       call MAPL_AddExportSpec(GC,                             &
            SHORT_NAME = 'RDG1_ANGLL',                                &
            LONG_NAME  = 'ridge1_angll',                              &
            UNITS      = '1',                                         &
            DIMS       = MAPL_DimsHorzOnly,                           &
            VLOCATION  = MAPL_VLocationNone,               _RC  )
+
       call MAPL_AddExportSpec(GC,                             &
            SHORT_NAME = 'RDG1_ANIXY',                                &
            LONG_NAME  = 'ridge1_anixy',                              &
            UNITS      = '1',                                         &
            DIMS       = MAPL_DimsHorzOnly,                           &
            VLOCATION  = MAPL_VLocationNone,               _RC  )
+
       call MAPL_AddExportSpec(GC,                             &
            SHORT_NAME = 'RDG1_GBXAR',                                &
            LONG_NAME  = 'ridge1_gridbox_area',                       &

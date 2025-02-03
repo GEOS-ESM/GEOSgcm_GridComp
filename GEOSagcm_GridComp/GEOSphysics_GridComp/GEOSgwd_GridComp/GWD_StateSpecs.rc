@@ -16,3 +16,25 @@ category: INTERNAL
  MXDIS  | NA      | xy   | N    | (/16/)     | NA
  ANGLL  | NA      | xy   | N    | (/16/)     | NA
  ANIXY  | NA      | xy   | N    | (/16/)     | NA
+
+category: IMPORT
+#-------------------------------------------------------------------------------------------------------
+#  VARIABLE    | DIMENSIONS  |          Additional Metadata
+#-------------------------------------------------------------------------------------------------------
+ NAME    | UNITS   | DIMS | VLOC | RESTART | LONG NAME
+#-------------------------------------------------------------------------------------------------------
+ PLE     | Pa          | xyz  | E    | SKIP    | air pressure
+ T       | K           | xyz  | C    | SKIP    | air temperature
+ Q       | kg kg-1     | xyz  | C    | SKIP    | specific humidity
+ U       | m s-1       | xyz  | C    | SKIP    | eastward wind
+ V       | m s-1       | xyz  | C    | SKIP    | northward wind
+ PHIS    | m+2 s-2     | xy   | N    | SKIP    | surface geopotential height
+ SGH     | m           | xy   | N    | SKIP    | standard deviation of topography
+ VARFLT  | m+2         | xy   | N    | SKIP    | variance of the filtered topography
+ PREF    | Pa          |   z  | E    | SKIP    | reference air pressure
+ AREA    | m^2         | xy   | N    | SKIP    | grid box area
+#-from-moist-
+ DTDT_DC | K s-1       | xyz  | C    |         | T tendency due to deep convection
+ DQLDT   | kg kg-1 s-1 | xyz  | C    |         | total liq water tendency due to moist
+ DQIDT   | kg kg-1 s-1 | xyz  | C    |         | total ice water tendency due to moist
+ CNV_FRC | 1           | xy   | N    |         | convective fraction

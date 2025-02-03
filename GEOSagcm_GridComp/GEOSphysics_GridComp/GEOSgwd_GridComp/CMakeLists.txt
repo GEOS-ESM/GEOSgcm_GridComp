@@ -32,7 +32,7 @@ esma_add_library (
   DEPENDENCIES GEOS_Shared MAPL ESMF::ESMF NetCDF::NetCDF_Fortran TYPE SHARED
   )
 
-mapl_acg (${this} GWD_StateSpecs.rc INTERNAL_SPECS)
+mapl_acg (${this} GWD_StateSpecs.rc IMPORT_SPECS INTERNAL_SPECS)
 
 # CMake has an OpenMP issue with NAG Fortran: https://gitlab.kitware.com/cmake/cmake/-/issues/21280
 if (NOT CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
