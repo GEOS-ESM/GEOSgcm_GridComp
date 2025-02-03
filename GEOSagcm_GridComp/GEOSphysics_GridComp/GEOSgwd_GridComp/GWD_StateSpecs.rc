@@ -23,18 +23,74 @@ category: IMPORT
 #-------------------------------------------------------------------------------------------------------
  NAME    | UNITS   | DIMS | VLOC | RESTART | LONG NAME
 #-------------------------------------------------------------------------------------------------------
- PLE     | Pa          | xyz  | E    | SKIP    | air pressure
- T       | K           | xyz  | C    | SKIP    | air temperature
- Q       | kg kg-1     | xyz  | C    | SKIP    | specific humidity
- U       | m s-1       | xyz  | C    | SKIP    | eastward wind
- V       | m s-1       | xyz  | C    | SKIP    | northward wind
+ PLE     | Pa          | xyz  | E    | SKIP    | air_pressure
+ T       | K           | xyz  | C    | SKIP    | air_temperature
+ Q       | kg kg-1     | xyz  | C    | SKIP    | specific_humidity
+ U       | m s-1       | xyz  | C    | SKIP    | eastward_wind
+ V       | m s-1       | xyz  | C    | SKIP    | northward_wind
  PHIS    | m+2 s-2     | xy   | N    | SKIP    | surface geopotential height
- SGH     | m           | xy   | N    | SKIP    | standard deviation of topography
- VARFLT  | m+2         | xy   | N    | SKIP    | variance of the filtered topography
- PREF    | Pa          |   z  | E    | SKIP    | reference air pressure
- AREA    | m^2         | xy   | N    | SKIP    | grid box area
+ SGH     | m           | xy   | N    | SKIP    | standard_deviation_of_topography
+ VARFLT  | m+2         | xy   | N    | SKIP    | variance_of_the_filtered_topography
+ PREF    | Pa          |   z  | E    | SKIP    | reference_air_pressure
+ AREA    | m^2         | xy   | N    | SKIP    | grid_box_area
 #-from-moist-
  DTDT_DC | K s-1       | xyz  | C    |         | T tendency due to deep convection
- DQLDT   | kg kg-1 s-1 | xyz  | C    |         | total liq water tendency due to moist
- DQIDT   | kg kg-1 s-1 | xyz  | C    |         | total ice water tendency due to moist
- CNV_FRC | 1           | xy   | N    |         | convective fraction
+ DQLDT   | kg kg-1 s-1 | xyz  | C    |         | total_liq_water_tendency_due_to_moist
+ DQIDT   | kg kg-1 s-1 | xyz  | C    |         | total_ice_water_tendency_due_to_moist
+ CNV_FRC | 1           | xy   | N    |         | convective_fraction
+
+category: EXPORT
+#-------------------------------------------------------------------------------------------------------
+#  VARIABLE    | DIMENSIONS  |          Additional Metadata
+#-------------------------------------------------------------------------------------------------------
+ NAME       | UNITS    | DIMS | VLOC | LONG NAME
+#-------------------------------------------------------------------------------------------------------
+ PLE        | Pa       | xyz  | E    | air_pressure
+ T          | K        | xyz  | C    | air_temperature
+ Q          | kg kg-1  | xyz  | C    | specific_humidity
+ U          | m s-1    | xyz  | C    | eastward_wind
+ V          | m s-1    | xyz  | C    | northward_wind
+ RDG1_MXDIS | 1        | xy   | N    | ridge1_mxdis
+ RDG1_HWDTH | 1        | xy   | N    | ridge1_hwdth
+ RDG1_CLNGT | 1        | xy   | N    | ridge1_clngt
+ RDG1_ANGLL | 1        | xy   | N    | ridge1_angll
+ RDG1_ANIXY | 1        | xy   | N    | ridge1_anixy
+ RDG1_GBXAR | km^2     | xy   | N    | ridge1_gridbox_area
+ SGH        | m        | xy   | N    | standard_deviation_of_topography
+ PREF       | Pa       |   z  | E    | reference_air_pressure
+ DTDT       | Pa K s-1 | xyz  | C    | mass_weighted_air_temperature_tendency_due_to_GWD
+ TTMGW      | K s-1    | xyz  | C    | air_temperature_tendency_due_to_GWD
+ DUDT       | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_GWD
+ DVDT       | m s-2    | xyz  | C    | tendency_of_northward_wind_due_to_GWD
+ DTDT_ORO   | K s-1    | xyz  | C    | air_temperature_tendency_due_to_orographic_GWD
+ DUDT_ORO   | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_orographic_GWD
+ DVDT_ORO   | m s-2    | xyz  | C    | tendency_of_northward_wind_due_to_orographic_GWD
+ DTDT_BKG   | K s-1    | xyz  | C    | air_temperature_tendency_due_to_background_GWD
+ DUDT_BKG   | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_background_GWD
+ DVDT_BKG   | m s-2    | xyz  | C    | tendency_of_northward_wind_due_to_background_GWD
+ DTDT_RAY   | K s-1    | xyz  | C    | air_temperature_tendency_due_to_Rayleigh_friction
+ DUDT_RAY   | m s-2    | xyz  | C    | tendency_of_eastward_wind_due_to_Rayleigh_friction
+ DVDT_RAY   | m s-2    | xyz  | C    | tendency_of_northward_wind_due_to_Rayleigh_friction
+ TAUGWX     | N m-2    | xy   | N    | surface_eastward_gravity_wave_stress
+ TAUGWY     | N m-2    | xy   | N    | surface_northward_gravity_wave_stress
+ TAUOROX    | N m-2    | xy   | N    | surface_eastward_orographic_gravity_wave_stress
+ TAUOROY    | N m-2    | xy   | N    | surface_northward_orographic_gravity_wave_stress
+ TAUBKGX    | N m-2    | xy   | N    | surface_eastward_background_gravity_wave_stress
+ TAUBKGY    | N m-2    | xy   | N    | surface_northward_background_gravity_wave_stress
+ TAUMSTX    | N m-2    | xy   | N    | surface_eastward_gravity_wave_stress_due_to_Moist_Processes
+ TAUMSTY    | N m-2    | xy   | N    | surface_northward_gravity_wave_stress_due_to_Moist_Processes
+ CLDSTD     | m        | xy   | N    | gravity_wave_drag_standard_deviation_due_to_clouds
+ UBASE      | m s-1    | xy   | N    | eastward_component_of_base_level_wind
+ VBASE      | m s-1    | xy   | N    | northward_component_of_base_level_wind
+ UBAR       | m s-1    | xy   | N    | eastward_component_of_mean_level_wind
+ VBAR       | m s-1    | xy   | N    | northward_component_of_mean_level_wind
+ PEGWD      | W m-2    | xy   | N    | vertically_integrated_potential_energy_tendency_across_gwd
+ PEORO      | W m-2    | xy   | N    | vertically_integrated_potential_energy_tendency_due_to_orographic_gravity_waves
+ PEBKG      | W m-2    | xy   | N    | vertically_integrated_potential_energy_tendency_due_to_gravity_wave_background
+ PERAY      | W m-2    | xy   | N    | vertically_integrated_potential_energy_tendency_due_to_Rayleigh_friction
+ KEGWD      | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_tendency_across_gwd
+ KEORO      | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_dissipation_due_to_orographic_gravity_waves
+ KERAY      | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_dissipation_due_to_Rayleigh_friction
+ KEBKG      | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_dissipation_due_to_gravity_wave_background
+ KERES      | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_residual_for_total_energy_conservation
+ BKGERR     | W m-2    | xy   | N    | vertically_integrated_kinetic_energy_residual_for_BKG_energy_conservation
