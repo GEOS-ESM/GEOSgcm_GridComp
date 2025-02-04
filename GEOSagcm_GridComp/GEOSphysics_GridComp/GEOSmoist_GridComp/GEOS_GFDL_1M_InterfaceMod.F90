@@ -17,6 +17,9 @@ module GEOS_GFDL_1M_InterfaceMod
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
+  use module_mp_radar, only: radar_init
+  use module_mp_thompson, only: thompson_init, calc_refl10cm  
+
   implicit none
 
   private
@@ -222,6 +225,8 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
 
+    CHARACTER(len=ESMF_MAXSTR) :: errmsg
+
     type(ESMF_VM) :: VM
     integer :: comm
 
@@ -291,6 +296,10 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= 1.0     , RC=STATUS); VERIFY_(STATUS)
 
+  ! call radar_init
+  ! call thompson_init(.false., USE_AEROSOL_NN, MAPL_am_I_root() , 1, errmsg, STATUS)
+  ! _ASSERT( STATUS==0, errmsg )
+
 end subroutine GFDL_1M_Initialize
 
 subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
@@ -332,6 +341,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer                             :: KLID
     real, allocatable, dimension(:,:,:) :: TMP3D
     real, allocatable, dimension(:,:)   :: TMP2D
+    real, allocatable, dimension(:)     :: TMP1D
     ! Exports
     real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
     real, pointer, dimension(:,:  ) :: LS_PRCP, LS_SNR, ICE, FRZR, CNV_FRC, SRF_TYPE
@@ -348,13 +358,14 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:,:) :: PFI_LS, PFI_AN
     real, pointer, dimension(:,:,:) :: PDFITERS
     real, pointer, dimension(:,:,:) :: RHCRIT3D
+    real, pointer, dimension(:,:,:) :: CNV_PRC3 
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
 
     ! Local variables
-    real    :: facEIS
+    real    :: facEIS, rand1
     real    :: minrhcrit, turnrhcrit, ALPHA, RHCRIT
     integer :: IM,JM,LM
     integer :: I, J, L
@@ -452,7 +463,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE (  DVDTmic(IM,JM,LM  ) )
     ALLOCATE (  DTDTmic(IM,JM,LM  ) )
      ! 2D Variables
-    ALLOCATE ( TMP2D        (IM,JM) )
+    ALLOCATE ( TMP2D   (IM,JM     ) )
+     ! 1D Variables
+    ALLOCATE ( TMP1D   (      LM  ) )   
 
     ! Derived States
     PLEmb    =  PLE*.01
@@ -885,12 +898,23 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_GetPointer(EXPORT, DBZ_TOP , 'DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT, DBZ_M10C, 'DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
 
+        ! include convective precip in reflectivity calculations
+        call MAPL_GetPointer(EXPORT, CNV_PRC3, 'CNV_PRC3', RC=STATUS); VERIFY_(STATUS)
+        if (associated(CNV_PRC3)) QRAIN=QRAIN+CNV_PRC3
+
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
             call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
             if (associated(PTR3D)) PTR3D = TMP3D
 
+          ! rand1 = 0.0
+          ! DO J=1,JM ; DO I=1,IM
+          !   call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+          !      T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J, .true., ktopin=1, kbotin=LM)
+          ! END DO ; END DO
+          ! if (associated(PTR3D)) PTR3D = TMP3D
+ 
             if (associated(DBZ_MAX)) then
                DBZ_MAX=-9999.0
                DO L=1,LM ; DO J=1,JM ; DO I=1,IM
@@ -954,6 +978,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                 PTR2D(I,J) = MAX(PTR2D(I,J),TMP3D(I,J,L))
              END DO ; END DO ; END DO  
         endif
+
+        if (associated(CNV_PRC3)) QRAIN=QRAIN-CNV_PRC3
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = QRAIN
