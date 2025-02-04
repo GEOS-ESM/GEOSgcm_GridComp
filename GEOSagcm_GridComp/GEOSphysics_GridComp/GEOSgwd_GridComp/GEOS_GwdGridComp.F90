@@ -533,55 +533,8 @@ contains
 
          type (ESMF_TimeInterval)        :: TINT
 
-         !  Pointers from Import state
-
-         real, pointer, dimension(:)      :: PREF
-         real, pointer, dimension(:,:)    :: AREA, SGH, VARFLT, PHIS
-         real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
-         ! Array for moist deep conv heating
-         real, pointer, dimension(:,:,:)  :: HT_dc
-         ! Arrays for QL and QI condensate tendencies from Moist
-         real, pointer, dimension(:,:,:)  :: DQLDT, DQIDT
-         real, pointer, dimension(:,:)    :: CNV_FRC
-         !++jtb pointers for NCAR Orographic GWP
-         !     (in Internal State)
-         real, pointer, dimension(:,:,:)  :: MXDIS
-         real, pointer, dimension(:,:,:)  :: CLNGT
-         real, pointer, dimension(:,:,:)  :: HWDTH
-         real, pointer, dimension(:,:,:)  :: ANGLL
-         real, pointer, dimension(:,:,:)  :: ANIXY
-         real, pointer, dimension(:,:)    :: GBXAR
-         real, pointer, dimension(:,:,:)  :: KWVRDG
-         real, pointer, dimension(:,:,:)  :: EFFRDG
-
-         !  Pointers to Export state
-
-         real, pointer, dimension(:)      :: PREF_EXP
-         real, pointer, dimension(:,:)    :: SGH_EXP
-         real, pointer, dimension(:,:,:)  :: PLE_EXP, T_EXP, Q_EXP, U_EXP, V_EXP
-
-         real, pointer, dimension(:,:)    :: CLDSTD
-         real, pointer, dimension(:,:)    :: UBAR,    VBAR
-         real, pointer, dimension(:,:)    :: UBASE,   VBASE
-         real, pointer, dimension(:,:)    :: TAUGWX,  TAUGWY
-         real, pointer, dimension(:,:)    :: TAUOROX, TAUOROY
-         real, pointer, dimension(:,:)    :: TAUBKGX, TAUBKGY
-         real, pointer, dimension(:,:,:)  :: TAUOROXZ,TAUOROYZ,FEOROZ,FEPOROZ
-         real, pointer, dimension(:,:,:)  :: TAUBKGXZ,TAUBKGYZ,FEBKGZ,FEPBKGZ
-         real, pointer, dimension(:,:)    :: TAUOROXT,TAUOROYT,FEOROT,FEPOROT
-         real, pointer, dimension(:,:)    :: TAUOROXS,TAUOROYS,FEOROS,FEPOROS
-         real, pointer, dimension(:,:)    :: TAUBKGXT,TAUBKGYT,FEBKGT,FEPBKGT
-         real, pointer, dimension(:,:)    :: TAUBKGXS,TAUBKGYS,FEBKGS,FEPBKGS
-         real, pointer, dimension(:,:)    :: TAUMSTX, TAUMSTY
-         real, pointer, dimension(:,:)    :: KEGWD, KEORO,  KERAY,  KEBKG, KERES
-         real, pointer, dimension(:,:)    :: PEGWD, PEORO,  PERAY,  PEBKG, BKGERR
-
-         real, pointer, dimension(:,:,:)  :: DTDT, DUDT, DVDT, TTMGW
-         real, pointer, dimension(:,:,:)  :: DTDT_ORO, DUDT_ORO, DVDT_ORO
-         real, pointer, dimension(:,:,:)  :: DTDT_BKG, DUDT_BKG, DVDT_BKG
-         real, pointer, dimension(:,:,:)  :: DTDT_RAY, DUDT_RAY, DVDT_RAY
-         real, pointer, dimension(:,:,:)  :: DTGENBKG, DUGENBKG, DVGENBKG
-
+#include "GWD_DeclarePointer___.h"
+         
          real, pointer, dimension(:,:,:)  :: TMP3D
          real, pointer, dimension(:,:)    :: TMP2D
 
