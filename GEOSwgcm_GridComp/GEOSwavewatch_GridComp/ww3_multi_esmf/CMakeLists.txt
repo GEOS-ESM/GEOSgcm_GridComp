@@ -76,6 +76,13 @@ get_filename_component(ftn_dir ${WW3_path}/model/ftn ABSOLUTE)
 message(DEBUG "WW3 aux_dir ${aux_dir}")
 message(DEBUG "WW3 ftn_dir ${ftn_dir}")
 
+# We want to remove -march=core-avx2 from the compile flags from w3adc. But CMake doesn't
+# make this easy. So, what we do is remove it from the compile flags for the entire folder, then
+# we re-add it for the ${this} target (aka the library)
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+  string(REGEX REPLACE "-march=core-avx2" "" CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}")
+  string(REGEX REPLACE "-march=core-avx2" "" CMAKE_Fortran_FLAGS_AGGRESSIVE "${CMAKE_Fortran_FLAGS_AGGRESSIVE}")
+endif ()
 add_executable(w3adc "${aux_dir}/w3adc.f")
 
 set (WW3ESMF_F90)
@@ -103,6 +110,13 @@ esma_add_library (${this}
    SRCS ${WW3ESMF_F90}
    DEPENDENCIES MAPL ESMF::ESMF NetCDF::NetCDF_Fortran
   )
+
+# Now we add back the -march=core-avx2 flag for the ${this} target
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+  if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "Aggressive")
+    target_compile_options(${this} PRIVATE "-march=core-avx2")
+  endif ()
+endif ()
 
 target_include_directories (${this} PRIVATE
   $<BUILD_INTERFACE:${ftn_dir}>
