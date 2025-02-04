@@ -17,8 +17,8 @@ module GEOS_GFDL_1M_InterfaceMod
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
-  use module_mp_radar, only: radar_init
-  use module_mp_thompson, only: thompson_init, calc_refl10cm  
+! use module_mp_radar, only: radar_init
+! use module_mp_thompson, only: thompson_init, calc_refl10cm  
 
   implicit none
 
@@ -882,15 +882,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D) .OR. &
             associated(DBZ_MAX) .OR. associated(DBZ_1KM) .OR. associated(DBZ_TOP) .OR. associated(DBZ_M10C)) then
 
-          ! call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
-          ! if (associated(PTR3D)) PTR3D = TMP3D
-
-            rand1 = 0.0
-            DO J=1,JM ; DO I=1,IM
-              call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
-                 T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J, .true., ktopin=1, kbotin=LM)
-            END DO ; END DO
+            call CALCDBZ(TMP3D,100*PLmb,T,Q,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,DBZ_LIQUID_SKIN)
             if (associated(PTR3D)) PTR3D = TMP3D
+
+          ! rand1 = 0.0
+          ! DO J=1,JM ; DO I=1,IM
+          !   call calc_refl10cm(Q(I,J,:), QRAIN(I,J,:), NACTL(I,J,:), QSNOW(I,J,:), QGRAUPEL(I,J,:), &
+          !      T(I,J,:), 100*PLmb(I,J,:), TMP3D(I,J,:), rand1, 1, LM, I, J, .true., ktopin=1, kbotin=LM)
+          ! END DO ; END DO
+          ! if (associated(PTR3D)) PTR3D = TMP3D
  
             if (associated(DBZ_MAX)) then
                DBZ_MAX=-9999.0
