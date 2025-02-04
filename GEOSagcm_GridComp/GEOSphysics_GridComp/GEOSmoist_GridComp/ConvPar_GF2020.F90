@@ -41,7 +41,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
  REAL    :: int_time = 0.
  !-
  !- number of microphysics schemes in the host model
- INTEGER ,PARAMETER  :: nmp = 2, lsmp = 1, cnmp = 2
+ INTEGER ,PARAMETER  :: nmp = 1, lsmp = 1, cnmp = 2
 
  INTEGER :: USE_MEMORY        =-1 != -1/0/1/2 .../10    !-
 
@@ -176,14 +176,14 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 CONTAINS
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE GF2020_INTERFACE(  mxp,myp,mzp,LONS,LATS,DT_MOIST                    &
-                               ,PLE, PLO, ZLE, ZLO, PK, MASS, KH          &
-                               ,T1, TH1, Q1, U1,V1,W1,BYNCY,QLCN,QICN,QLLS,QILS   &
+                               ,PLE, PLO, ZLE, ZLO, PK, MASS, KH                  &
+                               ,T1, TH1, Q1, U1,V1,W1,BYNCY,QLIQ,QICE             &
                                ,CNPCPRATE                                         &
                                ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQCDT ,ENTLAM     &
-                               ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN,CLLS     &
+                               ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC, QCLD          &
                                ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                ,RADSW   ,RADLW ,DQDT_BL  ,DTDT_BL                 &
-                               ,FRLAND  ,AREA  ,T2M ,Q2M     &
+                               ,FRLAND  ,AREA  ,T2M ,Q2M                          &
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN  ,CNVFRC,SRFTYPE                           &
                                ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
@@ -207,8 +207,8 @@ CONTAINS
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE,ZLE
 
     REAL   ,DIMENSION(mxp,myp,mzp)   ,INTENT(IN)   :: ZLO, PLO, PK, MASS, KH,       &
-                                                      T1,TH1,Q1,U1,V1,W1,BYNCY,QLCN,QICN,QLLS,QILS, &
-                                                      CLLS,CLCN
+                                                      T1,TH1,Q1,U1,V1,W1,BYNCY,QLIQ,QICE, &
+                                                      QCLD
 
     REAL   ,DIMENSION(mxp,myp,0:mzp) ,INTENT(IN)   :: PLE_DYN_IN
 
@@ -537,12 +537,9 @@ CONTAINS
         endif
         entr3d(i,j,flip(k)) = ec3d(k,i,j) 
 
-        mp_ice(lsmp,k,i,j) = QILS  (i,j,flip(k))
-        mp_liq(lsmp,k,i,j) = QLLS  (i,j,flip(k))
-        mp_cf (lsmp,k,i,j) = CLLS  (i,j,flip(k))
-        mp_ice(cnmp,k,i,j) = QICN  (i,j,flip(k))
-        mp_liq(cnmp,k,i,j) = QLCN  (i,j,flip(k))
-        mp_cf (cnmp,k,i,j) = CLCN  (i,j,flip(k))
+        mp_ice(lsmp,k,i,j) = QICE  (i,j,flip(k))
+        mp_liq(lsmp,k,i,j) = QLIQ  (i,j,flip(k))
+        mp_cf (lsmp,k,i,j) = QCLD  (i,j,flip(k))
 
        ENDDO
       ENDDO
@@ -598,12 +595,9 @@ CONTAINS
         endif
         entr3d(i,j,flip(k)) = ec3d(k,i,j) 
 
-        mp_ice(lsmp,k,i,j) = QILS       (i,j,flip(k))
-        mp_liq(lsmp,k,i,j) = QLLS       (i,j,flip(k))
-        mp_cf (lsmp,k,i,j) = CLLS       (i,j,flip(k))
-        mp_ice(cnmp,k,i,j) = QICN       (i,j,flip(k))
-        mp_liq(cnmp,k,i,j) = QLCN       (i,j,flip(k))
-        mp_cf (cnmp,k,i,j) = CLCN       (i,j,flip(k))
+        mp_ice(lsmp,k,i,j) = QICE       (i,j,flip(k))
+        mp_liq(lsmp,k,i,j) = QLIQ       (i,j,flip(k))
+        mp_cf (lsmp,k,i,j) = QCLD       (i,j,flip(k))
        ENDDO
       ENDDO
      ENDDO
@@ -1011,7 +1005,7 @@ CONTAINS
               ,temp                  &
               ,press                 &
               ,rvap                  &
-              ,mp_ice                     &
+              ,mp_ice                &
               ,mp_liq                &
               ,mp_cf                 &
               ,curr_rvap             &
@@ -3105,8 +3099,8 @@ loop0:       do k=kts,ktf
          DO i=its,itf
             if(ierr(i) /= 0) cycle
             !- time-scale cape removal
-            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep * (1.0 + (1.0-sig(i)))
-            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid  * (1.0 + (1.0-sig(i)))
+            if(trim(cumulus)=='deep') tau_ecmwf(i)=tau_deep
+            if(trim(cumulus)=='mid' ) tau_ecmwf(i)=tau_mid
          ENDDO
       ELSE
          DO i=its,itf
