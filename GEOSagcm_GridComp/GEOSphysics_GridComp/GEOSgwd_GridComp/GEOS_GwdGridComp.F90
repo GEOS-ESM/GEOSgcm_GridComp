@@ -717,18 +717,18 @@ contains
          !!#endif
          !         endif
 
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
-         if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
-         if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
-         if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
-         if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
-         if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
-         call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
-         if(associated(TMP2D)) TMP2D = GBXAR_TMP
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
+         ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
+         ! if(associated(TMP2D)) TMP2D = HWDTH(:,:,1)
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_CLNGT', _RC)
+         ! if(associated(TMP2D)) TMP2D = CLNGT(:,:,1)
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANGLL', _RC)
+         ! if(associated(TMP2D)) TMP2D = ANGLL(:,:,1)
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_ANIXY', _RC)
+         ! if(associated(TMP2D)) TMP2D = ANIXY(:,:,1)
+         ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_GBXAR', _RC)
+         ! if(associated(TMP2D)) TMP2D = GBXAR_TMP
 
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          DUDT_GWD_NCAR = 0.0
