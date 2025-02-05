@@ -289,7 +289,7 @@ contains
       call MAPL_Get(MAPL, IM=IM, JM=JM, LM=LM, LATS=LATS, _RC)
 
       ! Get grid name to determine IMSIZE
-      call MAPL_GetResource(MAPL,GRIDNAME,'GRIDNAME:', _RC)
+      call MAPL_GetResource(MAPL,GRIDNAME,'AGCM.GRIDNAME:', _RC)
       GRIDNAME =  AdjustL(GRIDNAME)
       nn = len_trim(GRIDNAME)
       dateline = GRIDNAME(nn-1:nn)
@@ -1176,11 +1176,3 @@ contains
    End Subroutine Write_Profile
 
 end module GEOS_GwdGridCompMod
-
-subroutine SetServices(gc, rc)
-   use ESMF
-   use GEOS_GwdGridCompMod, only : mySetservices=>SetServices
-   type(ESMF_GridComp) :: gc
-   integer, intent(out) :: rc
-   call mySetServices(gc, rc=rc)
-end subroutine SetServices
