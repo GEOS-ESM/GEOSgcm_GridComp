@@ -591,74 +591,9 @@ contains
 
          DT = DT_R8
 
-         ! Pointers to inputs
-         !---------------------
-
-         call MAPL_GetPointer( IMPORT, PLE,      'PLE',     _RC )
-         call MAPL_GetPointer( IMPORT, T,        'T',       _RC )
-         call MAPL_GetPointer( IMPORT, Q,        'Q',       _RC )
-         call MAPL_GetPointer( IMPORT, U,        'U',       _RC )
-         call MAPL_GetPointer( IMPORT, V,        'V',       _RC )
-         call MAPL_GetPointer( IMPORT, PHIS,     'PHIS',    _RC )
-         call MAPL_GetPointer( IMPORT, SGH,      'SGH',     _RC )
-         call MAPL_GetPointer( IMPORT, PREF,     'PREF',    _RC )
-         call MAPL_GetPointer( IMPORT, AREA,     'AREA',    _RC )
-         call MAPL_GetPointer( IMPORT, VARFLT,   'VARFLT',  _RC )
-         call MAPL_GetPointer( IMPORT, HT_dc,    'DTDT_DC', _RC )
-         call MAPL_GetPointer( IMPORT, DQLDT,    'DQLDT'  , _RC )
-         call MAPL_GetPointer( IMPORT, DQIDT,    'DQIDT'  , _RC )
-         call MAPL_GetPointer( IMPORT, CNV_FRC,  'CNV_FRC', _RC )      
-
-         ! Allocate/refer to the outputs
-         !------------------------------
-
-         call MAPL_GetPointer(EXPORT,  PLE_EXP, 'PLE'     , _RC)
-         call MAPL_GetPointer(EXPORT,    T_EXP, 'T'       , _RC)
-         call MAPL_GetPointer(EXPORT,    Q_EXP, 'Q'       , _RC)
-         call MAPL_GetPointer(EXPORT,    U_EXP, 'U'       , _RC)
-         call MAPL_GetPointer(EXPORT,    V_EXP, 'V'       , _RC)
-         call MAPL_GetPointer(EXPORT,  SGH_EXP, 'SGH'     , _RC)
-         call MAPL_GetPointer(EXPORT, PREF_EXP, 'PREF'    , _RC)
-         call MAPL_GetPointer(EXPORT,    TTMGW, 'TTMGW'   , _RC)
-         call MAPL_GetPointer(EXPORT, DTDT_ORO, 'DTDT_ORO', _RC)
-         call MAPL_GetPointer(EXPORT, DUDT_ORO, 'DUDT_ORO', _RC)
-         call MAPL_GetPointer(EXPORT, DVDT_ORO, 'DVDT_ORO', _RC)
-         call MAPL_GetPointer(EXPORT, DTDT_BKG, 'DTDT_BKG', _RC)
-         call MAPL_GetPointer(EXPORT, DUDT_BKG, 'DUDT_BKG', _RC)
-         call MAPL_GetPointer(EXPORT, DVDT_BKG, 'DVDT_BKG', _RC)
-         call MAPL_GetPointer(EXPORT, DTDT_RAY, 'DTDT_RAY', _RC)
-         call MAPL_GetPointer(EXPORT, DUDT_RAY, 'DUDT_RAY', _RC)
-         call MAPL_GetPointer(EXPORT, DVDT_RAY, 'DVDT_RAY', _RC)
-         call MAPL_GetPointer(EXPORT,   TAUGWX, 'TAUGWX'  , _RC)
-         call MAPL_GetPointer(EXPORT,   TAUGWY, 'TAUGWY'  , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUOROX, 'TAUOROX' , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUOROY, 'TAUOROY' , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUBKGX, 'TAUBKGX' , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUBKGY, 'TAUBKGY' , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUMSTX, 'TAUMSTX' , _RC)
-         call MAPL_GetPointer(EXPORT,  TAUMSTY, 'TAUMSTY' , _RC)
-         call MAPL_GetPointer(EXPORT,    UBASE, 'UBASE'   , _RC)
-         call MAPL_GetPointer(EXPORT,    VBASE, 'VBASE'   , _RC)
-         call MAPL_GetPointer(EXPORT,     UBAR, 'UBAR'    , _RC)
-         call MAPL_GetPointer(EXPORT,     VBAR, 'VBAR'    , _RC)
-         call MAPL_GetPointer(EXPORT,   CLDSTD, 'CLDSTD'  , _RC)
-
-         call MAPL_GetPointer(EXPORT,     DTDT, 'DTDT'    , _RC)
-         call MAPL_GetPointer(EXPORT,     DUDT, 'DUDT'    , _RC)
-         call MAPL_GetPointer(EXPORT,     DVDT, 'DVDT'    , _RC)
-
-         call MAPL_GetPointer(EXPORT,    PEGWD, 'PEGWD'   , _RC)
-         call MAPL_GetPointer(EXPORT,    PEORO, 'PEORO'   , _RC)
-         call MAPL_GetPointer(EXPORT,    PERAY, 'PERAY'   , _RC)
-         call MAPL_GetPointer(EXPORT,    PEBKG, 'PEBKG'   , _RC)
-
-         call MAPL_GetPointer(EXPORT,    KEGWD, 'KEGWD'   , _RC)
-         call MAPL_GetPointer(EXPORT,    KEORO, 'KEORO'   , _RC)
-         call MAPL_GetPointer(EXPORT,    KERAY, 'KERAY'   , _RC)
-         call MAPL_GetPointer(EXPORT,    KEBKG, 'KEBKG'   , _RC)
-         call MAPL_GetPointer(EXPORT,    KERES, 'KERES'   , _RC)
-         call MAPL_GetPointer(EXPORT,   BKGERR, 'BKGERR'  , _RC)
-
+         ! Pointers to import, export and internal variables
+         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
+#include "GWD_GetPointer___.h"
 
          CALL PREGEO(IM*JM,   LM,   &
               PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
@@ -674,17 +609,6 @@ contains
          !---------------------------------------------------------
 
          !call MAPL_TimerOn(MAPL,"-INTR")
-
-         ! get pointers from INTERNAL:MXDIS
-         call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, _RC)
-         call MAPL_GetPointer( INTERNAL, MXDIS, 'MXDIS', _RC )
-         call MAPL_GetPointer( INTERNAL, HWDTH, 'HWDTH', _RC )
-         call MAPL_GetPointer( INTERNAL, CLNGT, 'CLNGT', _RC )
-         call MAPL_GetPointer( INTERNAL, ANGLL, 'ANGLL', _RC )
-         call MAPL_GetPointer( INTERNAL, ANIXY, 'ANIXY', _RC )
-         call MAPL_GetPointer( INTERNAL, GBXAR, 'GBXAR', _RC )
-         call MAPL_GetPointer( INTERNAL, KWVRDG, 'KWVRDG', _RC )
-         call MAPL_GetPointer( INTERNAL, EFFRDG, 'EFFRDG', _RC )
 
          GBXAR_TMP = GBXAR * (MAPL_RADIUS/1000.)**2 ! transform to km^2
          WHERE (ANGLL < -180)
@@ -717,6 +641,7 @@ contains
          !!#endif
          !         endif
 
+         ! pchakrab: Redundant code? Commenting out.
          ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_MXDIS', _RC)
          ! if(associated(TMP2D)) TMP2D = MXDIS(:,:,1)
          ! call MAPL_GetPointer(EXPORT, TMP2D, 'RDG1_HWDTH', _RC)
