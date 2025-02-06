@@ -1629,7 +1629,7 @@ contains
 ! whenever datmodyn starts using gocart, this will need to be a real value --
 ! see fvdycore for example
       if(associated(DUMMYAREA)) then
-          DUMMYAREA=1.0
+          DUMMYAREA=1e10
       end if
 
       if(associated(DUMMYDXC)) then
