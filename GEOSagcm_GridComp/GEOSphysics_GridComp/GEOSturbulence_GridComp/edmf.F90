@@ -55,6 +55,7 @@ real, parameter ::     &
     real    :: MFLIMFAC
     real    :: ICE_RAMP
     real    :: PRCPCRIT
+    real    :: TREFF
  endtype EDMFPARAMS_TYPE
  type (EDMFPARAMS_TYPE) :: MFPARAMS
 
@@ -74,7 +75,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                     t3,                            &
                     thl3,                          &
                     thv3,                          &
-                    qt3,                           &
                     qv3,                           &
                     ql3,                           &
                     qi3,                           &
@@ -137,7 +137,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
                                                           V3,    &
                                                           T3,    &
                                                           THL3,  &
-                                                          QT3,   &
                                                           THV3,  &
                                                           QV3,   &
                                                           QL3,   &
@@ -361,7 +360,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               end if
            end do
            lts = lts - thv3(IH,JH,kte)
-           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-19.))) )
+           L0 = L0/( 1.0 + (mfparams%ent0lts/mfparams%ent0-1.)*(0.5+0.5*tanh(0.3*(lts-18.5))) )
         end if
       else ! if mfparams%ET not 2
         L0 = mfparams%L0
@@ -376,7 +375,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
         v(k)=v3(IH,JH,kte-k+kts)
         thl(k)=thl3(IH,JH,kte-k+kts)
         thv(k)=thv3(IH,JH,kte-k+kts)
-        qt(k)=qt3(IH,JH,kte-k+kts)
         qv(k)=qv3(IH,JH,kte-k+kts)
         ql(k)=ql3(IH,JH,kte-k+kts)
         qi(k)=qi3(IH,JH,kte-k+kts)
@@ -385,7 +383,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               ui(k)   = 0.5*( u3(IH,JH,kte-k+kts)   + u3(IH,JH,kte-k+kts-1) )
               vi(k)   = 0.5*( v3(IH,JH,kte-k+kts)   + v3(IH,JH,kte-k+kts-1) )
               thli(k) = 0.5*( thl3(IH,JH,kte-k+kts) + thl3(IH,JH,kte-k+kts-1) )
-              qti(k)  = 0.5*( qt3(IH,JH,kte-k+kts)  + qt3(IH,JH,kte-k+kts-1) )
               qvi(k)  = 0.5*( qv3(IH,JH,kte-k+kts)  + qv3(IH,JH,kte-k+kts-1) )
               qli(k)  = 0.5*( ql3(IH,JH,kte-k+kts)  + ql3(IH,JH,kte-k+kts-1) )
               qii(k)  = 0.5*( qi3(IH,JH,kte-k+kts)  + qi3(IH,JH,kte-k+kts-1) )
@@ -393,7 +390,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               ui(k)   = u3(IH,JH,kte-k+kts-1)
               vi(k)   = v3(IH,JH,kte-k+kts-1)
               thli(k) = thl3(IH,JH,kte-k+kts-1)
-              qti(k)  = qt3(IH,JH,kte-k+kts-1)
               qvi(k)  = qv3(IH,JH,kte-k+kts-1)
               qli(k)  = ql3(IH,JH,kte-k+kts-1)
               qii(k)  = qi3(IH,JH,kte-k+kts-1)
@@ -403,17 +399,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       ui(kte)     = u(kte)
       vi(kte)     = v(kte)
       thli(kte)   = thl(kte)
-      qti(kte)    = qt(kte)
       qvi(kte)    = qv(kte)
       qli(kte)    = ql(kte)
       qii(kte)    = qi(kte)
       ui(kts-1)   = u(kts)
       vi(kts-1)   = v(kts)
       thli(kts-1) = thl(kts)  ! approximate
-      qti(kts-1)  = qt(kts)
       qvi(kts-1)  = qv(kts)
       qli(kts-1)  = ql(kts)
       qii(kts-1)  = qi(kts)
+      qt  = qv+ql+qi
+      qti = qvi+qli+qii
 
       DO k=kts-1,kte
         rhoe(k) = rhoe3(IH,JH,kte-k+kts-1)
@@ -618,7 +614,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
               Wn2=UPW(K-1,I)**2+2.*MFPARAMS%WA*B*(ZW(k)-ZW(k-1))
             ELSE
               EntW=exp(-2.*WP*(ZW(k)-ZW(k-1)))
-              Wn2=EntW*UPW(k-1,I)**2+MFPARAMS%WA*B/WP*(1.-EntW)
+              Wn2=EntW*UPW(k-1,I)**2+(1.-EntW)*MFPARAMS%WA*B/WP
             END IF
 
 
@@ -703,7 +699,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, &   ! Inputs
       K = KTS
       tmp = 0.
       tmp2 = 0.
-      DO WHILE (ZW(K).lt.70. .and. K.lt.KTE)
+      DO WHILE (ZW(K).lt.100. .and. K.lt.KTE)
          tmp = tmp + 0.5*SUM(UPA(K,:)*UPW(K,:)*UPW(K,:))
          tmp2 = tmp2 + TKE3(IH,JH,KTE-K+KTS)
 !         UPW(K,:) = UPW(K,:)*exp(-(100.-ZW(K))**2/1e4)

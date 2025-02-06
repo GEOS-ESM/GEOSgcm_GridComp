@@ -17,7 +17,6 @@ module GEOS_GFDL_1M_InterfaceMod
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
 
-  use module_mp_radar, only: radar_init
   use module_mp_thompson, only: thompson_init, calc_refl10cm  
 
   implicit none
@@ -296,7 +295,6 @@ subroutine GFDL_1M_Initialize (MAPL, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP_PLID    , 'GFDL_MP_PLID:'    , DEFAULT= 1.0     , RC=STATUS); VERIFY_(STATUS)
 
-  ! call radar_init
   ! call thompson_init(.false., USE_AEROSOL_NN, MAPL_am_I_root() , 1, errmsg, STATUS)
   ! _ASSERT( STATUS==0, errmsg )
 
