@@ -79,7 +79,7 @@ endforeach()
 
 esma_add_library (${this}
    SRCS ${SRCS}
-   DEPENDENCIES MAPL esmf NetCDF::NetCDF_Fortran
+   DEPENDENCIES MAPL ESMF::ESMF NetCDF::NetCDF_Fortran
   )
 
 
@@ -90,7 +90,6 @@ set_property (SOURCE ${WW3_path}/model/src/w3initmd.F90
   PROPERTY COMPILE_DEFINITIONS
   "__WW3_SWITCHES__=\'${switch_strings}\'"
   )
-
 
 
 list (APPEND defs 

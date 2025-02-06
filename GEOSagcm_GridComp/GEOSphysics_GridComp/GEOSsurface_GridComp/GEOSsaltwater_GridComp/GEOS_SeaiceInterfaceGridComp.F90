@@ -164,7 +164,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_beam',   &
+        LONG_NAME          = 'surface_reflectivity_for_visible_beam',   &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -173,7 +173,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_visible_diffuse',&
+        LONG_NAME          = 'surface_reflectivity_for_visible_diffuse',&
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBVF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -182,7 +182,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_beam', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_beam', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNR',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -191,7 +191,7 @@ module GEOS_SeaiceInterfaceGridComp
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_albedo_for_near_infrared_diffuse', &
+        LONG_NAME          = 'surface_reflectivity_for_near_infrared_diffuse', &
         UNITS              = '1',                                 &
         SHORT_NAME         = 'ALBNF',                             &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -1283,7 +1283,7 @@ module GEOS_SeaiceInterfaceGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBIN'                    ,&
-        LONG_NAME          = 'ice_surface_albedo_over_ice_categories' ,&
+        LONG_NAME          = 'ice_surface_reflectivity_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -1293,7 +1293,7 @@ module GEOS_SeaiceInterfaceGridComp
 
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'ALBSN'                    ,&
-        LONG_NAME          = 'snow_surface_albedo_over_ice_categories' ,&
+        LONG_NAME          = 'snow_surface_reflectivity_over_ice_categories' ,&
         UNITS              = '1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
@@ -2704,9 +2704,13 @@ contains
           DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
           QS(:,N) = QS(:,N) + DQS
 
-          LHF     = LHF + EVD * MAPL_ALHS * DTS
+          EVP     = EVP + EVD * DTS
           SHF     = SHF + SHD * DTS
+          LHF     = EVP * MAPL_ALHS
 
+
+          if(associated(SUBLIM )) SUBLIM  = SUBLIM  + EVP    *FR(:,N)
+          if(associated(EVAPOUT)) EVAPOUT = EVAPOUT + EVP    *FR(:,N)
           if(associated(DELTS  )) DELTS   = DELTS   + DTS*CFT*FR(:,N)
           if(associated(DELQS  )) DELQS   = DELQS   + DQS*CFQ*FR(:,N)
           if(associated(TST    )) TST     = TST     + TS(:,N)*FR(:,N)
@@ -2724,6 +2728,8 @@ contains
     if(associated(QST    )) call Normalize(QST,    FRCICE) 
     if(associated(HLATICE)) call Normalize(HLATICE,FRCICE)
     if(associated(SHICE  )) call Normalize(SHICE,  FRCICE)
+    if(associated(SUBLIM )) call Normalize(SUBLIM, FRCICE)
+    if(associated(EVAPOUT)) call Normalize(EVAPOUT, FRCICE)
 
     if(associated(LWNDICE)) call Normalize(LWNDICE,  FRCICE, set_undef=.True.)
           
