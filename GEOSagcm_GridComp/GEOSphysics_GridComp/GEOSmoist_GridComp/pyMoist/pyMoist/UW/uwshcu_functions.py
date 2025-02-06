@@ -1,6 +1,6 @@
 import copy
 import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import sin, erfc, exp, log, sqrt, f32, f64
+from gt4py.cartesian.gtscript import sin, erfc, exp, log, sqrt, f32, f64, THIS_K
 from ndsl.dsl.typing import (
     Float,
     Bool,
@@ -35,7 +35,6 @@ def exnerfn(
 
 @gtscript.function
 def slope(
-    k_idx: Float,
     field: Float,
     field_above: Float,
     field_below: Float,
@@ -58,13 +57,13 @@ def slope(
     Returns:
     slope (Float): Slope of the field of interest [N/A]
     """
-    if k_idx == 0:
+    if THIS_K == 0:
         value = (field_above - field) / (p0_above - p0)
         if value > 0.0:
             slope = max(0.0, value)
         else:
             slope = min(0.0, value)
-    elif k_idx > 0 and k_idx < 71:
+    elif THIS_K > 0 and THIS_K < 71:
         above_value = (field_above - field) / (p0_above - p0)
         below_value = (field - field_below) / (p0 - p0_below)
         if above_value > 0.0:

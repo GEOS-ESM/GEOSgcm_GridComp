@@ -262,7 +262,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         frc_rasn = inputs_reshaped["frc_rasn"]
         rbuoy = inputs_reshaped["rbuoy"]
         epsvarw = inputs_reshaped["epsvarw"]
-        use_CINcin = np.int64(inputs_reshaped["use_CINcin"])
+        use_CINcin = np.int32(inputs_reshaped["use_CINcin"])
         mumin1 = inputs_reshaped["mumin1"]
         rmaxfrac = inputs_reshaped["rmaxfrac"]
         PGFc = inputs_reshaped["PGFc"]
@@ -351,6 +351,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         usrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         vsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         trsrc = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        trsrc_o = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
         plcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         klcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]), dtype=Int)
         thl0lcl = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
@@ -375,9 +376,27 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         qij3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         qse3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
         cin_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        plfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        klfc_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
+        cinlcl_IJ = self.make_ij_field(np.zeros(shape=[24, 24]))
         id_check3 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
-        test_var_1 = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        test_var_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        test_var_2D = self.make_ij_field(np.zeros(shape=[24, 24]))
         qtsrc = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        ufrc = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        umf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        wu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        emf = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        thlu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        qtu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        thvu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        uplus = self.make_ij_field(np.zeros(shape=[24, 24]))
+        vplus = self.make_ij_field(np.zeros(shape=[24, 24]))
+        uu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        vu = self.make_zinterface_field(np.zeros(shape=[24, 24, 73]))
+        tre = self.make_ntracers_ijk_field(np.zeros(shape=[24, 24, 72, 23]))
+        uplus_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
+        vplus_3D = self.make_ijk_field(np.zeros(shape=[24, 24, 72]))
 
         # test_var_1.view[:] = np.nan
         # tkeavg.view[:] = np.nan
@@ -393,6 +412,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
         # vsrc.view[:] = np.nan
         # plcl.view[:] = np.nan
         # klcl.view[:] = np.nan
+        # cinlcl_IJ.view[:] = np.nan
 
         compute_uwshcu(
             windsrcavg=windsrcavg,
@@ -490,6 +510,7 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             vsrc=vsrc,
             qtsrc=qtsrc,
             trsrc=trsrc,
+            trsrc_o=trsrc_o,
             plcl=plcl,
             klcl=klcl,
             thl0lcl=thl0lcl,
@@ -514,17 +535,35 @@ class TranslateComputeUwshcu(TranslateFortranData2Py):
             qij3=qij3,
             qse3=qse3,
             id_check3=id_check3,
-            test_var1=test_var_1,
+            test_var3D=test_var_3D,
+            test_var2D=test_var_2D,
             cin_IJ=cin_IJ,
+            plfc_IJ=plfc_IJ,
+            klfc_IJ=klfc_IJ,
+            cinlcl_IJ=cinlcl_IJ,
+            ufrc=ufrc,
+            umf=umf,
+            wu=wu,
+            emf=emf,
+            thlu=thlu,
+            qtu=qtu,
+            thvu=thvu,
+            uplus=uplus,
+            vplus=vplus,
+            uu=uu,
+            vu=vu,
+            tre=tre,
+            uplus_3D=uplus_3D,
+            vplus_3D=vplus_3D,
         )
         print("Performed compute_uwshcu on reshaped inputs")
-        # print(test_var_1.view[23, 23])
+        print(test_var_2D.view[13, 23])
         # print("Reshaped outputs back to original shape")
 
         with xr.open_dataset("/Users/kfandric/netcdf/ComputeUwshcu-Out.nc") as ds:
             # Load in netcdf test var
-            testvar = "cin_test3"
-            var = cin_IJ
+            testvar = "ve_test"
+            var = test_var_2D
             testvar_nan = ds.variables[testvar].data[0, 0, :, 0, 10, 0]
             # Replace nans with zero
             testvar_zeros = np.nan_to_num(testvar_nan, nan=0)
