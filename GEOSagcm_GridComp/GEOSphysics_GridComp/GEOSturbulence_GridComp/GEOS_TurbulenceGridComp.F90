@@ -2211,34 +2211,13 @@ end if
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_s',        &
-       SHORT_NAME = 'DKSS',                                                  &
-       UNITS      = 's-1',                                                   &
+       LONG_NAME  = 'SHOC_TKE_dissipation_rate',                             &
+       SHORT_NAME = 'TKEDISS',                                               &
+       UNITS      = 'J kg-1 s-1',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_q',        &
-       SHORT_NAME = 'DKQQ',                                                  &
-       UNITS      = 's-1',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'sensitivity_of_tendency_to_surface_value_for_u',        &
-       SHORT_NAME = 'DKUU',                                                  &
-       UNITS      = 's-1',                                                   &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationCenter,                                    &
-       RESTART    = MAPL_RestartSkip,                                        &
+       RESTART    = MAPL_RestartSkip,                            &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -2649,7 +2628,6 @@ end if
     real, dimension(:,:,:), pointer    :: AKSS, BKSS, CKSS, YS
     real, dimension(:,:,:), pointer    :: AKQQ, BKQQ, CKQQ, YQV,YQL,YQI
     real, dimension(:,:,:), pointer    :: AKUU, BKUU, CKUU, YU,YV
-    real, dimension(:,:,:), pointer    :: DKSS, DKQQ, DKUU
 
 ! SHOC-related variables
     integer                             :: DO_SHOC, SCM_SL
@@ -2824,13 +2802,7 @@ end if
 !
 ! edmf variables
 !
-    
-    call MAPL_GetPointer(INTERNAL, DKSS,   'DKSS',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DKQQ,   'DKQQ',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DKUU,   'DKUU',     RC=STATUS)
-    VERIFY_(STATUS)
+
 ! a,b,c and rhs for s
     call MAPL_GetPointer(INTERNAL, AKSS,   'AKSS',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3032,7 +3004,7 @@ end if
      real, dimension(:,:,:), pointer     :: LSHOC,BRUNTSHOC,BRUNTDRY,BRUNTMST,BRUNTEDGE,ISOTROPY, &
                                             LSHOC1,LSHOC2,LSHOC3, & 
                                             SHOCPRNUM,&
-                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS, &
+                                            TKEBUOY,TKESHEAR,TKEDISS,TKEDISSx,TKETRANS, &
                                             SL2, SL3, W2, W3, WQT, WSL, SLQT, W3CANUTO, QT2DIAG,SL2DIAG,SLQTDIAG
      real, dimension(:,:), pointer       :: LMIX, edmf_depth
 
@@ -3513,7 +3485,7 @@ end if
      VERIFY_(STATUS)
 
 !========== SHOC ===========
-     call MAPL_GetPointer(EXPORT, TKEDISS, 'TKEDISS',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT, TKEDISSx, 'TKEDISS',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TKEBUOY, 'TKEBUOY',  RC=STATUS)
      VERIFY_(STATUS)
@@ -3548,6 +3520,8 @@ end if
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, W_ENTR, 'W_ENTR', RC=STATUS)
      VERIFY_(STATUS)
+
+     call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , RC=STATUS); VERIFY_(STATUS)
 
 ! Initialize some arrays
 
@@ -3860,8 +3834,6 @@ end if
                     mfqt3,                    &
                     mfsl3,                    &
                     mfwqt,                    &
-!                    mfqt2,                    &
-!                    mfsl2,                    &
                     mfslqt,                   &
                     mfwsl,                    &
                     !== Outputs for SHOC ==
@@ -3899,8 +3871,6 @@ end if
       if (associated(ssrcmf))         ssrcmf       = ssrc
       if (associated(qvsrcmf))        qvsrcmf      = qvsrc
       if (associated(qlsrcmf))        qlsrcmf      = qlsrc
-!      if (associated(edmf_sl2))       edmf_sl2 = mfsl2 
-!      if (associated(edmf_qt2))       edmf_qt2 = mfqt2 
       if (associated(edmf_w2))        edmf_w2      = mfw2
       if (associated(edmf_w3))        edmf_w3      = mfw3
       if (associated(edmf_qt3))       edmf_qt3     = mfqt3
@@ -3954,8 +3924,6 @@ end if
       if (associated(qvsrcmf))        qvsrcmf       = 0.0
       if (associated(slflxmf))        slflxmf       = 0.0
       if (associated(qtflxmf))        qtflxmf       = 0.0
-!      if (associated(edmf_sl2))       edmf_sl2      = mfsl2 
-!      if (associated(edmf_qt2))       edmf_qt2      = mfqt2 
       if (associated(edmf_w2))        edmf_w2       = mfw2
       if (associated(edmf_w3))        edmf_w3       = mfw3
       if (associated(edmf_qt3))       edmf_qt3      = mfqt3
@@ -4014,8 +3982,8 @@ end if
                        !== Outputs ==
                        KM(:,:,1:LM),          &
                        ISOTROPY(:,:,1:LM),    &
+                       TKEDISS(:,:,1:LM),     &
                        !== Diagnostics ==  ! not used elsewhere
-                       TKEDISS,               &
                        TKEBUOY,               &
                        TKESHEAR,              &
                        LSHOC,                 &
@@ -4032,6 +4000,7 @@ end if
                        !== Tuning params ==
                        SHOCPARAMS )
 
+        if (associated(TKEDISSx)) TKEDISSx = TKEDISS
         KH(:,:,1:LM) = TKH(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -5180,10 +5149,6 @@ end if
       call VTRISOLVESURF(BKQ,CKQ,DKQ)
       call VTRISOLVESURF(BKV,CKV,DKV)
 
-      call VTRISOLVESURF(BKSS,CKSS,DKSS)
-      call VTRISOLVESURF(BKQQ,CKQQ,DKQQ)
-      call VTRISOLVESURF(BKUU,CKUU,DKUU)
-
       call MAPL_TimerOff(MAPL,"---DECOMP")
 
       if(ALLOC_TCZPBL) deallocate(TCZPBL)
@@ -5755,11 +5720,11 @@ end subroutine RUN1
       real, dimension(:,:  ), pointer     :: DSG, SF, SDF, SRFDIS
       real, dimension(:,:  ), pointer     :: HGTLM5, LM50M
       real, dimension(:,:  ), pointer     :: KETRB, KESRF, KETOP, KEINT
-      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKSS, DKUU, DKQQ, DKX, EKV, FKV
+      real, dimension(:,:,:), pointer     :: DKS, DKV, DKQ, DKX, EKV, FKV
       real, dimension(:,:,:), pointer     :: DPDTTRB
       real, dimension(:,:,:), pointer     :: QTFLXTRB, SLFLXTRB, WSL, WQT, MFWSL, &
                                              MFWQT, TKH, UFLXTRB, VFLXTRB, QTX, SLX, &
-                                             SLFLXMF, QTFLXMF, MFAW
+                                             SLFLXMF, QTFLXMF, MFAW, TKEDISS
 
       integer                             :: KM, K, L, I, J
       logical                             :: FRIENDLY
@@ -5788,7 +5753,7 @@ end subroutine RUN1
       real                                :: SHVC_ALPHA, SHVC_EFFECT, SHVC_SCALING 
       logical                             :: DO_SHVC
       logical                             :: ALLOC_TMP
-      integer                             :: KS
+      integer                             :: KS, DO_SHOC
 
       ! For idealized SCM surface layer
       integer :: SCM_SL
@@ -5804,6 +5769,7 @@ end subroutine RUN1
       ALLOC_TMP = .FALSE.
 
       call MAPL_GetPointer(INTERNAL, TKH , 'TKH' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, TKEDISS, 'TKEDISS' , RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, QTX      , 'QT'       , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SLX      , 'SL'       , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -5841,6 +5807,9 @@ end subroutine RUN1
                        alloc=associated(KETRB) .or. associated(KETOP), &
                                                               RC=STATUS)
       VERIFY_(STATUS)
+
+! If SHOC enabled, use TKE dissipation rate for INTDIS heating below
+     call MAPL_GetResource (MAPL, DO_SHOC, trim(COMP_NAME)//"_DO_SHOC:", default=0, RC=STATUS); VERIFY_(STATUS)
 
 ! SHVC Resource parameters. SHVC_EFFECT can be set to zero to turn-off SHVC.
 ! SHVC_EFFECT = 1. is the tuned value for  2 degree horizontal resolution.
@@ -5883,11 +5852,6 @@ end subroutine RUN1
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, DKQ,   'DKQ',   RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKQQ,  'DKQQ',  RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKSS,  'DKSS',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, DKUU,  'DKUU',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, EKV,   'EKV',   RC=STATUS)
       VERIFY_(STATUS)
@@ -6163,10 +6127,13 @@ end subroutine RUN1
             if(associated(KEINT )) KEINT  = 0.0
             if(associated(INTDIS)) then
 
-               DF             = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
-               INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
-               INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
-
+               if (DO_SHOC /= 0) then
+                  INTDIS(:,:,1:LM) = -1.*TKEDISS(:,:,1:LM)*DP(:,:,1:LM)/MAPL_CP
+               else
+                  DF             = (0.5/(MAPL_CP))*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2
+                  INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
+                  INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+               end if
                !DF(:,:,1) = sum(DP(:,:,LM-10:LM),3)
                !DF(:,:,1) = ((1.0/(MAPL_CP))*EKV(:,:,LM)*SX(:,:,LM)**2)/DF(:,:,1)
                !do L=LM-10,LM

@@ -512,6 +512,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'TKESHOCIT',                                       &
+         LONG_NAME  = 'tendency_of_turbulent_kinetic_energy_due_to_turbulence', &
+         UNITS      = 'J kg-1 s-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationCenter,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME = 'QVIT',                                            &
          LONG_NAME  = 'tendency_of_specific_humidity_due_to_turbulence', &
          UNITS      = 'kg kg-1 s-1',                                     &
