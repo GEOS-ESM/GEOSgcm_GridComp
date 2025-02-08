@@ -257,7 +257,7 @@ contains
     !  wesn        : Layer water contents per unit area of catchment [kg/m^2]
     !  htsnn       : Layer heat contents relative to liquid water at 0 C [J/m^2]
     !  sndz        : Layer depths [m]
-    !  rconstit    :  Mass of constituents in snow layer [kg] (i.e., [kg m-2])
+    !  rconstit    : Mass of constituents in snow layer [kg] (i.e., [kg m-2])
     !  rmelt       : Flushed mass amount of constituents from the bottom snow layer [kg m-2 s-1 (kg/m^2/s)]
     !*********
     ! OUTPUTS: 
@@ -420,7 +420,8 @@ contains
     dtss      = 0. 
     excswe    = 0.
     
-    rmelt  = 0.0
+    if (N_constit>0) rmelt  = 0.0
+    
     mltwtr = 0.0
     drho0  = 0.0
     tksno  = 0.0
@@ -441,7 +442,7 @@ contains
        do k=1,N_constit
           rmelt(k)=sum(rconstit(:,k))/dts
        enddo
-       rconstit(:,:) = 0.
+       if (N_constit>0) rconstit(:,:) = 0.
        
        if(snowf > 0.) then  ! only initialize with non-liquid part of precip
                             ! liquid precip (rainf) is part of outflow from snow base (see "pre" above)
@@ -759,9 +760,9 @@ contains
     !**** Updated by Koster, August 27, 2002.
     
     pre = 0.
-    rmelt(:) = 0.
+    if (N_constit>0) rmelt(:) = 0.
     flow = 0.
-    flow_r(:) = 0.
+    if (N_constit>0) flow_r(:) = 0.
     
     wesnperc = wesn
     
@@ -779,8 +780,11 @@ contains
        
        pre  = max((1.-fices(i))*wesn(i), 0.)
        flow = 0.
-       flow_r(:) = 0.
-       rconc(:) = 0.
+
+       if (N_constit>0) then
+          flow_r(:) = 0.
+          rconc(:) = 0.
+       end if
        
        if(snowd > wemin) then
           
