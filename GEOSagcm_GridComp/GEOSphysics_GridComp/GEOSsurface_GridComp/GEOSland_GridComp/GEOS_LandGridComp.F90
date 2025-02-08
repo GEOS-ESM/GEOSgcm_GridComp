@@ -204,7 +204,7 @@ contains
        
     END SELECT  ! LSM_CHOICE
 
-    if(RUN_IRRIG==1) then
+    if(RUN_IRRIG /= 0) then
        allocate (IRRIGATION(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
@@ -1383,7 +1383,7 @@ contains
 
     END SELECT   ! LSM_CHOICE (Catch, CatchCN)
     
-    if (RUN_IRRIG == 1) then
+    if (RUN_IRRIG /= 0) then
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_SPR', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_PDY', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRG_RATE_FRW', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
@@ -1494,7 +1494,7 @@ contains
               VERIFY_(STATUS)
           end if
 
-          if (RUN_IRRIG == 1) then
+          if (RUN_IRRIG /= 0) then
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
                   SHORT_NAME  = (/'POROS   ', 'WPWET   '                        ,&
@@ -1547,7 +1547,7 @@ contains
               VERIFY_(STATUS)
           end if
           
-          if (RUN_IRRIG == 1) then
+          if (RUN_IRRIG /= 0) then
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
                   SHORT_NAME  = (/'POROS   ', 'WPWET   '                        ,&
@@ -1579,7 +1579,7 @@ contains
 !          ENDIF
        END SELECT
 
-       if (RUN_IRRIG == 1) then
+       if (RUN_IRRIG /= 0) then
           call MAPL_AddConnectivity (                              &
                GC                                                 ,&
                SHORT_NAME  = (/'LAI  '/)                          ,&
