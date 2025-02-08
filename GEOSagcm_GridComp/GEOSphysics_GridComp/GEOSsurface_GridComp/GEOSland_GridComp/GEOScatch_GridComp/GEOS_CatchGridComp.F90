@@ -4904,9 +4904,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      !--------------- GOSWIM IMPORTS FROM GOCART ---------------
      ! Initialization 
-     RCONSTIT(:,:,:)  = 0.0
-     TOTDEPOS(:,:) = 0.0
-     RMELT(:,:)  = 0.0
+     if (N_constit>0) then
+        RCONSTIT(:,:,:)  = 0.0
+        TOTDEPOS(:,:) = 0.0
+        RMELT(:,:)  = 0.0
+     end if
      !------------------------------------------------------------------
 
      ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
@@ -4946,6 +4948,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      end select
 
+     if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
+     
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -5005,7 +5009,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (CATCH_INTERNAL_STATE%N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -5933,15 +5936,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
         if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
-        if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
-        if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
-        if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
-        if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
-        if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
-        if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
-        if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
-        if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
-        if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+
+        if (N_constit>0) then
+           if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
+           if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
+           if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
+           if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
+           if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
+           if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
+           if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
+           if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
+           if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        end if
 
         if(associated(DZGT1 )) DZGT1  = DZGT(1)                               ! [m]
         if(associated(DZGT2 )) DZGT2  = DZGT(2)                               ! [m]
