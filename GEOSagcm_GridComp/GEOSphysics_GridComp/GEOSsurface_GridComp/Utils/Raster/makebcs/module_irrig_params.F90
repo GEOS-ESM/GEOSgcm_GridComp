@@ -8,6 +8,7 @@ module module_irrig_params
   use rmTinyCatchParaMod,  ONLY : RegridRaster,regridrasterreal
   use process_hres_data,   ONLY : get_country_codes
   use MAPL
+  use irrigation_module,   ONLY : NCROPS => IRRG_NCROPS
   
   implicit none
 
@@ -40,7 +41,7 @@ contains
     
     integer, parameter       :: NX_mirca = 4320
     integer, parameter       :: NY_mirca = 2160
-    integer, parameter       :: NCROPS   = 26, NMON = 12, STRLEN = 20
+    integer, parameter       :: NMON = 12, STRLEN = 20
     real,    parameter       :: DXY_mirca= 360./REAL(NX_mirca)
     real,    parameter       :: lat1_mirca =   90.0 - DXY_mirca / 2.0    !1st grid center lat
     real,    parameter       :: lon1_mirca = -180.0 + DXY_mirca / 2.0   !1st grid center lon 
