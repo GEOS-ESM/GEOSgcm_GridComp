@@ -31,8 +31,8 @@ module GEOS_IrrigationGridCompMod
 !
 ! EXPORTS:   IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY\\ 
 !  
-! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
-!            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
+! INTERNALS: IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_CROPIRRIGFRAC, IRRG_DOY_PLANT, IRRG_DOY_HARVEST,
+!            IRRG_TYPE, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, IRRG_LAIMIN, IRRG_LAIMAX\\
 !
 ! OPTIONAL INTERNALS:  SRATE, DRATE, FRATE\\
 !  
@@ -49,7 +49,7 @@ module GEOS_IrrigationGridCompMod
 
   public SetServices
 
-  integer    :: IRRIG_METHOD, IRRIG_TRIGGER
+  integer    :: IRRG_METHOD, IRRG_TRIGGER
   integer    :: RUN_IRRIG
   
   type IRRIG_WRAP
@@ -131,9 +131,9 @@ contains
 
     call ESMF_ConfigLoadFile(    SCF, SURFRC, rc=status)                                              ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute(SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG    , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute(SCF, label='IRRIG_TRIGGER:', value=IRRIG_TRIGGER, DEFAULT=0, __RC__ )    
-    call ESMF_ConfigGetAttribute(SCF, label='IRRIG_METHOD:' , value=IRRIG_METHOD , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute(SCF, label='RUN_IRRIG:'   , value=RUN_IRRIG   , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute(SCF, label='IRRG_TRIGGER:', value=IRRG_TRIGGER, DEFAULT=0, __RC__ )    
+    call ESMF_ConfigGetAttribute(SCF, label='IRRG_METHOD:' , value=IRRG_METHOD , DEFAULT=0, __RC__ )
    
     call ESMF_ConfigDestroy     (SCF, __RC__)
 
@@ -158,7 +158,7 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'IRRIGFRAC'                             ,&
+         SHORT_NAME = 'IRRG_IRRIGFRAC'                        ,&
          LONG_NAME  = 'fraction_of_irrigated_cropland'	      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -169,7 +169,7 @@ contains
     VERIFY_(STATUS)  
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'PADDYFRAC'                             ,&
+         SHORT_NAME = 'IRRG_PADDYFRAC'                        ,&
          LONG_NAME  = 'fraction_of_paddy_cropland'	      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -180,55 +180,55 @@ contains
     VERIFY_(STATUS)
        
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'CROPIRRIGFRAC'                         ,&
+         SHORT_NAME = 'IRRG_CROPIRRIGFRAC'                    ,&
          LONG_NAME  = 'Crop_irrigated_fraction'		      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+         UNGRIDDED_DIMS = (/IRRG_NCROPS/)                     ,&
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
        
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'IRRIGPLANT'                            ,&
+         SHORT_NAME = 'IRRG_DOY_PLANT'                        ,&
          LONG_NAME  = 'DOY_start_planting'		      ,&
          UNITS      = 'day'                                   ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)          ,&
+         UNGRIDDED_DIMS = (/IRRG_NSEASONS, IRRG_NCROPS/)      ,&
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'IRRIGHARVEST'                          ,&
+         SHORT_NAME = 'IRRG_DOY_HARVEST'                      ,&
          LONG_NAME  = 'DOY_end_harvesting'                    ,&
          UNITS      = 'day'                                   ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)          ,&
+         UNGRIDDED_DIMS = (/IRRG_NSEASONS, IRRG_NCROPS/)      ,&
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'IRRIGTYPE'                             ,&
+         SHORT_NAME = 'IRRG_TYPE'                             ,&
          LONG_NAME  = 'Preferred_Irrig_method=(0)CONCURRENT_(1)SPRINKLER_(2)DRIP_(3)FLOOD_(negative)AVOID',&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+         UNGRIDDED_DIMS = (/IRRG_NCROPS/)                     ,&
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'SPRINKLERFR'                           ,&
+         SHORT_NAME = 'IRRG_IRRIGFRAC_SPR'                    ,&
          LONG_NAME  = 'fraction_of_sprinkler_irrigation'      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -238,7 +238,7 @@ contains
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'DRIPFR'                                ,&
+         SHORT_NAME = 'IRRG_IRRIGFRAC_DRP'                    ,&
          LONG_NAME  = 'fraction_of_drip_irrigation'	      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -249,7 +249,7 @@ contains
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'FLOODFR'                               ,&
+         SHORT_NAME = 'IRRG_IRRIGFRAC_FRW'                    ,&
          LONG_NAME  = 'fraction_of_flood_irrigation'	      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -260,7 +260,7 @@ contains
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'LAIMIN'                                ,&
+         SHORT_NAME = 'IRRG_LAIMIN'                           ,&
          LONG_NAME  = 'Minimum_LAI_irrigated_crops'	      ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -271,7 +271,7 @@ contains
     VERIFY_(STATUS)
     
     call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'LAIMAX'                                ,&
+         SHORT_NAME = 'IRRG_LAIMAX'                           ,&
          LONG_NAME  = 'Maximum_LAI_irrigated_crops'           ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -281,7 +281,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)  
     
-    if (IRRIG_TRIGGER == 0) then
+    if (IRRG_TRIGGER == 0) then
        ! only two crop types: irrigated crops and paddy in that order.
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
@@ -319,7 +319,7 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
-    elseif (IRRIG_TRIGGER == 1) then
+    elseif (IRRG_TRIGGER == 1) then
        
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
@@ -329,7 +329,7 @@ contains
             VLOCATION  = MAPL_VLocationNone                      ,&
             FRIENDLYTO = trim(COMP_NAME)                         ,&
             RESTART    = MAPL_RestartOptional                    ,&
-            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            UNGRIDDED_DIMS = (/IRRG_NCROPS/)                     ,&
             RC=STATUS  )
        VERIFY_(STATUS)  
        
@@ -341,7 +341,7 @@ contains
             VLOCATION  = MAPL_VLocationNone                      ,&
             FRIENDLYTO = trim(COMP_NAME)                         ,&
             RESTART    = MAPL_RestartOptional                    ,&
-            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            UNGRIDDED_DIMS = (/IRRG_NCROPS/)                     ,&
             RC=STATUS  )
        VERIFY_(STATUS)  	 
        
@@ -353,7 +353,7 @@ contains
             VLOCATION  = MAPL_VLocationNone                      ,&
             FRIENDLYTO = trim(COMP_NAME)                         ,&
             RESTART    = MAPL_RestartOptional                    ,&
-            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            UNGRIDDED_DIMS = (/IRRG_NCROPS/)                     ,&
             RC=STATUS  )
        VERIFY_(STATUS)
        
@@ -508,10 +508,10 @@ contains
 
     ! INTERNAL pointers
 
-    real, dimension(:),     pointer :: IRRIGFRAC
-    real, dimension(:),     pointer :: PADDYFRAC
-    real, dimension(:,:),   pointer :: CROPIRRIGFRAC
-    real, dimension(:,:),   pointer :: IRRIGTYPE
+    real, dimension(:),     pointer :: IRRG_IRRIGFRAC
+    real, dimension(:),     pointer :: IRRG_PADDYFRAC
+    real, dimension(:,:),   pointer :: IRRG_CROPIRRIGFRAC
+    real, dimension(:,:),   pointer :: IRRG_TYPE
     real, dimension(:,:),   pointer :: SRATE
     real, dimension(:,:),   pointer :: DRATE
     real, dimension(:,:),   pointer :: FRATE
@@ -556,49 +556,49 @@ contains
     ! get pointers to internal variables
     ! ----------------------------------
 
-    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',              RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_IRRIGFRAC     ,'IRRG_IRRIGFRAC',             RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_PADDYFRAC     ,'IRRG_PADDYFRAC',             RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_CROPIRRIGFRAC ,'IRRG_CROPIRRIGFRAC',         RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_TYPE          ,'IRRG_TYPE',                  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, SRATE              ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRATE              ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FRATE              ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR,    'IRRG_RATE_SPR',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,    'IRRG_RATE_DRP',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,    'IRRG_RATE_FRW',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,    'IRRG_RATE_PDY',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR,       'IRRG_RATE_SPR', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,       'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,       'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,       'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
-    ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in 
-    ! which IRRIGFRAC and PADDYFRAC in BCs are fractions.
-    ! The irrigation model would run on tiles with IRRIGFRAC + PADDYFRAC > IRRIG_THRES (default is 0.01).
+    ! Update IRRG_IRRIGFRAC and IRRG_PADDYFRAC for applications that are run on regular tiles in 
+    ! which IRRG_IRRIGFRAC and IRRG_PADDYFRAC in BCs are fractions.
+    ! The irrigation model would run on tiles with IRRG_IRRIGFRAC + IRRG_PADDYFRAC > IRRG_FRAC_THRES (default is 0.01).
 
-    where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
+    where (IRRG_IRRIGFRAC + IRRG_PADDYFRAC > IM%IRRG_FRAC_THRES)
 
        ! uncomment the following block to assign the entire cell to the largest fraction:
        
-       ! where (PADDYFRAC >= IRRIGFRAC)
-       !    PADDYFRAC = 1.
-       !    IRRIGFRAC = 0.
+       ! where (IRRG_PADDYFRAC >= IRRG_IRRIGFRAC)
+       !    IRRG_PADDYFRAC = 1.
+       !    IRRG_IRRIGFRAC = 0.
        ! elsewhere
-       !    PADDYFRAC = 0.
-       !    IRRIGFRAC = 1.
+       !    IRRG_PADDYFRAC = 0.
+       !    IRRG_IRRIGFRAC = 1.
        ! endwhere
 
     elsewhere
-       PADDYFRAC = 0.
-       IRRIGFRAC = 0.
+       IRRG_PADDYFRAC = 0.
+       IRRG_IRRIGFRAC = 0.
     endwhere
 
-    if (IRRIG_TRIGGER == 0) then
+    if (IRRG_TRIGGER == 0) then
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
        
        call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, & 
-            IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+            IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
        
     else
        
@@ -606,17 +606,17 @@ contains
        ! ==============================
 
        call IM%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
-            CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+            IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
 
     ! Scale computed IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, and IRRG_RATE_PDY to the total
     ! irrigated tile fraction before exporting to Catchment[CN].
 
-    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRIGFRAC 
-    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRIGFRAC 
-    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRIGFRAC 
-    IRRG_RATE_PDY = IRRG_RATE_PDY * PADDYFRAC 
+    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRG_IRRIGFRAC 
+    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRG_IRRIGFRAC 
+    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
+    IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
 
     call MAPL_TimerOff(MAPL,"INITIALIZE")
     RETURN_(ESMF_SUCCESS)
@@ -651,17 +651,17 @@ contains
 
 ! INTERNAL pointers
 
-    real, dimension(:),     pointer :: IRRIGFRAC
-    real, dimension(:),     pointer :: PADDYFRAC
-    real, dimension(:),     pointer :: SPRINKLERFR
-    real, dimension(:),     pointer :: DRIPFR
-    real, dimension(:),     pointer :: FLOODFR
-    real, dimension(:),     pointer :: LAIMIN
-    real, dimension(:),     pointer :: LAIMAX
-    real, dimension(:,:),   pointer :: CROPIRRIGFRAC
-    real, dimension(:,:),   pointer :: IRRIGTYPE
-    real, dimension(:,:,:), pointer :: IRRIGPLANT
-    real, dimension(:,:,:), pointer :: IRRIGHARVEST
+    real, dimension(:),     pointer :: IRRG_IRRIGFRAC
+    real, dimension(:),     pointer :: IRRG_PADDYFRAC
+    real, dimension(:),     pointer :: IRRG_IRRIGFRAC_SPR
+    real, dimension(:),     pointer :: IRRG_IRRIGFRAC_DRP
+    real, dimension(:),     pointer :: IRRG_IRRIGFRAC_FRW
+    real, dimension(:),     pointer :: IRRG_LAIMIN
+    real, dimension(:),     pointer :: IRRG_LAIMAX
+    real, dimension(:,:),   pointer :: IRRG_CROPIRRIGFRAC
+    real, dimension(:,:),   pointer :: IRRG_TYPE
+    real, dimension(:,:,:), pointer :: IRRG_DOY_PLANT
+    real, dimension(:,:,:), pointer :: IRRG_DOY_HARVEST
     real, dimension(:,:),   pointer :: SRATE
     real, dimension(:,:),   pointer :: DRATE
     real, dimension(:,:),   pointer :: FRATE
@@ -726,38 +726,38 @@ contains
     ! get pointers to internal variables
     ! ----------------------------------
 
-    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',              RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGPLANT     ,'IRRIGPLANT',                 RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGHARVEST   ,'IRRIGHARVEST',               RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',                  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, SPRINKLERFR    ,'SPRINKLERFR',                RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DRIPFR         ,'DRIPFR',                     RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, FLOODFR        ,'FLOODFR',                    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LAIMIN         ,'LAIMIN',                     RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LAIMAX         ,'LAIMAX',                     RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_IRRIGFRAC     ,'IRRG_IRRIGFRAC',              RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_PADDYFRAC     ,'IRRG_PADDYFRAC',              RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_CROPIRRIGFRAC ,'IRRG_CROPIRRIGFRAC',          RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_DOY_PLANT     ,'IRRG_DOY_PLANT',              RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_DOY_HARVEST   ,'IRRG_DOY_HARVEST',            RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_TYPE          ,'IRRG_TYPE',                   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_IRRIGFRAC_SPR ,'IRRG_IRRIGFRAC_SPR',          RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_IRRIGFRAC_DRP ,'IRRG_IRRIGFRAC_DRP',          RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_IRRIGFRAC_FRW ,'IRRG_IRRIGFRAC_FRW',          RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_LAIMIN        ,'IRRG_LAIMIN',                 RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRG_LAIMAX        ,'IRRG_LAIMAX',                 RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, SRATE              ,'SRATE',         ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRATE              ,'DRATE',         ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FRATE              ,'FRATE',         ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     
     ! get pointers to EXPORT variable
     ! -------------------------------
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR,   'IRRG_RATE_SPR', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP,   'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY,   'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW,   'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_SPR        ,'IRRG_RATE_SPR', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_DRP        ,'IRRG_RATE_DRP', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_PDY        ,'IRRG_RATE_PDY', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, IRRG_RATE_FRW        ,'IRRG_RATE_FRW', ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
   
     
     
     ! get pointers to IMPORT variables
     ! --------------------------------
 
-    call MAPL_GetPointer(IMPORT, POROS  ,         'POROS',                       RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WPWET  ,         'WPWET',                       RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, VGWMAX ,         'VGWMAX',                      RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WCRZ   ,         'WCRZ',                        RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, LAI    ,         'LAI',                         RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, POROS                ,'POROS',                       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WPWET                ,'WPWET',                       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, VGWMAX               ,'VGWMAX',                      RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WCRZ                 ,'WCRZ',                        RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, LAI                  ,'LAI',                         RC=STATUS) ; VERIFY_(STATUS)
         
     ! Get time and parameters from local state
     ! ----------------------------------------
@@ -827,15 +827,15 @@ contains
                                                  
     END DO
         
-    if (IRRIG_TRIGGER == 0) then
+    if (IRRG_TRIGGER == 0) then
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
                     
-       call IM%run_model(IRRIG_METHOD, local_hour,                      &
-            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
-            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, RZDEF,         &
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW, &
+       call IM%run_model(IRRG_METHOD, local_hour,                                                       &
+            IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, &           
+            SMWP,SMSAT,SMREF,SMCNT, LAI, IRRG_LAIMIN, IRRG_LAIMAX, RZDEF,                               &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                 &
             SRATE, DRATE, FRATE) 
        
     else
@@ -843,11 +843,11 @@ contains
        ! crop calendar based irrigation
        ! ==============================
 
-       call IM%run_model (dofyr,local_hour,                   &
-            SPRINKLERFR, DRIPFR, FLOODFR,                     &
-            CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
-            SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,   &
+       call IM%run_model (dofyr,local_hour,                                                             &
+            IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,                                 &
+            IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT,IRRG_DOY_HARVEST,IRRG_TYPE ,                              &
+            SMWP,SMSAT,SMREF,SMCNT, RZDEF,                                                              & 
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                 &
             SRATE, DRATE, FRATE) 
 
     endif
@@ -855,10 +855,10 @@ contains
     ! Scale computed IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, and IRRG_RATE_PDY to the total
     ! irrigated tile fraction before exporting to Catchment[CN].
  
-    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRIGFRAC 
-    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRIGFRAC 
-    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRIGFRAC 
-    IRRG_RATE_PDY = IRRG_RATE_PDY * PADDYFRAC 
+    IRRG_RATE_SPR = IRRG_RATE_SPR * IRRG_IRRIGFRAC 
+    IRRG_RATE_DRP = IRRG_RATE_DRP * IRRG_IRRIGFRAC 
+    IRRG_RATE_FRW = IRRG_RATE_FRW * IRRG_IRRIGFRAC 
+    IRRG_RATE_PDY = IRRG_RATE_PDY * IRRG_PADDYFRAC 
 
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
 

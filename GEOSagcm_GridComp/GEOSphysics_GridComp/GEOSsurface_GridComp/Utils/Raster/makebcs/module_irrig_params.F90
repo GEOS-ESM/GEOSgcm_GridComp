@@ -199,7 +199,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)       ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'IRRIGFRAC'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_IRRIGFRAC'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('fraction of irrigated cropland'),  &
              'fraction of irrigated cropland')                                     ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                       ; VERIFY_(STATUS)   
@@ -207,7 +207,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)       ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'PADDYFRAC'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_PADDYFRAC'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('fraction of paddy cropland'),      &
         'fraction of paddy cropland')                                         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                       ; VERIFY_(STATUS)    
@@ -230,7 +230,7 @@ contains
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('Crop Class Name'),      &
              'Crop Class Name')                                                    ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'CROPIRRIGFRAC'   , NF_FLOAT, 2 ,(/lid, cid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_CROPIRRIGFRAC'   , NF_FLOAT, 2 ,(/lid, cid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('Crop irrigated fraction'),      &
              'Crop irrigated fraction')                      ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                       ; VERIFY_(STATUS)       
@@ -249,13 +249,13 @@ contains
         ! Crop calendar
         ! -------------
         
-        status = NF_DEF_VAR(NCOutID, 'IRRIGPLANT'   , NF_FLOAT, 3 ,(/lid, mid, cid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_DOY_PLANT'   , NF_FLOAT, 3 ,(/lid, mid, cid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('DOY start planting'),      &
              'DOY start planting')                      ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 4,'days')                     ; VERIFY_(STATUS)       
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'missing_value', NF_REAL,1,  UNDEFG)   ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'IRRIGHARVEST'   , NF_FLOAT, 3 ,(/lid, mid, cid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_DOY_HARVEST'   , NF_FLOAT, 3 ,(/lid, mid, cid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('DOY end harvesting'),      &
              'DOY end harvesting')                      ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 4,'days')                     ; VERIFY_(STATUS)       
@@ -276,14 +276,14 @@ contains
         ! IRRIG TYPE
         ! ----------
         
-        status = NF_DEF_VAR(NCOutID, 'IRRIGTYPE'   , NF_FLOAT, 2 ,(/lid, cid/), vid)  ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_TYPE'   , NF_FLOAT, 2 ,(/lid, cid/), vid)  ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name',  &
              LEN_TRIM('Preferred Irrig Type : Concurrent (0) SPRINKLER(1) DRIP(2) FLOOD(3) AVOID (negative)'),      &
              'Preferred Irrig Type : Concurrent (0) SPRINKLER(1) DRIP(2) FLOOD(3) AVOID (negative)')            ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)       
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'missing_value', NF_REAL,1,  UNDEFG)   ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'SPRINKLERFR' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_IRRIGFRAC_SPR' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('fraction of sprinkler irrigation'),  &
              'fraction of sprinkler irrigation')                                    ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)
@@ -291,7 +291,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)          ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)        ; VERIFY_(STATUS)       
         
-        status = NF_DEF_VAR(NCOutID, 'DRIPFR' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_IRRIGFRAC_DRP' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('fraction of drip irrigation'),  &
              'fraction of drip irrigation')                                         ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)
@@ -299,7 +299,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)          ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)        ; VERIFY_(STATUS)       
         
-        status = NF_DEF_VAR(NCOutID, 'FLOODFR' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_IRRIGFRAC_FRW' , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('fraction of flood irrigation'),  &
              'fraction of flood irrigation')                                        ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)
@@ -309,7 +309,7 @@ contains
         
         ! LAI
         ! ---
-        status = NF_DEF_VAR(NCOutID, 'LAIMIN'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_LAIMIN'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('Minimum LAI irrigated crops'),      &
              'Minimum LAI irrigated crops')                      ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)       
@@ -317,7 +317,7 @@ contains
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'add_offset', NF_REAL,1,  0.)          ; VERIFY_(STATUS)
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'scale_factor', NF_REAL,1,  1.)        ; VERIFY_(STATUS)
         
-        status = NF_DEF_VAR(NCOutID, 'LAIMAX'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
+        status = NF_DEF_VAR(NCOutID, 'IRRG_LAIMAX'   , NF_FLOAT, 1 ,(/lid/), vid) ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('Maximum LAI irrigated crops'),      &
              'Maximum LAI irrigated crops')                        ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)       
@@ -377,8 +377,8 @@ contains
         integer, dimension (12)  :: DOY_MidMonth, DOY_BegMonth, DOY_EndMonth
         logical, dimension (4)  :: found = .false.
         integer, allocatable , dimension (:) :: crop_mons
-        real, allocatable, dimension (:,:,:) :: IRRIGPLANT, IRRIGHARVEST, RAINFEDPLANT, RAINFEDHARVEST
-        real, allocatable, dimension (:,:)   :: IRRIGTYPE
+        real, allocatable, dimension (:,:,:) :: IRRG_DOY_PLANT, IRRG_DOY_HARVEST, RAINFEDPLANT, RAINFEDHARVEST
+        real, allocatable, dimension (:,:)   :: IRRG_TYPE
         
         data DOY_BegMonth / 1, 32, 60,  91, 121, 152, 182, 213, 244, 274, 305, 335/          
         data DOY_MidMonth /15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349/       
@@ -419,22 +419,22 @@ contains
         !                                         rCrop  |       
         !                                                |-> NO  Plant Wheat 
         
-        allocate (MI     (1 : NTILES, 1 : NCROPS))
-        allocate (MR     (1 : NTILES, 1 : NCROPS))    
-        allocate (IRRIGPLANT     (1 : NTILES, 1 : 2, 1 : NCROPS))
-        allocate (IRRIGHARVEST   (1 : NTILES, 1 : 2, 1 : NCROPS))
-        allocate (RAINFEDPLANT   (1 : NTILES, 1 : 2, 1 : NCROPS))
-        allocate (RAINFEDHARVEST (1 : NTILES, 1 : 2, 1 : NCROPS))
-        allocate (IRRIGTYPE      (1 : NTILES, 1 : NCROPS))
+        allocate (MI                 (1 : NTILES, 1 : NCROPS))
+        allocate (MR                 (1 : NTILES, 1 : NCROPS))    
+        allocate (IRRG_DOY_PLANT     (1 : NTILES, 1 : 2, 1 : NCROPS))
+        allocate (IRRG_DOY_HARVEST   (1 : NTILES, 1 : 2, 1 : NCROPS))
+        allocate (RAINFEDPLANT       (1 : NTILES, 1 : 2, 1 : NCROPS))
+        allocate (RAINFEDHARVEST     (1 : NTILES, 1 : 2, 1 : NCROPS))
+        allocate (IRRG_TYPE          (1 : NTILES, 1 : NCROPS))
         
         MI     = 0.
         MR     = 0.
-        IRRIGTYPE = 0
+        IRRG_TYPE = 0
     
-        IRRIGPLANT     = 998
-        IRRIGHARVEST   = 998
-        RAINFEDPLANT   = 998
-        RAINFEDHARVEST = 998
+        IRRG_DOY_PLANT     = 998
+        IRRG_DOY_HARVEST   = 998
+        RAINFEDPLANT       = 998
+        RAINFEDHARVEST     = 998
         
         ! Compute annual maximum fractions from MIRCA monthly fractions : 
         !      (1) crop specific and (2) paddy and irrigated crops, seperately for rainfed and irrigated 
@@ -459,7 +459,7 @@ contains
               
               ! Crop planting/Harvesting days
               ! -----------------------------
-              ! OUTPPUTS IRRIGPLANT, IRRIGHARVEST, RAINFEDPLANT, RAINFEDHARVEST
+              ! OUTPPUTS IRRG_DOY_PLANT, IRRG_DOY_HARVEST, RAINFEDPLANT, RAINFEDHARVEST
               
               forall (m=1:12) fmonth3(m) = m
               
@@ -590,10 +590,10 @@ contains
                           endif
              
                           if (t == 1) then
-                             IRRIGPLANT   (I,1,N) = day1
-                             IRRIGPLANT   (I,2,N) = day1_2
-                             IRRIGHARVEST (I,1,N) = dayL
-                             IRRIGHARVEST (I,2,N) = dayL_2
+                             IRRG_DOY_PLANT   (I,1,N) = day1
+                             IRRG_DOY_PLANT   (I,2,N) = day1_2
+                             IRRG_DOY_HARVEST (I,1,N) = dayL
+                             IRRG_DOY_HARVEST (I,2,N) = dayL_2
                           else
                              RAINFEDPLANT   (I,1,N) = day1
                              RAINFEDPLANT   (I,2,N) = day1_2
@@ -606,8 +606,8 @@ contains
               END DO
               
               ! 1. Main Fractions (OUTPUT) :
-              !    1.1 IRRIGFRAC   : The maximum value between (1) GRIPC irrigfrac, and (2) sum of MIRCA monthly crop frations without rice
-              !    1.2 PADDYFRAC   : The maximum value between (1) GRIPC paddyfrac, and (2) monthly rice fractions from MIRCA
+              !    1.1 IRRG_IRRIGFRAC   : The maximum value between (1) GRIPC irrigfrac, and (2) sum of MIRCA monthly crop frations without rice
+              !    1.2 IRRG_PADDYFRAC   : The maximum value between (1) GRIPC paddyfrac, and (2) monthly rice fractions from MIRCA
               !    1.3 RAINFEDFRAC : The maximum value between (1) GRIPC rainfedfrac, and (2) sum of MIRCA monthly crop frations
               !    1.4 MI (I,CROPS) : Irrigated crop fractions with rice is the 3rd slice crops = 3
               !    1.5 MR (I,CROPS) : rainfed crop fractions with rice is the 3rd slice crops = 3
@@ -693,10 +693,10 @@ contains
                           IF(N /= 3) THEN
                              MI (I,N) = MR (I,N) * IGRIPC (I) /  MRCROPA
                              MR (I,N) = 0.
-                             IRRIGPLANT   (I,1,N) = RAINFEDPLANT   (I,1,N)
-                             IRRIGPLANT   (I,2,N) = RAINFEDPLANT   (I,2,N)
-                             IRRIGHARVEST (I,1,N) = RAINFEDHARVEST (I,1,N)
-                             IRRIGHARVEST (I,2,N) = RAINFEDHARVEST (I,2,N)
+                             IRRG_DOY_PLANT   (I,1,N) = RAINFEDPLANT   (I,1,N)
+                             IRRG_DOY_PLANT   (I,2,N) = RAINFEDPLANT   (I,2,N)
+                             IRRG_DOY_HARVEST (I,1,N) = RAINFEDHARVEST (I,1,N)
+                             IRRG_DOY_HARVEST (I,2,N) = RAINFEDHARVEST (I,2,N)
                           ENDIF
                        END DO
                        !                         CALL STOPIT (3, IGRIPC (I), MICROPA, MI (I,:))
@@ -706,10 +706,10 @@ contains
                        
                        ! MIRCA irrigated and rainfed do not have data plant some wheat
                        MI (I,1) =  IGRIPC (I)
-                       IRRIGPLANT   (I,1,1) = 999 
-                       IRRIGPLANT   (I,2,1) = 0
-                       IRRIGHARVEST (I,1,1) = 999
-                       IRRIGHARVEST (I,2,1) = 0
+                       IRRG_DOY_PLANT   (I,1,1) = 999 
+                       IRRG_DOY_PLANT   (I,2,1) = 0
+                       IRRG_DOY_HARVEST (I,1,1) = 999
+                       IRRG_DOY_HARVEST (I,2,1) = 0
                        !                         CALL STOPIT (4, IGRIPC (I), MICROPA, MI (I,:))
                     ENDIF
                     !   ENDIF
@@ -744,10 +744,10 @@ contains
                        MI (I,3) = MR (I,3) * PGRIPC (I) /  MRRICEA
                        MR (I,3) = 0.
                        MRRICEA = 0.
-                       IRRIGPLANT   (I,1,3) = RAINFEDPLANT   (I,1,3)
-                       IRRIGPLANT   (I,2,3) = RAINFEDPLANT   (I,2,3)
-                       IRRIGHARVEST (I,1,3) = RAINFEDHARVEST (I,1,3)
-                       IRRIGHARVEST (I,2,3) = RAINFEDHARVEST (I,2,3)
+                       IRRG_DOY_PLANT   (I,1,3) = RAINFEDPLANT   (I,1,3)
+                       IRRG_DOY_PLANT   (I,2,3) = RAINFEDPLANT   (I,2,3)
+                       IRRG_DOY_HARVEST (I,1,3) = RAINFEDHARVEST (I,1,3)
+                       IRRG_DOY_HARVEST (I,2,3) = RAINFEDHARVEST (I,2,3)
                     ELSE
                        
                        ! MIRCA irrigated and rainfed do not have data plant rice to PGRIPC
@@ -755,10 +755,10 @@ contains
                        
                        ! Get crop planting days for the nearest neighbor later
                        
-                       IRRIGPLANT   (I,1,3) = 999
-                       IRRIGPLANT   (I,2,3) = 0
-                       IRRIGHARVEST (I,1,3) = 999
-                       IRRIGHARVEST (I,2,3) = 0
+                       IRRG_DOY_PLANT   (I,1,3) = 999
+                       IRRG_DOY_PLANT   (I,2,3) = 0
+                       IRRG_DOY_HARVEST (I,1,3) = 999
+                       IRRG_DOY_HARVEST (I,2,3) = 0
                        
                     ENDIF
                  ENDIF
@@ -800,7 +800,7 @@ contains
               ENDIF
               ! ENDIF
               
-              ! IRRIGTYPE
+              ! IRRG_TYPE
               
               DO N = 1, NCROPS
                  FF = FLOOD     (I)
@@ -810,14 +810,14 @@ contains
                     SF = 0.
                     DF = 0.
                     FF = 1.
-                    IRRIGTYPE (I, N) = 3 ! Always flood
+                    IRRG_TYPE (I, N) = 3 ! Always flood
                  ENDIF
-                 IF(N == 10) IRRIGTYPE (I, N) = -1 ! never sprinkler
-                 IF(N == 22) IRRIGTYPE (I, N) = -1 ! never sprinkler
+                 IF(N == 10) IRRG_TYPE (I, N) = -1 ! never sprinkler
+                 IF(N == 22) IRRG_TYPE (I, N) = -1 ! never sprinkler
                  !IF(N == 10) SF = 0.                                   ! Date palm
                  !IF(N == 22) SF = 0.                                   ! Cocoa
                  !ITYPE = (/SF, DF, FF/)
-                 !IRRIGTYPE (I, N) = maxloc(ITYPE, 1)
+                 !IRRG_TYPE (I, N) = maxloc(ITYPE, 1)
               END DO
            ENDIF
         END DO
@@ -831,14 +831,14 @@ contains
               ! fill missing crop plant/harvest DOYs in irrigated crops
               ! .......................................................
               
-              IF((IRRIGPLANT(I,1,N) == 999).AND.(MI (I,N) > 0.)) THEN
-                  l = getNeighbor (I,day_in = IRRIGPLANT  (:,1,N))
-                 IRRIGPLANT  (I,1,N) = IRRIGPLANT  (l,1,N)
-                 IRRIGHARVEST(I,1,N) = IRRIGHARVEST(l,1,N)
+              IF((IRRG_DOY_PLANT(I,1,N) == 999).AND.(MI (I,N) > 0.)) THEN
+                 l = getNeighbor (I,day_in = IRRG_DOY_PLANT  (:,1,N))
+                 IRRG_DOY_PLANT  (I,1,N) = IRRG_DOY_PLANT  (l,1,N)
+                 IRRG_DOY_HARVEST(I,1,N) = IRRG_DOY_HARVEST(l,1,N)
                  if(N == 1) then
                     IF(RAINFEDPLANT(I,1,N) == 999) THEN
-                       RAINFEDPLANT  (I,1,N) = IRRIGPLANT  (l,1,N)
-                       RAINFEDHARVEST(I,1,N) = IRRIGHARVEST(l,1,N)         
+                       RAINFEDPLANT  (I,1,N) = IRRG_DOY_PLANT  (l,1,N)
+                       RAINFEDHARVEST(I,1,N) = IRRG_DOY_HARVEST(l,1,N)         
                     ENDIF
                  endif
               endif
@@ -847,38 +847,38 @@ contains
                  ! fill missing crop plant/harvest DOYs in rainfed crops
                  ! .....................................................
                  ! temperorily commented out to save time, because we don't irrigate here anyway
-                ! IF((RAINFEDPLANT(I,1,N) == 999).AND.(MR (I,N) > 0.)) THEN
-                !    print *,'RAINFEDPLANT(I,1,N)',I,N, MR (I,N)
-                !    l = getNeighbor (I,day_in = IRRIGPLANT  (:,1,N))
-                !    RAINFEDPLANT  (I,1,N) = IRRIGPLANT  (l,1,N)
-                !    RAINFEDHARVEST(I,1,N) = IRRIGHARVEST(l,1,N)   
-                ! endif
+                 ! IF((RAINFEDPLANT(I,1,N) == 999).AND.(MR (I,N) > 0.)) THEN
+                 !    print *,'RAINFEDPLANT(I,1,N)',I,N, MR (I,N)
+                 !    l = getNeighbor (I,day_in = IRRG_DOY_PLANT  (:,1,N))
+                 !    RAINFEDPLANT  (I,1,N) = IRRG_DOY_PLANT  (l,1,N)
+                 !    RAINFEDHARVEST(I,1,N) = IRRG_DOY_HARVEST(l,1,N)   
+                 ! endif
               ENDIF
            END DO
-           if(((IRRIGPLANT  (I,1,1) == 999).and.(MI (i,1) > 0.)).OR. &
-                ((IRRIGPLANT  (I,1,3) == 999).and.(MI (i,3) > 0.))) then
-              print *, i, IRRIGPLANT  (I,1,1:3), MI (i,1:3)
+           if(  ((IRRG_DOY_PLANT  (I,1,1) == 999).and.(MI (i,1) > 0.))   .OR.            &
+                ((IRRG_DOY_PLANT  (I,1,3) == 999).and.(MI (i,3) > 0.))          ) then
+              print *, i, IRRG_DOY_PLANT  (I,1,1:3), MI (i,1:3)
               stop
            endif
         END DO
         
-        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGFRAC'  ) ,(/1/),(/NTILES/),IGRIPC ) ; VERIFY_(STATUS)
-        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'PADDYFRAC'  ) ,(/1/),(/NTILES/),PGRIPC ) ; VERIFY_(STATUS)
+        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_IRRIGFRAC'  ) ,(/1/),(/NTILES/),IGRIPC ) ; VERIFY_(STATUS)
+        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_PADDYFRAC'  ) ,(/1/),(/NTILES/),PGRIPC ) ; VERIFY_(STATUS)
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDFRAC') ,(/1/),(/NTILES/),RGRIPC ) ; VERIFY_(STATUS)      
          
         do n = 1,NCROPS
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'CROPIRRIGFRAC'  ) ,(/1,n/),(/NTILES,1/),MI (:,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'CROPRAINFEDFRAC') ,(/1,n/),(/NTILES,1/),MR (:,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGTYPE'      ) ,(/1,n/),(/NTILES,1/),IRRIGTYPE (:,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGPLANT'     ) ,(/1,1,n/),(/NTILES,1,1/), IRRIGPLANT  (:,1,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGPLANT'     ) ,(/1,2,n/),(/NTILES,1,1/), IRRIGPLANT  (:,2,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGHARVEST'   ) ,(/1,1,n/),(/NTILES,1,1/), IRRIGHARVEST(:,1,n)) ; VERIFY_(STATUS)         
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRIGHARVEST'   ) ,(/1,2,n/),(/NTILES,1,1/), IRRIGHARVEST(:,2,n)) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_CROPIRRIGFRAC'    ) ,(/1,n  /),(/NTILES,1  /), MI              (:,n)  ) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'CROPRAINFEDFRAC'  ) ,(/1,n  /),(/NTILES,1  /), MR              (:,n)  ) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_TYPE'        ) ,(/1,n  /),(/NTILES,1  /), IRRG_TYPE       (:,n)  ) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_DOY_PLANT'   ) ,(/1,1,n/),(/NTILES,1,1/), IRRG_DOY_PLANT  (:,1,n)) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_DOY_PLANT'   ) ,(/1,2,n/),(/NTILES,1,1/), IRRG_DOY_PLANT  (:,2,n)) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_DOY_HARVEST' ) ,(/1,1,n/),(/NTILES,1,1/), IRRG_DOY_HARVEST(:,1,n)) ; VERIFY_(STATUS)         
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_DOY_HARVEST' ) ,(/1,2,n/),(/NTILES,1,1/), IRRG_DOY_HARVEST(:,2,n)) ; VERIFY_(STATUS)
            
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDPLANT'    ) ,(/1,1,n/),(/NTILES,1,1/), RAINFEDPLANT  (:,1,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDPLANT'    ) ,(/1,2,n/),(/NTILES,1,1/), RAINFEDPLANT  (:,2,n)) ; VERIFY_(STATUS)
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDHARVEST'  ) ,(/1,1,n/),(/NTILES,1,1/), RAINFEDHARVEST(:,1,n)) ; VERIFY_(STATUS)          
-           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDHARVEST'  ) ,(/1,2,n/),(/NTILES,1,1/), RAINFEDHARVEST(:,2,n)) ; VERIFY_(STATUS)          
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDPLANT'     ) ,(/1,1,n/),(/NTILES,1,1/), RAINFEDPLANT    (:,1,n)) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDPLANT'     ) ,(/1,2,n/),(/NTILES,1,1/), RAINFEDPLANT    (:,2,n)) ; VERIFY_(STATUS)
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDHARVEST'   ) ,(/1,1,n/),(/NTILES,1,1/), RAINFEDHARVEST  (:,1,n)) ; VERIFY_(STATUS)          
+           status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'RAINFEDHARVEST'   ) ,(/1,2,n/),(/NTILES,1,1/), RAINFEDHARVEST  (:,2,n)) ; VERIFY_(STATUS)          
         end do
         
         status = NF_CLOSE(NCOutID) 
@@ -1006,9 +1006,9 @@ contains
         
         CALL update_IMethod_bycounty (NTILES, f_sprink, f_drip, f_flood)
 
-        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'SPRINKLERFR') ,(/1/),(/NTILES/), f_sprink) ; VERIFY_(STATUS)
-        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'DRIPFR'     ) ,(/1/),(/NTILES/), f_drip  ) ; VERIFY_(STATUS)
-        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FLOODFR'    ) ,(/1/),(/NTILES/), f_flood ) ; VERIFY_(STATUS)
+        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_IRRIGFRAC_SPR') ,(/1/),(/NTILES/), f_sprink) ; VERIFY_(STATUS)
+        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_IRRIGFRAC_DRP'     ) ,(/1/),(/NTILES/), f_drip  ) ; VERIFY_(STATUS)
+        status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_IRRIGFRAC_FRW'    ) ,(/1/),(/NTILES/), f_flood ) ; VERIFY_(STATUS)
         
         print *, 'DONE PROCESSING IRRIGATION METHOD DATA '
 
@@ -1045,9 +1045,9 @@ contains
            status = NF_GET_VARA_INT(NCID,VarID(NCID,'POLYID') ,(/1,j/),(/NX_cb, 1/), POLYID (:,NY_cb - j + 1)) ; VERIFY_(STATUS) ! reading north to south
         end do
         do j = 1, cb_states
-           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'SPRINKLERFR') ,(/1,j/),(/cb_county, 1/), SFR (:,j)) ; VERIFY_(STATUS)
-           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'DRIPFR'     ) ,(/1,j/),(/cb_county, 1/), DFR (:,j)) ; VERIFY_(STATUS)
-           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'FLOODFR'    ) ,(/1,j/),(/cb_county, 1/), FFR (:,j)) ; VERIFY_(STATUS) 
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'IRRG_IRRIGFRAC_SPR') ,(/1,j/),(/cb_county, 1/), SFR (:,j)) ; VERIFY_(STATUS)
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'IRRG_IRRIGFRAC_DRP'     ) ,(/1,j/),(/cb_county, 1/), DFR (:,j)) ; VERIFY_(STATUS)
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'IRRG_IRRIGFRAC_FRW'    ) ,(/1,j/),(/cb_county, 1/), FFR (:,j)) ; VERIFY_(STATUS) 
         end do
         status = NF_GET_VARA_INT(NCID,VarID(NCID,'GEOID'    ) ,(/1/),(/cb_countyUS/), GEOID) ; VERIFY_(STATUS) 
         status = NF_CLOSE(NCID) ; VERIFY_(STATUS)
@@ -1350,8 +1350,8 @@ contains
         close (43)
         where (LAI_MIN == 9999.) LAI_MIN=-9999.
 
-      status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'LAIMAX'  ) ,(/1/),(/NTILES/),LAI_MAX ) ; VERIFY_(STATUS)
-      status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'LAIMIN'  ) ,(/1/),(/NTILES/),LAI_MIN  ) ; VERIFY_(STATUS)
+      status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_LAIMAX'  ) ,(/1/),(/NTILES/),LAI_MAX ) ; VERIFY_(STATUS)
+      status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'IRRG_LAIMIN'  ) ,(/1/),(/NTILES/),LAI_MIN  ) ; VERIFY_(STATUS)
       
       deallocate (var_in, iraster, min_cnt, max_cnt, tot_cnt, LAI_MIN, LAI_MAX, lai, yr, mn, dy, dum, nt)
 
@@ -1556,7 +1556,9 @@ contains
      end function getNeighbor
 
      ! *****************************************************************************
-   
+
+     ! IRRGRR - duplicates same in Utils/mk_restarts/getids.F90
+     
       function to_radian(degree) result(rad)
    
         real,intent(in) :: degree
@@ -1567,6 +1569,8 @@ contains
       end function to_radian
    
       ! *****************************************************************************
+
+      ! IRRGRR - duplicates same in Utils/mk_restarts/getids.F90
       
       real function haversine(deglat1,deglon1,deglat2,deglon2)
         ! great circle distance -- adapted from Matlab 

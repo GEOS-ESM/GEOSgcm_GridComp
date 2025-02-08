@@ -170,39 +170,39 @@
 #
 # ---- Irrigation trigger
 #
-#    0 : (Default) LAI-based trigger turns irrigation on if LAI >= (LAImin + LAI_THRES * (LAImax - LAImin))
+#    0 : (Default) LAI-based trigger turns irrigation on if LAI >= (LAImin + IRRG_LAI_THRES * (LAImax - LAImin))
 #    1 : Use planting and harvesting times from 26 crop calendars
 #
-# GEOSagcm=>IRRIG_TRIGGER: 0
-# GEOSldas=>IRRIG_TRIGGER: 0
+# GEOSagcm=>IRRG_TRIGGER: 0
+# GEOSldas=>IRRG_TRIGGER: 0
 #
-# ---- Irrigation method (ONLY available with IRRIG_TRIGGER: 0)
+# ---- Irrigation method (ONLY available with IRRG_TRIGGER: 0)
 #
-# While the crop calendar based trigger uses crop-specific irrigation methods, the LAI-based trigger (IRRIG_TRIGGER:      0) offers below
+# While the crop calendar based trigger uses crop-specific irrigation methods, the LAI-based trigger (IRRG_TRIGGER:      0) offers below
 # 4 different irrigation methods to choose from:
 #    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on method specific tile fractions (default) 
 #    1 : Sprinkler irrigation on entire tile
 #    2 : Drip irrigation on entire tile
 #    3 : Flood irrigation on entire tile
 #
-# GEOSagcm=>IRRIG_METHOD: 0
-# GEOSldas=>IRRIG_METHOD: 0
+# GEOSagcm=>IRRG_METHOD: 0
+# GEOSldas=>IRRG_METHOD: 0
 #
 # ----- Below default parameter values can also be changed via this resource file:
 #
-# GEOSldas=>IRRIG_THRES:     0.01 # threshold of tile fraction to turn the irrigation model on.
-# GEOSldas=>LAI_THRES:       0.6 # threshold of LAI range to turn irrigation on
-# GEOSldas=>SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
-# GEOSldas=>SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
-# GEOSldas=>SPRINKLER_THRES: 0.7 # soil moisture threshhold to trigger sprinkler irrigation
-# GEOSldas=>DRIP_STIME:      8.0 # drip irrigatrion start time [hours]
-# GEOSldas=>DRIP_DUR:        8.0 # drip irrigation duration [hours]
-# GEOSldas=>FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
-# GEOSldas=>FLOOD_DUR:       8.0 # flood irrigation duration [hours]
-# GEOSldas=>FLOOD_THRES:     0.7 # soil moisture threshhold to trigger flood irrigation
-# GEOSldas=>IRR_EFCOR:      25.0 # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
-# GEOSldas=>MIDS_LENGTH:     0.6 # Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER     : 1)
-#                      # lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
+# GEOSldas=>IRRG_FRAC_THRES:  0.01 # threshold of tile fraction to turn the irrigation model on.
+# GEOSldas=>IRRG_LAI_THRES:   0.6  # threshold of LAI range to turn irrigation on
+# GEOSldas=>IRRG_SPR_STIME:   6.0  # sprinkler irrigatrion start time [hours]
+# GEOSldas=>IRRG_SPR_DUR:     4.0  # sprinkler irrigation duration [hours]
+# GEOSldas=>IRRG_SPR_THRES:   0.7  # soil moisture threshhold to trigger sprinkler irrigation                                IRRGRR: Units???
+# GEOSldas=>IRRG_DRP_STIME:   8.0  # drip irrigatrion start time [hours]
+# GEOSldas=>IRRG_DRP_DUR:     8.0  # drip irrigation duration [hours]
+# GEOSldas=>IRRG_FLD_STIME:   6.0  # flood irrigatrion start time [hours]
+# GEOSldas=>IRRG_FLD_DUR:     8.0  # flood irrigation duration [hours]
+# GEOSldas=>IRRG_FLD_THRES:   0.7  # soil moisture threshhold to trigger flood irrigation                                    IRRGRR: Units???
+# GEOSldas=>IRR_EFCOR:       25.0  # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
+# GEOSldas=>MIDS_LENGTH:      0.6  # Mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER     : 1)
+#                                  #   lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
 
 
 #--------------------------------------------------------#

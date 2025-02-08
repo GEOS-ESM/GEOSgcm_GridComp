@@ -52,31 +52,37 @@ MODULE IRRIGATION_MODULE
   !
   ! (4) SEASONAL CYLCE OF CROP WATER DEMAND:
   !     The module provides 2 options to determine the seasonal cycle of crop water demand:
-  !     4.1) IRRIG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
+  !     4.1) IRRG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
   !          The LAI-based trigger (Default and the current LIS implementation)
   !          uses precomputed minimum and maximum LAI on irrigateed pixels to determine
   !          beginning and end of crop growing seasons.
   !
-  !          This LAI-based trigger is also equipped with an additional control parameter, IRRIG_METHOD, 
+  !          This LAI-based trigger is also equipped with an additional control parameter, IRRG_METHOD, 
   !          which is good to choose the method of irrigation that would run on corresponding fraction:
-  !              i)   0: (Default) All 4 methods (sprinkler/furrow/flood/drip) concurrently.
-  !              ii)  1: Sprinkler irrigation on entire tile.
-  !              iv)  2: Drip irrigation on entire tile.
-  !              iii) 3: Furrow/Flood irrigation on entire tile.
+  !              0: (Default) All 4 methods (sprinkler/drip/furrow/paddy) concurrently, according to specified area fracs
+  !              1: Only sprinkler    irrigation on *entire* tile (regardless of IRRIGFRAC or PADDYFRAC)
+  !              2: Only drip         irrigation on *entire* tile (regardless of IRRIGFRAC or PADDYFRAC)
+  !              3: Only furrow/flood irrigation on *entire* tile (regardless of IRRIGFRAC or PADDYFRAC)
   !
-  !          IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
-  !              IRRIGFRAC    : fraction of tile covered by irrigated crops;
-  !                             ranges between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation Threshold)
-  !              PADDYFRAC    : fraction of tile covered by paddy;
-  !                             ranges between 0 and 1 (if IRRIGFRAC + PADDYFRAC > Irrigation Threshold)
-  !              SPRINKLERFR  : fraction of tile equipped for sprinkler irrigation
-  !              DRIPFR       : fraction of tile equipped for drip irrigation
-  !              FLOODFR      : fraction of tile equipped for flood/furrow irrigation
+  !          IRRG_TRIGGER: 0 SPECIFIC INPUTS:
+  !              IRRG_IRRIGFRAC     : fraction of tile covered by sprinkler/drip/furrow-irrigated crops;
+  !                                     ranges between 0 and 1 (if IRRG_IRRIGFRAC + IRRG_PADDYFRAC > Irrigation Threshold)
+  !              IRRG_PADDYFRAC     : fraction of tile covered by paddy;
+  !                                     ranges between 0 and 1 (if IRRG_IRRIGFRAC + IRRG_PADDYFRAC > Irrigation Threshold)
+  !
+  !              Within IRRIGFRAC, allocation by irrigation method:
+  !
+  !                  Note: IRRG_IRRIGFRAC_SPR + IRRG_IRRIGFRAC_DRP + IRRG_IRRIGFRAC_FRW = 1.
+  !
+  !              IRRG_IRRIGFRAC_SPR : fraction of IRRG_IRRIGFRAC equipped for sprinkler irrigation
+  !              IRRG_IRRIGFRAC_DRP : fraction of IRRG_IRRIGFRAC equipped for drip irrigation
+  !              IRRG_IRRIGFRAC_FRW : fraction of IRRG_IRRIGFRAC equipped for flood/furrow irrigation
+  !
   !              LAI          : time varying Leaf Area Index from the model
-  !              LAIMIN       : Minimum LAI spatially averaged over the irrigated tile fraction 
-  !              LAIMAX       : Maximum LAI spatially averaged over the irrigated tile fraction
+  !              IRRG_LAIMIN  : Minimum LAI spatially averaged over the irrigated tile fraction 
+  !              IRRG_LAIMAX  : Maximum LAI spatially averaged over the irrigated tile fraction
   !
-  !     4.2) IRRIG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
+  !     4.2) IRRG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
   !          Uses 26 crop calendars based on monthly crop growing areas of below crops.
   !               1    Wheat                      14    Oil palm                              
   !               2    Maize                      15    Rape seed / Canola    
@@ -92,43 +98,45 @@ MODULE IRRIGATION_MODULE
   !              12    Sugar cane                 25    Fodder grasses        
   !              13    Sugar beet                 26    Others annual         
   !
-  !          IRRIG_TRIGGER: 1 SPECIFIC INPUTS:
+  !          IRRG_TRIGGER: 1 SPECIFIC INPUTS:
   !              DOFYR        : day of year
-  !              IRRIGTYPE    : Preferred Irrig method (NTILES, 26) -
+  !              IRRG_TYPE    : Preferred Irrig method (NTILES, 26) -
   !                             0   CONCURRENT (default), 
   !                             1   SPRINKLER ONLY 
   !                             2   DRIP ONLY 
   !                             3   FLOOD/FURROW ONLY, and 
   !                             <0  AVOID this method 
-  !              CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been 
-  !                             adjusted such that CROPIRRIGFRAC=1. on paddy tiles; the sum of available 
+  !              IRRG_CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been 
+  !                             adjusted such that IRRG_CROPIRRIGFRAC=1. on paddy tiles; the sum of available 
   !                             crop fractions equals 1. on irrigated crop tiles;
   !                             and is zero on non-irrigated tiles.
-  !              IRRIGPLANT   : DOY start planting (NTILES, 2, 26) - up to two seasons
-  !              IRRIGHARVEST : DOY end harvesting (NTILES, 2, 26) - up to two seasons
-  !              If IRRIGPLANT/IRRIGHARVEST = 998, the crop is not grown on that tile 
+  !              IRRG_DOY_PLANT   : DOY start planting (NTILES, 2, 26) - up to two seasons
+  !              IRRG_DOY_HARVEST : DOY end harvesting (NTILES, 2, 26) - up to two seasons
+  !              If IRRG_DOY_PLANT = IRRG_DOY_HARVEST = 998, the crop is not grown on that tile 
   !
   ! (5) MODEL UPDATES (OPTIONAL INTERNALS):
   !     SRATE, DRATE, and FRATE contain irrigation rates applied on individual fractions at any given time.
   !     The second dimensions of 2D arrays is for different crop fractions i.e. the second dimension is 2 for above
-  !     IRRIG_TRIGGER: 0 to separately store irrigation rates in irrigated crop and paddy fractions.
-  !     It would be 26 for IRRIG_TRIGGER: 1.
-  !     The crop calendar implemetation (IRRIG_TRIGGER: 1) computes IRRG_RATE_SPR, IRRG_RATE_DRP, 
+  !     IRRG_TRIGGER: 0 to separately store irrigation rates in irrigated crop and paddy fractions.
+  !     It would be 26 for IRRG_TRIGGER: 1.
+  !     The crop calendar implemetation (IRRG_TRIGGER: 1) computes IRRG_RATE_SPR, IRRG_RATE_DRP, 
   !     IRRG_RATE_FRW, and IRRG_RATE_PDY as weighted averages of irrigation rates from
   !     all active crops in SRATE, DRATE and FRATE arrays.
   
   PRIVATE
   
-  INTEGER, PARAMETER, PUBLIC :: NUM_CROPS = 26, NUM_SEASONS = 2
+  INTEGER, PARAMETER, PUBLIC :: IRRG_NCROPS = 26, IRRG_NSEASONS = 2
 
   type, public :: irrig_params
      
      ! Below parameters can be set via RC file.
 
+     ! IRRGRR: Do we really want to hardwire defaults here *and* in GEOS_SurfaceGridComp.rc ???
+
      REAL :: irrig_thres      =   0.01 ! threshold of tile fraction to turn the irrigation model on. 
      REAL :: lai_thres        =   0.6  ! threshold of LAI range to turn irrigation on
      REAL :: efcor            =  25.0  ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
-     REAL :: MIDS_LENGTH      =   0.6  ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
+     REAL :: MIDS_LENGTH      =   0.6  ! Mid-season length as a fraction of crop growing season length (to be used with IRRG_TRIGGER: 1)
      
      ! Sprinkler parameters
      ! --------------------
@@ -187,47 +195,47 @@ contains
     
     SCF = ESMF_ConfigCreate(__RC__) 
     CALL ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IP%sprinkler_stime, DEFAULT=DP%sprinkler_stime, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IP%sprinkler_dur,   DEFAULT=DP%sprinkler_dur  , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IP%sprinkler_thres, DEFAULT=DP%sprinkler_thres, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IP%drip_stime,      DEFAULT=DP%drip_stime     , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IP%drip_dur,        DEFAULT=DP%drip_dur       , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IP%flood_stime,     DEFAULT=DP%flood_stime    , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IP%flood_dur,       DEFAULT=DP%flood_dur      , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_STIME:' , VALUE=IP%sprinkler_stime, DEFAULT=DP%sprinkler_stime, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_DUR:'   , VALUE=IP%sprinkler_dur,   DEFAULT=DP%sprinkler_dur  , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_SPR_THRES:' , VALUE=IP%sprinkler_thres, DEFAULT=DP%sprinkler_thres, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_DRP_STIME:' , VALUE=IP%drip_stime,      DEFAULT=DP%drip_stime     , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_DRP_DUR:'   , VALUE=IP%drip_dur,        DEFAULT=DP%drip_dur       , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_STIME:' , VALUE=IP%flood_stime,     DEFAULT=DP%flood_stime    , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_DUR:'   , VALUE=IP%flood_dur,       DEFAULT=DP%flood_dur      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_THRES:' , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='LAI_THRES:'      , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_LAI_THRES:' , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%lai_thres      , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='IRRIG_THRES:'    , VALUE=IP%irrig_thres,     DEFAULT=DP%irrig_thres    , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FRAC_THRES:', VALUE=IP%irrig_thres,     DEFAULT=DP%irrig_thres    , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
   END SUBROUTINE init_model
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
-            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
-            SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, RZDEF,          &
-            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,    &
+  SUBROUTINE irrigrate_lai_trigger (this,IRRG_METHOD, local_hour,                                        &
+            IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,  &           
+            SMWP, SMSAT, SMREF, SMCNT, LAI, IRRG_LAIMIN,IRRG_LAIMAX, RZDEF,                              &
+            IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW,                                  &
             SRATE, DRATE, FRATE)
 
     implicit none
     class (irrigation_model), intent(inout) :: this
-    integer, intent (in)                    :: IRRIG_METHOD
+    integer, intent (in)                    :: IRRG_METHOD
     real, dimension (:), intent (in)        :: local_hour
-    real, dimension (:), intent (in)        :: IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
-         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX, RZDEF
+    real, dimension (:), intent (in)        :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC, IRRG_IRRIGFRAC_SPR, &
+         IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW, SMWP, SMSAT, SMREF, SMCNT, LAI, IRRG_LAIMIN, IRRG_LAIMAX, RZDEF
     real, dimension (:), intent (inout)     :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
     real, dimension (:,:),intent (inout)    :: SRATE, DRATE, FRATE
     INTEGER                                 :: NTILES, N, crop
     REAL                                    :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
     logical                                 :: season_end
     
-    NTILES = SIZE (IRRIGFRAC)
+    NTILES = SIZE (IRRG_IRRIGFRAC)
     TILE_LOOP : DO N = 1, NTILES
-       IF(LAIMAX (N) > LAIMIN (N)) THEN
-          LAITHRES = LAIMIN (N) + this%lai_thres * (LAIMAX (N) - LAIMIN (N))          
-          ROOTFRAC = MIN((LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N)) ,1.0)          
+       IF(IRRG_LAIMAX (N) > IRRG_LAIMIN (N)) THEN
+          LAITHRES = IRRG_LAIMIN (N) + this%lai_thres * (IRRG_LAIMAX (N) - IRRG_LAIMIN (N))          
+          ROOTFRAC = MIN((LAI(N) - IRRG_LAIMIN (N)) / (IRRG_LAIMAX(N) - IRRG_LAIMIN(N)) ,1.0)          
        ELSE
           ROOTFRAC = 0.
        ENDIF
@@ -237,12 +245,12 @@ contains
        
        CHECK_LAITHRES : IF (LAI(N) >= LAITHRES) THEN
           season_end = .false.
-          CHECK_IRRIGFRACS: IF ((IRRIGFRAC(N) > 0.).OR.(PADDYFRAC(N)>0.)) THEN
+          CHECK_IRRIGFRACS: IF ((IRRG_IRRIGFRAC(N) > 0.).OR.(IRRG_PADDYFRAC(N)>0.)) THEN
 
              !-----------------------------------------------------------------------------
              !     Get the rootzone moisture availability to the plant
              !-----------------------------------------------------------------------------
-             if (IRRIGFRAC(N) > 0.) then
+             if (IRRG_IRRIGFRAC(N) > 0.) then
                 if(SMREF(N) > SMWP(N))then
                         ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                 else
@@ -251,7 +259,7 @@ contains
              
                 if(ma >= 0) then
                                 
-                        SELECT CASE (IRRIG_METHOD)                
+                        SELECT CASE (IRRG_METHOD)                
                         CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + FURROW + DRIP on corresponding fractions
 
                         call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
@@ -259,9 +267,9 @@ contains
                                 DRATE = DRATE (N,1), &
                                 FRATE = FRATE (N,1))
 
-                        SRATE (N,1) =  SRATE (N,1)*SPRINKLERFR(N)
-                        DRATE (N,1) =  DRATE (N,1)*DRIPFR (N)
-                        FRATE (N,1) =  FRATE (N,1)*FLOODFR (N) 
+                        SRATE (N,1) =  SRATE (N,1)*IRRG_IRRIGFRAC_SPR(N)
+                        DRATE (N,1) =  DRATE (N,1)*IRRG_IRRIGFRAC_DRP (N)
+                        FRATE (N,1) =  FRATE (N,1)*IRRG_IRRIGFRAC_FRW (N) 
                    
                         CASE (1)  ! SPRINKLER only
 
@@ -288,13 +296,13 @@ contains
                         DRATE (N,1) = 0.
                    
                         CASE DEFAULT
-                        PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
+                        PRINT *, 'irrigrate_lai_trigger: IRRG_METHOD can be 0,1,2, or3'
                         CALL EXIT(1)
                         END SELECT
                 endif
              endif
                      
-             if (PADDYFRAC (N) > 0.) then
+             if (IRRG_PADDYFRAC (N) > 0.) then
              
                 H1 = this%flood_stime
                 H2 = this%flood_stime + this%flood_dur
@@ -333,46 +341,46 @@ contains
     ! IRRGRR, this seems outdated: IRRG_RATE_PDY is weighted averaged over irrigated crops + paddy fractions.
         
     call this%update_irates (IRRG_RATE_SPR, IRRG_RATE_DRP,IRRG_RATE_PDY, IRRG_RATE_FRW, &
-         IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+         IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_lai_trigger
 
   ! ----------------------------------------------------------------------------
 
   SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour, &
-       SPRINKLERFR, DRIPFR, FLOODFR,                        &
-       CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
+       IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW,                        &
+       IRRG_CROPIRRIGFRAC,IRRG_DOY_PLANT, IRRG_DOY_HARVEST, IRRG_TYPE ,  &
        SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
        IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW, SRATE, DRATE, FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
     integer, intent (in)                 :: dofyr
-    real, dimension (:),   intent (in)   :: local_hour, SPRINKLERFR, DRIPFR, FLOODFR
+    real, dimension (:),   intent (in)   :: local_hour, IRRG_IRRIGFRAC_SPR, IRRG_IRRIGFRAC_DRP, IRRG_IRRIGFRAC_FRW
     real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, RZDEF
-    real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
-    real, dimension(:,:),  intent (in)   :: IRRIGTYPE     ! NUM_CROPS
-    real, dimension(:,:,:),intent (in)   :: IRRIGPLANT    ! NUM_SEASONS, NUM_CROPS
-    real, dimension(:,:,:),intent (in)   :: IRRIGHARVEST  ! NUM_SEASONS, NUM_CROPS
+    real, dimension(:,:),  intent (in)   :: IRRG_CROPIRRIGFRAC                                             ! IRRG_NCROPS
+    real, dimension(:,:),  intent (in)   :: IRRG_TYPE                                                      ! IRRG_NCROPS
+    real, dimension(:,:,:),intent (in)   :: IRRG_DOY_PLANT                                                 ! IRRG_NSEASONS, IRRG_NCROPS
+    real, dimension(:,:,:),intent (in)   :: IRRG_DOY_HARVEST                                               ! IRRG_NSEASONS, IRRG_NCROPS
     real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
     real, dimension (:,:),intent (inout) :: SRATE, DRATE, FRATE
     INTEGER                              :: NTILES, N, crop, sea, ITYPE, I
     REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC, void_frac
-    logical                              :: season_end (NUM_CROPS)
+    logical                              :: season_end (IRRG_NCROPS)
     NTILES = SIZE (local_hour)
          
     TILE_LOOP : DO N = 1, NTILES
        HC = local_hour(n)
-       IF_IRR: if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
+       IF_IRR: if(SUM(IRRG_CROPIRRIGFRAC(N,:)) > 0.) then
           ! the tile is irrigated crop or paddy
           season_end =  .true.
-          CROP_LOOP: DO crop = 1, NUM_CROPS
-             CROP_IN_TILE: if(CROPIRRIGFRAC(N,crop) > 0.) then
+          CROP_LOOP: DO crop = 1, IRRG_NCROPS
+             CROP_IN_TILE: if(IRRG_CROPIRRIGFRAC(N,crop) > 0.) then
                 ! crop is grown in this tile
-                TWO_SEASONS: do sea = 1, NUM_SEASONS
-                   IS_CROP: IF(IRRIGPLANT(N, sea, crop) /= 998) THEN
+                TWO_SEASONS: do sea = 1, IRRG_NSEASONS
+                   IS_CROP: IF(IRRG_DOY_PLANT(N, sea, crop) /= 998) THEN
                       ! crop is grown in sea
-                      IS_SEASON: IF(IS_WITHIN_SEASON(dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))) THEN
+                      IS_SEASON: IF(IS_WITHIN_SEASON(dofyr,NINT(IRRG_DOY_PLANT(N, sea, crop)),NINT(IRRG_DOY_HARVEST(N, sea, crop)))) THEN
                          ! dofyr falls within the crop season
                          season_end(crop) = .false.
                          PADDY_OR_CROP: if (crop == 3) then                           
@@ -392,7 +400,7 @@ contains
                             
                             ! IRRIGATED CROP: compute sum of irrigrates from 25 crops.
                             
-                            ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
+                            ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRG_DOY_PLANT(N, sea, crop)),NINT(IRRG_DOY_HARVEST(N, sea, crop)))
                             if(SMREF(N) > SMWP(N))then
                                ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                             else
@@ -401,7 +409,7 @@ contains
                             
                             SOILM: if(ma >= 0) then
                                
-                               ITYPE = NINT(IRRIGTYPE(N,crop))
+                               ITYPE = NINT(IRRG_TYPE(N,crop))
 
                                CROP_IMETHOD: if (ITYPE == 0) then
                                   
@@ -411,9 +419,9 @@ contains
                                        DRATE = DRATE (N,crop), &
                                        FRATE = FRATE (N,crop))
                                   
-                                  SRATE (N,crop) =  SRATE (N,crop)*SPRINKLERFR(N)
-                                  DRATE (N,crop) =  DRATE (N,crop)*DRIPFR (N)
-                                  FRATE (N,crop) =  FRATE (N,crop)*FLOODFR (N)
+                                  SRATE (N,crop) =  SRATE (N,crop)*IRRG_IRRIGFRAC_SPR(N)
+                                  DRATE (N,crop) =  DRATE (N,crop)*IRRG_IRRIGFRAC_DRP (N)
+                                  FRATE (N,crop) =  FRATE (N,crop)*IRRG_IRRIGFRAC_FRW (N)
 
                                elseif (ITYPE > 0) then
                                   
@@ -424,21 +432,21 @@ contains
 
                                elseif (ITYPE < 0) then
                                   
-                                  ! crop does not use IRRIG_METHOD -(ITYPE)
+                                  ! crop does not use IRRG_METHOD -(ITYPE)
                                   void_frac = 0.                                  
                                   DO I = 1,3
                                      if(I == ABS(ITYPE))then
                                         ! this itype isn't used by this crop other 2 fractions equally share this fraction
                                         if (I == 1) then
-                                           void_frac = SPRINKLERFR(N)/2.
+                                           void_frac = IRRG_IRRIGFRAC_SPR(N)/2.
                                            SRATE(N,crop) = 0.
                                         endif
                                         if (I == 2) then
-                                           void_frac = DRIPFR (N)/2.
+                                           void_frac = IRRG_IRRIGFRAC_DRP (N)/2.
                                            DRATE(N,crop) = 0.
                                         endif
                                         if (I == 3)then
-                                           void_frac = FLOODFR (N)/2.
+                                           void_frac = IRRG_IRRIGFRAC_FRW (N)/2.
                                            FRATE(N,crop) = 0.
                                         endif
                                      else
@@ -449,9 +457,9 @@ contains
                                   END DO
                                   DO I = 1,3
                                      if(I /= ABS(ITYPE))then
-                                        if (I == 1) SRATE (N,crop) =  SRATE (N,crop)*(SPRINKLERFR(N) + void_frac)
-                                        if (I == 2) DRATE (N,crop) =  DRATE (N,crop)*(DRIPFR (N)     + void_frac)
-                                        if (I == 3) FRATE (N,crop) =  FRATE (N,crop)*(FLOODFR (N)    + void_frac)
+                                        if (I == 1) SRATE (N,crop) =  SRATE (N,crop)*(IRRG_IRRIGFRAC_SPR(N) + void_frac)
+                                        if (I == 2) DRATE (N,crop) =  DRATE (N,crop)*(IRRG_IRRIGFRAC_DRP (N)     + void_frac)
+                                        if (I == 3) FRATE (N,crop) =  FRATE (N,crop)*(IRRG_IRRIGFRAC_FRW (N)    + void_frac)
                                      endif
                                   ENDDO
 
@@ -465,7 +473,7 @@ contains
           END DO CROP_LOOP
 
           ! turn off irrigation for crops that ended the season
-          DO crop = 1, NUM_CROPS
+          DO crop = 1, IRRG_NCROPS
              if(season_end(crop)) then
                 SRATE (N,crop) = 0.
                 DRATE (N,crop) = 0.
@@ -480,19 +488,19 @@ contains
     ! They are weighted averaged over 26 crop fractions.
 
     call this%update_irates (IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
-       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_crop_calendar
 
   ! ----------------------------------------------------------------------------
 
   SUBROUTINE update_irates_lai (this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
-       IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+       IRRG_IRRIGFRAC,IRRG_PADDYFRAC,SRATE,DRATE,FRATE)
     
     implicit none
 
     class(irrigation_model),intent(inout):: this
-    real, dimension (:), intent (in)     :: IRRIGFRAC, PADDYFRAC
+    real, dimension (:), intent (in)     :: IRRG_IRRIGFRAC, IRRG_PADDYFRAC
     real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
     real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_FRW, IRRG_RATE_PDY
     integer                              :: N, NT
@@ -503,12 +511,12 @@ contains
     IRRG_RATE_PDY = 0.
     IRRG_RATE_FRW = 0.
 
-    NT = size (IRRIGFRAC)
+    NT = size (IRRG_IRRIGFRAC)
 
-    !_ASSERT(size (SRATE,2)==NUM_CROPS,'Irrigation model LAI trigger irrig tile types mismatch')
+    !_ASSERT(size (SRATE,2)==IRRG_NCROPS,'Irrigation model LAI trigger irrig tile types mismatch')
     
     DO N = 1, NT
-       IF ((IRRIGFRAC(N) + PADDYFRAC(N))  > 0.) THEN
+       IF ((IRRG_IRRIGFRAC(N) + IRRG_PADDYFRAC(N))  > 0.) THEN
           IRRG_RATE_SPR (N) = SRATE (N,1)
           IRRG_RATE_DRP (N) = DRATE (N,1)
           IRRG_RATE_FRW (N) = FRATE (N,1)
@@ -521,11 +529,11 @@ contains
   !...............................................................................
   
   SUBROUTINE update_irates_ccalendar(this,IRRG_RATE_SPR,IRRG_RATE_DRP,IRRG_RATE_PDY,IRRG_RATE_FRW, &
-       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       IRRG_CROPIRRIGFRAC,SRATE,DRATE,FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
-    real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
+    real, dimension(:,:),  intent (in)   :: IRRG_CROPIRRIGFRAC ! IRRG_NCROPS
     real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
     real, dimension (:),intent (inout)   :: IRRG_RATE_SPR, IRRG_RATE_DRP, IRRG_RATE_PDY, IRRG_RATE_FRW
     integer                              :: N, NT, crop
@@ -536,18 +544,18 @@ contains
     IRRG_RATE_PDY = 0.
     IRRG_RATE_FRW = 0.
 
-    !_ASSERT(size (SRATE,2)==NUM_CROPS,'Irrigation model crop calandar trigger NUM_CROPS mismatch')
+    !_ASSERT(size (SRATE,2)==IRRG_NCROPS,'Irrigation model crop calendar trigger IRRG_NCROPS mismatch')
    NT =  size (IRRG_RATE_SPR)
     DO N = 1, NT
-       if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
-          DO crop = 1, NUM_CROPS
-             IRRG_RATE_SPR(N) = IRRG_RATE_SPR(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
-             IRRG_RATE_DRP(N) = IRRG_RATE_DRP(N) + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+       if(SUM(IRRG_CROPIRRIGFRAC(N,:)) > 0.) then
+          DO crop = 1, IRRG_NCROPS
+             IRRG_RATE_SPR(N) = IRRG_RATE_SPR(N) + SRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
+             IRRG_RATE_DRP(N) = IRRG_RATE_DRP(N) + DRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
           if (crop==3) then
      ! If crop is rice (crop ==3) then use flood irrigation. Otherwise use furrow irrigation.
-             IRRG_RATE_PDY(N) = IRRG_RATE_PDY(N) + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             IRRG_RATE_PDY(N) = IRRG_RATE_PDY(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
           else 
-             IRRG_RATE_FRW(N) = IRRG_RATE_FRW(N) + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             IRRG_RATE_FRW(N) = IRRG_RATE_FRW(N) + FRATE (N,crop)*IRRG_CROPIRRIGFRAC(N,crop)/SUM(IRRG_CROPIRRIGFRAC(N,:))
           endif
           END DO
        endif
