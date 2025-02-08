@@ -205,7 +205,7 @@ contains
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FLD_THRES:' , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_LAI_THRES:' , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%lai_thres      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%MIDS_LENGTH    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRRG_FRAC_THRES:', VALUE=IP%irrig_thres,     DEFAULT=DP%irrig_thres    , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
