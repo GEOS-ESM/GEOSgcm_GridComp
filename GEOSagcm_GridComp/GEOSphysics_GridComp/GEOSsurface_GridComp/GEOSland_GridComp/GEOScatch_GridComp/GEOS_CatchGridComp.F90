@@ -4221,6 +4221,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                     :: NTILES
         integer                     :: I, N 
 
+        real, dimension(:), allocatable :: AR4   ! for catch_calc_soil_moist() after irrigation application
+        
 ! dummy variables for call to get snow temp
 
         real    :: FICE
@@ -5264,6 +5266,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            where (IRRG_RATE_PDY > 0)
               SRFEXC = SRFEXC + IRRG_RATE_PDY * DT
            end where
+
+           ! after application of irrigation water, make sure soil moisture prognostics
+           ! (srfexc, rzexc, catdef) remain valid
+           ! TO-DO IRRGRR: add optional werror to close water balance
+
+           allocate(ar4(NTILES))
+           
+           call catch_calc_soil_moist(                                                       &
+                NTILES, dzsf_in_mm, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
+                ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,  &
+                srfexc, rzexc, catdef, ar1, ar2, ar4 )
+
+           deallocate(ar4)
+           
         endif
 
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
