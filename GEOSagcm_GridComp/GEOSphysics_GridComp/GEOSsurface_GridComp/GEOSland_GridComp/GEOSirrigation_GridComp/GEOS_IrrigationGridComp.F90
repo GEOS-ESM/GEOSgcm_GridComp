@@ -414,7 +414,7 @@ contains
 
     call MAPL_AddImportSpec(GC                                ,&
          SHORT_NAME = 'WPWET'                                 ,&         
-         LONG_NAME  = 'wetness_at_wilting_point'              ,&
+         LONG_NAME  = 'soil_wilting_point_in_degree_of_saturation_units'    ,&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -432,7 +432,7 @@ contains
 
     call MAPL_AddImportSpec(GC                                ,&
          SHORT_NAME = 'WCRZ'                                  ,&         
-         LONG_NAME  = 'water_root_zone'                       ,&
+         LONG_NAME  = 'soil_moisture_rootzone'                ,&
          UNITS      = 'm3 m-3'                                ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
