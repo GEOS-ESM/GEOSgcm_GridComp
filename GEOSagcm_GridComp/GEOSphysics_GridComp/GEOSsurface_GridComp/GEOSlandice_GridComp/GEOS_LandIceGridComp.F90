@@ -2762,10 +2762,12 @@ contains
     if(associated(TICE0   ))  TICE0    = 0.0
     if(associated(ACCUM   ))  ACCUM    = 0.0 
     if(associated(MELTWTR ))  MELTWTR  = 0.0
-    
-    TOTDEPOS  = 0.0
-    RCONSTIT  = 0.0
-    RMELT     = 0.0
+
+    if (N_constit>0) then
+       TOTDEPOS  = 0.0
+       RCONSTIT  = 0.0
+       RMELT     = 0.0
+    end if
 
     ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
     
@@ -2804,6 +2806,9 @@ contains
        
     end select
 
+
+    if (N_CONST_LANDICE4SNWALB /=0) then
+    
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
 ! TOTDEPOS(:,1): Combined dust deposition from size bin 1 (dry, conv-scav, ls-scav, sed)
@@ -2862,7 +2867,6 @@ contains
 ! RCONSTIT(NT,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NT,N,15): Sea salt mass from size bin 5 in layer N
 
-    if (N_CONST_LANDICE4SNWALB /=0) then
         RCONSTIT(:,:,1) = IRDU001(:,:)
         RCONSTIT(:,:,2) = IRDU002(:,:)
         RCONSTIT(:,:,3) = IRDU003(:,:)
@@ -3113,16 +3117,18 @@ contains
               if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8) 
               if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9) 
            end if
-           if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1) 
-           if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2) 
-           if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3) 
-           if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4) 
-           if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5) 
-           if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6) 
-           if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7) 
-           if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8) 
-           if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9) 
-
+           if (N_constit>0) then
+              if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1) 
+              if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2) 
+              if(associated(RMELTDU003)) RMELTDU003(k) = RMELT(k,3) 
+              if(associated(RMELTDU004)) RMELTDU004(k) = RMELT(k,4) 
+              if(associated(RMELTDU005)) RMELTDU005(k) = RMELT(k,5) 
+              if(associated(RMELTBC001)) RMELTBC001(k) = RMELT(k,6) 
+              if(associated(RMELTBC002)) RMELTBC002(k) = RMELT(k,7) 
+              if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8) 
+              if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9)
+           end if
+           
           if(associated(LWC ))then
                ZDEP = sum(SNDZ(k,:))
                if(sum(WESN(k,:)) > MINSWE) then
