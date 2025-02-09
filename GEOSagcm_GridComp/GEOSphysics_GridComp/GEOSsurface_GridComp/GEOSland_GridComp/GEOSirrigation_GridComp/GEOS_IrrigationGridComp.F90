@@ -575,7 +575,7 @@ contains
     ! which IRRG_IRRIGFRAC and IRRG_PADDYFRAC in BCs are fractions.
     ! The irrigation model would run on tiles with IRRG_IRRIGFRAC + IRRG_PADDYFRAC > IRRG_FRAC_THRES (default is 0.01).
 
-    where (IRRG_IRRIGFRAC + IRRG_PADDYFRAC > IM%IRRG_FRAC_THRES)
+    where (IRRG_IRRIGFRAC + IRRG_PADDYFRAC > IM%irrig_thres)
 
        ! uncomment the following block to assign the entire cell to the largest fraction:
        
