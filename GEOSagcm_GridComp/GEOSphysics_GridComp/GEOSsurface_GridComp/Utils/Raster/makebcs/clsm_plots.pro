@@ -3102,9 +3102,9 @@ if file_test ('limits.idl') then restore,'limits.idl'
 
 id   = NCDF_OPEN (filename, /NOWRITE)
 
-NCDF_VARGET, id,'SPRINKLERFR',SPRINKLERV
-NCDF_VARGET, id,'DRIPFR',DRIPV
-NCDF_VARGET, id,'FLOODFR',FLOODV
+NCDF_VARGET, id,'IRRG_IRRIGFRAC_SPR',SPRINKLERV
+NCDF_VARGET, id,'IRRG_IRRIGFRAC_DRP',DRIPV
+NCDF_VARGET, id,'IRRG_IRRIGFRAC_FRW',FLOODV
 
 NCDF_CLOSE, id
 
@@ -3197,8 +3197,8 @@ if file_test ('limits.idl') then restore,'limits.idl'
 
 id   = NCDF_OPEN (filename, /NOWRITE)
 
-NCDF_VARGET, id,'LAIMIN',LAI_MNV
-NCDF_VARGET, id,'LAIMAX',LAI_MXV
+NCDF_VARGET, id,'IRRG_LAIMIN',LAI_MNV
+NCDF_VARGET, id,'IRRG_LAIMAX',LAI_MXV
 
 NCDF_CLOSE, id
 
@@ -3313,14 +3313,14 @@ if file_test ('limits.idl') then restore,'limits.idl'
 
 id   = NCDF_OPEN (filename, /NOWRITE)
 
-NCDF_VARGET, id,'IRRIGFRAC',IRRIGFRACV
-NCDF_VARGET, id,'PADDYFRAC',PADDYFRACV
+NCDF_VARGET, id,'IRRG_IRRIGFRAC',IRRIGFRAC_V
+NCDF_VARGET, id,'IRRG_PADDYFRAC',IRRG_PADDYFRACV
 NCDF_VARGET, id,'RAINFEDFRAC',RAINFEDFRACV
 
 NCDF_CLOSE, id
 
-IRRIGFRACV  (where (IRRIGFRACV   gt 1.)) = !VALUES.F_NAN
-PADDYFRACV  (where (PADDYFRACV   gt 1.)) = !VALUES.F_NAN
+IRRIGFRAC_V  (where (IRRIGFRAC_V   gt 1.)) = !VALUES.F_NAN
+IRRG_PADDYFRACV  (where (IRRG_PADDYFRACV   gt 1.)) = !VALUES.F_NAN
 RAINFEDFRACV(where (RAINFEDFRACV gt 1.)) = !VALUES.F_NAN
 
 im = n_elements(tile_id[*,0])
@@ -3332,22 +3332,22 @@ dy = 180. / jm
 x = indgen(im)*dx -180. +  dx/2.
 y = indgen(jm)*dy -90.  +  dy/2.
 
-IRRIGFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
-PADDYFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
+IRRG_IRRIGFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
+IRRG_PADDYFRAC   = REPLICATE (!VALUES.F_NAN,IM, JM)
 RAINFEDFRAC = REPLICATE (!VALUES.F_NAN,IM, JM)
 
 for j = 0l, jm -1l do begin
    for i = 0l, im -1 do begin
       if(tile_id[i,j] gt 0) then begin
-        IRRIGFRAC  (i,j) = IRRIGFRACV   (tile_id[i,j] -1)
-	PADDYFRAC  (i,j) = PADDYFRACV   (tile_id[i,j] -1)
+        IRRG_IRRIGFRAC  (i,j) = IRRIGFRAC_V   (tile_id[i,j] -1)
+	IRRG_PADDYFRAC  (i,j) = IRRG_PADDYFRACV   (tile_id[i,j] -1)
 	RAINFEDFRAC(i,j) = RAINFEDFRACV (tile_id[i,j] -1)
       endif	
    endfor
 endfor
 
-IRRIGFRAC  (where (IRRIGFRAC   eq 0.)) = !VALUES.F_NAN
-PADDYFRAC  (where (PADDYFRAC   eq 0.)) = !VALUES.F_NAN
+IRRG_IRRIGFRAC  (where (IRRG_IRRIGFRAC   eq 0.)) = !VALUES.F_NAN
+IRRG_PADDYFRAC  (where (IRRG_PADDYFRAC   eq 0.)) = !VALUES.F_NAN
 RAINFEDFRAC(where (RAINFEDFRAC eq 0.)) = !VALUES.F_NAN
 
 colors = indgen (21) + 140
@@ -3404,10 +3404,10 @@ if file_test ('limits.idl') then restore,'limits.idl'
 
 id   = NCDF_OPEN (filename, /NOWRITE)
 
-NCDF_VARGET, id,'IRRIGPLANT',plantv
-NCDF_VARGET, id,'IRRIGHARVEST',harvestv
-NCDF_VARGET, id,'CROPIRRIGFRAC',Fracv
-NCDF_VARGET, id,'IRRIGTYPE',irrigtypev
+NCDF_VARGET, id,'IRRG_DOY_PLANT',plantv
+NCDF_VARGET, id,'IRRG_DOY_HARVEST',harvestv
+NCDF_VARGET, id,'IRRG_CROPIRRIGFRAC',Fracv
+NCDF_VARGET, id,'IRRG_TYPE',IRRG_TYPE_V
 NCDF_VARGET, id,'CROPCLASSNAME',cropname
 NCDF_CLOSE, id
 
@@ -3426,7 +3426,7 @@ y = fltarr (IM,JM)
 PLANT     = REPLICATE (!VALUES.F_NAN,IM, JM, 2, 26)
 HARVEST   = REPLICATE (!VALUES.F_NAN,IM, JM, 2, 26)
 FRAC      = REPLICATE (!VALUES.F_NAN,IM, JM, 26)
-IRRIGTYPE = REPLICATE (!VALUES.F_NAN,IM, JM, 26)
+IRRG_TYPE = REPLICATE (!VALUES.F_NAN,IM, JM, 26)
 
 for j = 0l, jm -1l do begin
    for i = 0l, im -1 do begin
@@ -3436,7 +3436,7 @@ for j = 0l, jm -1l do begin
 	PLANT    (i,j,*,*) = PLANTV     (tile_id[i,j] -1,*,*)
         HARVEST  (i,j,*,*) = HARVESTV   (tile_id[i,j] -1,*,*)
         FRAC     (i,j,*) = FRACV      (tile_id[i,j] -1,*)
-        IRRIGTYPE(i,j,*) = IRRIGTYPEV (tile_id[i,j] -1,*)
+        IRRG_TYPE(i,j,*) = IRRG_TYPE_V (tile_id[i,j] -1,*)
       endif	
    endfor
 endfor
@@ -3544,7 +3544,7 @@ for n = 0, 25 do begin
       endif
  
       if (col eq 3) then begin
-         ptitle = ' : IRRIGTYPE'
+         ptitle = ' : IRRG_TYPE'
          data_grid = data4
       endif
 
