@@ -1,4 +1,4 @@
-esma_set_this (OVERRIDE GEOS_Irrigation)
+esma_set_this ()
 
 set (srcs
    GEOS_IrrigationGridComp.F90
