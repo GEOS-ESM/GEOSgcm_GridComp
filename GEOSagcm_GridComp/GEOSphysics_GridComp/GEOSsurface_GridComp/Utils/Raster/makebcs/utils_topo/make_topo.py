@@ -31,7 +31,7 @@ def get_script_topo(answers) :
 
 #SBATCH --output=topo.log
 #SBATCH --error=topo.err
-#SBATCH --account=s1873
+#SBATCH --account={account}
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --job-name=topo.j
@@ -173,6 +173,7 @@ _EOF_
    @ count = $count + 1
 end
 """
+  account = get_account()
   SMOOTHMAP = '( ' 
   RESOLUTIONS = '( '
   for res in answers['resolutions']:
@@ -183,6 +184,7 @@ end
   RESOLUTIONS = RESOLUTIONS + ' )'
 
   script_string = topo_template.format(\
+       account = account, \
        bin_dir = answers['bin_dir'], \
        raw_latlon_data = answers['path_latlon']+ "/gmted_fixed_anartica_superior_caspian.nc4", \
        SMOOTHMAP   = SMOOTHMAP, \
@@ -194,7 +196,8 @@ end
   topo_job.write(script_string)
   topo_job.close()
   subprocess.call(['chmod', '755', topojob])
-  print("topo.j is copied to "  + out_dir)
+
+  print("\nJob script topo.j has been generated in "  + out_dir + "\n")
   
 def get_user():
    cmd = 'whoami'
@@ -203,6 +206,14 @@ def get_user():
    p_status = p.wait()
    user = user.decode().split()
    return user[0]
+
+def get_account():
+   cmd = 'id -gn'
+   p = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE)
+   (accounts, err) = p.communicate()
+   p_status = p.wait()
+   accounts = accounts.decode().split()
+   return accounts[0]
 
 def ask_questions():
 
