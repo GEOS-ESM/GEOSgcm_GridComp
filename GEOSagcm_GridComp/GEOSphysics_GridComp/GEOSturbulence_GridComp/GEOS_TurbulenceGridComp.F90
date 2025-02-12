@@ -6107,8 +6107,8 @@ end subroutine RUN1
                if (DO_SHOC==0) then
                  DF(:,:,1:LM-1) = (0.5/MAPL_CP)*EKV(:,:,1:LM-1)*(SX(:,:,1:LM-1)-SX(:,:,2:LM))**2 ! Shear
                  DF(:,:,  LM  ) =  0.0 ! no shear at the surface, surface friction added later
-                 INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF
-                 INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF
+                 INTDIS(:,:,1:LM-1) = INTDIS(:,:,1:LM-1) + DF(:,:,1:LM-1)
+                 INTDIS(:,:,2:LM  ) = INTDIS(:,:,2:LM  ) + DF(:,:,1:LM-1)
                endif
                ! Add surface dissipation to lower levels
                do J=1,JM
