@@ -56,8 +56,8 @@ cd geometry/{GRIDNAME}/
 /bin/rm -f sedfile
 if( {TRIPOL_OCEAN} == True ) then
 cat > sedfile << EOF
-s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
 s/{OCEAN_VERSION}{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{OCEAN_VERSION}/g
+s/CF{NC}x6C/PE{nc}x{nc6}-CF/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
@@ -67,8 +67,8 @@ ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{R
 endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
 cat > sedfile << EOF
-s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g
+s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
@@ -78,8 +78,8 @@ ncatted -a Grid_ocn_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
 endif
 if( {LATLON_OCEAN} == True ) then
 cat > sedfile << EOF
-s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
+s/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
@@ -96,8 +96,8 @@ cd ../../
 cd geometry/{GRIDNAME}/
 /bin/rm -f sedfile
 cat > sedfile << EOF
-s/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g
 s/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g
+s/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g
 EOF
 sed -f sedfile       {GRIDNAME}{RS}.til > tile.file
 /bin/mv -f tile.file {GRIDNAME}{RS}.til
