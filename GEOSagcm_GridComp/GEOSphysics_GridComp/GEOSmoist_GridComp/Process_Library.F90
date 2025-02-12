@@ -151,6 +151,7 @@ module GEOSmoist_Process_Library
   public :: FIX_NEGATIVE_PRECIP
   public :: FIND_KLID
   public :: sigma
+  public :: pdf_alpha
 
   contains
 
@@ -1160,10 +1161,15 @@ module GEOSmoist_Process_Library
          QG, &
          NR, &
          NS, &
-         NG)
+         NG, &
+         MASS, & 
+         TMP2D)
 
       real, intent(inout), dimension(:,:,:) :: TE,QV,QLC,CF,QLA,AF,QIC,QIA, QR, QS, QG
       real, intent(inout), dimension(:,:,:) :: NI, NL, NS, NR, NG
+      real, dimension(:,:,:),   intent(in)     :: MASS
+      real, dimension(:,:),     intent(  out)  :: TMP2D
+      integer :: IM, JM, LM
 
       real, parameter  :: qmin  = 1.0e-12
       real, parameter :: cfmin  = 1.0e-4
@@ -1233,8 +1239,21 @@ module GEOSmoist_Process_Library
          QIC = 0.
       end where
 
+        IM = SIZE( QV, 1 )
+    	JM = SIZE( QV, 2 )
+    	LM = SIZE( QV, 3 )
 
 
+      !make sure QI , NI stay within T limits 
+         call meltfrz_inst2M  ( IM, JM, LM,    &
+              TE              , &
+              QLC          , &
+              QLA         , &
+              QIC           , &
+              QIA          , &               
+              NL         , &
+              NI          )
+              
       !make sure no negative number concentrations are passed
       !and that N goes to minimum defaults in the microphysics when mass is too small
 
@@ -1253,6 +1272,18 @@ module GEOSmoist_Process_Library
       where (QS .le. qmin) NS = 0.
 
       where (QG .le. qmin) NG = 0.
+
+      ! need to clean up small negative values. MG does can't handle them
+          call FILLQ2ZERO( QV, MASS, TMP2D) 
+          call FILLQ2ZERO( QG, MASS, TMP2D) 
+          call FILLQ2ZERO( QR, MASS, TMP2D) 
+          call FILLQ2ZERO( QS, MASS, TMP2D) 
+          call FILLQ2ZERO( QLC, MASS, TMP2D)
+          call FILLQ2ZERO( QLA, MASS, TMP2D)  
+          call FILLQ2ZERO( QIC, MASS, TMP2D)
+          call FILLQ2ZERO( QIA, MASS, TMP2D)
+          call FILLQ2ZERO( CF, MASS, TMP2D)
+          call FILLQ2ZERO( AF, MASS, TMP2D)
 
    end subroutine fix_up_clouds_2M
 
@@ -2250,6 +2281,55 @@ module GEOSmoist_Process_Library
 
    end subroutine hystpdf
 
+!==========Estimate RHcrit========================
+!==============================
+ subroutine pdf_alpha(PP,P_LM, ALPHA, FRLAND, MINRHCRIT, TURNRHCRIT, TURNRHCRIT_UPPER, EIS, RHC_OPTION)
+
+      real,    intent(in)  :: PP, P_LM !mbar
+      real,    intent(out) :: ALPHA
+      real,    intent(in)  :: FRLAND
+      real,    intent(in)  :: MINRHCRIT, TURNRHCRIT, EIS, TURNRHCRIT_UPPER
+      integer, intent(in)  :: RHC_OPTION !0-Slingo(1985), 1-QUAAS (2012)
+      real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
+      real :: dw_ocean = 0.10 !< base value for ocean
+      real :: sloperhcrit =20.
+      !real :: TURNRHCRIT_UPPER = 300.
+      real ::  aux1, aux2, maxalpha
+
+      IF (RHC_OPTION .lt. 1) then
+
+          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
+          !Reformulated by Donifan Barahona
+
+          maxalpha=1.0-MINRHCRIT
+          aux1 = min(max((pp- TURNRHCRIT)/sloperhcrit, -20.0), 20.0)
+          aux2 = min(max((TURNRHCRIT_UPPER - pp)/sloperhcrit, -20.0), 20.0)
+
+          if (FRLAND > 0.05)  then
+             aux1=1.0
+          else
+             aux1 = 1.0/(1.0+exp(aux1)) !this function reproduces the old Sligo function.
+          end if
+
+           if (TURNRHCRIT_UPPER .gt. 0.0) then 
+          	 aux2= 1.0/(1.0+exp(aux2)) !this function reverses the profile P< TURNRHCRIT_UPPER
+           else
+           aux2=1.0
+           end if 
+           
+           ALPHA  = min(maxalpha*aux1*aux2, 0.4)
+
+       ELSE
+           ! based on Quass 2012 https://doi.org/10.1029/2012JD017495
+             if (EIS > 5.0) then ! Stable
+                ALPHA = 1.0 - ((1.0-dw_land ) + (0.99 - (1.0-dw_land ))*exp(1.0-(P_LM/PP)**2))
+             else ! Unstable
+                ALPHA = 1.0 - ((1.0-dw_ocean) + (0.99 - (1.0-dw_ocean))*exp(1.0-(P_LM/PP)**4))
+             endif
+       END IF
+
+   end subroutine pdf_alpha
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !Parititions DQ into ice and liquid. Follows Barahona et al. GMD. 2014
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3206,13 +3286,13 @@ subroutine update_cld( &
          CF          , &
          AF          , &
          SCICE       , &
-         NL          , &
          NI          , &
+         NL          , &
          RHcmicro)
 
       real, intent(in)    :: DT,ALPHA,PL,CNVFRC,SRFTYPE
       integer, intent(in) :: pdfflag
-      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF,SCICE,NL,NI,RHCmicro
+      real, intent(inout) :: TE,QV,QCl,QCi,CF,QAl,QAi,AF, NI, RHCmicro, NL,  SCICE
 
       ! internal arrays
       real :: CFO
@@ -3244,9 +3324,12 @@ subroutine update_cld( &
       QSLIQ  = GEOS_QsatLQU( TE, PL*100.0 , DQ=DQx )
       QSICE  = GEOS_QsatICE( TE, PL*100.0 , DQ=DQX )
 
-      if ((QC+QA) .gt. 1.0e-13) then
-         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)
-      else
+      
+      IF (QCl + QAl .gt. 0.) then 
+        QSx =  QSLIQ
+      ELSEIF (QCi + QAi.gt. 0.) then 
+        QSx =  QSICE        
+      ELSE
 		 DQSx  = GEOS_DQSAT( TE, PL, QSAT=QSx )
       end if
 
@@ -3283,8 +3366,10 @@ subroutine update_cld( &
       if  (QSx .gt. tiny(1.0)) then
          RHCmicro = SCICE - 0.5*DELQ/Qsx
       else
-         RHCmicro = 0.0
+         RHCmicro = 1.0-ALPHA
       end if
+
+      RHCmicro =  max(min(RHCmicro, 0.99), 0.6)
 
       CFALL   = max(CFo, 0.0)
       CFALL   = min(CFo, 1.0)
@@ -3298,8 +3383,7 @@ subroutine update_cld( &
 
 
 
-   subroutine meltfrz_inst2M  (     &
-         IM,JM,LM , &
+   subroutine meltfrz_inst2M  ( IM, JM, LM,    &
          TE       , &
          QCL       , &
          QAL       , &
@@ -3308,8 +3392,8 @@ subroutine update_cld( &
          NL       , &
          NI            )
 
-      integer, intent(in)                             :: IM,JM,LM
       real ,   intent(inout), dimension(:,:,:)   :: TE,QCL,QCI, QAL, QAI, NI, NL
+      integer, intent(in) :: IM, JM, LM
 
       real ,   dimension(im,jm,lm)              :: dQil, DQmax, QLTOT, QITOT, dNil, FQA
       real :: T_ICE_ALL =  240.
@@ -3319,8 +3403,7 @@ subroutine update_cld( &
       QLTOT=QCL + QAL
       FQA = 0.0
 
-
-      where (QITOT+QLTOT .gt. 0.0)
+      where (QITOT+QLTOT .gt. tiny(0.0))
          FQA= (QAI+QAL)/(QITOT+QLTOT)
       end where
 
@@ -3339,7 +3422,7 @@ subroutine update_cld( &
          dNil = NL
       end where
 
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NL*DQmax/dQil
       end where
 
@@ -3363,7 +3446,7 @@ subroutine update_cld( &
       where ((dQil .le. DQmax) .and. (dQil .gt. 0.0))
          dNil = NI
       end where
-      where ((dQil .gt. DQmax) .and. (dQil .gt. 0.0))
+      where ((dQil .gt. DQmax) .and. (dQil .gt. tiny(0.0)))
          dNil  =  NI*DQmax/dQil
       end where
       dQil = max(  0., dQil )
