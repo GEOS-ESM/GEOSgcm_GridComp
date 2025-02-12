@@ -11,7 +11,7 @@ integer :: zid,gwdid,trbid
 integer :: ncid,rc
 integer :: dimids(2)
 integer :: status
-
+character(len=:), allocatable :: Istr, Jstr
 real :: g
 real, allocatable :: z1d(:),turb1d(:),gwd1d(:)
 
@@ -54,32 +54,36 @@ call check(nf90_inq_varid(ncid,'SGH30',varid),"find sgh30")
 call check(nf90_get_var(ncid,varid,turb1d),"read sgh30")
 call check(nf90_close(ncid),"close")
 
-if (isLL) then
-   if (im_world < 288) then
-      write(fsnc4,"(i3.3,'x',i2.2,'.nc4')")im_world,jm_world
-      write(fsbin,"(i3.3,'x',i2.2,'.data')")im_world,jm_world
-   else if (im_world < 1152) then
-      write(fsnc4,"(i3.3,'x',i3.3,'.nc4')")im_world,jm_world
-      write(fsbin,"(i3.3,'x',i3.3,'.data')")im_world,jm_world
-   else
-      write(fsnc4,"(i4.4,'x',i3.3,'.nc4')")im_world,jm_world
-      write(fsbin,"(i4.4,'x',i3.3,'.data')")im_world,jm_world
-   end if
-else
-   if (im_world < 168) then
-      write(fsnc4,"(i2.2,'x',i3.3,'.nc4')")im_world,jm_world
-      write(fsbin,"(i2.2,'x',i3.3,'.data')")im_world,jm_world
-   else if (im_world >= 168 .and. im_world < 1000) then
-      write(fsnc4,"(i3.3,'x',i4.4,'.nc4')")im_world,jm_world
-      write(fsbin,"(i3.3,'x',i4.4,'.data')")im_world,jm_world
-   else if (im_world >= 1000 .and. im_world < 1666) then
-      write(fsnc4,"(i4.4,'x',i4.4,'.nc4')")im_world,jm_world
-      write(fsbin,"(i4.4,'x',i4.4,'.data')")im_world,jm_world
-   else if (im_world >= 1666) then
-      write(fsnc4,"(i4.4,'x',i5.5,'.nc4')")im_world,jm_world
-      write(fsbin,"(i4.4,'x',i5.5,'.data')")im_world,jm_world
-   endif
-end if
+Istr  = i_to_string(im_world)
+Jstr  = i_to_string(jm_world)
+fsnc4 = Istr//'x'//Jstr//'.nc4'
+fsbin = Istr//'x'//Jstr//'.data'
+!if (isLL) then
+!   if (im_world < 288) then
+!      write(fsnc4,"(i3.3,'x',i2.2,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i3.3,'x',i2.2,'.data')")im_world,jm_world
+!   else if (im_world < 1152) then
+!      write(fsnc4,"(i3.3,'x',i3.3,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i3.3,'x',i3.3,'.data')")im_world,jm_world
+!   else
+!      write(fsnc4,"(i4.4,'x',i3.3,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i4.4,'x',i3.3,'.data')")im_world,jm_world
+!   end if
+!else
+!   if (im_world < 168) then
+!      write(fsnc4,"(i2.2,'x',i3.3,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i2.2,'x',i3.3,'.data')")im_world,jm_world
+!   else if (im_world >= 168 .and. im_world < 1000) then
+!      write(fsnc4,"(i3.3,'x',i4.4,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i3.3,'x',i4.4,'.data')")im_world,jm_world
+!   else if (im_world >= 1000 .and. im_world < 1666) then
+!      write(fsnc4,"(i4.4,'x',i4.4,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i4.4,'x',i4.4,'.data')")im_world,jm_world
+!   else if (im_world >= 1666) then
+!      write(fsnc4,"(i4.4,'x',i5.5,'.nc4')")im_world,jm_world
+!      write(fsbin,"(i4.4,'x',i5.5,'.data')")im_world,jm_world
+!   endif
+!end if
    
 
 ! mean height
@@ -192,7 +196,7 @@ close(21)
 
 contains
 
-subroutine check(status,loc)
+   subroutine check(status,loc)
 
       integer, intent ( in) :: status
       character(len=*), intent ( in) :: loc
@@ -203,7 +207,15 @@ subroutine check(status,loc)
          stop "Stopped"
       end if
 
-end subroutine check
+   end subroutine check
+
+   function i_to_string(count) result(str)
+      character(len=:), allocatable :: str
+      integer, intent(in) :: count
+      character(len=9)    :: buffer
+      write(buffer,'(i0)') count
+      str = trim(buffer)
+   end function i_to_string
 
 end program create_example
 
