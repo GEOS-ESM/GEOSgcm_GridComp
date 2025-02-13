@@ -62,9 +62,9 @@
     grid_format  = 'nc'
     grid_type    = 'tripole'
     grid_subtype = 'geosmom'
-    grid_ice     = 'B'
+    grid_ice     = 'C'
     grid_atm     = 'A'
-    grid_ocn     = 'B'
+    grid_ocn     = 'C'
     grid_file    = 'cice6_grid.nc'
     kmt_file     = 'cice6_kmt.nc'
     bathymetry_file = 'cice6_global.bathy.nc'
@@ -115,7 +115,7 @@
 
 &thermo_nml
     kitd              = 1
-    ktherm            = 1
+    ktherm            = 2
     conduct           = 'bubbly'
     ksno              = 0.3d0
     a_rapid_mode      =  0.5e-3
@@ -174,22 +174,22 @@
 /
 
 &shortwave_nml
-    shortwave       = 'ccsm3'
+    shortwave       = 'dEdd'
     albedo_type     = 'ccsm3'
     albicev         = 0.78
     albicei         = 0.36
     albsnowv        = 0.98
     albsnowi        = 0.70 
     ahmax           = 0.3
-    R_ice           = 0.
-    R_pnd           = 0.
-    R_snw           = 1.5
+    R_ice           = -1.
+    R_pnd           = -1.
+    R_snw           = -1.
     dT_mlt          = 1.5
     rsnw_mlt        = 1500.
-    kalg            = 0.6
-    sw_redist         = .true.
-    sw_frac           = 0.9d0
-    sw_dtemp          = 0.02d0
+    kalg            = 0.0
+    sw_redist       = .true.
+    sw_frac         = 0.9d0
+    sw_dtemp        = 0.02d0
 /
 
 &ponds_nml
