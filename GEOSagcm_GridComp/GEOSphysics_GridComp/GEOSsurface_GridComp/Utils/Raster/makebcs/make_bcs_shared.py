@@ -60,8 +60,8 @@ if( {TRIPOL_OCEAN} == True ) then
   ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{OCEAN_VERSION}' {GRIDNAME}{RS}.nc4
 endif
 if( {CUBED_SPHERE_OCEAN} == True ) then
-  sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.nc4
-  sed -i 's/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.nc4
+  sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/OC{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
+  sed -i 's/CF{NC}x6C{SGNAME}/PE{nc}x{nc6}-CF/g' {GRIDNAME}{RS}.til
   ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
   ncatted -a Grid_ocn_Name,global,o,c,'OC{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
 endif
