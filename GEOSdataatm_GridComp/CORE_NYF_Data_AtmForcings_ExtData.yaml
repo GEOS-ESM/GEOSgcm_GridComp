@@ -1,0 +1,27 @@
+Collections:
+  slp: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/slp.clim.nc}
+  t_10: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/t_10_mod.clim.nc}
+  q_10: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/q_10_mod.clim.nc}
+  u_10: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/u_10_mod.clim.nc}
+  v_10: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/v_10_mod.clim.nc}
+  ncar_runoff: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/ncar_runoff.clim.nc}
+  ncar_precip: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/ncar_precip.clim.nc}
+  ncar_rad: {template: /discover/nobackup/mmehari/DATA/MODEL/dataAtm_forcing/CORE/NYF_v2.0/ncar_rad.clim.nc}
+
+Samplings:
+  clim_sample:
+    extrapolation: clim
+
+Exports:
+   PS: {collection: slp, sample: clim_sample, variable: SLP}
+   TA: {collection: t_10, sample: clim_sample, variable: T_10_MOD}
+   QA: {collection: q_10, sample: clim_sample, variable: Q_10_MOD}
+   UA: {collection: u_10, sample: clim_sample, variable: U_10_MOD}
+   VA: {collection: v_10, sample: clim_sample, variable: V_10_MOD}
+   RUNOFF: {collection: ncar_runoff, sample: clim_sample, variable: RUNOFF}
+   PCU: {collection: ncar_precip, sample: clim_sample, variable: RAIN}
+   PLS: {collection: ncar_precip, sample: clim_sample, variable: RAIN}
+   SNO: {collection: ncar_precip, sample: clim_sample, variable: SNOW}
+   LWDN: {collection: ncar_rad, sample: clim_sample, variable: LWDN_MOD}
+   SWGDWN: {collection: ncar_rad, sample: clim_sample, variable: SWDN_MOD}
+  

@@ -1,6 +1,7 @@
  MODULE aer_cloud
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
+ use m_fpe, only: isnan
 
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
@@ -258,29 +259,41 @@
 
  
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-      npre_in, dpre_in, use_average_v, CCN_param, IN_param, fd_dust, fd_soot, &
-      frachet_dust, frachet_bc, frachet_org, frachet_ss, Immersion_param, &
-      ccn_diagr8, cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8) 
-  
-      type(AerProps), intent(in) :: Aer_Props !Aerosol Properties
-      logical,        intent(in) :: use_average_v
-      real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-                                    npre_in, dpre_in, fd_soot, fd_dust,  &
-                                    frachet_dust, frachet_bc, frachet_org, frachet_ss
-      integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
-     
-      real(r8), dimension(:), intent(inout) :: ccn_diagr8
-      real,                   intent(out)   :: cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8
+					   npre_in, dpre_in, ccn_diagr8,  &
+					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
+                       so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
+                       fd_dust, fd_soot, &
+					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+                       Immersion_param)
 
-!     real, intent(out)  :: smaxliqr8, smaxicer8, nheticer8, INimmr8, &
-!                           ndust_immr8, ndust_depr8,  nlimr8
-!     real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+
+
+  
+      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
+	
+      logical        ::   use_average_v
+       
+      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+					   npre_in, dpre_in, fd_soot, fd_dust,  &
+                       frachet_dust, frachet_bc, frachet_org, frachet_ss
+                       
+      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+            
+      real(r8), dimension(:), intent(inout) :: ccn_diagr8 
+      
+     real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8
+                        
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+
+      type(AerProps) :: Aeraux
 
       !local 
       integer  ::  k, n,  I, J, naux, index      
    
-      type(AerProps) :: Aeraux
-
       !Variables for liquid       
       real*8 :: nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
       !variables for ice
@@ -307,22 +320,22 @@
       
    !initialize output    
       
-     !smaxicer8  = zero_par      
+      smaxicer8  = zero_par      
       smaxice = zero_par
       cdncr8     = zero_par
-     !smaxliqr8  = zero_par
+      smaxliqr8  = zero_par
       incr8      = zero_par
       smaxice  = max(2.349d0-(tparc/259d0) -1.0 , 0.0)
-     !nheticer8  = zero_par
-     !nlimr8     = zero_par
+      nheticer8  = zero_par
+      nlimr8     = zero_par
       sc_ice   = max(2.349d0-(tparc/259d0), 1.0)
       If (tparc  .gt. Thom) sc_ice =1.0   
  
-     !INimmr8    = zero_par
+      INimmr8    = zero_par
       dINimmr8    = zero_par
       Ncdepr8    = zero_par
-     !ndust_immr8 = zero_par
-     !ndust_depr8 = zero_par
+      ndust_immr8 = zero_par
+      ndust_depr8 = zero_par
       ndust_imm = zero_par
       ndust_dep = zero_par
       ccn_diagr8 =  zero_par
@@ -434,7 +447,7 @@
        	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-        !smaxliqr8=100.*max(smax, zero_par)
+         smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -486,8 +499,8 @@
     end if 
  end do     
 
-! seasalt_conc =   nseasalt_ice          
-! so4_conc =   np_ice - nseasalt_ice    
+  seasalt_conc =   nseasalt_ice          
+  so4_conc =   np_ice - nseasalt_ice    
   
  
 
@@ -509,7 +522,7 @@
      ndust_ice=DBLE(Aeraux%num(1:nbindust_ice))*air_den*hetfracice_dust
      sigdust_ice=DBLE(Aeraux%sig(1:nbindust_ice))
 
-!    dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
+     dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
   
          DO index =1,nbindust_ice                
         	    ! areadust_ice(index)= ddust_ice(index)*ddust_ice(index)*pi_ice*exp(2.0*sigdust_ice(index)*sigdust_ice(index))
@@ -531,7 +544,7 @@
       areabc_ice =  dbc_ice*dbc_ice*dbc_ice*0.52*acorr_bc*exp(4.5*sigbc_ice*sigbc_ice)  
   
   
-!    bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
+     bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
  !Soluble organics 
    
    call getINsubset(3, Aer_Props, Aeraux) 
@@ -540,7 +553,7 @@
      norg_ice=DBLE(sum(Aeraux%num(1:naux)))*air_den*hetfracice_org
      sigorg_ice=DBLE(sum(Aeraux%sig(1:naux)))/naux
 
-!        org_conc  =  sum(Aeraux%num(1:naux))*air_den
+         org_conc  =  sum(Aeraux%num(1:naux))*air_den
      
   nhet     = zero_par
   nice     = zero_par
@@ -632,16 +645,16 @@
     !==========================
 
 !All # m-3 except those passed to MG later
-  !smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
-  !nheticer8    = min(max(nhet, zero_par), 1e10)  
+   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
+   nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
-  !nlimr8       = min(max(nlim, zero_par), 1e10)   
+   nlimr8       = min(max(nlim, zero_par), 1e10)   
    sc_icer8     = min(max(sc_ice, 1.0), 2.0)   
-  !INimmr8      = min(max(INimm, zero_par), 1e10) 
+   INimmr8      = min(max(INimm, zero_par), 1e10) 
    dINimmr8     = min(max(dINimm/air_den, zero_par), 1e10)  !Kg-1
    Ncdepr8      = min(max(Nhet_dep, zero_par), 1e10) 
-  !ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
-  !ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
+   ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
+   ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
 
        
     deallocate (ndust_ice)
@@ -1947,7 +1960,7 @@ END
                 gln=gammln(a)
                 b=x+1.-a
                ! Set up for evaluating continued fraction by modified
-               ! Lentz\u2019s method (§5.2) with b0 = 0.
+               ! Lentz 2019 method (5.2) with b0 = 0.
                 c=1./FPMIN
                 d=1./b
                 h=d
@@ -2239,9 +2252,9 @@ END
         smax=shom_ice
         DSH =0.d0
         FDS=1.d0
-        ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
-        sc_ice = 1.d0
-        	 ! sc_ice = shom_ice + 1.d0
+      
+        sc_ice = 1.d0 !cloud can always grow on preexisting ice
+         !sc_ice = shom_ice + 1.d0
 
         !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
 
@@ -4009,34 +4022,40 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
     real, parameter :: wat_den = 1000.
     real, parameter ::  beta =  0.38
     real, parameter :: gamma =  1.0e-4
-   
+
+
+  !make it simple
+  
+  Nd = b_scale*Nad*exp(-z/g_scale) 
+  
+  if (.false.) then 
+      ! print *, dqlcn
+      !========liquid droplet concentration
+      !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+         Nd =  0.
+         Ni =  0.
+         Tx =  max(273.15, T)
+         alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
+         bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
+         gam_ad =  alf/bet
+         LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
+
+          !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+
+         dZ12  =  4.8e-12*Nad/gam_ad !      
+
+         if (z-zcb .lt. dz12) then
+     	    Nd  = b_scale*Nad
+         else
+     	    Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
+         end if
+
+    end if 
      
-      
-  ! print *, dqlcn
-  !========liquid droplet concentration
-  !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
-     Nd =  0.
-     Ni =  0.
-     Tx =  max(273.15, T)
-     alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
-     bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
-     gam_ad =  alf/bet
-     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
-     
-      !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
-
-     dZ12  =  4.8e-12*Nad/gam_ad !      
-
-     if (z-zcb .lt. dz12) then
-     	Nd  = b_scale*Nad
-     else
-     	Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
-     end if
-
      Ni =  Nd*cnvfice
      if (T .lt. 238.) Ni =  Nd
      Nd =  Nd - Ni
-     Ni =  max(Ni, Nimm)
+      !Ni =  max(Ni, Nimm)
       
       
       !=========ice crystal concentration -- different approach
@@ -4057,19 +4076,22 @@ end subroutine make_cnv_ice_drop_number
     
 !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
     
-subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
+subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
-    real, dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
-    real, dimension (:, :), intent(in) :: xscale
+    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, dimension (:, :), intent(in) :: AREA
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
-    real :: HMOIST_950, HSMOIST_500, SINST, QCV
+    real :: HMOIST_950, HSMOIST_500, SINST, QCV, xscale
     
     DO I  =  1, IM
     	DO J =  1, JM
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
+            
+            xscale =  min(max(SQRT(AREA(I, J))/1.0e10, 1.0), 200.)
+            xscale =  xscale**(-0.6666)
 
             IF (PLmb(I, J, LM) .le. 500.0) then                                        
     	        QCVAR  = 2.0
@@ -4092,7 +4114,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale)
                 SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
             ENDIF
 
-            QCV =  0.67 -0.38*SINST +  4.96*xscale(I,J) - 8.32*SINST*xscale(I,J)
+            QCV =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
     	    QCVAR(I, J) = min(max(QCV, 0.5), 10.0)
       end do
     end do  

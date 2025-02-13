@@ -5746,9 +5746,9 @@ contains
          ! Rain-out of Relative Humidity where RH > 110%
          call MAPL_GetPointer(EXPORT,  DTDT_ER,  'DTDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, DQVDT_ER, 'DQVDT_ER', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-          DTDT_ER = T
+         DTDT_ER = T
          DQVDT_ER = Q
-         DQST3 = GEOS_DQSAT   (T, PLmb, QSAT=QST3)      ! this qsat function expects hPa...
+         
          call MAPL_GetPointer(EXPORT, LS_PRCP, 'LS_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(EXPORT, PTR2D,   'ER_PRCP' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
          where ( Q > 1.1*QST3 )
@@ -5760,7 +5760,9 @@ contains
          LS_PRCP = LS_PRCP + PTR2D
          Q = Q - TMP3D
          T = T + (MAPL_ALHL/MAPL_CP)*TMP3D
-          DTDT_ER = (T -  DTDT_ER)/DT_MOIST
+        
+        
+         DTDT_ER = (T -  DTDT_ER)/DT_MOIST
          DQVDT_ER = (Q - DQVDT_ER)/DT_MOIST
 
          ! cleanup any negative QV/QC/CF

@@ -577,7 +577,7 @@ contains
            call MAPL_VarRead ( CatchFmt ,'SNOWALB', this%snowalb, __RC__)
            if ( .not. this%meta%has_variable('SNOWALB')) then
               var = Variable(type=pFIO_REAL32, dimensions='tile')
-              call var%add_attribute('long_name', 'snow_albedo')
+              call var%add_attribute('long_name', 'snow_reflectivity')
               call var%add_attribute('units', '1')
               call this%meta%add_variable('SNOWALB', var)
            endif

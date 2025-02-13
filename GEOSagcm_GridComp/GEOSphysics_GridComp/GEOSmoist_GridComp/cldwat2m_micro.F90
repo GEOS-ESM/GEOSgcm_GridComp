@@ -221,8 +221,6 @@ contains
       logical           :: history_microphysics     ! output variables for microphysics diagnostics package
 
 
- 
- 
       real(r8),         intent(in)  :: micro_mg_berg_eff_factor_in     ! berg efficiency factor
       logical, intent(in)   :: nccons_in
       logical, intent(in)   :: nicons_in
