@@ -1,6 +1,7 @@
  MODULE aer_cloud
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
+ use m_fpe, only: isnan
 
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
@@ -288,11 +289,11 @@
                         
       real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
+      type(AerProps) :: Aeraux
+
       !local 
       integer  ::  k, n,  I, J, naux, index      
    
-      type(AerProps) :: Aeraux
-
       !Variables for liquid       
       real*8 :: nact, wparc, tparc,pparc,  accom,sigw, smax, antot, ccn_at_s, sigwparc
       !variables for ice
@@ -319,22 +320,22 @@
       
    !initialize output    
       
-     !smaxicer8  = zero_par      
+      smaxicer8  = zero_par      
       smaxice = zero_par
       cdncr8     = zero_par
-     !smaxliqr8  = zero_par
+      smaxliqr8  = zero_par
       incr8      = zero_par
       smaxice  = max(2.349d0-(tparc/259d0) -1.0 , 0.0)
-     !nheticer8  = zero_par
-     !nlimr8     = zero_par
+      nheticer8  = zero_par
+      nlimr8     = zero_par
       sc_ice   = max(2.349d0-(tparc/259d0), 1.0)
       If (tparc  .gt. Thom) sc_ice =1.0   
  
-     !INimmr8    = zero_par
+      INimmr8    = zero_par
       dINimmr8    = zero_par
       Ncdepr8    = zero_par
-     !ndust_immr8 = zero_par
-     !ndust_depr8 = zero_par
+      ndust_immr8 = zero_par
+      ndust_depr8 = zero_par
       ndust_imm = zero_par
       ndust_dep = zero_par
       ccn_diagr8 =  zero_par
@@ -498,8 +499,8 @@
     end if 
  end do     
 
-! seasalt_conc =   nseasalt_ice          
-! so4_conc =   np_ice - nseasalt_ice    
+  seasalt_conc =   nseasalt_ice          
+  so4_conc =   np_ice - nseasalt_ice    
   
  
 
@@ -521,7 +522,7 @@
      ndust_ice=DBLE(Aeraux%num(1:nbindust_ice))*air_den*hetfracice_dust
      sigdust_ice=DBLE(Aeraux%sig(1:nbindust_ice))
 
-!    dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
+     dust_conc = sum(Aeraux%num(1:nbindust_ice))*air_den
   
          DO index =1,nbindust_ice                
         	    ! areadust_ice(index)= ddust_ice(index)*ddust_ice(index)*pi_ice*exp(2.0*sigdust_ice(index)*sigdust_ice(index))
@@ -543,7 +544,7 @@
       areabc_ice =  dbc_ice*dbc_ice*dbc_ice*0.52*acorr_bc*exp(4.5*sigbc_ice*sigbc_ice)  
   
   
-!    bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
+     bc_conc = sum(Aeraux%num(1:naux))*air_den*hetfracice_bc   
  !Soluble organics 
    
    call getINsubset(3, Aer_Props, Aeraux) 
@@ -552,7 +553,7 @@
      norg_ice=DBLE(sum(Aeraux%num(1:naux)))*air_den*hetfracice_org
      sigorg_ice=DBLE(sum(Aeraux%sig(1:naux)))/naux
 
-!        org_conc  =  sum(Aeraux%num(1:naux))*air_den
+         org_conc  =  sum(Aeraux%num(1:naux))*air_den
      
   nhet     = zero_par
   nice     = zero_par
@@ -647,13 +648,13 @@
    smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
    nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
-  !nlimr8       = min(max(nlim, zero_par), 1e10)   
+   nlimr8       = min(max(nlim, zero_par), 1e10)   
    sc_icer8     = min(max(sc_ice, 1.0), 2.0)   
-  !INimmr8      = min(max(INimm, zero_par), 1e10) 
+   INimmr8      = min(max(INimm, zero_par), 1e10) 
    dINimmr8     = min(max(dINimm/air_den, zero_par), 1e10)  !Kg-1
    Ncdepr8      = min(max(Nhet_dep, zero_par), 1e10) 
-  !ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
-  !ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
+   ndust_immr8  = min(max(ndust_imm, zero_par), 1e10) 
+   ndust_depr8  = min(max(ndust_dep, zero_par), 1e10) 
 
        
     deallocate (ndust_ice)
