@@ -862,6 +862,34 @@ contains
          RC = STATUS)
     VERIFY_(STATUS)
 
+#ifdef HAS_GIGATRAJ
+    call MAPL_AddExportSpec(GC, &
+         SHORT_NAME = 'PL', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, &
+         SHORT_NAME = 'OMEGA', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, &
+         SHORT_NAME = 'TH', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,  &
+         SHORT_NAME = 'DTDTDYN', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,  &
+         SHORT_NAME = 'ZL', &
+         CHILD_ID = SDYN, &
+         RC = STATUS)
+    VERIFY_(STATUS)
+#endif
+
     call MAPL_AddExportSpec( GC, &
          SHORT_NAME = 'PS', &
          CHILD_ID = SDYN, &

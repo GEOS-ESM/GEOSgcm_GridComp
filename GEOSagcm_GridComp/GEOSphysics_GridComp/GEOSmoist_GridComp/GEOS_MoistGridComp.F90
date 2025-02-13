@@ -5362,6 +5362,8 @@ contains
        call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, NACTI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPL,   'NACTL'    , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, NCPI,   'NACTI'    , RC=STATUS); VERIFY_(STATUS)
 
        ! Import State
        call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)

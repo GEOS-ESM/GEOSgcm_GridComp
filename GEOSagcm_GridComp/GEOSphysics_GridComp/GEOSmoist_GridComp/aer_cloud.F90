@@ -258,23 +258,35 @@
 
  
   subroutine aerosol_activate(tparc_in, pparc_in, sigwparc_in, wparc_ls,  Aer_Props, &                                           
-      npre_in, dpre_in, use_average_v, CCN_param, IN_param, fd_dust, fd_soot, &
-      frachet_dust, frachet_bc, frachet_org, frachet_ss, Immersion_param, &
-      ccn_diagr8, cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8) 
-  
-      type(AerProps), intent(in) :: Aer_Props !Aerosol Properties
-      logical,        intent(in) :: use_average_v
-      real,           intent(in) :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
-                                    npre_in, dpre_in, fd_soot, fd_dust,  &
-                                    frachet_dust, frachet_bc, frachet_org, frachet_ss
-      integer,        intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
-     
-      real(r8), dimension(:), intent(inout) :: ccn_diagr8
-      real,                   intent(out)   :: cdncr8, incr8, dINimmr8, Ncdepr8, sc_icer8
+					   npre_in, dpre_in, ccn_diagr8,  &
+					   cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8,  sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
+                       so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
+                       fd_dust, fd_soot, &
+					   frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+                       Immersion_param)
 
-!     real, intent(out)  :: smaxliqr8, smaxicer8, nheticer8, INimmr8, &
-!                           ndust_immr8, ndust_depr8,  nlimr8
-!     real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+
+
+  
+      type(AerProps),  intent(in) :: Aer_Props !Aerosol Properties
+	
+      logical        ::   use_average_v
+       
+      real, intent(in)   :: tparc_in, pparc_in, sigwparc_in, wparc_ls,   &
+					   npre_in, dpre_in, fd_soot, fd_dust,  &
+                       frachet_dust, frachet_bc, frachet_org, frachet_ss
+                       
+      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
+            
+      real(r8), dimension(:), intent(inout) :: ccn_diagr8 
+      
+     real, intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
+					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
+					   ndust_immr8, ndust_depr8,  nlimr8
+                        
+      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
       !local 
       integer  ::  k, n,  I, J, naux, index      
@@ -434,7 +446,7 @@
        	   endif
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
-        !smaxliqr8=100.*max(smax, zero_par)
+         smaxliqr8=100.*max(smax, zero_par)
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -632,8 +644,8 @@
     !==========================
 
 !All # m-3 except those passed to MG later
-  !smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
-  !nheticer8    = min(max(nhet, zero_par), 1e10)  
+   smaxicer8    = 100.*min(max(smaxice, zero_par), 2.0)   
+   nheticer8    = min(max(nhet, zero_par), 1e10)  
    incr8        = min(max(nice/air_den, zero_par), 1e10)  !Kg -1
   !nlimr8       = min(max(nlim, zero_par), 1e10)   
    sc_icer8     = min(max(sc_ice, 1.0), 2.0)   
@@ -1947,7 +1959,7 @@ END
                 gln=gammln(a)
                 b=x+1.-a
                ! Set up for evaluating continued fraction by modified
-               ! Lentz\u2019s method (§5.2) with b0 = 0.
+               ! Lentz 2019 method (5.2) with b0 = 0.
                 c=1./FPMIN
                 d=1./b
                 h=d
@@ -2239,9 +2251,9 @@ END
         smax=shom_ice
         DSH =0.d0
         FDS=1.d0
-        ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
-        sc_ice = 1.d0
-        	 ! sc_ice = shom_ice + 1.d0
+      
+        sc_ice = 1.d0 !cloud can always grow on preexisting ice
+         !sc_ice = shom_ice + 1.d0
 
         !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
 
@@ -4009,34 +4021,40 @@ subroutine make_cnv_ice_drop_number(Nd, Ni, Nimm, Nad, z, zcb, T, cnvfice, g_sca
     real, parameter :: wat_den = 1000.
     real, parameter ::  beta =  0.38
     real, parameter :: gamma =  1.0e-4
-   
+
+
+  !make it simple
+  
+  Nd = b_scale*Nad*exp(-z/g_scale) 
+  
+  if (.false.) then 
+      ! print *, dqlcn
+      !========liquid droplet concentration
+      !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
+         Nd =  0.
+         Ni =  0.
+         Tx =  max(273.15, T)
+         alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
+         bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
+         gam_ad =  alf/bet
+         LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
+
+          !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
+
+         dZ12  =  4.8e-12*Nad/gam_ad !      
+
+         if (z-zcb .lt. dz12) then
+     	    Nd  = b_scale*Nad
+         else
+     	    Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
+         end if
+
+    end if 
      
-      
-  ! print *, dqlcn
-  !========liquid droplet concentration
-  !Based on Khain et al. JAS (2019) https://doi.org/10.1175/JAS-D-18-0046.1
-     Nd =  0.
-     Ni =  0.
-     Tx =  max(273.15, T)
-     alf=2.8915E-08*(Tx*Tx) - 2.1328E-05*Tx + 4.2523E-03
-     bet=exp(3.49996E-04*Tx*Tx - 2.27938E-01*Tx + 4.20901E+01)
-     gam_ad =  alf/bet
-     LWcad = max((z-zcb), 0.0)*gam_ad !adiabatic LWC 
-     
-      !r3ad = max(min(3.63e-4*LWCad*(rl_scale**3.)/Nad, max_rel3), min_rel3)  !adiabatic droplet size^3
-
-     dZ12  =  4.8e-12*Nad/gam_ad !      
-
-     if (z-zcb .lt. dz12) then
-     	Nd  = b_scale*Nad
-     else
-     	Nd =  max(b_scale*Nad*(1-g_scale*((z-zcb) - dz12)), 1.0e3)
-     end if
-
      Ni =  Nd*cnvfice
      if (T .lt. 238.) Ni =  Nd
      Nd =  Nd - Ni
-     Ni =  max(Ni, Nimm)
+      !Ni =  max(Ni, Nimm)
       
       
       !=========ice crystal concentration -- different approach
@@ -4057,19 +4075,22 @@ end subroutine make_cnv_ice_drop_number
     
 !!!!================Estimate qcvar following Xie and Zhang, JGR, 2015
     
-subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale) 
+subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, AREA) 
 
     real, dimension (:, :), intent(out) ::  QCVAR
-    real, dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
-    real, dimension (:, :), intent(in) :: xscale
+    real , dimension (:, :, :), intent(in) :: PLmb, T, GZLO, Q, QST3
+    real, dimension (:, :), intent(in) :: AREA
     integer, intent(in) :: IM, JM, LM
     integer :: I, J, K    
-    real :: HMOIST_950, HSMOIST_500, SINST, QCV
+    real :: HMOIST_950, HSMOIST_500, SINST, QCV, xscale
     
     DO I  =  1, IM
     	DO J =  1, JM
             HMOIST_950 = 0.0
             HSMOIST_500 = 0.0
+            
+            xscale =  min(max(SQRT(AREA(I, J))/1.0e10, 1.0), 200.)
+            xscale =  xscale**(-0.6666)
 
             IF (PLmb(I, J, LM) .le. 500.0) then                                        
     	        QCVAR  = 2.0
@@ -4092,7 +4113,7 @@ subroutine estimate_qcvar(QCVAR, IM, JM, LM, PLmb, T, GZLO, Q, QST3, xscale)
                 SINST = (HMOIST_950 -  HSMOIST_500)/45000.0                  
             ENDIF
 
-            QCV =  0.67 -0.38*SINST +  4.96*xscale(I,J) - 8.32*SINST*xscale(I,J)
+            QCV =  0.67 -0.38*SINST +  4.96*xscale - 8.32*SINST*xscale  
     	    QCVAR(I, J) = min(max(QCV, 0.5), 10.0)
       end do
     end do  
