@@ -20,6 +20,10 @@ module GEOS_GcmGridCompMod
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
+#ifdef HAS_GIGATRAJ
+   use GEOS_GigatrajGridCompMod, only:  GigaTraj_SetServices => SetServices
+#endif
+
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
    use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
    use MAPL_HistoryGridCompMod,  only:  Hist_SetServices => SetServices
@@ -58,6 +62,7 @@ integer ::       AIAU
 integer ::       ADFI
 integer ::       WGCM
 integer ::       hist
+integer ::       gigatraj
 
 integer :: bypass_ogcm
 integer ::       k
@@ -251,6 +256,10 @@ contains
     else
        AGCM = MAPL_AddChild(GC, NAME='AGCM', SS=Agcm_SetServices, RC=STATUS)
        VERIFY_(STATUS)
+#ifdef HAS_GIGATRAJ
+       gigatraj = MAPL_AddChild(GC, NAME='GIGATRAJ', SS=GigaTraj_SetServices, RC=STATUS)
+       VERIFY_(STATUS)
+#endif
        AIAU = MAPL_AddChild(GC, NAME='AIAU', SS=AIAU_SetServices, RC=STATUS)
        VERIFY_(STATUS)
        ADFI = MAPL_AddChild(GC, NAME='ADFI', SS=ADFI_SetServices, RC=STATUS)
@@ -957,6 +966,10 @@ contains
 ! Recursive setup of grids (should be disabled)
     call ESMF_GridCompSet(GCS(AGCM),  grid=agrid, rc=status)
     VERIFY_(STATUS)
+#ifdef HAS_GIGATRAJ
+    call ESMF_GridCompSet(GCS(gigatraj),  grid=agrid, rc=status)
+    VERIFY_(STATUS)
+#endif
     call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
     VERIFY_(STATUS)
     if(.not. DO_DATA_ATM4OCN) then
@@ -1355,15 +1368,17 @@ contains
          result=GCM_INTERNAL_STATE%SURF_IMP, rc=status)
     VERIFY_(STATUS)
 
-    !select TURBULENCE export
-    call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
-    VERIFY_(STATUS)
+    if(.not. DO_DATA_ATM4OCN) then
+      !select TURBULENCE export
+      call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
+           result=GCM_INTERNAL_STATE%TURB_EXP, rc=status)
+      VERIFY_(STATUS)
 
-    !select SURFACE import 
-    call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
-         result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
-    VERIFY_(STATUS)
+      !select TURBULENCE import 
+      call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
+           result=GCM_INTERNAL_STATE%TURB_IMP, rc=status)
+      VERIFY_(STATUS)
+    endif
 
     !select OCEAN export
     call MAPL_ExportStateGet(GEX, name='OCEAN', &
@@ -2064,9 +2079,22 @@ contains
     else
       call MAPL_TimerOn(MAPL,"AGCM"        )
     endif
+   
+#ifdef HAS_GIGATRAJ
+    ! use agcm export as gigatraj's import to get the initial state.
+    ! it only runs at the begining of the first time step
+    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, phase=1, userRC=status )
+    VERIFY_(STATUS)
+#endif
 
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
+
+#ifdef HAS_GIGATRAJ
+    ! use agcm export as gigatraj's import
+    call ESMF_GridCompRun ( GCS(gigatraj), importState=GEX(AGCM), exportState=GEX(gigatraj), clock=clock, phase=2, userRC=status )
+    VERIFY_(STATUS)
+#endif
 
     if(DO_DATA_ATM4OCN) then
       call MAPL_TimerOff(MAPL,"DATAATM"     )
