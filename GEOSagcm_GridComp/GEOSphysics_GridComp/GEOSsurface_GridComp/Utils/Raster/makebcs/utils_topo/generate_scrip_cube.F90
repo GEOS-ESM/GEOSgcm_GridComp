@@ -39,18 +39,20 @@
     real(ESMF_KIND_R8), allocatable   :: SCRIP_CenterLat(:), SCRIP_CenterLon(:)
     real(ESMF_KIND_R8), allocatable   :: SCRIP_CornerLat(:,:), SCRIP_CornerLon(:,:)
     real(ESMF_KIND_R8), allocatable   :: SCRIP_Area(:)
+    real(ESMF_KIND_R8), allocatable   :: SCRIP_rrfac(:)
     real(ESMF_KIND_R8)                :: node_xy(2,4), node_xy_tmp(2,4), lon_e, lon_w
     integer                           :: cornerdim, gridsize, griddim, rankdim, mask
-    integer                           :: cornerlon, cornerlat, centerlon, centerlat,cellarea
+    integer                           :: cornerlon, cornerlat, centerlon, centerlat,cellarea, cellrrfac
     integer, allocatable              :: IMS(:,:), JMS(:,:), sendData(:), GlobalCounts(:), recvCounts(:), recvOffsets(:)
     integer, allocatable              :: grid_imask(:)
     character(len=ESMF_MAXSTR)        :: gridname, FMT, title
     integer                           :: NPX, NPY
     integer                           :: myTile
     integer                           :: npts, tmp, mpiC
-    integer                           :: IG, JG
+    integer                           :: IG, JG, rrfac_max
     logical                           :: do_schmidt
     real(ESMF_KIND_R8)                :: p1(2),p2(2),p3(2),p4(2)
+    real(ESMF_KIND_R8)                :: local_max_length, max_length, local_min_length, min_length
     real(ESMF_KIND_R4)                :: target_lon, target_lat, stretch_factor
     type(ESMF_HConfig)                 :: CF
     integer                           :: status,error_code
@@ -78,7 +80,7 @@
     _VERIFY(status)
     if (npets /= 6) call local_abort(1,__LINE__)
 
-    cf = ESMF_HConfigCreate(filename='GenScrip.rc',rc=status)
+    cf = ESMF_HConfigCreate(filename='GenScrip.yaml',rc=status)
     _VERIFY(STATUS)
 
     im_world = ESMF_HConfigAsI4(cf,keyString='CUBE_DIM',rc=status)
@@ -158,7 +160,11 @@
     _VERIFY(status)
     allocate(SCRIP_Area(tmp),stat=status)
     _VERIFY(status)
+    allocate(SCRIP_rrfac(tmp),stat=status)
+    _VERIFY(status)
 
+    local_max_length = 0.0d0
+    local_min_length = 1.e15
     n=1
     do jg=1,im_world
        do ig=1,im_world
@@ -200,10 +206,18 @@
           p2 = [corner_lons(i,j+1),corner_lats(i,j+1)]
           p3 = [corner_lons(i+1,j),corner_lats(i+1,j)]
           p4 = [corner_lons(i+1,j+1),corner_lats(i+1,j+1)]
+
           SCRIP_Area(n) = get_area_spherical_polygon(p1,p2,p3,p4)
+          call  get_grid_length(p1,p2,p3, SCRIP_rrfac(n), local_max_length, local_min_length)
+
           n=n+1
        enddo
     enddo
+
+    call MPI_AllReduce(local_max_length, max_length, 1, MPI_DOUBLE, MPI_MAX, mpiC,status)
+    call MPI_AllReduce(local_min_length, min_length, 1, MPI_DOUBLE, MPI_MIN, mpiC,status)
+    SCRIP_rrfac = max_length/SCRIP_rrfac
+    rrfac_max = int(ceiling(max_length/min_length))
 
  100     format(a,4f20.15)
  101     format(a,f20.15)
@@ -228,6 +242,9 @@
     _VERIFY(status)
     status = nf90_put_att(UNIT, NF90_GLOBAL, 'GridDescriptionFormat', 'SCRIP')
     _VERIFY(status)
+    status = nf90_put_att(UNIT, NF90_GLOBAL, 'rrfac_max', rrfac_max)
+    _VERIFY(status)
+
     status = NF90_DEF_DIM(UNIT, 'grid_size'  , SCRIP_size, gridsize)
     _VERIFY(status)
     status = NF90_DEF_DIM(UNIT, 'grid_corners'  , 4, cornerdim)
@@ -281,6 +298,10 @@
     _VERIFY(status)
     status = nf90_put_att(UNIT, cellarea, "units"    ,"radians^2")
     _VERIFY(status)
+    status = nf90_def_var(UNIT, "rrfac", NF90_DOUBLE, [gridsize], cellrrfac)
+    _VERIFY(status)
+    status = nf90_put_att(UNIT, cellrrfac, "units"    ,"unitless")
+    _VERIFY(status)
 
     status = nf90_enddef(UNIT)
     _VERIFY(status)
@@ -314,6 +335,9 @@
 
     status = NF90_PUT_VAR(UNIT, cellarea, SCRIP_Area,start, cnt)
     _VERIFY(status)
+
+    status = NF90_PUT_VAR(UNIT, cellrrfac, SCRIP_rrfac,start, cnt)
+    _VERIFY(status)
 !! Grid mask
 !! ---------
     allocate(grid_imask(tmp), stat=status)
@@ -342,6 +366,8 @@
     deallocate(SCRIP_CenterLon)
     deallocate(SCRIP_CornerLat)
     deallocate(SCRIP_CornerLon)
+    deallocate(SCRIP_Area)
+    deallocate(SCRIP_rrfac)
     deallocate(sendData)
     deallocate(GlobalCounts)
     deallocate(recvCounts)
@@ -717,6 +743,20 @@ subroutine create_gmao_file(grid,im_world,filename,rc)
 
  end function get_area_spherical_polygon
 
+ subroutine get_grid_length(p1,p2,p3, local,max_length, min_length)
+   real(real64), intent(in) :: p1(2),p2(2),p3(2)
+   real(REAL64), intent(out) :: local
+   real(REAL64), intent(inout) :: max_length
+   real(REAL64), intent(inout) :: min_length
+   real(REAL64) :: dx, dy
+
+   dx = great_circle_dist(p1,p2)
+   dy = great_circle_dist(p2,p3)
+   local = 0.5d0*(dx+dy)
+   max_length = max(local, max_length)
+   min_length = min(local, min_length)
+ end subroutine
+
  function convert_to_cart(v) result(xyz)
     real(real64), intent(in) :: v(2)
     real(real64) :: xyz(3)
@@ -784,5 +824,29 @@ subroutine local_abort(rc,line_number)
    write(*,*)"aborted on with stat ",line_number,rc
    call MPI_Abort(MPI_COMM_WORLD,error_code,status)
 end subroutine
+
+real(REAL64) function great_circle_dist( q1, q2, radius )
+     real(REAL64), intent(IN)           :: q1(2), q2(2)
+     real(REAL64), intent(IN), optional :: radius
+
+     real (REAL64):: p1(2), p2(2)
+     real (REAL64):: beta
+     integer n
+
+     do n=1,2
+        p1(n) = q1(n)
+        p2(n) = q2(n)
+     enddo
+
+     beta = asin( sqrt( sin((p1(2)-p2(2))/2.)**2 + cos(p1(2))*cos(p2(2))*   &
+                        sin((p1(1)-p2(1))/2.)**2 ) ) * 2.
+
+     if ( present(radius) ) then
+          great_circle_dist = radius * beta
+     else
+          great_circle_dist = beta   ! Returns the angle
+     endif
+
+end function great_circle_dist
 
     end program ESMF_GenerateCSGridDescription

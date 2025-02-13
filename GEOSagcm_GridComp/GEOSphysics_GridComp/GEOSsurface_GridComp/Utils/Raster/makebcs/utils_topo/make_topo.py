@@ -53,6 +53,7 @@ if( ! -d bin ) then
 endif
 
 source bin/g5_modules  
+module load nco
 
 if ( ! -e landm_coslat.nc ) then
   /bin/ln -s bin/landm_coslat.nc landm_coslat.nc
@@ -114,7 +115,7 @@ foreach im ($resolutions)
 
   foreach sg1 ($SG001)
      if ($im == $sg1) then
-       set DO_SCHMIDT = 'DO_SCHMIDT:  .true.'
+       set DO_SCHMIDT = 'DO_SCHMIDT:  true'
        set TARGET_LON = 'TARGET_LON:  -98.35 '
        set TARGET_LAT = 'TARGET_LAT:  39.5 '
        set STRETCH_FACTOR = 'STRETCH_FACTOR: 2.5 '
@@ -123,14 +124,14 @@ foreach im ($resolutions)
 
   foreach sg2 ($SG002)
      if ($im == $sg2) then
-       set DO_SCHMIDT = 'DO_SCHMIDT:  .true.'
+       set DO_SCHMIDT = 'DO_SCHMIDT:  true'
        set TARGET_LON = 'TARGET_LON:   -98.35'
        set TARGET_LAT = 'TARGET_LAT:   39.5'
        set STRETCH_FACTOR = 'STRETCH_FACTOR: 3.0'
      endif
   end
 
-  set config_file = GenScrip.rc
+  set config_file = GenScrip.yaml
   set output_grid = PE${{im}}x${{jm}}-CF
   set scriptfile  = ${{output_grid}}.nc4
 
@@ -146,7 +147,6 @@ _EOF_
 
    cat ${{config_file}}
    mpirun -np 6 bin/generate_scrip_cube_topo.x
-
    rm ${{config_file}}
 
    if ($im < $cutoff) then
@@ -158,8 +158,17 @@ _EOF_
    if ($im == 2880) then
       set jmax_segments = --jmax_segments=32
    endif
+
+   if "$DO_SCHMIDT" == "" then
+      set rrfac_max =''
+   else
+      set rrfacmax = `ncks -M $scriptfile | grep :rrfac_max | tr -s ' ' | cut -d ' ' -f4`
+      set rrfac_max = --rrfac_max=$rrfacmax
+   endif
+   
+
    set output_grid = PE${{im}}x${{jm}}-CF
-   bin/cube_to_target.x --grid_descriptor_file=$scriptfile --intermediate_cs_name=$intermediate_cube --output_data_directory=$output_dir --smoothing_scale=${{smooths[$count]}} --name_email_of_creator='gmao' --fine_radius=0 --output_grid=$output_grid --source_data_identifier=$source_topo $jmax_segments
+   bin/cube_to_target.x --grid_descriptor_file=$scriptfile --intermediate_cs_name=$intermediate_cube --output_data_directory=$output_dir --smoothing_scale=${{smooths[$count]}} --name_email_of_creator='gmao' --fine_radius=0 --output_grid=$output_grid --source_data_identifier=$source_topo $jmax_segments  $rrfac_max
 
    rm $scriptfile
 
