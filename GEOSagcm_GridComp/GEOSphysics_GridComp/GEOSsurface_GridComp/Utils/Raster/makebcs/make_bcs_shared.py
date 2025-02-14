@@ -80,7 +80,7 @@ cd ../../
 cd geometry/{GRIDNAME}/
 sed -i 's/{DATENAME}{IMO}x{POLENAME}{JMO}-Pfafstetter/PE{imo}x{jmo}-{DATENAME}/g' {GRIDNAME}{RS}.til
 sed -i 's/DC{IM}xPC{JM}/PC{im}x{jm}-DC/g' {GRIDNAME}{RS}.til
-ncatted -a Grid_Name,global,o,c,'PE{nc}x{nc6}-CF' {GRIDNAME}{RS}.nc4
+ncatted -a Grid_Name,global,o,c,'PC{im}x{jm}-DC' {GRIDNAME}{RS}.nc4
 ncatted -a Grid_ocn_Name,global,o,c,'PE{imo}x{jmo}-{DATENAME}' {GRIDNAME}{RS}.nc4
 cd ../../
 
