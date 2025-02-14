@@ -3,7 +3,7 @@
 
 program mkOverlaySimple
 
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,     ONLY: WriteRaster, WriteTiling, SortTiling
   use MAPL_SortMod
   use MAPL_HashMod
   use MAPL_ExceptionHandling
@@ -28,7 +28,7 @@ program mkOverlaySimple
   integer, parameter     :: TILUNIT1  = 22
   integer, parameter     :: TILUNIT2  = 23
 
-  real(kind=8),   parameter     :: PI        = MAPL_PI_R8
+  real(REAL64),   parameter     :: PI        = MAPL_PI_R8
 
   integer                :: command_argument_count
   integer                :: nxt, argl, fill
@@ -43,12 +43,12 @@ program mkOverlaySimple
   integer,   allocatable :: RST2(:  )
   integer,   allocatable :: iTable(:,:)
 
-  real(kind=8) ,    allocatable :: Table1(:,:) 
-  real(kind=8) ,    allocatable :: Table2(:,:) 
-  real(kind=8) ,    allocatable :: rTable(:,:)
-  real(kind=8) ,    allocatable :: cc(:), ss(:)
-  real(kind=8)                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  real(kind=8)                  :: lats, lons, da
+  real(REAL64) ,    allocatable :: Table1(:,:) 
+  real(REAL64) ,    allocatable :: Table2(:,:) 
+  real(REAL64) ,    allocatable :: rTable(:,:)
+  real(REAL64) ,    allocatable :: cc(:), ss(:)
+  real(REAL64)                  :: dx, dy, area, xc, yc, d2r, vv(4)
+  real(REAL64)                  :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
