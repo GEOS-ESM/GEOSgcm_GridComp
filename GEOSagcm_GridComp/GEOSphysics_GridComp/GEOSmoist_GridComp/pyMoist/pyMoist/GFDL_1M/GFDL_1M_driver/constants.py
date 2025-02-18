@@ -6,9 +6,8 @@ Commented comments are defined in namelist and set at stencil init.
 """
 
 import numpy as np
-from gt4py.cartesian.gtscript import i32
 
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 
 
 # constants from gfdl_1m_driver module
@@ -230,4 +229,4 @@ SO3 = Float(7.0) / Float(3.0)
 
 # q table constants
 
-LENGTH = i32(2621)
+LENGTH = Int(2621)

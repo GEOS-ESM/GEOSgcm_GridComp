@@ -2,7 +2,8 @@ from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
+from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
+from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
 
 
 class TranslateGFDL_1M_driver(TranslateFortranData2Py):
@@ -316,13 +317,11 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         irain_f = Float(inputs["irain_f"])
         mp_print = Float(inputs["mp_print"])
 
-        stencil = GFDL_1M_driver(
-            self.stencil_factory,
-            self.quantity_factory,
+        # Create config class, to be replaced by a proper feature in the pyMoist integration
+        namelist = config(
             LPHYS_HYDROSTATIC,
             LHYDROSTATIC,
             DT_MOIST,
-            # Namelist options
             mp_time,
             t_min,
             t_sub,
@@ -405,7 +404,14 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             mp_print,
         )
 
+        stencil = driver(
+            self.stencil_factory,
+            self.quantity_factory,
+            namelist,
+        )
+
         stencil(
+            namelist,
             RAD_QV,
             RAD_QL,
             RAD_QR,
@@ -452,12 +458,12 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             "DQIDTmic": DQIDTmic.view[:],
             "DQSDTmic": DQSDTmic.view[:],
             "DQGDTmic": DQGDTmic.view[:],
-            "PRCP_RAIN": stencil.rain.view[:],
-            "PRCP_SNOW": stencil.snow.view[:],
-            "PRCP_ICE": stencil.ice.view[:],
-            "PRCP_GRAUPEL": stencil.graupel.view[:],
-            "PFL_LS": stencil.m2_rain.view[:],
-            "PFI_LS": stencil.m2_sol.view[:],
-            "REV_LS": stencil.revap.view[:],
-            "RSU_LS": stencil.isubl.view[:],
+            "PRCP_RAIN": stencil.outputs.rain.view[:],
+            "PRCP_SNOW": stencil.outputs.snow.view[:],
+            "PRCP_ICE": stencil.outputs.ice.view[:],
+            "PRCP_GRAUPEL": stencil.outputs.graupel.view[:],
+            "PFL_LS": stencil.outputs.m2_rain.view[:],
+            "PFI_LS": stencil.outputs.m2_sol.view[:],
+            "REV_LS": stencil.outputs.revap.view[:],
+            "RSU_LS": stencil.outputs.isubl.view[:],
         }

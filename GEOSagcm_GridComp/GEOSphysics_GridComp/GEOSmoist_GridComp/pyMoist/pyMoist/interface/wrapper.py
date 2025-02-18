@@ -34,7 +34,7 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver import GFDL_1M_driver
+from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
 from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
 import numpy as np
 
@@ -199,7 +199,7 @@ class GEOSPyMoistWrapper:
         # JIT system for the component of Moist
         self._aer_activation: Optional[AerActivation] = None
         self._GFDL_1M_evap: Optional[GFDL_1M] = None
-        self._GFDL_1M_driver: Optional[GFDL_1M_driver] = None
+        self._GFDL_1M_driver: Optional[driver] = None
 
         # Initalize flags later
         self.gfdl_1m_flags: Optional[gfdl_1m_flags] = None
@@ -213,7 +213,7 @@ class GEOSPyMoistWrapper:
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
             ):
-                self._GFDL_1M_driver = GFDL_1M_driver(
+                self._GFDL_1M_driver = driver(
                     self.stencil_factory,
                     self.quantity_factory,
                     self.gfdl_1m_flags.phys_hydrostatic,

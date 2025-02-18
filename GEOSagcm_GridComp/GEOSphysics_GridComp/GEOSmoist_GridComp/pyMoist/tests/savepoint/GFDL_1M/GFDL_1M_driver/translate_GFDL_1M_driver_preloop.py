@@ -1,8 +1,8 @@
-import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
 from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_core import (
+from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
     fix_negative_values,
     init_temporaries,
 )
@@ -82,11 +82,11 @@ class TranslateGFDL_1M_driver_preloop(TranslateFortranData2Py):
 
         # set externals manually to the need for avoid another workaround
         c_paut = 1
-        cpaut = c_paut * 0.104 * driver_constants.GRAV / 1.717e-5
-        c_air = driver_constants.CP_AIR
-        c_vap = driver_constants.CP_VAP
-        d0_vap = c_vap - driver_constants.C_LIQ
-        lv00 = driver_constants.HLV0 - d0_vap * driver_constants.T_ICE
+        cpaut = c_paut * 0.104 * constants.GRAV / 1.717e-5
+        c_air = constants.CP_AIR
+        c_vap = constants.CP_VAP
+        d0_vap = c_vap - constants.C_LIQ
+        lv00 = constants.HLV0 - d0_vap * constants.T_ICE
 
         # initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)

@@ -15,6 +15,6 @@ python -m pytest -s \
     --backend=gt:cpu_kfirst \
     --grid=default \
     --multimodal_metric \
-    --which_modules=icloud \
+    --which_modules=terminal_fall \
     --which_rank=0 \
     ..

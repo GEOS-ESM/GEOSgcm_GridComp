@@ -1,11 +1,11 @@
 import numpy as np
 
-import pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_constants as driver_constants
+import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
 from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
+from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
 
 
@@ -304,15 +304,15 @@ class Translateicloud(TranslateFortranData2Py):
             True  # not about to try to serialize this, it should always be true
         )
         if phys_hydrostatic or hydrostatic:
-            c_air = driver_constants.CP_AIR
-            c_vap = driver_constants.CP_VAP
+            c_air = constants.CP_AIR
+            c_vap = constants.CP_VAP
             p_nonhydro = False
         else:
-            c_air = driver_constants.CV_AIR
-            c_vap = driver_constants.CV_VAP
+            c_air = constants.CV_AIR
+            c_vap = constants.CV_VAP
             p_nonhydro = True
-        d0_vap = c_vap - driver_constants.C_LIQ
-        lv00 = driver_constants.HLV0 - d0_vap * driver_constants.T_ICE
+        d0_vap = c_vap - constants.C_LIQ
+        lv00 = constants.HLV0 - d0_vap * constants.T_ICE
 
         if hydrostatic:
             do_sedi_w = False
@@ -321,21 +321,21 @@ class Translateicloud(TranslateFortranData2Py):
         # define latent heat coefficient used in wet bulb and bigg mechanism
         # -----------------------------------------------------------------------
 
-        latv = driver_constants.HLV
-        lati = driver_constants.HLF
+        latv = constants.HLV
+        lati = constants.HLF
         lats = latv + lati
         lat2 = lats * lats
 
-        lcp = latv / driver_constants.CP_AIR
-        icp = lati / driver_constants.CP_AIR
-        tcp = (latv + lati) / driver_constants.CP_AIR
+        lcp = latv / constants.CP_AIR
+        icp = lati / constants.CP_AIR
+        tcp = (latv + lati) / constants.CP_AIR
 
         # -----------------------------------------------------------------------
         # calculate cloud condensation nuclei (ccn)
         # the following is based on klein eq. 15
         # -----------------------------------------------------------------------
 
-        cpaut = c_paut * 0.104 * driver_constants.GRAV / 1.717e-5
+        cpaut = c_paut * 0.104 * constants.GRAV / 1.717e-5
 
         # -----------------------------------------------------------------------
         # define conversion scalar / factor for icloud
@@ -357,37 +357,37 @@ class Translateicloud(TranslateFortranData2Py):
         # -----------------------------------------------------------------------
 
         cgacs = (
-            driver_constants.PISQ
-            * driver_constants.RNZG
-            * driver_constants.RNZS
-            * driver_constants.RHOS
+            constants.PISQ
+            * constants.RNZG
+            * constants.RNZS
+            * constants.RHOS
         )
         cgacs = cgacs * c_pgacs
 
         csacw = (
-            driver_constants.PIE
-            * driver_constants.RNZS
+            constants.PIE
+            * constants.RNZS
             * clin
-            * driver_constants.GAM325
-            / (4.0 * driver_constants.ACT[0] ** 0.8125)
+            * constants.GAM325
+            / (4.0 * constants.ACT[0] ** 0.8125)
         )
         # decreasing csacw to reduce cloud water --- > snow
 
         craci = (
-            driver_constants.PIE
-            * driver_constants.RNZR
+            constants.PIE
+            * constants.RNZR
             * alin
-            * driver_constants.GAM380
-            / (4.0 * driver_constants.ACT[1] ** 0.95)
+            * constants.GAM380
+            / (4.0 * constants.ACT[1] ** 0.95)
         )
         csaci = csacw * c_psaci
 
         cgacw = (
-            driver_constants.PIE
-            * driver_constants.RNZG
-            * driver_constants.GAM350
-            * driver_constants.GCON
-            / (4.0 * driver_constants.ACT[5] ** 0.875)
+            constants.PIE
+            * constants.RNZG
+            * constants.GAM350
+            * constants.GCON
+            / (4.0 * constants.ACT[5] ** 0.875)
         )
 
         cgaci = cgacw * c_pgaci
@@ -401,65 +401,65 @@ class Translateicloud(TranslateFortranData2Py):
 
         cssub[0] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.VDIFU
-            * driver_constants.TCOND
-            * driver_constants.RVGAS
-            * driver_constants.RNZS
+            * constants.PIE
+            * constants.VDIFU
+            * constants.TCOND
+            * constants.RVGAS
+            * constants.RNZS
         )
         cgsub[0] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.VDIFU
-            * driver_constants.TCOND
-            * driver_constants.RVGAS
-            * driver_constants.RNZG
+            * constants.PIE
+            * constants.VDIFU
+            * constants.TCOND
+            * constants.RVGAS
+            * constants.RNZG
         )
         crevp[0] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.VDIFU
-            * driver_constants.TCOND
-            * driver_constants.RVGAS
-            * driver_constants.RNZR
+            * constants.PIE
+            * constants.VDIFU
+            * constants.TCOND
+            * constants.RVGAS
+            * constants.RNZR
         )
-        cssub[1] = 0.78 / np.sqrt(driver_constants.ACT[0])
-        cgsub[1] = 0.78 / np.sqrt(driver_constants.ACT[5])
-        crevp[1] = 0.78 / np.sqrt(driver_constants.ACT[1])
+        cssub[1] = 0.78 / np.sqrt(constants.ACT[0])
+        cgsub[1] = 0.78 / np.sqrt(constants.ACT[5])
+        crevp[1] = 0.78 / np.sqrt(constants.ACT[1])
         cssub[2] = (
             0.31
-            * driver_constants.SCM3
-            * driver_constants.GAM263
-            * np.sqrt(clin / driver_constants.VISK)
-            / driver_constants.ACT[0] ** 0.65625
+            * constants.SCM3
+            * constants.GAM263
+            * np.sqrt(clin / constants.VISK)
+            / constants.ACT[0] ** 0.65625
         )
         cgsub[2] = (
             0.31
-            * driver_constants.SCM3
-            * driver_constants.GAM275
-            * np.sqrt(driver_constants.GCON / driver_constants.VISK)
-            / driver_constants.ACT[5] ** 0.6875
+            * constants.SCM3
+            * constants.GAM275
+            * np.sqrt(constants.GCON / constants.VISK)
+            / constants.ACT[5] ** 0.6875
         )
         crevp[2] = (
             0.31
-            * driver_constants.SCM3
-            * driver_constants.GAM209
-            * np.sqrt(alin / driver_constants.VISK)
-            / driver_constants.ACT[1] ** 0.725
+            * constants.SCM3
+            * constants.GAM209
+            * np.sqrt(alin / constants.VISK)
+            / constants.ACT[1] ** 0.725
         )
-        cssub[3] = driver_constants.TCOND * driver_constants.RVGAS
-        cssub[4] = driver_constants.HLTS**2 * driver_constants.VDIFU
+        cssub[3] = constants.TCOND * constants.RVGAS
+        cssub[4] = constants.HLTS**2 * constants.VDIFU
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = driver_constants.HLTC**2 * driver_constants.VDIFU
+        crevp[4] = constants.HLTC**2 * constants.VDIFU
 
         cgfr_0 = (
             20.0e2
-            * driver_constants.PISQ
-            * driver_constants.RNZR
-            * driver_constants.RHOR
-            / driver_constants.ACT[1] ** 1.75
+            * constants.PISQ
+            * constants.RNZR
+            * constants.RHOR
+            / constants.ACT[1] ** 1.75
         )
         cgfr_1 = 0.66
 
@@ -486,22 +486,22 @@ class Translateicloud(TranslateFortranData2Py):
         csmlt = np.zeros(5)
         csmlt[0] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.TCOND
-            * driver_constants.RNZS
-            / driver_constants.HLTF
+            * constants.PIE
+            * constants.TCOND
+            * constants.RNZS
+            / constants.HLTF
         )
         csmlt[1] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.VDIFU
-            * driver_constants.RNZS
-            * driver_constants.HLTC
-            / driver_constants.HLTF
+            * constants.PIE
+            * constants.VDIFU
+            * constants.RNZS
+            * constants.HLTC
+            / constants.HLTF
         )
         csmlt[2] = cssub[1]
         csmlt[3] = cssub[2]
-        csmlt[4] = driver_constants.CH2O / driver_constants.HLTF
+        csmlt[4] = constants.CH2O / constants.HLTF
 
         csmlt_0 = csmlt[0]
         csmlt_1 = csmlt[1]
@@ -514,22 +514,22 @@ class Translateicloud(TranslateFortranData2Py):
         cgmlt = np.zeros(5)
         cgmlt[0] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.TCOND
-            * driver_constants.RNZG
-            / driver_constants.HLTF
+            * constants.PIE
+            * constants.TCOND
+            * constants.RNZG
+            / constants.HLTF
         )
         cgmlt[1] = (
             2.0
-            * driver_constants.PIE
-            * driver_constants.VDIFU
-            * driver_constants.RNZG
-            * driver_constants.HLTC
-            / driver_constants.HLTF
+            * constants.PIE
+            * constants.VDIFU
+            * constants.RNZG
+            * constants.HLTC
+            / constants.HLTF
         )
         cgmlt[2] = cgsub[1]
         cgmlt[3] = cgsub[2]
-        cgmlt[4] = driver_constants.CH2O / driver_constants.HLTF
+        cgmlt[4] = constants.CH2O / constants.HLTF
 
         cgmlt_0 = cgmlt[0]
         cgmlt_1 = cgmlt[1]
@@ -538,7 +538,7 @@ class Translateicloud(TranslateFortranData2Py):
         cgmlt_4 = cgmlt[4]
 
         es0 = 6.107799961e2  # ~6.1 mb
-        ces0 = driver_constants.EPS * es0
+        ces0 = constants.EPS * es0
 
         # make temporaries
         self.TESTVAR_1 = self.quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
