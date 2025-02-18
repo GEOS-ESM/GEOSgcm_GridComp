@@ -2,7 +2,7 @@ from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.GFDL_1M_driver_tables import get_tables
+from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
 
 
