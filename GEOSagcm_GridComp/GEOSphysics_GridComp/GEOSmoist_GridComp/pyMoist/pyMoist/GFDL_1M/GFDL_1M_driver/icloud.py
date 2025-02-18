@@ -61,12 +61,7 @@ def icloud_melt_freeze(
     lhi = constants.LI00 + constants.DC_ICE * t
     q_liq = ql + qr
     q_sol = qi + qs + qg
-    cvm = (
-        c_air
-        + qv * c_vap
-        + q_liq * constants.C_LIQ
-        + q_sol * constants.C_ICE
-    )
+    cvm = c_air + qv * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
     icpk = lhi / cvm
 
     newice = max(0.0, qi + new_ice_condensate(t, ql, qi, cnv_frc, srf_type))
@@ -90,9 +85,7 @@ def icloud_melt_freeze(
             0.0,
             min(
                 1.0,
-                qa
-                * max(qi + ql - melt + tmp, 0.0)
-                / max(qi + ql, constants.QCMIN),
+                qa * max(qi + ql - melt + tmp, 0.0) / max(qi + ql, constants.QCMIN),
             ),
         )
 
@@ -101,12 +94,7 @@ def icloud_melt_freeze(
         qi = qi - melt
         q_liq = q_liq + melt
         q_sol = q_sol - melt
-        cvm = (
-            c_air
-            + qv * c_vap
-            + q_liq * constants.C_LIQ
-            + q_sol * constants.C_ICE
-        )
+        cvm = c_air + qv * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t = t - melt * lhi / cvm
     elif frez > 0.0 and t <= constants.TICE and ql > constants.QCMIN:
         # -----------------------------------------------------------------------
@@ -125,9 +113,7 @@ def icloud_melt_freeze(
             0.0,
             min(
                 1.0,
-                qa
-                * max(qi + ql - frez + tmp, 0.0)
-                / max(qi + ql, constants.QCMIN),
+                qa * max(qi + ql - frez + tmp, 0.0) / max(qi + ql, constants.QCMIN),
             ),
         )
 
@@ -136,12 +122,7 @@ def icloud_melt_freeze(
         qi = qi + tmp
         q_liq = q_liq - frez
         q_sol = q_sol + frez
-        cvm = (
-            c_air
-            + qv * c_vap
-            + q_liq * constants.C_LIQ
-            + q_sol * constants.C_ICE
-        )
+        cvm = c_air + qv * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t = t + frez * lhi / cvm
 
     return t, qv, ql, qr, qi, qs, qg, qa, cvm, q_liq, q_sol
@@ -196,7 +177,7 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
@@ -223,7 +204,7 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
@@ -395,9 +376,7 @@ def snow_graupel_coldrain(
                 0.0,
                 min(
                     1.0,
-                    qa1
-                    * max(qi2 + ql2 + tmp, 0.0)
-                    / max(qi2 + ql2, constants.QCMIN),
+                    qa1 * max(qi2 + ql2 + tmp, 0.0) / max(qi2 + ql2, constants.QCMIN),
                 ),
             )
 
@@ -407,10 +386,7 @@ def snow_graupel_coldrain(
             q_liq = q_liq + sink
             q_sol = q_sol - sink
             cvm = (
-                c_air
-                + qv2 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t2 = t2 - sink * lhi / cvm
             tc = t2 - constants.TICE
@@ -480,10 +456,7 @@ def snow_graupel_coldrain(
             q_liq = q_liq + pgmlt
             q_sol = q_sol - pgmlt
             cvm = (
-                c_air
-                + qv2 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t2 = t2 - pgmlt * lhi / cvm
 
@@ -638,10 +611,7 @@ def snow_graupel_coldrain(
             q_liq = q_liq - sink
             q_sol = q_sol + sink
             cvm = (
-                c_air
-                + qv2 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t2 = t2 + sink * lhi / cvm
 
@@ -743,10 +713,7 @@ def snow_graupel_coldrain(
             q_liq = q_liq - sink
             q_sol = q_sol + sink
             cvm = (
-                c_air
-                + qv2 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv2 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t2 = t2 + sink * lhi / cvm
 
@@ -985,12 +952,7 @@ def subgrid_z_proc(
     lhi = constants.LI00 + constants.DC_ICE * t1
     q_liq = ql1 + qr1
     q_sol = qi1 + qs1 + qg1
-    cvm = (
-        c_air
-        + qv1 * c_vap
-        + q_liq * constants.C_LIQ
-        + q_sol * constants.C_ICE
-    )
+    cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
     lcpk = lhl / cvm
     icpk = lhi / cvm
     tcpk = lcpk + icpk
@@ -998,9 +960,7 @@ def subgrid_z_proc(
         ans = constants.TICE - t1
     else:
         ans = 0
-    tcp3 = lcpk + icpk * min(
-        1.0, ans / (constants.TICE - constants.T_WFR)
-    )
+    tcp3 = lcpk + icpk * min(1.0, ans / (constants.TICE - constants.T_WFR))
 
     rh_adj = 1.0 - rh_limited - rh_inc
     rh_rain = max(0.35, rh_adj - rh_inr)
@@ -1023,12 +983,7 @@ def subgrid_z_proc(
         qv1 = qv1 - sink
         qi1 = qi1 + sink
         q_sol = q_sol + sink
-        cvm = (
-            c_air
-            + qv1 * c_vap
-            + q_liq * constants.C_LIQ
-            + q_sol * constants.C_ICE
-        )
+        cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         t1 = t1 + sink * (lhl + lhi) / cvm
         if do_qa == True:  # noqa
             qa1 = 1.0  # air fully saturated; 100 % cloud cover
@@ -1047,19 +1002,14 @@ def subgrid_z_proc(
             ans = constants.TICE - t1
         else:
             ans = 0
-        tcp3 = lcpk + icpk * min(
-            1.0, ans / (constants.TICE - constants.T_WFR)
-        )
+        tcp3 = lcpk + icpk * min(1.0, ans / (constants.TICE - constants.T_WFR))
 
         # -----------------------------------------------------------------------
         # instant evaporation / sublimation of all clouds if rh < rh_adj -- > cloud free
         # -----------------------------------------------------------------------
         qpz = qv1 + ql1 + qi1
         tin = t1 - (lhl * (ql1 + qi1) + lhi * qi1) / (
-            c_air
-            + qpz * c_vap
-            + qr1 * constants.C_LIQ
-            + (qs1 + qg1) * constants.C_ICE
+            c_air + qpz * c_vap + qr1 * constants.C_LIQ + (qs1 + qg1) * constants.C_ICE
         )
         if tin > t_sub + 6.0:
             rh = qpz / iqs1(tin, den1, table3, des3)
@@ -1088,10 +1038,7 @@ def subgrid_z_proc(
             ql1 = ql1 - evap
             q_liq = q_liq - evap
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 - evap * lhl / cvm
 
@@ -1114,10 +1061,7 @@ def subgrid_z_proc(
             q_liq = q_liq - sink
             q_sol = q_sol + sink
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 + sink * lhi / cvm
 
@@ -1149,10 +1093,7 @@ def subgrid_z_proc(
             q_liq = q_liq - sink
             q_sol = q_sol + sink
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 + sink * lhi / cvm
             # significant ql existed
@@ -1184,7 +1125,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1**2)
+                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1 ** 2)
                         + 4.42478e4
                     )
                 )
@@ -1218,10 +1159,7 @@ def subgrid_z_proc(
             qi1 = qi1 + sink
             q_sol = q_sol + sink
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 + sink * (lhl + lhi) / cvm
 
@@ -1264,17 +1202,12 @@ def subgrid_z_proc(
                 if t1 > constants.TICE:
                     pssub = 0.0  # no deposition
                 else:
-                    pssub = max(
-                        fac_v2s * pssub, max(dq, (t1 - constants.TICE) / tcpk)
-                    )
+                    pssub = max(fac_v2s * pssub, max(dq, (t1 - constants.TICE) / tcpk))
             qs1 = qs1 - pssub
             qv1 = qv1 + pssub
             q_sol = q_sol - pssub
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 - pssub * (lhl + lhi) / cvm
 
@@ -1318,10 +1251,7 @@ def subgrid_z_proc(
             qv1 = qv1 - pgsub
             q_sol = q_sol + pgsub
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 + pgsub * (lhl + lhi) / cvm
 
@@ -1561,9 +1491,7 @@ def icloud(
                 max(constants.QVMIN, h_var_linear_prof * q_linear_prof),
             )
         if z_slope_ice == False:  # noqa
-            dm_linear_prof = max(
-                constants.QVMIN, h_var_linear_prof * q_linear_prof
-            )
+            dm_linear_prof = max(constants.QVMIN, h_var_linear_prof * q_linear_prof)
 
     # handle outputs of "function"
     with computation(PARALLEL), interval(...):

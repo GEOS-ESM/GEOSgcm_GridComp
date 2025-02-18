@@ -5,8 +5,8 @@ from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
+from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 
 
 class Translateicloud(TranslateFortranData2Py):
@@ -356,12 +356,7 @@ class Translateicloud(TranslateFortranData2Py):
         # constatns from setupm
         # -----------------------------------------------------------------------
 
-        cgacs = (
-            constants.PISQ
-            * constants.RNZG
-            * constants.RNZS
-            * constants.RHOS
-        )
+        cgacs = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS
         cgacs = cgacs * c_pgacs
 
         csacw = (
@@ -448,11 +443,11 @@ class Translateicloud(TranslateFortranData2Py):
             / constants.ACT[1] ** 0.725
         )
         cssub[3] = constants.TCOND * constants.RVGAS
-        cssub[4] = constants.HLTS**2 * constants.VDIFU
+        cssub[4] = constants.HLTS ** 2 * constants.VDIFU
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = constants.HLTC**2 * constants.VDIFU
+        crevp[4] = constants.HLTC ** 2 * constants.VDIFU
 
         cgfr_0 = (
             20.0e2
@@ -485,11 +480,7 @@ class Translateicloud(TranslateFortranData2Py):
 
         csmlt = np.zeros(5)
         csmlt[0] = (
-            2.0
-            * constants.PIE
-            * constants.TCOND
-            * constants.RNZS
-            / constants.HLTF
+            2.0 * constants.PIE * constants.TCOND * constants.RNZS / constants.HLTF
         )
         csmlt[1] = (
             2.0
@@ -513,11 +504,7 @@ class Translateicloud(TranslateFortranData2Py):
 
         cgmlt = np.zeros(5)
         cgmlt[0] = (
-            2.0
-            * constants.PIE
-            * constants.TCOND
-            * constants.RNZG
-            / constants.HLTF
+            2.0 * constants.PIE * constants.TCOND * constants.RNZG / constants.HLTF
         )
         cgmlt[1] = (
             2.0

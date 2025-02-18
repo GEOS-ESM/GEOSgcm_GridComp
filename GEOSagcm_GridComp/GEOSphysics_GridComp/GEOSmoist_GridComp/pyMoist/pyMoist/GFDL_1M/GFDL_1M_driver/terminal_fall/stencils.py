@@ -5,12 +5,11 @@ from gt4py.cartesian.gtscript import (
     PARALLEL,
     computation,
     exp,
-    i32,
     interval,
 )
 
 import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
-from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ, IntField
+from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
 
 
 def check_precip_get_zt(
@@ -28,7 +27,6 @@ def check_precip_get_zt(
     # melting of falling snow into rain
     # -----------------------------------------------------------------------
     # -----------------------------------------------------------------------
-
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
     # determine if any precip falls in the column
     # if it falls anywhere in the column, the entire column becomes true
@@ -64,11 +62,12 @@ def melting_loop(
 
     with computation(BACKWARD), interval(...):
         # NOTE: code is unfinished, not implemented. do not allow it to run
-        # this code should never execute anyway. It requries dts > 300, and if this is true
-        # an error should be triggered in GFDL_1M that prevents execution
+        # this code should never execute anyway. It requries dts > 300
+        # and if this is true an error should be triggered
+        # in GFDL_1M that prevents execution
         disable = True
 
-        if disable == False:
+        if disable == False:  # noqa
             skip_for_now = 1
             """
             # THIS HAS NEVER BEEN TESTED B/C DTS WAS LESS THAN 300 IN THE TEST CASE
@@ -340,16 +339,7 @@ def setup(
 
     reference Fortran: gfdl_cloud_microphys.F90: subroutine terminal_fall
     """
-    from __externals__ import (
-        dts,
-        c_air,
-        c_vap,
-        d0_vap,
-        dts,
-        lv00,
-        ql_mlt,
-        tau_imlt,
-    )
+    from __externals__ import c_air, c_vap, d0_vap, dts, lv00, ql_mlt, tau_imlt
 
     # determine frozen levels
     # later operations will only be executed if frozen/melted

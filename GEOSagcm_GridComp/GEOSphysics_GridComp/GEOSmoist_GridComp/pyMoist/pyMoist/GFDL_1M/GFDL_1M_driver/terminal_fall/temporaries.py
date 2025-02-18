@@ -1,10 +1,4 @@
-import numpy as np
-from gt4py.cartesian.gtscript import i32
-from ndsl.dsl.typing import Float
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
-from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
-from ndsl.dsl.typing import Int
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
 class temporaries:

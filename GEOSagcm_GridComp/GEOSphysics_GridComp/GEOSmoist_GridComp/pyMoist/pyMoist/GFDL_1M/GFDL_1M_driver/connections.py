@@ -312,20 +312,12 @@ def fall_speed_core(
             # https://doi.org/10.1029/2008GL035054
             # -----------------------------------------------------------------------
             viLSC = lsc_icefall * 10.0 ** (
-                log10(IWC)
-                * (
-                    tc * (constants.AAL * tc + constants.BBL)
-                    + constants.CCL
-                )
+                log10(IWC) * (tc * (constants.AAL * tc + constants.BBL) + constants.CCL)
                 + constants.DDL * tc
                 + constants.EEL
             )
             viCNV = anv_icefall * 10.0 ** (
-                log10(IWC)
-                * (
-                    tc * (constants.AAC * tc + constants.BBC)
-                    + constants.CCC
-                )
+                log10(IWC) * (tc * (constants.AAC * tc + constants.BBC) + constants.CCC)
                 + constants.DDC * tc
                 + constants.EEC
             )

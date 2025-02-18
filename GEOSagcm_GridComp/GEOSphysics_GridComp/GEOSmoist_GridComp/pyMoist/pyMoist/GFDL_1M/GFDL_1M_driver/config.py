@@ -1,5 +1,3 @@
-import numpy as np
-from gt4py.cartesian.gtscript import i32
 from ndsl.dsl.typing import Float
 
 

@@ -16,9 +16,7 @@ from ndsl.dsl.typing import Float
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
-_FloatField_data_dim = gtscript.Field[
-    gtscript.IJK, (Float, (int(constants.LENGTH)))
-]
+_FloatField_data_dim = gtscript.Field[gtscript.IJK, (Float, (int(constants.LENGTH)))]
 GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (constants.LENGTH))]
 
 

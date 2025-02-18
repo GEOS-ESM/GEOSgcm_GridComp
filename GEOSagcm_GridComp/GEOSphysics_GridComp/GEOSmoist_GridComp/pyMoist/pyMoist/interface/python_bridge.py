@@ -13,10 +13,7 @@ from ndsl.optional_imports import cupy as cp
 from pyMoist.interface.cuda_profiler import CUDAProfiler, TimedCUDAProfiler
 from pyMoist.interface.f_py_conversion import FortranPythonConversion
 from pyMoist.interface.flags import gfdl_1m_flags_f_to_python, moist_flags_f_to_python
-from pyMoist.interface.wrapper import (
-    GEOSPyMoistWrapper,
-    MemorySpace,
-)
+from pyMoist.interface.wrapper import GEOSPyMoistWrapper, MemorySpace
 
 
 class PYMOIST_WRAPPER:

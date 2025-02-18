@@ -1,21 +1,16 @@
-import numpy as np
-from gt4py.cartesian.gtscript import i32
-
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.temporaries import temporaries
 from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.stencils import (
-    setup,
     check_precip_get_zt,
-    melting_loop,
-    update_dm,
     implicit_fall,
-    update_w1,
+    melting_loop,
     reset,
+    setup,
+    update_dm,
+    update_w1,
 )
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.temporaries import temporaries
 
 
 class terminal_fall:
@@ -40,6 +35,7 @@ class terminal_fall:
         self.temporaries = temporaries(quantity_factory)
 
         # Initalize stencils
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._setup = stencil_factory.from_dims_halo(
             func=setup,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],

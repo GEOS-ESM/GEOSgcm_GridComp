@@ -7,6 +7,7 @@ import logging
 import os
 from typing import Callable, Optional
 
+import numpy as np
 from gt4py.cartesian.config import build_settings as gt_build_settings
 from mpi4py import MPI
 
@@ -36,7 +37,6 @@ from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
 from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
 from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
-import numpy as np
 
 
 class MemorySpace(enum.Enum):

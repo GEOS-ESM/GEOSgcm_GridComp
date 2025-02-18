@@ -1,12 +1,9 @@
 """GFDL_1M driver"""
 
-import numpy as np
-from gt4py.cartesian.gtscript import i32
-
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
 from ndsl import QuantityFactory, StencilFactory, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
 from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
     fall_speed,
     fix_negative_values,
@@ -16,18 +13,17 @@ from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
     update_tendencies,
     warm_rain_update,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.terminal_fall import terminal_fall
-from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
-from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
+from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.support import (
     check_flags,
     config_constants,
+    masks,
     outputs,
     temporaries,
-    masks,
 )
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.terminal_fall import terminal_fall
+from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
 
 
 class driver:

@@ -24,7 +24,6 @@ class moist_flags:
 
 @dataclass
 class gfdl_1m_flags:
-    # GFDL_1M driver (for now initalized to junk values, these values dont matter, right?)
     phys_hydrostatic: bool = False
     hydrostatic: bool = False
     dt_moist: np.float32 = 0

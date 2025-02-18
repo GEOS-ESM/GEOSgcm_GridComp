@@ -115,12 +115,7 @@ def revap_racc(
         lhl = lv00 + d0_vap * t1
         q_liq = ql1 + qr1
         q_sol = qi1 + qs1 + qg1
-        cvm = (
-            c_air
-            + qv1 * c_vap
-            + q_liq * constants.C_LIQ
-            + q_sol * constants.C_ICE
-        )
+        cvm = c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         lcpk = lhl / cvm
 
         tin = t1 - lcpk * ql1  # presence of clouds suppresses the rain evap
@@ -164,10 +159,7 @@ def revap_racc(
             qv1 = qv1 + evap
             q_liq = q_liq - evap
             cvm = (
-                c_air
-                + qv1 * c_vap
-                + q_liq * constants.C_LIQ
-                + q_sol * constants.C_ICE
+                c_air + qv1 * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             t1 = t1 - evap * lhl / cvm
             revap = evap / half_dt
@@ -176,11 +168,7 @@ def revap_racc(
         # accretion: pracc
         # -----------------------------------------------------------------------
 
-        if (
-            qr1 > constants.QPMIN
-            and ql1 > constants.QCMIN
-            and qsat < q_minus
-        ):
+        if qr1 > constants.QPMIN and ql1 > constants.QCMIN and qsat < q_minus:
             sink = half_dt * denfac * cracw * exp(0.95 * log(qr1 * den1))
             sink = sink / (1.0 + sink) * ql1
             ql1 = ql1 - sink
@@ -245,7 +233,6 @@ def warm_rain(
         do_sedi_w,
         dts,
         irain_f,
-        k_end,
         ql0_max,
         rthreshs,
         rthreshu,
@@ -291,9 +278,7 @@ def warm_rain(
         fac_rc = (
             min(1.0, eis / 15.0) ** 2
         )  # Estimated inversion strength determine stable regime
-        fac_rc = (
-            constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
-        )
+        fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
 
     with computation(PARALLEL), interval(...):
         if irain_f != 0:
@@ -427,17 +412,7 @@ def warm_rain(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             half_dt,
             t1,
             qv1,
@@ -572,17 +547,7 @@ def warm_rain(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (
-            t1,
-            qv1,
-            qr1,
-            ql1,
-            qi1,
-            qs1,
-            qg1,
-            qa1,
-            revap,
-        ) = revap_racc(
+        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
             half_dt,
             t1,
             qv1,

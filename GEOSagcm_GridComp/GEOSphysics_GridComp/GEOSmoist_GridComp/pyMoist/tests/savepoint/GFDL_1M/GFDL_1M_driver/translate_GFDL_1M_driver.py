@@ -2,8 +2,8 @@ from ndsl import Namelist, Quantity, StencilFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
 from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
+from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
 
 
 class TranslateGFDL_1M_driver(TranslateFortranData2Py):
@@ -317,7 +317,7 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
         irain_f = Float(inputs["irain_f"])
         mp_print = Float(inputs["mp_print"])
 
-        # Create config class, to be replaced by a proper feature in the pyMoist integration
+        # Create config class, to be replaced by a proper feature w/pyMoist integration
         namelist = config(
             LPHYS_HYDROSTATIC,
             LHYDROSTATIC,
