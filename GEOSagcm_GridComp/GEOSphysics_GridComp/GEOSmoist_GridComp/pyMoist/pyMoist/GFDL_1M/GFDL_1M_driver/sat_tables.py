@@ -15,9 +15,9 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float
 from pyMoist.shared_incloud_processes import ice_fraction
 
-
+# Workaround to create a 1d off-grid axis that can be written to
 _FloatField_data_dim = gtscript.Field[gtscript.IJK, (Float, (int(constants.LENGTH)))]
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (constants.LENGTH))]
+GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
 
 
 def qs_table_1(length: i32, table1: _FloatField_data_dim, esupc: _FloatField_data_dim):

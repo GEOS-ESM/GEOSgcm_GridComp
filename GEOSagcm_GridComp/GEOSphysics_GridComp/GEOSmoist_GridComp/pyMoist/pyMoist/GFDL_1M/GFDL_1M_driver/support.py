@@ -71,7 +71,7 @@ def check_flags(
         )
 
 
-class config_constants:
+class ConfigConstants:
     def __init__(self, GFDL_1M_config: config):
         # -----------------------------------------------------------------------
         # define heat capacity of dry air and water vap based on hydrostatical property
@@ -340,7 +340,7 @@ class config_constants:
         self.CGMLT_4 = self.CGMLT[4]
 
 
-class outputs:
+class Outputs:
     def __init__(self, quantity_factory):
         # -----------------------------------------------------------------------
         # initialize precipitation outputs
@@ -356,7 +356,7 @@ class outputs:
         self.isubl = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
 
-class temporaries:
+class Temporaries:
     def __init__(self, quantity_factory):
         self.t1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.dp1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -407,7 +407,7 @@ class temporaries:
         self.subl1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
 
-class masks:
+class Masks:
     def __init__(self, quantity_factory):
         self.is_frozen = quantity_factory.zeros(
             [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool

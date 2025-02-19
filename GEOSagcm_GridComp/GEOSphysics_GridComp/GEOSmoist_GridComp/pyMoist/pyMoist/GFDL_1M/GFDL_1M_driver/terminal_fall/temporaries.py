@@ -1,7 +1,7 @@
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 
 
-class temporaries:
+class Temporaries:
     def __init__(self, quantity_factory):
         self.lhi = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.icpk = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")

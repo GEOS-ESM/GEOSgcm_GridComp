@@ -443,11 +443,11 @@ class Translateicloud(TranslateFortranData2Py):
             / constants.ACT[1] ** 0.725
         )
         cssub[3] = constants.TCOND * constants.RVGAS
-        cssub[4] = constants.HLTS ** 2 * constants.VDIFU
+        cssub[4] = constants.HLTS**2 * constants.VDIFU
         cgsub[3] = cssub[3]
         crevp[3] = cssub[3]
         cgsub[4] = cssub[4]
-        crevp[4] = constants.HLTC ** 2 * constants.VDIFU
+        crevp[4] = constants.HLTC**2 * constants.VDIFU
 
         cgfr_0 = (
             20.0e2

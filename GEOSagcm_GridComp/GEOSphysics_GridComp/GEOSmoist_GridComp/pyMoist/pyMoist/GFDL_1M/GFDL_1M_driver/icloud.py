@@ -15,9 +15,7 @@ from gt4py.cartesian.gtscript import (
 import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
-
-
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
+from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import GlobalTable_driver_qsat
 
 
 @gtscript.function
@@ -177,7 +175,7 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
@@ -204,7 +202,7 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
@@ -1125,7 +1123,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1 ** 2)
+                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1**2)
                         + 4.42478e4
                     )
                 )
@@ -1139,8 +1137,10 @@ def subgrid_z_proc(
                 qi_crt = max(qi_crt, 1.82e-6) * qi_lim * ifrac / den1
                 sink = min(sink, min(max(qi_crt - qi1, pidep), tmp / tcpk))
             else:  # ice -- > vapor
-                # NOTE sublimation option is False in test case, not implemented
-                # b/c unsure how to handle pssub. In Fortran this variable is
+                # NOTE sublimation not implemented
+                # trigger checked in driver `check_flags` function
+
+                # dev NOTE: unsure how to handle pssub. In Fortran this variable is
                 # initalized to nan then used here (at least when do_subl is False,
                 # maybe do_subl has other unknown effects)
                 # # sublimation

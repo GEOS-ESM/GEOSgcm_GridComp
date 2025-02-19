@@ -404,3 +404,30 @@ def setup(
     with computation(FORWARD), interval(-1, None):
         lhi = constants.LI00 + constants.DC_ICE * t1
         icpk = lhi / cvm
+
+
+def update_outputs(
+    rain: FloatFieldIJ,
+    graupel: FloatFieldIJ,
+    snow: FloatFieldIJ,
+    ice: FloatFieldIJ,
+    precip_rain: FloatFieldIJ,
+    precip_graupel: FloatFieldIJ,
+    precip_snow: FloatFieldIJ,
+    precip_ice: FloatFieldIJ,
+):
+    """
+    update precipitation totals with results of terminal_fall stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
+    with computation(FORWARD), interval(0, 1):
+        rain = rain + precip_rain  # from melted snow & ice that reached the ground
+        graupel = graupel + precip_graupel
+        snow = snow + precip_snow
+        ice = ice + precip_ice
+
+        precip_rain = 0
+        precip_graupel = 0
+        precip_snow = 0
+        precip_ice = 0

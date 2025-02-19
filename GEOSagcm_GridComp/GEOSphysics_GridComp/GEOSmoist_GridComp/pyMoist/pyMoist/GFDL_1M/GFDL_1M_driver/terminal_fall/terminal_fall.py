@@ -9,11 +9,13 @@ from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.stencils import (
     setup,
     update_dm,
     update_w1,
+    update_outputs,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.temporaries import temporaries
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.temporaries import Temporaries
+from pyMoist.GFDL_1M.GFDL_1M_driver.support import ConfigConstants
 
 
-class terminal_fall:
+class TerminalFall:
     """
     calculate terminal fall speed, accounting for
     melting of ice, snow, and graupel during fall
@@ -26,13 +28,13 @@ class terminal_fall:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         GFDL_1M_config: config,
-        config_dependent_constants,
+        config_dependent_constants: ConfigConstants,
     ):
 
         self.GFDL_1M_config = GFDL_1M_config
 
         # Initalize temporaries
-        self.temporaries = temporaries(quantity_factory)
+        self.temporaries = Temporaries(quantity_factory)
 
         # Initalize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
@@ -87,6 +89,11 @@ class terminal_fall:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
+        self._update_outputs = stencil_factory.from_dims_halo(
+            func=update_outputs,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        )
+
     def __call__(
         self,
         t1,
@@ -102,6 +109,10 @@ class terminal_fall:
         vtg,
         vts,
         vti,
+        rain,
+        graupel,
+        snow,
+        ice,
         precip_rain,
         precip_graupel,
         precip_snow,
@@ -302,4 +313,15 @@ class terminal_fall:
         self._reset(
             self.temporaries.m1,
             precip_fall,
+        )
+
+        self._update_outputs(
+            rain,
+            graupel,
+            snow,
+            ice,
+            precip_rain,
+            precip_graupel,
+            precip_snow,
+            precip_ice,
         )

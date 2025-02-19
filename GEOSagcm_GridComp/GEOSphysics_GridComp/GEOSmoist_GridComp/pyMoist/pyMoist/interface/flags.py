@@ -8,7 +8,7 @@ import numpy as np
 
 
 @dataclass
-class moist_flags:
+class Moist_Flags:
     # Grid layout
     npx: int = 0
     npy: int = 0
@@ -23,7 +23,8 @@ class moist_flags:
 
 
 @dataclass
-class gfdl_1m_flags:
+class GFDL_1M_Flags:
+    # GFDL_1M driver configuration. Initial values are not true defaults.
     phys_hydrostatic: bool = False
     hydrostatic: bool = False
     dt_moist: np.float32 = 0

@@ -9,7 +9,6 @@ from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
     fix_negative_values,
     icloud_update,
     init_temporaries,
-    terminal_fall_update,
     update_tendencies,
     warm_rain_update,
 )
@@ -17,12 +16,12 @@ from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
 from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.GFDL_1M_driver.support import (
     check_flags,
-    config_constants,
-    masks,
-    outputs,
-    temporaries,
+    ConfigConstants,
+    Masks,
+    Outputs,
+    Temporaries,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.terminal_fall import terminal_fall
+from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.terminal_fall import TerminalFall
 from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
 
 
@@ -34,7 +33,7 @@ class driver:
         GFDL_1M_config: config,
     ):
 
-        self.config_dependent_constants = config_constants(GFDL_1M_config)
+        self.config_dependent_constants = ConfigConstants(GFDL_1M_config)
 
         # Check values for untested code paths
         check_flags(
@@ -46,19 +45,19 @@ class driver:
         # initialize precipitation outputs
         # -----------------------------------------------------------------------
 
-        self.outputs = outputs(quantity_factory)
+        self.outputs = Outputs(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize temporaries
         # -----------------------------------------------------------------------
 
-        self.temporaries = temporaries(quantity_factory)
+        self.temporaries = Temporaries(quantity_factory)
 
         # -----------------------------------------------------------------------
         # initialize masks
         # -----------------------------------------------------------------------
 
-        self.masks = masks(quantity_factory)
+        self.masks = Masks(quantity_factory)
 
         # -----------------------------------------------------------------------
         # generate saturation specific humidity tables
@@ -128,16 +127,11 @@ class driver:
             },
         )
 
-        self._terminal_fall = terminal_fall(
+        self._terminal_fall = TerminalFall(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
-        )
-
-        self._terminal_fall_update = stencil_factory.from_dims_halo(
-            func=terminal_fall_update,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self._warm_rain = stencil_factory.from_dims_halo(
@@ -394,6 +388,10 @@ class driver:
                 self.temporaries.vtg,
                 self.temporaries.vts,
                 self.temporaries.vti,
+                self.outputs.rain,
+                self.outputs.graupel,
+                self.outputs.snow,
+                self.outputs.ice,
                 self.temporaries.rain1,
                 self.temporaries.graupel1,
                 self.temporaries.snow1,
@@ -404,17 +402,6 @@ class driver:
                 self.temporaries.zt,
                 self.masks.is_frozen,
                 self.masks.precip_fall,
-            )
-
-            self._terminal_fall_update(
-                self.outputs.rain,
-                self.outputs.graupel,
-                self.outputs.snow,
-                self.outputs.ice,
-                self.temporaries.rain1,
-                self.temporaries.graupel1,
-                self.temporaries.snow1,
-                self.temporaries.ice1,
             )
 
             self._warm_rain(

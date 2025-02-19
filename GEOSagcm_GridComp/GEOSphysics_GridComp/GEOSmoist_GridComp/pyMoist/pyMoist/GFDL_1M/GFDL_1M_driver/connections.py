@@ -411,33 +411,6 @@ def fall_speed(
         )
 
 
-def terminal_fall_update(
-    rain: FloatFieldIJ,
-    graupel: FloatFieldIJ,
-    snow: FloatFieldIJ,
-    ice: FloatFieldIJ,
-    rain1: FloatFieldIJ,
-    graupel1: FloatFieldIJ,
-    snow1: FloatFieldIJ,
-    ice1: FloatFieldIJ,
-):
-    """
-    update precipitation totals with results of terminal_fall stencil
-
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
-    """
-    with computation(FORWARD), interval(0, 1):
-        rain = rain + rain1  # from melted snow & ice that reached the ground
-        snow = snow + snow1
-        graupel = graupel + graupel1
-        ice = ice + ice1
-
-        rain1 = 0
-        snow1 = 0
-        graupel1 = 0
-        ice1 = 0
-
-
 def warm_rain_update(
     rain: FloatFieldIJ,
     rain1: FloatFieldIJ,
