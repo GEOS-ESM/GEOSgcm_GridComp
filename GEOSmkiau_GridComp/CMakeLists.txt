@@ -10,7 +10,6 @@ set (srcs
   DynVec_GridComp.F90
   )
 
-
 if (BUILD_PYMLINC_INTERFACE)
   list (APPEND srcs
     pyMLINC/interface/interface.f90
