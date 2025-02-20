@@ -2,15 +2,6 @@
 #include <time.h>
 #include "interface.h"
 
-extern int pyMLINC_interface_setservice_c() {
-    // Check magic number
-    int rc = pyMLINC_interface_setservices_py();
-
-    if (rc < 0) {
-        exit(rc);
-    }
-}
-
 extern int pyMLINC_interface_run_c(a_pod_struct_t *options, const float *in_buffer, float *out_buffer) {
     // Check magic number
     if (options->mn_123456789 != 123456789) {
@@ -18,9 +9,11 @@ extern int pyMLINC_interface_run_c(a_pod_struct_t *options, const float *in_buff
         exit(-1);
     }
 
-    int rc = pyMLINC_interface_py_run(options, in_buffer, out_buffer);
+    int rc = pyMLINC_interface_run_py(options, in_buffer, out_buffer);
 
     if (rc < 0) {
         exit(rc);
     }
+
+    return 0;
 }

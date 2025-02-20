@@ -476,7 +476,7 @@ contains
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    call pyMLINC_interface_f_setservice()
+    call pyMLINC_interface_setservice_f()
     call ieee_set_halting_mode(ieee_all, halting_mode)
 
     ! BOGUS CODE TO SHOW USAGE
@@ -485,7 +485,7 @@ contains
     options%npz = 12
     allocate (in_buffer(10,11,12), source = 42.42 )
     allocate (out_buffer(10,11,12), source = 0.0 )
-    call pyMLINC_interface_f_run(options, in_buffer, out_buffer)
+    call pyMLINC_interface_run_f(options, in_buffer, out_buffer)
     write(*,*) "[pyMLINC] From fortran OUT[5,5,5] is ", out_buffer(5,5,5)
 #endif
 

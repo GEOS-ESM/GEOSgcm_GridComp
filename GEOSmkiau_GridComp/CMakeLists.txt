@@ -10,18 +10,24 @@ set (srcs
   DynVec_GridComp.F90
   )
 
+
+if (BUILD_PYMLINC_INTERFACE)
+  list (APPEND srcs
+    pyMLINC/interface/interface.f90
+    pyMLINC/interface/interface.c)
+  include (pyMLINC.cmake)
+  set(dependencies pyMLINC_interface_py)
+endif ()
+
 set(dependencies
+  ${dependencies}
   MAPL_cfio_r4
   NCEP_sp_r4i4
   GEOS_Shared
-  GMAO_mpeu MAPL
+  GMAO_mpeu
+  MAPL
   FVdycoreCubed_GridComp
   ESMF::ESMF
   NetCDF::NetCDF_Fortran)  
-
-if (BUILD_PYMLINC_INTERFACE)
-  include (pyMLINC.cmake)
-  set(dependencies pyMLINC_interface_py ${dependencies})
-endif ()
 
 esma_add_library (${this} SRCS ${srcs} DEPENDENCIES ${dependencies})

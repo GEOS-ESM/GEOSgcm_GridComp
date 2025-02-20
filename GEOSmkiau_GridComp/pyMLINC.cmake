@@ -1,7 +1,3 @@
-list (APPEND srcs
-  pyMLINC/interface/interface.f90
-  pyMLINC/interface/interface.c)
-
 message(STATUS "Building pyMLINC interface")
 
 add_definitions(-DPYMLINC_INTEGRATION)
