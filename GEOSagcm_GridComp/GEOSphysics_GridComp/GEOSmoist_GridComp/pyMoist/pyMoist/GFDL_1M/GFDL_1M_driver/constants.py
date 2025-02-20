@@ -162,7 +162,7 @@ CRACS = PISQ * RNZR * RNZS * RHOS
 CSARC = PISQ * RNZR * RNZS * RHOR
 CGARC = PISQ * RNZR * RNZG * RHOR
 
-ACT = np.zeros(8)
+ACT = np.zeros(8, dtype=Float)
 
 ACT[0] = PIE * RNZS * RHOS
 ACT[1] = PIE * RNZR * RHOR
@@ -182,7 +182,7 @@ ACT_5 = ACT[5]
 ACT_6 = ACT[6]
 ACT_7 = ACT[7]
 
-ACCO = np.zeros([3, 4])
+ACCO = np.zeros([3, 4], dtype=Float)
 for i in range(1, 4):
     for k in range(1, 5):
         ACCO[i - 1, k - 1] = ACC[i - 1] / (
@@ -204,7 +204,7 @@ ACCO_22 = ACCO[2, 2]
 ACCO_23 = ACCO[2, 3]
 
 
-GCON = Float(40.74) * np.sqrt(SFCRHO)  # 44.628
+GCON = Float(40.74) * np.sqrt(SFCRHO, dtype=Float)  # 44.628
 
 # subl and revp: five constants for three separate processes
 
@@ -230,3 +230,8 @@ SO3 = Float(7.0) / Float(3.0)
 # q table constants
 
 LENGTH = Int(2621)
+DELT = Float(0.1)
+TMIN = TABLE_ICE - Float(160.0)
+ESBASW = Float(1013246.0)
+TBASW = TABLE_ICE + Float(100.0)
+ESBASI = Float(6107.1)
