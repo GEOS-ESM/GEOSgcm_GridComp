@@ -11,10 +11,7 @@ from pyMoist.GFDL_1M.driver.support import ConfigConstants
 
 class WarmRain:
     """
-    ice cloud microphysics processes
-    bulk cloud micro - physics; processes splitting
-    with some un - split sub - grouping
-    time implicit (when possible) accretion and autoconversion
+    warm rain cloud microphysics: evaporation, accretion
     """
 
     def __init__(

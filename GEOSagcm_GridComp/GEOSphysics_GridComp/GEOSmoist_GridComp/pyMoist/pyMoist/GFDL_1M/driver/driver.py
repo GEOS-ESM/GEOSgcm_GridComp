@@ -4,14 +4,7 @@ from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.config import config
-from pyMoist.GFDL_1M.driver.connections import (
-    fall_speed,
-    fix_negative_values,
-    init_temporaries,
-    update_tendencies,
-    warm_rain_update,
-)
-from pyMoist.GFDL_1M.driver.icloud.main import IceCloud
+from pyMoist.GFDL_1M.driver.icecloud.main import IceCloud
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 from pyMoist.GFDL_1M.driver.support import (
     check_flags,
@@ -22,6 +15,9 @@ from pyMoist.GFDL_1M.driver.support import (
 )
 from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
 from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
+from pyMoist.GFDL_1M.driver.fall_speed.main import FallSpeed
+from pyMoist.GFDL_1M.driver.setup.main import Setup
+from pyMoist.GFDL_1M.driver.finish.main import Finish
 
 
 class driver:
@@ -69,61 +65,19 @@ class driver:
         # -----------------------------------------------------------------------
 
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
-        self._init_temporaries = stencil_factory.from_dims_halo(
-            func=init_temporaries,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "cpaut": self.config_dependent_constants.CPAUT,
-            },
+
+        self._setup = Setup(
+            stencil_factory,
+            quantity_factory,
+            GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
-        self._gfdl_1m_driver_preloop = stencil_factory.from_dims_halo(
-            func=fix_negative_values,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "c_air": self.config_dependent_constants.C_AIR,
-                "c_vap": self.config_dependent_constants.C_VAP,
-                "p_nonhydro": self.config_dependent_constants.P_NONHYDRO,
-                "d0_vap": self.config_dependent_constants.D0_VAP,
-                "lv00": self.config_dependent_constants.LV00,
-                "latv": self.config_dependent_constants.LATV,
-                "lati": self.config_dependent_constants.LATI,
-                "lats": self.config_dependent_constants.LATS,
-                "lat2": self.config_dependent_constants.LAT2,
-                "lcp": self.config_dependent_constants.LCP,
-                "icp": self.config_dependent_constants.ICP,
-                "tcp": self.config_dependent_constants.TCP,
-                "mpdt": self.config_dependent_constants.MPDT,
-                "rdt": self.config_dependent_constants.RDT,
-                "ntimes": self.config_dependent_constants.NTIMES,
-                "dts": self.config_dependent_constants.DTS,
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
-                "cpaut": self.config_dependent_constants.CPAUT,
-                "hydrostatic": GFDL_1M_config.hydrostatic,
-                "phys_hydrostatic": GFDL_1M_config.phys_hydrostatic,
-                "fix_negative": GFDL_1M_config.fix_negative,
-                "sedi_transport": GFDL_1M_config.sedi_transport,
-                "const_vi": GFDL_1M_config.const_vi,
-                "const_vs": GFDL_1M_config.const_vs,
-                "const_vg": GFDL_1M_config.const_vg,
-            },
-        )
-
-        self._fall_speed = stencil_factory.from_dims_halo(
-            func=fall_speed,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "p_nonhydro": self.config_dependent_constants.P_NONHYDRO,
-                "const_vi": GFDL_1M_config.const_vi,
-                "const_vs": GFDL_1M_config.const_vs,
-                "const_vg": GFDL_1M_config.const_vg,
-                "vi_fac": GFDL_1M_config.vi_fac,
-                "vi_max": GFDL_1M_config.vi_max,
-                "vs_fac": GFDL_1M_config.vs_fac,
-                "vs_max": GFDL_1M_config.vs_max,
-                "vg_fac": GFDL_1M_config.vg_fac,
-                "vg_max": GFDL_1M_config.vg_max,
-            },
+        self._FallSpeed = FallSpeed(
+            stencil_factory,
+            quantity_factory,
+            GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
         self._TerminalFall = TerminalFall(
@@ -147,17 +101,11 @@ class driver:
             self.config_dependent_constants,
         )
 
-        self._update_tendencies = stencil_factory.from_dims_halo(
-            func=update_tendencies,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "c_air": self.config_dependent_constants.C_AIR,
-                "c_vap": self.config_dependent_constants.C_VAP,
-                "rdt": self.config_dependent_constants.RDT,
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
-                "sedi_transport": GFDL_1M_config.sedi_transport,
-                "do_qa": GFDL_1M_config.do_qa,
-            },
+        self._Finish = Finish(
+            stencil_factory,
+            quantity_factory,
+            GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
     def __call__(
@@ -196,11 +144,10 @@ class driver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
-
         # The driver modifies a number of variables (t, p, qX) but does not pass
         # the changes back to the rest of the model. To replicate this behavior,
         # temporary copies of these variables are used throughout the driver.
-        self._init_temporaries(
+        self._setup(
             t,
             dp,
             rhcrit3d,
@@ -254,19 +201,8 @@ class driver:
             self.outputs.isubl,
         )
 
-        self._gfdl_1m_driver_preloop(
-            self.temporaries.t1,
-            self.temporaries.qv1,
-            self.temporaries.ql1,
-            self.temporaries.qr1,
-            self.temporaries.qi1,
-            self.temporaries.qs1,
-            self.temporaries.qg1,
-            self.temporaries.dp1,
-        )
-
         for n in range(self.config_dependent_constants.NTIMES):
-            self._fall_speed(
+            self._FallSpeed(
                 self.temporaries.ql1,
                 self.temporaries.qi1,
                 self.temporaries.qs1,
@@ -391,7 +327,7 @@ class driver:
                 self.sat_tables.des4,
             )
 
-        self._update_tendencies(
+        self._Finish(
             self.temporaries.qv0,
             self.temporaries.ql0,
             self.temporaries.qr0,

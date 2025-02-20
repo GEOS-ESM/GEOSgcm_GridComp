@@ -1,11 +1,10 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.driver.config import config
-from pyMoist.GFDL_1M.driver.icloud.stencils import (
+from pyMoist.GFDL_1M.driver.icecloud.stencils import (
     icloud_core,
     update_output,
 )
-from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.support import ConfigConstants
 
 

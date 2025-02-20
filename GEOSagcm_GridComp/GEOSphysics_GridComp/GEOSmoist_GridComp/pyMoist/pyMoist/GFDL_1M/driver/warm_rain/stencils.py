@@ -15,9 +15,7 @@ from gt4py.cartesian.gtscript import (
 
 import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-
-
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
+from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
 @gtscript.function
