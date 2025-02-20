@@ -34,7 +34,7 @@ F_PY_MEMORY_CONV = None
 
 
 def pyMLINC_init():
-    print("[pyMLINC] Init called")
+    print("[pyMLINC] Init called", flush=True)
 
 
 def pyMLINC_run(
@@ -42,9 +42,9 @@ def pyMLINC_run(
     f_in_buffer: CFFIObj,
     f_out_buffer: CFFIObj,
 ):
-    print("[pyMLINC] Run called")
+    print("[pyMLINC] Run called", flush=True)
     options = options_fortran_to_python(f_options)
-    print(f"[pyMLINC] Options: {options}")
+    print(f"[pyMLINC] Options: {options}", flush=True)
 
     # Dev Note: this should be doen better in it's own class
     #           and the `np` should be driven by the user code requirements
@@ -67,8 +67,8 @@ def pyMLINC_run(
     with TimedCUDAProfiler("pyMLINC bogus math", timings):
         out_buffer[:, :, :] = in_buffer[:, :, :] * 2
 
-    print(f"[pyMLINC] At 5,5,5 in python OUT is: {out_buffer[5,5,5]}")
-    print(f"[pyMLINC] Timers: {timings}")
+    print(f"[pyMLINC] At 5,5,5 in python OUT is: {out_buffer[5,5,5]}", flush=True)
+    print(f"[pyMLINC] Timers: {timings}", flush=True)
 
     # Go back to fortran
     F_PY_MEMORY_CONV.python_to_fortran(out_buffer, f_out_buffer)
