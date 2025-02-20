@@ -10,7 +10,7 @@ import numpy as np
 from ndsl.dsl.typing import Float, Int
 
 
-# constants from gfdl_1m_driver module
+# constants from driver module
 
 GRAV = Float(9.80665)  # gfs: acceleration due to gravity
 RDGAS = Float(287.05)  # gfs: gas constant for dry air

@@ -1,8 +1,8 @@
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
+import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl import Namelist, Quantity, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
+from pyMoist.GFDL_1M.driver.connections import (
     fix_negative_values,
     init_temporaries,
 )

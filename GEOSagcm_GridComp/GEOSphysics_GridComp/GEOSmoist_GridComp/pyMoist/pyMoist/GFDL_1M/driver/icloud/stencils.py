@@ -12,10 +12,10 @@ from gt4py.cartesian.gtscript import (
     trunc,
 )
 
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
+import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_incloud_processes import ice_fraction
-from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import GlobalTable_driver_qsat
+from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
 @gtscript.function
@@ -1371,7 +1371,7 @@ def subgrid_z_proc(
     return t1, qv1, ql1, qr1, qi1, qs1, qg1, qa1, subl1
 
 
-def icloud(
+def icloud_core(
     t1: FloatField,
     p_dry: FloatField,
     dp1: FloatField,
@@ -1401,16 +1401,9 @@ def icloud(
     des3: GlobalTable_driver_qsat,
     des4: GlobalTable_driver_qsat,
 ):
-    """
-    ice cloud microphysics processes
-    bulk cloud micro - physics; processes splitting
-    with some un - split sub - grouping
-    time implicit (when possible) accretion and autoconversion
+    # reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+    # Fortran author: Shian-Jiann lin, gfdl
 
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
-
-    Fortran author: Shian-Jiann lin, gfdl
-    """
     from __externals__ import d0_vap, lv00, z_slope_ice
 
     # begin reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
@@ -1588,3 +1581,18 @@ def icloud(
             des4,
         )
         # end reference Fortran: gfdl_cloud_microphys.F90: subroutine icloud
+
+
+def update_output(
+    isubl: FloatField,
+    subl1: FloatField,
+):
+    """
+    update precipitation totals with results of icloud stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
+    with computation(PARALLEL), interval(...):
+        isubl = isubl + subl1
+
+        subl1 = 0

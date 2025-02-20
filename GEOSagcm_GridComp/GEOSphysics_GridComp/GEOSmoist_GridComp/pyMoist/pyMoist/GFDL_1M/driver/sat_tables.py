@@ -9,7 +9,7 @@ from gt4py.cartesian.gtscript import (
     log10,
 )
 
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
+import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.boilerplate import get_factories_single_tile
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float

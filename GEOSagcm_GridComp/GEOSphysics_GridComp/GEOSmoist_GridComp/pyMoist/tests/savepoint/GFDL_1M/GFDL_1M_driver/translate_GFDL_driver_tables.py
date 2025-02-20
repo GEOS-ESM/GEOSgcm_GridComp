@@ -1,6 +1,6 @@
 from ndsl import Namelist, StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.sat_tables import get_tables
 
 
 class TranslateGFDL_driver_tables(TranslateFortranData2Py):

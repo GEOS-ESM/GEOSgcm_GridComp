@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
-from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.stencils import (
+from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     check_precip_get_zt,
     implicit_fall,
     melting_loop,
@@ -11,8 +11,8 @@ from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.stencils import (
     update_w1,
     update_outputs,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.temporaries import Temporaries
-from pyMoist.GFDL_1M.GFDL_1M_driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
+from pyMoist.GFDL_1M.driver.support import ConfigConstants
 
 
 class TerminalFall:

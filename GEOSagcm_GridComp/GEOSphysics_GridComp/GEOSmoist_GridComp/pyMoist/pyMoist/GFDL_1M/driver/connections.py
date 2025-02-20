@@ -12,7 +12,7 @@ from gt4py.cartesian.gtscript import (
     sqrt,
 )
 
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
+import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.shared_generic_math import sigma
 
@@ -412,15 +412,15 @@ def fall_speed(
 
 
 def warm_rain_update(
-    rain: FloatFieldIJ,
+    m1_rain: FloatField,
+    m1_sol: FloatField,
     rain1: FloatFieldIJ,
     evap1: FloatField,
     revap: FloatField,
-    m1_rain: FloatField,
     m2_rain: FloatField,
-    m1_sol: FloatField,
     m2_sol: FloatField,
     m1: FloatField,
+    rain: FloatFieldIJ,
 ):
     """
     update precipitation totals with results of warm_rain stencil
@@ -441,21 +441,6 @@ def warm_rain_update(
         rain = rain + rain1
 
         rain1 = 0
-
-
-def icloud_update(
-    isubl: FloatField,
-    subl1: FloatField,
-):
-    """
-    update precipitation totals with results of icloud stencil
-
-    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
-    """
-    with computation(PARALLEL), interval(...):
-        isubl = isubl + subl1
-
-        subl1 = 0
 
 
 def update_tendencies(

@@ -35,7 +35,7 @@ from ndsl.logging import ndsl_log
 from ndsl.optional_imports import cupy as cp
 from pyMoist.aer_activation import AerActivation
 from pyMoist.GFDL_1M.GFDL_1M import GFDL_1M
-from pyMoist.GFDL_1M.GFDL_1M_driver.driver import driver
+from pyMoist.GFDL_1M.driver.driver import driver
 from pyMoist.interface.flags import gfdl_1m_flags, moist_flags
 
 
@@ -205,7 +205,7 @@ class GEOSPyMoistWrapper:
         self.gfdl_1m_flags: Optional[gfdl_1m_flags] = None
 
     @property
-    def GFDL_1M_driver(self) -> Callable:
+    def driver(self) -> Callable:
         if not self._GFDL_1M_driver:
             if self.gfdl_1m_flags is None:
                 raise RuntimeError("GFDL_1M flags not initalized")

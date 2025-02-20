@@ -13,7 +13,7 @@ from gt4py.cartesian.gtscript import (
     trunc,
 )
 
-import pyMoist.GFDL_1M.GFDL_1M_driver.constants as constants
+import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 
@@ -187,7 +187,7 @@ def revap_racc(
     )
 
 
-def warm_rain(
+def warm_rain_core(
     dp1: FloatField,
     dz1: FloatField,
     t1: FloatField,
@@ -412,7 +412,17 @@ def warm_rain(
     # evaporation and accretion of rain for the first 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             half_dt,
             t1,
             qv1,
@@ -547,7 +557,17 @@ def warm_rain(
     # evaporation and accretion of rain for the remaing 1 / 2 time step
     # -----------------------------------------------------------------------
     with computation(PARALLEL), interval(...):
-        (t1, qv1, qr1, ql1, qi1, qs1, qg1, qa1, revap,) = revap_racc(
+        (
+            t1,
+            qv1,
+            qr1,
+            ql1,
+            qi1,
+            qs1,
+            qg1,
+            qa1,
+            revap,
+        ) = revap_racc(
             half_dt,
             t1,
             qv1,
@@ -571,3 +591,35 @@ def warm_rain(
         )
 
         evap1 = evap1 + revap
+
+
+def update_outputs(
+    m1_rain: FloatField,
+    m1_sol: FloatField,
+    rain1: FloatFieldIJ,
+    evap1: FloatField,
+    revap: FloatField,
+    m2_rain: FloatField,
+    m2_sol: FloatField,
+    m1: FloatField,
+    rain: FloatFieldIJ,
+):
+    """
+    update precipitation totals with results of warm_rain stencil
+
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    """
+    with computation(PARALLEL), interval(...):
+        revap = revap + evap1
+        m2_rain = m2_rain + m1_rain
+        m2_sol = m2_sol + m1_sol
+        m1 = m1 + m1_rain + m1_sol
+
+        evap1 = 0
+        m1_rain = 0
+        m1_sol = 0
+
+    with computation(FORWARD), interval(0, 1):
+        rain = rain + rain1
+
+        rain1 = 0

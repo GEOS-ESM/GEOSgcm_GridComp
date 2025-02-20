@@ -3,26 +3,25 @@
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
-from pyMoist.GFDL_1M.GFDL_1M_driver.config import config
-from pyMoist.GFDL_1M.GFDL_1M_driver.connections import (
+from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.connections import (
     fall_speed,
     fix_negative_values,
-    icloud_update,
     init_temporaries,
     update_tendencies,
     warm_rain_update,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.icloud import icloud
-from pyMoist.GFDL_1M.GFDL_1M_driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.GFDL_1M_driver.support import (
+from pyMoist.GFDL_1M.driver.icloud.main import IceCloud
+from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.support import (
     check_flags,
     ConfigConstants,
     Masks,
     Outputs,
     Temporaries,
 )
-from pyMoist.GFDL_1M.GFDL_1M_driver.terminal_fall.terminal_fall import TerminalFall
-from pyMoist.GFDL_1M.GFDL_1M_driver.warm_rain import warm_rain
+from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
+from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
 
 
 class driver:
@@ -127,112 +126,25 @@ class driver:
             },
         )
 
-        self._terminal_fall = TerminalFall(
+        self._TerminalFall = TerminalFall(
             stencil_factory,
             quantity_factory,
             GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self._warm_rain = stencil_factory.from_dims_halo(
-            func=warm_rain,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "dts": self.config_dependent_constants.DTS,
-                "do_qa": GFDL_1M_config.do_qa,
-                "rthreshs": GFDL_1M_config.rthreshs,
-                "rthreshu": GFDL_1M_config.rthreshu,
-                "irain_f": GFDL_1M_config.irain_f,
-                "ql0_max": GFDL_1M_config.ql0_max,
-                "z_slope_liq": GFDL_1M_config.z_slope_liq,
-                "vr_fac": GFDL_1M_config.vr_fac,
-                "const_vr": GFDL_1M_config.const_vr,
-                "vr_max": GFDL_1M_config.vr_max,
-                "tau_revp": GFDL_1M_config.tau_revp,
-                "lv00": self.config_dependent_constants.LV00,
-                "d0_vap": self.config_dependent_constants.D0_VAP,
-                "c_air": self.config_dependent_constants.C_AIR,
-                "c_vap": self.config_dependent_constants.C_VAP,
-                "crevp_0": self.config_dependent_constants.CREVP_0,
-                "crevp_1": self.config_dependent_constants.CREVP_1,
-                "crevp_2": self.config_dependent_constants.CREVP_2,
-                "crevp_3": self.config_dependent_constants.CREVP_3,
-                "crevp_4": self.config_dependent_constants.CREVP_4,
-                "cracw": self.config_dependent_constants.CRACW,
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
-                "use_ppm": GFDL_1M_config.use_ppm,
-            },
+        self._WarmRain = WarmRain(
+            stencil_factory,
+            quantity_factory,
+            GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
-        self._warm_rain_update = stencil_factory.from_dims_halo(
-            func=warm_rain_update,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-        )
-
-        self._icloud = stencil_factory.from_dims_halo(
-            func=icloud,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            externals={
-                "c_air": self.config_dependent_constants.C_AIR,
-                "c_vap": self.config_dependent_constants.C_VAP,
-                "dts": self.config_dependent_constants.DTS,
-                "rdts": self.config_dependent_constants.RDTS,
-                "const_vi": GFDL_1M_config.const_vi,
-                "fac_g2v": self.config_dependent_constants.FAC_G2V,
-                "fac_i2s": self.config_dependent_constants.FAC_I2S,
-                "fac_imlt": self.config_dependent_constants.FAC_IMLT,
-                "fac_frz": self.config_dependent_constants.FAC_FRZ,
-                "fac_l2v": self.config_dependent_constants.FAC_L2V,
-                "fac_s2v": self.config_dependent_constants.FAC_S2V,
-                "fac_v2s": self.config_dependent_constants.FAC_V2S,
-                "fac_v2g": self.config_dependent_constants.FAC_V2G,
-                "cgacs": self.config_dependent_constants.CGACS,
-                "csacw": self.config_dependent_constants.CSACW,
-                "csaci": self.config_dependent_constants.CSACI,
-                "cgacw": self.config_dependent_constants.CGACW,
-                "cgaci": self.config_dependent_constants.CGACI,
-                "cgfr_0": self.config_dependent_constants.CGFR_0,
-                "cgfr_1": self.config_dependent_constants.CGFR_1,
-                "csmlt_0": self.config_dependent_constants.CSMLT_0,
-                "csmlt_1": self.config_dependent_constants.CSMLT_1,
-                "csmlt_2": self.config_dependent_constants.CSMLT_2,
-                "csmlt_3": self.config_dependent_constants.CSMLT_3,
-                "csmlt_4": self.config_dependent_constants.CSMLT_4,
-                "cgmlt_0": self.config_dependent_constants.CGMLT_0,
-                "cgmlt_1": self.config_dependent_constants.CGMLT_1,
-                "cgmlt_2": self.config_dependent_constants.CGMLT_2,
-                "cgmlt_3": self.config_dependent_constants.CGMLT_3,
-                "cgmlt_4": self.config_dependent_constants.CGMLT_4,
-                "cssub_0": self.config_dependent_constants.CSSUB_0,
-                "cssub_1": self.config_dependent_constants.CSSUB_1,
-                "cssub_2": self.config_dependent_constants.CSSUB_2,
-                "cssub_3": self.config_dependent_constants.CSSUB_3,
-                "cssub_4": self.config_dependent_constants.CSSUB_4,
-                "qi0_crt": GFDL_1M_config.qi0_crt,
-                "qs0_crt": GFDL_1M_config.qs0_crt,
-                "qs_mlt": GFDL_1M_config.qs_mlt,
-                "ql_mlt": GFDL_1M_config.ql_mlt,
-                "z_slope_ice": GFDL_1M_config.z_slope_ice,
-                "lv00": self.config_dependent_constants.LV00,
-                "d0_vap": self.config_dependent_constants.D0_VAP,
-                "lat2": self.config_dependent_constants.LAT2,
-                "do_qa": GFDL_1M_config.do_qa,
-                "do_evap": GFDL_1M_config.do_evap,
-                "do_bigg": GFDL_1M_config.do_bigg,
-                "qc_crt": GFDL_1M_config.qc_crt,
-                "qi_lim": GFDL_1M_config.qi_lim,
-                "rh_inc": GFDL_1M_config.rh_inc,
-                "rh_inr": GFDL_1M_config.rh_inr,
-                "t_min": GFDL_1M_config.t_min,
-                "t_sub": GFDL_1M_config.t_sub,
-                "preciprad": GFDL_1M_config.preciprad,
-                "icloud_f": GFDL_1M_config.icloud_f,
-            },
-        )
-
-        self._icloud_update = stencil_factory.from_dims_halo(
-            func=icloud_update,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        self._IceCloud = IceCloud(
+            stencil_factory,
+            quantity_factory,
+            GFDL_1M_config,
+            self.config_dependent_constants,
         )
 
         self._update_tendencies = stencil_factory.from_dims_halo(
@@ -284,6 +196,7 @@ class driver:
         anv_icefall: Float,
         ls_icefall: Float,
     ):
+
         # The driver modifies a number of variables (t, p, qX) but does not pass
         # the changes back to the rest of the model. To replicate this behavior,
         # temporary copies of these variables are used throughout the driver.
@@ -374,7 +287,7 @@ class driver:
                 ls_icefall,
             )
 
-            self._terminal_fall(
+            self._TerminalFall(
                 self.temporaries.t1,
                 self.temporaries.qv1,
                 self.temporaries.ql1,
@@ -404,11 +317,11 @@ class driver:
                 self.masks.precip_fall,
             )
 
-            self._warm_rain(
-                self.temporaries.dp1,
+            self._WarmRain(
                 self.temporaries.dz1,
                 self.temporaries.t1,
                 self.temporaries.qv1,
+                self.temporaries.dp1,
                 self.temporaries.ql1,
                 self.temporaries.qr1,
                 self.temporaries.qi1,
@@ -429,6 +342,12 @@ class driver:
                 self.temporaries.rain1,
                 self.temporaries.ze,
                 self.temporaries.zt,
+                self.temporaries.m1,
+                self.temporaries.m1_sol,
+                self.outputs.rain,
+                self.outputs.revap,
+                self.outputs.m2_rain,
+                self.outputs.m2_sol,
                 self.masks.precip_fall,
                 self.sat_tables.table1,
                 self.sat_tables.table2,
@@ -440,19 +359,7 @@ class driver:
                 self.sat_tables.des4,
             )
 
-            self._warm_rain_update(
-                self.outputs.rain,
-                self.temporaries.rain1,
-                self.temporaries.evap1,
-                self.outputs.revap,
-                self.temporaries.m1_rain,
-                self.outputs.m2_rain,
-                self.temporaries.m1_sol,
-                self.outputs.m2_sol,
-                self.temporaries.m1,
-            )
-
-            self._icloud(
+            self._IceCloud(
                 self.temporaries.t1,
                 self.temporaries.p_dry,
                 self.temporaries.dp1,
@@ -469,6 +376,7 @@ class driver:
                 self.temporaries.vtg,
                 self.temporaries.vtr,
                 self.temporaries.subl1,
+                self.outputs.isubl,
                 self.temporaries.rh_limited,
                 self.temporaries.ccn,
                 cnv_frc,
@@ -481,11 +389,6 @@ class driver:
                 self.sat_tables.des2,
                 self.sat_tables.des3,
                 self.sat_tables.des4,
-            )
-
-            self._icloud_update(
-                self.outputs.isubl,
-                self.temporaries.subl1,
             )
 
         self._update_tendencies(
