@@ -6,7 +6,7 @@ module pyMLINC_interface_mod
 
    private
 
-   public :: pyMLINC_interface_run_f
+   public :: pyMLINC_interface_init_f, pyMLINC_interface_run_f
    public :: a_pod_struct_type
 
    !-----------------------------------------------------------------------
@@ -21,6 +21,9 @@ module pyMLINC_interface_mod
    end type
 
    interface
+
+      subroutine pyMLINC_interface_init_f() bind(c, name='pyMLINC_interface_init_c')
+      end subroutine pyMLINC_interface_init_f
 
       subroutine pyMLINC_interface_run_f(options, in_buffer, out_buffer) bind(c, name='pyMLINC_interface_run_c')
          import c_float, a_pod_struct_type

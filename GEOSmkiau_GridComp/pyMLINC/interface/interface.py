@@ -6,9 +6,19 @@ ffi = cffi.FFI()
 
 source = """
 from {} import ffi
-from datetime import datetime
 from pyMLINC.core import pyMLINC_init, pyMLINC_run # <-- User code starts here
 import traceback
+
+@ffi.def_extern()
+def pyMLINC_interface_init_py() -> int:
+    try:
+        # Calling out off the bridge into the python
+        pyMLINC_init()
+    except Exception as err:
+        print("Error in Python:")
+        print(traceback.format_exc())
+        return -1
+    return 0
 
 @ffi.def_extern()
 def pyMLINC_interface_run_py(options, in_buffer, out_buffer) -> int:

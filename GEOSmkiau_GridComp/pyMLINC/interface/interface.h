@@ -34,4 +34,5 @@ typedef union {
 // Though we define `in_buffer` as a `const float*` it is _not_ enforced
 // by the interface. Treat as a developer hint only.
 
+extern int pyMLINC_interface_init_py();
 extern int pyMLINC_interface_run_py(a_pod_struct_t *options, const float *in_buffer, float *out_buffer);

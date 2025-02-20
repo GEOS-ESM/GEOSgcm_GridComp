@@ -476,7 +476,7 @@ contains
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    ! call pyMLINC_interface_setservice_f()
+    call pyMLINC_interface_init_f()
     call ieee_set_halting_mode(ieee_all, halting_mode)
 
     ! BOGUS CODE TO SHOW USAGE
