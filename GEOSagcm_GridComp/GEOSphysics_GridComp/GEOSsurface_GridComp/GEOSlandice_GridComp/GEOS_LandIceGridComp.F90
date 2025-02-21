@@ -3149,50 +3149,50 @@ contains
               if(associated(RMELTOC001)) RMELTOC001(k) = RMELT(k,8) 
               if(associated(RMELTOC002)) RMELTOC002(k) = RMELT(k,9)
            end if
-           
-          if(associated(LWC ))then
-               ZDEP = sum(SNDZ(k,:))
-               if(sum(WESN(k,:)) > MINSWE) then
-                   if(ZDEP <= LWCTOP) then
-                      LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
-                   else
-                      KL  = 0
-                      ZKL = 0.0 
-                      do l=1,NUM_SNOW_LAYERS
-                         ZKL = ZKL + SNDZ(k,l) 
-                         if(ZKL > LWCTOP) then
-                           KL = l
-                           exit
-                         endif
-                      enddo 
-                      ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
-                      LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
-                                ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
-                               (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))  
-                   endif
-               else
-                   LWC(k) = 0.0
-               endif            
-          endif
-          if(FR(K,N) < MINFRACSNO) then
-             TICE(k,N,:) =  TICE(k,ICE,:)
-          else
-              call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
-                              MELTI(k),                    &
-                              condsno=TKSNO(NUM_SNOW_LAYERS),       & 
-                              !tsn=TPSN(k,NUM_SNOW_LAYERS),          & 
-                              fhgnd=FHGND(k),          & 
-                              sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
-                              )
-              if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
-          endif   
-       enddo   
-       WESNSC = EVAPO
-       !PERC = PERC + MELTI
-       if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
-       TS(:,N) = TPSN(:,1)+MAPL_TICE
-       if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
-    endif
+
+             if(associated(LWC ))then
+                  ZDEP = sum(SNDZ(k,:))
+                  if(sum(WESN(k,:)) > MINSWE) then
+                      if(ZDEP <= LWCTOP) then
+                         LWC(k) = sum(WESN(k,:)*(1.-FROZFRAC(k,:)))/sum(WESN(k,:))
+                      else
+                         KL  = 0
+                         ZKL = 0.0 
+                         do l=1,NUM_SNOW_LAYERS
+                            ZKL = ZKL + SNDZ(k,l) 
+                            if(ZKL > LWCTOP) then
+                              KL = l
+                              exit
+                            endif
+                         enddo 
+                         ALPHA = 1.0 - (ZKL-LWCTOP)/SNDZ(k,KL)
+                         LWC(k) = (sum(WESN(k,1:KL-1)*(1.-FROZFRAC(k,1:KL-1)))+ &
+                                   ALPHA*WESN(k,KL)*(1.-FROZFRAC(k,KL))) / &
+                                  (sum(WESN(k,1:KL-1))+ALPHA*WESN(k,KL))  
+                      endif
+                  else
+                      LWC(k) = 0.0
+                  endif            
+             endif
+             if(FR(K,N) < MINFRACSNO) then
+                TICE(k,N,:) =  TICE(k,ICE,:)
+             else
+                 call SOLVEICELAYER(NUM_ICE_LAYERS, DT, TICE(k,N,:), DZMAXI, 1,   &
+                                 MELTI(k),                    &
+                                 condsno=TKSNO(NUM_SNOW_LAYERS),       & 
+                                 !tsn=TPSN(k,NUM_SNOW_LAYERS),          & 
+                                 fhgnd=FHGND(k),          & 
+                                 sndz=SNDZ(k,NUM_SNOW_LAYERS)          &
+                                 )
+                 if(associated(RUNOFF)) RUNOFF(K)   = RUNOFF(K) + FR(K,N) * MELTI(K)
+             endif   
+          enddo   
+          WESNSC = EVAPO
+          !PERC = PERC + MELTI
+          if(associated(RUNOFF))   RUNOFF   = RUNOFF + PERC
+          TS(:,N) = TPSN(:,1)+MAPL_TICE
+          if(associated(MELTWTRCONT )) MELTWTRCONT = sum(WESN*(1.-FROZFRAC),dim=2)
+       endif
 
        DQS       = GEOS_QSAT(TS(:,N), PS, PASCALS=.TRUE.,RAMP=0.0) - QS(:,N)
        QS(:,N)   = QS(:,N) + DQS  
