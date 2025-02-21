@@ -322,6 +322,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     if (JASON_UW) then
       RKFRE = SHLWPARAMS%RKFRE
       RKM2D = SHLWPARAMS%RKM
+      MIX2D = SHLWPARAMS%MIXSCALE
     else
       ! resolution dependent throttle on UW via TKE and scaling of cloud-base mass flux
       call MAPL_GetPointer(IMPORT, PTR2D, 'AREA', RC=STATUS); VERIFY_(STATUS)
