@@ -4,10 +4,11 @@
 
 program FillMomGrid
 
-  use LogRectRasterizeMod
+  use LogRectRasterizeMod,   ONLY: WriteRaster, WriteTiling
   use MAPL_SortMod
   use MAPL_HashMod
   use MAPL_ConstantsMod
+
   use, intrinsic :: iso_fortran_env, only: REAL64
 
 ! Modifies Pfafstetter.rst such that for every pixel within a MOM ocean

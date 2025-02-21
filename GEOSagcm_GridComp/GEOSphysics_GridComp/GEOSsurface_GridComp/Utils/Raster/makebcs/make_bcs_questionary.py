@@ -148,7 +148,7 @@ def get_configs_from_answers(answers):
         config ['expdir']    = expdir
         config ['outdir']    = outdir
         config ['inputdir']  = make_bcs_input_dir
-        config ['NCPUS'] = 20
+        config ['NCPUS'] = 16
 
         for x in answers.get('Stretched_CS',[]):
             config ['SG'] = answers['SG']
