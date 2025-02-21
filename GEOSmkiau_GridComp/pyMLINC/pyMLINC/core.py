@@ -42,7 +42,6 @@ def pyMLINC_run(
     f_in_buffer: CFFIObj,
     f_out_buffer: CFFIObj,
 ):
-    print("[pyMLINC] Run called", flush=True)
     options = options_fortran_to_python(f_options)
     print(f"[pyMLINC] Options: {options}", flush=True)
 
