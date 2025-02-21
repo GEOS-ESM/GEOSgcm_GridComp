@@ -3126,18 +3126,18 @@ contains
                    WESNPERC(k,:), WESNDENS(k,:), WESNREPAR(k,:), MLT(k),       &  ! out      
                    EXCS(k,:), DRHO0(k,:), WESNBOT(k), TKSNO, DTS(k)       )       ! out   
 
-          ! Snow impurities update
-           if (N_CONST_LANDICE4SNWALB /= 0) then
-              if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
-              if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
-              if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 
-              if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4) 
-              if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5) 
-              if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6) 
-              if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7) 
-              if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8) 
-              if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9) 
-           end if
+             ! Snow impurities update
+              if (N_CONST_LANDICE4SNWALB /= 0) then
+                 if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
+                 if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
+                 if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 
+                 if(associated(IRDU004)) IRDU004(k,:) = RCONSTIT(k,:,4) 
+                 if(associated(IRDU005)) IRDU005(k,:) = RCONSTIT(k,:,5) 
+                 if(associated(IRBC001)) IRBC001(k,:) = RCONSTIT(k,:,6) 
+                 if(associated(IRBC002)) IRBC002(k,:) = RCONSTIT(k,:,7) 
+                 if(associated(IROC001)) IROC001(k,:) = RCONSTIT(k,:,8) 
+                 if(associated(IROC002)) IROC002(k,:) = RCONSTIT(k,:,9) 
+              end if
            if (N_constit>0) then
               if(associated(RMELTDU001)) RMELTDU001(k) = RMELT(k,1) 
               if(associated(RMELTDU002)) RMELTDU002(k) = RMELT(k,2) 
