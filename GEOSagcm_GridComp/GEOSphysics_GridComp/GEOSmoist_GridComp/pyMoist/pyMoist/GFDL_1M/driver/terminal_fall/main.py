@@ -3,7 +3,6 @@ from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from pyMoist.GFDL_1M.driver.config import config
 from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     check_precip_get_zt,
-    implicit_fall,
     melting_loop,
     reset,
     setup,
@@ -11,6 +10,7 @@ from pyMoist.GFDL_1M.driver.terminal_fall.stencils import (
     update_w1,
     update_outputs,
 )
+from pyMoist.GFDL_1M.driver.stencils import implicit_fall
 from pyMoist.GFDL_1M.driver.terminal_fall.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.support import ConfigConstants
 
@@ -43,14 +43,15 @@ class TerminalFall:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
-                "tau_imlt": GFDL_1M_config.tau_imlt,
-                "ql_mlt": GFDL_1M_config.ql_mlt,
+                "tau_imlt": GFDL_1M_config.TAU_IMLT,
+                "ql_mlt": GFDL_1M_config.QL_MLT,
                 "c_air": config_dependent_constants.C_AIR,
                 "c_vap": config_dependent_constants.C_VAP,
                 "d0_vap": config_dependent_constants.D0_VAP,
                 "lv00": config_dependent_constants.LV00,
             },
         )
+
         self._check_precip_get_zt = stencil_factory.from_dims_halo(
             func=check_precip_get_zt,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -58,32 +59,37 @@ class TerminalFall:
                 "dts": config_dependent_constants.DTS,
             },
         )
+
         self._melting_loop = stencil_factory.from_dims_halo(
             func=melting_loop,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+
         self._update_dm = stencil_factory.from_dims_halo(
             func=update_dm,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
+                "do_sedi_w": GFDL_1M_config.DO_SEDI_W,
             },
         )
+
         self._implicit_fall = stencil_factory.from_dims_halo(
             func=implicit_fall,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "dts": config_dependent_constants.DTS,
-                "use_ppm": GFDL_1M_config.use_ppm,
+                "use_ppm": GFDL_1M_config.USE_PPM,
             },
         )
+
         self._update_w1 = stencil_factory.from_dims_halo(
             func=update_w1,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
+                "do_sedi_w": GFDL_1M_config.DO_SEDI_W,
             },
         )
+
         self._reset = stencil_factory.from_dims_halo(
             func=reset,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -147,7 +153,7 @@ class TerminalFall:
         # melting of falling cloud ice into rain
         # -----------------------------------------------------------------------
         # -----------------------------------------------------------------------
-        if self.GFDL_1M_config.vi_fac < 1.0e-5:
+        if self.GFDL_1M_config.VI_FAC < 1.0e-5:
             precip_ice.view[:] = 0
         else:
             self._check_precip_get_zt(

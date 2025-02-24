@@ -3,7 +3,7 @@ from gt4py.cartesian.gtscript import i32
 
 import pyMoist.GFDL_1M.driver.constants as constants
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float
 from pyMoist.GFDL_1M.driver.config import config
 
 
@@ -12,53 +12,53 @@ def check_flags(
     dts: Float,
 ):
     failed_keywords = []
-    if not GFDL_1M_config.phys_hydrostatic:
+    if not GFDL_1M_config.PHYS_HYDROSTATIC:
         failed_keywords.append("phys_hydrostatic")
-    if GFDL_1M_config.hydrostatic:
+    if GFDL_1M_config.HYDROSTATIC:
         failed_keywords.append("hydrostatic")
-    if GFDL_1M_config.const_vi:
+    if GFDL_1M_config.CONST_VI:
         failed_keywords.append("const_vi")
-    if GFDL_1M_config.const_vs:
+    if GFDL_1M_config.CONST_VS:
         failed_keywords.append("const_vs")
-    if GFDL_1M_config.const_vg:
+    if GFDL_1M_config.CONST_VG:
         failed_keywords.append("const_vg")
-    if GFDL_1M_config.const_vr:
+    if GFDL_1M_config.CONST_VR:
         failed_keywords.append("const_vr")
-    if GFDL_1M_config.use_ppm:
+    if GFDL_1M_config.USE_PPM:
         failed_keywords.append("use_ppm")
-    if not GFDL_1M_config.use_ccn:
+    if not GFDL_1M_config.USE_CCN:
         failed_keywords.append("use_ccn")
-    if GFDL_1M_config.do_qa:
+    if GFDL_1M_config.DO_QA:
         failed_keywords.append("do_qa")
-    if not GFDL_1M_config.fix_negative:
+    if not GFDL_1M_config.FIX_NEGATIVE:
         failed_keywords.append("fix_negative")
-    if GFDL_1M_config.fast_sat_adj:
+    if GFDL_1M_config.FAST_SAT_ADJ:
         failed_keywords.append("fast_sat_adj")
-    if GFDL_1M_config.do_bigg:
+    if GFDL_1M_config.DO_BIGG:
         failed_keywords.append("do_bigg")
-    if GFDL_1M_config.do_evap:
+    if GFDL_1M_config.DO_EVAP:
         failed_keywords.append("do_evap")
-    if GFDL_1M_config.do_subl:
+    if GFDL_1M_config.DO_SUBL:
         failed_keywords.append("do_subl")
-    if not GFDL_1M_config.z_slope_liq:
+    if not GFDL_1M_config.Z_SLOPE_LIQ:
         failed_keywords.append("z_slope_liq")
-    if not GFDL_1M_config.z_slope_ice:
+    if not GFDL_1M_config.Z_SLOPE_ICE:
         failed_keywords.append("z_slope_ice")
-    if not GFDL_1M_config.prog_ccn:
+    if not GFDL_1M_config.PROG_CCN:
         failed_keywords.append("prog_ccn")
-    if not GFDL_1M_config.preciprad:
+    if not GFDL_1M_config.PRECIPRAD:
         failed_keywords.append("preciprad")
-    if not GFDL_1M_config.mono_prof:
+    if not GFDL_1M_config.MONO_PROF:
         failed_keywords.append("mono_prof")
-    if GFDL_1M_config.do_sedi_heat:
+    if GFDL_1M_config.DO_SEDI_HEAT:
         failed_keywords.append("do_sedi_heat")
-    if not GFDL_1M_config.sedi_transport:
+    if not GFDL_1M_config.SEDI_TRANSPORT:
         failed_keywords.append("sedi_transport")
-    if GFDL_1M_config.do_sedi_w:
+    if GFDL_1M_config.DO_SEDI_W:
         failed_keywords.append("do_sedi_w")
-    if GFDL_1M_config.de_ice:
+    if GFDL_1M_config.DE_ICE:
         failed_keywords.append("de_ice")
-    if GFDL_1M_config.mp_print:
+    if GFDL_1M_config.MP_PRINT:
         failed_keywords.append("mp_print")
     if dts >= 300:
         failed_keywords.append("dts")
@@ -77,7 +77,7 @@ class ConfigConstants:
         # define heat capacity of dry air and water vap based on hydrostatical property
         # -----------------------------------------------------------------------
 
-        if GFDL_1M_config.phys_hydrostatic or GFDL_1M_config.hydrostatic:
+        if GFDL_1M_config.PHYS_HYDROSTATIC or GFDL_1M_config.HYDROSTATIC:
             self.C_AIR = constants.CP_AIR
             self.C_VAP = constants.CP_VAP
             self.P_NONHYDRO = False
@@ -88,7 +88,7 @@ class ConfigConstants:
         self.D0_VAP = self.C_VAP - constants.C_LIQ
         self.LV00 = constants.HLV0 - self.D0_VAP * constants.T_ICE
 
-        if GFDL_1M_config.hydrostatic:
+        if GFDL_1M_config.HYDROSTATIC:
             self.DO_SEDI_W = False
 
         # -----------------------------------------------------------------------
@@ -108,12 +108,12 @@ class ConfigConstants:
         # define cloud microphysics sub time step
         # -----------------------------------------------------------------------
 
-        self.MPDT = min(GFDL_1M_config.dt_moist, GFDL_1M_config.mp_time)
-        self.RDT = Float(1.0) / GFDL_1M_config.dt_moist
-        self.NTIMES = i32(np.round(GFDL_1M_config.dt_moist / self.MPDT))
+        self.MPDT = min(GFDL_1M_config.DT_MOIST, GFDL_1M_config.MP_TIME)
+        self.RDT = Float(1.0) / GFDL_1M_config.DT_MOIST
+        self.NTIMES = i32(np.round(GFDL_1M_config.DT_MOIST / self.MPDT))
 
         # small time step:
-        self.DTS = GFDL_1M_config.dt_moist / Float(self.NTIMES)
+        self.DTS = GFDL_1M_config.DT_MOIST / Float(self.NTIMES)
 
         # -----------------------------------------------------------------------
         # calculate cloud condensation nuclei (ccn)
@@ -121,7 +121,7 @@ class ConfigConstants:
         # -----------------------------------------------------------------------
 
         self.CPAUT = (
-            GFDL_1M_config.c_paut * Float(0.104) * constants.GRAV / Float(1.717e-5)
+            GFDL_1M_config.C_PAUT * Float(0.104) * constants.GRAV / Float(1.717e-5)
         )
 
         # -----------------------------------------------------------------------
@@ -129,34 +129,34 @@ class ConfigConstants:
         # -----------------------------------------------------------------------
         self.RDTS = Float(1.0) / self.DTS
         self.FAC_IMLT = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_imlt, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_IMLT, dtype=Float
         )
         self.FAC_I2S = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_i2s, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_I2S, dtype=Float
         )
         self.FAC_V2L = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_v2l, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_V2L, dtype=Float
         )
         self.FAC_L2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_l2v, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_L2V, dtype=Float
         )
         self.FAC_I2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_i2v, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_I2V, dtype=Float
         )
         self.FAC_S2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_s2v, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_S2V, dtype=Float
         )
         self.FAC_V2S = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_v2s, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_V2S, dtype=Float
         )
         self.FAC_G2V = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_g2v, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_G2V, dtype=Float
         )
         self.FAC_V2G = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_v2g, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_V2G, dtype=Float
         )
         self.FAC_FRZ = Float(1.0) - np.exp(
-            -self.DTS / GFDL_1M_config.tau_frz, dtype=Float
+            -self.DTS / GFDL_1M_config.TAU_FRZ, dtype=Float
         )
 
         # -----------------------------------------------------------------------
@@ -164,12 +164,12 @@ class ConfigConstants:
         # -----------------------------------------------------------------------
 
         self.CGACS = constants.PISQ * constants.RNZG * constants.RNZS * constants.RHOS
-        self.CGACS = self.CGACS * GFDL_1M_config.c_pgacs
+        self.CGACS = self.CGACS * GFDL_1M_config.C_PGACS
 
         self.CSACW = (
             constants.PIE
             * constants.RNZS
-            * GFDL_1M_config.clin
+            * GFDL_1M_config.CLIN
             * constants.GAM325
             / (Float(4.0) * np.power(constants.ACT[0], 0.8125, dtype=Float))
         )
@@ -178,11 +178,11 @@ class ConfigConstants:
         self.CRACI = (
             constants.PIE
             * constants.RNZR
-            * GFDL_1M_config.alin
+            * GFDL_1M_config.ALIN
             * constants.GAM380
             / (Float(4.0) * np.power(constants.ACT[1], 0.95, dtype=Float))
         )
-        self.CSACI = self.CSACW * GFDL_1M_config.c_psaci
+        self.CSACI = self.CSACW * GFDL_1M_config.C_PSACI
 
         self.CGACW = (
             constants.PIE
@@ -192,10 +192,10 @@ class ConfigConstants:
             / (Float(4.0) * np.power(constants.ACT[5], 0.875, dtype=Float))
         )
 
-        self.CGACI = self.CGACW * GFDL_1M_config.c_pgaci
+        self.CGACI = self.CGACW * GFDL_1M_config.C_PGACI
 
         self.CRACW = self.CRACI  # cracw = 3.27206196043822
-        self.CRACW = GFDL_1M_config.c_cracw * self.CRACW
+        self.CRACW = GFDL_1M_config.C_CRACW * self.CRACW
 
         self.CSSUB = np.zeros(5)
         self.CGSUB = np.zeros(5)
@@ -232,7 +232,7 @@ class ConfigConstants:
             Float(0.31)
             * constants.SCM3
             * constants.GAM263
-            * np.sqrt(GFDL_1M_config.clin / constants.VISK, dtype=Float)
+            * np.sqrt(GFDL_1M_config.CLIN / constants.VISK, dtype=Float)
             / np.power(constants.ACT[0], Float(0.65625), dtype=Float)
         )
         self.CGSUB[2] = (
@@ -246,7 +246,7 @@ class ConfigConstants:
             Float(0.31)
             * constants.SCM3
             * constants.GAM209
-            * np.sqrt(GFDL_1M_config.alin / constants.VISK, dtype=Float)
+            * np.sqrt(GFDL_1M_config.ALIN / constants.VISK, dtype=Float)
             / np.power(constants.ACT[1], Float(0.725), dtype=Float)
         )
         self.CSSUB[3] = constants.TCOND * constants.RVGAS
@@ -338,91 +338,3 @@ class ConfigConstants:
         self.CGMLT_2 = self.CGMLT[2]
         self.CGMLT_3 = self.CGMLT[3]
         self.CGMLT_4 = self.CGMLT[4]
-
-
-class Outputs:
-    def __init__(self, quantity_factory):
-        # -----------------------------------------------------------------------
-        # initialize precipitation outputs
-        # -----------------------------------------------------------------------
-
-        self.rain = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.snow = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.ice = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.graupel = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.m2_rain = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m2_sol = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.revap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.isubl = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-
-class Temporaries:
-    def __init__(self, quantity_factory):
-        self.t1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.dp1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.omq = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qv0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.ql0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qr0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qi0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qs0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qg0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qa0 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qv1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.ql1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qr1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qi1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qs1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qg1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.qa1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.dz1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.den = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.den1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.denfac = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.p_dry = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.u1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.v1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.w1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.onemsig = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.ccn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.c_praut = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.rh_limited = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.ze = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
-        self.zt = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
-        self.lhi = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.icpk = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.hold_data = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vti = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vts = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vtg = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.vtr = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m1_sol = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.m1_rain = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.rain1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.graupel1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.snow1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.ice1 = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        self.evap1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.subl1 = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-
-class Masks:
-    def __init__(self, quantity_factory):
-        self.is_frozen = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.precip_fall = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
-        # TODO: temporary code requires mask used within a double k loop
-        # will be removed once a proper feature for double k loop is introduces
-        self.melting_mask_1 = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.melting_mask_2 = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=bool
-        )
-        self.current_k_level = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a", dtype=Int
-        )
-        for k in range(self.current_k_level.view[:].shape[2]):
-            self.current_k_level.view[:, :, k] = k

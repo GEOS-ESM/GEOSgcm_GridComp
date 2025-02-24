@@ -25,9 +25,9 @@ class Finish:
                 "c_air": config_dependent_constants.C_AIR,
                 "c_vap": config_dependent_constants.C_VAP,
                 "rdt": config_dependent_constants.RDT,
-                "do_sedi_w": GFDL_1M_config.do_sedi_w,
-                "sedi_transport": GFDL_1M_config.sedi_transport,
-                "do_qa": GFDL_1M_config.do_qa,
+                "do_sedi_w": GFDL_1M_config.DO_SEDI_W,
+                "sedi_transport": GFDL_1M_config.SEDI_TRANSPORT,
+                "do_qa": GFDL_1M_config.DO_QA,
             },
         )
 

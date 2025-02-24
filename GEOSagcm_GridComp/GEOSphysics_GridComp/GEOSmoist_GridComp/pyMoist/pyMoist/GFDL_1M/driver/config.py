@@ -4,170 +4,170 @@ from ndsl.dsl.typing import Float
 class config:
     def __init__(
         self,
-        phys_hydrostatic: bool,
-        hydrostatic: bool,
-        dt_moist: Float,
-        mp_time: Float,
-        t_min: Float,
-        t_sub: Float,
-        tau_r2g: Float,
-        tau_smlt: Float,
-        tau_g2r: Float,
-        dw_land: Float,
-        dw_ocean: Float,
-        vi_fac: Float,
-        vr_fac: Float,
-        vs_fac: Float,
-        vg_fac: Float,
-        ql_mlt: Float,
-        do_qa: bool,
-        fix_negative: bool,
-        vi_max: Float,
-        vs_max: Float,
-        vg_max: Float,
-        vr_max: Float,
-        qs_mlt: Float,
-        qs0_crt: Float,
-        qi_gen: Float,
-        ql0_max: Float,
-        qi0_max: Float,
-        qi0_crt: Float,
-        qr0_crt: Float,
-        fast_sat_adj: bool,
-        rh_inc: Float,
-        rh_ins: Float,
-        rh_inr: Float,
-        const_vi: bool,
-        const_vs: bool,
-        const_vg: bool,
-        const_vr: bool,
-        use_ccn: bool,
-        rthreshu: Float,
-        rthreshs: Float,
-        ccn_l: Float,
-        ccn_o: Float,
-        qc_crt: Float,
-        tau_g2v: Float,
-        tau_v2g: Float,
-        tau_s2v: Float,
-        tau_v2s: Float,
-        tau_revp: Float,
-        tau_frz: Float,
-        do_bigg: bool,
-        do_evap: bool,
-        do_subl: bool,
-        sat_adj0: Float,
-        c_piacr: Float,
-        tau_imlt: Float,
-        tau_v2l: Float,
-        tau_l2v: Float,
-        tau_i2v: Float,
-        tau_i2s: Float,
-        tau_l2r: Float,
-        qi_lim: Float,
-        ql_gen: Float,
-        c_paut: Float,
-        c_psaci: Float,
-        c_pgacs: Float,
-        c_pgaci: Float,
-        z_slope_liq: bool,
-        z_slope_ice: bool,
-        prog_ccn: bool,
-        c_cracw: Float,
-        alin: Float,
-        clin: Float,
-        preciprad: bool,
-        cld_min: Float,
-        use_ppm: bool,
-        mono_prof: bool,
-        do_sedi_heat: bool,
-        sedi_transport: bool,
-        do_sedi_w: bool,
-        de_ice: bool,
-        icloud_f: Float,
-        irain_f: Float,
-        mp_print: bool,
+        PHYS_HYDROSTATIC: bool,
+        HYDROSTATIC: bool,
+        DT_MOIST: Float,
+        MP_TIME: Float,
+        T_MIN: Float,
+        T_SUB: Float,
+        TAU_R2G: Float,
+        TAU_SMLT: Float,
+        TAU_G2R: Float,
+        DW_LAND: Float,
+        DW_OCEAN: Float,
+        VI_FAC: Float,
+        VR_FAC: Float,
+        VS_FAC: Float,
+        VG_FAC: Float,
+        QL_MLT: Float,
+        DO_QA: bool,
+        FIX_NEGATIVE: bool,
+        VI_MAX: Float,
+        VS_MAX: Float,
+        VG_MAX: Float,
+        VR_MAX: Float,
+        QS_MLT: Float,
+        QS0_CRT: Float,
+        QI_GEN: Float,
+        QL0_MAX: Float,
+        QI0_MAX: Float,
+        QI0_CRT: Float,
+        QR0_CRT: Float,
+        FAST_SAT_ADJ: bool,
+        RH_INC: Float,
+        RH_INS: Float,
+        RH_INR: Float,
+        CONST_VI: bool,
+        CONST_VS: bool,
+        CONST_VG: bool,
+        CONST_VR: bool,
+        USE_CCN: bool,
+        RTHRESHU: Float,
+        RTHRESHS: Float,
+        CCN_L: Float,
+        CCN_O: Float,
+        QC_CRT: Float,
+        TAU_G2V: Float,
+        TAU_V2G: Float,
+        TAU_S2V: Float,
+        TAU_V2S: Float,
+        TAU_REVP: Float,
+        TAU_FRZ: Float,
+        DO_BIGG: bool,
+        DO_EVAP: bool,
+        DO_SUBL: bool,
+        SAT_ADJ0: Float,
+        C_PIACR: Float,
+        TAU_IMLT: Float,
+        TAU_V2L: Float,
+        TAU_L2V: Float,
+        TAU_I2V: Float,
+        TAU_I2S: Float,
+        TAU_L2R: Float,
+        QI_LIM: Float,
+        QL_GEN: Float,
+        C_PAUT: Float,
+        C_PSACI: Float,
+        C_PGACS: Float,
+        C_PGACI: Float,
+        Z_SLOPE_LIQ: bool,
+        Z_SLOPE_ICE: bool,
+        PROG_CCN: bool,
+        C_CRACW: Float,
+        ALIN: Float,
+        CLIN: Float,
+        PRECIPRAD: bool,
+        CLD_MIN: Float,
+        USE_PPM: bool,
+        MONO_PROF: bool,
+        DO_SEDI_HEAT: bool,
+        SEDI_TRANSPORT: bool,
+        DO_SEDI_W: bool,
+        DE_ICE: bool,
+        ICLOUD_F: Float,
+        IRAIN_F: Float,
+        MP_PRINT: bool,
     ):
-        self.phys_hydrostatic = phys_hydrostatic
-        self.hydrostatic = hydrostatic
-        self.dt_moist = dt_moist
-        self.mp_time = mp_time
-        self.t_min = t_min
-        self.t_sub = t_sub
-        self.tau_r2g = tau_r2g
-        self.tau_smlt = tau_smlt
-        self.tau_g2r = tau_g2r
-        self.dw_land = dw_land
-        self.dw_ocean = dw_ocean
-        self.vi_fac = vi_fac
-        self.vr_fac = vr_fac
-        self.vs_fac = vs_fac
-        self.vg_fac = vg_fac
-        self.ql_mlt = ql_mlt
-        self.do_qa = do_qa
-        self.fix_negative = fix_negative
-        self.vi_max = vi_max
-        self.vs_max = vs_max
-        self.vg_max = vg_max
-        self.vr_max = vr_max
-        self.qs_mlt = qs_mlt
-        self.qs0_crt = qs0_crt
-        self.qi_gen = qi_gen
-        self.ql0_max = ql0_max
-        self.qi0_max = qi0_max
-        self.qi0_crt = qi0_crt
-        self.qr0_crt = qr0_crt
-        self.fast_sat_adj = fast_sat_adj
-        self.rh_inc = rh_inc
-        self.rh_ins = rh_ins
-        self.rh_inr = rh_inr
-        self.const_vi = const_vi
-        self.const_vs = const_vs
-        self.const_vg = const_vg
-        self.const_vr = const_vr
-        self.use_ccn = use_ccn
-        self.rthreshu = rthreshu
-        self.rthreshs = rthreshs
-        self.ccn_l = ccn_l
-        self.ccn_o = ccn_o
-        self.qc_crt = qc_crt
-        self.tau_g2v = tau_g2v
-        self.tau_v2g = tau_v2g
-        self.tau_s2v = tau_s2v
-        self.tau_v2s = tau_v2s
-        self.tau_revp = tau_revp
-        self.tau_frz = tau_frz
-        self.do_bigg = do_bigg
-        self.do_evap = do_evap
-        self.do_subl = do_subl
-        self.sat_adj0 = sat_adj0
-        self.c_piacr = c_piacr
-        self.tau_imlt = tau_imlt
-        self.tau_v2l = tau_v2l
-        self.tau_l2v = tau_l2v
-        self.tau_i2v = tau_i2v
-        self.tau_i2s = tau_i2s
-        self.tau_l2r = tau_l2r
-        self.qi_lim = qi_lim
-        self.ql_gen = ql_gen
-        self.c_paut = c_paut
-        self.c_psaci = c_psaci
-        self.c_pgacs = c_pgacs
-        self.c_pgaci = c_pgaci
-        self.z_slope_liq = z_slope_liq
-        self.z_slope_ice = z_slope_ice
-        self.prog_ccn = prog_ccn
-        self.c_cracw = c_cracw
-        self.alin = alin
-        self.clin = clin
-        self.preciprad = preciprad
-        self.cld_min = cld_min
-        self.use_ppm = use_ppm
-        self.mono_prof = mono_prof
-        self.do_sedi_heat = do_sedi_heat
-        self.sedi_transport = sedi_transport
-        self.do_sedi_w = do_sedi_w
-        self.de_ice = de_ice
-        self.icloud_f = icloud_f
-        self.irain_f = irain_f
-        self.mp_print = mp_print
+        self.PHYS_HYDROSTATIC = PHYS_HYDROSTATIC
+        self.HYDROSTATIC = HYDROSTATIC
+        self.DT_MOIST = DT_MOIST
+        self.MP_TIME = MP_TIME
+        self.T_MIN = T_MIN
+        self.T_SUB = T_SUB
+        self.TAU_R2G = TAU_R2G
+        self.TAU_SMLT = TAU_SMLT
+        self.TAU_G2R = TAU_G2R
+        self.DW_LAND = DW_LAND
+        self.DW_OCEAN = DW_OCEAN
+        self.VI_FAC = VI_FAC
+        self.VR_FAC = VR_FAC
+        self.VS_FAC = VS_FAC
+        self.VG_FAC = VG_FAC
+        self.QL_MLT = QL_MLT
+        self.DO_QA = DO_QA
+        self.FIX_NEGATIVE = FIX_NEGATIVE
+        self.VI_MAX = VI_MAX
+        self.VS_MAX = VS_MAX
+        self.VG_MAX = VG_MAX
+        self.VR_MAX = VR_MAX
+        self.QS_MLT = QS_MLT
+        self.QS0_CRT = QS0_CRT
+        self.QI_GEN = QI_GEN
+        self.QL0_MAX = QL0_MAX
+        self.QI0_MAX = QI0_MAX
+        self.QI0_CRT = QI0_CRT
+        self.QR0_CRT = QR0_CRT
+        self.FAST_SAT_ADJ = FAST_SAT_ADJ
+        self.RH_INC = RH_INC
+        self.RH_INS = RH_INS
+        self.RH_INR = RH_INR
+        self.CONST_VI = CONST_VI
+        self.CONST_VS = CONST_VS
+        self.CONST_VG = CONST_VG
+        self.CONST_VR = CONST_VR
+        self.USE_CCN = USE_CCN
+        self.RTHRESHU = RTHRESHU
+        self.RTHRESHS = RTHRESHS
+        self.CCN_L = CCN_L
+        self.CCN_O = CCN_O
+        self.QC_CRT = QC_CRT
+        self.TAU_G2V = TAU_G2V
+        self.TAU_V2G = TAU_V2G
+        self.TAU_S2V = TAU_S2V
+        self.TAU_V2S = TAU_V2S
+        self.TAU_REVP = TAU_REVP
+        self.TAU_FRZ = TAU_FRZ
+        self.DO_BIGG = DO_BIGG
+        self.DO_EVAP = DO_EVAP
+        self.DO_SUBL = DO_SUBL
+        self.SAT_ADJ0 = SAT_ADJ0
+        self.C_PIACR = C_PIACR
+        self.TAU_IMLT = TAU_IMLT
+        self.TAU_V2L = TAU_V2L
+        self.TAU_L2V = TAU_L2V
+        self.TAU_I2V = TAU_I2V
+        self.TAU_I2S = TAU_I2S
+        self.TAU_L2R = TAU_L2R
+        self.QI_LIM = QI_LIM
+        self.QL_GEN = QL_GEN
+        self.C_PAUT = C_PAUT
+        self.C_PSACI = C_PSACI
+        self.C_PGACS = C_PGACS
+        self.C_PGACI = C_PGACI
+        self.Z_SLOPE_LIQ = Z_SLOPE_LIQ
+        self.Z_SLOPE_ICE = Z_SLOPE_ICE
+        self.PROG_CCN = PROG_CCN
+        self.C_CRACW = C_CRACW
+        self.ALIN = ALIN
+        self.CLIN = CLIN
+        self.PRECIPRAD = PRECIPRAD
+        self.CLD_MIN = CLD_MIN
+        self.USE_PPM = USE_PPM
+        self.MONO_PROF = MONO_PROF
+        self.DO_SEDI_HEAT = DO_SEDI_HEAT
+        self.SEDI_TRANSPORT = SEDI_TRANSPORT
+        self.DO_SEDI_W = DO_SEDI_W
+        self.DE_ICE = DE_ICE
+        self.ICLOUD_F = ICLOUD_F
+        self.IRAIN_F = IRAIN_F
+        self.MP_PRINT = MP_PRINT
