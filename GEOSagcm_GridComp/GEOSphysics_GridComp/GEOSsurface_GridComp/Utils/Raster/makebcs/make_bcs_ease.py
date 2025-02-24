@@ -8,12 +8,10 @@ from make_bcs_shared  import *
 
 ease_template = """
 
-setenv OMP_NUM_THREADS 1
 bin/mkEASETilesParam.x -ease_label {GRIDNAME} 
-setenv OMP_NUM_THREADS 1
-bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
 setenv OMP_NUM_THREADS {NCPUS}
 bin/mkCatchParam.x -g {GRIDNAME} -v {lbcsv} -x {NX} -y {NY}
+setenv OMP_NUM_THREADS 1
 chmod 755 bin/create_README.csh
 bin/create_README.csh
 

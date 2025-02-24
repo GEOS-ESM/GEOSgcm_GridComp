@@ -5912,11 +5912,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         !--------------- GOSWIM IMPORTS FROM GOCART ---------------
         ! Initialization 
-        RCONSTIT(:,:,:)  = 0.0
-        TOTDEPOS(:,:) = 0.0
-        RMELT(:,:)  = 0.0
+        if (N_constit>0) then
+           RCONSTIT(:,:,:)  = 0.0
+           TOTDEPOS(:,:) = 0.0
+           RMELT(:,:)  = 0.0
+        end if
         !------------------------------------------------------------------
-
+           
         ! Zero the light-absorbing aerosol (LAA) deposition rates from  GOCART:
 
         select case (catchcn_internal%AEROSOL_DEPOSITION)
@@ -5953,6 +5955,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            OCSD(:,:)=0.
            
         end select
+        
+        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
 
 ! Convert the dimentions for LAAs from GEOS_SurfGridComp.F90 to GEOS_LandIceGridComp.F90
 ! Note: Explanations of each variable
@@ -5991,8 +5995,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !        TOTDEPOS(:,15) = SSDP(:,5) + SSSV(:,5) + SSWT(:,5) + SSSD(:,5)
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
-
-        if (catchcn_internal%N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -7452,15 +7454,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(FICE2 )) FICE2  = max( min( FICESOUT(2,:),1.0 ), 0.0 )
         if(associated(FICE3 )) FICE3  = max( min( FICESOUT(3,:),1.0 ), 0.0 )
 
-        if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
-        if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
-        if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
-        if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
-        if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
-        if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
-        if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
-        if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
-        if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
+        if (N_constit>0) then
+           if(associated(RMELTDU001)) RMELTDU001 = RMELT(:,1) 
+           if(associated(RMELTDU002)) RMELTDU002 = RMELT(:,2) 
+           if(associated(RMELTDU003)) RMELTDU003 = RMELT(:,3) 
+           if(associated(RMELTDU004)) RMELTDU004 = RMELT(:,4) 
+           if(associated(RMELTDU005)) RMELTDU005 = RMELT(:,5) 
+           if(associated(RMELTBC001)) RMELTBC001 = RMELT(:,6) 
+           if(associated(RMELTBC002)) RMELTBC002 = RMELT(:,7) 
+           if(associated(RMELTOC001)) RMELTOC001 = RMELT(:,8) 
+           if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9)
+        end if
+        
         if(associated(PEATCLSM_FSWCHANGE))  then
            where (POROS >= PEATCLSM_POROS_THRESHOLD)
               PEATCLSM_FSWCHANGE = FSW_CHANGE
