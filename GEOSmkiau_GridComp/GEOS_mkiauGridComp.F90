@@ -19,8 +19,8 @@ module GEOS_mkiauGridCompMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
-#ifdef PYMLINC_INTEGRATION
-  use pyMLINC_interface_mod
+#ifdef HAS_PYMLINC
+  use pyMLINC_interface_mod, only: pyMLINC_interface_init_f, pyMLINC_interface_run_f
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
   implicit none
@@ -95,9 +95,10 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
+    integer, parameter                      :: magic_number = 123456789
 #endif
   !=============================================================================
 
@@ -235,8 +236,9 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+#ifdef HAS_PYMLINC
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QL',                                        &
+         SHORT_NAME = 'QLTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -245,7 +247,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QI',                                        &
+         SHORT_NAME = 'QITOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -254,7 +256,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QR',                                        &
+         SHORT_NAME = 'QRTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -263,7 +265,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QS',                                        &
+         SHORT_NAME = 'QSTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -272,13 +274,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'QG',                                        &
+         SHORT_NAME = 'QGTOT',                                     &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
          UNITS      = 'kg/kg',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
+#endif
 
     if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &
@@ -319,6 +322,16 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
+
+#ifdef HAS_PYMLINC
+    call MAPL_AddExportSpec ( gc, &
+         SHORT_NAME = 'DTDT_ML', &
+         LONG_NAME  = 'ml_computed_temperature_analysis_increment', &
+         UNITS      = 'K', &
+         DIMS       = MAPL_DimsHorzVert, &
+         VLOCATION  = MAPL_VLocationCenter, &
+         _RC)
+#endif
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -511,13 +524,15 @@ contains
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
     VERIFY_(STATUS)
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     ! Spin the interface - we have to deactivate the ieee fpe error
     ! to be able to load numpy, scipy and other numpy packages
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    call pyMLINC_interface_init_f()
+    if (MAPL_AM_I_ROOT()) then
+       call pyMLINC_interface_init_f(magic_number)
+    end if
     call ieee_set_halting_mode(ieee_all, halting_mode)
 #endif
 
@@ -760,13 +775,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
-
-#ifdef PYMLINC_INTEGRATION
-    ! BOGUS DATA TO SHOW USAGE
-    type(a_pod_struct_type) :: options
-    real, allocatable, dimension(:,:,:) :: in_buffer
-    real, allocatable, dimension(:,:,:) :: out_buffer
-#endif
 
 !=============================================================================
 
@@ -1224,16 +1232,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call handleANA_
     endif
 
-#ifdef PYMLINC_INTEGRATION
+#ifdef HAS_PYMLINC
     if ( IHAVEMLINC/=0 ) then
-       ! BOGUS CODE TO SHOW USAGE
-       options%npx = 10
-       options%npy = 11
-       options%npz = 12
-       allocate (in_buffer(10, 11, 12), source = 42.42 )
-       allocate (out_buffer(10, 11, 12), source = 0.0 )
-       call pyMLINC_interface_run_f(options, in_buffer, out_buffer)
-       write(*,*) "[pyMLINC] From fortran OUT[5, 5, 5] is ", out_buffer(5, 5, 5)
+       call compute_ml_inc(MAPL, GRIDbkg, import, export, _RC) ! GRIDbkg is current gridcomp's grid
     end if
 #endif
 
@@ -3464,5 +3465,178 @@ CONTAINS
 
       return
       end subroutine myremap
+
+#ifdef HAS_PYMLINC
+   subroutine compute_ml_inc(mapl, grid_bkg, import_state, export_state, rc)
+      use MAPL_LatLonGridFactoryMod
+      type (MAPL_MetaComp), pointer, intent(in) :: mapl
+      type(ESMF_Grid), intent(in) :: grid_bkg
+      type(ESMF_State), intent(inout) :: import_state
+      type(ESMF_State), intent(inout) :: export_state
+      integer, optional, intent(out) :: rc
+
+      type(ESMF_Grid) :: grid_1deg
+      class(AbstractRegridder), pointer :: to_1deg => null(), to_native => null()
+      real, pointer :: ptr3d(:, :, :), ptr2d(:, :)
+      real, allocatable, dimension(:,:,:) :: u_1deg, v_1deg, t_1deg
+      real, allocatable, dimension(:,:,:) :: u_global, v_global, t_global
+      real, allocatable, dimension(:,:,:) :: qv_1deg, ql_1deg, qi_1deg, qr_1deg, qs_1deg, qg_1deg
+      real, allocatable, dimension(:,:,:) :: qv_global, ql_global, qi_global, qr_global, qs_global, qg_global
+      real, allocatable, dimension(:,:) :: ps_1deg
+      real, allocatable, dimension(:,:) :: ps_global
+      real, allocatable, dimension(:,:,:) :: dtdt_global
+      real, allocatable, dimension(:,:,:) :: dtdt_1deg
+      real, allocatable, dimension(:,:,:) :: dtdt
+      real, pointer, dimension(:, :, :) :: dtdt_ml
+      integer :: ushape(3), nx_, ny_, num_levels, im_world_tmp, jm_world_tmp
+      integer :: dims_(3), im_, jm_, im_1deg, jm_1deg, level, status
+
+      integer, parameter :: magic_number = 123456789
+      integer, parameter :: im_world_1deg = 360, jm_world_1deg = 181, lm=181
+
+      ! Grid stuff (native and 1deg lat/lon)
+      ! -native
+      call MAPL_GridGet(grid_bkg, localCellCountPerDim=dims_, _RC)
+      im_ = dims_(1); jm_ = dims_(2)
+      ! -1-degree-lat-lon
+      call MAPL_GetResource(MAPL, nx_, 'NX:', default=MAPL_UNDEFINED_INTEGER, _RC)
+      call MAPL_GetResource(MAPL, ny_, 'NY:', default=MAPL_UNDEFINED_INTEGER, _RC)
+      grid_1deg = grid_manager%make_grid( &
+           LatLonGridFactory( &
+                im_world=im_world_1deg, jm_world=jm_world_1deg, lm=lm, &
+                nx=nx_, ny=ny_, &
+                pole="PC", dateline= "DC", &
+                rc=status))
+      call MAPL_GridGet(grid_1deg, localCellCountPerDim=dims_, _RC)
+      im_1deg = dims_(1); jm_1deg = dims_(2); num_levels = dims_(3)
+
+      ! Regrid - native to 1deg lat/lon
+      to_1deg => new_regridder_manager%make_regridder(grid_bkg, grid_1deg, REGRID_METHOD_BILINEAR, _RC)
+      allocate(u_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "U", _RC)
+      call to_1deg%regrid(ptr3d, u_1deg, _RC)
+      allocate(v_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "V", _RC)
+      call to_1deg%regrid(ptr3d, v_1deg, _RC)
+      allocate(t_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "TV", _RC)
+      call to_1deg%regrid(ptr3d, t_1deg, _RC)
+      allocate(qv_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QV", _RC)
+      call to_1deg%regrid(ptr3d, qv_1deg, _RC)
+      allocate(ql_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QLTOT", _RC)
+      call to_1deg%regrid(ptr3d, ql_1deg, _RC)
+      allocate(qi_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QITOT", _RC)
+      call to_1deg%regrid(ptr3d, qi_1deg, _RC)
+      allocate(qr_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QRTOT", _RC)
+      call to_1deg%regrid(ptr3d, qr_1deg, _RC)
+      allocate(qs_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QSTOT", _RC)
+      call to_1deg%regrid(ptr3d, qs_1deg, _RC)
+      allocate(qg_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr3d)
+      call MAPL_GetPointer(import_state, ptr3d, "QGTOT", _RC)
+      call to_1deg%regrid(ptr3d, qg_1deg, _RC)
+      allocate(ps_1deg(im_1deg, jm_1deg), source=MAPL_UNDEFINED_REAL)
+      nullify(ptr2d)
+      call MAPL_GetPointer(import_state, ptr2d, "PS", _RC)
+      call to_1deg%regrid(ptr2d, ps_1deg, _RC)
+
+      ! Gather inputs (u, v, t, q's, ps) on rank 0
+      if (MAPL_AM_I_ROOT()) then
+         im_world_tmp = im_world_1deg
+         jm_world_tmp = jm_world_1deg
+      else
+         im_world_tmp = 0
+         jm_world_tmp = 0
+      end if
+      allocate(u_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(v_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(t_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qv_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(ql_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qi_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qr_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qs_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(qg_global(im_world_tmp, jm_world_tmp, lm), source=MAPL_UNDEFINED_REAL)
+      allocate(ps_global(im_world_tmp, jm_world_tmp), source=MAPL_UNDEFINED_REAL)
+      allocate(dtdt_global(im_world_tmp, jm_world_tmp, lm), source = MAPL_UNDEFINED_REAL)
+      do level = 1, num_levels
+         call ArrayGather(local_array=u_1deg(:, :, level), global_array=u_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=v_1deg(:, :, level), global_array=v_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=t_1deg(:, :, level), global_array=t_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qv_1deg(:, :, level), global_array=qv_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=ql_1deg(:, :, level), global_array=ql_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qi_1deg(:, :, level), global_array=qi_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qr_1deg(:, :, level), global_array=qr_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qs_1deg(:, :, level), global_array=qs_global(:, :, level), grid=grid_1deg, _RC)
+         call ArrayGather(local_array=qg_1deg(:, :, level), global_array=qg_global(:, :, level), grid=grid_1deg, _RC)
+      end do
+      call ArrayGather(local_array=ps_1deg(:, :), global_array=ps_global(:, :), grid=grid_1deg, _RC)
+      deallocate(u_1deg, v_1deg, t_1deg)
+      deallocate(qv_1deg, ql_1deg, qi_1deg, qr_1deg, qs_1deg, qg_1deg)
+      deallocate(ps_1deg)
+
+      ! Root calls the interface to pyMLINC
+      if (MAPL_AM_I_ROOT()) then
+         ushape = shape(u_global)
+         print *, "[pyMLINC] Fortran - u_global: ", ushape
+         print *, "[pyMLINC] Fortran - u_global: ", sum(u_global), minval(u_global), maxval(u_global)
+         print *, "[pyMLINC] Fortran - v_global: ", sum(v_global), minval(v_global), maxval(v_global)
+         print *, "[pyMLINC] Fortran - t_global: ", sum(t_global), minval(t_global), maxval(t_global)
+         print *, "[pyMLINC] Fortran - qv_global: ", sum(qv_global), minval(qv_global), maxval(qv_global)
+         print *, "[pyMLINC] Fortran - ql_global: ", sum(ql_global), minval(ql_global), maxval(ql_global)
+         print *, "[pyMLINC] Fortran - qi_global: ", sum(qi_global), minval(qi_global), maxval(qi_global)
+         print *, "[pyMLINC] Fortran - qr_global: ", sum(qr_global), minval(qr_global), maxval(qr_global)
+         print *, "[pyMLINC] Fortran - qs_global: ", sum(qs_global), minval(qs_global), maxval(qs_global)
+         print *, "[pyMLINC] Fortran - qg_global: ", sum(qg_global), minval(qg_global), maxval(qg_global)
+         print *, "[pyMLINC] Fortran - ps_global: ", sum(ps_global), minval(ps_global), maxval(ps_global)
+         print *, "[pyMLINC] Fortran - calling interface to Py code"
+         call pyMLINC_interface_run_f( &
+              ! input
+              ushape(1), ushape(2), ushape(3), &
+              u_global, v_global, t_global, &
+              qv_global, ql_global, qi_global, qr_global, qs_global, qg_global, &
+              ps_global, &
+              ! output
+              dtdt_global, &
+              ! LAST ARGUMENT - input
+              magic_number)
+         write(*,*) "[pyMLINC] Fortran - dtdt", sum(dtdt_global), minval(dtdt_global), maxval(dtdt_global)
+      end if
+      deallocate(u_global, v_global, t_global)
+      deallocate(qv_global, ql_global, qi_global, qr_global, qs_global, qg_global)
+      deallocate(ps_global)
+
+      ! Scatter dtdt back to all ranks
+      allocate(dtdt_1deg(im_1deg, jm_1deg, lm), source=MAPL_UNDEFINED_REAL)
+      do level = 1, num_levels
+         call ArrayScatter(local_array=dtdt_1deg(:, :, level), global_array=dtdt_global(:, :, level), grid=grid_1deg, _RC)
+      end do
+      deallocate(dtdt_global)
+
+      ! Regrid dtdt from 1deg lat/lon to native grid
+      to_native => new_regridder_manager%make_regridder(grid_1deg, grid_bkg, REGRID_METHOD_BILINEAR, _RC)
+      allocate(dtdt(im_, jm_, lm), source=MAPL_UNDEFINED_REAL)      
+      call to_native%regrid(dtdt_1deg, dtdt, _RC)
+
+      ! Add to export spec
+      call MAPL_GetPointer(export_state, dtdt_ml, "DTDT_ML", _RC)
+      if (associated(dtdt_ml)) dtdt_ml = dtdt
+
+      _RETURN(_SUCCESS)
+   end subroutine compute_ml_inc
+#endif
 
 end module GEOS_mkiauGridCompMod

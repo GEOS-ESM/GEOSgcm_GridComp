@@ -1069,36 +1069,6 @@ contains
          CHILD_ID = PHYS, &
          RC=STATUS  )
     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC, &
-         SHORT_NAME = 'QL', &
-         CHILD_ID = PHYS, &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC, &
-         SHORT_NAME = 'QI', &
-         CHILD_ID = PHYS, &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC, &
-         SHORT_NAME = 'QR', &
-         CHILD_ID = PHYS, &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC, &
-         SHORT_NAME = 'QS', &
-         CHILD_ID = PHYS, &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec ( GC, &
-         SHORT_NAME = 'QG', &
-         CHILD_ID = PHYS, &
-         RC=STATUS  )
-    VERIFY_(STATUS)
 !EOS
 
 ! Set internal connections between the childrens IMPORTS and EXPORTS

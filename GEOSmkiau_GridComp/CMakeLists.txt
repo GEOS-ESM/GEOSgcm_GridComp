@@ -1,7 +1,5 @@
 esma_set_this()
 
-option(BUILD_PYMLINC_INTERFACE "Build pyMLINC interface" OFF)
-
 set (srcs
   IAU_GridCompMod.F90
   GEOS_mkiauGridComp.F90
@@ -10,7 +8,8 @@ set (srcs
   DynVec_GridComp.F90
   )
 
-if (BUILD_PYMLINC_INTERFACE)
+if (BUILD_WITH_PYMLINC)
+  add_compile_definitions(-DHAS_PYMLINC)
   list (APPEND srcs
     pyMLINC/interface/interface.f90
     pyMLINC/interface/interface.c)

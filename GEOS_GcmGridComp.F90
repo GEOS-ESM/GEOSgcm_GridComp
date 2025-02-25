@@ -577,12 +577,15 @@ contains
        VERIFY_(STATUS)
     endif
 
+#ifdef HAS_PYMLINC
     call MAPL_AddConnectivity ( GC,                                 &
-         SHORT_NAME  = (/'QL    ', 'QI    ', 'QR    ', 'QS    ', 'QG    '/), &
+         SHORT_NAME  = (/'QLTOT ', 'QITOT ', 'QRTOT ',              &
+         'QSTOT', 'QGTOT '/), &
          DST_ID = AIAU,                                             &
          SRC_ID = AGCM,                                             &
          RC=STATUS  )
     VERIFY_(STATUS)
+#endif
   
     if (DO_CICE_THERMO == 2) then  
        call MAPL_AddConnectivity ( GC,                              &
