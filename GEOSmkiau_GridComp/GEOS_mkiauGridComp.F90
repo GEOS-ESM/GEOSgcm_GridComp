@@ -235,6 +235,51 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QL',                                        &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QI',                                        &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QR',                                        &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QS',                                        &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'QG',                                        &
+         LONG_NAME  = 'water_vapor_specific_humdity',              &
+         UNITS      = 'kg/kg',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &
          SHORT_NAME = 'PPBL',                                          &

@@ -1059,6 +1059,36 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QL',                                        &
+         CHILD_ID = MOIST,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QI',                                        &
+         CHILD_ID = MOIST,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QR',                                        &
+         CHILD_ID = MOIST,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QS',                                        &
+         CHILD_ID = MOIST,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'QG',                                        &
+         CHILD_ID = MOIST,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'U10M',                                      &
          CHILD_ID = SURF,                                          &
                                                         RC=STATUS  )
