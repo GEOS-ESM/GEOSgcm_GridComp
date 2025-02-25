@@ -235,6 +235,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+#ifdef PYMLINC_INTEGRATION
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'QL',                                        &
          LONG_NAME  = 'water_vapor_specific_humdity',              &
@@ -279,6 +280,7 @@ contains
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
     VERIFY_(STATUS)
+#endif
 
     if( BLEND_AT_PBL ) then
     call MAPL_AddImportSpec(GC,                                        &

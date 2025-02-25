@@ -1070,6 +1070,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+#ifdef PYMLINC_INTEGRATION
     call MAPL_AddExportSpec ( GC, &
          SHORT_NAME = 'QL', &
          CHILD_ID = PHYS, &
@@ -1099,6 +1100,7 @@ contains
          CHILD_ID = PHYS, &
          RC=STATUS  )
     VERIFY_(STATUS)
+#endif
 !EOS
 
 ! Set internal connections between the childrens IMPORTS and EXPORTS
