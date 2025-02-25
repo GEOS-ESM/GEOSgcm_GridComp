@@ -371,8 +371,8 @@ contains
             CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
-            SHORT_NAME = 'WCM',                                      &
-            CHILD_ID   = WM,                         __RC__)
+            SHORT_NAME     = 'WCM',                                  &
+            CHILD_ID       = WM,                     __RC__)
 
         call MAPL_AddExportSpec(GC,                                  &
             SHORT_NAME     = 'DCP',                                  &
@@ -382,6 +382,9 @@ contains
              SHORT_NAME    = 'EDF',                                  &
              CHILD_ID      = WM,                     __RC__)
 
+        call MAPL_AddExportSpec(GC,                                  &
+            SHORT_NAME     = 'EF',                                   &
+            CHILD_ID       = WM,                     __RC__)
 
 
         !

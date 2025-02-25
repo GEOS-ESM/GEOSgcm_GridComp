@@ -635,6 +635,8 @@ contains
           _RC)
     endif
 
+    call MAPL_TerminateImport(GC, SHORT_NAME=['EF'], CHILD=OGCM, _RC)
+
     if (DO_OBIO/=0) then
       call OBIO_TerminateImports(DO_DATA_ATM4OCN, RC)
     end if
@@ -2428,6 +2430,17 @@ contains
 
      ! possibly W2O
      ! ...
+     call MAPL_TimerOn (MAPL,"--W2O"  )
+
+     ! aliases
+     SRC => GCM_INTERNAL_STATE%WGCM_EXP
+     DST => GIM(OGCM) ! GCM_INTERNAL_STATE%OCN_IMP
+
+     call DO_W2O(SRC, DST, NAME='EF',    RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_TimerOff(MAPL,"--W2O"  )
+
 
      RETURN_(ESMF_SUCCESS)
 

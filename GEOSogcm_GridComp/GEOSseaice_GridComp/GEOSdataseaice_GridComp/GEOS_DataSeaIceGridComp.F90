@@ -274,6 +274,18 @@ module GEOS_DataSeaIceGridCompMod
      VERIFY_(STATUS)
   end if ! (DO_CICE_THERMO /= 0)
 
+    call MAPL_AddImportSpec(GC,                                &
+          SHORT_NAME         = 'EF',                                &
+          LONG_NAME          = 'wave energy spectrum',              &
+          UNITS              = 'm2 s',                              &
+          UNGRIDDED_DIMS     = [37],                                &
+          DIMS               = MAPL_DimsHorzOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RESTART            = MAPL_RestartSkip,                    &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+
 !  !Export state:
 
   call MAPL_AddExportSpec(GC,                                 &
@@ -442,6 +454,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: LATS    => null()
    real, pointer, dimension(:,:)  :: LONS    => null()
 
+   real, pointer, dimension(:,:,:):: EF      => null()
+
+
+
    real, allocatable, dimension(:,:)  :: FRT
    real :: f
 
@@ -512,6 +528,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      call MAPL_GetPointer(IMPORT, ERGSNO  ,  'ERGSNO' , RC=STATUS)
      VERIFY_(STATUS)
    end if
+
+   call MAPL_GetPointer(IMPORT, EF      ,  'EF'   , RC=STATUS)
+   VERIFY_(STATUS)
+
+   print *, "DBG: EF(seaice) = ", minval(EF), maxval(EF)
+
 
 !  Pointers to Exports
 !---------------------

@@ -241,6 +241,17 @@ contains
         _RC  )
 
 
+  call MAPL_AddImportSpec(GC,                                 &
+        SHORT_NAME         = 'EF',                                &
+        LONG_NAME          = 'wave energy spectrum',              &
+        UNITS              = 'm2 s',                              &
+        UNGRIDDED_DIMS     = [37],                                &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartSkip,                    &
+        DEFAULT            = 0.0,                                 &
+        _RC  )
+
   ! === Exports
 
   call MAPL_AddExportSpec(GC,                            &
