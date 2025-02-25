@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""pyMKIAU - python sub-component of GEOS MKIAU."""
+"""pyMLINC - python sub-component of GEOS MKIAU."""
 
 from setuptools import find_namespace_packages, setup
 
@@ -19,13 +19,13 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3.11",
     ],
-    description=("pyMKIAU - python sub-component of GEOS MKIAU."),
+    description=("pyMLINC - python sub-component of GEOS MLINC."),
     install_requires=[],
     extras_require={},
     long_description=readme,
     include_package_data=True,
-    name="pyMKIAU",
-    packages=find_namespace_packages(include=["pyMKIAU", "pyMKIAU.*"]),
+    name="pyMLINC",
+    packages=find_namespace_packages(include=["pyMLINC", "pyMLINC.*"]),
     setup_requires=[],
     url="https://github.com/GEOS-ESM/GEOSgcm_GridComp",
     version="0.0.0",

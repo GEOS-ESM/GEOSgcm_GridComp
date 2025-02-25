@@ -1,11 +1,12 @@
-module pyMKIAU_interface_mod
+module pyMLINC_interface_mod
 
    use iso_c_binding, only: c_int, c_float, c_double, c_bool, c_ptr
 
    implicit none
 
    private
-   public :: pyMKIAU_interface_f_setservice, pyMKIAU_interface_f_run
+
+   public :: pyMLINC_interface_init_f, pyMLINC_interface_run_f
    public :: a_pod_struct_type
 
    !-----------------------------------------------------------------------
@@ -19,25 +20,21 @@ module pyMKIAU_interface_mod
       integer(kind=c_int) :: make_flags_C_interop = 123456789
    end type
 
-
    interface
 
-      subroutine pyMKIAU_interface_f_setservice() bind(c, name='pyMKIAU_interface_c_setservice')
-      end subroutine pyMKIAU_interface_f_setservice
+      subroutine pyMLINC_interface_init_f() bind(c, name='pyMLINC_interface_init_c')
+      end subroutine pyMLINC_interface_init_f
 
-      subroutine pyMKIAU_interface_f_run(options, in_buffer, out_buffer) bind(c, name='pyMKIAU_interface_c_run')
-
+      subroutine pyMLINC_interface_run_f(options, in_buffer, out_buffer) bind(c, name='pyMLINC_interface_run_c')
          import c_float, a_pod_struct_type
-
          implicit none
          ! This is an interface to a C function, the intent ARE NOT enforced
          ! by the compiler. Consider them developer hints
          type(a_pod_struct_type), intent(in) :: options
          real(kind=c_float), dimension(*), intent(in) :: in_buffer
          real(kind=c_float), dimension(*), intent(out) :: out_buffer
-
-      end subroutine pyMKIAU_interface_f_run
+      end subroutine pyMLINC_interface_run_f
    
    end interface
 
-end module pyMKIAU_interface_mod
+end module pyMLINC_interface_mod

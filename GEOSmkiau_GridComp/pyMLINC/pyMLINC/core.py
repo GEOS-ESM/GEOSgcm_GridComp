@@ -1,7 +1,7 @@
 from _cffi_backend import _CDataBase as CFFIObj  # type: ignore
 import dataclasses
-from pyMKIAU.f_py_conversion import FortranPythonConversion
-from pyMKIAU.cuda_profiler import TimedCUDAProfiler
+from pyMLINC.f_py_conversion import FortranPythonConversion
+from pyMLINC.cuda_profiler import TimedCUDAProfiler
 import numpy as np
 from typing import Dict, List
 
@@ -19,7 +19,7 @@ def options_fortran_to_python(
 ) -> FPYOptions:
     if f_options.mn_123456789 != 123456789:  # type:ignore
         raise RuntimeError(
-            "Magic number failed, pyMoist interface is broken on the python side"
+            "Magic number failed, pyMLINC interface is broken on the python side"
         )
 
     py_flags = FPYOptions()
@@ -33,18 +33,17 @@ def options_fortran_to_python(
 F_PY_MEMORY_CONV = None
 
 
-def pyMKIAU_init():
-    print("[pyMKIAU] Init called")
+def pyMLINC_init():
+    print("[pyMLINC] Init called", flush=True)
 
 
-def pyMKIAU_run(
+def pyMLINC_run(
     f_options: CFFIObj,
     f_in_buffer: CFFIObj,
     f_out_buffer: CFFIObj,
 ):
-    print("[pyMKIAU] Run called")
     options = options_fortran_to_python(f_options)
-    print(f"[pyMKIAU] Options: {options}")
+    print(f"[pyMLINC] Options: {options}", flush=True)
 
     # Dev Note: this should be doen better in it's own class
     #           and the `np` should be driven by the user code requirements
@@ -64,11 +63,11 @@ def pyMKIAU_run(
 
     # Here goes math and dragons
     timings: Dict[str, List[float]] = {}
-    with TimedCUDAProfiler("pyMKIAU bogus math", timings):
+    with TimedCUDAProfiler("pyMLINC bogus math", timings):
         out_buffer[:, :, :] = in_buffer[:, :, :] * 2
 
-    print(f"[pyMKIAU] At 5,5,5 in python OUT is: {out_buffer[5,5,5]}")
-    print(f"[pyMKIAU] Timers: {timings}")
+    print(f"[pyMLINC] At 5,5,5 in python OUT is: {out_buffer[5,5,5]}", flush=True)
+    print(f"[pyMLINC] Timers: {timings}", flush=True)
 
     # Go back to fortran
     F_PY_MEMORY_CONV.python_to_fortran(out_buffer, f_out_buffer)

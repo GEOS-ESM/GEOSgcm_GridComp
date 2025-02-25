@@ -15,8 +15,7 @@
 // We use the low-embedded trick of the magic number to attempt to catch
 // any type mismatch betweeen Fortran and C. This is not a foolproof method
 // but it bring a modicum of check at the cost of a single integer.
-typedef struct
-{
+typedef struct {
 	int npx;
 	int npy;
 	int npz;
@@ -26,8 +25,7 @@ typedef struct
 
 // For complex type that can be exported with different
 // types (like the MPI communication object), you can rely on C `union`
-typedef union
-{
+typedef union {
 	int comm_int;
 	void *comm_ptr;
 } MPI_Comm_t;
@@ -36,5 +34,5 @@ typedef union
 // Though we define `in_buffer` as a `const float*` it is _not_ enforced
 // by the interface. Treat as a developer hint only.
 
-extern int pyMKIAU_interface_py_run(a_pod_struct_t *options, const float *in_buffer, float *out_buffer);
-extern int pyMKIAU_interface_py_setservices();
+extern int pyMLINC_interface_init_py();
+extern int pyMLINC_interface_run_py(a_pod_struct_t *options, const float *in_buffer, float *out_buffer);

@@ -19,8 +19,8 @@ module GEOS_mkiauGridCompMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
-#ifdef PYMKIAU_INTEGRATION
-  use pyMKIAU_interface_mod
+#ifdef PYMLINC_INTEGRATION
+  use pyMLINC_interface_mod
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
   implicit none
@@ -95,13 +95,9 @@ contains
     type (ESMF_Config)                      :: CF
 
     logical                                 :: BLEND_AT_PBL
-#ifdef PYMKIAU_INTEGRATION
+#ifdef PYMLINC_INTEGRATION
     ! IEEE trapping see below
     logical                                 :: halting_mode(5)
-    ! BOGUS DATA TO SHOW USAGE
-    type(a_pod_struct_type) :: options
-    real, allocatable, dimension(:,:,:) :: in_buffer
-    real, allocatable, dimension(:,:,:) :: out_buffer
 #endif
   !=============================================================================
 
@@ -470,23 +466,14 @@ contains
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
     VERIFY_(STATUS)
 
-#ifdef PYMKIAU_INTEGRATION
-    ! Spin the interface - we have to deactivate the ieee error
+#ifdef PYMLINC_INTEGRATION
+    ! Spin the interface - we have to deactivate the ieee fpe error
     ! to be able to load numpy, scipy and other numpy packages
     ! that generate NaN as an init mechanism for numerical solving
     call ieee_get_halting_mode(ieee_all, halting_mode)
     call ieee_set_halting_mode(ieee_all, .false.)
-    call pyMKIAU_interface_f_setservice()
+    call pyMLINC_interface_init_f()
     call ieee_set_halting_mode(ieee_all, halting_mode)
-
-    ! BOGUS CODE TO SHOW USAGE
-    options%npx = 10
-    options%npy = 11
-    options%npz = 12
-    allocate (in_buffer(10,11,12), source = 42.42 )
-    allocate (out_buffer(10,11,12), source = 0.0 )
-    call pyMKIAU_interface_f_run(options, in_buffer, out_buffer)
-    write(*,*) "[pyMKIAU] From fortran OUT[5,5,5] is ", out_buffer(5,5,5)
 #endif
 
     RETURN_(ESMF_SUCCESS)
@@ -702,6 +689,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type (ESMF_VM)                      :: VM
   integer                             :: vm_comm
   integer                             :: IHAVEAINC
+  integer                             :: IHAVEMLINC
 
   type (T_MKIAU_STATE), pointer       :: mkiau_internal_state
   type (MKIAU_wrap)                   :: wrap
@@ -727,6 +715,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   integer nsecf
           nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
+
+#ifdef PYMLINC_INTEGRATION
+    ! BOGUS DATA TO SHOW USAGE
+    type(a_pod_struct_type) :: options
+    real, allocatable, dimension(:,:,:) :: in_buffer
+    real, allocatable, dimension(:,:,:) :: out_buffer
+#endif
 
 !=============================================================================
 
@@ -829,6 +824,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
 
     call MAPL_GetResource(MAPL, IHAVEAINC,     Label='REPLAY_TO_ANAINC:', default=0,  RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, IHAVEMLINC,    Label='REPLAY_TO_MLINC:', default=0,  RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_PHIS,   Label="REPLAY_PHIS:",   default='YES',           RC=STATUS)
     VERIFY_(STATUS)
@@ -1181,6 +1178,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     else
        call handleANA_
     endif
+
+#ifdef PYMLINC_INTEGRATION
+    if ( IHAVEMLINC/=0 ) then
+       ! BOGUS CODE TO SHOW USAGE
+       options%npx = 10
+       options%npy = 11
+       options%npz = 12
+       allocate (in_buffer(10, 11, 12), source = 42.42 )
+       allocate (out_buffer(10, 11, 12), source = 0.0 )
+       call pyMLINC_interface_run_f(options, in_buffer, out_buffer)
+       write(*,*) "[pyMLINC] From fortran OUT[5, 5, 5] is ", out_buffer(5, 5, 5)
+    end if
+#endif
 
     call MAPL_TimerOff(MAPL,"-RUN")
     call MAPL_TimerOff(MAPL,"TOTAL")
