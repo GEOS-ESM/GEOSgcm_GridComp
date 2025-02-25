@@ -1,0 +1,197 @@
+from ndsl import Namelist, Quantity, StencilFactory
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
+from ndsl.dsl.typing import Float, Int
+from ndsl.stencils.testing.translate import TranslateFortranData2Py
+from pyMoist.GFDL_1M.driver.config import config
+from ndsl.stencils.testing.savepoint import DataLoader
+from pyMoist.GFDL_1M.driver.config import config
+from pyMoist.GFDL_1M.driver.support import ConfigConstants
+from pyMoist.GFDL_1M.driver.temporaries import Temporaries
+from pyMoist.GFDL_1M.driver.outputs import Outputs
+from pyMoist.GFDL_1M.driver.masks import Masks
+from pyMoist.GFDL_1M.driver.sat_tables import get_tables
+from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
+from ndsl.stencils.testing.grid import Grid
+
+
+class Translatewarm_rain(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid: Grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
+        super().__init__(grid, namelist, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.quantity_factory = grid.quantity_factory
+
+        data_loader = DataLoader(grid.rank, "/Users/ckropiew/netcdfs")
+
+        # self.extra_data_load()
+
+        self.GFDL_1M_config = config(
+            self.constants["PHYS_HYDROSTATIC"],
+            self.constants["HYDROSTATIC"],
+            self.constants["DT_MOIST"],
+            self.constants["MP_TIME"],
+            self.constants["T_MIN"],
+            self.constants["T_SUB"],
+            self.constants["TAU_R2G"],
+            self.constants["TAU_SMLT"],
+            self.constants["TAU_G2R"],
+            self.constants["DW_LAND"],
+            self.constants["DW_OCEAN"],
+            self.constants["VI_FAC"],
+            self.constants["VR_FAC"],
+            self.constants["VS_FAC"],
+            self.constants["VG_FAC"],
+            self.constants["QL_MLT"],
+            self.constants["DO_QA"],
+            self.constants["FIX_NEGATIVE"],
+            self.constants["VI_MAX"],
+            self.constants["VS_MAX"],
+            self.constants["VG_MAX"],
+            self.constants["VR_MAX"],
+            self.constants["QS_MLT"],
+            self.constants["QS0_CRT"],
+            self.constants["QI_GEN"],
+            self.constants["QL0_MAX"],
+            self.constants["QI0_MAX"],
+            self.constants["QI0_CRT"],
+            self.constants["QR0_CRT"],
+            self.constants["FAST_SAT_ADJ"],
+            self.constants["RH_INC"],
+            self.constants["RH_INS"],
+            self.constants["RH_INR"],
+            self.constants["CONST_VI"],
+            self.constants["CONST_VS"],
+            self.constants["CONST_VG"],
+            self.constants["CONST_VR"],
+            self.constants["USE_CCN"],
+            self.constants["RTHRESHU"],
+            self.constants["RTHRESHS"],
+            self.constants["CCN_L"],
+            self.constants["CCN_O"],
+            self.constants["QC_CRT"],
+            self.constants["TAU_G2V"],
+            self.constants["TAU_V2G"],
+            self.constants["TAU_S2V"],
+            self.constants["TAU_V2S"],
+            self.constants["TAU_REVP"],
+            self.constants["TAU_FRZ"],
+            self.constants["DO_BIGG"],
+            self.constants["DO_EVAP"],
+            self.constants["DO_SUBL"],
+            self.constants["SAT_ADJ0"],
+            self.constants["C_PIACR"],
+            self.constants["TAU_IMLT"],
+            self.constants["TAU_V2L"],
+            self.constants["TAU_L2V"],
+            self.constants["TAU_I2V"],
+            self.constants["TAU_I2S"],
+            self.constants["TAU_L2R"],
+            self.constants["QI_LIM"],
+            self.constants["QL_GEN"],
+            self.constants["C_PAUT"],
+            self.constants["C_PSACI"],
+            self.constants["C_PGACS"],
+            self.constants["C_PGACI"],
+            self.constants["Z_SLOPE_LIQ"],
+            self.constants["Z_SLOPE_ICE"],
+            self.constants["PROG_CCN"],
+            self.constants["C_CRACW"],
+            self.constants["ALIN"],
+            self.constants["CLIN"],
+            self.constants["PRECIPRAD"],
+            self.constants["CLD_MIN"],
+            self.constants["USE_PPM"],
+            self.constants["MONO_PROF"],
+            self.constants["DO_SEDI_HEAT"],
+            self.constants["SEDI_TRANSPORT"],
+            self.constants["DO_SEDI_W"],
+            self.constants["DE_ICE"],
+            self.constants["ICLOUD_F"],
+            self.constants["IRAIN_F"],
+            self.constants["MP_PRINT"],
+        )
+
+        self.config_dependent_constants = ConfigConstants(self.GFDL_1M_config)
+
+        # Initalize saturation tables
+        self.sat_tables = get_tables(stencil_factory.backend)
+
+        # Initalize extra quantities
+        self.temporaries = Temporaries(self.quantity_factory)
+        self.outputs = Outputs(self.quantity_factory)
+        self.masks = Masks(self.quantity_factory)
+
+        # Initalize object to be tested
+        self.warm_rain = WarmRain(
+            self.stencil_factory,
+            self.quantity_factory,
+            self.GFDL_1M_config,
+            self.config_dependent_constants,
+        )
+
+        self.in_vars["data_vars"] = {
+            "dz1": {"serialname": "dz1_warm_rain"},
+            "dp1": {"serialname": "dp1_warm_rain"},
+            "t1": {"serialname": "t1_warm_rain"},
+            "qv1": {"serialname": "qv_warm_rain"},
+            "ql1": {"serialname": "ql_warm_rain"},
+            "qr1": {"serialname": "qr_warm_rain"},
+            "qi1": {"serialname": "qi_warm_rain"},
+            "qs1": {"serialname": "qs_warm_rain"},
+            "qg1": {"serialname": "qg_warm_rain"},
+            "qa1": {"serialname": "qa_warm_rain"},
+            "ccn": {"serialname": "ccn_warm_rain"},
+            "den": {"serialname": "den_warm_rain"},
+            "denfac": {"serialname": "denfac_warm_rain"},
+            "c_praut": {"serialname": "c_praut_warm_rain"},
+            "vtr": {"serialname": "vtr_warm_rain"},
+            "evap1": {"serialname": "evap1_warm_rain"},
+            "m1_rain": {"serialname": "m1_rain_warm_rain"},
+            "w1": {"serialname": "w1_warm_rain"},
+            "rh_limited": {"serialname": "rh_limited_warm_rain"},
+            "eis": {"serialname": "eis_warm_rain"},
+            "onemsig": {"serialname": "onemsig_warm_rain"},
+        }
+
+        self.out_vars = self.in_vars["data_vars"].copy()
+        del (
+            self.out_vars["dz1"],
+            self.out_vars["dp1"],
+            self.out_vars["den"],
+            self.out_vars["denfac"],
+            self.out_vars["c_praut"],
+            self.out_vars["ccn"],
+            self.out_vars["onemsig"],
+            self.out_vars["rh_limited"],
+        )
+
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("GFDL_1M_driver-constants")
+
+    def compute_from_storage(self, inputs):
+        self.warm_rain(
+            rain1=self.temporaries.rain1,
+            ze=self.temporaries.ze,
+            zt=self.temporaries.zt,
+            m1=self.temporaries.m1,
+            m1_sol=self.temporaries.m1_sol,
+            rain=self.outputs.rain,
+            revap=self.outputs.revap,
+            m2_rain=self.outputs.m2_rain,
+            m2_sol=self.outputs.m2_sol,
+            precip_fall=self.masks.precip_fall,
+            table1=self.sat_tables.table1,
+            table2=self.sat_tables.table2,
+            table3=self.sat_tables.table3,
+            table4=self.sat_tables.table4,
+            des1=self.sat_tables.des1,
+            des2=self.sat_tables.des2,
+            des3=self.sat_tables.des3,
+            des4=self.sat_tables.des4,
+            **inputs
+        )
+        return inputs
