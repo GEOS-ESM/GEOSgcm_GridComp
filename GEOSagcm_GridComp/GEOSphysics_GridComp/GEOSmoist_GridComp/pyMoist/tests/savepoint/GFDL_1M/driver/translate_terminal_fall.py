@@ -8,11 +8,11 @@ from pyMoist.GFDL_1M.driver.temporaries import Temporaries
 from pyMoist.GFDL_1M.driver.outputs import Outputs
 from pyMoist.GFDL_1M.driver.masks import Masks
 from pyMoist.GFDL_1M.driver.sat_tables import get_tables
-from pyMoist.GFDL_1M.driver.warm_rain.main import WarmRain
+from pyMoist.GFDL_1M.driver.terminal_fall.main import TerminalFall
 from ndsl.stencils.testing.grid import Grid
 
 
-class Translatewarm_rain(TranslateFortranData2Py):
+class Translateterminal_fall(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -25,47 +25,40 @@ class Translatewarm_rain(TranslateFortranData2Py):
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
-            "dz1": grid.compute_dict() | {"serialname": "dz1_warm_rain"},
-            "dp1": grid.compute_dict() | {"serialname": "dp1_warm_rain"},
-            "t1": grid.compute_dict() | {"serialname": "t1_warm_rain"},
-            "qv1": grid.compute_dict() | {"serialname": "qv_warm_rain"},
-            "ql1": grid.compute_dict() | {"serialname": "ql_warm_rain"},
-            "qr1": grid.compute_dict() | {"serialname": "qr_warm_rain"},
-            "qi1": grid.compute_dict() | {"serialname": "qi_warm_rain"},
-            "qs1": grid.compute_dict() | {"serialname": "qs_warm_rain"},
-            "qg1": grid.compute_dict() | {"serialname": "qg_warm_rain"},
-            "qa1": grid.compute_dict() | {"serialname": "qa_warm_rain"},
-            "ccn": grid.compute_dict() | {"serialname": "ccn_warm_rain"},
-            "den": grid.compute_dict() | {"serialname": "den_warm_rain"},
-            "denfac": grid.compute_dict() | {"serialname": "denfac_warm_rain"},
-            "c_praut": grid.compute_dict() | {"serialname": "c_praut_warm_rain"},
-            "vtr": grid.compute_dict() | {"serialname": "vtr_warm_rain"},
-            "evap1": grid.compute_dict() | {"serialname": "evap1_warm_rain"},
-            "m1_rain": grid.compute_dict() | {"serialname": "m1_rain_warm_rain"},
-            "w1": grid.compute_dict() | {"serialname": "w1_warm_rain"},
-            "rh_limited": grid.compute_dict() | {"serialname": "rh_limited_warm_rain"},
-            "eis": grid.compute_dict() | {"serialname": "eis_warm_rain"},
-            "rain": grid.compute_dict() | {"serialname": "rain_warm_rain"},
-            "rain1": grid.compute_dict() | {"serialname": "r1_warm_rain"},
-            "m2_sol": grid.compute_dict() | {"serialname": "m2_sol_warm_rain"},
-            "m2_rain": grid.compute_dict() | {"serialname": "m2_rain_warm_rain"},
-            "revap": grid.compute_dict() | {"serialname": "revap_warm_rain"},
-            "m1": grid.compute_dict() | {"serialname": "m1_warm_rain"},
-            "m1_sol": grid.compute_dict() | {"serialname": "m1_sol_warm_rain"},
-            "onemsig": grid.compute_dict() | {"serialname": "onemsig_warm_rain"},
+            "t1": grid.compute_dict() | {"serialname": "t1_terminal_fall"},
+            "qv1": grid.compute_dict() | {"serialname": "qv_terminal_fall"},
+            "ql1": grid.compute_dict() | {"serialname": "ql_terminal_fall"},
+            "qr1": grid.compute_dict() | {"serialname": "qr_terminal_fall"},
+            "qg1": grid.compute_dict() | {"serialname": "qg_terminal_fall"},
+            "qs1": grid.compute_dict() | {"serialname": "qs_terminal_fall"},
+            "qi1": grid.compute_dict() | {"serialname": "qi_terminal_fall"},
+            "m1_sol": grid.compute_dict() | {"serialname": "m1_sol_terminal_fall"},
+            "w1": grid.compute_dict() | {"serialname": "w1_terminal_fall"},
+            "dz1": grid.compute_dict() | {"serialname": "dz1_terminal_fall"},
+            "dp1": grid.compute_dict() | {"serialname": "dp1_terminal_fall"},
+            "den1": grid.compute_dict() | {"serialname": "den1_terminal_fall"},
+            "vtg": grid.compute_dict() | {"serialname": "vtg_terminal_fall"},
+            "vts": grid.compute_dict() | {"serialname": "vts_terminal_fall"},
+            "vti": grid.compute_dict() | {"serialname": "vti_terminal_fall"},
+            "precip_rain": grid.compute_dict() | {"serialname": "r1_terminal_fall"},
+            "precip_graupel": grid.compute_dict() | {"serialname": "g1_terminal_fall"},
+            "precip_snow": grid.compute_dict() | {"serialname": "s1_terminal_fall"},
+            "precip_ice": grid.compute_dict() | {"serialname": "i1_terminal_fall"},
+            "rain": grid.compute_dict() | {"serialname": "rain_terminal_fall"},
+            "snow": grid.compute_dict() | {"serialname": "snow_terminal_fall"},
+            "graupel": grid.compute_dict() | {"serialname": "graupel_terminal_fall"},
+            "ice": grid.compute_dict() | {"serialname": "ice_terminal_fall"},
         }
+        self.in_vars["parameters"] = []
 
         self.out_vars = self.in_vars["data_vars"].copy()
         del (
             self.out_vars["dz1"],
             self.out_vars["dp1"],
-            self.out_vars["den"],
-            self.out_vars["denfac"],
-            self.out_vars["c_praut"],
-            self.out_vars["ccn"],
-            self.out_vars["onemsig"],
-            self.out_vars["rh_limited"],
-            self.out_vars["eis"],
+            self.out_vars["den1"],
+            self.out_vars["vtg"],
+            self.out_vars["vts"],
+            self.out_vars["vti"],
         )
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -169,25 +162,18 @@ class Translatewarm_rain(TranslateFortranData2Py):
         masks = Masks(self.quantity_factory)
 
         # Initalize object to be tested
-        self.warm_rain = WarmRain(
+        self.terminal_fall = TerminalFall(
             self.stencil_factory,
             self.quantity_factory,
             self.GFDL_1M_config,
             self.config_dependent_constants,
         )
 
-        self.warm_rain(
+        self.terminal_fall(
             ze=temporaries.ze,
             zt=temporaries.zt,
+            is_frozen=masks.is_frozen,
             precip_fall=masks.precip_fall,
-            table1=self.sat_tables.table1,
-            table2=self.sat_tables.table2,
-            table3=self.sat_tables.table3,
-            table4=self.sat_tables.table4,
-            des1=self.sat_tables.des1,
-            des2=self.sat_tables.des2,
-            des3=self.sat_tables.des3,
-            des4=self.sat_tables.des4,
             **inputs
         )
         return inputs
